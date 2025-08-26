@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for F5 VPN logs using the OCSF mapping to normalise events into
+    the AI-SIEM schema.
+  datasource_vendor: f5
+  dataSource: vpn
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original F5 VPN logs.
+  performance_impact: "Minimal – this parser processes VPN session and network events."
+  tags: f5, vpn, network, session, security, ocsf, parser
+  version: latest

@@ -1,0 +1,9 @@
+name: fortimanager
+version: 1.0.0
+vendor: SentinelOne
+product: FortiManager
+description: Official SentinelOne parser for FortiManager
+category: security
+created: 2025-08-10T14:49:45.688384
+ocsf_compliant: true
+source: official_sentinelone_parsers

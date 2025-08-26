@@ -1,0 +1,9 @@
+name: zscaler_private_access
+version: 1.0.0
+vendor: Zscaler
+product: Zscaler Private Access
+description: Official SentinelOne parser for Zscaler Private Access
+category: security
+created: 2025-08-10T14:49:45.691081
+ocsf_compliant: true
+source: official_sentinelone_parsers

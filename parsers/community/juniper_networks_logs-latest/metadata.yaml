@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Juniper Networks logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: juniper
+  dataSource: networks
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Juniper Networks device logs.
+  performance_impact: "Minimal – this parser processes JSON formatted network logs."
+  tags: juniper, networks, logs, json, parser, networking
+  author: Kenny Cho
+  version: latest

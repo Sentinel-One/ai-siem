@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for PingProtect logs using the OCSF mapping to normalise events into
+    the AI-SIEM schema.
+  datasource_vendor: ping
+  dataSource: pingprotect
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original PingProtect authentication logs.
+  performance_impact: "Minimal – this parser processes PingProtect security events."
+  tags: ping, pingprotect, authentication, security, ocsf, parser
+  version: latest

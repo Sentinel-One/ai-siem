@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Abnormal Security logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: abnormal
+  dataSource: security
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Abnormal Security logs.
+  performance_impact: "Minimal – this parser processes JSON formatted security logs."
+  tags: abnormal, security, logs, json, parser
+  author: Kenny Cho
+  version: latest

@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for ISC DHCP logs using the OCSF mapping to normalise events into
+    the AI-SIEM schema.
+  datasource_vendor: isc
+  dataSource: dhcp
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original ISC DHCP server logs.
+  performance_impact: "Minimal – this parser processes DHCP lease and network events."
+  tags: isc, dhcp, network, lease, ip, ocsf, parser
+  version: latest

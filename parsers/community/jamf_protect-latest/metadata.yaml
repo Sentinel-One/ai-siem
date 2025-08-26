@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for Jamf Protect logs using the OCSF mapping to normalise events into
+    the AI-SIEM schema.
+  datasource_vendor: jamf
+  dataSource: protect
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original Jamf Protect security logs.
+  performance_impact: "Minimal – this parser processes endpoint security control events."
+  tags: jamf, protect, endpoint, security, control, macos, ocsf, parser
+  version: latest

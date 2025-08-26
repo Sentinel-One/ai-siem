@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for generic logs migrated from samples-main
+  datasource_vendor: generic
+  dataSource: logs
+  format: gron
+  ingestion_method: streaming
+  dependency_summary: Requires ingestion of generic logs in appropriate format
+  performance_impact: Minimal - standard Gron parser processing
+  tags: generic, parser, migrated, samples-main
+  version: latest
+  author: Joel Mora

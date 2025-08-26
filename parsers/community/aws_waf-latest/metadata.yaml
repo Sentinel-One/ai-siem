@@ -1,0 +1,52 @@
+name: aws_waf
+vendor: AWS
+product: WAF
+version: latest
+description: AWS Web Application Firewall OCSF-compliant parser
+author: SentinelOne
+date_created: 2025-08-07
+date_modified: 2025-08-07
+log_format: json
+event_categories:
+  - network_security
+  - web_application_firewall
+  - threat_detection
+supported_versions:
+  - "1.0"
+  - "1.1"
+ocsf_compliance:
+  version: "1.1.0"
+  classes:
+    - class_uid: 4002
+      class_name: "HTTP Activity"
+fields_mapped:
+  - timestamp
+  - client_ip
+  - action
+  - uri
+  - http_method
+  - query_args
+  - country
+  - rule_group
+  - waf_action
+sample_log: |
+  {
+    "timestamp": "2025-08-05T21:05:01Z",
+    "formatVersion": "1.0",
+    "webaclId": "arn:aws:wafv2:us-east-1:123456789012:regional/webacl/ExampleWebACL",
+    "ruleGroupId": "Default",
+    "terminatingRuleType": "",
+    "action": "ALLOW",
+    "httpRequest": {
+      "clientIp": "203.0.113.5",
+      "country": "US",
+      "uri": "/index.html",
+      "args": "",
+      "httpVersion": "HTTP/1.1",
+      "httpMethod": "GET",
+      "headers": [
+        {"name": "Host", "value": "example.com"},
+        {"name": "User-Agent", "value": "Mozilla/5.0"}
+      ]
+    }
+  }

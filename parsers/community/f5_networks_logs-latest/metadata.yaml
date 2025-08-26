@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for F5 Networks logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: f5
+  dataSource: networks
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of F5 Networks load balancer and security logs.
+  performance_impact: "Minimal – this parser processes JSON formatted F5 logs."
+  tags: f5, networks, logs, json, parser, load_balancer
+  author: Kenny Cho
+  version: latest

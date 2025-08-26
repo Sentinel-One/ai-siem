@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for Axway SFTP logs using the OCSF mapping to normalise events into
+    the AI-SIEM schema.
+  datasource_vendor: axway
+  dataSource: sftp
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original Axway SFTP logs.
+  performance_impact: "Minimal – this parser processes SFTP file transfer events."
+  tags: axway, sftp, file, transfer, security, ocsf, parser
+  version: latest

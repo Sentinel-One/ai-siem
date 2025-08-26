@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: "Detection rule migrated from samples-main: O365-alerts.conf"
+  mitre_tactic_technique: "To be determined"
+  datasource: "To be determined"
+  usecase_plus: "Detection logic from samples-main"
+  severity: "Medium"
+  expected_alert_scenario: "Based on configured thresholds"
+  performance_impact: "Minimal"
+  tags: detection, alert, migrated, samples-main
+  version: latest
+  author: Joel Mora

@@ -1,0 +1,9 @@
+name: palo_alto_networks_firewall
+version: 1.0.0
+vendor: Palo
+product: Palo Alto Networks Firewall
+description: Official SentinelOne parser for Palo Alto Networks Firewall
+category: security
+created: 2025-08-10T14:49:45.689406
+ocsf_compliant: true
+source: official_sentinelone_parsers

@@ -9,4 +9,4 @@ metadata_details:
   dependency_summary: "Requires consistent CEF log output from CrowdStrike Falcon sensor; parses key-value extensions using repeat patterns and field heuristics."
   performance_impact: "Minimal – pattern matching is optimized with repeatable key/value segments and selective parsing based on CEF structure."
   tags: ["crowdstrike", "falcon", "endpoint", "cef", "parser"]
-  version: "v1.0"
+  version: "v1.0"  author: Joel Mora

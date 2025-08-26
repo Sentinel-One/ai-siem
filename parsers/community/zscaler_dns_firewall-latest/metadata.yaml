@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Zscaler DNS Firewall security logs using JSON parsing to normalise events
+    into the AI-SIEM schema with OCSF compliance.
+  datasource_vendor: zscaler
+  dataSource: dns_firewall
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Zscaler Internet Access DNS firewall logs.
+  performance_impact: "Minimal – this parser processes JSON formatted DNS security logs."
+  tags: zscaler, dns, firewall, security, logs, json, parser, ocsf
+  author: Community
+  version: latest

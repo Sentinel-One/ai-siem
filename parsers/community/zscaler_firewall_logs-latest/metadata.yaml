@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Zscaler Firewall logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: zscaler
+  dataSource: firewall
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Zscaler firewall and web security logs.
+  performance_impact: "Minimal – this parser processes JSON formatted Zscaler firewall logs."
+  tags: zscaler, firewall, logs, json, parser, web_security, cloud_security
+  author: Marek Kratky
+  version: latest

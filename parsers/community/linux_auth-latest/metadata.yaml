@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Linux authentication logs from /var/log/auth.log using syslog parsing to normalise events
+    into the AI-SIEM schema with OCSF compliance.
+  datasource_vendor: linux
+  dataSource: auth
+  format: syslog
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Linux /var/log/auth.log syslog messages.
+  performance_impact: "Minimal – this parser processes standard Linux syslog authentication events."
+  tags: linux, auth, authentication, logs, syslog, parser, ocsf
+  author: Community
+  version: latest

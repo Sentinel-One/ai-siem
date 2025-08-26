@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for PingOne MFA logs using the OCSF mapping to normalise events into
+    the AI-SIEM schema.
+  datasource_vendor: ping
+  dataSource: pingone_mfa
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original PingOne MFA authentication logs.
+  performance_impact: "Minimal – this parser processes MFA authentication events."
+  tags: ping, pingone, mfa, authentication, security, ocsf, parser
+  version: latest

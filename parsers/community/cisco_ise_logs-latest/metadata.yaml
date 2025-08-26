@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Cisco ISE (Identity Services Engine) logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: cisco
+  dataSource: ise
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Cisco ISE authentication and authorization logs.
+  performance_impact: "Minimal – this parser processes JSON formatted ISE logs."
+  tags: cisco, ise, identity, authentication, logs, json, parser
+  author: Kenny Cho
+  version: latest

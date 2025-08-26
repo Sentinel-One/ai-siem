@@ -1,0 +1,9 @@
+name: infoblox_ddi
+version: 1.0.0
+vendor: Infoblox
+product: Infoblox DDI
+description: Official SentinelOne parser for Infoblox DDI
+category: security
+created: 2025-08-10T14:49:45.687498
+ocsf_compliant: true
+source: official_sentinelone_parsers

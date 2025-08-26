@@ -1,7 +1,0 @@
-data_dependencies: "Axonius asset inventory logs"
-required_fields: "internal_axon_id, specific_data.data.hostname, specific_data.data.name, specific_data.data.last_seen, adapter_list_length"
-description: "Lists current assets discovered by Axonius along with last seen timestamps and provides a count of adapters across the environment."
-usecase_type: "Asset Management"
-usecase_action: "Dashboard | Inventory"
-tags: "axonius, asset, inventory, adapters"
-version: "v1.0"

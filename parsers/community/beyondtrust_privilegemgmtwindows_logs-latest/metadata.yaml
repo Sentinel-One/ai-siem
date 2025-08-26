@@ -11,3 +11,4 @@ metadata_details:
     \ upstream definition."
   tags: beyondtrust, privilegemgmtwindows, logs, ocsf, parser
   version: latest
+  author: Joel Mora

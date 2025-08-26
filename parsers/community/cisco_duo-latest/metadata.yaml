@@ -1,0 +1,23 @@
+metadata_details:
+  purpose: "OCSF-compliant parser for Cisco Duo MFA authentication events. Maps multi-factor authentication attempts to Authentication class (3002) with proper normalization of factors, results, and geographic context."
+  datasource_vendor: "Cisco"
+  dataSource: "Cisco Duo Security"
+  format: "custom syslog"
+  ocsf_version: "1.1.0"
+  ingestion_method: "Syslog via Agent or Collector"
+  sample_record: |
+    2025-08-07T00:20:00Z DuoSecurity username="alice" factor="push" ip="198.51.100.150" result="SUCCESS" location="San Jose, US" message="User approved push notification"
+    2025-08-07T00:22:10Z DuoSecurity username="bob" factor="phone" ip="203.0.113.155" result="DENIED" location="Seattle, US" reason="User denied call" message="User denied phone call authentication"
+  dependency_summary: "Requires syslog ingestion from Cisco Duo MFA infrastructure with consistent key-value format including username, authentication factor, IP address, result, and location information."
+  performance_impact: "Minimal – single format parser with efficient MFA event field extraction and OCSF normalization."
+  ocsf_mapping:
+    class_uid: 3002
+    class_name: "Authentication"
+    category_uid: 3
+    category_name: "Identity & Access Management"
+    activity_id: 1
+    activity_name: "Logon"
+    type_uid: 300201
+  tags: "cisco, duo, mfa, authentication, security, ocsf, parser"
+  version: "v1.0"
+  author: "Community"

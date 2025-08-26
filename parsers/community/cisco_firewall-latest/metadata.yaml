@@ -17,4 +17,4 @@ metadata_details:
     - threat-defense
     - connection
     - syslog
-  version: "v1.0"
+  version: "v1.0"  author: Joel Mora

@@ -1,0 +1,9 @@
+name: check_point_next_generation_firewall
+version: 1.0.0
+vendor: Check
+product: Check Point Next Generation Firewall
+description: Official SentinelOne parser for Check Point Next Generation Firewall
+category: security
+created: 2025-08-10T14:49:45.681228
+ocsf_compliant: true
+source: official_sentinelone_parsers

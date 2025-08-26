@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for PingFederate SSO authentication logs using log4j parsing to normalise events
+    into the AI-SIEM schema with OCSF compliance.
+  datasource_vendor: pingidentity
+  dataSource: pingfederate
+  format: log4j
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of PingFederate server.log and audit.log files.
+  performance_impact: "Minimal – this parser processes log4j formatted authentication logs."
+  tags: pingidentity, pingfederate, sso, authentication, logs, log4j, parser, ocsf
+  author: Community
+  version: latest

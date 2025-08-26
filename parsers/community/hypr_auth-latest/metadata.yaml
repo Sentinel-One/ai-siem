@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for HYPR authentication logs using the OCSF mapping to normalise events into
+    the AI-SIEM schema.
+  datasource_vendor: hypr
+  dataSource: auth
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original HYPR authentication logs.
+  performance_impact: "Minimal – this parser processes FIDO2 and passwordless authentication events."
+  tags: hypr, authentication, fido2, passwordless, security, ocsf, parser
+  version: latest

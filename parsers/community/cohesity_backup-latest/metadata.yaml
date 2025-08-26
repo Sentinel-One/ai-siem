@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for Cohesity backup logs using the OCSF mapping to normalise events into
+    the AI-SIEM schema.
+  datasource_vendor: cohesity
+  dataSource: backup
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original Cohesity backup logs.
+  performance_impact: "Minimal – this parser processes backup job and system events."
+  tags: cohesity, backup, system, storage, ocsf, parser
+  version: latest

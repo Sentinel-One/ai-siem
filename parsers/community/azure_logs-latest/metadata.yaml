@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for microsoft logs migrated from samples-main
+  datasource_vendor: microsoft
+  dataSource: logs
+  format: gron
+  ingestion_method: streaming
+  dependency_summary: Requires ingestion of microsoft logs in appropriate format
+  performance_impact: Minimal - standard Gron parser processing
+  tags: microsoft, parser, migrated, samples-main
+  version: latest
+  author: Joel Mora

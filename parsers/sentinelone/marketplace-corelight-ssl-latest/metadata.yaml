@@ -1,0 +1,9 @@
+name: corelight
+version: 1.0.0
+vendor: SentinelOne
+product: Corelight
+description: Official SentinelOne parser for Corelight
+category: security
+created: 2025-08-10T14:49:45.685786
+ocsf_compliant: true
+source: official_sentinelone_parsers

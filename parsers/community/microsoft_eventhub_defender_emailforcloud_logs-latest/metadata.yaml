@@ -11,3 +11,4 @@ metadata_details:
     \ upstream definition."
   tags: microsoft, eventhub defender emailforcloud, logs, ocsf, parser
   version: latest
+  author: Joel Mora

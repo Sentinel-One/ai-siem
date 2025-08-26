@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for AWS VPC DNS logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: aws
+  dataSource: vpc_dns
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of AWS VPC DNS logs.
+  performance_impact: "Minimal – this parser processes JSON formatted DNS logs."
+  tags: aws, vpc, dns, logs, json, parser
+  author: Marek Kratky
+  version: latest

@@ -1,0 +1,9 @@
+name: prisma_access
+version: 1.0.0
+vendor: Prisma
+product: Prisma Access
+description: Official SentinelOne parser for Prisma Access
+category: security
+created: 2025-08-10T14:49:45.690235
+ocsf_compliant: true
+source: official_sentinelone_parsers

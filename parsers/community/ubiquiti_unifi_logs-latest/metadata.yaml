@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Ubiquiti UniFi logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: ubiquiti
+  dataSource: unifi
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Ubiquiti UniFi network device logs.
+  performance_impact: "Minimal – this parser processes JSON formatted UniFi logs."
+  tags: ubiquiti, unifi, logs, json, parser, networking, wireless
+  author: Kenny Cho
+  version: latest

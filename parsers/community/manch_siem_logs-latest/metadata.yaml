@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Manch SIEM logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: manch
+  dataSource: siem
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Manch SIEM security event logs.
+  performance_impact: "Minimal – this parser processes JSON formatted SIEM logs."
+  tags: manch, siem, logs, json, parser, security
+  author: Kenny Cho
+  version: latest

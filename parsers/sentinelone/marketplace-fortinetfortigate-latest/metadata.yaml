@@ -1,0 +1,9 @@
+name: fortigate
+version: 1.0.0
+vendor: SentinelOne
+product: FortiGate
+description: Official SentinelOne parser for FortiGate
+category: security
+created: 2025-08-10T14:49:45.686657
+ocsf_compliant: true
+source: official_sentinelone_parsers

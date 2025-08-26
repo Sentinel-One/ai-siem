@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for SecureLink logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: securelink
+  dataSource: logs
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of SecureLink remote access logs.
+  performance_impact: "Minimal – this parser processes JSON formatted SecureLink logs."
+  tags: securelink, logs, json, parser, remote_access, security
+  author: Kenny Cho
+  version: latest

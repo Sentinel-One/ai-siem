@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Microsoft IIS W3C web server logs using structured parsing to normalise events
+    into the AI-SIEM schema with OCSF compliance.
+  datasource_vendor: microsoft
+  dataSource: iis
+  format: w3c
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Microsoft IIS W3C Extended Log Format files.
+  performance_impact: "Minimal – this parser processes space-delimited W3C format logs."
+  tags: microsoft, iis, web, server, logs, w3c, parser, ocsf
+  author: Community
+  version: latest

@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for cloudflare logs migrated from samples-main
+  datasource_vendor: cloudflare
+  dataSource: logs
+  format: gron
+  ingestion_method: streaming
+  dependency_summary: Requires ingestion of cloudflare logs in appropriate format
+  performance_impact: Minimal - standard Gron parser processing
+  tags: cloudflare, parser, migrated, samples-main
+  version: latest
+  author: Joel Mora

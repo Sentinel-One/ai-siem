@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for Akamai SiteDefender WAF logs using the OCSF mapping to normalise events into
+    the AI-SIEM schema.
+  datasource_vendor: akamai
+  dataSource: sitedefender
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original Akamai SiteDefender WAF logs.
+  performance_impact: "Minimal – this parser processes JSON-formatted WAF events."
+  tags: akamai, sitedefender, waf, http, security, ocsf, parser
+  version: latest

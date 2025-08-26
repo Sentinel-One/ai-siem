@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for Harness CI/CD logs using the OCSF mapping to normalise events into
+    the AI-SIEM schema.
+  datasource_vendor: harness
+  dataSource: ci
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original Harness CI/CD logs.
+  performance_impact: "Minimal – this parser processes DevOps pipeline and build events."
+  tags: harness, ci, cd, devops, pipeline, ocsf, parser
+  version: latest

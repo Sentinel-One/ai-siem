@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for SAP logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: sap
+  dataSource: logs
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of SAP application and system logs.
+  performance_impact: "Minimal – this parser processes JSON formatted SAP logs."
+  tags: sap, logs, json, parser, erp, enterprise
+  author: Kenny Cho
+  version: latest

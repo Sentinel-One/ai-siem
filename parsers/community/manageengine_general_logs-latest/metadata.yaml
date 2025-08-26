@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for ManageEngine general logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: manageengine
+  dataSource: general
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of ManageEngine general application logs.
+  performance_impact: "Minimal – this parser processes JSON formatted ManageEngine logs."
+  tags: manageengine, general, logs, json, parser, it_management
+  author: Kenny Cho
+  version: latest

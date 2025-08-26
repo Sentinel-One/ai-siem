@@ -1,0 +1,11 @@
+name: cisco_umbrella
+version: latest
+vendor: Cisco
+product: Cisco Umbrella
+description: Cisco Umbrella DNS Security and Web Security logs
+log_types:
+  - dns
+  - proxy
+  - audit
+data_format: csv
+ocsf_version: 1.1.0

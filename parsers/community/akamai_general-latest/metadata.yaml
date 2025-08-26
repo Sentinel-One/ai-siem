@@ -1,0 +1,23 @@
+metadata_details:
+  purpose: "OCSF-compliant parser for Akamai Security events. Maps web application security alerts and attacks to Security Control class (2001) with proper normalization of attack types, actions, and threat intelligence."
+  datasource_vendor: "Akamai"
+  dataSource: "Akamai Security"
+  format: "custom syslog"
+  ocsf_version: "1.1.0"
+  ingestion_method: "Syslog via Agent or Collector"
+  sample_record: |
+    2025-08-06T12:30:55Z AkamaiSecurity clientIP="198.51.100.24" host="www.example.com" path="/login" ruleId="981176" attackType="SQL_Injection" action="blocked" httpMethod="POST" status=403 userAgent="Mozilla/5.0" message="Attempted SQL injection in login parameter detected and blocked"
+    2025-08-06T12:31:10Z AkamaiSecurity clientIP="198.51.100.24" host="www.example.com" path="/register" ruleId="941130" attackType="Cross_Site_Scripting" action="alert" httpMethod="POST" status=200 userAgent="Mozilla/5.0" message="Potential XSS pattern detected; request allowed with alert"
+  dependency_summary: "Requires syslog ingestion from Akamai Security infrastructure with consistent key-value format including client IP, attack type, rule ID, action taken, and HTTP context."
+  performance_impact: "Minimal – single format parser with efficient security event field extraction and OCSF normalization."
+  ocsf_mapping:
+    class_uid: 2001
+    class_name: "Security Control"
+    category_uid: 2
+    category_name: "Findings"
+    activity_id: 1
+    activity_name: "Security Alert"
+    type_uid: 200101
+  tags: "akamai, security, waf, web_security, attacks, ocsf, parser"
+  version: "v1.0"
+  author: "Community"

@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for juniper logs migrated from samples-main
+  datasource_vendor: juniper
+  dataSource: logs
+  format: gron
+  ingestion_method: streaming
+  dependency_summary: Requires ingestion of juniper logs in appropriate format
+  performance_impact: Minimal - standard Gron parser processing
+  tags: juniper, parser, migrated, samples-main
+  version: latest
+  author: Joel Mora

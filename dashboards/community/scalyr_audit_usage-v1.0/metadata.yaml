@@ -1,7 +1,0 @@
-data_dependencies: "Scalyr audit logs"
-required_fields: "timestamp, userEmail, action, filter, dashboardName, ip"
-description: "Tracks user activity within the Scalyr platform: top searches, recent search history, and access to dashboards and documentation."
-usecase_type: "Operations"
-usecase_action: "Dashboard | Auditing"
-tags: "scalyr, audit, usage, monitoring"
-version: "v1.0"

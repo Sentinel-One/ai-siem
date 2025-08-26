@@ -1,0 +1,12 @@
+{
+            "dataSource.category": "security",
+            "dataSource.name": "Check Point Next Generation Firewall",
+            "dataSource.vendor": "Check Point",
+            "metadata.product.name": "Check Point Next Generation Firewall",
+            "metadata.product.vendor_name": "Check Point",
+            "metadata.version":"1.1.0"
+            "severity_id": 0
+        },
+    formats: [
+            {
+}

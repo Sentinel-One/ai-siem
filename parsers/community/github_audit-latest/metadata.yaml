@@ -1,0 +1,23 @@
+metadata_details:
+  purpose: "OCSF-compliant parser for GitHub audit log events. Maps source control activities to DevOps Activity class (8001) with proper normalization of repository actions, user activities, and organizational context."
+  datasource_vendor: "GitHub"
+  dataSource: "GitHub Audit"
+  format: "custom syslog"
+  ocsf_version: "1.1.0"
+  ingestion_method: "Syslog via Agent or Collector"
+  sample_record: |
+    2025-08-06T14:05:12Z github.audit actor="devuser" org="acme-corp" repository="new-repo" action="repo.create" outcome="success" description="Repository acme-corp/new-repo created" ip="198.51.100.24"
+    2025-08-06T14:10:32Z github.audit actor="devuser" org="acme-corp" repository="legacy-repo" action="branch.protect" outcome="success" branch="main" description="Enabled branch protection on legacy-repo/main" ip="198.51.100.24"
+  dependency_summary: "Requires syslog ingestion from GitHub audit infrastructure with consistent key-value format including actor, organization, repository, action, outcome, and IP address information."
+  performance_impact: "Minimal – single format parser with efficient audit event field extraction and OCSF normalization."
+  ocsf_mapping:
+    class_uid: 8001
+    class_name: "DevOps Activity"
+    category_uid: 8
+    category_name: "System Activity"
+    activity_id: 1
+    activity_name: "Repository Activity"
+    type_uid: 800101
+  tags: "github, audit, devops, source_control, repository, ocsf, parser"
+  version: "v1.0"
+  author: "Community"

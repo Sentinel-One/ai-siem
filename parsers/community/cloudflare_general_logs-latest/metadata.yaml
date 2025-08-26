@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Cloudflare general logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: cloudflare
+  dataSource: general
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Cloudflare general service logs.
+  performance_impact: "Minimal – this parser processes JSON formatted Cloudflare logs."
+  tags: cloudflare, general, logs, json, parser, cdn
+  author: Marek Kratky
+  version: latest

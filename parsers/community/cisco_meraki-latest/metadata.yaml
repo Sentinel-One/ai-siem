@@ -11,4 +11,4 @@ metadata_details:
   dependency_summary: "Requires syslog ingestion from Cisco Meraki MX Firewall and AP logs with a consistent message structure as defined by format patterns (vpn_firewall, ip_flow, flows)."
   performance_impact: "Minimal – parser halts on first matching format and uses efficient rewrite mappings."
   tags: "cisco, meraki, firewall, access_point, network, parser"
-  version: "v1.0"
+  version: "v1.0"  author: Joel Mora

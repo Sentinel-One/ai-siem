@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Google Workspace logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: google
+  dataSource: workspace
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Google Workspace admin and user activity logs.
+  performance_impact: "Minimal – this parser processes JSON formatted Workspace logs."
+  tags: google, workspace, logs, json, parser, saas, productivity
+  author: Kenny Cho
+  version: latest

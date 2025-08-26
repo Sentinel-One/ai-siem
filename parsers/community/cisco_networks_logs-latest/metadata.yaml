@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Cisco Networks logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: cisco
+  dataSource: networks
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Cisco network device logs.
+  performance_impact: "Minimal – this parser processes JSON formatted network logs."
+  tags: cisco, networks, logs, json, parser, networking
+  author: Kenny Cho
+  version: latest

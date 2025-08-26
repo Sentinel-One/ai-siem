@@ -1,0 +1,9 @@
+metadata_details:
+  data_dependencies: "Specify datasource.name or OCSF field"
+  required_fields: "Fields required for this dashboard"
+  description: "Dashboard migrated from samples-main: log-volume-aisiem.conf"
+  usecase_type: "Operational"
+  usecase_action: "Dashboard"
+  tags: dashboard, migrated, samples-main
+  version: latest
+  author: Joel Mora

@@ -9,4 +9,4 @@ metadata_details:
   dependency_summary: "Requires ADAudit Plus to forward logs in RFC5424 syslog format with bracketed key-value pairs; parser maps Category→event.type, SOURCE→event.source, EXTRA_COLUMN1→event.details, CLIENT_IP_ADDRESS→event.target."
   performance_impact: "Minimal – uses two lightweight format definitions with early-exit parsing."
   tags: ["manageengine", "adauditplus", "active_directory", "parser", "syslog"]
-  version: "v1.0"
+  version: "v1.0"  author: Joel Mora

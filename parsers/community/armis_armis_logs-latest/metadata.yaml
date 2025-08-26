@@ -10,3 +10,4 @@ metadata_details:
     \ upstream definition."
   tags: armis, armis, logs, ocsf, parser
   version: latest
+  author: Joel Mora

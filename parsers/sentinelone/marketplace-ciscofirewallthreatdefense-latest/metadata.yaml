@@ -1,0 +1,9 @@
+name: cisco_firewall_threat_defense
+version: 1.0.0
+vendor: Cisco
+product: Cisco Firewall Threat Defense
+description: Official SentinelOne parser for Cisco Firewall Threat Defense
+category: security
+created: 2025-08-10T14:49:45.680332
+ocsf_compliant: true
+source: official_sentinelone_parsers

@@ -1,0 +1,10 @@
+{
+      "dataSource.category": "security",
+      "dataSource.name": "Cisco Firewall Threat Defense",
+      "dataSource.vendor": "Cisco",
+      "metadata.product.name":"Cisco Firewall Threat Defense",
+      "metadata.product.vendor_name":"Cisco",
+      "metadata.version":"1.0.0"
+    },
+    patterns:{
+}

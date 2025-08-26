@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for CyberArk Conjur secrets management audit logs using syslog parsing to normalise events
+    into the AI-SIEM schema with OCSF compliance.
+  datasource_vendor: cyberark
+  dataSource: conjur
+  format: syslog
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of CyberArk Conjur RFC 5424 syslog audit messages.
+  performance_impact: "Minimal – this parser processes structured syslog formatted audit logs."
+  tags: cyberark, conjur, secrets, audit, logs, syslog, parser, ocsf
+  author: Community
+  version: latest

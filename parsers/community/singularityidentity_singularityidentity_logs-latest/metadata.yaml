@@ -11,3 +11,4 @@ metadata_details:
     \ upstream definition."
   tags: singularityidentity, singularityidentity, logs, ocsf, parser
   version: latest
+  author: Joel Mora

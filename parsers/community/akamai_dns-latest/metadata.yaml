@@ -1,0 +1,23 @@
+metadata_details:
+  purpose: "OCSF-compliant parser for Akamai DNS query logs. Maps DNS resolution requests and responses to DNS Activity class (4003) with proper normalization of query types, response codes, and geographic distribution data."
+  datasource_vendor: "Akamai"
+  dataSource: "Akamai DNS"
+  format: "custom syslog"
+  ocsf_version: "1.1.0" 
+  ingestion_method: "Syslog via Agent or Collector"
+  sample_record: |
+    2025-08-06T22:30:01Z AkamaiDNS streamId="dns-123" cliIP="198.51.100.30" resolverIP="203.0.113.200" domain="www.example.com" recordType="A" responseCode="NOERROR" answer="192.0.2.5" edge="edge-ldn" ttl=300 bytes=128
+    2025-08-06T22:31:15Z AkamaiDNS streamId="dns-123" cliIP="203.0.113.60" resolverIP="203.0.113.200" domain="nonexistent.example.com" recordType="A" responseCode="NXDOMAIN" answer="" edge="edge-sfo" ttl=0 bytes=96
+  dependency_summary: "Requires syslog ingestion from Akamai DNS infrastructure with consistent key-value format including client IP, resolver IP, domain name, record type, response code, and edge server information."
+  performance_impact: "Minimal – single format parser with efficient DNS field extraction and OCSF normalization."
+  ocsf_mapping:
+    class_uid: 4003
+    class_name: "DNS Activity"
+    category_uid: 4
+    category_name: "Network Activity"
+    activity_id: 1
+    activity_name: "DNS Query"
+    type_uid: 400301
+  tags: "akamai, dns, resolution, network, ocsf, parser"
+  version: "v1.0"
+  author: "Community"

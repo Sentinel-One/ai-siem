@@ -1,0 +1,24 @@
+dataSource.name ='Windows Event Logs' winEventLog.id=4624
+
+//parse logon id, the only field in the Subject stanza not automatically parsed
+| parse "Logon\\sID:\\t\\t$logon.id$\\n" from winEventLog.description
+
+
+//parsing the logon information stanza
+| parse "\\n\\tLogon\\sType:\\t\\t$logon.type$\\n\\tRestricted\\sAdmin\\sMode:\\s$restricted.admin.mode$\\n\\tRemote\\sCredential\\sGuard:\\t$remote.credential.guard$\\n\\tVirtual\\sAccount:\\t\\t$virtual.account$\\n\\tElevated\\sToken:\\t\\t$elevated.token$\\n" from winEventLog.description
+
+//parsing Impersonation Level
+| parse "Impersonation\\sLevel:\\t\\t$impersonation.level$\\n" from winEventLog.description
+
+//parsing New Logon Stanza
+| parse "Security\\sID:\\t\\t$new.logon.security.id$\\n\\tAccount\\sName:\\t\\t$new.logon.account.name$\\n\\tAccount\\sDomain:\\t$new.logon.account.domain$\\n\\tLogon\\sId:\\t\\t$new.logon.id{regex=[-0-9a-zA-Z]+}$\\s\\n\\tLinked\\sLogon\\sID:\\t\\t$new.logon.linked.logon.id$\\n\\tNetwork\\sAccount\\sName:\\t$new.logon.network.account.name$\\n\\tNetwork\\sAccount\\sDomain:\\s$new.logon.network.account.domain$\\n\\tLogon\\sGUID:\\t\\t$new.logon.guid$\\n" from winEventLog.description
+
+
+//parsing Process Information stanza
+| parse "Process\\sID:\\t\\t$process.id$\\n\\tProcess\\sName:\\t\\t$process.name$\\n" from winEventLog.description 
+
+//parsing Network Information stanza
+| parse "Workstation\\sName:\\t$workstation.name$\\n\\tSource\\sNetwork\\sAddress:\\t$source.network.address$\\n\\tSource\\sPort:\\t\\t$source.port$\\n" from winEventLog.description 
+
+//parse Detailed Authentication Information
+| parse "Logon\\sProcess:\\t\\t$logon.process$\\n\\tAuthentication\\sPackage:\\t$authentication.package$\\n\\tTransited\\sServices:\\t$transited.services$\\n\\tPackage\\sName\\s\\(NTLM only\\):\\t$package.name$\\n\\tKey\\sLength:\\t\\t$key.length$\\n" from winEventLog.description 

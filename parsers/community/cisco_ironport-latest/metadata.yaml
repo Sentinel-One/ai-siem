@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Cisco IronPort Email Security Appliance logs using syslog parsing to normalise events
+    into the AI-SIEM schema with OCSF compliance.
+  datasource_vendor: cisco
+  dataSource: ironport
+  format: syslog
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Cisco IronPort ESA syslog messages.
+  performance_impact: "Minimal – this parser processes syslog formatted email security logs."
+  tags: cisco, ironport, email, security, logs, syslog, parser, ocsf
+  author: Community
+  version: latest

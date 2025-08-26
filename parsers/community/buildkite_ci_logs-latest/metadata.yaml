@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Buildkite CI/CD logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: buildkite
+  dataSource: ci
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Buildkite CI/CD pipeline logs.
+  performance_impact: "Minimal – this parser processes JSON formatted CI/CD logs."
+  tags: buildkite, ci, cd, logs, json, parser, devops
+  author: Marek Kratky
+  version: latest

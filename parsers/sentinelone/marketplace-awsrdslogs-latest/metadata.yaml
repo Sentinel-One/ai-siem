@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: SentinelOne Marketplace parser for awsrdslogs
+  datasource_vendor: awsrdslogs
+  dataSource: marketplace
+  format: gron
+  ingestion_method: marketplace
+  dependency_summary: Official SentinelOne Marketplace parser
+  performance_impact: Optimized for SentinelOne platform
+  tags: sentinelone, marketplace, awsrdslogs, official
+  version: latest
+  author: SentinelOne

@@ -1,0 +1,23 @@
+metadata_details:
+  purpose: "OCSF-compliant parser for Akamai CDN access logs. Maps CDN request/response data to HTTP Activity class (4002) with proper field normalization for caching status, geographic location, and performance metrics."
+  datasource_vendor: "Akamai"
+  dataSource: "Akamai CDN"  
+  format: "custom syslog"
+  ocsf_version: "1.1.0"
+  ingestion_method: "Syslog via Agent or Collector"
+  sample_record: |
+    2025-08-06T23:00:05Z AkamaiCDN streamId="stream-456" cp="12345" reqId="abcde12345" statusCode=200 cliIP="198.51.100.40" reqHost="www.example.com" reqMethod="GET" reqPath="/index.html" bytes=10240 cacheStatus="HIT" turnAroundTimeMSec=50 edgeIP="203.0.113.210" country="US" city="Seattle"
+    2025-08-06T23:01:20Z AkamaiCDN streamId="stream-456" cp="12345" reqId="fghij67890" statusCode=404 cliIP="203.0.113.90" reqHost="www.example.com" reqMethod="GET" reqPath="/unknown" bytes=512 cacheStatus="MISS" turnAroundTimeMSec=75 edgeIP="203.0.113.211" country="US" city="Chicago"
+  dependency_summary: "Requires syslog ingestion from Akamai CDN with consistent key-value format including client IP, host, method, path, status code, cache status, and geographic information."
+  performance_impact: "Minimal – single format parser with efficient field extraction and OCSF normalization."
+  ocsf_mapping:
+    class_uid: 4002
+    class_name: "HTTP Activity"
+    category_uid: 4
+    category_name: "Network Activity" 
+    activity_id: 1
+    activity_name: "HTTP Request"
+    type_uid: 400201
+  tags: "akamai, cdn, http, web, performance, ocsf, parser"
+  version: "v1.0"
+  author: "Community"

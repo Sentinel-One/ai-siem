@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Teleport logs using JSON parsing to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: teleport
+  dataSource: logs
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Teleport access proxy logs.
+  performance_impact: "Minimal – this parser processes JSON formatted Teleport logs."
+  tags: teleport, logs, json, parser, access_proxy, security
+  author: Marek Kratky
+  version: latest

@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for AWS Route 53 DNS query logs using JSON parsing to normalise events
+    into the AI-SIEM schema with OCSF compliance.
+  datasource_vendor: aws
+  dataSource: route53
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of AWS Route 53 resolver query logs.
+  performance_impact: "Minimal – this parser processes JSON formatted DNS logs."
+  tags: aws, route53, dns, logs, json, parser, ocsf
+  author: Community
+  version: latest

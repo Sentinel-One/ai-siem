@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Microsoft 365 Collaboration logs (SharePoint/OneDrive) using JSON parsing to normalise events
+    into the AI-SIEM schema with OCSF compliance.
+  datasource_vendor: microsoft
+  dataSource: m365_collaboration
+  format: JSON
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of Microsoft 365 Unified Audit Log SharePoint/OneDrive activity events.
+  performance_impact: "Minimal – this parser processes JSON formatted collaboration activity logs."
+  tags: microsoft, m365, sharepoint, onedrive, collaboration, logs, json, parser, ocsf
+  author: Community
+  version: latest

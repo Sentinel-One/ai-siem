@@ -1,0 +1,14 @@
+dataSource.name ='Windows Event Logs' winEventLog.id=4720
+| limit 1
+
+//parsing Subject Stanza
+| parse "Security\\sID:\\t\\t$security.id$\\n\\tAccount\\sName:\\t\\t$account.name$\\n\\tAccount\\sDomain:\\t\\t$account.domain$\\n\\tLogon\\sId:\\t\\t$logon.id$\\n" from winEventLog.description
+
+//parsing New Account stanza
+|parse "New Account:$new.account$\\n\\tSecurity\\sID:\\t\\t$new.account.security.id$\\n\\tAccount\\sName:\\t\\t$new.account.name$\\n\\tAccount\\sDomain:\\t\\t$new.account.domain$\\n" from winEventLog.description 
+
+//parsing Attributes stanza
+| parse "SAM\\sAccount\\sName:\\t$sam.account.name$\\n\\tDisplay\\sName:\\t\\t$attributes.display.name$\\n\\tAccount\\sDomain:\\t\\t$attributes.account.domain$\\n\\tLogon\\sID:\\t\\t$attributes.logon.id$\\n\\tLinked\\sLogon\\sID:\\t\\t$attributes.linked.logon.id$\\n\\tNetwork\\sAccount\\sName:$attributes.network.account.name$\\n\\tNetwork\\sAccount\\sDomain:\\t$attributes.network.account.domain$\\n\\tLogon\\sGUID:\\t\\t$attributes.logon.guid$\\n" from winEventLog.description 
+
+//parsing Additoinal Information stanza
+| parse "Privileges$privileges$" from winEventLog.description 

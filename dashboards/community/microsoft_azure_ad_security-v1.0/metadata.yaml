@@ -1,7 +1,0 @@
-data_dependencies: "Azure AD logs via Azure Event Hub"
-required_fields: "app_name, device.browser, device.os, user.type, location.region, location.country"
-description: "Provides visibility into Azure AD events by breaking down activity by application, browser, operating system, user type and geographical region."
-usecase_type: "Security"
-usecase_action: "Dashboard | Monitoring"
-tags: "azure, active directory, security, application, region"
-version: "v1.0"

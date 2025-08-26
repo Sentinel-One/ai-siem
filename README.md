@@ -1,4 +1,4 @@
-# s1Community – SentinelOne Community Forge
+# AI-SIEM – SentinelOne Community Forge Project 
 
 > A community‑driven, SentinelOne‑assisted library of **parsers, dashboards, detections & response playbooks** that supercharge the Singularity Platform.
 
@@ -13,7 +13,7 @@
 
 ## Repository layout
 ```
-aisiem/                # AI SIEM core structure
+ai-siem/                # AI SIEM core structure
   ├── dashboards/      # Visualizations (*.json + metadata)
   ├── detections/      # Detection rules (*.conf + metadata)
   ├── monitors/        # Monitors for saving/updating objects 
@@ -72,7 +72,7 @@ Released under the **Apache 2.0** license – use, modify, and distribute with 
 ---
 
 ## Getting help
-Open an issue or join the `#ai-siem-community` Slack channel. Office hours every <x days @ 09:00 EST>.
+Open an issue or join the `#ai-siem-community` Slack channel. 
 
 
 ```yaml

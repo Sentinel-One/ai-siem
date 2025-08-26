@@ -1,8 +1,12 @@
-# AI-SIEM – SentinelOne Community Forge Project 
+# AI-SIEM Repository – A SentinelOne GitHub Forge Project
 
 > A community‑driven, SentinelOne‑assisted library of **parsers, dashboards, detections & response playbooks** that supercharge the Singularity Platform.
 
 ---
+
+## Important Note 
+
+Sentinel-One AI-SIEM repository is a community-driven, open source project designed to streamline the deployment and use of the SentinelOne's AI SIEM. While not a formal SentinelOne product, Sentinel-One AI-SIEM repository is maintained by SentinelOne and supported in partnership with the open source developer community.
 
 ## Why this repository exists  
 * Unite scattered content and eliminate “hunt‑the‑snippet” time for engineers and customers.  
@@ -13,21 +17,26 @@
 
 ## Repository layout
 ```
-ai-siem/                # AI SIEM core structure
-  ├── dashboards/      # Visualizations (*.json + metadata)
-  ├── detections/      # Detection rules (*.conf + metadata)
-  ├── monitors/        # Monitors for saving/updating objects 
-  ├── parsers/         # Parsing logic and configurations (*.json + metadata)
-  ├── workflows/       # Automated playbooks and responses (*.json + metadata)
+aisiem/                # AI SIEM core structure (255+ components)
+  ├── dashboards/      # Visualizations (79 dashboards with metadata)
+  │   └── community/   # Community-contributed dashboards
+  ├── detections/      # Detection rules (8 detections with metadata)
+  │   └── community/   # Community-contributed detection rules
+  ├── monitors/        # Monitoring scripts (3 Python monitors)
+  ├── parsers/         # Parsing logic and configurations (165 parsers)
+  │   ├── community/   # 148 community parsers (*.conf + metadata)
+  │   └── sentinelone/ # 17 official marketplace parsers (*.conf + metadata)
+  └── workflows/       # Automated playbooks and responses (ready for content)
 ```
 
 ---
 
 ## Quick start
 1. **Clone** the repo and select the folder that matches your use‑case.  
-2. **Import** dashboards (`*.json`) or rules (`*.conf`) into your Singularity console.  
-3. **Automate** actions by deploying playbooks in **responses/** with HyperAutomation.  
-3a. *(Optional)* run `make install` or `make validate` to lint and prep local changes.
+2. **Import** dashboards (`*.conf`) or rules (`*.conf`) into your Singularity console.  
+3. **Choose** between community parsers or official SentinelOne marketplace parsers.  
+4. **Deploy** parsers using the included metadata.yaml for proper configuration.  
+5. *(Optional)* run `make install` or `make validate` to lint and prep local changes.
 
 
 ---
@@ -61,18 +70,18 @@ Quarterly awards for **Top Contributor**, **Most Interesting Use‑Case**,
 
 ## Roadmap & KPIs
 * **MVP v1.0** public launch at OneCon.  
-* ≥ 200 GitHub ⭐ stars, 30 external PRs, and 40 % tenant adoption within the first 12 months.  
+* ≥ 200 GitHub ⭐ stars, 30 external PRs, and 40 % tenant adoption within the first 12 months.  
 * Continuous sprint cadence with KPI reviews every quarter.
 
 ---
 
 ## License
-Released under the **Apache 2.0** license – use, modify, and distribute with attribution.
+Released under the **GNU Affero General Public License v3.0 (AGPL-3.0)** – ensuring that all modifications and network use remain open source. See the [LICENSE](LICENSE) file for details.
 
 ---
 
 ## Getting help
-Open an issue or join the `#ai-siem-community` Slack channel. 
+Open an issue or join the `#ai-siem-community` Slack channel. Office hours every <x days @ 09:00 EST>.
 
 
 ```yaml
@@ -120,7 +129,7 @@ metadata_details:
   purpose: "Describe what the parser does and how it processes data"
   datasource_vendor: "AWS | Microsoft | GCP | Azure | other"
   dataSource: "Specify the value for dataSource.name"
-  format: "json | xml | raw | syslog"
+  format: "gron | json | xml | raw | syslog"
   ingestion_method: "streaming | syslog | HEC | Agent Ingest"
   sample_record: "Example log or event that the parser handles"
   dependency_summary: "Dependencies required for this parser to function properly"

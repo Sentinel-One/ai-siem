@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: "Parses CrowdStrike Falcon endpoint logs in CEF format to extract event details such as signature ID, device vendor, product, severity, and key-value extensions for threat detection and response."
+  datasource_vendor: "CrowdStrike"
+  dataSource: "CrowdStrike Endpoint"
+  format: "CEF (Common Event Format)"
+  ingestion_method: "streaming or syslog"
+  sample_record: |
+    CEF:0|CrowdStrike|Falcon|6.35.0|1|Malware Detected|10|cs1Label=CommandLine cs1=powershell.exe -enc aGVsbG8gd29ybGQ= src=10.0.0.1 dst=10.0.0.2 suser=jdoe fileHash=abc123
+  dependency_summary: "Requires consistent CEF log output from CrowdStrike Falcon sensor; parses key-value extensions using repeat patterns and field heuristics."
+  performance_impact: "Minimal – pattern matching is optimized with repeatable key/value segments and selective parsing based on CEF structure."
+  tags: ["crowdstrike", "falcon", "endpoint", "cef", "parser"]
+  version: "v1.0"

@@ -1,0 +1,9 @@
+metadata_details:
+  purpose: "Detects false positive & true positive attempts in the browser space protected by Zscaler's Internet Protection"
+  mitre_tactic_technique: "Execution > User Execution > Malicious File"
+  datasource: "marketplace-zscalerinternetaccess-latest"
+  usecase_plus: "actor.user.name may align with your endpoint data and can be associated with the use of PowerQueries, the 'union' command, and SentinelOne asset data via the 'user.name' field to further enrich details from your identity provider"
+  dependency_summary: "dataSource.vendor = 'Zscaler Internet Access'"
+  severity: "Medium"
+  expected_alert_scenario: "Alert when a threat is detected in Zscaler Internet Protection (either allowed or blocked); can be tuned to exclude all blocked events using status_detail = 'blocked'"
+  performance_impact: "Minimal"

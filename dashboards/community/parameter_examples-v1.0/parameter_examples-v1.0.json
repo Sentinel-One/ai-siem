@@ -1,0 +1,70 @@
+{
+  "parameters": [
+    {
+      "name": "Specified Environment",
+      "values": [
+        "Production",
+        "Staging",
+        "Performance"
+      ],
+      "defaultValue": "Production"
+    },
+    {
+      "name": "Specified Tag",
+      "values": [
+        {
+          "label": "All",
+          "value": "*"
+        },
+        {
+          "label": "Log Volumes",
+          "value": "'logVolume'"
+        },
+        {
+          "label": "Sample",
+          "value": "'sample'"
+        },
+        {
+          "label": "Ingestion Success",
+          "value": "'ingestionSuccess'"
+        }
+      ],
+      "defaultValue": "*"
+    },
+    {
+      "name": "Specified Host",
+      "defaultValue": ""
+    }
+  ],
+  "graphs": [
+    {
+      "graphStyle": "table",
+      "title": "Count by serverHost / Tag (Specified)",
+      "query": "serverHost contains '#Specified Host#' tag=#Specified Tag# | columns serverHost, tag | group count=count() by serverHost, tag | sort -count | limit 20",
+      "layout": {
+        "h": 14,
+        "w": 33,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "graphStyle": "table",
+      "title": "Count by serverHost / Tag (All)",
+      "query": "serverHost=* tag=* | columns serverHost, tag | group count=count() by serverHost, tag | sort -count | limit 20",
+      "layout": {
+        "h": 14,
+        "w": 26,
+        "x": 33,
+        "y": 0
+      }
+    }
+  ],
+  "filters": [
+    {
+      "facet": "tag",
+      "name": "Dynamic Field - Tag (applies to all)"
+    }
+  ],
+  "description": "Examples demonstrating usage of explicit parameters and dynamic fields in dashboards."
+}

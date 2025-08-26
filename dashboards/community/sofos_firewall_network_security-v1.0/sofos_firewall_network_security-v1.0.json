@@ -1,0 +1,104 @@
+{
+  "graphs": [
+    {
+      "graphStyle": "line",
+      "title": "Requests by Destination Zone",
+      "breakdownFacet": "dst_zone",
+      "plots": [
+        {
+          "facet": "rate",
+          "filter": "dataSource.name='Sophos'",
+          "label": "rate"
+        }
+      ],
+      "lineSmoothing": "straightLines",
+      "layout": {
+        "h": 14,
+        "w": 20,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "graphStyle": "donut",
+      "title": "Top Destination IPs",
+      "maxPieSlices": 10,
+      "query": "dataSource.vendor='Sophos' | group count=count() by dst.ip.address | sort -count | limit 20",
+      "layout": {
+        "h": 14,
+        "w": 20,
+        "x": 20,
+        "y": 0
+      }
+    },
+    {
+      "graphStyle": "donut",
+      "title": "Requests by Protocol",
+      "maxPieSlices": 10,
+      "query": "dataSource.name='Sophos' protocol=* | group count=count() by protocol | sort -count | limit 20",
+      "layout": {
+        "h": 14,
+        "w": 20,
+        "x": 40,
+        "y": 0
+      }
+    },
+    {
+      "graphStyle": "line",
+      "title": "Requests by Source Zone",
+      "breakdownFacet": "src_zone",
+      "plots": [
+        {
+          "facet": "rate",
+          "filter": "serverHost='CORE-UTIL01' src_zone=*",
+          "label": "rate"
+        }
+      ],
+      "lineSmoothing": "straightLines",
+      "layout": {
+        "h": 14,
+        "w": 20,
+        "x": 0,
+        "y": 14
+      }
+    },
+    {
+      "graphStyle": "line",
+      "title": "Rule Breakdown",
+      "breakdownFacet": "fw_rule.rule_name",
+      "plots": [
+        {
+          "facet": "rate",
+          "filter": "dataSource.vendor='Sophos' fw_rule.rule_name=*",
+          "label": "rate"
+        }
+      ],
+      "lineSmoothing": "straightLines",
+      "layout": {
+        "h": 14,
+        "w": 20,
+        "x": 20,
+        "y": 14
+      }
+    },
+    {
+      "graphStyle": "line",
+      "title": "Severity Breakdown",
+      "breakdownFacet": "severity",
+      "plots": [
+        {
+          "facet": "rate",
+          "filter": "dataSource.vendor='Sophos' severity=*",
+          "label": "rate"
+        }
+      ],
+      "lineSmoothing": "straightLines",
+      "layout": {
+        "h": 14,
+        "w": 20,
+        "x": 40,
+        "y": 14
+      }
+    }
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "configType": "TABBED",
+
+  "tabs": [
+    /* ────────── Tab 1 — Overview ────────── */
+    {
+      "tabName": "Overview",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Total Requests (24h)",
+          "query": "| group count()",
+          "options": { "suffix": " req" },
+          layout: {
+  h: 5,
+  w: 31,
+  x: 0,
+  y: 0
+}
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Allowed vs Blocked",
+          "query": "status_id in (1,2) | group count() by action=status_id",
+          "maxPieSlices": 2,
+          layout: {
+  h: 11,
+  w: 28,
+  x: 32,
+  y: 0
+}
+        },
+        {
+          "graphStyle": "line",
+          "title": "Traffic Trend (5 min)",
+          "query": "| group count() by ts=timebucket('5m')",
+          layout: {
+  h: 13,
+  w: 29,
+  x: 31,
+  y: 11
+}
+        },
+        {
+          "graphStyle": "",
+          "title": "Top 20 Source IPs (24h)",
+          "query": "dataSource.vendor='Cloudflare'src_endpoint.ip!='null'| group hits=count() by ip=src_endpoint.ip | sort -hits | limit 20 ",
+          "showBarsColumn": "true",
+          layout: {
+  h: 16,
+  w: 31,
+  x: 0,
+  y: 5
+}
+        }
+      ]
+    },
+
+    /* ────────── Tab 2 — Threats ────────── */
+    {
+      "tabName": "Threats",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Critical Attacks (Score ≥90)",
+          "query": "waf.attack_score>=90 | group count()",
+          "options": { "suffix": " events" },
+          layout: {
+            h: 5,
+            w: 12,
+            x: 0,
+            y: 0
+          }
+        },
+        {
+          "graphStyle": "line",
+          "title": "Attack Score Bands (hourly)",
+          "query": "waf.attack_score>=70  | group Max_Attack_Score=max(waf.attack_score) by timestamp=timebucket('1h') \n",
+          layout: {
+  h: 14,
+  i: "1",
+  minH: 3,
+  minW: 6,
+  w: 20,
+  x: 12,
+  y: 0
+},
+          lineSmoothing: "straightLines"
+        },
+        {
+          "graphStyle": "",
+          "title": "Top Blocking Rules (24h)",
+          "query": "severity_id=3 waf.flags=*| group hits=count() by rule=waf.flags | sort -hits | limit 20",
+          "showBarsColumn": "true",
+          layout: {
+  h: 14,
+  i: "2",
+  minH: 3,
+  minW: 6,
+  w: 20,
+  x: 32,
+  y: 0
+}
+        }
+      ]
+    },
+
+    /* ────────── Tab 3 — Bots ────────── */
+    {
+      "tabName": "Bots",
+      "graphs": [
+        {
+          "graphStyle": "donut",
+          "title": "Bot vs Humanish",
+          "query": "signal.bot.score_src=* | let cat = signal.bot.score>=30 ? 'humanish' : 'bot' | group count() by cat",
+          "maxPieSlices": 2,
+          layout: {
+            h: 14,
+            w: 20,
+            x: 0,
+            y: 0
+          }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Likely Bot Requests (24h)",
+          "query": "signal.bot.score<30 | group count()",
+          "options": { "suffix": " req" },
+          layout: {
+            h: 5,
+            w: 12,
+            x: 20,
+            y: 0
+          }
+        },
+        {
+          "graphStyle": "line",
+          "title": "Bot Traffic Trend (10 min)",
+          "query": "signal.bot.score<30 | group count() by ts=timebucket('10m')",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 32,
+            y: 0
+          }
+        }
+      ]
+    },
+
+    /* ────────── Tab 4 — Performance ────────── */
+    {
+      "tabName": "Performance",
+      "graphs": [
+        {
+          "graphStyle": "line",
+          "title": "Avg TTFB (ms) — 15 min buckets",
+          "query": "http_response.ttfb_ms=* | group avg_ttfb=avg(http_response.ttfb_ms) by ts=timebucket('15m')",
+          layout: {
+            h: 14,
+            w: 30,
+            x: 0,
+            y: 0
+          }
+        },
+        {
+          "graphStyle": "bar",
+          "title": "Avg TTFB by PoP",
+          "graphStyle": "stacked",
+          "query": "http_response.ttfb_ms=* | group avg_ttfb=avg(http_response.ttfb_ms) by pop=network.cloud.region | sort -avg_ttfb",
+          "title": "Cache Hit vs Miss",
+          "query": "http_response.ttfb_ms=* | group avg_ttfb=avg(http_response.ttfb_ms) by timestamp=timebucket('1hr'), network.cloud.region | sort -avg_ttfb",
+          layout: {
+  h: 14,
+  i: "1",
+  minH: 3,
+  minW: 6,
+  w: 30,
+  x: 30,
+  y: 0
+},
+          lineSmoothing: "straightLines"
+        }
+      ]
+    }
+  ]
+}
+

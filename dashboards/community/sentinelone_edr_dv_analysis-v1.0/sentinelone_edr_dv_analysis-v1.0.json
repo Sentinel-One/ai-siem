@@ -1,0 +1,64 @@
+{
+  "graphs": [
+    {
+      "graphStyle": "number",
+      "query": "i.scheme='edr' | group endpoints = estimate_distinct(agent.uuid) | columns endpoints",
+      "title": "Total Endpoints",
+      "layout": {
+        "h": 4,
+        "w": 20,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "graphStyle": "donut",
+      "query": "i.scheme='edr' | group count() by endpoint.os",
+      "title": "Endpoints by OS",
+      "layout": {
+        "h": 9,
+        "w": 20,
+        "x": 20,
+        "y": 0
+      },
+      "maxPieSlices": 10
+    },
+    {
+      "graphStyle": "donut",
+      "query": "i.scheme='edr' | group count() by endpoint.type",
+      "title": "Endpoints by Type",
+      "layout": {
+        "h": 9,
+        "w": 20,
+        "x": 40,
+        "y": 0
+      },
+      "maxPieSlices": 10
+    },
+    {
+      "graphStyle": "bar",
+      "query": "i.scheme='edr' NOT(endpoint.name contains ('aks-agentpool','pool','k8s')) | group event_count = count() by endpoint.name | sort -event_count | limit 10",
+      "title": "Top Endpoints by Event Volume",
+      "layout": {
+        "h": 14,
+        "w": 30,
+        "x": 0,
+        "y": 9
+      },
+      "barWidth": "auto"
+    },
+    {
+      "graphStyle": "bar",
+      "query": "i.scheme='edr' NOT(meta.event.name contains ('BEHAVIORALINDICATORS','DUPLICATEPROCESS','TCPV4','DNS','PROCESSEXIT','WINLOGOFF','GROUPCREATION','REGVALUEDELETE','HTTP','MODULELOAD')) | group event_count = count() by meta.event.name | sort -event_count | limit 10",
+      "title": "Top Event Types",
+      "layout": {
+        "h": 14,
+        "w": 30,
+        "x": 30,
+        "y": 9
+      },
+      "barWidth": "auto"
+    }
+  ],
+  "configType": "SINGLE"
+}

@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "Okta System Log events (OCSF/JSON) with fields such as actor.user.email_addr, client.ipAddress, client.userAgent.rawUserAgent, geographicalContext.*, event.type, status, status_detail"
+  required_fields: "actor.user.email_addr, unmapped.client.ipAddress, unmapped.client.userAgent.rawUserAgent, unmapped.client.geographicalContext.country, unmapped.client.geographicalContext.state, event.type, status, status_detail, metadata.original_time"
+  description: "Provides a visual overview of Okta identity events—including actor activity, IP distribution, user-agent diversity, event types, and geo context—to support security monitoring and incident investigation."
+  usecase_type: "Security | Identity | Compliance"
+  usecase_action: "Dashboard | Monitoring | Investigation"
+  tags: ["okta", "identity", "events", "dashboard", "geo", "user-agent"]
+  version: "v1.0"

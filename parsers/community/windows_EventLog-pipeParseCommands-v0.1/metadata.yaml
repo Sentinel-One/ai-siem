@@ -1,0 +1,34 @@
+metadata_details:
+  purpose: "Parses Windows Event ID 4728 to extract detailed user, group, and membership change activity from Active Directory security audit logs."
+  datasource_vendor: "Microsoft"
+  dataSource: "Windows Event Logs"
+  format: "unstructured event description"
+  ingestion_method: "streaming or agent-based collection (e.g., WEC/Winlogbeat)"
+  sample_record: |
+    A member was added to a security-enabled global group.
+
+    Subject:
+        Security ID:        S-1-5-21-0000000000-1111111111-2222222222-500
+        Account Name:       ADMINISTRATOR
+        Account Domain:     DOMAIN
+        Logon ID:           0x123456
+
+    Member:
+        Security ID:        S-1-5-21-0000000000-1111111111-2222222222-1001
+        Account Name:       john.doe
+        Remote Credential Guard: Not Used
+        Virtual Account:    No
+        Elevated Token:     Yes
+
+    Group:
+        Security ID:        S-1-5-21-0000000000-1111111111-2222222222-512
+        Group Name:         Domain Admins
+        Group Domain:       DOMAIN
+
+    Privileges:            -
+    Expiration time:       -
+
+  dependency_summary: "Requires that the Windows Event Log 4728 format remains consistent with standard Active Directory security audit schema. Parser is regex-aligned to multiline text blocks in the event description."
+  performance_impact: "Minimal – uses deterministic multiline `parse` blocks with well-scoped field capture."
+  tags: ["windows", "eventlog", "ad", "user-group-management", "parser", "security-audit"]
+  version: "v0.1"

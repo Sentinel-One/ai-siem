@@ -1,0 +1,20 @@
+metadata_details:
+  purpose: "Parses Cisco ASA/FTD firewall syslog events related to connection build, teardown, and NAT translation activity."
+  datasource_vendor: "Cisco"
+  dataSource: "Cisco Firewall"
+  format: "syslog"
+  ingestion_method: "Syslog via Agent or HEC"
+  sample_record: |
+    <189>Jul 24 2025 15:32:10 hostname : %ASA-6-302013: Built outbound TCP connection 987654321 for outside:192.0.2.10/443 (192.0.2.10/443) to inside:10.0.0.5/52734 (10.0.0.5/52734)
+    <189>Jul 24 2025 15:32:15 hostname : %ASA-6-302014: Teardown TCP connection 987654321 for outside:192.0.2.10/443 to inside:10.0.0.5/52734 duration 0:00:05 bytes 500
+    <189>Jul 24 2025 15:32:18 hostname : %ASA-6-305011: Built dynamic TCP translation from inside:10.0.0.10/12345 to outside:203.0.113.25/54321
+  dependency_summary: "Depends on ASA or FTD syslog output with event IDs like 302013, 302014, 305011, and consistent Cisco message formats."
+  performance_impact: "Low – parser halts once a match is made per event format group."
+  tags:
+    - cisco
+    - firewall
+    - asa
+    - threat-defense
+    - connection
+    - syslog
+  version: "v1.0"

@@ -1,0 +1,31 @@
+metadata_details:
+  purpose: "Parses Cisco Firewall Threat Defense (FTD) logs for security events, connection information, access control, SSL activity, and file-based threat detections."
+  datasource_vendor: "Cisco"
+  dataSource: "Cisco Firewall Threat Defense(FTD)"
+  format: "key-value"
+  ingestion_method: "Syslog or HEC"
+  sample_record: |
+    <189>FTD-1-430001: DeviceUUID: 123e4567-e89b-12d3-a456-426614174000
+    FTD-1-430002: EventPriority: High
+    FTD-1-430003: EventPriority: Medium
+    FTD-1-430004: DeviceUUID: abc-def-456
+    FTD-1-430005: DeviceUUID: 789-ghj-000
+    ACPolicy: InternetAccess
+    Classification: Malicious
+    ConnectionID: 789123
+    DstIP: 10.0.0.5
+    SrcIP: 192.168.1.10
+    AccessControlRuleAction: ALLOW
+    URL: http://malicious.example.com
+    ThreatName: Trojan.GenericKD.12345
+    FileSHA256: abcdef1234567890...
+
+  dependency_summary: "Requires consistent FTD syslog message formatting with event codes 430001 through 430005, and additional enriched key-value pairs."
+  performance_impact: "Low – designed with discrete match conditions and attrBlacklist to avoid parsing redundancy."
+  tags:
+    - cisco
+    - firewall
+    - threat-defense
+    - security
+    - parser
+  version: "v1.0"

@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "Generic log datasets (serverHost, tag fields)"
+  required_fields: "serverHost, tag"
+  description: "Provides examples of dashboards using explicitly specified parameters and dynamic fields."
+  usecase_type: "Operational"
+  usecase_action: "Dashboard | Configuration Example"
+  tags: "parameters, examples, dynamic fields"
+  version: "v1.0"

@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "Sophos Firewall logs via generic firewall parser"
+  required_fields: "dst_zone, src_zone, dst.ip.address, protocol, fw_rule.rule_name, severity"
+  description: "Generic network security dashboard summarizing traffic by zones, protocols, rules, severity levels, and top destination IP addresses."
+  usecase_type: "Security | Network Monitoring"
+  usecase_action: "Dashboard | Trending and Analysis"
+  tags: "network, firewall, sophos, security"
+  version: "v1.0"

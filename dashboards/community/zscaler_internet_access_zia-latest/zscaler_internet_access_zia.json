@@ -1,0 +1,399 @@
+{
+  "title": "Zscaler Internet Access – Core Insights",
+  "duration": "24h",
+  "configType": "TABBED",
+  "tabs": [
+    {
+      "tabName": "Traffic Overview",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Total Web Requests",
+          "query": "dataSource.name='Zscaler Internet Access' | group count()",
+          layout: {
+  h: 5,
+  i: "0",
+  minH: 3,
+  minW: 6,
+  w: 12,
+  x: 0,
+  y: 0
+},
+          sparklineConfig: {enabled: false},
+          trendConfig: {
+            enabled: false,
+            indicators: {
+              arrow: {enabled: true},
+              number: {
+                calculationType: "ABSOLUTE",
+                enabled: true
+              },
+              upwardsMeaning: "POSITIVE"
+            }
+          }
+        },
+        {
+          "graphStyle": "line",
+          "lineSmoothing": "straightLines",
+          "title": "Allowed vs Blocked (req/s)",
+          "plots": [
+  {
+    facet: "rate",
+    filter: "dataSource.name='Zscaler Internet Access' action='allowed'",
+    label: "Allowed"
+  },
+  {
+    facet: "rate",
+    filter: "dataSource.name='Zscaler Internet Access' action='blocked'",
+    label: "Blocked"
+  }
+],
+          layout: {
+  h: 14,
+  i: "1",
+  minH: 3,
+  minW: 6,
+  w: 20,
+  x: 12,
+  y: 0
+},
+          plotNulls: "gaps"
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Top URL Categories",
+          "maxPieSlices": 10,
+          "query": "dataSource.name='Zscaler Internet Access' category_name=* | group count() by category_name",
+          layout: {
+  h: 14,
+  i: "2",
+  minH: 3,
+  minW: 6,
+  w: 20,
+  x: 32,
+  y: 0
+},
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Top Users",
+          "maxPieSlices": 10,
+          "query": "dataSource.name='Zscaler Internet Access' actor.user.name=* | group count() by actor.user.name",
+          layout: {
+  h: 14,
+  i: "3",
+  minH: 3,
+  minW: 6,
+  w: 20,
+  x: 0,
+  y: 14
+},
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        },
+        {
+          "graphStyle": "",
+          "title": "Top Destinations by Bandwidth (MB)",
+          "query": "dataSource.name='Zscaler Internet Access' network_traffic.bytes_out=* url=* | let mbytes=network_traffic.bytes_out/1000000 | group MB=sum(mbytes) by url | sort -MB | limit 20 | columns url, MB",
+          layout: {
+  h: 14,
+  i: "4",
+  minH: 3,
+  minW: 6,
+  w: 20,
+  x: 20,
+  y: 14
+}
+        }
+      ]
+    },
+    {
+      "tabName": "Application Usage",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Distinct Applications",
+          "query": "dataSource.name='Zscaler Internet Access' app_name=* | group estimate_distinct(app_name)",
+          layout: {
+  h: 5,
+  i: "0",
+  minH: 3,
+  minW: 6,
+  w: 12,
+  x: 0,
+  y: 0
+},
+          sparklineConfig: {enabled: false},
+          trendConfig: {
+            enabled: false,
+            indicators: {
+              arrow: {enabled: true},
+              number: {
+                calculationType: "ABSOLUTE",
+                enabled: true
+              },
+              upwardsMeaning: "POSITIVE"
+            }
+          }
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Top Applications",
+          "maxPieSlices": 10,
+          "query": "dataSource.name='Zscaler Internet Access' app_name=* | group count() by app_name",
+          layout: {
+  h: 14,
+  w: 20,
+  x: 12,
+  y: 0
+},
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        },
+        {
+          "graphStyle": "stacked_bar",
+          "title": "Bandwidth by Application (MB)",
+          "query": "dataSource.name='Zscaler Internet Access' network_traffic.bytes_out=* app_name=* | let mbytes=network_traffic.bytes_out/1000000 | group MB=sum(mbytes) by timestamp=timebucket('30m'), app_name",
+          layout: {
+  h: 14,
+  w: 20,
+  x: 32,
+  y: 0
+},
+          barWidth: "auto"
+        },
+        {
+          "graphStyle": "number",
+          "title": "BW Throttle Events",
+          "query": "dataSource.name='Zscaler Internet Access' bwthrottle=* | group count()",
+          layout: {
+  h: 5,
+  w: 12,
+  x: 0,
+  y: 5
+},
+          sparklineConfig: {enabled: false},
+          trendConfig: {
+            enabled: false,
+            indicators: {
+              arrow: {enabled: true},
+              number: {
+                calculationType: "ABSOLUTE",
+                enabled: true
+              },
+              upwardsMeaning: "POSITIVE"
+            }
+          }
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Protocol Breakdown",
+          "maxPieSlices": 10,
+          "query": "dataSource.name='Zscaler Internet Access' protocol=* | group count() by protocol",
+          layout: {
+  h: 14,
+  w: 20,
+  x: 12,
+  y: 14
+},
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        }
+      ]
+    },
+    {
+      "tabName": "Security Threats",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Threats Allowed",
+          "query": "dataSource.name='Zscaler Internet Access' action='Allowed' threatclass=* | group count() ",
+          layout: {
+  h: 14,
+  w: 12,
+  x: 0,
+  y: 0
+},
+          sparklineConfig: {
+            enabled: true,
+            sparklineQuery: "dataSource.name='Zscaler Internet Access' action='Allowed' threatclass=* | group count() by timestamp=timebucket('30min')"
+          },
+          trendConfig: {
+            enabled: false,
+            indicators: {
+              arrow: {enabled: true},
+              number: {
+                calculationType: "ABSOLUTE",
+                enabled: true
+              },
+              upwardsMeaning: "POSITIVE"
+            }
+          }
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Threats by Category",
+          "maxPieSlices": 10,
+          "query": " dataSource.name='Zscaler Internet Access' threatclass=* | group count() by threatclass",
+          layout: {
+  h: 14,
+  w: 20,
+  x: 12,
+  y: 0
+},
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Top Malware Names",
+          "maxPieSlices": 10,
+          "query": "dataSource.name='Zscaler Internet Access' malware.name=* | group count() by malware.name",
+          layout: {
+  h: 14,
+  w: 20,
+  x: 32,
+  y: 0
+},
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Severity Distribution",
+          "maxPieSlices": 10,
+          "query": "dataSource.name='Zscaler Internet Access' severity_id=* | group count() by severity_id",
+          layout: {
+  h: 14,
+  w: 20,
+  x: 0,
+  y: 14
+},
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        },
+        {
+          "graphStyle": "",
+          "title": "Recent Threat Events",
+          "query": "dataSource.name='Zscaler Internet Access' threatclass=* | columns metadata.original_time, actor.user.name, url, malware.name, action, severity_id | sort -metadata.original_time | limit 50",
+          layout: {
+  h: 14,
+  w: 32,
+  x: 20,
+  y: 14
+}
+        }
+      ]
+    },
+    {
+      "tabName": "DLP & Compliance",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "DLP Incidents",
+          "query": "dataSource.name='Zscaler Internet Access' dlpdictionaries=* | group count()",
+          sparklineConfig: {enabled: false},
+          trendConfig: {
+            enabled: false,
+            indicators: {
+              arrow: {enabled: true},
+              number: {
+                calculationType: "ABSOLUTE",
+                enabled: true
+              },
+              upwardsMeaning: "POSITIVE"
+            }
+          },
+          layout: {
+  h: 5,
+  w: 15,
+  x: 0,
+  y: 0
+}
+        },
+        {
+          "graphStyle": "",
+          "title": "DLP by Dictionary",
+          "query": "dataSource.name='Zscaler Internet Access' dlpengine=* | group count() by dlpengine",
+          layout: {
+  h: 14,
+  i: "1",
+  minH: 3,
+  minW: 6,
+  w: 20,
+  x: 15,
+  y: 0
+}
+        },
+        {
+          "graphStyle": "donut",
+          "title": "File Types Flagged",
+          "maxPieSlices": 10,
+          "query": "dataSource.name='Zscaler Internet Access' filetype=* | group count() by filetype",
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          },
+          layout: {
+  h: 14,
+  w: 20,
+  x: 38,
+  y: 0
+}
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Unscannable File Types",
+          "maxPieSlices": 10,
+          "query": "dataSource.name='Zscaler Internet Access' unscannabletype=* | group count() by unscannabletype",
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          },
+          layout: {
+  h: 14,
+  w: 20,
+  x: 0,
+  y: 14
+}
+        },
+        {
+          "graphStyle": "",
+          "title": "Recent DLP Events",
+          "query": "dataSource.name='Zscaler Internet Access' dlpdictionaries=*| columns metadata.original_time, actor.user.name, fileclass, filetype, dlpdictionaries, unscannabletype, action | sort -metadata.original_time | limit 50",
+          layout: {
+  h: 14,
+  w: 38,
+  x: 20,
+  y: 14
+}
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "graphs": [
+    {
+      "graphStyle": "donut",
+      "query": "dataSource.name='Azure Event Hub' dataSource.category='security' | group count() by app_name | sort -count",
+      "title": "Events by Application",
+      "layout": {
+        "h": 10,
+        "w": 20,
+        "x": 0,
+        "y": 0
+      },
+      "maxPieSlices": 10
+    },
+    {
+      "graphStyle": "donut",
+      "query": "dataSource.name='Azure Event Hub' dataSource.category='security' | group count() by device.browser | sort -count",
+      "title": "Events by Browser",
+      "layout": {
+        "h": 10,
+        "w": 20,
+        "x": 20,
+        "y": 0
+      },
+      "maxPieSlices": 10
+    },
+    {
+      "graphStyle": "donut",
+      "query": "dataSource.name='Azure Event Hub' dataSource.category='security' | group count() by device.os | sort -count",
+      "title": "Events by Operating System",
+      "layout": {
+        "h": 10,
+        "w": 20,
+        "x": 40,
+        "y": 0
+      },
+      "maxPieSlices": 10
+    },
+    {
+      "graphStyle": "donut",
+      "query": "dataSource.name='Azure Event Hub' dataSource.category='security' | group count() by user.type | sort -count",
+      "title": "Events by User Type",
+      "layout": {
+        "h": 10,
+        "w": 20,
+        "x": 0,
+        "y": 10
+      },
+      "maxPieSlices": 10
+    },
+    {
+      "graphStyle": "donut",
+      "query": "dataSource.name='Azure Event Hub' dataSource.category='security' | group count() by location.region | sort -count",
+      "title": "Events by Region",
+      "layout": {
+        "h": 10,
+        "w": 20,
+        "x": 20,
+        "y": 10
+      },
+      "maxPieSlices": 10
+    },
+    {
+      "graphStyle": "donut",
+      "query": "dataSource.name='Azure Event Hub' dataSource.category='security' | group count() by location.country | sort -count",
+      "title": "Events by Country",
+      "layout": {
+        "h": 10,
+        "w": 20,
+        "x": 40,
+        "y": 10
+      },
+      "maxPieSlices": 10
+    }
+  ],
+  "configType": "SINGLE"
+}

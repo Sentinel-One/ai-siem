@@ -1,0 +1,9 @@
+metadata_details:
+  purpose: "Automatically enrich high-severity EDR alerts with VirusTotal intelligence by retrieving file reputation based on associated SHA256 or SHA1 hashes, and posting context back into the alert."
+  trigger_type: "alert"
+  integration_dependency: "VirusTotal API v3 (GET /files/{hash}) and SentinelOne Unified Alerts GraphQL endpoint"
+  expected_actions_per_run: "10-12 depending on hash presence and lookup success"
+  human_in_the_loop: "no"
+  required_products: "EDR, Singularity Response, HyperAutomation"
+  tags: ["virustotal", "enrichment", "workflow", "edr", "threat-intel"]
+  version: "v1.0"

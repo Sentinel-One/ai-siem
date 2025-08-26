@@ -1,0 +1,9 @@
+metadata_details:
+  purpose: "Detects false positive & true positive virus attempts in the Fortigate Firewalls"
+  mitre_tactic_technique: "Execution > User Execution > Malicious File"
+  datasource: "marketplace-fortinetfortigate-latest"
+  usecase_plus: "unmapped.dstip or unmapped.srcip may align with your endpoint data and can be associated with PowerQueries, the 'union' command, and SentinelOne EDR fields like dst.ip.address and src.ip.address"
+  dependency_summary: "dataSource.vendor = 'FortiGate'"
+  severity: "Medium"
+  expected_alert_scenario: "Alert when a virus is detected in Fortigate Firewall (either allowed or blocked); can be tuned to remove all blocked events using status_detail = 'blocked'"
+  performance_impact: "Minimal"

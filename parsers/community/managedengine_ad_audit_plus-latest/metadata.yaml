@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: "Parses ManageEngine ADAudit Plus syslog events to extract AD audit details such as category, source, client IP, and extra attributes."
+  datasource_vendor: "ManageEngine"
+  dataSource: "ADAuditPlus"
+  format: "RFC5424 syslog with bracketed key=value pairs"
+  ingestion_method: "Syslog streaming via agent or collector"
+  sample_record: |
+    <189>1 2025-07-25T15:42:31Z dc01 ADAuditPlus - - - [ Category = User_Logon SOURCE = Domain_Controller EXTRA_COLUMN1 = Success CLIENT_IP_ADDRESS = 10.0.0.25 ]
+  dependency_summary: "Requires ADAudit Plus to forward logs in RFC5424 syslog format with bracketed key-value pairs; parser maps Category→event.type, SOURCE→event.source, EXTRA_COLUMN1→event.details, CLIENT_IP_ADDRESS→event.target."
+  performance_impact: "Minimal – uses two lightweight format definitions with early-exit parsing."
+  tags: ["manageengine", "adauditplus", "active_directory", "parser", "syslog"]
+  version: "v1.0"

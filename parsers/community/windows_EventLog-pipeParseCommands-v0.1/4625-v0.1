@@ -1,0 +1,24 @@
+dataSource.name ='Windows Event Logs' winEventLog.id=4625
+
+//parse logon id, the only field in the Subject stanza not automatically parsed
+//| parse "Logon\\sID:\\t\\t$logon.id$\\n" from winEventLog.description
+
+//parse logon type
+| parse "Logon\\sType:\\t\\t\\t$logon.type$\\n" from winEventLog.description
+
+//parse account for which logon failed stanza
+| parse "Account For Which Logon $failed$:\\n\\tSecurity\\sID:\\t\\t$failed.logon.security.id$\\n\\tAccount\\sName:\\t\\t$failed.logon.account.name$\\n\\tAccount\\sDomain:\\t\\t$failed.logon.account.domain$\\n" from winEventLog.description
+
+//parse failure information stanza
+|parse "Failure\\sReason:\\t\\t$failure.reason$\\n\\tStatus:\\t\\t\\t$status$\\n\\tSub\\sStatus:\\t\\t$sub.status$\\n"from winEventLog.description 
+
+//parse Process Information stanza
+| parse "Caller\\sProcess\\sID:\\t$caller.process.id$\\n\\tCaller\\sProcess\\sName:\\t$caller.process.name$\\n" from winEventLog.description 
+
+
+
+//parsing Network Information stanza
+| parse "Workstation\\sName:\\t$workstation.name$\\n\\tSource\\sNetwork\\sAddress:\\t$source.network.address$\\n\\tSource\\sPort:\\t\\t$source.port$\\n" from winEventLog.description 
+
+//parse Detailed Authentication Information
+| parse "Logon\\sProcess:\\t\\t$logon.process$\\n\\tAuthentication\\sPackage:\\t$authentication.package$\\n\\tTransited\\sServices:\\t$transited.services$\\n\\tPackage\\sName\\s\\(NTLM only\\):\\t$package.name$\\n\\tKey\\sLength:\\t\\t$key.length$\\n" from winEventLog.description 

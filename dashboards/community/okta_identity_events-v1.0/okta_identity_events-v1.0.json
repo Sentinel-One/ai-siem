@@ -1,0 +1,95 @@
+{
+  "tabs": [
+    {
+      "tabName": "Events",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "query": "(serverHost='okta' OR serverHost='okta-beats') (parser='okta' OR parser='okta-beats') | group total_events = count()",
+          "title": "Total Okta Events",
+          "layout": {
+            "h": 4,
+            "w": 20,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "graphStyle": "table",
+          "query": "(serverHost='okta' OR serverHost='okta-beats') (parser='okta' OR parser='okta-beats') client.userAgent.rawUserAgent != 'GleanSearchCrawlerBot' | columns timestamp, actor.alternateId, client.ipAddress, displayMessage, outcome.result, target=target.alternateId, userAgent=client.userAgent.rawUserAgent | sort -timestamp",
+          "title": "Okta Event Log",
+          "layout": {
+            "h": 14,
+            "w": 60,
+            "x": 0,
+            "y": 4
+          },
+          "showBarsColumn": false
+        },
+        {
+          "graphStyle": "donut",
+          "query": "(serverHost='okta' OR serverHost='okta-beats') (parser='okta' OR parser='okta-beats') client.userAgent.rawUserAgent != 'GleanSearchCrawlerBot' | group count() by client.ipAddress",
+          "title": "Events by Client IP",
+          "layout": {
+            "h": 12,
+            "w": 20,
+            "x": 0,
+            "y": 18
+          },
+          "maxPieSlices": 10
+        },
+        {
+          "graphStyle": "donut",
+          "query": "(serverHost='okta' OR serverHost='okta-beats') (parser='okta' OR parser='okta-beats') actor.alternateId=* target=* client.userAgent.rawUserAgent != 'GleanSearchCrawlerBot' | group count() by client.userAgent.rawUserAgent",
+          "title": "Events by User Agent",
+          "layout": {
+            "h": 12,
+            "w": 20,
+            "x": 20,
+            "y": 18
+          },
+          "maxPieSlices": 12
+        },
+        {
+          "graphStyle": "donut",
+          "query": "(serverHost='okta' OR serverHost='okta-beats') (parser='okta' OR parser='okta-beats') target.type='AppInstance' eventType='user.authentication.sso' target.alternateId != 'Glean Search Connector' | group count() by target.alternateId",
+          "title": "App Sign\u2011Ins",
+          "layout": {
+            "h": 12,
+            "w": 20,
+            "x": 40,
+            "y": 18
+          },
+          "maxPieSlices": 15
+        },
+        {
+          "graphStyle": "donut",
+          "query": "(serverHost contains 'okta' OR k8s-cluster contains 'okta') client.userAgent.rawUserAgent != 'GleanSearchCrawlerBot' | group count() by client.geographicalContext.country",
+          "title": "Events by Country",
+          "layout": {
+            "h": 12,
+            "w": 20,
+            "x": 0,
+            "y": 30
+          },
+          "maxPieSlices": 10
+        }
+      ],
+      "filters": [
+        {
+          "facet": "actor.alternateId",
+          "name": "Actor Email"
+        },
+        {
+          "facet": "client.ipAddress",
+          "name": "Client IP"
+        },
+        {
+          "facet": "eventType",
+          "name": "Event Type"
+        }
+      ]
+    }
+  ],
+  "configType": "TABBED"
+}

@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Cisco Fmc logs using the OCSF mapping to normalise events into
+    the AI-SIEM schema.
+  datasource_vendor: cisco
+  dataSource: fmc
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original Cisco Fmc logs.
+  performance_impact: "Minimal \u2013 this parser is a placeholder pointing to the\
+    \ upstream definition."
+  tags: cisco, fmc, logs, ocsf, parser
+  version: latest

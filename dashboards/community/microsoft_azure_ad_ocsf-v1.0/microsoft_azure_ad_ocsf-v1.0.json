@@ -1,0 +1,85 @@
+{
+  "graphs": [
+    {
+      "graphStyle": "line",
+      "query": "dataSource.vendor='Microsoft' dataSource.category='security' | group count() by timestamp=timebucket('1h')",
+      "title": "Security Events Over Time",
+      "layout": {
+        "h": 8,
+        "w": 60,
+        "x": 0,
+        "y": 0
+      },
+      "lineSmoothing": "straightLines"
+    },
+    {
+      "graphStyle": "donut",
+      "query": "dataSource.vendor='Microsoft' dataSource.category='security' | group count = count() by event.type | sort - count",
+      "title": "Events by Type",
+      "layout": {
+  h: 8,
+  i: "1",
+  minH: 3,
+  minW: 6,
+  w: 30,
+  x: 0,
+  y: 8
+},
+      dataLabelType: "PERCENTAGE",
+      maxPieSlices: 10,
+      totalNumberConfig: {
+        enabled: false,
+        label: ""
+      }
+    },
+    {
+      "graphStyle": "donut",
+      "query": "dataSource.vendor='Microsoft' dataSource.category='security' actor.user.email_addr=* | group count() by geo_ip_country(device.ip)",
+      "title": "User Logons by Country",
+      "layout": {
+        "h": 12,
+        "w": 30,
+        "x": 30,
+        "y": 8
+      },
+      "maxPieSlices": 12
+    },
+    {
+      "graphStyle": "donut",
+      "query": "dataSource.vendor='Microsoft' dataSource.category='security' event.type contains 'Failed' | group count() by actor.user.email_addr",
+      "title": "Failed Logons by User",
+      "layout": {
+  h: 12,
+  w: 30,
+  x: 0,
+  y: 16
+},
+      "maxPieSlices": 12
+    },
+    {
+      "graphStyle": "line",
+      "query": "dataSource.vendor='Microsoft' dataSource.category='security' activity_name='Logon' | group count() by timestamp=timebucket('1h')",
+      "title": "User Logon Frequency",
+      "layout": {
+        "h": 8,
+        "w": 30,
+        "x": 30,
+        "y": 20
+      },
+      "lineSmoothing": "straightLines"
+    },
+    {
+      "graphStyle": "line",
+      "query": "dataSource.vendor='Microsoft' dataSource.category='security' activity_name='UserLoginFailed' | group count() by timestamp=timebucket('1h')",
+      "title": "Failed Logon Frequency",
+      "layout": {
+  h: 8,
+  w: 30,
+  x: 0,
+  y: 28
+},
+      "lineSmoothing": "straightLines"
+    }
+  ],
+  "configType": "SINGLE"
+}

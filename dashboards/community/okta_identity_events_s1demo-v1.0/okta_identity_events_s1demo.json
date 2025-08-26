@@ -1,0 +1,119 @@
+{
+    "configType": "TABBED",
+    "tabs": [
+      {
+        "tabName": "Events",
+        "graphs": [
+          {
+            "graphStyle": "number",
+            "query": "dataSource.name='Okta' | group total_events = count()",
+            "title": "Total Okta Events",
+            "layout": {
+              "h": 4,
+              "w": 20,
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "graphStyle": "table",
+            "query": "dataSource.name='Okta' client.userAgent.rawUserAgent != 'GleanSearchCrawlerBot' | columns metadata.original_time, actor.user.email_addr, unmapped.client.ipAddress, unmapped.displayMessage, status, status_detail, userAgent=unmapped.client.userAgent.rawUserAgent | sort -metadata.original_time",
+            "title": "Okta Event Log",
+            "layout": {
+              "h": 14,
+              "w": 60,
+              "x": 0,
+              "y": 4
+            },
+            "showBarsColumn": false
+          },
+          {
+            "graphStyle": "donut",
+            "query": "dataSource.name='Okta' client.userAgent.rawUserAgent != 'GleanSearchCrawlerBot' | group count() by unmapped.client.ipAddress",
+            "title": "Events by Client IP",
+            "layout": {
+              "h": 12,
+              "w": 20,
+              "x": 0,
+              "y": 18
+            },
+            "maxPieSlices": 10
+          },
+          {
+            "graphStyle": "donut",
+            "query": "dataSource.name='Okta' client.userAgent.rawUserAgent != 'GleanSearchCrawlerBot' | group count() by unmapped.client.userAgent.rawUserAgent",
+            "title": "Events by User Agent",
+            "layout": {
+              "h": 12,
+              "w": 20,
+              "x": 20,
+              "y": 18
+            },
+            "maxPieSlices": 12
+          },
+          {
+            "graphStyle": "donut",
+            "query": "dataSource.name='Okta' | group count() by event.type",
+            "title": "Event Type Breakdown",
+            "layout": {
+              "h": 12,
+              "w": 20,
+              "x": 40,
+              "y": 18
+            },
+            "maxPieSlices": 15
+          },
+          {
+            "graphStyle": "donut",
+            "query": "dataSource.name='Okta' client.userAgent.rawUserAgent != 'GleanSearchCrawlerBot' | group count() by unmapped.client.geographicalContext.country",
+            "title": "Events by Country",
+            "layout": {
+              "h": 12,
+              "w": 20,
+              "x": 0,
+              "y": 30
+            },
+            "maxPieSlices": 10
+          },
+          {
+            "graphStyle": "donut",
+            "query": "dataSource.name='Okta' unmapped.client.geographicalContext.state=* | group count() by unmapped.client.geographicalContext.state",
+            "title": "Events by U.S. State",
+            "layout": {
+              "h": 12,
+              "w": 20,
+              "x": 20,
+              "y": 30
+            },
+            "maxPieSlices": 10
+          },
+          {
+            "graphStyle": "donut",
+            "query": "dataSource.name='Okta' status_detail=* | group count() by status_detail",
+            "title": "Events by Status Detail",
+            "layout": {
+              "h": 12,
+              "w": 20,
+              "x": 40,
+              "y": 30
+            },
+            "maxPieSlices": 10
+          }
+        ],
+        "filters": [
+          {
+            "facet": "actor.user.email_addr",
+            "name": "Actor Email"
+          },
+          {
+            "facet": "unmapped.client.ipAddress",
+            "name": "Client IP"
+          },
+          {
+            "facet": "event.type",
+            "name": "Event Type"
+          }
+        ]
+      }
+    ]
+  }

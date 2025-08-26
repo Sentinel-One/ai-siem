@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "Purple AI interaction logs (addPurpleInputOutputMessage events)"
+  required_fields: "inputContent.userDetails.emailAddress, outputContent.message, outputContent.powerQuery.query, status"
+  description: "Monitors Purple AI queries and responses, summarizing questions per user, listing all interactions, and showing query timeline by status."
+  usecase_type: "Operational | Chatbot Monitoring"
+  usecase_action: "Dashboard | Trending and Analysis"
+  tags: "purple ai, chatbot, monitoring"
+  version: "v1.0"

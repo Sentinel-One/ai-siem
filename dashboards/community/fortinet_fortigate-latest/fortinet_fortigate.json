@@ -1,0 +1,182 @@
+{
+  "title": "FortiGate Firewall – Security & Traffic Overview",
+  "configType": "TABBED",
+  "duration": "24h",
+  "tabs": [
+    {
+      "tabName": "Overview",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Distinct FortiGate Devices",
+          "query": "dataSource.vendor='Fortinet' | group estimate_distinct(device.name)",
+          "options": { "suffix": " firewalls" },
+          layout: {
+            h: 5,
+            w: 12,
+            x: 0,
+            y: 0
+          }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Connections Blocked",
+          "query": "dataSource.vendor='Fortinet' status_detail='blocked' | group count=count() by timestamp=timebucket('1hr')",
+          "options": { "format": "K" },
+          layout: {
+  h: 5,
+  i: "1",
+  minH: 3,
+  minW: 6,
+  w: 12,
+  x: 12,
+  y: 0
+},
+          sparklineConfig: {enabled: false},
+          trendConfig: {
+  enabled: true,
+  indicators: {
+    arrow: {enabled: true},
+    number: {
+      calculationType: "ABSOLUTE",
+      enabled: true
+    },
+    upwardsMeaning: "POSITIVE"
+  }
+}
+        },
+        {
+          "graphStyle": "line",
+          "title": "Traffic Volume (1 h buckets)",
+          "lineSmoothing": "straightLines",
+          "query": "dataSource.vendor='Fortinet' activity_name='traffic' |let traffic.packets_out=number(traffic.packets_out)\n| group outbound=sum(traffic.packets_out) by timestamp=timebucket('1h')",
+          layout: {
+  h: 19,
+  w: 33,
+  x: 24,
+  y: 0
+}
+        },
+        {
+          "graphStyle": "line",
+          "title": "Traffic by Direction",
+          layout: {
+  h: 14,
+  w: 24,
+  x: 0,
+  y: 5
+},
+          lineSmoothing: "straightLines",
+          query: "activity_name='traffic' |let NumBytesIn=number(traffic.bytes_in) |let NumBytesout=number(traffic.bytes_out) |group 'Bytes Out'=sum(NumBytesout), 'Bytes In'=sum(NumBytesIn) by timestamp=timebucket('1h')"
+        }
+      ]
+    },
+    {
+      "tabName": "Top Talkers",
+      "graphs": [
+        {
+          "graphStyle": "",
+          "title": "Top Source IPs",
+          "query": "dataSource.vendor='Fortinet' src_endpoint.ip=* | group Connections=count() by src_endpoint.ip | sort -Connections",
+          "showBarsColumn": "false",
+          layout: {
+  h: 14,
+  w: 20,
+  x: 0,
+  y: 0
+}
+        },
+        {
+          "graphStyle": "",
+          "title": "Top Destination IPs",
+          "query": "dataSource.vendor='Fortinet' dst_endpoint.ip=* | group Connections=count() by dst_endpoint.ip | sort -Connections",
+          "showBarsColumn": "false",
+          layout: {
+  h: 14,
+  w: 20,
+  x: 20,
+  y: 0
+}
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Top Applications (App-ID)",
+          "maxPieSlices": 12,
+          "query": "dataSource.vendor='Fortinet' app_name=* | group count() by app_name",
+          layout: {
+  h: 14,
+  i: "2",
+  minH: 3,
+  minW: 6,
+  w: 20,
+  x: 40,
+  y: 0
+},
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        }
+      ]
+    },
+    {
+      "tabName": "Threats & Security Events",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Intrusion-Prevention Events",
+          "query": "dataSource.vendor='Fortinet' unmapped.level=* | group count()",
+          layout: {
+  h: 5,
+  w: 20,
+  x: 0,
+  y: 0
+},
+          sparklineConfig: {enabled: false},
+          trendConfig: {
+            enabled: false,
+            indicators: {
+              arrow: {enabled: true},
+              number: {
+                calculationType: "ABSOLUTE",
+                enabled: true
+              },
+              upwardsMeaning: "POSITIVE"
+            }
+          }
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Threats by Severity",
+          "maxPieSlices": 6,
+          "query": "dataSource.vendor='Fortinet' unmapped.level=* | group count() by unmapped.level ",
+          layout: {
+  h: 14,
+  w: 20,
+  x: 0,
+  y: 5
+},
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        },
+        {
+          "graphStyle": "",
+          "title": "Recent Critical Events",
+          "query": "activity_name='virus' |columns process.file.name, status_detail, risk_score ",
+          "showBarsColumn": "false",
+          layout: {
+  h: 19,
+  w: 35,
+  x: 20,
+  y: 0
+}
+        }
+      ]
+    }
+  ]
+}
+

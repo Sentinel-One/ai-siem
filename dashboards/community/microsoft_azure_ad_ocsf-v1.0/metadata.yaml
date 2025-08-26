@@ -1,0 +1,7 @@
+data_dependencies: "Microsoft 365 security logs ingested via OCSF"
+required_fields: "timestamp, event.type, activity_name, actor.user.email_addr, device.ip"
+description: "Monitor Azure AD activity using OCSF: overall security event rate, distribution by type, geographic distribution of user logons, failed logins by user, and success/failure frequencies."
+usecase_type: "Security"
+usecase_action: "Dashboard | Monitoring"
+tags: "azure, microsoft, ad, ocsf, security, login"
+version: "v1.0"

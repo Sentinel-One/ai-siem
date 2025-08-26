@@ -1,0 +1,96 @@
+{
+  "tabs": [
+    {
+      "tabName": "Overview",
+      "graphs": [
+        {
+          "graphStyle": "donut",
+          "query": "event.category contains '' dataSource.category='security' | group count() by event.category | sort -count",
+          "title": "Events by Category",
+          "layout": {
+  h: 10,
+  i: "0",
+  minH: 3,
+  minW: 6,
+  w: 30,
+  x: 0,
+  y: 0
+},
+          dataLabelType: "PERCENTAGE",
+          maxPieSlices: 10,
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        },
+        {
+          "graphStyle": "donut",
+          "query": "event.category='indicators' | group count=count() by indicator.category | sort - count",
+          "title": "Indicators by Category",
+          "layout": {
+  h: 10,
+  i: "1",
+  minH: 3,
+  minW: 6,
+  w: 30,
+  x: 30,
+  y: 0
+},
+          dataLabelType: "PERCENTAGE",
+          maxPieSlices: 10,
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        },
+        {
+          "graphStyle": "line",
+          "query": "event.category='file' dataSource.category='security' | group count() by timestamp=timebucket('1h'), event.type | transpose event.type on timestamp",
+          "title": "File Activity Over Time",
+          "layout": {
+            "h": 12,
+            "w": 60,
+            "x": 0,
+            "y": 10
+          },
+          "lineSmoothing": "straightLines"
+        },
+        {
+          "graphStyle": "bar",
+          "query": "event.category='process' dataSource.category='security' | group distinct_spawned=estimate_distinct(tgt.process.user) by src.process.user | sort -distinct_spawned | limit 10",
+          "title": "Top Process Spawners",
+          "layout": {
+            "h": 12,
+            "w": 30,
+            "x": 0,
+            "y": 22
+          },
+          "barWidth": "auto"
+        },
+        {
+          "graphStyle": "bar",
+          "query": "event.category='ip' event.network.direction='OUTGOING' dataSource.category='security' | group count() by src.process.name, dst.ip.address | sort -count | limit 10",
+          "title": "Top Outgoing Connections",
+          "layout": {
+            "h": 12,
+            "w": 30,
+            "x": 30,
+            "y": 22
+          },
+          "barWidth": "auto"
+        }
+      ],
+      "filters": [
+        {
+          "facet": "endpoint.name",
+          "name": "Endpoint Name"
+        },
+        {
+          "facet": "src.process.storyline.id",
+          "name": "Src Storyline ID"
+        }
+      ]
+    }
+  ],
+  "configType": "TABBED"
+}

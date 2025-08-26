@@ -1,0 +1,80 @@
+{
+  "graphs": [
+    {
+      "graphStyle": "table",
+      "query": "event.category='file' NOT(src.process.user in ('NT AUTHORITY\\\\SYSTEM','NT AUTHORITY\\\\NETWORK SERVICE','NT AUTHORITY\\\\LOCAL SERVICE','SYSTEM')) | columns endpoint.name, event.type, src.process.displayName, tgt.file.path, tgt.file.type, tgt.file.sha256",
+      "title": "EDR File Activity",
+      "layout": {
+        "h": 12,
+        "w": 60,
+        "x": 0,
+        "y": 0
+      },
+      "showBarsColumn": false
+    },
+    {
+      "graphStyle": "stacked_bar",
+      "query": "event.category='process' NOT(src.process.user in ('NT AUTHORITY\\\\SYSTEM','NT AUTHORITY\\\\NETWORK SERVICE','NT AUTHORITY\\\\LOCAL SERVICE','SYSTEM')) | group count = count() by endpoint.name, tgt.process.displayName | sort - count | limit 10",
+      "title": "Process Activity by Endpoint",
+      "layout": {
+  h: 12,
+  i: "1",
+  minH: 3,
+  minW: 6,
+  w: 30,
+  x: 0,
+  y: 12
+},
+      "barWidth": "auto"
+    },
+    {
+      "graphStyle": "donut",
+      "query": "logfile='okta-xdr' | group count() by client.geographicalContext.country",
+      "title": "Okta Login Locations",
+      "layout": {
+        "h": 10,
+        "w": 30,
+        "x": 30,
+        "y": 12
+      },
+      "maxPieSlices": 10
+    },
+    {
+      "graphStyle": "bar",
+      "query": "EventID=4624 | group c=count() by Account_Name, Computer | sort -c | limit 10",
+      "title": "Remote Logins",
+      "layout": {
+        "h": 10,
+        "w": 30,
+        "x": 0,
+        "y": 24
+      },
+      "barWidth": "auto"
+    },
+    {
+      "graphStyle": "donut",
+      "query": "event.urlcategory=* | group count() by event.urlcategory | sort -count | limit 10",
+      "title": "Top URL Categories",
+      "layout": {
+  h: 10,
+  w: 30,
+  x: 30,
+  y: 22
+},
+      "maxPieSlices": 10
+    },
+    {
+      "graphStyle": "bar",
+      "query": "event.category='ip' event.network.direction='OUTGOING' NOT(src.process.user in ('NT AUTHORITY\\\\SYSTEM','NT AUTHORITY\\\\NETWORK SERVICE','NT AUTHORITY\\\\LOCAL SERVICE','SYSTEM')) | group count() by src.process.displayName, dst.port.number | sort -count | limit 10",
+      "title": "Outbound Port Usage",
+      "layout": {
+        "h": 10,
+        "w": 60,
+        "x": 0,
+        "y": 34
+      },
+      "barWidth": "auto"
+    }
+  ],
+  "configType": "SINGLE"
+}

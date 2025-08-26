@@ -1,0 +1,120 @@
+{
+  "tabs": [
+    {
+      "tabName": "Logins",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Total Logins",
+          "query": "dataSource.name=\"Microsoft O365\" activity_name='Logon' dataSource.category='security' | group count=count()",
+          "layout": {
+            "h": 5,
+            "w": 20,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "graphStyle": "line",
+          "title": "Login Success vs Failure Rate",
+          "plots": [
+            {
+              "facet": "rate",
+              "filter": "dataSource.vendor='Microsoft' activity_name='Logon' status_detail='Success'",
+              "label": "Success"
+            },
+            {
+              "facet": "rate",
+              "filter": "dataSource.vendor='Microsoft' activity_name='UserLoginFailed'",
+              "label": "Failure"
+            }
+          ],
+          "lineSmoothing": "straightLines",
+          "layout": {
+            "h": 14,
+            "w": 20,
+            "x": 0,
+            "y": 5
+          }
+        },
+        {
+          "graphStyle": "pie",
+          "title": "Logins by OS Type",
+          "maxPieSlices": 10,
+          "query": "dataSource.name=\"Microsoft O365\" activity_name='Logon' dataSource.category='security' | group Count=count() by device.os.type | sort -Count",
+          "layout": {
+            "h": 14,
+            "w": 20,
+            "x": 20,
+            "y": 0
+          }
+        },
+        {
+          "graphStyle": "pie",
+          "title": "Logins by Country",
+          "maxPieSlices": 10,
+          "query": "dataSource.name=\"Microsoft O365\" activity_name='Logon' dataSource.category='security' | group count=count() by country=geo_ip_country(device.ip)",
+          "layout": {
+            "h": 14,
+            "w": 20,
+            "x": 20,
+            "y": 14
+          }
+        },
+        {
+          "graphStyle": "line",
+          "title": "Logins Over Time",
+          "query": "dataSource.name=\"Microsoft O365\" activity_name in ('Logon','UserLoginFailed') dataSource.category='security' | group Count=count() by timestamp=timebucket(), activity_name | transpose activity_name",
+          "yScale": "linear",
+          "layout": {
+            "h": 9,
+            "w": 20,
+            "x": 0,
+            "y": 19
+          }
+        }
+      ]
+    },
+    {
+      "tabName": "Activities",
+      "graphs": [
+        {
+          "graphStyle": "pie",
+          "title": "Activity Types",
+          "maxPieSlices": 10,
+          "query": "dataSource.name=\"Microsoft O365\" dataSource.category='security' | group Count=count() by activity_name | sort -Count",
+          "layout": {
+            "h": 14,
+            "w": 20,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "graphStyle": "line",
+          "title": "File Access and Download Rates",
+          "plots": [
+            {
+              "facet": "rate",
+              "filter": "dataSource.vendor='Microsoft' serverHost='Microsoft' activity_name='FileAccessed'",
+              "label": "Access"
+            },
+            {
+              "facet": "rate",
+              "filter": "dataSource.vendor='Microsoft' serverHost='Microsoft' activity_name='FileDownloaded'",
+              "label": "Downloaded"
+            }
+          ],
+          "lineSmoothing": "straightLines",
+          "layout": {
+            "h": 14,
+            "w": 20,
+            "x": 20,
+            "y": 0
+          }
+        }
+      ]
+    }
+  ],
+  "configType": "TABBED"
+}

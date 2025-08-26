@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: "Parses Windows DHCP server CSV exports containing IPv4 and IPv6 lease assignments, errors, transaction IDs, MACs, hostnames, and related metadata."
+  datasource_vendor: "Microsoft"
+  dataSource: "Windows DHCP"
+  format: "csv"
+  ingestion_method: "file-based streaming or scheduled upload"
+  sample_record: |
+    10,07/24/2025,14:03:25,ACK,192.168.0.25,myhost,00-1A-2B-3C-4D-5E,myuser,0x1234,Success,,guid-1234,vClassHex,vClassASCII,uClassHex,uClassASCII,relayInfo,
+  dependency_summary: "Requires standardized CSV format exported from DHCP servers (IPv4 and IPv6 logs). Uses multiple fallback patterns to account for variations in record completeness."
+  performance_impact: "Minimal – sequential format matching halts at the first valid parse, reducing overhead."
+  tags: ["dhcp", "microsoft", "ipv4", "ipv6", "parser", "windows"]
+  version: "v1.0"

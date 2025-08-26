@@ -1,0 +1,41 @@
+{
+    // specify a time zone if the timestamps in your log are not in GMT
+    // timezone: "GMT-0800"
+    attributes: {
+      "dataSource.category": "security",
+      "dataSource.name": "ADAuditPlus",
+      "dataSource.vendor": "ADAuditPlus"
+    },
+    formats: [
+      {
+        format: "\\<\\d+\\>1 $Timestamp$ $host$ ADAuditPlus - - -  "
+      },
+      {
+        format: ".*\\[ $_$ = $_$ \\]"
+        repeat: "true"
+        rewrites: [
+          {
+            "input": "Category",
+            "output": "event.type",
+            "match": ".*",
+            "replace": "$0"
+          }, {
+            "input": "SOURCE",
+            "output": "event.source",
+            "match": ".*",
+            "replace": "$0"
+          }, {
+            "input": "EXTRA_COLUMN1",
+            "output": "event.details",
+            "match": ".*",
+            "replace": "$0"
+          }, {
+            "input": "CLIENT_IP_ADDRESS",
+            "output": "event.target",
+            "match": ".*",
+            "replace": "$0"
+          }
+        ]
+      }
+    ]
+  }

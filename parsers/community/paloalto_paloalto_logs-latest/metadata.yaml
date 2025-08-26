@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Paloalto Paloalto logs using the OCSF mapping to normalise events
+    into the AI-SIEM schema.
+  datasource_vendor: paloalto
+  dataSource: paloalto
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original Paloalto Paloalto logs.
+  performance_impact: "Minimal \u2013 this parser is a placeholder pointing to the\
+    \ upstream definition."
+  tags: paloalto, paloalto, logs, ocsf, parser
+  version: latest

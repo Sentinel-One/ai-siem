@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "Microsoft O365 security logs via OCSF parser"
+  required_fields: "actor.user.email_addr, activity_name, status_detail, device.os.type, device.ip"
+  description: "Summarizes Microsoft O365 login activity and file events, highlighting login success vs failure, OS and country distributions, activity types, and file access/download trends."
+  usecase_type: "Security"
+  usecase_action: "Dashboard | Trending and Analysis"
+  tags: "m365, o365, logins, file activity, security"
+  version: "v1.0"

@@ -1,0 +1,14 @@
+metadata_details:
+  purpose: "Parses Cisco Meraki MX Firewall and Access Point logs to extract network flow details including source/destination IPs, ports, connection status, and translated addresses."
+  datasource_vendor: "Cisco"
+  dataSource: "Cisco Meraki"
+  format: "custom syslog"
+  ingestion_method: "Syslog via Agent or Collector"
+  sample_record: |
+    1677007711 vpnfirewall 10.0.1.1 accept src=192.168.1.10 dst=10.10.1.5 protocol=UDP sport=12345 dport=443
+    1677007712 ipflow 10.0.1.1 flow src=192.168.1.10 dst=10.10.1.5 protocol=TCP sport=23456 dport=80 translated_src_ip=203.0.113.5 translated_port=54321
+    1677007713 flowlog 10.0.1.1 forward src=192.168.1.10 dst=10.10.1.5 mac=00:1A:2B:3C:4D:5E protocol=TCP sport=34567 dport=443
+  dependency_summary: "Requires syslog ingestion from Cisco Meraki MX Firewall and AP logs with a consistent message structure as defined by format patterns (vpn_firewall, ip_flow, flows)."
+  performance_impact: "Minimal – parser halts on first matching format and uses efficient rewrite mappings."
+  tags: "cisco, meraki, firewall, access_point, network, parser"
+  version: "v1.0"

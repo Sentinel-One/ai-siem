@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "SentinelOne EDR logs (Behavioral Indicators events)"
+  required_fields: "agent.uuid, endpoint.type, indicator.name, indicator.category"
+  description: "Provides a high-level overview of SentinelOne EDR indicators: endpoints with threat indicators, total endpoints, endpoint type distribution, top indicators, and indicator categories over time."
+  usecase_type: "Security | Endpoint Detection"
+  usecase_action: "Dashboard | Trending and Analysis"
+  tags: "sentinelone, edr, security, indicators"
+  version: "v1.0"

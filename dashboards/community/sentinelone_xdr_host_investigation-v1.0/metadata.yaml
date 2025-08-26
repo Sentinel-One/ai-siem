@@ -1,0 +1,7 @@
+data_dependencies: "SentinelOne XDR host telemetry, Okta XDR logs, Windows event logs, Zscaler logs"
+required_fields: "endpoint.name, event.type, src.process.displayName, tgt.file.path, tgt.file.type, tgt.file.sha256, client.geographicalContext.country, Account_Name, Computer, event.urlcategory, dst.port.number"
+description: "Facilitates host investigation across EDR file/process activity, Okta login geography, Windows remote logins, URL category usage and network port usage."
+usecase_type: "Security"
+usecase_action: "Dashboard | Incident Investigation"
+tags: "xdr, host, investigation, edr, okta, zscaler, windows"
+version: "v1.0"

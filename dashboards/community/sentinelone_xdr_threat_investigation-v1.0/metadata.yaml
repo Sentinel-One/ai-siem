@@ -1,0 +1,7 @@
+data_dependencies: "XDR security events and indicator feeds"
+required_fields: "event.category, indicator.category, event.type, src.process.user, tgt.process.user, src.process.name, dst.ip.address"
+description: "Investigate suspicious activity by breaking down events by category, indicator category and monitoring file, process and network behaviours."
+usecase_type: "Security"
+usecase_action: "Dashboard | Threat Investigation"
+tags: "threat, investigation, xdr, security, process, network"
+version: "v1.0"

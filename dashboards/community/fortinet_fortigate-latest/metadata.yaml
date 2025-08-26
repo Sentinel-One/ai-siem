@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "Fortinet FortiGate logs ingested via OCSF or Fortinet-specific parser using activity_name, status_detail, traffic.bytes_in, traffic.bytes_out, app_name"
+  required_fields: "device.name, activity_name, status_detail, src_endpoint.ip, dst_endpoint.ip, app_name, traffic.bytes_in, traffic.bytes_out, unmapped.level"
+  description: "Provides a unified view of Fortinet firewall operations including traffic insights, top talkers, and threats such as intrusion prevention and virus events"
+  usecase_type: "Security | Network Operations"
+  usecase_action: "Dashboard | Report | Monitoring"
+  tags: "fortinet, firewall, threats, traffic, top talkers, IPS"
+  version: "v1.0"

@@ -1,0 +1,4 @@
+dataSource.name ='Windows Event Logs' winEventLog.id=1102
+
+//parsing Subject Stanza
+| parse "Security\\sID:\\t\\t$security.id$\\n\\tAccount\\sName:\\t\\t$account.name$\\n\\tDomain\\sName:\\t\\t$domain.name$\\n\\tLogon\\sId:\\t\\t$logon.id$" from winEventLog.description

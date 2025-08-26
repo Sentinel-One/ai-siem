@@ -1,0 +1,44 @@
+{
+  "graphs": [
+    {
+      "graphStyle": "bar",
+      "title": "Questions Asked by User",
+      "query": "action = 'addPurpleInputOutputMessage' | group count=count() by analyst=inputContent.userDetails.emailAddress | sort -count",
+      "layout": {
+        "h": 14,
+        "w": 20,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "graphStyle": "table",
+      "title": "All Questions and Answers",
+      "query": "source='scalyr' action='addPurpleInputOutputMessage' | let output=( !isempty(outputContent.message) ? outputContent.message : outputContent.powerQuery.query ) | columns timestamp, analyst=inputContent.userDetails.emailAddress, input=inputContent.userInput, output | sort +timestamp",
+      "layout": {
+        "h": 17,
+        "w": 40,
+        "x": 0,
+        "y": 14
+      }
+    },
+    {
+      "graphStyle": "line",
+      "title": "Query Timeline by Status",
+      "query": "source='scalyr' action='addPurpleInputOutputMessage' | group count=count() by timestamp=timebucket('1 hour'), status | transpose status on timestamp",
+      "lineSmoothing": "straightLines",
+      "yScale": "linear",
+      "layout": {
+        "h": 14,
+        "w": 20,
+        "x": 40,
+        "y": 0
+      }
+    }
+  ],
+  "options": {
+    "layout": {
+      "locked": 1
+    }
+  }
+}

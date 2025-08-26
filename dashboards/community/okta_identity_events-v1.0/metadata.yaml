@@ -1,0 +1,7 @@
+data_dependencies: "Okta logs parsed via 'okta' or 'okta-beats' parsers"
+required_fields: "timestamp, actor.alternateId, client.ipAddress, displayMessage, outcome.result, target.alternateId, client.userAgent.rawUserAgent, client.geographicalContext.country"
+description: "Summarises Okta sign‑in activity: total events, event logs, distribution by client IP, user agent, application sign‑ins and user country."
+usecase_type: "Security"
+usecase_action: "Dashboard | Trending and Analysis"
+tags: "okta, identity, authentication, security"
+version: "v1.0"

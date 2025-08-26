@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "Zscaler Internet Access logs via OCSF or native parser; requires fields such as category_name, app_name, actor.user.name, threatclass, severity_id, filetype"
+  required_fields: "action, url, app_name, category_name, protocol, network_traffic.bytes_out, actor.user.name, malware.name, threatclass, dlpdictionaries, filetype, unscannabletype"
+  description: "Offers a comprehensive view of Zscaler Internet Access activity including traffic, application usage, security threats, and DLP events"
+  usecase_type: "Security | Compliance | Network Monitoring"
+  usecase_action: "Dashboard | Report | Threat Intel | Application Visibility"
+  tags: "zscaler, internet_access, dlp, threats, urls, malware"
+  version: "v1.0"

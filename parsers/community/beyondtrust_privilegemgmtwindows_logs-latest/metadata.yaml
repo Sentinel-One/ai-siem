@@ -1,0 +1,13 @@
+metadata_details:
+  purpose: Parser for Beyondtrust Privilegemgmtwindows logs using the OCSF mapping
+    to normalise events into the AI-SIEM schema.
+  datasource_vendor: beyondtrust
+  dataSource: privilegemgmtwindows
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original Beyondtrust Privilegemgmtwindows
+    logs.
+  performance_impact: "Minimal \u2013 this parser is a placeholder pointing to the\
+    \ upstream definition."
+  tags: beyondtrust, privilegemgmtwindows, logs, ocsf, parser
+  version: latest

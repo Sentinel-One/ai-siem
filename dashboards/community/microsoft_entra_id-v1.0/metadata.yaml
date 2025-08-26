@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "Azure Event Hub security logs ingested via OCSF or custom parser with fields like app_name, client.app_used, device.browser, device.os, event.type, event.details"
+  required_fields: "app_name, client.app_used, device.browser, device.os, event.type, event.details, idp.name, user.type, location.region, location.country, location.city, rate"
+  description: "Provides visibility into Azure Active Directory events such as user logins, application usage, client/browser distribution and geographic breakdowns using Azure Event Hub security logs."
+  usecase_type: "Security"
+  usecase_action: "Dashboard | Trending and Analysis"
+  tags: "azure, active directory, event hub, security, user logins"
+  version: "v1.0"

@@ -1,0 +1,70 @@
+{
+  "graphs": [
+    {
+      "graphStyle": "number",
+      "title": "Endpoints with Threat Indicators",
+      "query": "event.category='indicators' | group Unique=estimate_distinct(agent.uuid)",
+      "layout": {
+        "h": 6,
+        "w": 20,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "graphStyle": "number",
+      "title": "Total Endpoints",
+      "query": "event.type=* | group Unique=estimate_distinct(agent.uuid)",
+      "layout": {
+        "h": 6,
+        "w": 20,
+        "x": 20,
+        "y": 0
+      }
+    },
+    {
+      "graphStyle": "donut",
+      "title": "Endpoint Types",
+      "maxPieSlices": 10,
+      "query": "i.scheme='edr' | group endpoint_types=count() by endpoint.type | columns endpoint.type, endpoint_types",
+      "layout": {
+        "h": 13,
+        "w": 20,
+        "x": 0,
+        "y": 6
+      }
+    },
+    {
+      "graphStyle": "donut",
+      "title": "Top 10 Indicators",
+      "maxPieSlices": 10,
+      "query": "event.type='Behavioral Indicators' dataSource.category='security' dataSource.name='SentinelOne' indicator.name!=null | group count=count() by indicator.name | sort -count | limit 10",
+      "layout": {
+        "h": 13,
+        "w": 20,
+        "x": 20,
+        "y": 6
+      }
+    },
+    {
+      "graphStyle": "stacked_bar",
+      "title": "Behavioral Indicator Breakdown",
+      "breakdownFacet": "indicator.category",
+      "plots": [
+        {
+          "facet": "rate",
+          "filter": "event.type='Behavioral Indicators' indicator.category=*",
+          "label": "rate"
+        }
+      ],
+      "barWidth": "auto",
+      "lineSmoothing": "straightLines",
+      "layout": {
+        "h": 14,
+        "w": 40,
+        "x": 0,
+        "y": 19
+      }
+    }
+  ]
+}

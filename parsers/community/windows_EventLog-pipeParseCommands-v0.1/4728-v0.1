@@ -1,0 +1,16 @@
+dataSource.name ='Windows Event Logs' winEventLog.id=4728
+
+//parsing Subject Stanza
+| parse "Security\\sID:\\t\\t$security.id$\\n\\tAccount\\sName:\\t\\t$account.name$\\n\\tAccount\\sDomain:\\t\\t$account.domain$\\n\\tLogon\\sId:\\t\\t$logon.id$\\n" from winEventLog.description
+
+//parsing member stanza
+| parse "Member:$member$\\n\\tSecurity\\sID:\\t\\t$member.security.id$\\n\\tAccount\\sName:\\t\\t$member.account.name$\\n\\tRemote\\sCredential\\sGuard:\\t$member.remote.credential.guard$\\n\\tVirtual\\sAccount:\\t\\t$member.virtual.account$\\n\\tElevated\\sToken:\\t$member.elevated.token$\\n" from winEventLog.description 
+
+//parsing group stanza
+| parse "Group:$group$\\n\\tSecurity\\sID:\\t\\t$group.security.id$\\n\\tGroup\\sName:\\t\\t$group.name$\\n\\tGroup\\sDomain:\\t\\t$group.domain$\\n" from winEventLog.description 
+
+//parsing additional information
+| parse "Privileges:\\t\\t$privileges$\\n" from winEventLog.description 
+
+//parsing expiration time
+|parse "Expiration time:$expiration.time$" from winEventLog.description

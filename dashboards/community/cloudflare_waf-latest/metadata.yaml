@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "Cloudflare WAF logs ingested via OCSF or custom parser with fields like waf.attack_score, signal.bot.score, http_response.ttfb_ms"
+  required_fields: "waf.attack_score, signal.bot.score, http_response.ttfb_ms, src_endpoint.ip, network.cloud.region"
+  description: "Provides visibility into WAF traffic, bot behavior, and latency performance across Cloudflare's network"
+  usecase_type: "Security | Performance Monitoring"
+  usecase_action: "Dashboard | Report | Trending and Analysis"
+  tags: "cloudflare, waf, bot, performance, ttfb"
+  version: "v1.0"

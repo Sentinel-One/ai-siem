@@ -1,0 +1,579 @@
+{
+    "actions": [
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 100,
+              "width": 256
+            },
+            "position": {
+              "x": 170,
+              "y": -211
+            }
+          },
+          "connection_id": null,
+          "connection_name": null,
+          "data": {
+            "action_type": "singularity_response_trigger",
+            "filter_groups": [
+              {
+                "condition": {
+                  "conditions": [
+                    {
+                      "compared_value": "[\"HIGH\",\"CRITICAL\",\"MEDIUM\"]",
+                      "comparison_operator": "in",
+                      "input_value": "severity"
+                    },
+                    {
+                      "compared_value": "[\"EDR\"]",
+                      "comparison_operator": "in",
+                      "input_value": "detectionSource.product"
+                    }
+                  ],
+                  "operator": "and"
+                },
+                "event_subtypes": [
+                  "CREATE"
+                ],
+                "event_type": "alert",
+                "is_disabled": false,
+                "run_automatically": false
+              }
+            ],
+            "name": "Singularity Response Trigger"
+          },
+          "description": null,
+          "integration_id": null,
+          "tag": "core_action",
+          "type": "singularity_response_trigger",
+          "use_connection_name": false
+        },
+        "connected_to": [
+          {
+            "custom_handle": null,
+            "target": 1
+          }
+        ],
+        "export_id": 10,
+        "parent_action": null
+      },
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 76,
+              "width": 256
+            },
+            "position": {
+              "x": 170,
+              "y": -10.3228
+            }
+          },
+          "connection_id": null,
+          "connection_name": null,
+          "data": {
+            "action_type": "variable",
+            "name": "Alert Hash",
+            "variables": [
+              {
+                "is_secret": false,
+                "name": "alert-hash",
+                "value": "{{Function.DEFAULT(Function.DEFAULT(singularity-response-trigger.data.process.file.sha256, singularity-response-trigger.data.process.file.sha1), \"no-hash\")}}"
+              }
+            ],
+            "variables_scope": "local"
+          },
+          "description": "",
+          "integration_id": null,
+          "tag": "core_action",
+          "type": "variable",
+          "use_connection_name": false
+        },
+        "connected_to": [
+          {
+            "custom_handle": null,
+            "target": 2
+          }
+        ],
+        "export_id": 1,
+        "parent_action": null
+      },
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 76,
+              "width": 256
+            },
+            "position": {
+              "x": 170,
+              "y": 166.35439999999994
+            }
+          },
+          "connection_id": null,
+          "connection_name": null,
+          "data": {
+            "action_type": "condition",
+            "condition": null,
+            "condition_type": "multi",
+            "conditions": [
+              {
+                "compared_value": "no-hash",
+                "comparison_operator": "not_equals",
+                "input_value": "{{local_var.alert-hash}}"
+              }
+            ],
+            "conditions_relationship": "and",
+            "name": "Alert has Hash"
+          },
+          "description": "",
+          "integration_id": null,
+          "tag": "core_action",
+          "type": "condition",
+          "use_connection_name": false
+        },
+        "connected_to": [
+          {
+            "custom_handle": "false",
+            "target": 7
+          },
+          {
+            "custom_handle": "true",
+            "target": 9
+          }
+        ],
+        "export_id": 2,
+        "parent_action": null
+      },
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 76,
+              "width": 256
+            },
+            "position": {
+              "x": -90.58859999999999,
+              "y": 343.0315999999999
+            }
+          },
+          "connection_id": null,
+          "connection_name": null,
+          "data": {
+            "action_type": "variable",
+            "name": "Note body No Hash",
+            "variables": [
+              {
+                "is_secret": false,
+                "name": "note_body",
+                "value": "Hyperautomation Alert Enrichment\\n\\nNo Hash was found in the alert to lookup"
+              }
+            ],
+            "variables_scope": "local"
+          },
+          "description": "",
+          "integration_id": null,
+          "tag": "core_action",
+          "type": "variable",
+          "use_connection_name": false
+        },
+        "connected_to": [
+          {
+            "custom_handle": null,
+            "target": 0
+          }
+        ],
+        "export_id": 7,
+        "parent_action": null
+      },
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 76,
+              "width": 256
+            },
+            "position": {
+              "x": 330,
+              "y": 343.0315999999999
+            }
+          },
+          "connection_id": "fdbde1dd-4491-4c50-af40-6fc2bea2065c",
+          "connection_name": "",
+          "data": {
+            "action_type": "http_request",
+            "continue_on_fail": true,
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "method": "get",
+            "name": "Search for File Hash",
+            "parameters": [],
+            "payload": null,
+            "proxy_host": null,
+            "proxy_password": null,
+            "proxy_port": null,
+            "proxy_user": null,
+            "public_action_id": null,
+            "redirect_follow": true,
+            "retry_on_status_code": null,
+            "retry_on_status_codes": [
+              500
+            ],
+            "ssl_verification": true,
+            "timeout": 30,
+            "url": "{{Connection.protocol}}{{Connection.url}}<@/api/v3/files/@>{{local_var.alert-hash}}",
+            "url_path": "/api/v3/files/<<file_hash>>",
+            "url_prefix": null,
+            "use_authentication_data": true,
+            "use_proxy": false
+          },
+          "description": "Search VirusTotal for the given MD5 or SHA256 hash. Runs against the v3 API.",
+          "integration_id": "9b735fa3-69db-4430-bca0-347b57a8604d",
+          "tag": "integration",
+          "type": "http_request",
+          "use_connection_name": false
+        },
+        "connected_to": [
+          {
+            "custom_handle": null,
+            "target": 3
+          }
+        ],
+        "export_id": 9,
+        "parent_action": null
+      },
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 76,
+              "width": 256
+            },
+            "position": {
+              "x": 330,
+              "y": 519.7087999999999
+            }
+          },
+          "connection_id": null,
+          "connection_name": null,
+          "data": {
+            "action_type": "condition",
+            "condition": null,
+            "condition_type": "simple",
+            "conditions": [
+              {
+                "compared_value": "200",
+                "comparison_operator": "equals",
+                "input_value": "{{search-for-file-hash.status_code}}"
+              }
+            ],
+            "conditions_relationship": "and",
+            "name": "Exists in VT"
+          },
+          "description": "",
+          "integration_id": null,
+          "tag": "core_action",
+          "type": "condition",
+          "use_connection_name": false
+        },
+        "connected_to": [
+          {
+            "custom_handle": "false",
+            "target": 5
+          },
+          {
+            "custom_handle": "true",
+            "target": 6
+          }
+        ],
+        "export_id": 3,
+        "parent_action": null
+      },
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 76,
+              "width": 256
+            },
+            "position": {
+              "x": 119.70570000000001,
+              "y": 696.386
+            }
+          },
+          "connection_id": null,
+          "connection_name": null,
+          "data": {
+            "action_type": "variable",
+            "name": "Hash not found in VT",
+            "variables": [
+              {
+                "is_secret": false,
+                "name": "vt_details",
+                "value": "---VT Details ---\\n\\nHash not found in VT"
+              }
+            ],
+            "variables_scope": "local"
+          },
+          "description": "Becomes the body of the note added to the alert",
+          "integration_id": null,
+          "tag": "core_action",
+          "type": "variable",
+          "use_connection_name": false
+        },
+        "connected_to": [
+          {
+            "custom_handle": null,
+            "target": 8
+          }
+        ],
+        "export_id": 5,
+        "parent_action": null
+      },
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 76,
+              "width": 256
+            },
+            "position": {
+              "x": 490.00000000000006,
+              "y": 696.386
+            }
+          },
+          "connection_id": null,
+          "connection_name": null,
+          "data": {
+            "action_type": "condition",
+            "condition": null,
+            "condition_type": "multi",
+            "conditions": [
+              {
+                "compared_value": "2",
+                "comparison_operator": "greater_than_or_equals",
+                "input_value": "{{search-for-file-hash.body.data.attributes.last_analysis_stats.malicious}}"
+              },
+              {
+                "compared_value": "3",
+                "comparison_operator": "greater_than_or_equals",
+                "input_value": "{{search-for-file-hash.body.data.attributes.last_analysis_stats.suspicious}}"
+              }
+            ],
+            "conditions_relationship": "or",
+            "name": "Is file suspicious in VT"
+          },
+          "description": "",
+          "integration_id": null,
+          "tag": "core_action",
+          "type": "condition",
+          "use_connection_name": false
+        },
+        "connected_to": [
+          {
+            "custom_handle": "false",
+            "target": 4
+          },
+          {
+            "custom_handle": "true",
+            "target": 11
+          }
+        ],
+        "export_id": 6,
+        "parent_action": null
+      },
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 76,
+              "width": 256
+            },
+            "position": {
+              "x": 650,
+              "y": 873.0632
+            }
+          },
+          "connection_id": null,
+          "connection_name": null,
+          "data": {
+            "action_type": "variable",
+            "name": "VT Hash found and suspicious",
+            "variables": [
+              {
+                "is_secret": false,
+                "name": "vt_details",
+                "value": "---VT Details ---\\n\\nVT considers the hash suspicious. It has been submitted {{search-for-file-hash.body.data.attributes.times_submitted}} times. \\n\\nLast Analysis Stats:\\nMalicious: {{search-for-file-hash.body.data.attributes.last_analysis_stats.malicious}}\\nSuspicious: {{search-for-file-hash.body.data.attributes.last_analysis_stats.suspicious}}\\nUndetected: {{search-for-file-hash.body.data.attributes.last_analysis_stats.undetected}}\\nHarmless: {{search-for-file-hash.body.data.attributes.last_analysis_stats.harmless}}\\n\\nVirusTotal link: \\nhttps://www.virustotal.com/gui/file/{{local_var.alert-hash}}/detection"
+              }
+            ],
+            "variables_scope": "local"
+          },
+          "description": "Becomes the body of the note added to the alert",
+          "integration_id": null,
+          "tag": "core_action",
+          "type": "variable",
+          "use_connection_name": false
+        },
+        "connected_to": [
+          {
+            "custom_handle": null,
+            "target": 8
+          }
+        ],
+        "export_id": 11,
+        "parent_action": null
+      },
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 76,
+              "width": 256
+            },
+            "position": {
+              "x": 330,
+              "y": 873.0632
+            }
+          },
+          "connection_id": null,
+          "connection_name": null,
+          "data": {
+            "action_type": "variable",
+            "name": "Hash found in VT and not suspicious",
+            "variables": [
+              {
+                "is_secret": false,
+                "name": "vt_details",
+                "value": "---VT Details ---\\n\\nHash was found in VT, but not considered suspicious"
+              }
+            ],
+            "variables_scope": "local"
+          },
+          "description": "Becomes the body of the note added to the alert",
+          "integration_id": null,
+          "tag": "core_action",
+          "type": "variable",
+          "use_connection_name": false
+        },
+        "connected_to": [
+          {
+            "custom_handle": null,
+            "target": 8
+          }
+        ],
+        "export_id": 4,
+        "parent_action": null
+      },
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 76,
+              "width": 256
+            },
+            "position": {
+              "x": 330,
+              "y": 1049.7404000000001
+            }
+          },
+          "connection_id": null,
+          "connection_name": null,
+          "data": {
+            "action_type": "variable",
+            "name": "Note body with details",
+            "variables": [
+              {
+                "is_secret": false,
+                "name": "note_body",
+                "value": "Hyperautomation Alert Enrichment\\nChecking for details of Hash: {{local_var.alert-hash}}\\n\\n{{local_var.vt_details}}"
+              }
+            ],
+            "variables_scope": "local"
+          },
+          "description": "",
+          "integration_id": null,
+          "tag": "core_action",
+          "type": "variable",
+          "use_connection_name": false
+        },
+        "connected_to": [
+          {
+            "custom_handle": null,
+            "target": 0
+          }
+        ],
+        "export_id": 8,
+        "parent_action": null
+      },
+      {
+        "action": {
+          "client_data": {
+            "collapsed": false,
+            "dimensions": {
+              "height": 76,
+              "width": 256
+            },
+            "position": {
+              "x": 88.75,
+              "y": 1226.4176000000002
+            }
+          },
+          "connection_id": "2531fa9d-c812-4ee7-9b99-9f0abfb4f18a",
+          "connection_name": "",
+          "data": {
+            "action_type": "http_request",
+            "continue_on_fail": false,
+            "headers": {
+              "Content-Type": "application/json",
+              "accept": "application/json"
+            },
+            "method": "post",
+            "name": "Add Note to Alert",
+            "parameters": [],
+            "payload": "{\n  \"query\": \"mutation AddAlertNote { addAlertNote(text: \\\"{{Function.HTML_ENCODE(local_var.note_body)}}\\\", alertId: \\\"{{singularity-response-trigger.data.id}}\\\") { data { alertId } } }\"\n}",
+            "proxy_host": null,
+            "proxy_password": null,
+            "proxy_port": null,
+            "proxy_user": null,
+            "public_action_id": "a1863e01-cfa4-4544-ae32-ca1a37442340",
+            "redirect_follow": true,
+            "retry_on_status_code": null,
+            "retry_on_status_codes": [
+              500
+            ],
+            "ssl_verification": true,
+            "timeout": 30,
+            "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql",
+            "url_path": "/web/api/v2.0/threats",
+            "url_prefix": null,
+            "use_authentication_data": true,
+            "use_proxy": false
+          },
+          "description": "Add a note to a unified alert",
+          "integration_id": "ef645af9-ed60-4efd-882e-bf534442ce86",
+          "tag": "integration",
+          "type": "http_request",
+          "use_connection_name": false
+        },
+        "connected_to": [],
+        "export_id": 0,
+        "parent_action": null
+      }
+    ],
+    "description": null,
+    "name": "Enrich Alert with VirusTotal"
+  }
+  

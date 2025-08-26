@@ -1,0 +1,13 @@
+metadata_details:
+  purpose: Parser for Microsoft Eventhub defender email logs using the OCSF mapping
+    to normalise events into the AI-SIEM schema.
+  datasource_vendor: microsoft
+  dataSource: eventhub_defender_email
+  format: OCSF
+  ingestion_method: unknown
+  dependency_summary: Requires ingestion of the original Microsoft Eventhub defender
+    email logs.
+  performance_impact: "Minimal \u2013 this parser is a placeholder pointing to the\
+    \ upstream definition."
+  tags: microsoft, eventhub defender email, logs, ocsf, parser
+  version: latest

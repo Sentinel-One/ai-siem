@@ -1,0 +1,24 @@
+metadata_details:
+  purpose: "Parses Cloudflare WAF log events to extract threat detection, bot scores, TLS attributes, HTTP request and response data, and geo/network context for accurate security telemetry."
+  datasource_vendor: "Cloudflare"
+  dataSource: "Cloudflare WAF"
+  format: "custom json via gron normalization"
+  ingestion_method: "streaming"
+  sample_record: |
+    {
+      "WAFAttackScore": 92,
+      "BotScore": 22,
+      "ClientIP": "192.0.2.15",
+      "ClientRequestPath": "/login",
+      "ClientRequestMethod": "POST",
+      "EdgeResponseStatus": 403,
+      "EdgeTimeToFirstByteMs": 57,
+      "EdgeColoCode": "SJC",
+      "ZoneName": "example.com",
+      "RayID": "791d3e3cfaa2abcd",
+      "EdgeEndTimestamp": "2025-07-25T12:45:00Z"
+    }
+  dependency_summary: "Requires normalized Cloudflare log ingestion using gron and mappings of threat scores (WAF, bot), TLS, HTTP, geo-IP, and cache data. Multiple timestamp formats are supported."
+  performance_impact: "Minimal – uses match predicates to apply transformations selectively and halt parsing efficiently."
+  tags: ["cloudflare", "waf", "bot-detection", "http", "security", "parser"]
+  version: "v1.0"

@@ -1,0 +1,7 @@
+data_dependencies: "SentinelOne EDR telemetry and XDR logs"
+required_fields: "endpoint.name, endpoint.os, endpoint.type, agent.uuid, meta.event.name"
+description: "Provides an overview of EDR estate health: total endpoints, OS and type distribution, busiest endpoints and most common event types."
+usecase_type: "Security"
+usecase_action: "Dashboard | Trending and Analysis"
+tags: "sentinelone, edr, xdr, security"
+version: "v1.0"

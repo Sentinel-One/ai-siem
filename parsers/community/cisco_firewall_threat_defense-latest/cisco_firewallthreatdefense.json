@@ -1,0 +1,411 @@
+{
+  attributes: {
+    "dataSource.category": "security",
+    "dataSource.name": "Cisco Firewall Threat Defense(FTD)",
+    "dataSource.vendor": "Cisco"
+  },
+ patterns:{
+    value: "[\\w\\s\\/$&+:;=?@#|'<>.^*()%!-]+"
+  },
+  formats: [
+    {
+      format: "$timestamp$\\s"
+    },
+    {
+    	format: ".*430001:\\s$_=identifier$: $_=value$"
+        rewrites: [ 
+         {
+           input:   "DeviceUUID",
+           output:  "device.uid",
+           match:   ".*",
+           replace: "$0"
+         }
+        ]
+    },
+    {
+    	format: ".*430002:\\s$_=identifier$: $_=value$"
+        rewrites: [ 
+         {
+           input:   "EventPriority",
+           output:  "security_finding.severity",
+           match:   ".*",
+           replace: "$0"
+         }
+        ]
+    },
+    {
+    	format: ".*430003:\\s$_=identifier$: $_=value$"
+        rewrites: [ 
+         {
+           input:   "EventPriority",
+           output:  "security_finding.severity",
+           match:   ".*",
+           replace: "$0"
+         }
+        ]
+    },
+    {
+    	format: ".*430004:\\s$_=identifier$: $_=value$"
+        rewrites: [ 
+         {
+           input:   "DeviceUUID",
+           output:  "device.uid",
+           match:   ".*",
+           replace: "$0"
+         }
+        ]
+    },
+    {
+    	format: ".*430005:\\s$_=identifier$: $_=value$"
+        rewrites: [ 
+         {
+           input:   "DeviceUUID",
+           output:  "device.uid",
+           match:   ".*",
+           replace: "$0"
+         }
+        ]
+    },
+    {
+      format: ".*$_=identifier$: $_=value{attrBlacklist=FTD-1-430001|FTD-1-430002|FTD-1-430003|FTD-1-430004|FTD-1-430005}$", repeat:true
+        rewrites: [ 
+         {
+           input:   "ACPolicy",
+           output:  "policy.name",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "Classification",
+           output:  "security_finding.message",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "ConnectionID",
+           output:  "network_connection_info.uid",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "DstIP",
+           output:  "network_endpoint.dst_ip",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "DstIP",
+           output:  "dst.ip.address",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "DstPort",
+           output:  "network_endpoint.dst_port",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "InlineResult",
+           output:  "security_finding.access_result",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "InstanceID",
+           output:  "device.instance_uid",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "IntrusionPolicy",
+           output:  "policy.intrusion_policy",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "MitreAttackGroups",
+           output:  "mitre.attack_group",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "NAPPolicy",
+           output:  "policy.type",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "Priority",
+           output:  "security_finding.severity",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "Protocol",
+           output:  "network_connection_info.protocol_name",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SID",
+           output:  "network_endpoint.sid",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SnortRuleGroups",
+           output:  "rule.snort_rule_groups",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SrcIP",
+           output:  "network_endpoint.src_ip",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SrcIP",
+           output:  "src.ip.address",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SrcPort",
+           output:  "network_endpoint.src_port",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "User",
+           output:  "user.name",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "AccessControlRuleAction",
+           output:  "security_finding.response_action",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "AccessControlRuleName",
+           output:  "security_finding.default_action",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "ApplicationProtocol",
+           output:  "security_finding.app_protocol",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "Client",
+           output:  "client.app_name",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "ClientAppDetector",
+           output:  "client.app_detector",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "EventPriority",
+           output:  "security_finding.severity",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "InitiatorBytes",
+           output:  "network_traffic.initiator_bytes",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "InitiatorPackets",
+           output:  "network_traffic.initiator_packets",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "NAT_InitiatorIP",
+           output:  "network_endpoint.initiator_ip",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "NAT_InitiatorPort",
+           output:  "network_endpoint.initiator_port",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "NAT_ResponderIP",
+           output:  "network_endpoint.responder_ip",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "NAT_ResponderPort",
+           output:  "network_endpoint.responder_port",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "Policy",
+           output:  "policy.prefilter_policy",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "ResponderBytes",
+           output:  "network_traffic.responder_bytes",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "ResponderPackets",
+           output:  "network_traffic.responder_packets",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SSLActualAction",
+           output:  "tls.actual_action",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SSLCertificate",
+           output:  "tls.certificate",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SSLCipherSuite",
+           output:  "tls.cipher",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SSLExpectedAction",
+           output:  "tls.expected_action",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SSLFlowStatus",
+           output:  "tls.flow_status",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SSLPolicy",
+           output:  "tls.policy",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SSLServerCertStatus",
+           output:  "tls.server_cert_status",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "SSLVersion",
+           output:  "tls.version",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "URL",
+           output:  "url.text",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "URLCategory",
+           output:  "url.category",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "URLReputation",
+           output:  "url.reputation",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "WebApplication",
+           output:  "security_finding.web_app_name",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "FileName",
+           output:  "file.name",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "FilePolicy",
+           output:  "file.policy",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "FileSHA256",
+           output:  "fingerprint.value",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "FileSandboxStatus",
+           output:  "file.sandbox_status",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "FileSize",
+           output:  "file.size",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "FileStaticAnalysisStatus",
+           output:  "file.analysis_status",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "FileStorageStatus",
+           output:  "file.storage_status",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "FileType",
+           output:  "file.type",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "URI",
+           output:  "url.text",
+           match:   ".*",
+           replace: "$0"
+         },
+         {
+           input:   "ThreatName",
+           output:  "malware.name",
+           match:   ".*",
+           replace: "$0"
+         }
+        ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+data_dependencies: "AWS CloudWatch, VPC Flow Logs, S3 access logs"
+required_fields: "timestamp, service, metric, bucket, eventName, srcaddr, dstaddr, uriPath"
+description: "High‑level view of AWS infrastructure: Lambda invocation rates, system metrics (CPU and network), recent S3 events with top accessed paths, and a sample of VPC flow logs."
+usecase_type: "Operations"
+usecase_action: "Dashboard | Performance Monitoring"
+tags: "aws, cloudwatch, lambda, vpc, s3, infrastructure"
+version: "v1.0"

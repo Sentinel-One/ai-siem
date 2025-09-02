@@ -17,7 +17,7 @@ Sentinel-One AI-SIEM repository is a community-driven, open source project desig
 
 ## Repository layout
 ```
-aisiem/                # AI SIEM core structure (255+ components)
+ai-siem/                # AI SIEM core structure (255+ components)
   ├── dashboards/      # Visualizations (79 dashboards with metadata)
   │   └── community/   # Community-contributed dashboards
   ├── detections/      # Detection rules (8 detections with metadata)

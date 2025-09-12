@@ -41,23 +41,19 @@ ai-siem/                # AI SIEM core structure (255+ components)
 
 ---
 
-## Contribution guide
+## Contribution guide ##
 1. Fork the repo and create a feature branch.  
 2. Name files `vendor-usecase-vX.Y.<ext>` (e.g., `zscaler_http_access-v1.0.s1ql`) and add a matching `metadata.yaml`.  
-3. Run `yamllint` & `s1ql-lint`; ensure all tests pass.  
-4. Include or update sample logs under `tests/fixtures`.  
-5. Open a Pull Request – CI will run lint, replay tests, secret scanning and CodeQL.  
-6. At least one **CODEOWNER** review is required before merge.
+3. Include or update sample logs under `tests/fixtures`.  
+4. Open a Pull Request – CI will run secret scanning and CodeReview.  
+5. At least one owner review is required before merge.
 
-Detailed steps live in **docs/CONTRIBUTING.md**.
 
 ---
 
 ## Automation & quality gates
 | Stage        | What it does                                                                        |
 |--------------|-------------------------------------------------------------------------------------|
-| Static lint  | `yamllint` + `s1ql‑lint`                                                            |
-| Replay test  | Replays sample logs against a disposable tenant; ensures low noise (≤ 0.1% FP rate across test data) |
 | Security     | Secret scanning & CodeQL                                                            |
 | Release      | Semantic‑release tags `vX.Y.Z` and publishes artifacts to GitHub Releases & S3      |
 
@@ -81,7 +77,7 @@ Released under the **GNU Affero General Public License v3.0 (AGPL-3.0)** – ens
 ---
 
 ## Getting help
-Open an issue or join the `#ai-siem-community` Slack channel. Office hours every <x days @ 09:00 EST>.
+Open an issue. Office hours TBD based on requests.
 
 
 ```yaml

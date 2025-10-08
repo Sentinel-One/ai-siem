@@ -1,0 +1,10 @@
+metadata_details:
+  data_dependencies: "dataSource.name='CloudTrail' dataSource.category = 'security'"
+  required_fields: "api.service.name, cloud.region, activity_name, unmapped.requestParameters.roleName"
+  description: "Provide a breakdown of AWS CloudTrail services by region and user activity"
+  usecase_type: "Security"
+  usecase_type: "Operational"
+  usecase_action: "Dashboard"
+  tags: dashboard, migrated, samples-main
+  version: latest
+  author: gcastill0

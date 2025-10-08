@@ -1,0 +1,10 @@
+metadata_details:
+  data_dependencies: "dataSource.name='CloudTrail' dataSource.category = 'security'"
+  required_fields: "cloud.region, actor.user.type, src_endpoint.uid, actor.user.uid, http_request.user_agent"
+  description: "Filters access view by service and user"
+  usecase_type: "Security"
+  usecase_type: "Operational"
+  usecase_action: "Dashboard"
+  tags: dashboard, migrated, samples-main
+  version: latest
+  author: gcastill0

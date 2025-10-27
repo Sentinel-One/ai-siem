@@ -1,0 +1,1592 @@
+{
+  "name": "[AI SIEM] Get Data Source Resources",
+  "description": "",
+  "actions": [
+    {
+      "action": {
+        "type": "manual_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Manual Trigger",
+          "action_type": "manual_trigger",
+          "trigger_type": "dynamic",
+          "dynamic_properties": {
+            "Search": {
+              "title": "",
+              "description": "Enter your data source name. Free text search. (case insensitive)",
+              "index": 0,
+              "type": "text",
+              "validation": {
+                "required": true,
+                "min_length": null,
+                "max_length": null
+              }
+            },
+            "Email": {
+              "title": "",
+              "description": "Provide email recipient.",
+              "index": 1,
+              "type": "text",
+              "validation": {
+                "required": true,
+                "min_length": null,
+                "max_length": null
+              }
+            }
+          },
+          "static_payload": "{}"
+        },
+        "description": null,
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 26,
+      "connected_to": [
+        {
+          "target": 29,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set JQ",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "search_jq",
+              "value": "\".[] | select(.name | tostring | ascii_downcase | contains(\\\"{{Function.LOWER(manual-trigger.data.Search)}}\\\"))\"",
+              "is_secret": false
+            },
+            {
+              "name": "future_search_jq",
+              "value": "# -------- Normalization helpers --------\ndef fold_diacritics:\n  gsub(\"[àáâãäå]\";\"a\") | gsub(\"[ç]\";\"c\") | gsub(\"[èéêë]\";\"e\")\n  | gsub(\"[ìíîï]\";\"i\") | gsub(\"[ñ]\";\"n\") | gsub(\"[òóôõö]\";\"o\")\n  | gsub(\"[ùúûü]\";\"u\") | gsub(\"[ýÿ]\";\"y\");\n\ndef norm:\n  ascii_downcase\n  | fold_diacritics\n  | gsub(\"[^a-z0-9]+\";\" \")     # keep letters/numbers, turn the rest into spaces\n  | gsub(\"\\\\s+\";\" \")           # collapse spaces\n  | ltrimstr(\" \")\n  | rtrimstr(\" \");\n\ndef tokens: norm | split(\" \") | map(select(length>0));\n\n# Unique-ifying a list\ndef uniq: unique;\n\n# -------- n-gram / trigram helpers (cheap fuzzy) --------\ndef trigrams($s):\n  ($s|length) as $n\n  | if $n < 3 then [$s]\n    else [ range(0; $n - 2) | $s[. : .+3] ]\n    end;\n\ndef jaccard(a; b):\n  (a|uniq) as $a\n  | (b|uniq) as $b\n  | ($a + $b) as $u\n  | ($u|length) as $u_len\n  | (($a + $b | group_by(.) | map(select(length>1)|.[0]) ) | length) as $i_len\n  | if $u_len == 0 then 0 else ($i_len / ($u_len - $i_len)) end;\n\n# -------- term/field scoring --------\n# Boosts let you weigh certain fields more heavily\ndef score_record($q; $boosts):\n  # Normalize query and fields\n  ($q | norm) as $qnorm\n  | (.title // \"\"     | norm) as $title\n  | (.category // \"\"  | norm) as $category\n  | (.description // \"\" | norm) as $desc\n\n  # Field weights (tune as you like)\n  | ($boosts.title     // 3) as $b_title\n  | ($boosts.category  // 1) as $b_cat\n  | ($boosts.description // 1) as $b_desc\n\n  # Build per-field scores\n  | def field_score($q; $t; $b):\n      # exact/prefix/contains bonuses\n      (if $t == $q then 1 else 0 end)                        as $exact\n      | (if ($t|startswith($q)) and ($q|length>0) then 1 else 0 end) as $prefix\n      | (if ($t|contains($q)) and ($q|length>0) then 1 else 0 end)   as $substr\n      # n-gram similarity\n      | (jaccard(trigrams($q); trigrams($t)))                as $jac\n      # token overlap (encourages partial word matches)\n      | ($q|tokens) as $qtoks\n      | ($t|tokens) as $ttoks\n      | (jaccard($qtoks; $ttoks)) as $tokjac\n      # Weighted sum; tune numbers to taste\n      | (($exact*10) + ($prefix*5) + ($substr*2) + ($jac*3) + ($tokjac*4)) * $b\n    ;\n\n  # Combine fields\n  ( field_score($qnorm; $title; $b_title)\n  + field_score($qnorm; $category; $b_cat)\n  + field_score($qnorm; $desc; $b_desc)\n  ) as $base\n\n  # Optional: short alias corrections for common misspellings\n  # Map a few likely typos to their canonical form for a small extra bump.\n  | ( { \"gooogle\": \"google\", \"goolge\": \"google\", \"goggl\": \"google\" } ) as $alias\n  | ($alias[$qnorm] // \"\") as $canonical\n  | (if $canonical != \"\" and ($title|contains($canonical) or $desc|contains($canonical) or $category|contains($canonical))\n     then 3 else 0 end) as $alias_bump\n\n  | $base + $alias_bump\n;\n\n# -------- Main entry: pass in a query; get back sorted results --------\n# Usage: jq -f search.jq --arg q \"gooogle\" data.json\ndef search($q):\n  .items\n  | map( . as $rec\n         | ($rec | score_record($q; {title:3, description:1, category:1})) as $score\n         | $rec + {score: $score}\n       )\n  | sort_by(-.score)\n  | map(select(.score > 0));  # drop total non-matches\n\n# Output format: id/title/score — customize as you like\ndef pretty:\n  map({id, title, category, score: (.score|round*1.0)});\n\n# Entry point when run with --arg q\nsearch($q) | pretty",
+              "is_secret": false
+            },
+            {
+              "name": "row_jq",
+              "value": "# --- helpers ---\ndef esc($x): ($x|tostring|gsub(\"&\";\"&amp;\")|gsub(\"<\";\"&lt;\")|gsub(\">\";\"&gt;\"));\ndef tag($k; $v): \"<span class=\\\"meta-tag\\\">\" + esc($k) + \": \" + esc($v) + \"</span>\";\ndef pick_link: (.html_url // .url // .path // \"\");\n\ndef detect_source:\n  (.source // (\n    ( .path? // \"\" ) as $p\n    | if ($p | test(\"/community/\")) then \"Community\"\n      else \"Official\"\n      end\n  ));\n\ndef item_row($source):\n  . as $it\n  | ($it.name // \"Unknown\")    as $name\n  | ($it.metadata_details.description // \"—\")   as $desc\n  | ($it.version // \"N/A\")     as $ver\n  | ($it.last_update // \"N/A\") as $lu\n  | (pick_link)                as $href\n  | \"<div class=\\\"asset-item\\\">\"\n    + \"<p class=\\\"asset-name\\\">\" + esc($name) + \"</p>\"\n    + \"<p class=\\\"asset-description\\\">\" + esc($desc) + \"</p>\"\n    + \"<div class=\\\"asset-meta\\\">\"\n      + tag(\"Source\"; $source)\n      + tag(\"Version\"; $ver)\n      + tag(\"Last Update\"; $lu)\n    + \"</div>\"\n    + \"<div class=\\\"asset-actions\\\">\"\n      + (if ($href|length) > 0\n         then \"<a href=\\\"\" + esc($href) + \"\\\" class=\\\"btn\\\" target=\\\"_blank\\\">Open</a>\"\n         else \"\" end)\n    + \"</div>\"\n  + \"</div>\";\n\ndef rows_or_empty_auto($arr; $empty_msg):\n  ($arr // []) as $a\n  | if ($a|length) > 0\n    then $a | map(item_row(detect_source)) | join(\"\")\n    else \"<div class=\\\"no-results\\\">\" + esc($empty_msg) + \"</div>\"\n    end;\n\n# --- normalize input: object/array and optional .payload ---\n( if type == \"array\" then {communityParsers_matches: .}\n  elif has(\"payload\") then .payload\n  else . end ) as $root\n\n# --- collect buckets with tolerant key names ---\n| $root as $r\n| (\n    (($r.communityParsers_matches // []) +\n     ($r.sentineloneParsers_matches // []) +\n     ($r.officialParsers_matches // []) +\n     ($r.parsers_matches // []))\n  ) as $parsers_all\n| (\n    (($r.dashboard_matches // []) +\n     ($r.dashboards_matches // []))\n  ) as $dash_all\n| (\n    (($r.communityDetections_matches // []) +\n     ($r.officialDetections_matches // []) +\n     ($r.detections_matches // []))\n  ) as $det_all\n\n# --- output ONLY the row strings ---\n| {\n    parser_rows:    rows_or_empty_auto($parsers_all; \"No parsers found for this data source.\"),\n    dashboard_rows: rows_or_empty_auto($dash_all;    \"No dashboards found for this data source.\"),\n    detection_rows: rows_or_empty_auto($det_all;     \"No detections found for this data source.\")\n  }\n",
+              "is_secret": false
+            },
+            {
+              "name": "dashboard_metadata_jq",
+              "value": ".\n| (split(\"\\n\")\n   | map(rtrimstr(\"\\r\"))                     # handle CRLF just in case\n   | map(sub(\"^\\\\s*\"; \"\"))                   # trim ANY leading whitespace\n   | map(select(. != \"\"))                    # drop blank lines\n   | map(select(. != \"metadata_details:\"))   # drop the top-level header\n   | map(capture(\"^(?<k>[A-Za-z0-9_\\\\-]+):\\\\s*(?<v>.*)$\")?)\n   | map(select(. != null))\n   | reduce .[] as $kv ({};\n       ($kv.v | gsub(\"^\\\"|\\\"$\"; \"\")) as $v   # strip surrounding quotes if present\n       | . + {\n           ($kv.k):\n             (if $kv.k == \"tags\"\n              then ($v | split(\",\") | map(gsub(\"^\\\\s+|\\\\s+$\"; \"\")))\n              else $v\n              end)\n         }\n     )\n )\n| { metadata_details: . }",
+              "is_secret": false
+            },
+            {
+              "name": "metadata_jq",
+              "value": "def parse_metadata:\n  (split(\"\\n\")\n   | map(rtrimstr(\"\\r\"))\n   | map(sub(\"^\\\\s*\"; \"\"))                 # trim any leading spaces\n   | map(select(length > 0))\n   | map(select(. != \"metadata_details:\")) # drop the header line\n   | map(capture(\"^(?<k>[A-Za-z0-9_\\\\-]+):\\\\s*(?<v>.*)$\")?)\n   | map(select(. != null))\n   | reduce .[] as $kv ({};\n       ($kv.v | gsub(\"^\\\"|\\\"$\"; \"\")) as $v  # strip surrounding quotes\n       | . + {\n           ($kv.k):\n             (if $kv.k == \"tags\"\n              then ($v | split(\",\") | map(gsub(\"^\\\\s+|\\\\s+$\"; \"\")) | map(select(length>0)))\n              else $v\n              end)\n         }\n     )\n  );\n\n(.body? // .) as $s\n| ($s | parse_metadata) as $md\n| if (type == \"object\" and (.body? // null) != null) then\n    . + { metadata_details: $md }           # merge onto original object\n  else\n    { metadata_details: $md }               # input was a string; just return the parsed object\n  end",
+              "is_secret": false
+            },
+            {
+              "name": "metadata_jq_old",
+              "value": "def parse_metadata:\n  (split(\"\\n\")\n   | map(rtrimstr(\"\\r\"))\n   | map(sub(\"^\\\\s*\"; \"\"))                 # trim any leading spaces\n   | map(select(length > 0))\n   | map(select(. != \"metadata_details:\")) # drop the header line\n   | map(capture(\"^(?<k>[A-Za-z0-9_\\\\-]+):\\\\s*(?<v>.*)$\")?)\n   | map(select(. != null))\n   | reduce .[] as $kv ({};\n       ($kv.v | gsub(\"^\\\"|\\\"$\"; \"\")) as $v  # strip surrounding quotes\n       | . + {\n           ($kv.k):\n             (if $kv.k == \"tags\"\n              then ($v | split(\",\") | map(gsub(\"^\\\\s+|\\\\s+$\"; \"\")) | map(select(length>0)))\n              else $v\n              end)\n         }\n     )\n  );\n\n(.body? // .) as $s\n| ($s | parse_metadata) as $md\n| if (type == \"object\" and (.body? // null) != null) then\n    . + { metadata_details: $md }           # merge onto original object\n  else\n    { metadata_details: $md }               # input was a string; just return the parsed object\n  end",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 200.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 29,
+      "connected_to": [
+        {
+          "target": 12,
+          "custom_handle": null
+        },
+        {
+          "target": 14,
+          "custom_handle": null
+        },
+        {
+          "target": 16,
+          "custom_handle": null
+        },
+        {
+          "target": 19,
+          "custom_handle": null
+        },
+        {
+          "target": 23,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get SentinelOne Parsers",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "https://api.github.com/repos/Sentinel-One/ai-siem/contents/parsers/sentinelone",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 377.35439999999994
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 23,
+      "connected_to": [
+        {
+          "target": 24,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get SentinelOne Parsers Matches",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "sentineloneParsers_matches",
+              "value": "{{Function.JQ(get-sentinelone-parsers.body, local_var.search_jq)}}",
+              "is_secret": false
+            },
+            {
+              "name": "enriched_sentineloneParsers_matches",
+              "value": "[]",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 554.0315999999999
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 24,
+      "connected_to": [
+        {
+          "target": 28,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get Community Dashboards",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "https://api.github.com/repos/Sentinel-One/ai-siem/contents/dashboards/community",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -786,
+            "y": 377.35439999999994
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 12,
+      "connected_to": [
+        {
+          "target": 21,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "SentinelOne Parsers Loop",
+          "action_type": "loop",
+          "loop_type": "dynamic",
+          "number_of_iterations": 1,
+          "object_to_iterate": "{{local_var.sentineloneParsers_matches}}"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -36.5,
+            "y": 768.7087999999999
+          },
+          "dimensions": {
+            "width": 329,
+            "height": 641.0316
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 28,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        },
+        {
+          "target": 25,
+          "custom_handle": "inner"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get Community Detections",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "https://api.github.com/repos/Sentinel-One/ai-siem/contents/detections/community",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 393,
+            "y": 377.35439999999994
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 14,
+      "connected_to": [
+        {
+          "target": 13,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get Community Parsers",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "https://api.github.com/repos/Sentinel-One/ai-siem/contents/parsers/community",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -393,
+            "y": 377.35439999999994
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 16,
+      "connected_to": [
+        {
+          "target": 17,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get Community Parsers Matches",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "communityParsers_matches",
+              "value": "{{Function.JQ(get-community-parsers.body, local_var.search_jq)}}",
+              "is_secret": false
+            },
+            {
+              "name": "enriched_communityParsers_matches",
+              "value": "[]",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -393,
+            "y": 554.0315999999999
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 17,
+      "connected_to": [
+        {
+          "target": 9,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get Community Workflows",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "https://api.github.com/repos/Sentinel-One/ai-siem/contents/workflows/community",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 749.5,
+            "y": 377.35439999999994
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 19,
+      "connected_to": [
+        {
+          "target": 20,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get Community Workflows Matches",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "workflow_matches",
+              "value": "{{Function.JQ(get-community-workflows.body, local_var.search_jq)}}",
+              "is_secret": false
+            },
+            {
+              "name": "enriched_workflow_matches",
+              "value": "[]",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 749.5,
+            "y": 554.0315999999999
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 20,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get Dashboard Matches",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "dashboard_matches",
+              "value": "{{Function.JQ(get-community-dashboards.body, local_var.search_jq)}}",
+              "is_secret": false
+            },
+            {
+              "name": "enriched_dashboard_matches",
+              "value": "[]",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -786,
+            "y": 554.0315999999999
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 21,
+      "connected_to": [
+        {
+          "target": 10,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get SentinelOne Parsers Metadata",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/parsers/sentinelone/{{sentinelone-parsers-loop.item.name}}/metadata.yaml",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 176.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 25,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 28
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Build Metadata JQ 3",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "sentineloneParsers_metadata_jq",
+              "value": ". + {{Function.ACCESS_LIST_ITEM(Function.JQ(get-sentinelone-parsers-metadata.body, local_var.metadata_jq), 0)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 353.3544
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "connected_to": [
+        {
+          "target": 3,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 28
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Community Parsers Loop",
+          "action_type": "loop",
+          "loop_type": "dynamic",
+          "number_of_iterations": 1,
+          "object_to_iterate": "{{local_var.communityParsers_matches}}"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -429.5,
+            "y": 768.7087999999999
+          },
+          "dimensions": {
+            "width": 329,
+            "height": 641.0316
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 9,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        },
+        {
+          "target": 18,
+          "custom_handle": "inner"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Dashboard Loop",
+          "action_type": "loop",
+          "loop_type": "dynamic",
+          "number_of_iterations": 1,
+          "object_to_iterate": "{{local_var.dashboard_matches}}"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -822.5,
+            "y": 768.7087999999999
+          },
+          "dimensions": {
+            "width": 329,
+            "height": 641.0316
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        },
+        {
+          "target": 22,
+          "custom_handle": "inner"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get Community Detection Matches",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "communityDetections_matches",
+              "value": "{{Function.JQ(get-community-detections.body, local_var.search_jq)}}",
+              "is_secret": false
+            },
+            {
+              "name": "enriched_communityDetections_matches",
+              "value": "[]",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 393,
+            "y": 554.0315999999999
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 13,
+      "connected_to": [
+        {
+          "target": 8,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get Community Parsers Metadata",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/parsers/community/{{community-parsers-loop.item.name}}/metadata.yaml",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 176.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 18,
+      "connected_to": [
+        {
+          "target": 5,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 9
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get Dashboard Metadata",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/dashboards/community/{{dashboard-loop.item.name}}/metadata.yaml",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 176.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 22,
+      "connected_to": [
+        {
+          "target": 4,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 10
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Append Enriched SentinelOne Parser Match",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "enriched_sentineloneParsers_matches",
+              "value": "{{Function.APPEND(local_var.enriched_sentineloneParsers_matches, Function.ACCESS_LIST_ITEM(Function.JQ(sentinelone-parsers-loop.item, local_var.sentineloneParsers_metadata_jq), 0))}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 530.0316
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 3,
+      "connected_to": [],
+      "parent_action": 28
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Build Metadata JQ",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "dashboard_metadata_jq",
+              "value": ". + {{Function.ACCESS_LIST_ITEM(Function.JQ(get-dashboard-metadata.body, local_var.metadata_jq), 0)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 353.3544
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 10
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Build Metadata JQ 2",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "communityParsers_metadata_jq",
+              "value": ". + {{Function.ACCESS_LIST_ITEM(Function.JQ(get-community-parsers-metadata.body, local_var.metadata_jq), 0)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 353.3544
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 9
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Community Detections Loop",
+          "action_type": "loop",
+          "loop_type": "dynamic",
+          "number_of_iterations": 1,
+          "object_to_iterate": "{{local_var.communityDetections_matches}}"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 356.5,
+            "y": 768.7087999999999
+          },
+          "dimensions": {
+            "width": 329,
+            "height": 641.0316
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 8,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        },
+        {
+          "target": 15,
+          "custom_handle": "inner"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "delay",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Delay",
+          "action_type": "delay",
+          "time_unit": "seconds",
+          "value": 5
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1510.4176
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 11,
+      "connected_to": [
+        {
+          "target": 30,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "payload",
+              "value": "{\n  \"dashboard_matches\": {{local_var.enriched_dashboard_matches}},\n  \"communityParsers_matches\": {{local_var.enriched_communityParsers_matches}},\n  \"sentineloneParsers_matches\": {{local_var.enriched_sentineloneParsers_matches}},\n  \"communityDetections_matches\": {{local_var.enriched_communityDetections_matches}},\n  \"workflow_matches\": {{local_var.enriched_workflow_matches}}\n}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1687.0948
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 30,
+      "connected_to": [
+        {
+          "target": 31,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get Community Detections Metadata",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/detections/community/{{community-detections-loop.item.name}}/metadata.yaml",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 176.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 15,
+      "connected_to": [
+        {
+          "target": 7,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 8
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Append Enriched Community Parser Match",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "enriched_communityParsers_matches",
+              "value": "{{Function.APPEND(local_var.enriched_communityParsers_matches, Function.ACCESS_LIST_ITEM(Function.JQ(community-parsers-loop.item, local_var.communityParsers_metadata_jq), 0))}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 530.0316
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [],
+      "parent_action": 9
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Append Enriched Dashboard Match",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "enriched_dashboard_matches",
+              "value": "{{Function.APPEND(local_var.enriched_dashboard_matches, Function.ACCESS_LIST_ITEM(Function.JQ(dashboard-loop.item, local_var.dashboard_metadata_jq), 0))}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 530.0316
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [],
+      "parent_action": 10
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Build Metadata JQ 4",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "communityDetections_metadata_jq",
+              "value": ". + {{Function.ACCESS_LIST_ITEM(Function.JQ(get-community-detections-metadata.body, local_var.metadata_jq), 0)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 353.3544
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 7,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 8
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable 2",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "rows",
+              "value": "{{Function.JQ(local_var.payload, local_var.row_jq)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1863.7720000000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 31,
+      "connected_to": [
+        {
+          "target": 27,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Append Enriched Community Detection Match",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "enriched_communityDetections_matches",
+              "value": "{{Function.APPEND(local_var.enriched_communityDetections_matches, Function.ACCESS_LIST_ITEM(Function.JQ(community-detections-loop.item, local_var.communityDetections_metadata_jq), 0))}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 36.5,
+            "y": 530.0316
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [],
+      "parent_action": 8
+    },
+    {
+      "action": {
+        "type": "send_email",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Send Email",
+          "action_type": "send_email",
+          "subject": "[SentinelOne - AI SIEM] Results: {{manual-trigger.data.Search}}",
+          "to": [
+            "{{manual-trigger.data.Email}}"
+          ],
+          "cc": [],
+          "bcc": [],
+          "reply_to": [],
+          "mime_type": "text/html",
+          "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<meta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">\n<title>SentinelOne AI SIEM Resources</title>\n<style>\n    /* Basic Reset & Font Styles */\n    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }\n    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }\n    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }\n    body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #1a1a1a; }\n    \n    /* Main Styles */\n    .container {\n        font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;\n        line-height: 1.5;\n    }\n    .header {\n        background-color: #6608ff;\n        color: #ffffff;\n        padding: 40px 30px;\n        text-align: center;\n    }\n    .header h1 {\n        margin: 0;\n        font-size: 28px;\n        font-weight: bold;\n    }\n    .content {\n        background-color: #2a2a2a;\n        padding: 30px;\n        border-radius: 0 0 8px 8px;\n    }\n    .content-card {\n        background-color: #333333;\n        border: 1px solid #444444;\n        border-radius: 8px;\n        margin-bottom: 25px;\n        overflow: hidden; /* Ensures border-radius is respected */\n        box-shadow: 0 4px 6px rgba(0,0,0,0.2);\n    }\n    .card-header {\n        background-color: #3d3d3d;\n        padding: 15px 20px;\n        border-bottom: 1px solid #444444;\n    }\n    .card-header h2 {\n        margin: 0;\n        font-size: 20px;\n        color: #ffffff;\n    }\n    .card-body {\n        padding: 20px;\n    }\n    .asset-item {\n        padding: 12px 0;\n        border-bottom: 1px solid #444444;\n    }\n    .asset-item:last-child { border-bottom: none; padding-bottom: 0; }\n    .asset-item:first-child { padding-top: 0; }\n    .asset-name {\n        font-size: 16px;\n        font-weight: bold;\n        color: #ffffff;\n        margin: 0 0 5px 0;\n    }\n    .asset-description {\n        font-size: 14px;\n        color: #b0b0b0;\n        margin: 0 0 12px 0;\n    }\n    .asset-meta { margin-bottom: 12px; }\n    .meta-tag {\n        display: inline-block;\n        background-color: #4a4a4a;\n        color: #d0d0d0;\n        font-size: 11px;\n        padding: 3px 8px;\n        border-radius: 12px;\n        margin-right: 8px;\n        margin-bottom: 5px;\n        font-family: 'Courier New', Courier, monospace;\n        font-weight: bold;\n    }\n    .asset-actions a { margin-right: 8px; margin-bottom: 5px; }\n    .no-results { font-size: 14px; color: #b0b0b0; font-style: italic; }\n    .btn {\n        display: inline-block;\n        padding: 6px 14px;\n        font-size: 13px;\n        font-weight: bold;\n        color: #ffffff !important;\n        background-color: #6608ff;\n        text-decoration: none;\n        border-radius: 5px;\n        transition: background-color 0.3s ease;\n    }\n    .btn:hover { background-color: #5507d5; }\n    .btn-secondary { background-color: #555555; color: #ffffff !important; }\n    .btn-secondary:hover { background-color: #666666; }\n    .footer {\n        padding: 30px;\n        text-align: center;\n        font-size: 12px;\n        color: #95a5a6;\n    }\n\n    /* Responsive */\n    @media screen and (max-width: 600px) {\n        .main-table { width: 100% !important; }\n        .header h1 { font-size: 24px; }\n        .content { padding: 20px; }\n    }\n</style>\n</head>\n<body>\n    <center>\n        <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"background-color: #1a1a1a;\">\n            <tr>\n                <td align=\"center\">\n                    <!--[if (gte mso 9)|(IE)]>\n                    <table align=\"center\" border=\"0\" cellspacing=\"0\" cellpadding=\"0\" width=\"600\">\n                    <tr><td align=\"center\" valign=\"top\" width=\"600\">\n                    <![endif]-->\n                    <table class=\"main-table container\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"max-width: 600px;\">\n                        \n                        <!-- HEADER -->\n                        <tr>\n                            <td class=\"header\" style=\"border-radius: 8px 8px 0 0;\">\n                                <h1 style=\"color: #ffffff;\">SentinelOne AI SIEM Resources</h1>\n                            </td>\n                        </tr>\n\n                        <!-- MAIN CONTENT -->\n                        <tr>\n                            <td class=\"content\">\n                                <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n                                    <tr>\n                                        <td>\n                                            <p style=\"font-size: 16px; color: #d0d0d0; margin-bottom: 25px;\">\n                                                Here are the assets found for the data source:\n                                                <strong style=\"color: #ffffff;\">{{manual-trigger.data.Search}}</strong>\n                                                <br>\n                                                <span style=\"font-size:12px;color:#9aa0a6;\">Generated: {{Function.DATETIME_NOW()}}</span>\n                                            </p>\n\n                                            <!-- PARSERS CARD -->\n                                            <div class=\"content-card\">\n                                                <div class=\"card-header\">\n                                                    <h2>Parsers</h2>\n                                                </div>\n                                                <div class=\"card-body\">\n                                                    {{local_var.rows[0].parser_rows}}\n                                                </div>\n                                            </div>\n\n                                            <!-- DASHBOARDS CARD -->\n                                            <div class=\"content-card\">\n                                                <div class=\"card-header\">\n                                                    <h2>Dashboards</h2>\n                                                </div>\n                                                <div class=\"card-body\">\n                                                    {{local_var.rows[0].dashboard_rows}}\n                                                </div>\n                                            </div>\n\n                                            <!-- DETECTIONS CARD -->\n                                            <div class=\"content-card\">\n                                                <div class=\"card-header\">\n                                                    <h2>Detections</h2>\n                                                </div>\n                                                <div class=\"card-body\">\n                                                    {{local_var.rows[0].detection_rows}}\n                                                </div>\n                                            </div>\n\n                                        </td>\n                                    </tr>\n                                </table>\n                            </td>\n                        </tr>\n\n                        <!-- FOOTER -->\n                        <tr>\n                            <td class=\"footer\">\n                                <p>Hyperautomation Created by Patryk Kostek - patryk.kostek@sentinelone.com</p>\n                            </td>\n                        </tr>\n                    </table>\n                    <!--[if (gte mso 9)|(IE)]></td></tr></table><![endif]-->\n                </td>\n            </tr>\n        </table>\n    </center>\n</body>\n</html>\n",
+          "attachments": [],
+          "continue_on_fail": false
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 2040.4492
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 27,
+      "connected_to": [],
+      "parent_action": null
+    }
+  ]
+}

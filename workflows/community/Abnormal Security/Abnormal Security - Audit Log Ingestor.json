@@ -1,0 +1,567 @@
+{
+  "actions": [
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 1.319507910772927,
+            "y": -234.21265416218864
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "scheduled_trigger",
+          "ends_on": "never",
+          "max_runs": 1,
+          "name": "Scheduled Trigger",
+          "schedule_method": "interval",
+          "schedule_value": [
+            {
+              "interval_unit": "minutes",
+              "interval_value": 15,
+              "schedule_method": "interval",
+              "tz": "America/Los_Angeles"
+            }
+          ],
+          "until": null
+        },
+        "description": null,
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "scheduled_trigger",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 7
+        }
+      ],
+      "export_id": 8,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 1.319507910772927,
+            "y": -57.53545416218864
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Memory",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "timestamp_jq",
+              "value": ". |= sub(\"\\\\.[0-9]+Z$\"; \"Z\")"
+            },
+            {
+              "is_secret": false,
+              "name": "event_jq",
+              "value": "# 1) A recursive flattener that only descends into objects\ndef flatten_obj($o; $prefix):\n  $o\n  | to_entries\n  | map(\n      if (.value | type) == \"object\" then\n        # Recurse into nested object\n        flatten_obj(.value; $prefix + .key + \".\")\n      else\n        # Leaf value: emit a single‑key object\n        { ($prefix + .key): .value }\n      end\n    )\n  | add;\n\n# 2) Apply to your auditLogs\n.body.auditLogs\n| map(\n    . as $orig\n    # flatten the original object into dot‑notation\n    | (flatten_obj($orig; \"\")) as $flat\n    # build the final shape\n    | {\n        attrs:\n          (\n            {\n              category_name:                 \"Hyperautomation\",\n              \"metadata.product.vendor_name\": \"Abnormal Security\",\n              \"metadata.version\":             \"1.0.0\",\n              \"dataSource.category\":          \"security\",\n              \"dataSource.name\":              \"Abnormal Security\",\n              \"dataSource.vendor\":            \"Abnormal Security\",\n              message:                        .,\n              parser:                         \"json\"\n            }\n          ),\n        sev: 3,\n        ts:\n          (\n            $orig.timestamp\n            | sub(\"\\\\.[0-9]+\\\\+00:00$\"; \"+00:00\")  # strip microseconds+TZ\n            | sub(\" \"; \"T\")                         # space→T\n            | sub(\"\\\\+00:00$\"; \"Z\")                 # +00:00→Z\n            | strptime(\"%Y-%m-%dT%H:%M:%SZ\")\n            | mktime\n            | . * 1000000000                        # → nanoseconds\n          ),\n        thread: \"1\"\n      }\n)"
+            },
+            {
+              "is_secret": false,
+              "name": "pagniation_index",
+              "value": "\"1\""
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 10
+        }
+      ],
+      "export_id": 7,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 1.319507910772927,
+            "y": 119.14174583781136
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Transform Last Runtime",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "timestamp",
+              "value": "{{Function.ACCESS_LIST_ITEM(Function.JQ(scheduled-trigger.past_run, local_var.timestamp_jq), 0)}}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 6
+        }
+      ],
+      "export_id": 10,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 1166.0632,
+            "width": 819
+          },
+          "position": {
+            "x": -280.1804920892271,
+            "y": 333.8189458378114
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "loop",
+          "loop_type": "while",
+          "name": "Loop",
+          "number_of_iterations": 1,
+          "object_to_iterate": null
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "loop",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": "inner",
+          "target": 4
+        }
+      ],
+      "export_id": 6,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 75,
+            "width": 256
+          },
+          "position": {
+            "x": 355,
+            "y": 176.6772
+          }
+        },
+        "connection_id": "10fcd7e6-f4d0-4bf8-9d3b-290bd673a67e",
+        "connection_name": "",
+        "data": {
+          "action_type": "http_request",
+          "continue_on_fail": false,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "method": "get",
+          "name": "Get Audit Logs",
+          "parameters": [
+            {
+              "parameter_name": "filter",
+              "parameter_value": "timestamp gte {{local_var.timestamp}}"
+            },
+            {
+              "parameter_name": "pageSize",
+              "parameter_value": "50"
+            },
+            {
+              "parameter_name": "pageNumber",
+              "parameter_value": "{{Function.INT(local_var.pagniation_index)}}"
+            }
+          ],
+          "payload": null,
+          "proxy_host": null,
+          "proxy_password": null,
+          "proxy_port": null,
+          "proxy_user": null,
+          "public_action_id": "2fbd9e7c-f212-4a2b-b63d-ee030a283fb2",
+          "redirect_follow": true,
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "url": "{{Connection.protocol}}{{Connection.url}}/v1/auditlogs",
+          "url_path": "/v1/threats/<<threatId>>",
+          "url_prefix": null,
+          "use_authentication_data": true,
+          "use_proxy": false
+        },
+        "description": "Get details of a Threat identified by Abnormal Security",
+        "integration_id": "870d40d6-248b-4ae7-bc83-3d81cd9398e8",
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "integration",
+        "type": "http_request",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 1
+        }
+      ],
+      "export_id": 4,
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 355,
+            "y": 352.3544
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "condition",
+          "condition": null,
+          "condition_type": "multi",
+          "conditions": [
+            {
+              "compared_value": "[]",
+              "comparison_operator": "equals",
+              "input_value": "{{get-audit-logs.body.auditLogs}}"
+            }
+          ],
+          "conditions_relationship": "and",
+          "name": "Are Logs Empty"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "condition",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": "true",
+          "target": 2
+        },
+        {
+          "custom_handle": "false",
+          "target": 9
+        }
+      ],
+      "export_id": 1,
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 515,
+            "y": 529.0316
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "break_loop",
+          "name": "Break Loop Logs Empty"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "break_loop",
+        "use_connection_name": false
+      },
+      "connected_to": [],
+      "export_id": 2,
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 75,
+            "width": 256
+          },
+          "position": {
+            "x": 195,
+            "y": 529.0316
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Transform Events",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "transformed_events",
+              "value": "{{Function.ACCESS_LIST_ITEM(Function.JQ(get-audit-logs, local_var.event_jq), 0)}}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 0
+        }
+      ],
+      "export_id": 9,
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 75,
+            "width": 256
+          },
+          "position": {
+            "x": 195,
+            "y": 704.7088
+          }
+        },
+        "connection_id": "eccc9390-7950-45da-9fc7-5d6f06bef1d1",
+        "connection_name": "",
+        "data": {
+          "action_type": "http_request",
+          "continue_on_fail": false,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "method": "post",
+          "name": "Add Events (Fixed)",
+          "parameters": [],
+          "payload": "{\n  \"session\": \"{{Function.GENERATE_UUID4()}}\",\n  \"sessionInfo\": {\n    \"serverType\": \"Abnormal Security\",\n    \"serverId\": \"Abnormal Security\"\n  },\n  \"events\": {{local_var.transformed_events}}\n}",
+          "proxy_host": null,
+          "proxy_password": null,
+          "proxy_port": null,
+          "proxy_user": null,
+          "public_action_id": "5e734867-14ea-42ff-924f-cf632805895b",
+          "redirect_follow": true,
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "url": "{{Connection.protocol}}{{Connection.url}}/api/addEvents",
+          "url_path": null,
+          "url_prefix": null,
+          "use_authentication_data": true,
+          "use_proxy": false
+        },
+        "description": "Add Events to DataSet  - https://community.sentinelone.com/s/article/000006773",
+        "integration_id": "92cfc975-2e0f-4c96-be29-00ea2fa91805",
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "integration",
+        "type": "http_request",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 5
+        }
+      ],
+      "export_id": 0,
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 75,
+            "width": 256
+          },
+          "position": {
+            "x": 195,
+            "y": 880.386
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "condition",
+          "condition": null,
+          "condition_type": "multi",
+          "conditions": [
+            {
+              "compared_value": "3",
+              "comparison_operator": "equals",
+              "input_value": "{{Function.LENGTH(get-audit-logs.body)}}"
+            }
+          ],
+          "conditions_relationship": "and",
+          "name": "Is Pagination"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "condition",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": "false",
+          "target": 3
+        },
+        {
+          "custom_handle": "true",
+          "target": 11
+        }
+      ],
+      "export_id": 5,
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 75,
+            "width": 256
+          },
+          "position": {
+            "x": 355,
+            "y": 1056.0632
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Update Index",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "pagniation_index",
+              "value": "{{Function.REPLACE(local_var.pagniation_index, local_var.pagniation_index, Function.STRING(get-audit-logs.body.nextPageNumber))}}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [],
+      "export_id": 11,
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 75,
+            "width": 256
+          },
+          "position": {
+            "x": 35,
+            "y": 1056.0632
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "break_loop",
+          "name": "Break Loop Pagination Done"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "break_loop",
+        "use_connection_name": false
+      },
+      "connected_to": [],
+      "export_id": 3,
+      "parent_action": 6
+    }
+  ],
+  "description": "This workflow is designed to run on a scheduled interval to pull audit logs from Abnormal Security and ingest them into AI SIEM for custom detection and threat hunting use.",
+  "name": "Abnormal Security - Audit Log Ingestor"
+}

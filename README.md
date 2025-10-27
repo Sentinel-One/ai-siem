@@ -23,6 +23,7 @@ ai-siem/                # AI SIEM core structure (255+ components)
   ├── detections/      # Detection rules (8 detections with metadata)
   │   └── community/   # Community-contributed detection rules
   ├── monitors/        # Monitoring scripts (3 Python monitors)
+  ├── pipelines/       # Prepared for Observo Transformations 
   ├── parsers/         # Parsing logic and configurations (165 parsers)
   │   ├── community/   # 148 community parsers (*.conf + metadata)
   │   └── sentinelone/ # 17 official marketplace parsers (*.conf + metadata)

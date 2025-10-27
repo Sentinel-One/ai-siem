@@ -1,0 +1,1083 @@
+{
+  "name": "[AI SIEM] Add Event Data to Detection Note",
+  "description": "",
+  "actions": [
+    {
+      "action": {
+        "type": "singularity_response_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Singularity Response Trigger",
+          "action_type": "singularity_response_trigger",
+          "filter_groups": [
+            {
+              "condition": {
+                "input_value": "detectionSource.product",
+                "compared_value": "STAR",
+                "comparison_operator": "equals"
+              },
+              "is_disabled": false,
+              "run_automatically": true,
+              "event_type": "alert",
+              "event_subtypes": [
+                "CREATE"
+              ]
+            }
+          ]
+        },
+        "description": null,
+        "client_data": {
+          "position": {
+            "x": 5.372578538967559,
+            "y": -452.8925865961177
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 18,
+      "connected_to": [
+        {
+          "target": 9,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is Platform Rule",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{singularity-response-trigger.data.analytics.category}}",
+                    "compared_value": "Platform Rule",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 5.372578538967559,
+            "y": -252.21538659611772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 9,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": "false"
+        },
+        {
+          "target": 7,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "43022939-217d-4822-ae8f-72dfc8d3f5f1",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "ef645af9-ed60-4efd-882e-bf534442ce86",
+        "data": {
+          "name": "Get Custom Detection Rule",
+          "action_type": "http_request",
+          "public_action_id": "34049bba-98b5-4b78-9de5-968251b550f9",
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/cloud-detection/rules",
+          "url_path": "/web/api/v2.0/threats",
+          "url_prefix": null,
+          "payload": "{}",
+          "parameters": [
+            {
+              "parameter_name": "countOnly",
+              "parameter_value": "false"
+            },
+            {
+              "parameter_name": "skipCount",
+              "parameter_value": "false"
+            },
+            {
+              "parameter_name": "query",
+              "parameter_value": "{{singularity-response-trigger.data.name}}"
+            },
+            {
+              "parameter_name": "siteIds",
+              "parameter_value": "{{singularity-response-trigger.data.realTime.scope.site.id}}"
+            },
+            {
+              "parameter_name": "isLegacy",
+              "parameter_value": "false"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json",
+            "accept": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "Gets the detection rule query that was triggered.",
+        "client_data": {
+          "position": {
+            "x": -154.62742146103244,
+            "y": -75.53818659611778
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "connected_to": [
+        {
+          "target": 16,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "43022939-217d-4822-ae8f-72dfc8d3f5f1",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "ef645af9-ed60-4efd-882e-bf534442ce86",
+        "data": {
+          "name": "Get Library Detection Rule",
+          "action_type": "http_request",
+          "public_action_id": "34049bba-98b5-4b78-9de5-968251b550f9",
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/detection-library/rules",
+          "url_path": "/web/api/v2.0/threats",
+          "url_prefix": null,
+          "payload": "{}",
+          "parameters": [
+            {
+              "parameter_name": "countOnly",
+              "parameter_value": "false"
+            },
+            {
+              "parameter_name": "skipCount",
+              "parameter_value": "false"
+            },
+            {
+              "parameter_name": "query",
+              "parameter_value": "{{singularity-response-trigger.data.name}}"
+            },
+            {
+              "parameter_name": "siteIds",
+              "parameter_value": "{{singularity-response-trigger.data.realTime.scope.site.id}}"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json",
+            "accept": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "Gets the detection rule query that was triggered.",
+        "client_data": {
+          "position": {
+            "x": 165.37257853896756,
+            "y": -75.53818659611778
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 7,
+      "connected_to": [
+        {
+          "target": 17,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set Query Custom",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "query",
+              "value": "{{Function.DEFAULT(get-custom-detection-rule.body.data[0].s1ql, \"\")}}",
+              "is_secret": false
+            },
+            {
+              "name": "rule",
+              "value": "{{get-custom-detection-rule.body.data[0]}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -154.62742146103244,
+            "y": 101.13901340388219
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 16,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set Query Library",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "query",
+              "value": "{{Function.DEFAULT(get-library-detection-rule.body.data[0].s1ql, \"\")}}",
+              "is_secret": false
+            },
+            {
+              "name": "rule",
+              "value": "{{get-library-detection-rule.body.data[0]}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 165.37257853896756,
+            "y": 101.13901340388219
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 17,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is Single Event Rule",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "or",
+                "conditions": [
+                  {
+                    "input_value": "{{Function.DEFAULT(get-library-detection-rule.body.data[0].queryType, \"null\")}}",
+                    "compared_value": "events",
+                    "comparison_operator": "equals"
+                  },
+                  {
+                    "input_value": "{{Function.DEFAULT(get-custom-detection-rule.body.data[0].queryType, \"null\")}}",
+                    "compared_value": "events",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 5.372578538967559,
+            "y": 277.8162134038823
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 11,
+      "connected_to": [
+        {
+          "target": 10,
+          "custom_handle": "false"
+        },
+        {
+          "target": 13,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "cfcc6d6e-9b32-41da-bc44-ba7a9f89f545",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "SDL Query",
+          "action_type": "http_request",
+          "public_action_id": "5864fb04-634a-4cf9-96e8-6b898f26880a",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/api/query",
+          "url_path": "/sdl/api/query",
+          "url_prefix": null,
+          "payload": "{\n  \"queryType\": \"log\",\n  \"filter\": \"{{local_var.query}}\",\n  \"startTime\": \"{{singularity-response-trigger.data.firstSeenAt}}\",\n  \"endTime\": \"{{singularity-response-trigger.data.createdAt}}\"\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "Get events (log records) that match your query.",
+        "client_data": {
+          "position": {
+            "x": 285.99757853896756,
+            "y": 454.49341340388236
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 13,
+      "connected_to": [
+        {
+          "target": 14,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set JQ",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "table_jq_back",
+              "value": "map(\n  del(.thread, .message, .timestamp)\n  | ([\"| Key | Value |\",\"|-----|--------|\"]\n     + (\n       [ paths(scalars) as $p\n         | {k: ($p|map(tostring)|join(\".\")), v: getpath($p)}\n       ]\n       | sort_by(.k)\n       | map(\"| \\(.k) | \\(.v|tostring|gsub(\"\\r|\\n\";\" \")|gsub(\"\\\\|\"; \"\\\\|\")) |\")\n     )\n    )\n  | join(\"\\n\")\n)\n| join(\"\\n\\n---\\n\\n\")",
+              "is_secret": false
+            },
+            {
+              "name": "table_jq",
+              "value": "def title:\n  (\n    .event.type? //       \n    .attributes.event.type? // \n    .attributes.event_type? //       \n    .event_type? //                    \n    .description? //                    \n    .id? //\n    \"Untitled Event\"\n  ) | tostring;\n\n# Render a batch of events as markdown sections\ndef render($items):\n  $items\n  | map(\n      del(.thread, .message, .timestamp)\n      | (\n          [ \"# \" + title\n          , \"\"\n          , \"| Key | Value |\"\n          , \"|-----|--------|\"\n          ] +\n          ( [ paths(scalars) as $p\n              | {k: ($p|map(tostring)|join(\".\")), v: getpath($p)}\n            ]\n            | sort_by(.k)\n            | map(\"| \\(.k) | \\(.v|tostring|gsub(\"\\r|\\n\";\" \")|gsub(\"\\\\|\"; \"\\\\|\")) |\")\n          )\n        )\n      | join(\"\\n\")\n    )\n  | join(\"\\n\\n------------------\\n\\n\");\n\n# Main\n10 as $limit\n| . as $all\n| ($all | length) as $n\n| (render($all[:$limit])) as $out\n| if $n > $limit then\n    $out\n    + \"\\n\\n------------------\\n\\n\"\n    + \"⚠️ Showing the first \\($limit) of \\($n) events.\\n\"\n    + \"To see all events, press the **Event Search** button.\"\n  else\n    $out\n  end",
+              "is_secret": false
+            },
+            {
+              "name": "example_table",
+              "value": "| Name | Age | City |\n|------|-----|------|\n| John | 25  | NY   |\n| Anna | 30  | SF   |",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 285.99757853896756,
+            "y": 631.1706134038823
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 14,
+      "connected_to": [
+        {
+          "target": 3,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Generate Enrichment Note Markdown",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "note_markdown",
+              "value": "{{Function.ACCESS_LIST_ITEM(Function.JQ(sdl-query.body.matches, local_var.table_jq), 0)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 285.99757853896756,
+            "y": 807.8478134038824
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 3,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is Scheduled Rule",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "or",
+                "conditions": [
+                  {
+                    "input_value": "{{Function.DEFAULT(get-library-detection-rule.body.data[0].queryType, \"null\")}}",
+                    "compared_value": "scheduled",
+                    "comparison_operator": "equals"
+                  },
+                  {
+                    "input_value": "{{Function.DEFAULT(get-custom-detection-rule.body.data[0].queryType, \"null\")}}",
+                    "compared_value": "scheduled",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -194.00242146103244,
+            "y": 454.49341340388236
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "connected_to": [
+        {
+          "target": 8,
+          "custom_handle": "false"
+        },
+        {
+          "target": 12,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "cfcc6d6e-9b32-41da-bc44-ba7a9f89f545",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "SDL Power Query",
+          "action_type": "http_request",
+          "public_action_id": "3b276194-7801-476f-856f-8a8a997f779e",
+          "method": "post",
+          "url": "{{Connection.protocol}}usea1-purple.sentinelone.net<@/sdl/api/powerQuery@>",
+          "url_path": "/sdl/api/powerQuery",
+          "url_prefix": null,
+          "payload": "{\n  \"query\": \"{{local_var.rule.scheduledParams.query}}\",\n  \"startTime\": \"{{Function.DELTA(singularity-response-trigger.data.detectedAt, Function.DIV(local_var.rule.scheduledParams.lookbackWindowMinutes, 60))}}\",\n  \"endTime\": \"{{singularity-response-trigger.data.detectedAt}}\"\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "Run a PowerQuery, where you can pipe one or many  search expressions into a set of commands to transform, manipulate, group, and summarize your data. This query option in SDL API is often referred to as the powerQuery API.",
+        "client_data": {
+          "position": {
+            "x": -34.00242146103244,
+            "y": 631.1706134038823
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 12,
+      "connected_to": [
+        {
+          "target": 15,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set JQ 2",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "table_jq_back",
+              "value": "map(\n  del(.thread, .message, .timestamp)\n  | ([\"| Key | Value |\",\"|-----|--------|\"]\n     + (\n       [ paths(scalars) as $p\n         | {k: ($p|map(tostring)|join(\".\")), v: getpath($p)}\n       ]\n       | sort_by(.k)\n       | map(\"| \\(.k) | \\(.v|tostring|gsub(\"\\r|\\n\";\" \")|gsub(\"\\\\|\"; \"\\\\|\")) |\")\n     )\n    )\n  | join(\"\\n\")\n)\n| join(\"\\n\\n---\\n\\n\")",
+              "is_secret": false
+            },
+            {
+              "name": "table_jq",
+              "value": "# Set the display limit for the number of rows\n50 as $limit\n|\n# Get the total number of rows from the data\n(.body.values | length) as $n\n|\n# Extract column names for the header\n(.body.columns | map(.name)) as $headers\n|\n# Create the header and separator rows for the Markdown table\n[\n  \"| \\($headers | join(\" | \")) |\",\n  \"| \\($headers | map(\"---\") | join(\" | \")) |\"\n] as $table_header\n|\n# Take only the first N rows (up to the limit) and format them\n(.body.values[:$limit] | map(\n    \"| \\(. | map(tostring) | join(\" | \")) |\"\n  )\n) as $table_rows\n|\n# Combine the header and the limited rows into a single table string\n(($table_header + $table_rows) | join(\"\\n\")) as $out\n|\n# Check if the total number of rows exceeds the limit and append a warning if it does\nif $n > $limit then\n  $out\n  + \"\\n\\n------------------\\n\\n\"\n  + \"⚠️ Showing the first \\($limit) of \\($n) events.\\n\"\n  + \"To see all events, press the **Event Search** button.\"\nelse\n  $out\nend",
+              "is_secret": false
+            },
+            {
+              "name": "example_table",
+              "value": "| Name | Age | City |\n|------|-----|------|\n| John | 25  | NY   |\n| Anna | 30  | SF   |",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -34.00242146103244,
+            "y": 807.8478134038824
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 15,
+      "connected_to": [
+        {
+          "target": 5,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "d1da76bf-a813-4870-852a-9d3a08292f4f",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "3e274c5a-f574-462f-8685-5eed98e90fbb",
+        "data": {
+          "name": "Add Note to Alert",
+          "action_type": "http_request",
+          "public_action_id": "c4d87734-41d0-4f0a-890c-6411de0796d3",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql",
+          "url_path": "/web/api/v2.0/threats",
+          "url_prefix": null,
+          "payload": "{\n  \"query\": \"mutation AddNoteToAlert($note:String!, $id:String!) { alertTriggerActions(actions:[{ id:\\\"S1/alert/addNote\\\", payload:{ note:{ value:$note }}}], filter:{ or:[{ and:[{ fieldId:\\\"id\\\", stringEqual:{ value:$id } }]}]}) { ... on ActionsTriggered { actions { actionId } } } }\",\n  \"variables\": {\n    \"id\": \"{{singularity-response-trigger.data.id}}\",\n    \"note\": \"{{local_var.note_markdown}}\"\n  }\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "Add a note to a unified alert.",
+        "client_data": {
+          "position": {
+            "x": 285.99757853896756,
+            "y": 984.5250134038824
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Generate Enrichment Note Markdown 3",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "note_markdown",
+              "value": "{{Function.ACCESS_LIST_ITEM(Function.JQ(sdl-power-query, local_var.table_jq), 0)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -34.00242146103244,
+            "y": 982.5250134038824
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is Correlation Rule",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "or",
+                "conditions": [
+                  {
+                    "input_value": "{{Function.DEFAULT(get-library-detection-rule.body.data[0].queryType, \"null\")}}",
+                    "compared_value": "correlation",
+                    "comparison_operator": "equals"
+                  },
+                  {
+                    "input_value": "{{Function.DEFAULT(get-custom-detection-rule.body.data[0].queryType, \"null\")}}",
+                    "compared_value": "correlation",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -354.00242146103244,
+            "y": 631.1706134038823
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 8,
+      "connected_to": [
+        {
+          "target": 4,
+          "custom_handle": "false"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "d1da76bf-a813-4870-852a-9d3a08292f4f",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "3e274c5a-f574-462f-8685-5eed98e90fbb",
+        "data": {
+          "name": "Add Note to Alert 3",
+          "action_type": "http_request",
+          "public_action_id": "c4d87734-41d0-4f0a-890c-6411de0796d3",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql",
+          "url_path": "/web/api/v2.0/threats",
+          "url_prefix": null,
+          "payload": "{\n  \"query\": \"mutation AddNoteToAlert($note:String!, $id:String!) { alertTriggerActions(actions:[{ id:\\\"S1/alert/addNote\\\", payload:{ note:{ value:$note }}}], filter:{ or:[{ and:[{ fieldId:\\\"id\\\", stringEqual:{ value:$id } }]}]}) { ... on ActionsTriggered { actions { actionId } } } }\",\n  \"variables\": {\n    \"id\": \"{{singularity-response-trigger.data.id}}\",\n    \"note\": \"{{local_var.note_markdown}}\"\n  }\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "Add a note to a unified alert.",
+        "client_data": {
+          "position": {
+            "x": -34.00242146103244,
+            "y": 1157.2022134038825
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Generate Enrichment Note Markdown 2",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "note_markdown",
+              "value": "## ❌ Error: No Matching Condition Found\n\n**Description:**  \nThe workflow did not find any matching condition for the provided values.  \nChecked conditions: **`correlation event`** and **`scheduled`**.\n\n**Cause:**  \nNo valid match was found in the workflow’s condition set.\n\n**Recommended Action:**  \nVerify that the condition values are correctly configured and exist in the workflow definition.\n",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -432.75242146103244,
+            "y": 805.8478134038824
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "d1da76bf-a813-4870-852a-9d3a08292f4f",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "3e274c5a-f574-462f-8685-5eed98e90fbb",
+        "data": {
+          "name": "Add Note to Alert 2",
+          "action_type": "http_request",
+          "public_action_id": "c4d87734-41d0-4f0a-890c-6411de0796d3",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql",
+          "url_path": "/web/api/v2.0/threats",
+          "url_prefix": null,
+          "payload": "{\n  \"query\": \"mutation AddNoteToAlert($note:String!, $id:String!) { alertTriggerActions(actions:[{ id:\\\"S1/alert/addNote\\\", payload:{ note:{ value:$note }}}], filter:{ or:[{ and:[{ fieldId:\\\"id\\\", stringEqual:{ value:$id } }]}]}) { ... on ActionsTriggered { actions { actionId } } } }\",\n  \"variables\": {\n    \"id\": \"{{singularity-response-trigger.data.id}}\",\n    \"note\": \"{{local_var.note_markdown}}\"\n  }\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "Add a note to a unified alert.",
+        "client_data": {
+          "position": {
+            "x": -432.75242146103244,
+            "y": 980.5250134038824
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [],
+      "parent_action": null
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+metadata_details:
+  purpose: "Python-based monitoring scripts for Dataset Agent integration to generate test logs and provide enrichment capabilities"
+  data_dependencies: "Dataset Agent installation and configuration"
+  monitor_type: "Log Generation | Enrichment"
+  trigger_frequency: "Configurable via agent configuration"
+  expected_behavior: "Generates test logs for various vendor formats and provides GeoIP/PowerQuery monitoring"
+  tags: ["monitors", "dataset-agent", "log-generation", "testing", "enrichment"]
+  version: "v1.0"
+  
+monitors:
+  - name: "log_gen.py"
+    purpose: "Generate test logs for various vendor formats (Cisco, Windows DNS, etc.)"
+    monitor_type: "Log Generation"
+    configuration_example: |
+      {
+        "module": "scalyr_agent.builtin_monitors.log_gen",
+        "logs": "/tmp/logs/*",
+        "type_array": "['cisco', 'windows_dns']",
+        "parser": "json",
+        "time_pattern": "(?P<date>(\\d+ \\w+ \\d+|\\d+\\/\\d+\\/\\d+)) (?P<time>(\\d{2}:\\d{2}:\\d{2}\\.\\d{3}|\\d+:\\d+:\\d+ \\w+))",
+        "sampling_rate": ".2"
+      }
+    
+  - name: "maxmind.py"
+    purpose: "MaxMind GeoIP enrichment for IP addresses in log data"
+    monitor_type: "Enrichment"
+    data_dependencies: "MaxMind GeoIP database"
+    
+  - name: "powerquerymonitor.py"
+    purpose: "PowerQuery monitoring and execution capabilities"
+    monitor_type: "Query Execution"
+    data_dependencies: "PowerQuery engine access"

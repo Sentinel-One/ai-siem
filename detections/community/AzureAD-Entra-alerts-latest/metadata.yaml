@@ -1,11 +1,12 @@
 metadata_details:
-  purpose: "Detection rule migrated from samples-main: AzureAD-Entra-alerts.conf"
-  mitre_tactic_technique: "To be determined"
-  datasource: "To be determined"
-  usecase_plus: "Detection logic from samples-main"
+  purpose: "Detect suspicious Azure AD/Entra ID activities including account changes, impossible travel, and authentication anomalies"
+  mitre_tactic_technique: "T1078 - Valid Accounts, T1098 - Account Manipulation"
+  datasource: "Azure Event Hub"
+  search_type: "powerquery"
+  usecase_plus: "Combines multiple Azure AD security detections including impossible traveler analysis using geolocation"
   severity: "Medium"
-  expected_alert_scenario: "Based on configured thresholds"
+  expected_alert_scenario: "Alerts on account creation/deletion, impossible travel (>500km, >1000kph), MFA disabled logins"
   performance_impact: "Minimal"
-  tags: detection, alert, migrated, samples-main
-  version: latest
-  author: Joel Mora
+  tags: ["detection", "alert", "azure-ad", "entra-id", "identity", "powerquery"]
+  version: "latest"
+  author: "Joel Mora"

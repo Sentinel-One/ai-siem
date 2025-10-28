@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: "AI SIEM workflow automation for detection note enrichment and data source resource management"
+  trigger_type: "alert | manual"
+  integration_dependency: "SentinelOne AI SIEM platform with GraphQL API access and detection management capabilities"
+  expected_actions_per_run: "8-10 depending on data enrichment complexity"
+  human_in_the_loop: "no"
+  required_products: "AI SIEM, Singularity Response, HyperAutomation"
+  tags: ["ai-siem", "detection", "enrichment", "automation", "data-sources"]
+  version: "v1.0"
+  author: "Patryk Kostek"
+  last_updated: "2025-01-28"

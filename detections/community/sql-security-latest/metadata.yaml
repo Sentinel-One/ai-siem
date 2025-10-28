@@ -1,11 +1,12 @@
 metadata_details:
-  purpose: "Detection rule migrated from samples-main: sql-security.conf"
-  mitre_tactic_technique: "To be determined"
-  datasource: "To be determined"
-  usecase_plus: "Detection logic from samples-main"
+  purpose: "Monitor SQL Server security events including login failures, permission denials, and integrity violations"
+  mitre_tactic_technique: "T1078 - Valid Accounts, T1505 - Server Software Component"
+  datasource: "SQL Server Event Logs"
+  search_type: "powerquery"
+  usecase_plus: "Tracks 40+ SQL Server event IDs covering DBCC operations, login attempts, permission violations, and integrity issues"
   severity: "Medium"
-  expected_alert_scenario: "Based on configured thresholds"
+  expected_alert_scenario: "Alerts on SQL Server security events based on EventID matching (18456 login failures, 229/300 permission denied, etc.)"
   performance_impact: "Minimal"
-  tags: detection, alert, migrated, samples-main
-  version: latest
-  author: Joel Mora
+  tags: ["detection", "alert", "sql-server", "database", "security", "event-id", "powerquery"]
+  version: "latest"
+  author: "Joel Mora"

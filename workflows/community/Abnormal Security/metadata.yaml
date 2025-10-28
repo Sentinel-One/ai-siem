@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: "Automate ingestion and processing of Abnormal Security audit logs for enhanced email security visibility and threat detection"
+  trigger_type: "scheduled | manual"
+  integration_dependency: "Abnormal Security API for audit log retrieval, requires API key authentication and appropriate permissions"
+  expected_actions_per_run: "5-7 depending on log volume and processing requirements"
+  human_in_the_loop: "no"
+  required_products: "AI SIEM, Singularity Response, HyperAutomation"
+  tags: ["abnormal-security", "email-security", "audit-logs", "ingestion", "automation"]
+  version: "v1.0"
+  author: "Patryk Kostek"
+  last_updated: "2025-01-28"

@@ -1,11 +1,12 @@
 metadata_details:
-  purpose: "Detection rule migrated from samples-main: O365-alerts.conf"
-  mitre_tactic_technique: "To be determined"
-  datasource: "To be determined"
-  usecase_plus: "Detection logic from samples-main"
+  purpose: "Detect suspicious Office 365 activities including excessive file access and abnormal login patterns"
+  mitre_tactic_technique: "T1078 - Valid Accounts, T1083 - File and Directory Discovery"
+  datasource: "Microsoft O365"
+  search_type: "powerquery"
+  usecase_plus: "Monitors for high-volume file access and excessive authentication events that may indicate compromise"
   severity: "Medium"
-  expected_alert_scenario: "Based on configured thresholds"
+  expected_alert_scenario: "Alerts on >300 file accesses per user/day and excessive logon attempts"
   performance_impact: "Minimal"
-  tags: detection, alert, migrated, samples-main
-  version: latest
-  author: Joel Mora
+  tags: ["detection", "alert", "o365", "office365", "file-access", "authentication", "powerquery"]
+  version: "latest"
+  author: "Joel Mora"

@@ -1,11 +1,12 @@
 metadata_details:
-  purpose: "Detection rule migrated from samples-main: xsoar_trigger.conf"
-  mitre_tactic_technique: "To be determined"
-  datasource: "To be determined"
-  usecase_plus: "Detection logic from samples-main"
-  severity: "Medium"
-  expected_alert_scenario: "Based on configured thresholds"
+  purpose: "Detect lateral movement in Windows environments and trigger XSOAR incident response"
+  mitre_tactic_technique: "T1021 - Remote Services, T1550 - Use Alternate Authentication Material"
+  datasource: "Windows Event Logs (EventID 1149)"
+  search_type: "powerquery"
+  usecase_plus: "Correlates RDP login events to identify lateral movement patterns and automatically creates XSOAR incidents"
+  severity: "High"
+  expected_alert_scenario: "Triggers when source IP from public login matches private IP of subsequent login (lateral movement pattern)"
   performance_impact: "Minimal"
-  tags: detection, alert, migrated, samples-main
-  version: latest
-  author: Joel Mora
+  tags: ["detection", "alert", "lateral-movement", "windows", "xsoar", "integration", "powerquery"]
+  version: "latest"
+  author: "Joel Mora"

@@ -1,11 +1,12 @@
 metadata_details:
-  purpose: "Detection rule migrated from samples-main: volume_alerts_marketplace.conf"
-  mitre_tactic_technique: "To be determined"
-  datasource: "To be determined"
-  usecase_plus: "Detection logic from samples-main"
-  severity: "Medium"
-  expected_alert_scenario: "Based on configured thresholds"
+  purpose: "Monitor log volume metrics to detect data source outages or significant drops in log ingestion"
+  mitre_tactic_technique: "T1562.002 - Impair Defenses: Disable Windows Event Logging"
+  datasource: "Log Volume Metrics (logVolume tag)"
+  search_type: "powerquery"
+  usecase_plus: "Tracks log volume from critical sources (Cisco Duo, O365, Palo Alto, Proofpoint, Windows) to ensure continuous visibility"
+  severity: "High"
+  expected_alert_scenario: "Alerts when log volume drops to zero for 30 minutes or falls below 25% of previous week's average"
   performance_impact: "Minimal"
-  tags: detection, alert, migrated, samples-main
-  version: latest
-  author: Joel Mora
+  tags: ["detection", "alert", "log-volume", "monitoring", "availability", "powerquery"]
+  version: "latest"
+  author: "Joel Mora"

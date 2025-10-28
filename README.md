@@ -22,12 +22,12 @@ ai-siem/                # AI SIEM core structure (255+ components)
   │   └── community/   # Community-contributed dashboards
   ├── detections/      # Detection rules (8 detections with metadata)
   │   └── community/   # Community-contributed detection rules
-  ├── monitors/        # Monitoring scripts (3 Python monitors)
+  ├── monitors/        # Python monitoring scripts for Dataset Agent (log_gen, maxmind, powerquery)
   ├── pipelines/       # Prepared for Observo Transformations 
   ├── parsers/         # Parsing logic and configurations (165 parsers)
   │   ├── community/   # 148 community parsers (*.conf + metadata)
   │   └── sentinelone/ # 17 official marketplace parsers (*.conf + metadata)
-  └── workflows/       # Automated playbooks and responses (ready for content)
+  └── workflows/       # Automated playbooks and responses (3 workflows with metadata)
 ```
 
 ---
@@ -77,6 +77,41 @@ Released under the **GNU Affero General Public License v3.0 (AGPL-3.0)** – ens
 
 ---
 
+## Monitors Installation Guide
+
+### Dataset Agent Integration
+The monitors directory contains Python scripts for use with the Dataset Agent:
+- **log_gen.py** - Generate test logs for various vendor formats (Cisco, Windows DNS)
+- **maxmind.py** - MaxMind GeoIP enrichment for IP addresses
+- **powerquerymonitor.py** - PowerQuery monitoring capabilities
+
+### Installation Steps
+1. Copy monitor files to Dataset Agent directory:
+   ```bash
+   cp monitors/*.py /usr/share/scalyr-agent-2/py/scalyr_agent/builtin_monitors/
+   ```
+
+2. Configure the agent by editing `/etc/scalyr-agent-2/agent.log`:
+   ```json
+   monitors: [
+     {
+       "module": "scalyr_agent.builtin_monitors.log_gen",
+       "logs": "/tmp/logs/*",
+       "type_array": "['cisco', 'windows_dns']",
+       "parser": "json",
+       "time_pattern": "(?P<date>(\\d+ \\w+ \\d+|\\d+\\/\\d+\\/\\d+)) (?P<time>(\\d{2}:\\d{2}:\\d{2}\\.\\d{3}|\\d+:\\d+:\\d+ \\w+))",
+       "sampling_rate": ".2"
+     }
+   ]
+   ```
+
+3. Start the Dataset Agent:
+   ```bash
+   scalyr-agent-2 start
+   ```
+
+---
+
 ## Getting help
 Open an issue. Office hours TBD based on requests.
 
@@ -113,6 +148,7 @@ metadata_details:
   purpose: "Detects a specific action from a SentinelOne component or third-party integration"
   mitre_tactic_technique: "Provide the MITRE Tactic and Technique (if known)"
   datasource: "Name of the dataSource.name field"
+  search_type: "powerquery | star_rule | watchlist_alert"
   usecase_plus: "Explain how combining this data with others enhances detection"
   severity: "Information | Low | Medium | High"
   expected_alert_scenario: "What alert behavior should users expect?"

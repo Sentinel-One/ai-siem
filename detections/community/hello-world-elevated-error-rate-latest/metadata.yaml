@@ -1,11 +1,12 @@
 metadata_details:
-  purpose: "Detection rule migrated from samples-main: hello-world-elevated-error-rate.conf"
-  mitre_tactic_technique: "To be determined"
-  datasource: "To be determined"
-  usecase_plus: "Detection logic from samples-main"
+  purpose: "Detect elevated HTTP error rates indicating potential application issues or attacks"
+  mitre_tactic_technique: "T1499 - Endpoint Denial of Service"
+  datasource: "accesslog"
+  search_type: "powerquery"
+  usecase_plus: "Monitors web server error responses (5xx status codes) to identify service degradation"
   severity: "Medium"
-  expected_alert_scenario: "Based on configured thresholds"
+  expected_alert_scenario: "Alerts when error count exceeds 120 errors in 4-minute window per host"
   performance_impact: "Minimal"
-  tags: detection, alert, migrated, samples-main
-  version: latest
-  author: Joel Mora
+  tags: ["detection", "alert", "web", "error-rate", "availability", "powerquery"]
+  version: "latest"
+  author: "Joel Mora"

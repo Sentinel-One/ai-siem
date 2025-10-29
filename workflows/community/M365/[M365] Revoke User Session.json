@@ -1,0 +1,443 @@
+{
+  "name": "[M365] Revoke User Session",
+  "description": "Revoke M365 user session linked to detection.",
+  "actions": [
+    {
+      "action": {
+        "type": "singularity_response_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Singularity Response Trigger",
+          "action_type": "singularity_response_trigger",
+          "filter_groups": [
+            {
+              "condition": {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "name",
+                    "compared_value": "Office 365",
+                    "comparison_operator": "contains"
+                  },
+                  {
+                    "input_value": "detectionSource.product",
+                    "compared_value": "STAR",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              },
+              "is_disabled": false,
+              "run_automatically": false,
+              "event_type": "alert",
+              "event_subtypes": [
+                "CREATE"
+              ]
+            }
+          ]
+        },
+        "description": "Triggers on any alert containing the name '365'.\n\n",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 98
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 7,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "cfcc6d6e-9b32-41da-bc44-ba7a9f89f545",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "SDL Query",
+          "action_type": "http_request",
+          "public_action_id": "5864fb04-634a-4cf9-96e8-6b898f26880a",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/api/query",
+          "url_path": "/sdl/api/query",
+          "url_prefix": null,
+          "payload": "{\n  \"filter\": \"\\\"{{singularity-response-trigger.data.indicators[0].id}}\\\"\",\n  \"startTime\": \"{{singularity-response-trigger.data.firstSeenAt}}\",\n  \"endTime\": \"{{singularity-response-trigger.data.createdAt}}\"\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "Get events (log records) that match your query.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 198.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "connected_to": [
+        {
+          "target": 5,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "1069d695-3bc6-4704-acca-ea7454a440ed",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "73475bd9-3762-4f17-aab5-c544ec5ec31b",
+        "data": {
+          "name": "Revoke Session",
+          "action_type": "http_request",
+          "public_action_id": "35220c9e-be3b-465c-a232-fbc1fd11b39d",
+          "method": "post",
+          "url": "{{Connection.protocol}}graph.microsoft.com<@/v1.0/users/@>{{sdl-query.body.matches[0].attributes.actor_user_email_addr}}/revokeSignInSessions",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "Permission:\n- User.RevokeSessions.All",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 373.35439999999994
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "connected_to": [
+        {
+          "target": 4,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is Success",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{revoke-session.status_code}}",
+                    "compared_value": "200",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 548.0315999999999
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": "false"
+        },
+        {
+          "target": 3,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Generate Enrichment Note Markdown Fail",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "note_markdown",
+              "value": "## ❌ Error: Failed to Revoke User Session in Microsoft 365\n\n**Description:**  \nThe workflow attempted to revoke the user's **`{{sdl-query.body.matches[0].attributes.actor_user_email_addr}}`** session in Microsoft 365 but failed to complete the action.  \nThe session remains active.\n\n**Cause:**  \nPossible causes include:  \n- Insufficient admin permissions  \n- Invalid or inactive user account  \n- Microsoft Graph API request failure  \n\n**Recommended Action:**  \n- Verify the admin account used for authentication has the **Security Administrator** or **Global Administrator** role.  \n- Confirm the target user account exists and is active.  \n- Review workflow logs and retry after resolving API or connectivity issues.\n",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -160,
+            "y": 724.7088
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Generate Enrichment Note Markdown Success",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "note_markdown",
+              "value": "## ✅ Success: User Session Revoked in Microsoft 365\n\n**Description:**  \nThe automation workflow successfully revoked the user's **`{{sdl-query.body.matches[0].attributes.actor_user_email_addr}}`** active session in Microsoft 365.  \nAll associated tokens and sign-ins were terminated as expected.",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 160,
+            "y": 724.7088
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 3,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "d1da76bf-a813-4870-852a-9d3a08292f4f",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "3e274c5a-f574-462f-8685-5eed98e90fbb",
+        "data": {
+          "name": "Add Note to Alert Fail",
+          "action_type": "http_request",
+          "public_action_id": "c4d87734-41d0-4f0a-890c-6411de0796d3",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql",
+          "url_path": "/web/api/v2.0/threats",
+          "url_prefix": null,
+          "payload": "{\n  \"query\": \"mutation AddNoteToAlert($note:String!, $id:String!) { alertTriggerActions(actions:[{ id:\\\"S1/alert/addNote\\\", payload:{ note:{ value:$note }}}], filter:{ or:[{ and:[{ fieldId:\\\"id\\\", stringEqual:{ value:$id } }]}]}) { ... on ActionsTriggered { actions { actionId } } } }\",\n  \"variables\": {\n    \"id\": \"{{singularity-response-trigger.data.id}}\",\n    \"note\": \"{{local_var.note_markdown}}\"\n  }\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "Add a note to a unified alert.",
+        "client_data": {
+          "position": {
+            "x": -160,
+            "y": 899.386
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "d1da76bf-a813-4870-852a-9d3a08292f4f",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "3e274c5a-f574-462f-8685-5eed98e90fbb",
+        "data": {
+          "name": "Add Note to Alert Success",
+          "action_type": "http_request",
+          "public_action_id": "c4d87734-41d0-4f0a-890c-6411de0796d3",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql",
+          "url_path": "/web/api/v2.0/threats",
+          "url_prefix": null,
+          "payload": "{\n  \"query\": \"mutation AddNoteToAlert($note:String!, $id:String!) { alertTriggerActions(actions:[{ id:\\\"S1/alert/addNote\\\", payload:{ note:{ value:$note }}}], filter:{ or:[{ and:[{ fieldId:\\\"id\\\", stringEqual:{ value:$id } }]}]}) { ... on ActionsTriggered { actions { actionId } } } }\",\n  \"variables\": {\n    \"id\": \"{{singularity-response-trigger.data.id}}\",\n    \"note\": \"{{local_var.note_markdown}}\"\n  }\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "description": "Add a note to a unified alert.",
+        "client_data": {
+          "position": {
+            "x": 160,
+            "y": 899.386
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [],
+      "parent_action": null
+    }
+  ]
+}

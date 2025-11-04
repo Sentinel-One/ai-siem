@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "Cloudflare LogPush logs ingested using the SentinelOne Marketplace parser for Cloudflare"
+  required_fields: "dataSource.cloudflare_dataset,http_request.*,unmapped.CacheCacheStatus,unmapped.WAFAttackScore,event.type,action,unmapped.WAF*AttackScore,device.*,activity_name,status_id"
+  description: "Provides visibility into WAF , DDoS, HTTP, CDN, Zero Trust, eMail Threats and performance across Cloudflare's network via the Cloudflare's LogPush feature."
+  usecase_type: "Security | Performance Monitoring | Network Monitoring"
+  usecase_action: "Dashboard | Report | Trending and Analysis"
+  tags: "cloudflare, waf, ddos, performance, cdn, zero trust, email"
+  version: "v1.0"

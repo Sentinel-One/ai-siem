@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: SentinelOne Marketplace parser for Cloudflare LogPush datasets
+  datasource_vendor: Cloudflare
+  dataSource: marketplace
+  format: gron
+  ingestion_method: marketplace
+  dependency_summary: Official SentinelOne Marketplace parser
+  performance_impact: Optimized for SentinelOne platform
+  tags: sentinelone, marketplace, cloudflare, official
+  version: latest
+  author: SentinelOne

@@ -1,0 +1,8 @@
+metadata_details:
+  data_dependencies: "Cloudflare LogPush logs ingested using the SentinelOne Marketplace parser for Cloudflare"
+  required_fields: "dataSource.cloudflare_dataset"
+  description: "Provides visibility into Cloudflare LogPush ingestion statistics to verify and monitor data ingestion"
+  usecase_type: "Security | Performance Monitoring | Network Monitoring"
+  usecase_action: "Dashboard | Report | Trending and Analysis"
+  tags: "cloudflare, ingest"
+  version: "v1.0"

@@ -1,0 +1,70 @@
+metadata_details:
+  purpose: >
+    Ingest Proofpoint TAP SIEM API data (messagesDelivered, messagesBlocked,
+    clicksPermitted, clicksBlocked) and normalize those events into OCSF
+    Email Activity and Email URL Activity classes for SentinelOne AI SIEM.
+
+  pipeline_category: "ingestion"
+
+  source_template: "Proofpoint SIEM API Collector"
+  source_vendor: "Proofpoint"
+
+  destination_template: "SentinelOne AI SIEM"
+  destination_type: "SPLUNK_HEC_LOGS"
+
+  transform_templates: >
+    OCSFSerializerExtended (Proofpoint Lua serializer) – maps email message
+    events to OCSF Email Activity (class_uid=4009) and click events to Email
+    URL Activity (class_uid=4012), including observables for sender/recipient
+    emails and IPs, and a structured 'message' JSON containing TAP fields
+    like threatsInfoMap, messageParts, spamScore, phishScore, malwareScore,
+    and policy/quarantine details.
+
+  input_schema: >
+    Proofpoint TAP SIEM API endpoint /v2/siem/all with format=json, returning
+    a JSON envelope (queryEndTime plus arrays messagesDelivered,
+    messagesBlocked, clicksPermitted, clicksBlocked). Each inner object
+    includes fields such as GUID, QID, messageTime, recipient, sender,
+    senderIP, subject, threatsInfoMap, URL, and classification data.
+
+  output_schema: >
+    OCSF v1.0.0 Email Activity / Email URL Activity events with
+    metadata.product.name="Proofpoint", metadata.product.vendor_name="Proofpoint",
+    metadata.version="1.0.0", metadata.log_name reflecting the TAP collection
+    (messagesDelivered/messagesBlocked/clicksPermitted/clicksBlocked), email.*,
+    src_endpoint.ip, device.ip, observables[], and an ordered 'message' JSON
+    snapshot of the original TAP record.
+
+  scheduling: >
+    Polls Proofpoint every 300 seconds (trigger.interval_secs=300) using the
+    SINCE_TIME checkpoint to request only new events via the sinceTime query
+    parameter. On successful responses, SINCE_TIME is advanced to the returned
+    queryEndTime to support incremental collection.
+
+  retry_behavior: >
+    Uses Observo retry with exponential backoff for transient failures. On
+    HTTP 500 or 400 responses, the script advances the SINCE_TIME checkpoint
+    to the current UTC time to avoid getting stuck on bad windows, and emits
+    diagnostic logs. 401 and 429 are surfaced as error records for operator
+    action.
+
+  dependencies: >
+    Requires Proofpoint TAP SIEM API credentials (basic auth user/password or
+    token) with access to /v2/siem/all. Requires SentinelOne AI SIEM ingest
+    token and endpoint configured on the SPLUNK_HEC_LOGS destination.
+
+  performance_impact: >
+    The polling interval and size of the sinceTime window determine volume.
+    For very busy mail environments, consider separate pipelines per region
+    or log type, and tune Observo scale.* queues and fetchers for higher
+    throughput.
+
+  tags:
+    - proofpoint
+    - email
+    - tap
+    - ocsf
+    - pipeline
+    - ai-siem
+
+  version: "v1.0"

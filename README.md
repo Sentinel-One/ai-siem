@@ -17,13 +17,14 @@ Sentinel-One AI-SIEM repository is a community-driven, open source project desig
 
 ## Repository layout
 ```
-ai-siem/                # AI SIEM core structure (255+ components)
+ai-siem/                # AI SIEM core structure (260+ components)
   ├── dashboards/      # Visualizations (79 dashboards with metadata)
   │   └── community/   # Community-contributed dashboards
   ├── detections/      # Detection rules (8 detections with metadata)
   │   └── community/   # Community-contributed detection rules
   ├── monitors/        # Python monitoring scripts for Dataset Agent (log_gen, maxmind, powerquery)
-  ├── pipelines/       # Prepared for Observo Transformations 
+  ├── pipelines/       # Observo Pipeline Templates for data transformation (5 pipelines)
+  │   └── community/   # AWS S3, Cisco Duo, Netskope, Okta, ProofPoint
   ├── parsers/         # Parsing logic and configurations (165 parsers)
   │   ├── community/   # 148 community parsers (*.conf + metadata)
   │   └── sentinelone/ # 17 official marketplace parsers (*.conf + metadata)
@@ -109,6 +110,53 @@ The monitors directory contains Python scripts for use with the Dataset Agent:
    ```bash
    scalyr-agent-2 start
    ```
+
+---
+
+## Pipelines Installation Guide
+
+### Observo Pipeline Integration
+The pipelines directory contains pre-configured Observo pipeline templates for ingesting and transforming data from various sources:
+
+#### Available Pipeline Templates
+1. **AWS S3 CloudTrail** (`aws_s3_cloudtrail/`)
+   - Ingests CloudTrail logs from S3 buckets via SQS/SNS
+   - Transforms to OCSF format with extensive field mapping
+   - **Required credentials:**
+     - `auth.assume_role`: `arn:aws:iam::<your_accountid>:role/<role you created>`
+     - `auth.external_id`: Your external ID for role assumption
+
+2. **Cisco Duo Logs** (`cisco_duo_logs/`)
+   - Collects authentication, administrator, and telephony logs
+   - Supports checkpointing for incremental data collection
+   - **Required credentials:**
+     - `DUO_API_HOST`: `<your_host>.duosecurity.com`
+     - `DUO_INTEGRATION_KEY`: Your integration key
+     - `DUO_SECRET_KEY`: Your secret key
+
+3. **Netskope Alerts** (`netskope_alerts/`)
+   - Ingests Netskope security alerts
+   - Transforms to OCSF format
+
+4. **Okta Log Collector** (`okta_log_collector/`)
+   - Collects Okta identity and access management logs
+   - Supports incremental log collection
+
+5. **ProofPoint Logs** (`proofpoint_log/`)
+   - Ingests ProofPoint email security logs
+   - OCSF transformation included
+
+### Pipeline Installation Steps
+1. Import the JSON configuration file into your Observo instance
+2. Update authentication credentials with your specific values
+3. Configure the SentinelOne AI SIEM destination endpoint
+4. Deploy and activate the pipeline
+
+### Configuration Requirements
+All pipelines require:
+- **SentinelOne HEC Token**: Replace `********` with your actual token
+- **Endpoint URL**: Verify the correct region endpoint (default: `https://ingest.us1.sentinelone.net`)
+- **Source-specific credentials**: See individual pipeline requirements above
 
 ---
 

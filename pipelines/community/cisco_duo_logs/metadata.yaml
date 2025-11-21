@@ -1,0 +1,66 @@
+metadata_details:
+  purpose: >
+    Collect Cisco Duo authentication, administrator, and telephony logs via
+    the Duo Admin API and normalize them to OCSF Identity & Access and
+    Application Activity events for SentinelOne AI SIEM.
+
+  pipeline_category: "ingestion"
+
+  source_template: "Cisco Duo Logs Collector"
+  source_vendor: "Cisco Duo"
+
+  destination_template: "SentinelOne AI SIEM"
+  destination_type: "SPLUNK_HEC_LOGS"
+
+  transform_templates: >
+    OCSFSerializer (Cisco Duo Lua serializer) – maps Duo authentication.*,
+    administrator.* and telephony.* event types into OCSF v1.0.0 classes such
+    as Authentication (3002), Account Change (3001), Entity Management (3004)
+    and API Activity (6003), including observables for hostnames, IPs, users,
+    email addresses, and applications.
+
+  input_schema: >
+    Cisco Duo Admin API JSON responses from /admin/v2/logs/authentication,
+    /admin/v1/logs/administrator and /admin/v2/logs/telephony. Events include
+    fields such as isotimestamp, timestamp, access_device.*, auth_device.*,
+    application.*, result, reason, event_type, username, object, and context.
+
+  output_schema: >
+    OCSF v1.0.0 Identity & Access Management and Application Activity events
+    with metadata.product.name="Cisco Duo", metadata.product.vendor_name="Cisco",
+    metadata.version="1.0.0", user.*, service.*, src_endpoint.*, dst_endpoint.*,
+    observables[], and a JSON-ordered 'message' representation of the original
+    Duo event.
+
+  scheduling: >
+    Polls the Duo Admin API every 300 seconds (trigger.interval_secs=300) for
+    each log type (authentication, administrator, telephony), using mintime /
+    maxtime parameters and metadata.next_offset for pagination.
+
+  retry_behavior: >
+    Uses built-in Observo retry with exponential backoff (retry.initial_backoff_secs,
+    retry.backoff_scaling_factor, retry.max_backoff_secs, retry.max_retries) and
+    emits explicit error logs for 401 (auth failure), 403 (missing permissions),
+    429 (rate limiting), and 400 (bad request) responses.
+
+  dependencies: >
+    Requires Duo API credentials (DUO_API_HOST, DUO_INTEGRATION_KEY, DUO_SECRET_KEY)
+    with appropriate permissions to read admin, auth, and telephony logs. Requires
+    a SentinelOne AI SIEM ingest token and endpoint configured on the SPLUNK_HEC_LOGS
+    destination.
+
+  performance_impact: >
+    MAX_PAGE_CALLS and per-request limit=1000 bound API usage. For large tenants,
+    increase MAX_PAGE_CALLS, fetchers, and runtimes to reduce catch-up time while
+    monitoring Duo rate limits and Observo queue sizes.
+
+  tags:
+    - cisco
+    - duo
+    - identity
+    - mfa
+    - ocsf
+    - pipeline
+    - ai-siem
+
+  version: "v1.0"

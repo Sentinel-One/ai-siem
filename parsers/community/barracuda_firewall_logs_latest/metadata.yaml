@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: Parser for Barracuda Firewall logs to ingest them as events
+    into the AI-SIEM schema.
+  datasource_vendor: barracuda
+  dataSource: barracuda_firewall
+  format: JSON
+  ingestion_method: syslog
+  dependency_summary: Requires ingestion of Barracuda Firewall network device logs.
+  performance_impact: "Minimal – this parser processes JSON formatted Barracuda logs."
+  tags: barracuda, logs, json, parser, network, security, firewall
+  author: RoarinPenguin
+  version: latest

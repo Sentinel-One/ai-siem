@@ -1,0 +1,69 @@
+metadata_details:
+  purpose: >
+    Collect Okta System Log events from the /api/v1/logs endpoint and
+    normalize them into OCSF Identity & Access and Application Activity
+    events for SentinelOne AI SIEM, including authentication, lifecycle,
+    policy evaluation, and application membership changes.
+
+  pipeline_category: "ingestion"
+
+  source_template: "Okta Logs Collector"
+  source_vendor: "Okta"
+
+  destination_template: "SentinelOne AI SIEM"
+  destination_type: "SPLUNK_HEC_LOGS"
+
+  transform_templates: >
+    OCSFSerializer (okta-ocsf-1.0.0-schema Lua serializer) – maps Okta
+    eventType values such as user.session.start, user.authentication.sso,
+    user.lifecycle.*, policy.evaluate_sign_on, system.org.rate_limit.warning,
+    application.user_membership.add, and application.lifecycle.update into
+    OCSF Identity & Access (3001/3002) and Application Activity (6002/6003)
+    classes with observables and nested actor/client/session structures.
+
+  input_schema: >
+    Okta System Log JSON arrays from /api/v1/logs, including actor.*, client.*,
+    authenticationContext.*, transaction.*, debugContext.*, securityContext.*,
+    outcome.*, target[], and standard envelope fields (eventType, published,
+    severity, debugContext.debugData, etc.). Pagination uses the Link header
+    with rel="next" URLs.
+
+  output_schema: >
+    OCSF v1.0.0 identity and application events with
+    metadata.product.vendor_name="Okta", metadata.product.name="Okta",
+    metadata.version="1.0.0", category_uid / class_uid / type_uid set per
+    eventType, actor.user.*, src_endpoint.*, dst_endpoint.*, device.*, event.type,
+    observables[], and a compact, field-ordered 'message' JSON preserving the
+    original Okta payload.
+
+  scheduling: >
+    Polls Okta every 120 seconds (trigger.interval_secs=120). Each run resumes
+    from the last published timestamp (initial_since checkpoint) and Link
+    header next_url, honoring max_page_calls to bound per-run pagination.
+
+  retry_behavior: >
+    Uses Observo retry with exponential backoff for HTTP failures and emits
+    explicit log messages for 400 (bad request), 401 (auth failure), 429
+    (rate limit), and other non-success responses. Checkpoints are only
+    advanced after successful page processing to avoid gaps.
+
+  dependencies: >
+    Requires an Okta tenant domain (e.g., sentinelone-preview.oktapreview.com)
+    and API token configured as bearer Authorization: SSWS <token>. Requires
+    SentinelOne AI SIEM ingest token and endpoint on the SPLUNK_HEC_LOGS
+    destination.
+
+  performance_impact: >
+    max_page_calls, limit=1000, and the polling interval control API usage
+    and catch-up speed. For very active tenants, increase max_page_calls or
+    deploy multiple pipelines filtered by eventType in the transform logic.
+
+  tags:
+    - okta
+    - identity
+    - sso
+    - ocsf
+    - pipeline
+    - ai-siem
+
+  version: "v1.0"

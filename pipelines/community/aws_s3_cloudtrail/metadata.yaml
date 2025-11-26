@@ -1,0 +1,65 @@
+metadata_details:
+  purpose: >
+    Ingest AWS CloudTrail events from S3 (via SQS notifications) into
+    SentinelOne AI SIEM using Observo, normalizing them into OCSF
+    HTTP / API Activity events for downstream detections and dashboards.
+
+  pipeline_category: "ingestion"
+
+  source_template: "AWS S3"
+  source_vendor: "AWS"
+
+  destination_template: "SentinelOne AI SIEM"
+  destination_type: "SPLUNK_HEC_LOGS"
+
+  transform_templates: >
+    OCSFSerializerExtended (AWS CloudTrail Lua serializer) – maps CloudTrail
+    management and data events to OCSF v1.0.0 HTTP / API Activity classes
+    with appropriate category_uid=4 (Network Activity), class_uid=4002,
+    and CloudTrail-specific observables and unmapped context preserved.
+
+  input_schema: >
+    AWS CloudTrail records delivered as S3 objects, fanned out via SQS/SNS.
+    Payloads contain standard CloudTrail fields such as eventVersion,
+    userIdentity.*, eventTime, eventSource, eventName, awsRegion, sourceIPAddress,
+    userAgent, requestParameters, responseElements, additionalEventData, resources,
+    eventType, managementEvent, and insightDetails.
+
+  output_schema: >
+    OCSF v1.0.0 HTTP / API Activity events with metadata.product.name="CloudTrail",
+    metadata.product.vendor_name="AWS", metadata.version="1.0.0-rc3", mapped
+    cloud.account.uid, src_endpoint.*, api.* and observables arrays, plus a
+    flattened 'message' field containing the original CloudTrail event JSON.
+
+  scheduling: >
+    Continuous SQS-driven collection from the configured queue
+    (sqs.queue_url), using Observo's AWS_S3 source. Events are pulled as they
+    arrive in S3; batching and processing cadence are controlled by the
+    source runtime rather than a fixed timer.
+
+  retry_behavior: >
+    Observo fetch retry with exponential backoff (retry.initial_backoff_secs,
+    retry.backoff_scaling_factor, retry.max_backoff_secs, retry.max_retries)
+    for SQS / S3 operations and AI SIEM delivery. Failed events are logged
+    and reattempted without duplicating already-acknowledged SQS messages.
+
+  dependencies: >
+    Requires an AWS account with an IAM role that Observo can assume
+    (auth.assume_role + auth.external_id) and an SQS queue wired to the S3
+    bucket(s) containing CloudTrail logs. Requires a SentinelOne AI SIEM
+    ingest token and endpoint configured on the SPLUNK_HEC_LOGS destination.
+
+  performance_impact: >
+    Designed for medium to very high volume CloudTrail streams. Throughput
+    can be tuned via source scale.* settings (fetchers, runtimes, queue sizes)
+    and SQS visibility / batch size settings. For very large orgs consider
+    dedicated pipelines per account / region.
+
+  tags:
+    - aws
+    - cloudtrail
+    - ocsf
+    - pipeline
+    - ai-siem
+
+  version: "v1.0"

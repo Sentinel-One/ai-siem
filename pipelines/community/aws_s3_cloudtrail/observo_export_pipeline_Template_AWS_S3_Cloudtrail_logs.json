@@ -1,1 +1,317 @@
-{"pipeline":{"id":"0","siteId":"16","name":"Pipeline Template_AWS_S3_Cloudtrail 2","description":"","status":"DEFAULT","createdAt":"2025-11-19T20:09:29.748465Z","updatedAt":"2025-11-20T21:00:36.292155Z","deletedAt":null,"createdBy":"","updatedBy":"","deployedGraphVersion":0,"pendingGraphVersion":0,"latestGraphVersion":0,"sourceId":"0","pipelineType":"PIPELINE_TYPE_USER","pendingAction":"NOP","analytics":[]},"pipelineGraph":{"version":3,"pipelineId":"0","edges":{"100000000000000028":{"nodeIds":["300000000000000201"]},"300000000000000201":{"nodeIds":["200000000000000044"]}},"created":"2025-11-20T21:00:36.292155Z","createdBy":"","metaInfo":{"omissions":[{"omitted":{"100000000000000028":{"nodeIds":["300000000000000336"]},"300000000000000336":{"nodeIds":["300000000000000201"]}},"patch":{"100000000000000028":{"nodeIds":["300000000000000201"]}}},{"omitted":{"300000000000000200":{"nodeIds":["200000000000000044"]},"300000000000000201":{"nodeIds":["300000000000000200"]}},"patch":{"300000000000000201":{"nodeIds":["200000000000000044"]}}}]}},"source":{"id":"100000000000000028","siteId":"16","templateId":"2","templateVersion":"1","templateName":"AWS S3","name":"Source TEMPLATE_AWS_S3_Assume_Role","description":"This is the Default approach to gather data from S3 using SQS and SNS- typically usage is for collecting Cloudtrail data ","config":{"auth.assume_role":"arn:aws:iam::<your_accountid>:role/<role you created>","auth.external_id":"*****","auth.region":"us-east-1","compression":"auto","region":"us-east-1","sqs.delete_message":true,"sqs.queue_url":"https://sqs.us-east-1.amazonaws.com/***REMOVED***/observo-test-queue"},"status":"NS_ACTIVE","created":"2025-11-20T20:43:44.276856Z","updated":"2025-11-20T20:51:47.861570Z","createdBy":"","updatedBy":"","type":"AWS_S3","origin":"NODE_ORIGIN_USER","archivalInfo":null,"logFormat":"LOG_FORMAT_UNSPECIFIED","preprocessorConfig":null,"port":0,"pushBased":false,"pushSourceAddress":"","k8sInternalSvcUrl":"","siteFilenames":[],"sourceConfigs":[{"id":"0","sourceId":"0","templateId":"65","templateName":"PatternExtractorPostProcessor","category":"PATTERN_EXTRACTOR","config":{"config_groups":[{"_name":"Pattern Extractor Configs","clusterTagNames":[],"truncate":false}]},"position":0,"templateVersion":"1"},{"id":"0","sourceId":"0","templateId":"46","templateName":"SentimentAnalyzer","category":"PATTERN_EXTRACTOR","config":{"config_groups":[{"_name":"Config","enabled":false,"keyNameForExtractedSentiment":"sentiment","logLocations":[],"negativeSentimentRegexes":["time[\\s_-]*out","timed[\\s_-]*out","(?i)alert ([=\\s\\*]+|$)","(?i)bad[\\s_-]*gateway","(?i)bad[\\s_-]*request","(?i)(^| [=\\s\\*]+)bad([=\\s\\*]+|$)","(?i)does[\\s_-]*not[\\s_-]*exist","(?i)[=\\s\\*]+eof([=\\s\\*]+|$)","(?i)exception([=\\s\\*]+|$)","(?i)fail([=\\s\\*]+|$)","(?i)failed([=\\s\\*]+|$)","(?i)failure([=\\s\\*]+|$)","(?i)(^|[=\\s\\*]+)fault([=\\s\\*]+|$)","(?i)(^| [=\\s\\*]+)feof([=\\s\\*]+|$)","(?i)not[\\s_-]*acceptable","(?i)not[\\s_-]*allowed","(?i)not[\\s_-]*found","(?i)not[\\s_-]*ok","(?i)(^| [=\\s\\*]+)oom([=\\s\\*]+|$)","(?i)too[\\s_-]*many"],"negativeSentimentWords":["abnormal","abort","broken","canceled","caught","critical","denied","emergency","error","exception","fatal","incomplete","insufficient","interrupt","killed","killing","malformed","mismatch","outofmemory","panic","segfault","terminate","timeout","unable","unauthorized","undefined","unexpected","unprocessable","unstable","unhandled","unsuccessful","unusable","violation","rejection","rejected"],"useLogPath":true}]},"position":1,"templateVersion":"1"},{"id":"0","sourceId":"0","templateId":"71","templateName":"GeneratorVersion","category":"INTERNAL","config":{"generator_version":"v2"},"position":0,"templateVersion":"0"}],"userVisible":true,"usageType":"USER"},"destinations":[{"id":"200000000000000044","siteId":"16","templateId":"25","templateVersion":"0","templateName":"SentinelOne AI SIEM","name":"Sink Template_SentinelOne AI SIEM","description":"This is the Default approach to Send data into your SentinelOne Console","config":{"acknowledgements.enabled":false,"acknowledgements.indexer_acknowledgements_enabled":true,"acknowledgements.query_interval":10,"acknowledgements.retry_limit":30,"batch.timeout_secs":1,"compression":"none","default_token":"********","encoding.codec":"json","encoding.json.pretty":false,"encoding.metric_tag_values":"single","endpoint":"https://ingest.us1.sentinelone.net","endpoint_target":"event","host_key":"host","path":"/services/collector/event?isParsed=true","request.concurrency":"adaptive","request.headers":{},"request.rate_limit_duration_secs":1,"request.retry_initial_backoff_secs":1,"request.retry_max_duration_secs":3600,"request.timeout_secs":60,"timestamp_key":"timestamp","tls.verify_certificate":false,"tls.verify_hostname":false},"status":"NS_ACTIVE","sourceId":"0","created":"2025-11-16T22:17:36.683043Z","updated":"2025-11-20T17:19:18.696952Z","createdBy":"","updatedBy":"","type":"SPLUNK_HEC_LOGS","origin":"NODE_ORIGIN_USER","usageType":"USER","siteFilenames":[],"userVisible":true}],"transforms":[{"id":"300000000000000201","siteId":"16","templateId":"38","templateVersion":"1","name":"Transform OCSF Serializer AWS Cloudtrail Extended","description":"","pipelineId":"0","config":{"config_groups":[{"_name":"General Configuration","bypassed":false,"filterEnabled":false},{"_name":"ocsf","enabled":true,"parallelism":1,"script":"\nlocal FEATURES = {\n    IGNORE_UNKNOWN_EVENT = true,\n}\n\n-- Field ordering templates for consistent JSON serialization\nlocal FIELD_ORDERS = {\n    root = {\"eventVersion\", \"userIdentity\", \"eventTime\", \"eventSource\", \"eventName\", \"awsRegion\", \"sourceIPAddress\", \"userAgent\", \"requestParameters\", \"responseElements\", \"additionalEventData\", \"requestID\", \"eventID\", \"readOnly\", \"resources\", \"eventType\", \"managementEvent\", \"recipientAccountId\", \"sharedEventID\", \"eventCategory\", \"tlsDetails\", \"errorCode\", \"errorMessage\", \"vpcEndpointId\", \"apiVersion\", \"message\", \"time\", \"insightDetails\", \"class_uid\", \"category_uid\", \"metadata\", \"dataSource\"},\n    userIdentity = {\"accountId\", \"principalId\", \"accessKeyId\", \"userName\", \"type\", \"invokedBy\", \"sessionContext\"},\n    sessionContext = {\"sessionIssuer\", \"attributes\"},\n    sessionIssuer = {\"type\", \"principalId\", \"arn\", \"accountId\", \"userName\"},\n    attributes = {\"creationDate\"},\n    requestParameters = {\"durationSeconds\", \"externalId\", \"bucketName\", \"Host\", \"instanceId\", \"availabilityZone\", \"requestContext\"},\n    requestContext = {\"awsAccountId\"},\n    responseElements = {\"credentials\"},\n    credentials = {\"accessKeyId\", \"expiration\"},\n    additionalEventData = {\"SignatureVersion\", \"CipherSuite\", \"bytesTransferredIn\", \"AuthenticationMethod\", \"x-amz-id-2\", \"bytesTransferredOut\"},\n    resources = {\"accountId\", \"type\", \"ARN\"},\n    tlsDetails = {\"tlsVersion\", \"cipherSuite\"},\n    insightDetails = {\"eventSource\", \"insightContext\"},\n    insightContext = {\"statistics\"},\n    statistics = {\"insightDuration\"},\n    metadata = {\"product\"},\n    product = {\"name\", \"vendor_name\"},\n    dataSource = {\"category\", \"vendor\", \"name\"}\n}\n\n-- Convert ISO 8601 timestamp to Unix epoch milliseconds\nfunction convertToMilliseconds(timestamp)\n  if not timestamp or timestamp == \"\" then\n    return nil\n  end\n  \n  -- Parse ISO 8601 format: \"2025-09-29T09:15:40Z\" or \"2025-09-29T09:15:40.123Z\"\n  local year, month, day, hour, min, sec, ms = string.match(timestamp, \"(%d+)%-(%d+)%-(%d+)T(%d+):(%d+):(%d+)%.?(%d*)Z\")\n  \n  if year and month and day and hour and min and sec then\n    local t = {\n      year = tonumber(year),\n      month = tonumber(month),\n      day = tonumber(day),\n      hour = tonumber(hour),\n      min = tonumber(min),\n      sec = tonumber(sec),\n      isdst = false\n    }\n    \n    -- Get local time interpretation\n    local local_seconds = os.time(t)\n    \n    -- Get what this represents in UTC\n    local utc_date = os.date(\"!*t\", local_seconds)\n    \n    local unix_seconds\n    -- Check if the UTC interpretation matches our input\n    if utc_date.year == tonumber(year) and utc_date.month == tonumber(month) and \n       utc_date.day == tonumber(day) and utc_date.hour == tonumber(hour) and \n       utc_date.min == tonumber(min) and utc_date.sec == tonumber(sec) then\n      -- We are already in UTC, use as-is\n      unix_seconds = local_seconds\n    else\n      -- Calculate the correct UTC timestamp\n      local utc_seconds = os.time(utc_date)\n      local offset = local_seconds - utc_seconds\n      unix_seconds = local_seconds + offset  -- Add offset to get UTC\n    end\n    \n    -- Add milliseconds if present\n    local milli = 0\n    if ms and ms ~= \"\" then\n      milli = tonumber((ms .. \"000\"):sub(1, 3))  -- pad/truncate to 3 digits\n    end\n    \n    return unix_seconds * 1000 + milli\n  end\n  \n  return nil\nend\n\n-- Optimized JSON encoding function with predefined ordering\nfunction encodeJson(obj, key)\n  if obj == nil or obj == \"NULL_PLACEHOLDER\" then\n    return \"null\"\n  elseif type(obj) == \"boolean\" then\n    return tostring(obj)\n  elseif type(obj) == \"number\" then\n    return tostring(obj)\n  elseif type(obj) == \"string\" then\n    return '\"' .. obj:gsub('\"', '\\\\\"') .. '\"'\n  elseif type(obj) == \"table\" then\n    local isArray = true\n    local maxIndex = 0\n    for k, v in pairs(obj) do\n      if type(k) ~= \"number\" then\n        isArray = false\n        break\n      end\n      maxIndex = math.max(maxIndex, k)\n    end\n    \n    if isArray and maxIndex > 0 then\n      local items = {}\n      for i = 1, maxIndex do\n        -- Use the parent key for predefined ordering if available\n        local elementKey = key or tostring(i)\n        table.insert(items, obj[i] ~= nil and encodeJson(obj[i], elementKey) or \"null\")\n      end\n      return \"[\" .. table.concat(items, \", \") .. \"]\"\n    else\n      local items = {}\n      local fieldOrder = FIELD_ORDERS[key] or {}\n      \n      -- Phase 1: Process fields in predefined order\n      for _, fieldName in ipairs(fieldOrder) do\n        local v = obj[fieldName]\n        if v ~= nil then\n          table.insert(items, '\"' .. fieldName:gsub('\"', '\\\\\"') .. '\": ' .. encodeJson(v, fieldName))\n        end\n      end\n      \n      -- Phase 2: Process remaining fields\n      for k, v in pairs(obj) do\n        local found = false\n        for _, fieldName in ipairs(fieldOrder) do\n          if k == fieldName then \n            found = true\n            break\n          end\n        end\n        if not found then\n          local keyStr = type(k) == \"string\" and k or tostring(k)\n          table.insert(items, '\"' .. keyStr:gsub('\"', '\\\\\"') .. '\": ' .. encodeJson(v, keyStr))\n        end\n      end\n      \n      return \"{\" .. table.concat(items, \", \") .. \"}\"\n    end\n  else\n    return '\"' .. tostring(obj) .. '\"'\n  end\nend\n\nfunction processEvent(event)\n  \n  -- Check if eventType is missing and IGNORE_UNKNOWN_EVENT is enabled\n  if FEATURES.IGNORE_UNKNOWN_EVENT and (not event.eventType or event.eventType == \"\") then\n    return nil\n  end\n\n  local result = {}\n  \n  -- Handle responseElements null case\n  if event.responseElements == \"\" then\n    event.responseElements = nil\n  end\n  \n  -- Direct field mappings for better performance\n  local function setField(sourcePath, targetPath)\n    local value = getNestedField(event, sourcePath)\n    if value ~= nil and value ~= \"\" then\n      setNestedField(result, targetPath, value)\n    end\n  end\n  \n  -- Priority-based field mapping with fallback\n  local function setFieldWithPriority(priority1, priority2, priority3, targetPath)\n    local value = getNestedField(event, priority1)\n    if value ~= nil and value ~= \"\" then\n      setNestedField(result, targetPath, value)\n    elseif priority2 then\n      value = getNestedField(event, priority2)\n      if value ~= nil and value ~= \"\" then\n        setNestedField(result, targetPath, value)\n      elseif priority3 and priority3 ~= \"\" then\n        value = getNestedField(event, priority3)\n        if value ~= nil and value ~= \"\" then\n          setNestedField(result, targetPath, value)\n        end\n      end\n    end\n  end\n  \n  \n  -- Field mapping table for better readability and maintainability\n  local fieldMappings = {\n    -- Basic CloudTrail fields\n    {type = \"direct\", source = \"awsRegion\", target = \"cloud.region\"},\n    {type = \"direct\", source = \"eventCategory\", target = \"metadata.product.feature.name\"},\n    {type = \"direct\", source = \"eventID\", target = \"metadata.uid\"},\n    {type = \"direct\", source = \"eventTime\", target = \"metadata.original_time\"},\n    {type = \"direct\", source = \"eventVersion\", target = \"metadata.product.version\"},\n    {type = \"direct\", source = \"recipientAccountId\", target = \"cloud.account.uid\"},\n    {type = \"priority\", source1 = \"requestID\", source2 = \"requestParameters.externalId\", source3 = \"requestParameters.requestContext.awsAccountId\", target = \"api.request.uid\"},\n    {type = \"direct\", source = \"sourceIPAddress\", target = \"src_endpoint.ip\"},\n    {type = \"direct\", source = \"userAgent\", target = \"http_request.user_agent\"},\n    \n    -- User Identity fields\n    {type = \"direct\", source = \"userIdentity.principalId\", target = \"actor.user.uid\"},\n    {type = \"direct\", source = \"userIdentity.accessKeyId\", target = \"actor.user.credential_uid\"},\n    {type = \"direct\", source = \"userIdentity.type\", target = \"actor.user.type\"},\n    {type = \"direct\", source = \"userIdentity.invokedBy\", target = \"actor.invoked_by\"},\n    {type = \"direct\", source = \"userIdentity.sessionContext.sessionIssuer.principalId\", target = \"actor.session.uid\"},\n    {type = \"direct\", source = \"userIdentity.sessionContext.sessionIssuer.userName\", target = \"actor.session.issuer\"},\n    {type = \"priority\", source1 = \"userIdentity.userName\", source2 = \"userIdentity.sessionContext.sessionIssuer.type\", target = \"actor.user.name\"},\n    {type = \"priority\", source1 = \"userIdentity.accountId\", source2 = \"userIdentity.sessionContext.sessionIssuer.accountId\", target = \"actor.user.account.uid\"},\n    \n    -- API Information\n    {type = \"direct\", source = \"errorCode\", target = \"api.response.error\"},\n    {type = \"direct\", source = \"errorMessage\", target = \"api.response.error_message\"},\n    \n    -- Request Parameters\n    {type = \"priority\", source1 = \"requestParameters.durationSeconds\", source2 = \"insightDetails.insightContext.statistics.insightDuration\", target = \"duration\"},\n    {type = \"direct\", source = \"requestParameters.bucketName\", target = \"resources.name\"},\n    {type = \"direct\", source = \"requestParameters.Host\", target = \"src_endpoint.hostname\"},\n    {type = \"direct\", source = \"requestParameters.instanceId\", target = \"src_endpoint.instance_uid\"},\n    {type = \"direct\", source = \"requestParameters.availabilityZone\", target = \"cloud.zone\"},\n    \n    -- Response Elements\n    {type = \"direct\", source = \"responseElements.credentials.accessKeyId\", target = \"actor.session.credential_uid\"},\n    {type = \"direct\", source = \"responseElements.credentials.expiration\", target = \"actor.session.expiration_time\"},\n    \n    -- Additional Event Data\n    {type = \"direct\", source = \"additionalEventData.x-amz-id-2\", target = \"resources.uid\"},\n    {type = \"direct\", source = \"tlsDetails.cipherSuite\", target = \"tls.cipher\"},\n    {type = \"direct\", source = \"tlsDetails.tlsVersion\", target = \"tls.version\"},\n    \n    -- Additional fields\n    {type = \"direct\", source = \"vpcEndpointId\", target = \"src_endpoint.uid\"},\n    {type = \"direct\", source = \"apiVersion\", target = \"api.version\"},\n    {type = \"direct\", source = \"message\", target = \"message\"},\n    {type = \"priority\", source1 = \"eventSource\", source2 = \"insightDetails.eventSource\", target = \"api.service.name\"},\n    \n    -- Individual resource field mappings (for single resource events)\n    {type = \"direct\", source = \"resources.accountId\", target = \"resource.account.uid\"},\n    {type = \"direct\", source = \"resources.type\", target = \"resource.type\"},\n    {type = \"direct\", source = \"resources.ARN\", target = \"resource.uid\"},\n\n    -- OCSF field mappings (direct from input)\n    {type = \"direct\", source = \"class_uid\", target = \"class_uid\"},\n    {type = \"direct\", source = \"category_uid\", target = \"category_uid\"}\n  }\n  \n  -- Process all field mappings in one iteration\n  for _, mapping in ipairs(fieldMappings) do\n    if mapping.type == \"direct\" then\n      setField(mapping.source, mapping.target)\n    elseif mapping.type == \"priority\" then\n      setFieldWithPriority(mapping.source1, mapping.source2, mapping.source3, mapping.target)\n    end\n  end\n  \n  -- Convert timestamps to milliseconds\n  local creationDate = getNestedField(event, 'userIdentity.sessionContext.attributes.creationDate')\n  if creationDate then\n    local convertedTime = convertToMilliseconds(creationDate)\n    if convertedTime then\n      setNestedField(result, 'actor.session.created_time', convertedTime)\n    end\n  end\n  \n  local expirationDate = getNestedField(event, 'responseElements.credentials.expiration')\n  if expirationDate then\n    local convertedTime = convertToMilliseconds(expirationDate)\n    if convertedTime then\n      setNestedField(result, 'actor.session.expiration_time', convertedTime)\n    end\n  end\n  \n  -- Convert eventTime to time field\n  local eventTime = getNestedField(event, 'eventTime')\n  if eventTime then\n    local convertedTime = convertToMilliseconds(eventTime)\n    if convertedTime then\n      -- we need to use milliseconds here to be compatible with S1\n      setNestedField(result, 'time', convertedTime)\n    end\n  end\n  \n  -- Resources array handling\n  if event.resources and type(event.resources) == \"table\" then\n    local accountIds = {}\n    local types = {}\n    local arns = {}\n    \n    for _, resource in ipairs(event.resources) do\n      if resource.accountId then table.insert(accountIds, resource.accountId) end\n      if resource.type then table.insert(types, resource.type) end\n      if resource.ARN then table.insert(arns, resource.ARN) end\n    end\n    \n    if #accountIds > 0 then setNestedField(result, 'resource.account.uid', accountIds) end\n    if #types > 0 then setNestedField(result, 'resource.type', types) end\n    if #arns > 0 then setNestedField(result, 'resource.uid', arns) end\n  end\n  \n  -- Priority-based default OCSF fields (only set if not already present)\n  local function setDefaultIfNotExists(targetPath, defaultValue)\n    local existingValue = getNestedField(result, targetPath)\n    if existingValue == nil then\n      setNestedField(result, targetPath, defaultValue)\n    end\n  end\n\n  -- Static category mapping\n  setDefaultIfNotExists('category_uid', 4)\n    \n  -- Static class mapping \n  setDefaultIfNotExists('class_uid', 4002)\n  \n  -- Set defaults only if fields don't already exist\n  setDefaultIfNotExists('metadata.product.name', 'CloudTrail')\n  setDefaultIfNotExists('metadata.product.vendor_name', 'AWS')\n  setDefaultIfNotExists('metadata.version', '1.0.0-rc3')\n  setDefaultIfNotExists('dataSource.vendor', 'AWS')\n  setDefaultIfNotExists('dataSource.name', 'CloudTrail')\n  setDefaultIfNotExists('dataSource.category', 'security')\n  setDefaultIfNotExists('class_name', 'HTTP Activity')\n  setDefaultIfNotExists('category_name', 'Network Activity')\n  setDefaultIfNotExists('type_name', 'HTTP Activity: Other')\n  setDefaultIfNotExists('type_uid', 400299)\n  setDefaultIfNotExists('activity_id', 99)\n  setDefaultIfNotExists('activity_name', event.eventName or '')\n  setDefaultIfNotExists('event.type', event.eventName or '')\n  setDefaultIfNotExists('severity_id', 99)\n  setDefaultIfNotExists('status_id', 99)\n  setDefaultIfNotExists('status', 'Other')\n  \n  -- Initialize observables array\n  local observables = {}\n  \n  -- Add IP address observable\n  if event.sourceIPAddress then\n    table.insert(observables, {\n      type_id = 2, \n      type = 'IP Address', \n      name = 'src_endpoint.ip', \n      value = event.sourceIPAddress\n    })\n  end\n  \n  -- Add ARN observable\n  local arn = getNestedField(event, 'userIdentity.arn')\n  if arn then\n    table.insert(observables, {\n      type_id = 99,\n      type = 'Other',\n      name = 'unmapped.userIdentity.arn',\n      value = arn\n    })\n  end\n  \n  setNestedField(result, 'observables', observables)\n  \n  -- Add unmapped fields\n  local unmapped = {}\n  \n  -- Add specific unmapped fields that should be preserved\n  if event.eventName then unmapped.eventName = event.eventName end\n  if event.readOnly ~= nil then unmapped.readOnly = event.readOnly end\n  if event.resources then unmapped.resources = event.resources end\n  if event.eventType then unmapped.eventType = event.eventType end\n  if event.managementEvent ~= nil then unmapped.managementEvent = event.managementEvent end\n  if event.sharedEventID then unmapped.sharedEventID = event.sharedEventID end\n  \n  -- Add additionalEventData fields as unmapped\n  if event.additionalEventData then\n    if event.additionalEventData.SignatureVersion then unmapped[\"additionalEventData.SignatureVersion\"] = event.additionalEventData.SignatureVersion end\n    if event.additionalEventData.CipherSuite then unmapped[\"additionalEventData.CipherSuite\"] = event.additionalEventData.CipherSuite end\n    if event.additionalEventData.bytesTransferredIn then unmapped[\"additionalEventData.bytesTransferredIn\"] = event.additionalEventData.bytesTransferredIn end\n    if event.additionalEventData.AuthenticationMethod then unmapped[\"additionalEventData.AuthenticationMethod\"] = event.additionalEventData.AuthenticationMethod end\n    if event.additionalEventData.bytesTransferredOut then unmapped[\"additionalEventData.bytesTransferredOut\"] = event.additionalEventData.bytesTransferredOut end\n  end\n  \n  -- Add all unmapped fields automatically\n  -- Build comprehensive set of all mapped paths\n  local mappedPaths = {}\n  \n  -- Add computed/mapped-by-logic paths\n  mappedPaths['userIdentity.sessionContext.attributes.creationDate'] = true\n  mappedPaths['responseElements.credentials.expiration'] = true\n  \n  -- Add all fieldMappings paths\n  for _, mapping in ipairs(fieldMappings) do\n    if mapping.type == \"direct\" then\n      mappedPaths[mapping.source] = true\n    elseif mapping.type == \"priority\" then\n      if mapping.source1 then mappedPaths[mapping.source1] = true end\n      if mapping.source2 then mappedPaths[mapping.source2] = true end\n      if mapping.source3 then mappedPaths[mapping.source3] = true end\n    end\n  end\n  \n  for k, v in pairs(event) do\n    -- Check if k is used as a source field in mapping\n    local is_mapped = mappedPaths[k] == true\n    \n    -- Filter out Vector-specific fields that shouldn't be in unmapped\n    local is_vector_field = (k == \"_ob\" or k == \"site_id\" or k == \"timestamp\")\n    \n    if not is_mapped and not is_vector_field then\n      if type(v) == \"table\" then\n        -- For nested objects, filter out only the mapped fields\n        local function filterMappedFields(obj, prefix)\n          local out = {}\n          for nestedKey, nestedValue in pairs(obj) do\n            local fullPath = prefix == \"\" and nestedKey or prefix .. \".\" .. nestedKey\n            local isNestedMapped = mappedPaths[fullPath] == true\n            \n            -- Only include unmapped fields\n            if not isNestedMapped then\n              if type(nestedValue) == \"table\" then\n                local child = filterMappedFields(nestedValue, fullPath)\n                if next(child) then\n                  out[nestedKey] = child\n                end\n              else\n                out[nestedKey] = nestedValue\n              end\n            end\n          end\n          return out\n        end\n        \n        local filteredObj = filterMappedFields(v, k)\n        if next(filteredObj) then\n          unmapped[k] = filteredObj\n        end\n      else\n        -- Only add non-null and non-empty values\n        if v ~= nil and v ~= \"\" then\n          unmapped[k] = v\n        end\n      end\n    end\n  end\n  \n  \n  if next(unmapped) then\n    setNestedField(result, 'unmapped', unmapped)\n  end\n  \n  -- Create message field with original event\n  local cleanEvent = {}\n  for key, value in pairs(event) do\n    if key ~= \"_ob\" and key ~= \"timestamp\" then\n      cleanEvent[key] = value\n    end\n  end\n  \n  if event.responseElements == nil then\n    cleanEvent.responseElements = \"NULL_PLACEHOLDER\"\n  end\n  \n  -- Add missing fields that should be in the message\n  if event.readOnly == nil then\n    cleanEvent.readOnly = true  -- Default for CloudTrail events\n  end\n  if event.eventType == nil then\n    cleanEvent.eventType = \"AwsApiCall\"  -- Default for CloudTrail events\n  end\n  if event.managementEvent == nil then\n    cleanEvent.managementEvent = true  -- Default for CloudTrail events\n  end\n  \n  \n         -- Flatten result\n         local flattened = {}\n         flattenObject(result, \"\", flattened)\n         flattened.message = encodeJson(cleanEvent, \"root\")\n  \n  return flattened\nend\n\n-- Simplified helper functions\nfunction setNestedField(obj, path, value)\n  if value == nil or path == nil or path == '' then return end\n  local keys = {}\n  for key in string.gmatch(path, '[^.]+') do\n    if key and key ~= '' then\n      table.insert(keys, key)\n    end\n  end\n  if #keys == 0 then return end\n  \n  local current = obj\n  for i = 1, #keys - 1 do\n    local key = keys[i]\n        if current[key] == nil then\n          current[key] = {}\n        end\n        current = current[key]\n      end\n  current[keys[#keys]] = value\nend\n\nfunction getNestedField(obj, path)\n  if obj == nil or path == nil or path == '' then return nil end\n  local keys = {}\n  for key in string.gmatch(path, '[^.]+') do\n    if key and key ~= '' then\n      table.insert(keys, key)\n    end\n  end\n  if #keys == 0 then return nil end\n  \n  local current = obj\n  for _, key in ipairs(keys) do\n    if current == nil or current[key] == nil then\n        return nil\n      end\n      current = current[key]\n  end\n  return current\nend\n\nfunction flattenObject(obj, prefix, result)\n  prefix = prefix or \"\"\n  if type(obj) ~= \"table\" then\n    if prefix ~= \"\" then\n      result[prefix] = obj\n    end\n    return\n  end\n  \n  for key, value in pairs(obj) do\n    local newKey = prefix == \"\" and key or prefix .. \".\" .. key\n    if type(value) == \"table\" then\n      local isArray = true\n      local maxIndex = 0\n      for k, v in pairs(value) do\n        if type(k) ~= \"number\" then\n          isArray = false\n          break\n        end\n        maxIndex = math.max(maxIndex, k)\n      end\n      if isArray and maxIndex > 0 then\n        local arrayValues = {}\n        for i = 1, maxIndex do\n          if value[i] ~= nil then\n            table.insert(arrayValues, value[i])\n          end\n        end\n        result[newKey] = arrayValues\n      else\n        flattenObject(value, newKey, result)\n      end\n    else\n      result[newKey] = value\n    end\n  end\nend\n","serializer":"aws-cloudtrail-lua"}]},"status":"NS_ACTIVE","created":"2025-11-19T20:24:22.021425Z","updated":"2025-11-19T20:24:22.021425Z","createdBy":"","updatedBy":"","isTransformGroup":false,"origin":"NODE_ORIGIN_USER","templateName":"OCSFSerializerExtended","processorType":"DATA_PROCESSOR","siteFilenames":[],"userVisible":true}],"archivalDestination":null}
+{
+    "pipeline": {
+        "id": "0",
+        "siteId": "16",
+        "name": "Pipeline Template_AWS_S3_Cloudtrail 2",
+        "description": "",
+        "status": "DEFAULT",
+        "createdAt": "2025-11-19T20:09:29.748465Z",
+        "updatedAt": "2025-11-20T21:00:36.292155Z",
+        "deletedAt": null,
+        "createdBy": "",
+        "updatedBy": "",
+        "deployedGraphVersion": 0,
+        "pendingGraphVersion": 0,
+        "latestGraphVersion": 0,
+        "sourceId": "0",
+        "pipelineType": "PIPELINE_TYPE_USER",
+        "pendingAction": "NOP",
+        "analytics": []
+    },
+    "pipelineGraph": {
+        "version": 3,
+        "pipelineId": "0",
+        "edges": {
+            "100000000000000028": {
+                "nodeIds": [
+                    "300000000000000201"
+                ]
+            },
+            "300000000000000201": {
+                "nodeIds": [
+                    "200000000000000044"
+                ]
+            }
+        },
+        "created": "2025-11-20T21:00:36.292155Z",
+        "createdBy": "",
+        "metaInfo": {
+            "omissions": [
+                {
+                    "omitted": {
+                        "100000000000000028": {
+                            "nodeIds": [
+                                "300000000000000336"
+                            ]
+                        },
+                        "300000000000000336": {
+                            "nodeIds": [
+                                "300000000000000201"
+                            ]
+                        }
+                    },
+                    "patch": {
+                        "100000000000000028": {
+                            "nodeIds": [
+                                "300000000000000201"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "omitted": {
+                        "300000000000000200": {
+                            "nodeIds": [
+                                "200000000000000044"
+                            ]
+                        },
+                        "300000000000000201": {
+                            "nodeIds": [
+                                "300000000000000200"
+                            ]
+                        }
+                    },
+                    "patch": {
+                        "300000000000000201": {
+                            "nodeIds": [
+                                "200000000000000044"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "source": {
+        "id": "100000000000000028",
+        "siteId": "16",
+        "templateId": "2",
+        "templateVersion": "1",
+        "templateName": "AWS S3",
+        "name": "Source TEMPLATE_AWS_S3_Assume_Role",
+        "description": "This is the Default approach to gather data from S3 using SQS and SNS- typically usage is for collecting Cloudtrail data ",
+        "config": {
+            "auth.assume_role": "arn:aws:iam::<your_accountid>:role/<role you created>",
+            "auth.external_id": "*****",
+            "auth.region": "us-east-1",
+            "compression": "auto",
+            "region": "us-east-1",
+            "sqs.delete_message": true,
+            "sqs.queue_url": "https://sqs.us-east-1.amazonaws.com/***REMOVED***/observo-test-queue"
+        },
+        "status": "NS_ACTIVE",
+        "created": "2025-11-20T20:43:44.276856Z",
+        "updated": "2025-11-20T20:51:47.861570Z",
+        "createdBy": "",
+        "updatedBy": "",
+        "type": "AWS_S3",
+        "origin": "NODE_ORIGIN_USER",
+        "archivalInfo": null,
+        "logFormat": "LOG_FORMAT_UNSPECIFIED",
+        "preprocessorConfig": null,
+        "port": 0,
+        "pushBased": false,
+        "pushSourceAddress": "",
+        "k8sInternalSvcUrl": "",
+        "siteFilenames": [],
+        "sourceConfigs": [
+            {
+                "id": "0",
+                "sourceId": "0",
+                "templateId": "65",
+                "templateName": "PatternExtractorPostProcessor",
+                "category": "PATTERN_EXTRACTOR",
+                "config": {
+                    "config_groups": [
+                        {
+                            "_name": "Pattern Extractor Configs",
+                            "clusterTagNames": [],
+                            "truncate": false
+                        }
+                    ]
+                },
+                "position": 0,
+                "templateVersion": "1"
+            },
+            {
+                "id": "0",
+                "sourceId": "0",
+                "templateId": "46",
+                "templateName": "SentimentAnalyzer",
+                "category": "PATTERN_EXTRACTOR",
+                "config": {
+                    "config_groups": [
+                        {
+                            "_name": "Config",
+                            "enabled": false,
+                            "keyNameForExtractedSentiment": "sentiment",
+                            "logLocations": [],
+                            "negativeSentimentRegexes": [
+                                "time[\\s_-]*out",
+                                "timed[\\s_-]*out",
+                                "(?i)alert ([=\\s\\*]+|$)",
+                                "(?i)bad[\\s_-]*gateway",
+                                "(?i)bad[\\s_-]*request",
+                                "(?i)(^| [=\\s\\*]+)bad([=\\s\\*]+|$)",
+                                "(?i)does[\\s_-]*not[\\s_-]*exist",
+                                "(?i)[=\\s\\*]+eof([=\\s\\*]+|$)",
+                                "(?i)exception([=\\s\\*]+|$)",
+                                "(?i)fail([=\\s\\*]+|$)",
+                                "(?i)failed([=\\s\\*]+|$)",
+                                "(?i)failure([=\\s\\*]+|$)",
+                                "(?i)(^|[=\\s\\*]+)fault([=\\s\\*]+|$)",
+                                "(?i)(^| [=\\s\\*]+)feof([=\\s\\*]+|$)",
+                                "(?i)not[\\s_-]*acceptable",
+                                "(?i)not[\\s_-]*allowed",
+                                "(?i)not[\\s_-]*found",
+                                "(?i)not[\\s_-]*ok",
+                                "(?i)(^| [=\\s\\*]+)oom([=\\s\\*]+|$)",
+                                "(?i)too[\\s_-]*many"
+                            ],
+                            "negativeSentimentWords": [
+                                "abnormal",
+                                "abort",
+                                "broken",
+                                "canceled",
+                                "caught",
+                                "critical",
+                                "denied",
+                                "emergency",
+                                "error",
+                                "exception",
+                                "fatal",
+                                "incomplete",
+                                "insufficient",
+                                "interrupt",
+                                "killed",
+                                "killing",
+                                "malformed",
+                                "mismatch",
+                                "outofmemory",
+                                "panic",
+                                "segfault",
+                                "terminate",
+                                "timeout",
+                                "unable",
+                                "unauthorized",
+                                "undefined",
+                                "unexpected",
+                                "unprocessable",
+                                "unstable",
+                                "unhandled",
+                                "unsuccessful",
+                                "unusable",
+                                "violation",
+                                "rejection",
+                                "rejected"
+                            ],
+                            "useLogPath": true
+                        }
+                    ]
+                },
+                "position": 1,
+                "templateVersion": "1"
+            },
+            {
+                "id": "0",
+                "sourceId": "0",
+                "templateId": "71",
+                "templateName": "GeneratorVersion",
+                "category": "INTERNAL",
+                "config": {
+                    "generator_version": "v2"
+                },
+                "position": 0,
+                "templateVersion": "0"
+            }
+        ],
+        "userVisible": true,
+        "usageType": "USER"
+    },
+    "destinations": [
+        {
+            "id": "200000000000000044",
+            "siteId": "16",
+            "templateId": "25",
+            "templateVersion": "0",
+            "templateName": "SentinelOne AI SIEM",
+            "name": "Sink Template_SentinelOne AI SIEM",
+            "description": "This is the Default approach to Send data into your SentinelOne Console",
+            "config": {
+                "acknowledgements.enabled": false,
+                "acknowledgements.indexer_acknowledgements_enabled": true,
+                "acknowledgements.query_interval": 10,
+                "acknowledgements.retry_limit": 30,
+                "batch.timeout_secs": 1,
+                "compression": "none",
+                "default_token": "********",
+                "encoding.codec": "json",
+                "encoding.json.pretty": false,
+                "encoding.metric_tag_values": "single",
+                "endpoint": "https://ingest.us1.sentinelone.net",
+                "endpoint_target": "event",
+                "host_key": "host",
+                "path": "/services/collector/event?isParsed=true",
+                "request.concurrency": "adaptive",
+                "request.headers": {},
+                "request.rate_limit_duration_secs": 1,
+                "request.retry_initial_backoff_secs": 1,
+                "request.retry_max_duration_secs": 3600,
+                "request.timeout_secs": 60,
+                "timestamp_key": "timestamp",
+                "tls.verify_certificate": false,
+                "tls.verify_hostname": false
+            },
+            "status": "NS_ACTIVE",
+            "sourceId": "0",
+            "created": "2025-11-16T22:17:36.683043Z",
+            "updated": "2025-11-20T17:19:18.696952Z",
+            "createdBy": "",
+            "updatedBy": "",
+            "type": "SPLUNK_HEC_LOGS",
+            "origin": "NODE_ORIGIN_USER",
+            "usageType": "USER",
+            "siteFilenames": [],
+            "userVisible": true
+        }
+    ],
+    "transforms": [
+        {
+            "id": "300000000000000201",
+            "siteId": "16",
+            "templateId": "38",
+            "templateVersion": "1",
+            "name": "Transform OCSF Serializer AWS Cloudtrail Extended",
+            "description": "",
+            "pipelineId": "0",
+            "config": {
+                "config_groups": [
+                    {
+                        "_name": "General Configuration",
+                        "bypassed": false,
+                        "filterEnabled": false
+                    },
+                    {
+                        "_name": "ocsf",
+                        "enabled": true,
+                        "parallelism": 1,
+                        "script": "\nlocal FEATURES = {\n    IGNORE_UNKNOWN_EVENT = true,\n}\n\n-- Field ordering templates for consistent JSON serialization\nlocal FIELD_ORDERS = {\n    root = {\"eventVersion\", \"userIdentity\", \"eventTime\", \"eventSource\", \"eventName\", \"awsRegion\", \"sourceIPAddress\", \"userAgent\", \"requestParameters\", \"responseElements\", \"additionalEventData\", \"requestID\", \"eventID\", \"readOnly\", \"resources\", \"eventType\", \"managementEvent\", \"recipientAccountId\", \"sharedEventID\", \"eventCategory\", \"tlsDetails\", \"errorCode\", \"errorMessage\", \"vpcEndpointId\", \"apiVersion\", \"message\", \"time\", \"insightDetails\", \"class_uid\", \"category_uid\", \"metadata\", \"dataSource\"},\n    userIdentity = {\"accountId\", \"principalId\", \"accessKeyId\", \"userName\", \"type\", \"invokedBy\", \"sessionContext\"},\n    sessionContext = {\"sessionIssuer\", \"attributes\"},\n    sessionIssuer = {\"type\", \"principalId\", \"arn\", \"accountId\", \"userName\"},\n    attributes = {\"creationDate\"},\n    requestParameters = {\"durationSeconds\", \"externalId\", \"bucketName\", \"Host\", \"instanceId\", \"availabilityZone\", \"requestContext\"},\n    requestContext = {\"awsAccountId\"},\n    responseElements = {\"credentials\"},\n    credentials = {\"accessKeyId\", \"expiration\"},\n    additionalEventData = {\"SignatureVersion\", \"CipherSuite\", \"bytesTransferredIn\", \"AuthenticationMethod\", \"x-amz-id-2\", \"bytesTransferredOut\"},\n    resources = {\"accountId\", \"type\", \"ARN\"},\n    tlsDetails = {\"tlsVersion\", \"cipherSuite\"},\n    insightDetails = {\"eventSource\", \"insightContext\"},\n    insightContext = {\"statistics\"},\n    statistics = {\"insightDuration\"},\n    metadata = {\"product\"},\n    product = {\"name\", \"vendor_name\"},\n    dataSource = {\"category\", \"vendor\", \"name\"}\n}\n\n-- Convert ISO 8601 timestamp to Unix epoch milliseconds\nfunction convertToMilliseconds(timestamp)\n  if not timestamp or timestamp == \"\" then\n    return nil\n  end\n  \n  -- Parse ISO 8601 format: \"2025-09-29T09:15:40Z\" or \"2025-09-29T09:15:40.123Z\"\n  local year, month, day, hour, min, sec, ms = string.match(timestamp, \"(%d+)%-(%d+)%-(%d+)T(%d+):(%d+):(%d+)%.?(%d*)Z\")\n  \n  if year and month and day and hour and min and sec then\n    local t = {\n      year = tonumber(year),\n      month = tonumber(month),\n      day = tonumber(day),\n      hour = tonumber(hour),\n      min = tonumber(min),\n      sec = tonumber(sec),\n      isdst = false\n    }\n    \n    -- Get local time interpretation\n    local local_seconds = os.time(t)\n    \n    -- Get what this represents in UTC\n    local utc_date = os.date(\"!*t\", local_seconds)\n    \n    local unix_seconds\n    -- Check if the UTC interpretation matches our input\n    if utc_date.year == tonumber(year) and utc_date.month == tonumber(month) and \n       utc_date.day == tonumber(day) and utc_date.hour == tonumber(hour) and \n       utc_date.min == tonumber(min) and utc_date.sec == tonumber(sec) then\n      -- We are already in UTC, use as-is\n      unix_seconds = local_seconds\n    else\n      -- Calculate the correct UTC timestamp\n      local utc_seconds = os.time(utc_date)\n      local offset = local_seconds - utc_seconds\n      unix_seconds = local_seconds + offset  -- Add offset to get UTC\n    end\n    \n    -- Add milliseconds if present\n    local milli = 0\n    if ms and ms ~= \"\" then\n      milli = tonumber((ms .. \"000\"):sub(1, 3))  -- pad/truncate to 3 digits\n    end\n    \n    return unix_seconds * 1000 + milli\n  end\n  \n  return nil\nend\n\n-- Optimized JSON encoding function with predefined ordering\nfunction encodeJson(obj, key)\n  if obj == nil or obj == \"NULL_PLACEHOLDER\" then\n    return \"null\"\n  elseif type(obj) == \"boolean\" then\n    return tostring(obj)\n  elseif type(obj) == \"number\" then\n    return tostring(obj)\n  elseif type(obj) == \"string\" then\n    return '\"' .. obj:gsub('\"', '\\\\\"') .. '\"'\n  elseif type(obj) == \"table\" then\n    local isArray = true\n    local maxIndex = 0\n    for k, v in pairs(obj) do\n      if type(k) ~= \"number\" then\n        isArray = false\n        break\n      end\n      maxIndex = math.max(maxIndex, k)\n    end\n    \n    if isArray and maxIndex > 0 then\n      local items = {}\n      for i = 1, maxIndex do\n        -- Use the parent key for predefined ordering if available\n        local elementKey = key or tostring(i)\n        table.insert(items, obj[i] ~= nil and encodeJson(obj[i], elementKey) or \"null\")\n      end\n      return \"[\" .. table.concat(items, \", \") .. \"]\"\n    else\n      local items = {}\n      local fieldOrder = FIELD_ORDERS[key] or {}\n      \n      -- Phase 1: Process fields in predefined order\n      for _, fieldName in ipairs(fieldOrder) do\n        local v = obj[fieldName]\n        if v ~= nil then\n          table.insert(items, '\"' .. fieldName:gsub('\"', '\\\\\"') .. '\": ' .. encodeJson(v, fieldName))\n        end\n      end\n      \n      -- Phase 2: Process remaining fields\n      for k, v in pairs(obj) do\n        local found = false\n        for _, fieldName in ipairs(fieldOrder) do\n          if k == fieldName then \n            found = true\n            break\n          end\n        end\n        if not found then\n          local keyStr = type(k) == \"string\" and k or tostring(k)\n          table.insert(items, '\"' .. keyStr:gsub('\"', '\\\\\"') .. '\": ' .. encodeJson(v, keyStr))\n        end\n      end\n      \n      return \"{\" .. table.concat(items, \", \") .. \"}\"\n    end\n  else\n    return '\"' .. tostring(obj) .. '\"'\n  end\nend\n\nfunction processEvent(event)\n  \n  -- Check if eventType is missing and IGNORE_UNKNOWN_EVENT is enabled\n  if FEATURES.IGNORE_UNKNOWN_EVENT and (not event.eventType or event.eventType == \"\") then\n    return nil\n  end\n\n  local result = {}\n  \n  -- Handle responseElements null case\n  if event.responseElements == \"\" then\n    event.responseElements = nil\n  end\n  \n  -- Direct field mappings for better performance\n  local function setField(sourcePath, targetPath)\n    local value = getNestedField(event, sourcePath)\n    if value ~= nil and value ~= \"\" then\n      setNestedField(result, targetPath, value)\n    end\n  end\n  \n  -- Priority-based field mapping with fallback\n  local function setFieldWithPriority(priority1, priority2, priority3, targetPath)\n    local value = getNestedField(event, priority1)\n    if value ~= nil and value ~= \"\" then\n      setNestedField(result, targetPath, value)\n    elseif priority2 then\n      value = getNestedField(event, priority2)\n      if value ~= nil and value ~= \"\" then\n        setNestedField(result, targetPath, value)\n      elseif priority3 and priority3 ~= \"\" then\n        value = getNestedField(event, priority3)\n        if value ~= nil and value ~= \"\" then\n          setNestedField(result, targetPath, value)\n        end\n      end\n    end\n  end\n  \n  \n  -- Field mapping table for better readability and maintainability\n  local fieldMappings = {\n    -- Basic CloudTrail fields\n    {type = \"direct\", source = \"awsRegion\", target = \"cloud.region\"},\n    {type = \"direct\", source = \"eventCategory\", target = \"metadata.product.feature.name\"},\n    {type = \"direct\", source = \"eventID\", target = \"metadata.uid\"},\n    {type = \"direct\", source = \"eventTime\", target = \"metadata.original_time\"},\n    {type = \"direct\", source = \"eventVersion\", target = \"metadata.product.version\"},\n    {type = \"direct\", source = \"recipientAccountId\", target = \"cloud.account.uid\"},\n    {type = \"priority\", source1 = \"requestID\", source2 = \"requestParameters.externalId\", source3 = \"requestParameters.requestContext.awsAccountId\", target = \"api.request.uid\"},\n    {type = \"direct\", source = \"sourceIPAddress\", target = \"src_endpoint.ip\"},\n    {type = \"direct\", source = \"userAgent\", target = \"http_request.user_agent\"},\n    \n    -- User Identity fields\n    {type = \"direct\", source = \"userIdentity.principalId\", target = \"actor.user.uid\"},\n    {type = \"direct\", source = \"userIdentity.accessKeyId\", target = \"actor.user.credential_uid\"},\n    {type = \"direct\", source = \"userIdentity.type\", target = \"actor.user.type\"},\n    {type = \"direct\", source = \"userIdentity.invokedBy\", target = \"actor.invoked_by\"},\n    {type = \"direct\", source = \"userIdentity.sessionContext.sessionIssuer.principalId\", target = \"actor.session.uid\"},\n    {type = \"direct\", source = \"userIdentity.sessionContext.sessionIssuer.userName\", target = \"actor.session.issuer\"},\n    {type = \"priority\", source1 = \"userIdentity.userName\", source2 = \"userIdentity.sessionContext.sessionIssuer.type\", target = \"actor.user.name\"},\n    {type = \"priority\", source1 = \"userIdentity.accountId\", source2 = \"userIdentity.sessionContext.sessionIssuer.accountId\", target = \"actor.user.account.uid\"},\n    \n    -- API Information\n    {type = \"direct\", source = \"errorCode\", target = \"api.response.error\"},\n    {type = \"direct\", source = \"errorMessage\", target = \"api.response.error_message\"},\n    \n    -- Request Parameters\n    {type = \"priority\", source1 = \"requestParameters.durationSeconds\", source2 = \"insightDetails.insightContext.statistics.insightDuration\", target = \"duration\"},\n    {type = \"direct\", source = \"requestParameters.bucketName\", target = \"resources.name\"},\n    {type = \"direct\", source = \"requestParameters.Host\", target = \"src_endpoint.hostname\"},\n    {type = \"direct\", source = \"requestParameters.instanceId\", target = \"src_endpoint.instance_uid\"},\n    {type = \"direct\", source = \"requestParameters.availabilityZone\", target = \"cloud.zone\"},\n    \n    -- Response Elements\n    {type = \"direct\", source = \"responseElements.credentials.accessKeyId\", target = \"actor.session.credential_uid\"},\n    {type = \"direct\", source = \"responseElements.credentials.expiration\", target = \"actor.session.expiration_time\"},\n    \n    -- Additional Event Data\n    {type = \"direct\", source = \"additionalEventData.x-amz-id-2\", target = \"resources.uid\"},\n    {type = \"direct\", source = \"tlsDetails.cipherSuite\", target = \"tls.cipher\"},\n    {type = \"direct\", source = \"tlsDetails.tlsVersion\", target = \"tls.version\"},\n    \n    -- Additional fields\n    {type = \"direct\", source = \"vpcEndpointId\", target = \"src_endpoint.uid\"},\n    {type = \"direct\", source = \"apiVersion\", target = \"api.version\"},\n    {type = \"direct\", source = \"message\", target = \"message\"},\n    {type = \"priority\", source1 = \"eventSource\", source2 = \"insightDetails.eventSource\", target = \"api.service.name\"},\n    \n    -- Individual resource field mappings (for single resource events)\n    {type = \"direct\", source = \"resources.accountId\", target = \"resource.account.uid\"},\n    {type = \"direct\", source = \"resources.type\", target = \"resource.type\"},\n    {type = \"direct\", source = \"resources.ARN\", target = \"resource.uid\"},\n\n    -- OCSF field mappings (direct from input)\n    {type = \"direct\", source = \"class_uid\", target = \"class_uid\"},\n    {type = \"direct\", source = \"category_uid\", target = \"category_uid\"}\n  }\n  \n  -- Process all field mappings in one iteration\n  for _, mapping in ipairs(fieldMappings) do\n    if mapping.type == \"direct\" then\n      setField(mapping.source, mapping.target)\n    elseif mapping.type == \"priority\" then\n      setFieldWithPriority(mapping.source1, mapping.source2, mapping.source3, mapping.target)\n    end\n  end\n  \n  -- Convert timestamps to milliseconds\n  local creationDate = getNestedField(event, 'userIdentity.sessionContext.attributes.creationDate')\n  if creationDate then\n    local convertedTime = convertToMilliseconds(creationDate)\n    if convertedTime then\n      setNestedField(result, 'actor.session.created_time', convertedTime)\n    end\n  end\n  \n  local expirationDate = getNestedField(event, 'responseElements.credentials.expiration')\n  if expirationDate then\n    local convertedTime = convertToMilliseconds(expirationDate)\n    if convertedTime then\n      setNestedField(result, 'actor.session.expiration_time', convertedTime)\n    end\n  end\n  \n  -- Convert eventTime to time field\n  local eventTime = getNestedField(event, 'eventTime')\n  if eventTime then\n    local convertedTime = convertToMilliseconds(eventTime)\n    if convertedTime then\n      -- we need to use milliseconds here to be compatible with S1\n      setNestedField(result, 'time', convertedTime)\n    end\n  end\n  \n  -- Resources array handling\n  if event.resources and type(event.resources) == \"table\" then\n    local accountIds = {}\n    local types = {}\n    local arns = {}\n    \n    for _, resource in ipairs(event.resources) do\n      if resource.accountId then table.insert(accountIds, resource.accountId) end\n      if resource.type then table.insert(types, resource.type) end\n      if resource.ARN then table.insert(arns, resource.ARN) end\n    end\n    \n    if #accountIds > 0 then setNestedField(result, 'resource.account.uid', accountIds) end\n    if #types > 0 then setNestedField(result, 'resource.type', types) end\n    if #arns > 0 then setNestedField(result, 'resource.uid', arns) end\n  end\n  \n  -- Priority-based default OCSF fields (only set if not already present)\n  local function setDefaultIfNotExists(targetPath, defaultValue)\n    local existingValue = getNestedField(result, targetPath)\n    if existingValue == nil then\n      setNestedField(result, targetPath, defaultValue)\n    end\n  end\n\n  -- Static category mapping\n  setDefaultIfNotExists('category_uid', 4)\n    \n  -- Static class mapping \n  setDefaultIfNotExists('class_uid', 4002)\n  \n  -- Set defaults only if fields don't already exist\n  setDefaultIfNotExists('metadata.product.name', 'CloudTrail')\n  setDefaultIfNotExists('metadata.product.vendor_name', 'AWS')\n  setDefaultIfNotExists('metadata.version', '1.0.0-rc3')\n  setDefaultIfNotExists('dataSource.vendor', 'AWS')\n  setDefaultIfNotExists('dataSource.name', 'CloudTrail')\n  setDefaultIfNotExists('dataSource.category', 'security')\n  setDefaultIfNotExists('class_name', 'HTTP Activity')\n  setDefaultIfNotExists('category_name', 'Network Activity')\n  setDefaultIfNotExists('type_name', 'HTTP Activity: Other')\n  setDefaultIfNotExists('type_uid', 400299)\n  setDefaultIfNotExists('activity_id', 99)\n  setDefaultIfNotExists('activity_name', event.eventName or '')\n  setDefaultIfNotExists('event.type', event.eventName or '')\n  setDefaultIfNotExists('severity_id', 99)\n  setDefaultIfNotExists('status_id', 99)\n  setDefaultIfNotExists('status', 'Other')\n  \n  -- Initialize observables array\n  local observables = {}\n  \n  -- Add IP address observable\n  if event.sourceIPAddress then\n    table.insert(observables, {\n      type_id = 2, \n      type = 'IP Address', \n      name = 'src_endpoint.ip', \n      value = event.sourceIPAddress\n    })\n  end\n  \n  -- Add ARN observable\n  local arn = getNestedField(event, 'userIdentity.arn')\n  if arn then\n    table.insert(observables, {\n      type_id = 99,\n      type = 'Other',\n      name = 'unmapped.userIdentity.arn',\n      value = arn\n    })\n  end\n  \n  setNestedField(result, 'observables', observables)\n  \n  -- Add unmapped fields\n  local unmapped = {}\n  \n  -- Add specific unmapped fields that should be preserved\n  if event.eventName then unmapped.eventName = event.eventName end\n  if event.readOnly ~= nil then unmapped.readOnly = event.readOnly end\n  if event.resources then unmapped.resources = event.resources end\n  if event.eventType then unmapped.eventType = event.eventType end\n  if event.managementEvent ~= nil then unmapped.managementEvent = event.managementEvent end\n  if event.sharedEventID then unmapped.sharedEventID = event.sharedEventID end\n  \n  -- Add additionalEventData fields as unmapped\n  if event.additionalEventData then\n    if event.additionalEventData.SignatureVersion then unmapped[\"additionalEventData.SignatureVersion\"] = event.additionalEventData.SignatureVersion end\n    if event.additionalEventData.CipherSuite then unmapped[\"additionalEventData.CipherSuite\"] = event.additionalEventData.CipherSuite end\n    if event.additionalEventData.bytesTransferredIn then unmapped[\"additionalEventData.bytesTransferredIn\"] = event.additionalEventData.bytesTransferredIn end\n    if event.additionalEventData.AuthenticationMethod then unmapped[\"additionalEventData.AuthenticationMethod\"] = event.additionalEventData.AuthenticationMethod end\n    if event.additionalEventData.bytesTransferredOut then unmapped[\"additionalEventData.bytesTransferredOut\"] = event.additionalEventData.bytesTransferredOut end\n  end\n  \n  -- Add all unmapped fields automatically\n  -- Build comprehensive set of all mapped paths\n  local mappedPaths = {}\n  \n  -- Add computed/mapped-by-logic paths\n  mappedPaths['userIdentity.sessionContext.attributes.creationDate'] = true\n  mappedPaths['responseElements.credentials.expiration'] = true\n  \n  -- Add all fieldMappings paths\n  for _, mapping in ipairs(fieldMappings) do\n    if mapping.type == \"direct\" then\n      mappedPaths[mapping.source] = true\n    elseif mapping.type == \"priority\" then\n      if mapping.source1 then mappedPaths[mapping.source1] = true end\n      if mapping.source2 then mappedPaths[mapping.source2] = true end\n      if mapping.source3 then mappedPaths[mapping.source3] = true end\n    end\n  end\n  \n  for k, v in pairs(event) do\n    -- Check if k is used as a source field in mapping\n    local is_mapped = mappedPaths[k] == true\n    \n    -- Filter out Vector-specific fields that shouldn't be in unmapped\n    local is_vector_field = (k == \"_ob\" or k == \"site_id\" or k == \"timestamp\")\n    \n    if not is_mapped and not is_vector_field then\n      if type(v) == \"table\" then\n        -- For nested objects, filter out only the mapped fields\n        local function filterMappedFields(obj, prefix)\n          local out = {}\n          for nestedKey, nestedValue in pairs(obj) do\n            local fullPath = prefix == \"\" and nestedKey or prefix .. \".\" .. nestedKey\n            local isNestedMapped = mappedPaths[fullPath] == true\n            \n            -- Only include unmapped fields\n            if not isNestedMapped then\n              if type(nestedValue) == \"table\" then\n                local child = filterMappedFields(nestedValue, fullPath)\n                if next(child) then\n                  out[nestedKey] = child\n                end\n              else\n                out[nestedKey] = nestedValue\n              end\n            end\n          end\n          return out\n        end\n        \n        local filteredObj = filterMappedFields(v, k)\n        if next(filteredObj) then\n          unmapped[k] = filteredObj\n        end\n      else\n        -- Only add non-null and non-empty values\n        if v ~= nil and v ~= \"\" then\n          unmapped[k] = v\n        end\n      end\n    end\n  end\n  \n  \n  if next(unmapped) then\n    setNestedField(result, 'unmapped', unmapped)\n  end\n  \n  -- Create message field with original event\n  local cleanEvent = {}\n  for key, value in pairs(event) do\n    if key ~= \"_ob\" and key ~= \"timestamp\" then\n      cleanEvent[key] = value\n    end\n  end\n  \n  if event.responseElements == nil then\n    cleanEvent.responseElements = \"NULL_PLACEHOLDER\"\n  end\n  \n  -- Add missing fields that should be in the message\n  if event.readOnly == nil then\n    cleanEvent.readOnly = true  -- Default for CloudTrail events\n  end\n  if event.eventType == nil then\n    cleanEvent.eventType = \"AwsApiCall\"  -- Default for CloudTrail events\n  end\n  if event.managementEvent == nil then\n    cleanEvent.managementEvent = true  -- Default for CloudTrail events\n  end\n  \n  \n         -- Flatten result\n         local flattened = {}\n         flattenObject(result, \"\", flattened)\n         flattened.message = encodeJson(cleanEvent, \"root\")\n  \n  return flattened\nend\n\n-- Simplified helper functions\nfunction setNestedField(obj, path, value)\n  if value == nil or path == nil or path == '' then return end\n  local keys = {}\n  for key in string.gmatch(path, '[^.]+') do\n    if key and key ~= '' then\n      table.insert(keys, key)\n    end\n  end\n  if #keys == 0 then return end\n  \n  local current = obj\n  for i = 1, #keys - 1 do\n    local key = keys[i]\n        if current[key] == nil then\n          current[key] = {}\n        end\n        current = current[key]\n      end\n  current[keys[#keys]] = value\nend\n\nfunction getNestedField(obj, path)\n  if obj == nil or path == nil or path == '' then return nil end\n  local keys = {}\n  for key in string.gmatch(path, '[^.]+') do\n    if key and key ~= '' then\n      table.insert(keys, key)\n    end\n  end\n  if #keys == 0 then return nil end\n  \n  local current = obj\n  for _, key in ipairs(keys) do\n    if current == nil or current[key] == nil then\n        return nil\n      end\n      current = current[key]\n  end\n  return current\nend\n\nfunction flattenObject(obj, prefix, result)\n  prefix = prefix or \"\"\n  if type(obj) ~= \"table\" then\n    if prefix ~= \"\" then\n      result[prefix] = obj\n    end\n    return\n  end\n  \n  for key, value in pairs(obj) do\n    local newKey = prefix == \"\" and key or prefix .. \".\" .. key\n    if type(value) == \"table\" then\n      local isArray = true\n      local maxIndex = 0\n      for k, v in pairs(value) do\n        if type(k) ~= \"number\" then\n          isArray = false\n          break\n        end\n        maxIndex = math.max(maxIndex, k)\n      end\n      if isArray and maxIndex > 0 then\n        local arrayValues = {}\n        for i = 1, maxIndex do\n          if value[i] ~= nil then\n            table.insert(arrayValues, value[i])\n          end\n        end\n        result[newKey] = arrayValues\n      else\n        flattenObject(value, newKey, result)\n      end\n    else\n      result[newKey] = value\n    end\n  end\nend\n",
+                        "serializer": "aws-cloudtrail-lua"
+                    }
+                ]
+            },
+            "status": "NS_ACTIVE",
+            "created": "2025-11-19T20:24:22.021425Z",
+            "updated": "2025-11-19T20:24:22.021425Z",
+            "createdBy": "",
+            "updatedBy": "",
+            "isTransformGroup": false,
+            "origin": "NODE_ORIGIN_USER",
+            "templateName": "OCSFSerializerExtended",
+            "processorType": "DATA_PROCESSOR",
+            "siteFilenames": [],
+            "userVisible": true
+        }
+    ],
+    "archivalDestination": null
+}

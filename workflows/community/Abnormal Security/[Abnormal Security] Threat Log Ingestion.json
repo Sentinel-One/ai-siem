@@ -1,0 +1,699 @@
+{
+  "actions": [
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 288,
+            "y": 380
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "scheduled_trigger",
+          "ends_on": "never",
+          "max_runs": 1,
+          "name": "Scheduled Trigger",
+          "schedule_method": "interval",
+          "schedule_value": [
+            {
+              "interval_unit": "minutes",
+              "interval_value": 10,
+              "schedule_method": "interval",
+              "tz": "America/Los_Angeles"
+            }
+          ],
+          "until": null
+        },
+        "description": null,
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "scheduled_trigger",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 6
+        }
+      ],
+      "export_id": 8,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 288,
+            "y": 556.6772
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Memory",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "timestamp_jq",
+              "value": ". |= sub(\"\\\\.[0-9]+Z$\"; \"Z\")"
+            },
+            {
+              "is_secret": false,
+              "name": "events",
+              "value": "[]"
+            },
+            {
+              "is_secret": false,
+              "name": "event_jq",
+              "value": "# 1) A recursive flattener that only descends into objects\ndef flatten_obj($o; $prefix):\n  $o\n  | to_entries\n  | map(\n      if (.value | type) == \"object\" then\n        # Recurse into nested object\n        flatten_obj(.value; $prefix + .key + \".\")\n      else\n        # Leaf value: emit a single‑key object\n        { ($prefix + .key): .value }\n      end\n    )\n  | add;\n\n# 2) Apply to your auditLogs\n.body.auditLogs\n| map(\n    . as $orig\n    # flatten the original object into dot‑notation\n    | (flatten_obj($orig; \"\")) as $flat\n    # build the final shape\n    | {\n        attrs:\n          (\n            {\n              category_name:                 \"Hyperautomation\",\n              \"metadata.product.vendor_name\": \"Abnormal Security\",\n              \"metadata.version\":             \"1.0.0\",\n              \"dataSource.category\":          \"security\",\n              \"dataSource.name\":              \"Abnormal Security\",\n              \"dataSource.vendor\":            \"Abnormal Security\",\n              message:                        .,\n              parser:                         \"json\"\n            }\n          ),\n        sev: 3,\n        ts:\n          (\n            $orig.timestamp\n            | sub(\"\\\\.[0-9]+\\\\+00:00$\"; \"+00:00\")  # strip microseconds+TZ\n            | sub(\" \"; \"T\")                         # space→T\n            | sub(\"\\\\+00:00$\"; \"Z\")                 # +00:00→Z\n            | strptime(\"%Y-%m-%dT%H:%M:%SZ\")\n            | mktime\n            | . * 1000000000                        # → nanoseconds\n          ),\n        thread: \"1\"\n      }\n)"
+            },
+            {
+              "is_secret": false,
+              "name": "threat-id-index",
+              "value": "\"1\""
+            },
+            {
+              "is_secret": false,
+              "name": "threat-id-array",
+              "value": "[]"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 12
+        }
+      ],
+      "export_id": 6,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 288,
+            "y": 733.3543999999999
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Transform Timestamp",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "timestamp",
+              "value": "{{Function.ACCESS_LIST_ITEM(Function.JQ(scheduled-trigger.past_run, local_var.timestamp_jq), 0)}}"
+            },
+            {
+              "is_secret": false,
+              "name": "mock_timestamp",
+              "value": "\"2025-11-22T16:34:00Z\""
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 11
+        }
+      ],
+      "export_id": 12,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 818,
+            "width": 689
+          },
+          "position": {
+            "x": 71.5,
+            "y": 948.0316
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "loop",
+          "is_parallel": false,
+          "loop_type": "while",
+          "name": "ThreatID Loop",
+          "number_of_iterations": 1,
+          "object_to_iterate": null
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "loop",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": "inner",
+          "target": 4
+        },
+        {
+          "custom_handle": null,
+          "target": 10
+        }
+      ],
+      "export_id": 11,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 216.5,
+            "y": 176.6772
+          }
+        },
+        "connection_id": "dd5569bf-26e0-4dfa-a850-e16eb55d8980",
+        "connection_name": "",
+        "data": {
+          "action_type": "http_request",
+          "continue_on_fail": false,
+          "headers": {
+            "Content-Type": "application/json",
+            "mock-data": "false"
+          },
+          "method": "get",
+          "name": "Get Threats",
+          "parameters": [
+            {
+              "parameter_name": "filter",
+              "parameter_value": "receivedTime gte {{local_var.timestamp}}"
+            },
+            {
+              "parameter_name": "pageSize",
+              "parameter_value": "1000"
+            },
+            {
+              "parameter_name": "pageNumber",
+              "parameter_value": "{{local_var.threat-id-index}}"
+            }
+          ],
+          "payload": null,
+          "proxy_host": null,
+          "proxy_password": null,
+          "proxy_port": null,
+          "proxy_user": null,
+          "public_action_id": "2fbd9e7c-f212-4a2b-b63d-ee030a283fb2",
+          "redirect_follow": true,
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "url": "{{Connection.protocol}}{{Connection.url}}/v1/threats",
+          "url_path": "/v1/threats/<<threatId>>",
+          "url_prefix": null,
+          "use_authentication_data": true,
+          "use_proxy": false
+        },
+        "description": "Get details of a Threat identified by Abnormal Security",
+        "integration_id": "870d40d6-248b-4ae7-bc83-3d81cd9398e8",
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "integration",
+        "type": "http_request",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 1
+        }
+      ],
+      "export_id": 4,
+      "parent_action": 11
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 818,
+            "width": 354
+          },
+          "position": {
+            "x": 239,
+            "y": 1904.7088
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "loop",
+          "is_parallel": false,
+          "loop_type": "dynamic",
+          "name": "Threat Detail Loop",
+          "number_of_iterations": 1,
+          "object_to_iterate": "{{local_var.threat-id-array}}"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "loop",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": "inner",
+          "target": 3
+        }
+      ],
+      "export_id": 10,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 216.5,
+            "y": 353.3544
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Append Threat IDs to Array",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "threat-id-array",
+              "value": "{{Function.UNION(local_var.threat-id-array, get-threats.body.threats)}}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 5
+        }
+      ],
+      "export_id": 1,
+      "parent_action": 11
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 49,
+            "y": 176.6772
+          }
+        },
+        "connection_id": "dd5569bf-26e0-4dfa-a850-e16eb55d8980",
+        "connection_name": "",
+        "data": {
+          "action_type": "http_request",
+          "continue_on_fail": false,
+          "headers": {
+            "Content-Type": "application/json",
+            "mock-data": "false"
+          },
+          "method": "get",
+          "name": "Get Details of a Threat",
+          "parameters": [],
+          "payload": null,
+          "proxy_host": null,
+          "proxy_password": null,
+          "proxy_port": null,
+          "proxy_user": null,
+          "public_action_id": "2fbd9e7c-f212-4a2b-b63d-ee030a283fb2",
+          "redirect_follow": true,
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "url": "{{Connection.protocol}}{{Connection.url}}<@/v1/threats/@>{{threat-detail-loop.item.threatId}}",
+          "url_path": "/v1/threats/<<threatId>>",
+          "url_prefix": null,
+          "use_authentication_data": true,
+          "use_proxy": false
+        },
+        "description": "Get details of a Threat identified by Abnormal Security",
+        "integration_id": "870d40d6-248b-4ae7-bc83-3d81cd9398e8",
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "integration",
+        "type": "http_request",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 9
+        }
+      ],
+      "export_id": 3,
+      "parent_action": 10
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 216.5,
+            "y": 530.0316
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "condition",
+          "condition": {
+            "conditions": [
+              {
+                "conditions": [
+                  {
+                    "compared_value": "\"nextPageNumber\":",
+                    "comparison_operator": "contains",
+                    "input_value": "{{Function.STRING(get-threats.body)}}"
+                  }
+                ],
+                "operator": "and"
+              }
+            ],
+            "operator": "and"
+          },
+          "condition_type": "multi",
+          "conditions": null,
+          "conditions_relationship": "and",
+          "name": "Is Pagination"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "condition",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": "false",
+          "target": 2
+        },
+        {
+          "custom_handle": "true",
+          "target": 13
+        }
+      ],
+      "export_id": 5,
+      "parent_action": 11
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 49,
+            "y": 353.3544
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Set Email Parse JQ",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "email_events_jq",
+              "value": "def to_nano:\n  strptime(\"%Y-%m-%dT%H:%M:%SZ\")\n  | mktime                            \n  | (. * 1000000000) +                     \n    (now | floor % 1 * 1000000000 | floor);\n\ndef template($msg):\n  {\n    \"thread\": \"1\",\n    \"ts\": (.receivedTime | to_nano),\n    \"sev\": 3,\n    \"attrs\": {\n      \"category_name\": \"Security\",\n      \"event.type\": (.attackType),\n      \"event.source\": \"Threat\",\n      \"event.target\": (.recipientAddress),\n      \"event.details\": (.summaryInsights), \n      \"metadata.product.vendor_name\": \"Abnormal Security\",\n      \"metadata.version\": \"1.0.0\",\n      \"dataSource.category\": \"security\",\n      \"dataSource.name\": \"Abnormal Security\",\n      \"dataSource.vendor\": \"Abnormal Security\",\n      \"metadata.correlation_uid\": \"{{get-details-of-a-threat.body.threatId}}\",\n      \"message\": ($msg | tojson),\n      \"parser\": \"dottedJson\"\n    }\n  };\n\n.body.messages[] | template(.)\n"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 7
+        }
+      ],
+      "export_id": 9,
+      "parent_action": 10
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 376.5,
+            "y": 706.7088000000001
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Update Index",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "threat-id-index",
+              "value": "{{Function.REPLACE(local_var.threat-id-index, local_var.threat-id-index, Function.STRING(get-threats.body.nextPageNumber))}}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [],
+      "export_id": 13,
+      "parent_action": 11
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 56.5,
+            "y": 706.7088000000001
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "break_loop",
+          "name": "Break"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "break_loop",
+        "use_connection_name": false
+      },
+      "connected_to": [],
+      "export_id": 2,
+      "parent_action": 11
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 49,
+            "y": 530.0316
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Parse Email Into Events",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "email_events",
+              "value": "{{Function.JQ(get-details-of-a-threat, local_var.email_events_jq)}}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 0
+        }
+      ],
+      "export_id": 7,
+      "parent_action": 10
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 49,
+            "y": 706.7088
+          }
+        },
+        "connection_id": "0b089cb1-1529-4c2b-af85-6b9eccdedec2",
+        "connection_name": "",
+        "data": {
+          "action_type": "http_request",
+          "continue_on_fail": false,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "method": "post",
+          "name": "Add Events",
+          "parameters": [],
+          "payload": "{\n  \"session\": \"{{Function.GENERATE_UUID4()}}\",\n  \"sessionInfo\": {\n    \"serverType\": \"Abnormal Security\",\n    \"serverId\": \"Abnormal Security\"\n  },\n  \"events\": {{local_var.email_events}}\n}",
+          "proxy_host": null,
+          "proxy_password": null,
+          "proxy_port": null,
+          "proxy_user": null,
+          "public_action_id": "5e734867-14ea-42ff-924f-cf632805895b",
+          "redirect_follow": true,
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "url": "{{Connection.protocol}}{{Connection.url}}/api/addEvents",
+          "url_path": null,
+          "url_prefix": null,
+          "use_authentication_data": true,
+          "use_proxy": false
+        },
+        "description": "Add Events to DataSet  - https://community.sentinelone.com/s/article/000006773",
+        "integration_id": "92cfc975-2e0f-4c96-be29-00ea2fa91805",
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "integration",
+        "type": "http_request",
+        "use_connection_name": false
+      },
+      "connected_to": [],
+      "export_id": 0,
+      "parent_action": 10
+    }
+  ],
+  "description": "",
+  "name": "[Abnormal Security] Threat Log Ingestion"
+}

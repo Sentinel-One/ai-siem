@@ -1,0 +1,342 @@
+{
+  tabs: [
+    {
+      "tabName": "Threats",
+      graphs: [
+        {
+          graphStyle: "funnel",
+          query: "dataSource.name='Abnormal\\ Security'\n| group count() by attackType",
+          title: "Attack Types",
+          layout: {
+            h: 26,
+            w: 13,
+            x: 0,
+            y: 26
+          },
+          funnelOptions: {
+            autoScale: "true",
+            colorScheme: "red",
+            colorSchemeOrder: "inverted"
+          },
+          orientation: "vertical"
+        }, {
+          breakdownFacet: "attackType",
+          graphStyle: "stacked_bar",
+          title: "Threat Activity",
+          layout: {
+            h: 12,
+            w: 47,
+            x: 13,
+            y: 26
+          },
+          filter: "dataSource.name='Abnormal\\ Security' event.source='Threat'",
+          plots: [
+            {
+              facet: "",
+              filter: "dataSource.name='Abnormal\\ Security' event.source='Threat'",
+              label: "rate"
+            }
+          ],
+          barWidth: "auto"
+        }, {
+          graphStyle: "number",
+          query: "dataSource.name='Abnormal\\ Security' event.source='Threat'\n| group count()",
+          sparklineConfig: {
+            enabled: false
+          },
+          title: "Threat Events",
+          trendConfig: {
+            enabled: true,
+            indicators: {
+              arrow: {
+                enabled: true
+              },
+              number: {
+                calculationType: "PERCENTAGE",
+                enabled: true
+              },
+              upwardsMeaning: "POSITIVE"
+            }
+          },
+          layout: {
+            h: 5,
+            w: 11,
+            x: 11,
+            y: 0
+          },
+          description: "Shows the number of threats targeting users protected by Abnormal Security."
+        }, {
+          graphStyle: "stacked_bar",
+          layout: {
+            h: 14,
+            w: 47,
+            x: 13,
+            y: 38
+          },
+          title: "Recipients",
+          plots: [
+            {
+              facet: "rate",
+              filter: "dataSource.name='Abnormal\\ Security' event.source='Threat'",
+              label: "rate"
+            }
+          ],
+          breakdownFacet: "recipientAddress",
+          filter: "dataSource.name='Abnormal\\ Security' event.source='Threat'",
+          barWidth: "auto"
+        }, {
+          filter: "dataSource.name='Abnormal\\ Security' event.source='Threat'",
+          graphStyle: "line",
+          layout: {
+            h: 8,
+            w: 60,
+            x: 0,
+            y: 5
+          },
+          lineSmoothing: "straightLines",
+          plots: [
+            {
+              color: "#E0483C",
+              facet: "rate",
+              filter: "dataSource.name='Abnormal\\ Security' event.source='Threat'",
+              label: "Logs"
+            }
+          ],
+          title: "Log Activity (Threats)"
+        }, {
+          graphStyle: "",
+          query: "dataSource.name='Abnormal\\ Security' event.source='Threat'\n| columns metadata.correlation_uid\n, receivedTime, attackType, attackVector, attackedParty, recipientAddress, fromAddress, summaryInsights\n, abxPortalUrl\n| sort -receivedTime",
+          title: "Threat Events",
+          layout: {
+            h: 31,
+            w: 60,
+            x: 0,
+            y: 52
+          },
+          showBarsColumn: "false"
+        }, {
+          dataLabelType: "PERCENTAGE",
+          graphStyle: "pie",
+          maxPieSlices: 100,
+          query: "dataSource.name='Abnormal\\ Security' event.source='Threat'\n| group count = count() by recipientAddress",
+          title: "Target Addresses",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          },
+          layout: {
+            h: 13,
+            w: 19,
+            x: 0,
+            y: 13
+          }
+        }, {
+          dataLabelType: "PERCENTAGE",
+          graphStyle: "pie",
+          layout: {
+            h: 13,
+            w: 22,
+            x: 19,
+            y: 13
+          },
+          maxPieSlices: 100,
+          query: "dataSource.name='Abnormal\\ Security' event.source='Threat'\n| let Country = geo_ip_country(senderIpAddress)\n| columns Country\n| group count = count() by Country",
+          title: "Attacker Region",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        }, {
+          graphStyle: "number",
+          layout: {
+            h: 5,
+            w: 11,
+            x: 0,
+            y: 0
+          },
+          query: "dataSource.name='Abnormal\\ Security' event.source='Threat'\n| group distinct_correlation_uuids = estimate_distinct(metadata.correlation_uid)",
+          sparklineConfig: {
+            enabled: false
+          },
+          title: "Threats",
+          trendConfig: {
+            enabled: true,
+            indicators: {
+              arrow: {
+                enabled: true
+              },
+              number: {
+                calculationType: "PERCENTAGE",
+                enabled: true
+              },
+              upwardsMeaning: "POSITIVE"
+            }
+          },
+          description: "Shows the number of cases involved with users protected by Abnormal Security."
+        }, {
+          dataLabelType: "PERCENTAGE",
+          graphStyle: "pie",
+          layout: {
+            h: 13,
+            i: "9",
+            minH: 3,
+            minW: 6,
+            w: 19,
+            x: 41,
+            y: 13
+          },
+          maxPieSlices: 100,
+          query: "dataSource.name='Abnormal\\ Security' event.source='Threat'\n| group count = count() by senderDomain",
+          title: "Attacker Domains",
+          totalNumberConfig: {
+          }
+        }, {
+          graphStyle: "number",
+          layout: {
+            h: 5,
+            w: 11,
+            x: 22,
+            y: 0
+          },
+          query: "dataSource.name='Abnormal\\ Security' event.source='Threat'\n| group distinct_address_targets = estimate_distinct(recipientAddress)",
+          sparklineConfig: {
+            enabled: false
+          },
+          title: "Mailboxes Targeted",
+          trendConfig: {
+            enabled: true,
+            indicators: {
+              arrow: {
+                enabled: true
+              },
+              number: {
+                calculationType: "PERCENTAGE",
+                enabled: true
+              },
+              upwardsMeaning: "POSITIVE"
+            }
+          },
+          description: "Shows the number of mailboxes targeted by threats."
+        }, {
+          graphStyle: "markdown",
+          title: "\uD83D\uDEE1️ Abnormal Security - Threat Overview",
+          layout: {
+            h: 5,
+            w: 27,
+            x: 33,
+            y: 0
+          },
+          markdown: "```Monitor key email events and threat activity provided by the Abnormal Security threat logs.```"
+        }
+      ],
+      options: {
+        layout: {
+          locked: 1
+        }
+      },
+      options: {
+        layout: {
+          locked: 0
+        }
+      },
+      options: {
+        layout: {
+          locked: 1
+        }
+      },
+      options: {
+        layout: {
+          locked: 0
+        }
+      },
+      options: {
+        layout: {
+          locked: 1
+        }
+      },
+      options: {
+        layout: {
+          locked: 0
+        }
+      },
+      filters: [
+        {
+          name: "Threats Type",
+          values: [
+            {
+              label: "Default Search",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat'"
+            }, {
+              label: "Internal-to-Internal Attacks (Email Account Takeover)",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat' and attackType = \"Internal-to-Internal Attacks (Email Account Takeover)\""
+            }, {
+              label: "Invoice/Payment Fraud (BEC)",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat' and attackType = \"Invoice/Payment Fraud (BEC)\""
+            }, {
+              label: "Malware",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat' and attackType = \"Malware\""
+            }, {
+              label: "Phishing: Credential",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat' and attackType = \"Phishing: Credential\""
+            }, {
+              label: "Reconnaissance",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat' and attackType = \"Reconnaissance\""
+            }, {
+              label: "Scam",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat' and attackType = \"Scam\""
+            }, {
+              label: "Social Engineering (BEC)",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat' and attackType = \"Social Engineering (BEC)\""
+            }
+          ]
+        }, {
+          name: "Source Severity",
+          values: [
+            {
+              label: "Default Search",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat'"
+            }, {
+              label: "Spam",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat' source='spam' "
+            }, {
+              label: "Borderline",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat' source='borderline'"
+            }, {
+              label: "Malicious",
+              value: "dataSource.name='Abnormal\\ Security' event.source='Threat' source='malicious'"
+            }
+          ]
+        }, {
+          name: "Threat Vectors",
+          values: [
+            {
+              label: "Default Search",
+              value: "dataSource.name='Abnormal Security' event.source='Threat'"
+            }, {
+              label: "Link",
+              value: "dataSource.name='Abnormal Security' event.source='Threat' and attackVector = \"Link\""
+            }, {
+              label: "Attachment",
+              value: "dataSource.name='Abnormal Security' event.source='Threat' and attackVector = \"Attachment\""
+            }, {
+              label: "Text",
+              value: "dataSource.name='Abnormal Security' event.source='Threat' and attackVector = \"Text\""
+            }, {
+              label: "Others",
+              value: "dataSource.name='Abnormal Security' event.source='Threat' and attackVector = \"Others\""
+            }, {
+              label: "Attachment with Zipped File",
+              value: "dataSource.name='Abnormal Security' event.source='Threat' and attackVector = \"Attachment with Zipped File\""
+            }
+          ]
+        }
+      ],
+      options: {
+        layout: {
+          locked: 1
+        }
+      }
+    }
+  ],
+  configType: "TABBED"
+}

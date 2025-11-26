@@ -1,0 +1,72 @@
+metadata_details:
+  purpose: >
+    Ingest Netskope alert events (DLP, Policy, Malware, Malicious Site,
+    Security Assessment, Quarantine, UBA, Compromised Credentials) from the
+    Netskope REST API and normalize them into OCSF Security Finding, Web
+    Resource Activity, and related classes for SentinelOne AI SIEM.
+
+  pipeline_category: "ingestion"
+
+  source_template: "Netskope Alerts"
+  source_vendor: "Netskope"
+
+  destination_template: "SentinelOne AI SIEM"
+  destination_type: "SPLUNK_HEC_LOGS"
+
+  transform_templates: >
+    OCSFSerializer (Netskope Lua serializer) – maps alert_type values such as
+    DLP, Malware, Malsite, Security Assessment, Quarantine, UBA and
+    Compromised Credential into OCSF v1.x Security Finding (2001), Web
+    Resource Activity (6001) and related classes, preserving detailed
+    Netskope fields under finding.*, analytic.*, resources[], and unmapped.*
+    while producing a canonical 'message' JSON with strict field ordering.
+
+  input_schema: >
+    Netskope /api/v2/events/data/alert responses with 'result' arrays holding
+    per-alert records (page, policy, alert_name, alert_type, dstip, srcip,
+    user, object/object_id/object_type, malsite_*, sa_*, dlp_* and other
+    vendor-specific attributes), filtered by type and time window.
+
+  output_schema: >
+    OCSF Detection Finding and Application Activity events with
+    metadata.product.name="Netskope", metadata.product.vendor_name="Netskope",
+    metadata.version="1.0.0", dataSource.category="security", dataSource.name="Netskope",
+    category_uid / class_uid / type_uid set per alert_type, rich resources[]
+    for affected objects and assets, and observables built from hostnames,
+    IPs, users, emails, and URLs.
+
+  scheduling: >
+    Runs every 60 seconds (trigger.interval_secs=60). For each invocation the
+    SCOL script computes a [starttime, endtime] window using the checkpoint
+    START_TIME_UNIX_TIMESTAMP and QUERY_TIME_RANGE_INTERVAL_IN_SECS, then
+    issues one GET per alert_type from the comma-separated ALERT_TYPES list.
+
+  retry_behavior: >
+    Uses Observo retry with exponential backoff for HTTP failures based on
+    retry.initial_backoff_secs, retry.backoff_scaling_factor, retry.max_backoff_secs,
+    retry.max_retries. Non-200 responses are logged with URL, status, and
+    alert_type for troubleshooting; successful calls update the checkpoint
+    to the highest Netskope timestamp seen.
+
+  dependencies: >
+    Requires a Netskope tenant URL (NETSKOPE_URL) and API token configured
+    as a bearer-style header (auth.header, auth.token, auth.strategy).
+    Requires SentinelOne AI SIEM ingest token and endpoint on the
+    SPLUNK_HEC_LOGS destination.
+
+  performance_impact: >
+    Query window and polling interval control volume. For noisy deployments,
+    narrow ALERT_TYPES, adjust the time range, or run multiple pipelines per
+    functional area (e.g., DLP-only vs Malware-only) to distribute load across
+    workers.
+
+  tags:
+    - netskope
+    - dlp
+    - uba
+    - security-finding
+    - ocsf
+    - pipeline
+    - ai-siem
+
+  version: "v1.0"

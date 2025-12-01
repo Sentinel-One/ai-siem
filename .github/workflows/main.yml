@@ -1,0 +1,174 @@
+name: Secret Scanning & Release
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write        # needed for tags + releases
+  id-token: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  trufflehog:
+    runs-on: ubuntu-latest
+    env:
+      TRUFFLEHOG_VERSION: v3.76.0
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog OSS
+        id: trufflehog
+        uses: trufflesecurity/trufflehog@v3.76.0
+        continue-on-error: true
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      # --- Notifications on failure ---
+
+      - name: Notify on PR (comment)
+        if: steps.trufflehog.outcome == 'failure' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const body = [
+              '🚨 **TruffleHog secret scan failed**',
+              '',
+              `- Scanner version: ${process.env.TRUFFLEHOG_VERSION}`,
+              `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              'TruffleHog detected one or more **verified** secrets in this PR diff.',
+              '',
+              'Please rotate affected credentials and remove them from the code and git history.',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body
+            });
+
+      - name: Notify via issue (push to main)
+        if: steps.trufflehog.outcome == 'failure' && github.event_name == 'push'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = `🚨 Secret scan failed on ${context.ref}`;
+            const body = [
+              'TruffleHog secret scan failed on a push to the default branch.',
+              '',
+              `- Scanner version: ${process.env.TRUFFLEHOG_VERSION}`,
+              `- Commit: ${context.sha}`,
+              `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              'TruffleHog detected one or more **verified** secrets in the changes.',
+              '',
+              'Watchers of this repository will receive notifications for this issue based on their GitHub notification settings.',
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['security', 'secret-scan']
+            });
+
+      - name: Fail if secrets found
+        if: steps.trufflehog.outcome == 'failure'
+        run: |
+          echo "TruffleHog ${TRUFFLEHOG_VERSION} found verified secrets."
+          exit 1
+
+  release:
+    # Only run for clean pushes to main, *after* trufflehog passes
+    needs: trufflehog
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.trufflehog.result == 'success'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Determine next version (1.(N+1).0)
+        id: version
+        run: |
+          # Pull minor versions from tags like v_1_X_0 or Release_1_X
+          MINORS=$(git tag --list 'v_1_*_0' 'Release_1_*' | \
+            sed -E 's/^v_1_([0-9]+)_0$/\1/; s/^Release_1_([0-9]+)$/\1/' | \
+            sort -n)
+
+          if [ -z "$MINORS" ]; then
+            LATEST_MINOR=0
+          else
+            LATEST_MINOR=$(echo "$MINORS" | tail -n1)
+          fi
+
+          NEW_MINOR=$((LATEST_MINOR + 1))
+          NEW_VERSION="1.${NEW_MINOR}.0"
+          NEW_TAG="v_1_${NEW_MINOR}_0"   # matches existing tag style
+
+          echo "LATEST_MINOR=$LATEST_MINOR"
+          echo "NEW_MINOR=$NEW_MINOR"
+          echo "NEW_VERSION=$NEW_VERSION"
+          echo "NEW_TAG=$NEW_TAG"
+
+          echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
+          echo "NEW_TAG=$NEW_TAG" >> "$GITHUB_ENV"
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create versioned zip
+        run: |
+          mkdir -p dist
+          zip -r "dist/ai-siem-v${NEW_VERSION}.zip" . \
+            -x ".git/*" \
+               ".github/workflows/*"
+
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$NEW_TAG" -m "ai-siem v${NEW_VERSION}" "$GITHUB_SHA"
+          git push origin "$NEW_TAG"
+
+      - name: Create GitHub Release with asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEW_TAG }}          # e.g. v_1_7_0
+          name: v${{ env.NEW_VERSION }}         # e.g. v1.7.0 (matches existing releases)
+          generate_release_notes: true
+          files: dist/ai-siem-v${{ env.NEW_VERSION }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

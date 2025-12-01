@@ -1,0 +1,215 @@
+{
+  "actions": [
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": { "height": 76.0, "width": 256.0 },
+          "position": { "x": 0.0, "y": 0.0 }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "singularity_response_trigger",
+          "filter_groups": [
+            {
+              "condition": {
+                "conditions": [
+                  {
+                    "compared_value": "Proofpoint",
+                    "comparison_operator": "equals",
+                    "input_value": "detectionSource.product"
+                  },
+                  {
+                    "compared_value": "NEW",
+                    "comparison_operator": "equals",
+                    "input_value": "status"
+                  }
+                ],
+                "operator": "and"
+              },
+              "event_subtypes": ["CREATE"],
+              "event_type": "alert",
+              "is_disabled": false,
+              "run_automatically": true
+            }
+          ],
+          "name": "Singularity Response Trigger"
+        },
+        "description": "Trigger the workflow each time a new Proofpoint alert is ingest by the Singularity Platform",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "singularity_response_trigger",
+        "use_connection_name": false
+      },
+      "connected_to": [{ "custom_handle": null, "target": 2 }],
+      "export_id": 4,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": { "height": 76.0, "width": 256.0 },
+          "position": { "x": 0.0, "y": 176.6772 }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Extract Asset Name",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "AssetName",
+              "value": "{{singularity-response-trigger.data.asset.name}}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "Extract the asset name of the alert",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [{ "custom_handle": null, "target": 3 }],
+      "export_id": 2,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": { "height": 76.0, "width": 256.0 },
+          "position": { "x": 0.0, "y": 353.3544 }
+        },
+        "connection_id": "c1e9e8e2-960b-4a3f-9742-4a7cd3c95f91",
+        "connection_name": "",
+        "data": {
+          "action_type": "http_request",
+          "continue_on_fail": false,
+          "headers": { "Content-Type": "application/json" },
+          "method": "get",
+          "name": "Get Entra ID User",
+          "parameters": [
+            {
+              "parameter_name": "$select",
+              "parameter_value": "businessPhones,displayName,givenName,jobTitle,mail,mobilePhone,officeLocation,preferredLanguage,surname,userPrincipalName,id,accountEnabled,department,country,lastPasswordChangeDateTime,mailNickname"
+            }
+          ],
+          "payload": null,
+          "proxy_host": null,
+          "proxy_password": null,
+          "proxy_port": null,
+          "proxy_user": null,
+          "public_action_id": "0b794ce4-c25a-46b9-ab8d-53bce4482828",
+          "redirect_follow": true,
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [500],
+          "ssl_verification": true,
+          "timeout": 30,
+          "url": "{{Connection.protocol}}{{Connection.url}}<@/v1.0/users/@>{{local_var.AssetName}}",
+          "url_path": null,
+          "url_prefix": null,
+          "use_authentication_data": true,
+          "use_proxy": false
+        },
+        "description": "Search for a user based on their ID or user principal name (usually their email address).",
+        "integration_id": "73475bd9-3762-4f17-aab5-c544ec5ec31b",
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "integration",
+        "type": "http_request",
+        "use_connection_name": false
+      },
+      "connected_to": [{ "custom_handle": null, "target": 1 }],
+      "export_id": 3,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": { "height": 76.0, "width": 256.0 },
+          "position": { "x": 0.0, "y": 530.0316 }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Build Alert Note",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "note",
+              "value": "\"User {{local_var.AssetName}} is {{get-entra-id-user.body.mailNickname}}\""
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "Create the alert note into a variable for better usability in the workflow",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [{ "custom_handle": null, "target": 0 }],
+      "export_id": 1,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": { "height": 76.0, "width": 256.0 },
+          "position": { "x": 0.0, "y": 706.7088 }
+        },
+        "connection_id": "19bb4784-8237-454e-b6bf-87ac744c51e7",
+        "connection_name": "",
+        "data": {
+          "action_type": "http_request",
+          "continue_on_fail": false,
+          "headers": { "Content-Type": "application/json" },
+          "method": "post",
+          "name": "Add Note to Alert",
+          "parameters": [],
+          "payload": "{\n  \"query\": \"mutation AddNoteToAlert { alertTriggerActions(actions: [{ id: \\\"S1/alert/addNote\\\", payload: { note: { value: \\\"{{Function.HTML_ENCODE(local_var.note)}}\\\" } } }], filter: { or: [{ and: [{ fieldId: \\\"id\\\", stringEqual: { value: \\\"{{singularity-response-trigger.data.id}}\\\" } }] }] }) { ... on ActionsTriggered { actions { actionId success { id } failure { id } skip { id } } } } }\"\n}",
+          "proxy_host": null,
+          "proxy_password": null,
+          "proxy_port": null,
+          "proxy_user": null,
+          "public_action_id": "c4d87734-41d0-4f0a-890c-6411de0796d3",
+          "redirect_follow": true,
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [500],
+          "ssl_verification": true,
+          "timeout": 30,
+          "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql",
+          "url_path": "/web/api/v2.0/threats",
+          "url_prefix": null,
+          "use_authentication_data": true,
+          "use_proxy": false
+        },
+        "description": "Add a note to a the Proofpoint alert.",
+        "integration_id": "3e274c5a-f574-462f-8685-5eed98e90fbb",
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "integration",
+        "type": "http_request",
+        "use_connection_name": false
+      },
+      "connected_to": [],
+      "export_id": 0,
+      "parent_action": null
+    }
+  ],
+  "description": "This workflow provides more information on the target user of a specific Singularity Platform alert (in this case Proofpoint but could be any alert source). It reaches out to Microsoft Entra ID with the target asset information in order to add some alert enrichments through the notes field.",
+  "name": "Enrich Entra ID Information from Alert"
+}

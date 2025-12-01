@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: "Enriching 3rd party alert note with user asset information from Entra ID"
+  trigger_type: "alert |automatic"
+  integration_dependency: "Entra ID API for user asset retrieval, requires API key authentication and appropriate permissions. SentinelOne GraphQL API for alert note update, requires API key authentication and appropriate permissions"
+  expected_actions_per_run: "4-6 depending on log volume and processing requirements"
+  human_in_the_loop: "no"
+  required_products: "AI SIEM, Singularity Response, HyperAutomation"
+  tags: ["entra-id", "identity", "enrichment", "automation"]
+  version: "v1.0"
+  author: "Thibault Bougon"
+  last_updated: "2025-11-27"

@@ -43,3 +43,9 @@ CLAUDE.md
 *.claude
 .cursorrules
 .claude-config
+
+# Local documentation #
+#######################
+LOCAL_*.md
+LOCAL_*.txt
+*_LOCAL_ONLY.*

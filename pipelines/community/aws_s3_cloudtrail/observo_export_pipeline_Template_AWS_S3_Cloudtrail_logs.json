@@ -97,7 +97,7 @@
             "compression": "auto",
             "region": "us-east-1",
             "sqs.delete_message": true,
-            "sqs.queue_url": "https://sqs.us-east-1.amazonaws.com/307946665489/observo-test-queue"
+            "sqs.queue_url": "https://sqs.us-east-1.amazonaws.com/***REMOVED***/observo-test-queue"
         },
         "status": "NS_ACTIVE",
         "created": "2025-11-20T20:43:44.276856Z",

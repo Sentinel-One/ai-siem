@@ -1,0 +1,39 @@
+# TruffleHog ignore file
+# Patterns to exclude from secret scanning
+
+# Build and dependency directories
+.git/
+.bfg-report/
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Documentation and test files
+*.md
+*.txt
+tests/
+test_data/
+fixtures/
+
+# Log files
+*.log
+*.log.*
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Generated files
+*.min.js
+*.min.css
+dist/
+build/

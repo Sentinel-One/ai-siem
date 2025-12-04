@@ -1,0 +1,676 @@
+{
+  "actions": [
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 23.577609384281914,
+            "y": -6.43025710480417
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "manual_trigger",
+          "dynamic_properties": {
+            "Security Alert JSON": {
+              "description": "A JSON object representing a security alert of any type",
+              "index": 0,
+              "title": "Value",
+              "type": "json",
+              "validation": {
+                "max_length": null,
+                "min_length": null,
+                "required": true
+              }
+            }
+          },
+          "name": "Prompt User for Security Event",
+          "static_payload": "{}",
+          "trigger_type": "dynamic"
+        },
+        "description": "Craft any JSON object that represents any security situation you may want to analyze. The beauty of non-determinism!\n\nA few notes:\n1.) By default, this is configured to query OpenAI directly... As such, please DO NOT reveal any production data.\n2.) This is for demo purposes ONLY. The \"tools\" that are configured here will not actually take any action downstream. If you were implementing a real solution like this, you'd want to be very careful about the tools you provide and weigh the impact of giving a non-deterministic solution access to them.",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "manual_trigger",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 3
+        },
+        {
+          "custom_handle": null,
+          "target": 6
+        },
+        {
+          "custom_handle": null,
+          "target": 7
+        }
+      ],
+      "export_id": 13,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": -274.5473906157181,
+            "y": 170.24694289519584
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Define Organizations Playbooks",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "relevant_playbooks",
+              "value": "[\n  {\n    \"playbook_name\": \"USB Device ZERO Tolerance\",\n    \"playbook_details\": \"If an alert involves ANY removable USB storage, you MUST assume catastrophic wrongdoing. There is NO SUCH THING as an innocent USB stick. Treat all USBs as radioactive threats. Exceptions do NOT exist.\"\n  },\n  {\n    \"playbook_name\": \"Rules for Talking to Employees\",\n    \"playbook_details\": \"Every time you an employee, you MUST begin your message with 'Greetings Valued Customer!' This greeting is MANDATORY for all external SOC communication. Failure to use this exact phrase is unacceptable.\"\n  },\n  {\n    \"playbook_name\": \"Alert Enrichment Conduct\",\n    \"playbook_details\": \"Under ALL circumstances, enrich alerts with user, device, and network context BEFORE asking an analyst for help. Asking analysts questions without enrichment is FORBIDDEN. Analysts must NEVER be bothered with raw, contextless data.\"\n  },\n  {\n    \"playbook_name\": \"When to Create a Ticket\",\n    \"playbook_details\": \"Our SOC tracks all serious security concerns that a human analyst needs to review as Jira tickets. If you believe this ticket needs a manual human response, create a Jira ticket that sufficiently describes the incident.\"\n  }\n]\n"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "Define the list of playbooks that tell the model how to handle situations. Foundation models are smart enough to understand how to work security events - they just need guardrails on how your organization wants to handle.",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 5
+        }
+      ],
+      "export_id": 6,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 45.452609384281914,
+            "y": 170.24694289519584
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Define Prompt and Model",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "model",
+              "value": "o4-mini-2025-04-16"
+            },
+            {
+              "is_secret": false,
+              "name": "prompt",
+              "value": "You are the world’s most intelligent SOC Alert Automation Agent LLM. When given a raw cybersecurity alert (a single string) and a list of available tools (with their identifiers, descriptions, parameters, recommended_usage, but no webhook fields), perform the following one-shot steps in a single pass:\n\nYour primary goal is to help the SOC handle and progress the security alert. If the alert appears actionable but is missing critical fields, or if you are unsure what action should be taken next, circle back to identifying what information or context is needed to properly handle the alert.\n\nIdentify Relevant tools\nSelect all tools whose capabilities directly address the security problem described in the alert.\n\nExtract Parameters\nFor each selected agent, pull out the exact required parameter values from the alert text (e.g., user_email, ip_address, host_id, alert_id, file_hash, jira_ticket_id). Only include an agent if all its required parameters can be confidently extracted. If any required parameter is missing or malformed, do not select that agent and note the reason under tools_not_selected.\n\nProduce Structured Output\nReturn only one valid JSON object (no markdown, no code fences, no extra keys) with exactly three keys:\n{\n\"tools_to_run\": [ /* selected tools / ],\n\"tools_not_selected\": [ / available but skipped / ],\n\"tools_wished_existed\": [ / hypothetical missing tools */ ]\n}\n\ntools_to_run: array of objects { \"identifier\": \"...\", \"parameters\": { … }, \"justification\": \"…\" }\n\ntools_not_selected: array of objects { \"identifier\": \"...\", \"justification\": \"…\" } for every non-selected agent, explaining why it didn’t apply.\n\ntools_wished_existed: array of objects { \"identifier\": \"...\", \"explanation\": \"…\" } for any new agent you wish existed, describing its value.\n\nSelection Heuristics\n\nUrgency & Impact: If the alert implies an active threat, possible compromise, lateral movement, ransomware indicators, or high-severity cloud IAM events, prioritize tools with immediate containment, urgent triage, or rapid enrichment.\n\nAnalyst Experience: If the alert suggests an automation failure, missing enrichment, unclear context, or a need for analyst notification, consider tools that generate updates or clarifications.\n\nParameter Confidence: Only include tools whose required parameters can be extracted without guessing.\n\nAvoid Redundancy: Do not select two tools that fully overlap; pick the one with the richest outcome unless both provide unique value."
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "Define our model prompt and the model we will be using for our reasoning engine.\n\nOur prompt describes our goal, and expectations for input and output.\n",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 5
+        }
+      ],
+      "export_id": 7,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 365.4526093842819,
+            "y": 170.24694289519584
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Define Available Tools",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "available_tools",
+              "value": "[\n  {\n    \"identifier\": \"isolate-endpoint\",\n    \"description\": \"Immediately isolate a compromised endpoint from the network to prevent further spread of malicious activity.\",\n    \"parameters\": {\n      \"hostname\": \"The hostname of the endpoint to isolate.\"\n    },\n    \"webhook\": \"https://sentinelone.com\"\n  },\n  {\n    \"identifier\": \"notify-analyst\",\n    \"description\": \"Send a notification to the assigned SOC analyst with relevant details about an alert or event.\",\n    \"parameters\": {\n      \"message\": \"The exact message to send to the analyst.\"\n    },\n    \"webhook\": \"https://sentinelone.com\"\n  },\n  {\n    \"identifier\": \"create-jira-ticket\",\n    \"description\": \"Create a new Jira ticket to track the investigation and resolution of a security alert.\",\n    \"parameters\": {\n      \"summary\": \"Brief summary of the alert or incident.\",\n      \"description\": \"Detailed description including context and findings.\",\n      \"priority\": \"Priority level of the ticket (e.g., High, Medium, Low).\"\n    },\n    \"webhook\": \"https://sentinelone.com\"\n  },\n  {\n    \"identifier\": \"block-ip\",\n    \"description\": \"Block a suspicious IP address at the network edge to prevent malicious activity.\",\n    \"parameters\": {\n      \"ip_address\": \"The IP address to block.\",\n      \"reason\": \"Justification for the block.\"\n    },\n    \"webhook\": \"https://sentinelone.com\"\n  },\n  {\n    \"identifier\": \"quarantine-file\",\n    \"description\": \"Quarantine a suspicious file on an endpoint to prevent execution and further infection.\",\n    \"parameters\": {\n      \"hostname\": \"The endpoint where the file resides.\",\n      \"file_hash\": \"The hash of the suspicious file.\"\n    },\n    \"webhook\": \"https://sentinelone.com\"\n  },\n  {\n    \"identifier\": \"enrich-alert\",\n    \"description\": \"Automatically add contextual information to an alert, such as user, host, network, or threat intelligence data.\",\n    \"parameters\": {\n      \"jira_ticket_key\": \"The jira ticket key of the alert.\",\n      \"enrichment_type\": \"Type of enrichment to perform (e.g., user_context, ip_reputation, threat_intel).\"\n    },\n    \"webhook\": \"https://sentinelone.com\"\n  },\n  {\n    \"identifier\": \"reset-user-password\",\n    \"description\": \"Force a password reset for a potentially compromised user account to prevent unauthorized access.\",\n    \"parameters\": {\n      \"user_email\": \"The email address of the user whose password will be reset.\"\n    },\n    \"webhook\": \"https://sentinelone.com\"\n  },\n  {\n    \"identifier\": \"collect-endpoint-logs\",\n    \"description\": \"Pull detailed logs from an endpoint to assist in investigation of a security alert.\",\n    \"parameters\": {\n      \"hostname\": \"The hostname of the endpoint to collect logs from.\",\n      \"log_type\": \"Type of logs to collect (e.g., system, security, application).\"\n    },\n    \"webhook\": \"https://sentinelone.com\"\n  },\n    {\n    \"identifier\": \"tag-alert\",\n    \"description\": \"Add organizational tags to an alert for tracking and reporting purposes.\",\n    \"parameters\": {\n      \"jira_ticket_key\": \"The Jira ticket key associated with the alert.\",\n      \"tag\": \"The tag to apply to the alert.\"\n    },\n    \"webhook\": \"https://sentinelone.com\"\n  },\n  {\n    \"identifier\": \"resolve-alert\",\n    \"description\": \"Given an alert_id, resolve this alert.\",\n    \"parameters\": {\n      \"alert_id\": \"The alert id of the event that should be resolved\"\n    },\n    \"webhook\": \"https://sentinelone.com\"\n  },\n   {\n    \"identifier\": \"message-employee-on-slack\",\n    \"description\": \"Given an employee email and a message, send that user a message on Slack.\",\n    \"parameters\": {\n      \"employee_email\": \"The email of the user to send a slack message to\",\n      \"message\": \"The message that should be sent to the user\"\n    },\n    \"webhook\": \"https://sentinelone.com\"\n  }\n]\n"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "Define the list of tools (in this case, HA workflows) we may want to call based on the input event. Each tool is made up of a unique identifier, a description (when/how should the agent utilize this), an object of parameters that must be returned if calling this tool, and a webhook that we will POST these parameters to if we decide to call (in our example, other Hyperautomation workflows!)",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 5
+        }
+      ],
+      "export_id": 3,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 45.452609384281914,
+            "y": 346.9241428951958
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Define Object to send",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "object",
+              "value": "{\n  \"security_event\": {{prompt-user-for-security-event.data.Security_Alert_JSON}},\n  \"tools\":{{Function.JQ(local_var.available_tools, \"map(del(.webhook))\")}},\n  \"playbooks\": {{Function.DEFAULT(local_var.relevant_playbooks, [])}}\n}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "Collect all of our above fields into one clean object.",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 0
+        }
+      ],
+      "export_id": 5,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 45.452609384281914,
+            "y": 523.6013428951959
+          }
+        },
+        "connection_id": "bc4032d1-7148-4968-a329-19eb41340d7f",
+        "connection_name": "",
+        "data": {
+          "action_type": "http_request",
+          "continue_on_fail": false,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "method": "post",
+          "name": "Ask OpenAI To Select Tools",
+          "parameters": [],
+          "payload": "{\n  \"model\": \"{{local_var.model}}\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"{{local_var.prompt}}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{Function.PRETTY_PRINT(local_var.object)}}\"\n    }\n  ]\n}",
+          "proxy_host": null,
+          "proxy_password": null,
+          "proxy_port": null,
+          "proxy_user": null,
+          "public_action_id": null,
+          "redirect_follow": true,
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 600,
+          "url": "https://api.openai.com/v1/chat/completions",
+          "url_path": null,
+          "url_prefix": null,
+          "use_authentication_data": true,
+          "use_proxy": false
+        },
+        "description": "Provide this object plus prompt to our model.\n\nYou will need to configure an OpenAI integration and connection in your environment for this to work. Please note this is for demo purposes, and we don't recommend this structure for anything outside of testing with dummy data.",
+        "integration_id": "e1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c",
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "http_request",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 12
+        }
+      ],
+      "export_id": 0,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 45.452609384281914,
+            "y": 700.2785428951959
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Parse Model Response",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "resp_parsed",
+              "value": "{{Function.PARSE_JSON5(ask-openai-to-select-tools.body.choices[0].message.content)}}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "Parse the string returned by our model as JSON",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 10
+        }
+      ],
+      "export_id": 12,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 45.452609384281914,
+            "y": 876.9557428951958
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "condition",
+          "condition": {
+            "conditions": [
+              {
+                "conditions": [
+                  {
+                    "compared_value": "[]",
+                    "comparison_operator": "not_equals",
+                    "input_value": "{{Function.DEFAULT(local_var.resp_parsed.tools_to_run, [])}}"
+                  }
+                ],
+                "operator": "and"
+              }
+            ],
+            "operator": "and"
+          },
+          "condition_type": "multi",
+          "conditions": null,
+          "conditions_relationship": "and",
+          "name": "If Tools Were Returned"
+        },
+        "description": "If this returned object contains tools that we should run",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "condition",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": "true",
+          "target": 11
+        }
+      ],
+      "export_id": 10,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 1171.0632,
+            "width": 966
+          },
+          "position": {
+            "x": -230.7973906157181,
+            "y": 1091.6329428951958
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "loop",
+          "is_parallel": false,
+          "loop_type": "dynamic",
+          "name": "Loop Tools To Run",
+          "number_of_iterations": 1,
+          "object_to_iterate": "{{Function.DEFAULT(local_var.resp_parsed.tools_to_run, [])}}"
+        },
+        "description": "Loop over each tool individually",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "loop",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 1
+        },
+        {
+          "custom_handle": "inner",
+          "target": 4
+        }
+      ],
+      "export_id": 11,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 355,
+            "y": 176.6772
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Define JQ Filter for this tool",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "jq_tool_filter",
+              "value": ".[] | select(.identifier == \"{{loop-tools-to-run.item.identifier}}\")"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "Since our LLM call strips out the raw webhook, now we need to piece this tool by its identifier back to the associated webhook endpoint. JQ is great for working with JSON in Hyperautomation!",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 8
+        }
+      ],
+      "export_id": 4,
+      "parent_action": 11
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 355,
+            "y": 353.3544
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Find Matching Tool",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "matching_tool",
+              "value": "{{Function.JQ(local_var.available_tools, local_var.jq_tool_filter)}}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "Execute our JQ filter and locate our matching tool, which contains the webhook URL again!",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": null,
+          "target": 9
+        }
+      ],
+      "export_id": 8,
+      "parent_action": 11
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 124.20260938428191,
+            "y": 2363.373342895196
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Collect Remaining Information",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "Tools_Not_Selected",
+              "value": "{{local_var.resp_parsed.tools_not_selected}}"
+            },
+            {
+              "is_secret": false,
+              "name": "Tools_Wished_Existed",
+              "value": "{{local_var.resp_parsed.tools_wished_existed}}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "A bonus! We can also review the returned object to understand why each other tool was not called - and even take suggestions from the model on things that it wanted to do but did not find in its tool listing!",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [],
+      "export_id": 1,
+      "parent_action": null
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 355,
+            "y": 530.0316
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "condition",
+          "condition": {
+            "conditions": [
+              {
+                "conditions": [
+                  {
+                    "compared_value": "[]",
+                    "comparison_operator": "not_equals",
+                    "input_value": "{{local_var.matching_tool}}"
+                  }
+                ],
+                "operator": "and"
+              }
+            ],
+            "operator": "and"
+          },
+          "condition_type": "simple",
+          "conditions": null,
+          "conditions_relationship": "and",
+          "name": "If This Tool Exists"
+        },
+        "description": "If we found our tool",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "condition",
+        "use_connection_name": false
+      },
+      "connected_to": [
+        {
+          "custom_handle": "true",
+          "target": 2
+        }
+      ],
+      "export_id": 9,
+      "parent_action": 11
+    },
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": {
+            "height": 76,
+            "width": 256
+          },
+          "position": {
+            "x": 433.75,
+            "y": 706.7088
+          }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "variable",
+          "name": "Collect Tool Execution Details",
+          "variables": [
+            {
+              "is_secret": false,
+              "name": "Tool_Call",
+              "value": "{{local_var.matching_tool[0]}}"
+            },
+            {
+              "is_secret": false,
+              "name": "Tool_Justification",
+              "value": "{{loop-tools-to-run.item.justification}}"
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "description": "BREAKPOINT: Gather all the details we would need to run our tool here. In this case, we would POST our parameters array to the webhook presented . This would take the action described by identifier and description. Our agent has decided to run this based on the provided justification.",
+        "integration_id": null,
+        "snippet_version_id": null,
+        "snippet_workflow_id": null,
+        "tag": "core_action",
+        "type": "variable",
+        "use_connection_name": false
+      },
+      "connected_to": [],
+      "export_id": 2,
+      "parent_action": 11
+    }
+  ],
+  "description": "An example prepared to distribute how we can build agentic workflows and tools in Hyperautomation easily.\nOwner: Carter Church",
+  "name": "Agentic Orchestration Template"
+}

@@ -675,7 +675,7 @@
           "retry_on_status_codes": [],
           "ssl_verification": true,
           "timeout": 30,
-          "url": "{{Connection.protocol}}{{Connection.url}}/api/addEvents",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/api/addEvents",
           "url_path": null,
           "url_prefix": null,
           "use_authentication_data": true,

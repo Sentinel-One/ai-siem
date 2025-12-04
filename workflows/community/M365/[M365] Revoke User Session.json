@@ -76,7 +76,7 @@
           "action_type": "http_request",
           "public_action_id": "5864fb04-634a-4cf9-96e8-6b898f26880a",
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}/api/query",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/api/query",
           "url_path": "/sdl/api/query",
           "url_prefix": null,
           "payload": "{\n  \"filter\": \"\\\"{{singularity-response-trigger.data.indicators[0].id}}\\\"\",\n  \"startTime\": \"{{singularity-response-trigger.data.firstSeenAt}}\",\n  \"endTime\": \"{{singularity-response-trigger.data.createdAt}}\"\n}",

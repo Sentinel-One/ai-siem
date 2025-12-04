@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: "Microsoft 365 user and mailbox security management workflows for incident response"
+  trigger_type: "alert | manual"
+  integration_dependency: "Microsoft Graph API for M365 user and mailbox management, requires API key authentication and appropriate permissions. SentinelOne API for alert enrichment and response actions"
+  expected_actions_per_run: "3-5 depending on workflow complexity and user/mailbox state"
+  human_in_the_loop: "yes - for critical actions like disabling users or resetting passwords"
+  required_products: "AI SIEM, Singularity Response, HyperAutomation"
+  tags: ["microsoft-365", "identity", "incident-response", "user-management", "mailbox-security"]
+  version: "v1.0"
+  author: "Community"
+  last_updated: "2025-12-04"

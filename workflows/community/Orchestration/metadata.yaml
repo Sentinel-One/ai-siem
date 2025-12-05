@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: "AI-powered security orchestration demonstrating non-deterministic alert analysis and response"
+  trigger_type: "manual"
+  integration_dependency: "OpenAI API for AI-driven analysis and decision making. Requires API key authentication. Note: This is a demonstration workflow - tools configured are non-functional placeholders for safety"
+  expected_actions_per_run: "Variable - depends on AI analysis of the security event"
+  human_in_the_loop: "yes - manual trigger with user-provided security event JSON"
+  required_products: "AI SIEM, Singularity Response, HyperAutomation"
+  tags: ["ai", "orchestration", "demo", "agentic", "security-analysis", "openai"]
+  version: "v1.0"
+  author: "Community"
+  last_updated: "2025-12-04"
+  warning: "DEMO ONLY - Do not use with production data. Tools are non-functional by design for safety"

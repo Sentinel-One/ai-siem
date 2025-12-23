@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: "Sending the vulnerability information regarding the endpoints to specific contacts/teams"
+  trigger_type: "scheduled | manual"
+  integration_dependency: "In SentinelOne the Application & OS Vulnerability Management needs to be enabled and we need a csv file in the Configuration files section as lookup. (/datatables/host_user.csv) The Lookup should contain the fields UUID and Contact."
+  expected_actions_per_run: "Depends on the number of endpoints and applications. If the number of Endpoints is 10 and the average number of applications per endpoint is 20, the number of actions per run could be approximately 852."
+  human_in_the_loop: "no"
+  required_products: "AI SIEM, HyperAutomation"
+  tags: ["cve", "enrichment", "automation", "vulnerability"]
+  version: "v1.0"
+  author: "Ilker Duman"
+  last_updated: "2025-12-22"

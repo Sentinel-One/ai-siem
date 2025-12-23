@@ -1,0 +1,652 @@
+{
+  "name": "Send VM Information to Contacts",
+  "description": "",
+  "actions": [
+    {
+      "action": {
+        "type": "scheduled_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Scheduled Trigger",
+          "action_type": "scheduled_trigger",
+          "schedule_method": "weekly",
+          "until": null,
+          "max_runs": 1,
+          "schedule_value": [
+            {
+              "schedule_method": "weekly",
+              "minute": 0,
+              "hour": 8,
+              "tz": "Europe/Berlin",
+              "week_day": 1
+            }
+          ],
+          "start_at": null,
+          "start_at_method": "immediately",
+          "ends_on": "never"
+        },
+        "state": "active",
+        "description": "Set Schedule",
+        "client_data": {
+          "position": {
+            "x": -54,
+            "y": -173
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 99
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": "ef645af9-ed60-4efd-882e-bf534442ce86",
+        "data": {
+          "name": "Get Agents",
+          "action_type": "http_request",
+          "public_action_id": "f5921607-c2bc-4b91-9fec-0224ca725cb9",
+          "method": "get",
+          "url": "{{Function.GET_MANAGEMENT_URL()}}<@/web/api/v2.1/agents@>",
+          "url_path": "/web/api/v2.1/agents",
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "accept": "application/json",
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "Get the Agents, and their data, that match the filter. This command gives the Agent ID, which you can use in other commands.\n\nSet the connection for your query",
+        "client_data": {
+          "position": {
+            "x": -54,
+            "y": 26.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [
+        {
+          "target": 4,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Loop Endpoints",
+          "action_type": "loop",
+          "loop_type": "dynamic",
+          "number_of_iterations": 1,
+          "object_to_iterate": "{{get-agents.body.data}}",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -581.5,
+            "y": 240.35439999999994
+          },
+          "dimensions": {
+            "width": 1311,
+            "height": 1945.772
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": "inner"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": "ef645af9-ed60-4efd-882e-bf534442ce86",
+        "data": {
+          "name": "Get Aggregated Applications With Risk",
+          "action_type": "http_request",
+          "public_action_id": "51245e6f-ea50-46cc-ae88-30c18723966d",
+          "method": "get",
+          "url": "{{Function.GET_MANAGEMENT_URL()}}/web/api/v2.1/application-management/risks/aggregated-applications?endpointUuid__contains={{loop-endpoints.item.uuid}}",
+          "url_path": "/web/api/v2.1/agents/applications",
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "accept": "application/json",
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 527.5,
+            "y": 176.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 4
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Condition CVE exists",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{get-aggregated-applications-with-risk.body.pagination.totalItems}}",
+                    "compared_value": "0",
+                    "comparison_operator": "greater_than"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 527.5,
+            "y": 352.3544
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [
+        {
+          "target": 5,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": 4
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "SDL Power Query",
+          "action_type": "http_request",
+          "public_action_id": "3ebda068-e63e-497c-882f-66da27a38655",
+          "method": "post",
+          "url": "{{Function.GET_MANAGEMENT_URL()}}<@/sdl/api/powerQuery@>",
+          "url_path": "/sdl/api/powerQuery",
+          "url_prefix": null,
+          "payload": "{\n  \"query\": \"| dataset 'config://datatables/host_user.csv'| filter UUID=\\\"{{loop-endpoints.item.uuid}}\\\"|columns Contact\",\n  \"endTime\": \"\",\n  \"priority\": \"\",\n  \"teamEmails\": []\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "Run a PowerQuery, where you can pipe one or many  search expressions into a set of commands to transform, manipulate, group, and summarize your data. This query option in SDL API is often referred to as the powerQuery API.\n\nThis Search runs a query that gives the value from the table \"config://datatables/host_user.csv\" that you need to create with the fields \"UUID\" and \"Contact\"",
+        "client_data": {
+          "position": {
+            "x": 606.25,
+            "y": 528.0316
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "connected_to": [
+        {
+          "target": 12,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 4
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable initial",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "body",
+              "value": "\"\"",
+              "is_secret": false
+            },
+            {
+              "name": "color",
+              "value": "\"\"",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 606.25,
+            "y": 704.7088
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 12,
+      "connected_to": [
+        {
+          "target": 3,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 4
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Loop Application",
+          "action_type": "loop",
+          "loop_type": "dynamic",
+          "number_of_iterations": 1,
+          "object_to_iterate": "{{get-aggregated-applications-with-risk.body.data}}",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 322.75,
+            "y": 918.386
+          },
+          "dimensions": {
+            "width": 823,
+            "height": 815.7088
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 3,
+      "connected_to": [
+        {
+          "target": 7,
+          "custom_handle": null
+        },
+        {
+          "target": 9,
+          "custom_handle": "inner"
+        }
+      ],
+      "parent_action": 4
+    },
+    {
+      "action": {
+        "type": "send_email",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Send Email per Endpoint",
+          "action_type": "send_email",
+          "subject": "Vulnerabilities for \"{{loop-endpoints.item.computerName}}\"",
+          "to": [
+            "{{Function.DEFAULT(Function.STRING(sdl-power-query.body.values),\"<EMAIL>\")}}"
+          ],
+          "cc": [],
+          "bcc": [],
+          "reply_to": [],
+          "mime_type": "text/html",
+          "body": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Vulnerabilities on machine \"{{loop-endpoints.item.computerName}}\"</title>\n</head>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">\n\n    <div style=\"max-width: 800px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;\">\n\n        <h2 style=\"color: #1a73e8; border-bottom: 2px solid #eee; padding-bottom: 10px;\">\n            Weekly Application Vulnerability Report for \"{{loop-endpoints.item.computerName}}\"\n        </h2>\n\n        <p>Dear Sir or Madam,</p>\n\n        <p>\n            Please find attached the current applications with vulnerabilities on the device \"{{loop-endpoints.item.computerName}}\", grouped by application and their highest severity level.\n        </p>\n\n        <table style=\"width: 100%; border-collapse: collapse; margin-top: 20px;\">\n            <thead>\n                <tr style=\"background-color: #f4f4f4;\">\n                    <th style=\"padding: 12px; text-align: left; border: 1px solid #ddd;\">App (Application)</th>\n                    <th style=\"padding: 12px; text-align: center; border: 1px solid #ddd;\">CVE Count</th>\n                    <th style=\"padding: 12px; text-align: left; border: 1px solid #ddd;\">Severity</th>\n                    <th style=\"padding: 12px; text-align: left; border: 1px solid #ddd;\">Remediation Level</th>\n                </tr>\n            </thead>\n            <tbody>\n                {{local_var.body}}\n            </tbody>\n        </table>\n\n        <p style=\"margin-top: 30px; font-size: 0.9em; color: #666;\">\n            Please contact the Security Operations Team for detailed information or if you have questions regarding the remediation plans.\n        </p>\n\n    </div>\n\n</body>\n</html>",
+          "attachments": [],
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "Fill out <EMAIL> as default Contact",
+        "client_data": {
+          "position": {
+            "x": 606.25,
+            "y": 1834.772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 7,
+      "connected_to": [],
+      "parent_action": 4
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable color critical",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "color",
+              "value": "{{Function.REPLACE(loop-application.item.highestSeverity, \"CRITICAL\", \"#ff0000\")}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 283.5,
+            "y": 176.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 9,
+      "connected_to": [
+        {
+          "target": 10,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 3
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable color high",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "color",
+              "value": "{{Function.REPLACE(local_var.color, \"HIGH\", \"#ff6f00\")}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 283.5,
+            "y": 352.3544
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 3
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable color medium",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "color",
+              "value": "{{Function.REPLACE(local_var.color, \"MEDIUM\", \"#ffa600\")}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 283.5,
+            "y": 529.0316
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 11,
+      "connected_to": [
+        {
+          "target": 8,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 3
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable App",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "body",
+              "value": "{{local_var.body}}\n<tr>\n  <td style=\"padding: 12px; border: 1px solid #ddd;\">{{loop-application.item.name}}</td>\n  <td style=\"padding: 12px; text-align: center; border: 1px solid #ddd;\">{{loop-application.item.cveCount}}</td>\n  <td style=\"padding: 12px; border: 1px solid #ddd; font-weight: bold; color: {{local_var.color}};\">{{loop-application.item.highestSeverity}}</td>\n  <td style=\"padding: 12px; border: 1px solid #ddd;\">{{loop-application.item.remediationLevel}}</td>\n</tr>",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 283.5,
+            "y": 704.7088
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 8,
+      "connected_to": [],
+      "parent_action": 3
+    }
+  ]
+}

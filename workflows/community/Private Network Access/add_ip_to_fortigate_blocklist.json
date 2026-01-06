@@ -1,0 +1,871 @@
+{
+  "name": "Add ip to Fortigate Blocklist",
+  "description": "",
+  "actions": [
+    {
+      "action": {
+        "type": "manual_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Manual Trigger",
+          "action_type": "manual_trigger",
+          "trigger_type": "dynamic",
+          "dynamic_properties": {
+            "ipToBlock": {
+              "title": "",
+              "description": "Please insert the IP you want to block on the FG Firewall",
+              "index": 0,
+              "type": "text",
+              "validation": {
+                "required": true,
+                "min_length": null,
+                "max_length": null
+              }
+            }
+          },
+          "static_payload": "{}"
+        },
+        "state": "active",
+        "description": null,
+        "client_data": {
+          "position": {
+            "x": -578.1180758974358,
+            "y": -911.4260434871794
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 8,
+      "connected_to": [
+        {
+          "target": 13,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Reset Member List",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "member",
+              "value": "[]",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -578.1180758974358,
+            "y": -710.7488434871794
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 13,
+      "connected_to": [
+        {
+          "target": 7,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "98d01753-4b45-4c84-86db-255a860412a6",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "84b7a30c-5e9f-48dd-b4e9-c7a42f3d8a1b",
+        "data": {
+          "name": "Get Object Name",
+          "action_type": "http_request",
+          "public_action_id": "a3f7e885-03d1-4bc1-b2f3-c39505070bec",
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}<@/api/v2/cmdb/firewall/address@>",
+          "url_path": "/api/v2/cmdb/firewall/address",
+          "url_prefix": null,
+          "payload": "{}",
+          "parameters": [
+            {
+              "parameter_name": "filter",
+              "parameter_value": "name=@\"{{manual-trigger.data.ipToBlock}}\""
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": false,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "Create a new subnet address object on the FortiGate device. A subnet address object defines a network with a specific subnet mask (e.g., 192.168.1.0 255.255.255.0).",
+        "client_data": {
+          "position": {
+            "x": -578.1180758974358,
+            "y": -534.0716434871795
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 7,
+      "connected_to": [
+        {
+          "target": 12,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Prepare to compare names",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "prepareName",
+              "value": "{{Function.PARSE_JSON(get-object-name.body)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -578.1180758974358,
+            "y": -357.3944434871795
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 12,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Flatten Array",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "flattenArray",
+              "value": "{{Function.FLATTEN_ARRAY(local_var.prepareName.results)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -578.1180758974358,
+            "y": -180.71724348717953
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "connected_to": [
+        {
+          "target": 10,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Object Exists",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{get-object-name.body}}",
+                    "compared_value": "{{manual-trigger.data.ipToBlock}}",
+                    "comparison_operator": "contains"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -578.1180758974358,
+            "y": -4.04004348717956
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": "false"
+        },
+        {
+          "target": 4,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Extract Name",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "name",
+              "value": "{{local_var.flattenArray[0].name}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -418.1180758974358,
+            "y": 172.6371565128204
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "connected_to": [
+        {
+          "target": 14,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "98d01753-4b45-4c84-86db-255a860412a6",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "84b7a30c-5e9f-48dd-b4e9-c7a42f3d8a1b",
+        "data": {
+          "name": "Create Address Object",
+          "action_type": "http_request",
+          "public_action_id": "a3f7e885-03d1-4bc1-b2f3-c39505070bec",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}<@/api/v2/cmdb/firewall/address@>",
+          "url_path": "/api/v2/cmdb/firewall/address",
+          "url_prefix": null,
+          "payload": "{\n  \"name\": \"blocked_{{manual-trigger.data.ipToBlock}}\",\n  \"subnet\": \"{{manual-trigger.data.ipToBlock}}/32\",\n  \"comment\": \"Address to dynamically block\"\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": false,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "Create a new subnet address object on the FortiGate device. A subnet address object defines a network with a specific subnet mask (e.g., 192.168.1.0 255.255.255.0).",
+        "client_data": {
+          "position": {
+            "x": -738.1180758974358,
+            "y": 172.6371565128204
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Object Name",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "objectName",
+              "value": "{{Function.PARSE_JSON(create-address-object.body)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -738.1180758974358,
+            "y": 349.3143565128205
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 11,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Condition",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{create-address-object.status}}",
+                    "compared_value": "\"success\"",
+                    "comparison_operator": "equals"
+                  },
+                  {
+                    "input_value": "{{create-address-object.status_code}}",
+                    "compared_value": "200",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -738.1180758974358,
+            "y": 525.9915565128206
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [
+        {
+          "target": 16,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "name",
+              "value": "{{local_var.objectName.mkey}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -659.3680758974358,
+            "y": 702.6687565128207
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 16,
+      "connected_to": [
+        {
+          "target": 14,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "98d01753-4b45-4c84-86db-255a860412a6",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "84b7a30c-5e9f-48dd-b4e9-c7a42f3d8a1b",
+        "data": {
+          "name": "Retrieve Address Group Contents",
+          "action_type": "http_request",
+          "public_action_id": "0cbd915a-9047-43a8-a95e-704cb7934f35",
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}<@/api/v2/cmdb/firewall/addrgrp@>/ha_blocklist",
+          "url_path": "/api/v2/cmdb/firewall/addrgrp",
+          "url_prefix": null,
+          "payload": "{}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": false,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "Create a new address group on the FortiGate device. Address groups allow you to group multiple address objects together for use in firewall policies.",
+        "client_data": {
+          "position": {
+            "x": -538.7430758974358,
+            "y": 879.3459565128207
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 14,
+      "connected_to": [
+        {
+          "target": 3,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Extract Data",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "Group Name",
+              "value": "{{Function.PARSE_JSON(retrieve-address-group-contents.body)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -538.7430758974358,
+            "y": 1056.0231565128208
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 3,
+      "connected_to": [
+        {
+          "target": 5,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Extract Variables",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "member",
+              "value": "{{local_var.Group Name.results[0].member}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -538.7430758974358,
+            "y": 1232.7003565128207
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "connected_to": [
+        {
+          "target": 9,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "New Item to be Added",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "newItem",
+              "value": "{\"name\": {{local_var.name}}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -378.7430758974358,
+            "y": 1409.3775565128208
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 9,
+      "connected_to": [
+        {
+          "target": 15,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Update Member List",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "member",
+              "value": "  {{Function.APPEND(local_var.member, local_var.newItem)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -698.7430758974358,
+            "y": 1409.3775565128208
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 15,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "98d01753-4b45-4c84-86db-255a860412a6",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "84b7a30c-5e9f-48dd-b4e9-c7a42f3d8a1b",
+        "data": {
+          "name": "Add to Address Group",
+          "action_type": "http_request",
+          "public_action_id": "0cbd915a-9047-43a8-a95e-704cb7934f35",
+          "method": "put",
+          "url": "{{Connection.protocol}}{{Connection.url}}<@/api/v2/cmdb/firewall/addrgrp@>/ha_blocklist",
+          "url_path": "/api/v2/cmdb/firewall/addrgrp",
+          "url_prefix": null,
+          "payload": "{\n  \"member\": \n     {{local_var.member}}\n  ,\n  \"comment\": \"Added\"\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": false,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "Create a new address group on the FortiGate device. Address groups allow you to group multiple address objects together for use in firewall policies.",
+        "client_data": {
+          "position": {
+            "x": -698.7430758974358,
+            "y": 1586.0547565128209
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [],
+      "parent_action": null
+    }
+  ]
+}

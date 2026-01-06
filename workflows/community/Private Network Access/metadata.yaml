@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: "DEMO - AI SIEM workflow automation to add IP to a Blocklist in Fortinet FortiGate firewall"
+  trigger_type: "manual"
+  integration_dependency: "SentinelOne AI SIEM platform with at least one SentinelOne Linux agent version 25.2 or above"
+  expected_actions_per_run: "16 depending on data enrichment complexity"
+  human_in_the_loop: "yes, but can be fully automated replacing the trigger type"
+  required_products: "AI SIEM, HyperAutomation, local FortiGate firewall"
+  tags: ["ai-siem", "network security", "blocklist", "automation", "block ip"]
+  version: "v1.0"
+  author: "Marco Rottigni a.k.a. RoarinPenguin"
+  last_updated: "2026-01-07"

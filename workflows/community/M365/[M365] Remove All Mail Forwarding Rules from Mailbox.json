@@ -29,15 +29,16 @@
             }
           ]
         },
+        "state": "active",
         "description": null,
         "client_data": {
           "position": {
-            "x": -656,
-            "y": 137
+            "x": -656.0,
+            "y": 137.0
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -69,7 +70,7 @@
           "url": "{{Connection.protocol}}{{Connection.url}}/sdl/api/query",
           "url_path": "/sdl/api/query",
           "url_prefix": null,
-          "payload": "{\n  \"filter\": \"\\\"{{singularity-response-trigger.data.indicators[0].id}}\\\"\",\n  \"startTime\": \"{{singularity-response-trigger.data.firstSeenAt}}\",\n  \"endTime\": \"{{singularity-response-trigger.data.createdAt}}\"\n}",
+          "payload": "{\n  \"filter\": \"dataSource.name = 'indicator' and metadata.uid = '{{singularity-response-trigger.data.indicators[0].id}}'\",\n  \"startTime\": \"{{singularity-response-trigger.data.indicators[0].eventTime}}\",\n  \"endTime\": \"{{Function.DELTA(singularity-response-trigger.data.indicators[0].eventTime,-0.1)}}\"\n}",
           "parameters": [],
           "retry_on_status_code": null,
           "retry_on_status_codes": [
@@ -89,15 +90,16 @@
           "redirect_follow": true,
           "continue_on_fail": false
         },
+        "state": "active",
         "description": "Get events (log records) that match your query.",
         "client_data": {
           "position": {
-            "x": -656,
+            "x": -656.0,
             "y": 313.67719999999997
           },
           "dimensions": {
-            "width": 256,
-            "height": 74
+            "width": 256.0,
+            "height": 74.0
           },
           "collapsed": false
         },
@@ -149,15 +151,16 @@
           "redirect_follow": true,
           "continue_on_fail": false
         },
+        "state": "active",
         "description": "https://outlook.office.com/mail/options/mail/rules",
         "client_data": {
           "position": {
-            "x": -656,
+            "x": -656.0,
             "y": 488.3544
           },
           "dimensions": {
-            "width": 256,
-            "height": 74
+            "width": 256.0,
+            "height": 74.0
           },
           "collapsed": false
         },
@@ -186,17 +189,19 @@
           "action_type": "loop",
           "loop_type": "dynamic",
           "number_of_iterations": 1,
-          "object_to_iterate": "{{get-mail-forwarding-rule.body.value}}"
+          "object_to_iterate": "{{get-mail-forwarding-rule.body.value}}",
+          "is_parallel": false
         },
+        "state": "active",
         "description": "",
         "client_data": {
           "position": {
-            "x": -912,
+            "x": -912.0,
             "y": 701.0316
           },
           "dimensions": {
-            "width": 768,
-            "height": 810
+            "width": 768.0,
+            "height": 810.0
           },
           "collapsed": false
         },
@@ -248,15 +253,16 @@
           "redirect_follow": true,
           "continue_on_fail": true
         },
+        "state": "active",
         "description": "https://outlook.office.com/mail/options/mail/rules",
         "client_data": {
           "position": {
-            "x": 256,
+            "x": 256.0,
             "y": 176.6772
           },
           "dimensions": {
-            "width": 256,
-            "height": 74
+            "width": 256.0,
+            "height": 74.0
           },
           "collapsed": false
         },
@@ -312,15 +318,16 @@
           "conditions": null,
           "conditions_relationship": "and"
         },
+        "state": "active",
         "description": "",
         "client_data": {
           "position": {
-            "x": 256,
+            "x": 256.0,
             "y": 351.3544
           },
           "dimensions": {
-            "width": 256,
-            "height": 74
+            "width": 256.0,
+            "height": 74.0
           },
           "collapsed": false
         },
@@ -360,15 +367,16 @@
           ],
           "variables_scope": "local"
         },
+        "state": "active",
         "description": "",
         "client_data": {
           "position": {
-            "x": 96,
+            "x": 96.0,
             "y": 526.0316
           },
           "dimensions": {
-            "width": 256,
-            "height": 74
+            "width": 256.0,
+            "height": 74.0
           },
           "collapsed": false
         },
@@ -404,15 +412,16 @@
           ],
           "variables_scope": "local"
         },
+        "state": "active",
         "description": "",
         "client_data": {
           "position": {
-            "x": 416,
+            "x": 416.0,
             "y": 526.0316
           },
           "dimensions": {
-            "width": 256,
-            "height": 74
+            "width": 256.0,
+            "height": 74.0
           },
           "collapsed": false
         },
@@ -464,15 +473,16 @@
           "redirect_follow": true,
           "continue_on_fail": false
         },
+        "state": "active",
         "description": "Add a note to a unified alert.",
         "client_data": {
           "position": {
-            "x": 96,
+            "x": 96.0,
             "y": 700.7088
           },
           "dimensions": {
-            "width": 256,
-            "height": 74
+            "width": 256.0,
+            "height": 74.0
           },
           "collapsed": false
         },
@@ -519,15 +529,16 @@
           "redirect_follow": true,
           "continue_on_fail": false
         },
+        "state": "active",
         "description": "Add a note to a unified alert.",
         "client_data": {
           "position": {
-            "x": 416,
+            "x": 416.0,
             "y": 700.7088
           },
           "dimensions": {
-            "width": 256,
-            "height": 74
+            "width": 256.0,
+            "height": 74.0
           },
           "collapsed": false
         },

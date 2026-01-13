@@ -1,0 +1,358 @@
+{
+  "name": "TOR Exit Node List ingested as TI",
+  "description": "",
+  "actions": [
+    {
+      "action": {
+        "type": "scheduled_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Scheduled Trigger",
+          "action_type": "scheduled_trigger",
+          "schedule_method": "weekly",
+          "until": null,
+          "max_runs": 1,
+          "schedule_value": [
+            {
+              "schedule_method": "weekly",
+              "minute": 0,
+              "hour": 18,
+              "tz": "Europe/Rome",
+              "week_day": 2
+            },
+            {
+              "schedule_method": "weekly",
+              "minute": 0,
+              "hour": 18,
+              "tz": "Europe/Rome",
+              "week_day": 4
+            },
+            {
+              "schedule_method": "weekly",
+              "minute": 0,
+              "hour": 18,
+              "tz": "Europe/Rome",
+              "week_day": 6
+            }
+          ],
+          "start_at": null,
+          "start_at_method": "immediately",
+          "ends_on": "never"
+        },
+        "state": "active",
+        "description": "This workflow is scheduled to run three days a week.",
+        "client_data": {
+          "position": {
+            "x": 286,
+            "y": -29
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 98
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "connected_to": [
+        {
+          "target": 4,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Retrieve the list of TOR Exit Nodes",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "https://raw.githubusercontent.com/platformbuilds/Tor-IP-Addresses/refs/heads/master/tor-exit-nodes.lst",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "This action retrieves the list of TOR exit nodes from OSINT",
+        "client_data": {
+          "position": {
+            "x": 286,
+            "y": 169.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "GrabIpList",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "ipList",
+              "value": "{{Function.EXTRACT_IPS(retrieve-the-list-of-tor-exit-nodes.body)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Extract the list of IPv4 and store them in a variable",
+        "client_data": {
+          "position": {
+            "x": 286,
+            "y": 346.35439999999994
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 74
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Loop the list of IPv4",
+          "action_type": "loop",
+          "loop_type": "dynamic",
+          "number_of_iterations": 5,
+          "object_to_iterate": "{{local_var.ipList}}",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -5,
+            "y": 559.0315999999999
+          },
+          "dimensions": {
+            "width": 838,
+            "height": 746.3543999999999
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 3,
+          "custom_handle": "inner"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "aa858c2f-f237-42f7-afad-b07a25b2d79f",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "ef645af9-ed60-4efd-882e-bf534442ce86",
+        "data": {
+          "name": "POST the TI",
+          "action_type": "http_request",
+          "public_action_id": "34049bba-98b5-4b78-9de5-968251b550f9",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/threat-intelligence/iocs",
+          "url_path": "/web/api/v2.0/threats",
+          "url_prefix": null,
+          "payload": "{\n  \"filter\": {\n    \"siteIds\": [\n      \"<<insert your site id here>>\"\n    ]\n  },\n  \"data\": [\n    {\n      \"type\": \"IPV4\",\n      \"validUntil\": \"{{Function.DELTA_NOW(-72)}}\",\n      \"description\": \"This IP is a TOR exit node\",\n      \"method\": \"EQUALS\",\n      \"creationTime\": \"{{Function.DATETIME_NOW()}}\",\n      \"externalId\": \"OSINT\",\n      \"value\": \"{{loop-the-list-of-ipv4.item}}\",\n      \"originalRiskScore\": \"50\",\n      \"severity\": \"5\",\n      \"source\": \"OSINT Threat Intelligence Library\",\n      \"name\": \"Threat Intel for TOR Nodes\"\n    }\n  ]\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json",
+            "accept": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "Post the IP in SentinelOne Singularity Console as IoC",
+        "client_data": {
+          "position": {
+            "x": 291,
+            "y": 176.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 3,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 2
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "TestLessThan50Ip",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{loop-the-list-of-ipv4.index}}",
+              "compared_value": "50",
+              "comparison_operator": "greater_than_or_equals"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "This action breaks the loop if 50 IPs are ingested",
+        "client_data": {
+          "position": {
+            "x": 291,
+            "y": 353.3544
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": 2
+    },
+    {
+      "action": {
+        "type": "break_loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Break Loop",
+          "action_type": "break_loop"
+        },
+        "state": "active",
+        "description": null,
+        "client_data": {
+          "position": {
+            "x": 369.75,
+            "y": 530.0316
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [],
+      "parent_action": 2
+    }
+  ]
+}

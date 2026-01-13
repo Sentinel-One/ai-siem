@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: "AI SIEM workflow automation for ingestion of OSINT Threat Intelligence with expiration date"
+  trigger_type: "Scheduled"
+  integration_dependency: "SentinelOne AI SIEM platform with API access and detection rule like tiIndicator.source contains 'OSINT' to trigger alerts"
+  expected_actions_per_run: "Depends on number of IPs in the list, potentially 1000, but the workflows is limited to 50. This limit can be removed."
+  human_in_the_loop: "no"
+  required_products: "AI SIEM, Singularity Response, HyperAutomation"
+  tags: ["ai-siem", "detection", "threat intelligence", "automation", "data-sources"]
+  version: "v1.0"
+  author: "Marco Rottigni"
+  last_updated: "2026-01-13"

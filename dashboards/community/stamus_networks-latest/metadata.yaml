@@ -1,0 +1,9 @@
+metadata_details:
+  data_dependencies: "Stamus Networks Clear NDR data"
+  required_fields: "dataSource.vendor"
+  description: "Overview Dashboard for Stamus Networks Clear NDR logs"
+  usecase_type: "Operational"
+  usecase_action: "Dashboard"
+  tags: dashboard, stamus, stamus networks, clear ndr, ndr, network
+  version: latest
+  author: Tom Martin

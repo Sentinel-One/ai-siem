@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: Parser for Stamus Networks Clear NDR logs
+  datasource_vendor: Stamus Networks
+  dataSource: Stamus Networks
+  format: JSON
+  ingestion_method: HEC
+  dependency_summary: Requires ingestion of the original Stamus Networks Clear NDR logs.
+  performance_impact: "Minimal"
+  tags: stamus, stamus networks, clear ndr, ndr, logs, parser
+  version: latest
+  author: Tom Martin

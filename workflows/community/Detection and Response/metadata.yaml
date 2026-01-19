@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: "AI SIEM workflow automation for receiving a CSV datatable and uploading it into AI SIEM"
+  trigger_type: "webhook"
+  integration_dependency: "Powershell script to retrieve all AD interesting users and format them in CSV"
+  integration_dependency_example:"$csvData = Get-ADUser -Filter * -Properties Mail, DistinguishedName | Select-Object @{Name=\"Account Name\"; Expression={$_.SamAccountName}}, Mail, @{Name=\"OU\"; Expression={($_.DistinguishedName -replace '^CN=[^,]+,','' -replace ',DC=.*','')}}, @{Name=\"DC\"; Expression={[string]::Join(\".\", ([regex]::Matches($_.DistinguishedName, 'DC=([^,]+)') | ForEach-Object { $_.Groups[1].Value }))}}, @{Name="CN"; Expression={ ($_.DistinguishedName -split ',')[0] -replace 'CN=',''}} | ConvertTo-Csv -NoTypeInformation | Out-String; Invoke-RestMethod -Uri \"<insert the Webhook that will trigger SentinelOne Hyperautomation workflow>\" -Method POST -Body $csvData -ContentType \"text/csv\""
+  expected_actions_per_run: "2"
+  human_in_the_loop: "no"
+  required_products: "AI SIEM, Singularity Response, HyperAutomation"
+  tags: ["ai-siem", "detection", "datatable", "automation", "data-sources"]
+  version: "v1.0"
+  author: "Marco Rottigni"
+  last_updated: "2026-01-19"

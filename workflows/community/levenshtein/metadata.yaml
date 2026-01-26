@@ -1,0 +1,30 @@
+metadata_details:
+  purpose: "AI SIEM workflow automation for domain similarity detection using Levenshtein distance to identify potential typosquatting, phishing, and brand impersonation threats"
+  trigger_type: "webhook"
+  integration_dependency: "API query to retrieve domain request data from network logs or DNS analytics platform"
+  expected_actions_per_run: "3"
+  human_in_the_loop: "conditional"
+  required_products: "AI SIEM, Singularity Response, HyperAutomation"
+  workflow_steps:
+    - "Transform API response to extract domain list"
+    - "Calculate Levenshtein distance against legitimate domains"
+    - "Generate risk assessment and similarity scores"
+    - "Flag high-risk domains for investigation"
+  detection_thresholds:
+    high_risk: "Levenshtein distance ≤ 1"
+    medium_risk: "Levenshtein distance 2-3"
+    low_risk: "Levenshtein distance 4+"
+    similarity_threshold: "≥85% similarity score"
+  use_cases:
+    - "Typosquatting detection"
+    - "Brand protection monitoring"
+    - "Phishing domain identification"
+    - "DNS security analysis"
+  input_format: "JSON with domain arrays from network monitoring APIs"
+  output_format: "Risk-assessed domain analysis with threat classifications"
+  tags: ["ai-siem", "detection", "domain-analysis", "typosquatting", "phishing", "levenshtein", "brand-protection", "dns-security", "automation"]
+  version: "v1.0"
+  author: "Joel Mora"
+  last_updated: "2026-01-26"
+  performance_notes: "Optimal for datasets under 1000 domains per execution due to JQ processing limitations"
+  alert_conditions: "Generates alerts for high_risk and medium_risk domain matches with request counts >100"

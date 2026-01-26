@@ -1,0 +1,331 @@
+{
+  "name": "levenshtein",
+  "description": "",
+  "actions": [
+    {
+      "action": {
+        "type": "http_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "HTTP Trigger",
+          "action_type": "http_trigger",
+          "url_identifier": "97ab0444-6f32-493b-b761-30970291414d",
+          "supported_methods": {
+            "get": true,
+            "post": true
+          },
+          "response_status_code": 200,
+          "response_body": "{\"Status\": \"OK\"}",
+          "response_content_type": "application/json",
+          "response_headers": {},
+          "include_headers": true,
+          "allow_empty_request_body": true
+        },
+        "state": "active",
+        "description": null,
+        "client_data": {
+          "position": {
+            "x": -594,
+            "y": -192
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [
+        {
+          "target": 5,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable 3",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "domains_to_check",
+              "value": "[\n  \"microosoft.com\",\n  \"google.com\",\n  \"msn.com\"\n]",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -594,
+            "y": 8.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Loop",
+          "action_type": "loop",
+          "loop_type": "dynamic",
+          "number_of_iterations": 1,
+          "object_to_iterate": "{{local_var.domains_to_check}}",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -846,
+            "y": 223.35439999999994
+          },
+          "dimensions": {
+            "width": 760,
+            "height": 1132
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": "inner"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "caf42ef2-8125-455c-991f-885e2a3069af",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "92cfc975-2e0f-4c96-be29-00ea2fa91805",
+        "data": {
+          "name": "Power Query",
+          "action_type": "http_request",
+          "public_action_id": "6e45734c-a920-48e3-9f30-4d491878801b",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/api/<@powerQuery@>",
+          "url_path": "/api/timeseriesQuery",
+          "url_prefix": null,
+          "payload": "{\n  \"query\": \"dataSource.name='SentinelOne' event.category='url'\\n| parse \\\":\\\\/\\\\/$d$[:\\\\/]\\\" from url.address\\n| let fqdn = extract_matches(d,\\\"\\\\\\\\w+\\\")\\n| let l = len(fqdn) \\n| let tld_index = l - 1  \\n| let domain_index = l - 2 \\n| let domain = fqdn.get(domain_index) + \\\".\\\"  + fqdn.get(tld_index)\\n| filter !(domain matches (\\\"{{loop.item}}\\\"))\\n| group Requests=count() by domain\\n| sort -Requests\",\n  \"startTime\": \"24h\"\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "Run a PowerQuery, where you can pipe one or many search expressions into a set of commands to transform, manipulate, group, and summarize your data.",
+        "client_data": {
+          "position": {
+            "x": 234,
+            "y": 125.73164335937497
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 1
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable 4",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "JSON",
+              "value": "{{Function.JQ(power-query.body,\"{\\\"legitimate_domain\\\": \\\"microsoft.com\\\", \\\"domains_to_check\\\": (.values | map(.[0]))}\")}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 233,
+            "y": 302.40884335937494
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "connected_to": [
+        {
+          "target": 4,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 1
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable 2",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "JQ",
+              "value": "def levenshtein(str1; str2): \n  def min3(a; b; c): [a, b, c] | min; \n  str1 as $s1 | str2 as $s2 | \n  ($s1 | length) as $len1 | \n  ($s2 | length) as $len2 | \n  reduce range($len1 + 1) as $i ([]; . + [reduce range($len2 + 1) as $j ([]; if $i == 0 then . + [$j] elif $j == 0 then . + [$i] else . + [0] end)]) | \n  reduce range(1; $len1 + 1) as $i (.; reduce range(1; $len2 + 1) as $j (.; if ($s1[$i-1:$i] == $s2[$j-1:$j]) then .[$i][$j] = .[$i-1][$j-1] else .[$i][$j] = min3(.[$i-1][$j] + 1; .[$i][$j-1] + 1; .[$i-1][$j-1] + 1) end)) | \n  .[$len1][$len2];\n\ndef advanced_domain_check(legitimate_domain; test_domain; distance_threshold):\n  def extract_domain_parts(domain):\n    domain | split(\".\") | {name: .[0], tld: .[1:]};\n  \n  extract_domain_parts(legitimate_domain) as $legit |\n  extract_domain_parts(test_domain) as $test |\n  levenshtein($legit.name; $test.name) as $name_distance |\n  {\n    \"legitimate_domain\": legitimate_domain,\n    \"test_domain\": test_domain,\n    \"name_distance\": $name_distance,\n    \"tld_match\": ($legit.tld == $test.tld),\n    \"is_typosquatting\": ($name_distance > 0 and $name_distance <= distance_threshold),\n    \"is_combosquatting\": ($test.name | contains($legit.name) and ($test.name | length) > ($legit.name | length)),\n    \"similarity_score\": (100 - (($name_distance / ([$legit.name | length, $test.name | length] | max)) * 100)),\n    \"risk_level\": (\n      if $name_distance == 0 then \"identical\"\n      elif $name_distance <= 1 then \"high_risk\"\n      elif $name_distance <= 2 then \"medium_risk\"\n      elif $name_distance <= 3 then \"low_risk\"\n      else \"unlikely_threat\"\n      end\n    )\n  };\n\n.legitimate_domain as $legit_domain | .domains_to_check | map(advanced_domain_check($legit_domain; .; 3))",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 234,
+            "y": 480.086043359375
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "connected_to": [
+        {
+          "target": 3,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 1
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "JQ",
+              "value": "{{Function.JQ(local_var.JSON[0],local_var.JQ)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 234,
+            "y": 656.7632433593751
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 3,
+      "connected_to": [],
+      "parent_action": 1
+    }
+  ]
+}

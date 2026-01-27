@@ -1,0 +1,314 @@
+{
+  "title": "FortiGate Firewall – Security & Traffic Overview",
+  "configType": "TABBED",
+  "duration": "24h",
+  "tabs": [
+    {
+      "tabName": "Overview",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Distinct FortiGate Devices",
+          "query": "dataSource.vendor='Fortinet' | group estimate_distinct(device.name)",
+          "options": {
+            "suffix": " firewalls"
+          },
+          layout: {
+            h: 5,
+            w: 12,
+            x: 0,
+            y: 0
+          }
+        }, {
+          "graphStyle": "number",
+          "title": "Connections Blocked",
+          "query": "dataSource.vendor='Fortinet' status_detail='blocked' | group count=count() by timestamp=timebucket('1hr')",
+          "options": {
+            "format": "K"
+          },
+          layout: {
+            h: 5,
+            w: 12,
+            x: 12,
+            y: 0
+          },
+          sparklineConfig: {
+            enabled: false
+          },
+          trendConfig: {
+            enabled: true,
+            indicators: {
+              arrow: {
+                enabled: true
+              },
+              number: {
+                calculationType: "ABSOLUTE",
+                enabled: true
+              },
+              upwardsMeaning: "POSITIVE"
+            }
+          }
+        }, {
+          "graphStyle": "line",
+          "title": "Traffic Volume (1 h buckets)",
+          "lineSmoothing": "straightLines",
+          "query": "dataSource.vendor='Fortinet' activity_name='traffic' |let traffic.packets_out=number(traffic.packets_out)\n| group outbound=sum(traffic.packets_out) by timestamp=timebucket('1h')",
+          layout: {
+            h: 19,
+            w: 33,
+            x: 24,
+            y: 0
+          }
+        }, {
+          "graphStyle": "line",
+          "title": "Traffic by Direction",
+          layout: {
+            h: 14,
+            w: 24,
+            x: 0,
+            y: 5
+          },
+          lineSmoothing: "straightLines",
+          query: "activity_name='traffic' |let NumBytesIn=number(traffic.bytes_in) |let NumBytesout=number(traffic.bytes_out) |group 'Bytes Out'=sum(NumBytesout), 'Bytes In'=sum(NumBytesIn) by timestamp=timebucket('1h')"
+        }, {
+          dataLabelType: "PERCENTAGE",
+          graphStyle: "pie",
+          maxPieSlices: 10,
+          query: "dataSource.name='FortiGate' unmapped.logdesc=* | group logdesc=count ()  by unmapped.logdesc| sort -logdesc ",
+          title: "Top Event Type",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 0,
+            y: 19
+          }
+        }
+      ]
+    }, {
+      "tabName": "Top Talkers",
+      "graphs": [
+        {
+          "graphStyle": "",
+          "title": "Top Source IPs",
+          "query": "dataSource.vendor='Fortinet' unmapped.action='accept' not (src_endpoint.ip contains ('10.','192.168.','0.0.0.0')) | group Connections=count() by src_endpoint.ip | sort -Connections",
+          "showBarsColumn": "false",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 0,
+            y: 0
+          }
+        }, {
+          "graphStyle": "",
+          "title": "Top Destination IPs",
+          "query": "dataSource.vendor='Fortinet' unmapped.action='accept' not (dst_endpoint.ip contains ('10.','192.168.','0.0.0.0')) | group Connections=count() by dst_endpoint.ip | sort -Connections",
+          "showBarsColumn": "false",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 20,
+            y: 0
+          }
+        }, {
+          "graphStyle": "donut",
+          "title": "Top Applications (App-ID)",
+          "maxPieSlices": 12,
+          "query": "dataSource.vendor='Fortinet' app_name=* | group count() by app_name",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 40,
+            y: 0
+          },
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        }, {
+          dataLabelType: "PERCENTAGE",
+          graphStyle: "donut",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 40,
+            y: 14
+          },
+          maxPieSlices: 12,
+          query: "dataSource.vendor='Fortinet' actor.authorizations\\[0\\].policy.name=* | group count() by actor.authorizations\\[0\\].policy.name",
+          title: "Top Policy",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        }, {
+          dataLabelType: "PERCENTAGE",
+          graphStyle: "donut",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 20,
+            y: 14
+          },
+          maxPieSlices: 12,
+          query: "dataSource.name='FortiGate' device.type=* | group count() by device.type",
+          title: "Top Device Type",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        }, {
+          dataLabelType: "PERCENTAGE",
+          graphStyle: "donut",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 0,
+            y: 28
+          },
+          maxPieSlices: 12,
+          query: "dataSource.name='FortiGate' device.os.name=* | group count() by device.os.name",
+          title: "Top OS Device",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        }, {
+          graphStyle: "",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 0,
+            y: 14
+          },
+          query: "dataSource.vendor='Fortinet' unmapped.action='deny' src_endpoint.ip=* | group Connections=count() by src_endpoint.ip | sort -Connections",
+          showBarsColumn: "false",
+          title: "Top Deny Source IPs "
+        }
+      ]
+    }, {
+      "tabName": "Threats & Security Events",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Intrusion-Prevention Events",
+          "query": "dataSource.vendor='Fortinet' unmapped.level=* | group count()",
+          layout: {
+            h: 5,
+            w: 20,
+            x: 0,
+            y: 0
+          },
+          sparklineConfig: {
+            enabled: false
+          },
+          trendConfig: {
+            enabled: false,
+            indicators: {
+              arrow: {
+                enabled: true
+              },
+              number: {
+                calculationType: "ABSOLUTE",
+                enabled: true
+              },
+              upwardsMeaning: "POSITIVE"
+            }
+          }
+        }, {
+          "graphStyle": "donut",
+          "title": "Threats by Severity",
+          "maxPieSlices": 6,
+          "query": "dataSource.vendor='Fortinet' unmapped.level=* | group count() by unmapped.level ",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 0,
+            y: 5
+          },
+          dataLabelType: "PERCENTAGE",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        }, {
+          "graphStyle": "",
+          "title": "Recent Critical Events",
+          "query": "activity_name='virus' |columns process.file.name, status_detail, risk_score ",
+          "showBarsColumn": "false",
+          layout: {
+            h: 19,
+            w: 35,
+            x: 20,
+            y: 0
+          }
+        }, {
+          dataLabelType: "PERCENTAGE",
+          graphStyle: "donut",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 0,
+            y: 19
+          },
+          maxPieSlices: 6,
+          query: "dataSource.name='FortiGate' unmapped.action='blocked' actor.user.name=* | group count() by actor.user.name ",
+          title: "Deny from user",
+          totalNumberConfig: {
+            enabled: false,
+            label: ""
+          }
+        },
+      ]
+    }, {
+      "tabName": "VPNs",
+      "graphs": [
+        {
+          graphStyle: "",
+          query: "dataSource.name='FortiGate' event.type = 'vpn' unmapped.xauthuser=* unmapped.action = 'tunnel-up' srccountry=*| columns unmapped.date, time, srccountry, unmapped.remip, unmapped.xauthuser, tunnelip ",
+          title: "Successful VPN connection",
+          layout: {
+            h: 14,
+            w: 60,
+            x: 0,
+            y: 0
+          }
+        }, {
+          dataLabelType: "PERCENTAGE",
+          graphStyle: "pie",
+          maxPieSlices: 10,
+          query: "dataSource.name='FortiGate' event.type = 'vpn' result = 'ERROR' srccountry=* | group count() by srccountry",
+          title: "Failed VPN location",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 0,
+            y: 28
+          }
+        }, {
+          graphStyle: "",
+          layout: {
+            h: 14,
+            w: 60,
+            x: 0,
+            y: 14
+          },
+          query: "dataSource.name='FortiGate' event.type = 'vpn' unmapped.xauthuser=* unmapped.action = 'tunnel-down' srccountry=* | columns unmapped.date, time, srccountry, unmapped.remip, unmapped.xauthuser, unmapped.duration",
+          title: "VPN Logout"
+        }, {
+          dataLabelType: "PERCENTAGE",
+          graphStyle: "pie",
+          layout: {
+            h: 14,
+            w: 20,
+            x: 20,
+            y: 28
+          },
+          maxPieSlices: 10,
+          query: "dataSource.name='FortiGate' event.type = 'vpn' unmapped.action = 'tunnel-up' srccountry=* | group count() by srccountry",
+          title: "Successfull vpn Location"
+        }
+      ]
+    }
+  ],
+}

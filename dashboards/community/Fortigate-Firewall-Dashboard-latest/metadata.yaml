@@ -1,9 +1,9 @@
 metadata_details:
   data_dependencies: "Specify datasource.name or OCSF field"
   required_fields: "Fields required for this dashboard"
-  description: "Dashboard migrated from samples-main: Fortigate-Firewall-Dashboard.conf"
+  description: "Dashboard for Fortigate firewalls"
   usecase_type: "Operational"
   usecase_action: "Dashboard"
-  tags: dashboard, migrated, samples-main
+  tags: dashboard, samples-main
   version: latest
-  author: Joel Mora
+  author: Mauro Pavanello

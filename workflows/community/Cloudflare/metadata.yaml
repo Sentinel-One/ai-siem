@@ -1,0 +1,10 @@
+metadata_details:
+  purpose: "Describe the outcome, integrations, and components that need to be preconfigured"
+  trigger_type: "alert | manual"
+  integration_dependency: "Describe the 3rd party integrations needed to run this activity. Mention if licensing or additional features are required."
+  expected_actions_per_run: "Total number of steps in the workflow"
+  human_in_the_loop: "yes | no – Does the workflow require human interaction?"
+  required_products: "List SentinelOne products required (e.g., EDR, CWS, CNS, Vulnerability Management)"
+  tags: "Optional tagging"
+  version: "v1.0"
+  

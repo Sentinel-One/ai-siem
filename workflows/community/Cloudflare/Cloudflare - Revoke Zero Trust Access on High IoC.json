@@ -1,0 +1,2909 @@
+{
+  "name": "Cloudflare - Revoke Zero Trust Access on High IoC",
+  "description": "When SentinelOne detects a high-severity Indicator of Compromise (IOC) or Ransomware, this workflow orchestrates a complex response. It calls the Cloudflare Zero Trust API to revoke active user sessions immediately. This forces re-authentication (potentially with stricter MFA) across all apps, locking the user out regardless of the device they are using.\n",
+  "actions": [
+    {
+      "action": {
+        "type": "singularity_response_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Singularity Response Trigger",
+          "action_type": "singularity_response_trigger",
+          "filter_groups": [
+            {
+              "condition": {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "classification",
+                    "compared_value": "[\"RANSOMWARE\",\"INFO_STEALER\",\"MALWARE\"]",
+                    "comparison_operator": "in"
+                  },
+                  {
+                    "input_value": "severity",
+                    "compared_value": "[\"HIGH\",\"CRITICAL\"]",
+                    "comparison_operator": "in"
+                  }
+                ]
+              },
+              "is_disabled": false,
+              "run_automatically": true,
+              "event_type": "alert",
+              "event_subtypes": [
+                "CREATE"
+              ]
+            }
+          ]
+        },
+        "state": "active",
+        "description": null,
+        "client_data": {
+          "position": {
+            "x": -590,
+            "y": -336
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 49,
+      "connected_to": [
+        {
+          "target": 5,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Configure required workflow variables",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "cloudflareAccountID",
+              "value": "\"a2aa3704f540db790417403d94496b60\"",
+              "is_secret": false
+            },
+            {
+              "name": "cloudflareConnectionName",
+              "value": "\"Cloudflare - acmedemo.org\"",
+              "is_secret": false
+            },
+            {
+              "name": "idp",
+              "value": "\"okta\"",
+              "is_secret": false
+            },
+            {
+              "name": "idpConnectionName",
+              "value": "\"Okta - acmedemo.org\"",
+              "is_secret": false
+            },
+            {
+              "name": "sdlConnectionName",
+              "value": "\"SentinelOne SDL connection\"",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -590,
+            "y": -135.3228
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "connected_to": [
+        {
+          "target": 4,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Configure optional workflow variables",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "idpUsernameFallbackEmailDomain",
+              "value": "\"\"",
+              "is_secret": false
+            },
+            {
+              "name": "idpUsernamePrefix",
+              "value": "\"\"",
+              "is_secret": false
+            },
+            {
+              "name": "idpUsernameSuffix",
+              "value": "\"\"",
+              "is_secret": false
+            },
+            {
+              "name": "useIdPUsernameAsFallback",
+              "value": "false",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -590,
+            "y": 41.35439999999994
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "connected_to": [
+        {
+          "target": 18,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Initialize workflow",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "discoveredUsername",
+              "value": "null",
+              "is_secret": false
+            },
+            {
+              "name": "discoveredEmail",
+              "value": "null",
+              "is_secret": false
+            },
+            {
+              "name": "workflowMetadata",
+              "value": "{\n  \"id\": {{Function.GET_WORKFLOW_ID()}},\n  \"name\": {{Function.GET_WORKFLOW_NAME()}},\n  \"versionID\": {{Function.GET_WORKFLOW_VERSION_ID()}},\n  \"executionID\": {{Function.GET_EXECUTION_ID()}},\n  \"runtimeID\": {{Function.GENERATE_UUID4()}},\n  \"startTime\": {{Function.DATETIME_TO_EPOCH(Function.DATETIME_NOW())}}\n}",
+              "is_secret": false
+            },
+            {
+              "name": "workflowState",
+              "value": "\"RUNNING\"",
+              "is_secret": false
+            },
+            {
+              "name": "workflowMessages",
+              "value": "[]",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -590,
+            "y": 218.0315999999999
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 18,
+      "connected_to": [
+        {
+          "target": 34,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Starting HyperAutomation workflow\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -590,
+            "y": 394.7087999999999
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 34,
+      "connected_to": [
+        {
+          "target": 3,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Check OCSF evidence for user",
+          "action_type": "loop",
+          "loop_type": "dynamic",
+          "number_of_iterations": 1,
+          "object_to_iterate": "{{Function.DEFAULT(singularity-response-trigger.data.ocsf.evidences, [])}}",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -899.5,
+            "y": 609.3859999999999
+          },
+          "dimensions": {
+            "width": 875,
+            "height": 1171.0632
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 3,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        },
+        {
+          "target": 15,
+          "custom_handle": "inner"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get user email from OCSF evidence",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "discoveredEmail",
+              "value": "{{Function.DEFAULT(check-ocsf-evidence-for-user.item.user.emailAddr, null)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 309.5,
+            "y": 176.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 15,
+      "connected_to": [
+        {
+          "target": 12,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 3
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Did we find an email from OCSF evidence",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "or",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{local_var.discoveredEmail}}",
+                    "compared_value": "null",
+                    "comparison_operator": "not_equals"
+                  },
+                  {
+                    "input_value": "{{local_var.discoveredEmail}}",
+                    "compared_value": "\"\"",
+                    "comparison_operator": "not_equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -590,
+            "y": 1881.1264
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 11,
+      "connected_to": [
+        {
+          "target": 9,
+          "custom_handle": "false"
+        },
+        {
+          "target": 43,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Does OCSF user email exist",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{local_var.discoveredEmail}}",
+                    "compared_value": "\"\"",
+                    "comparison_operator": "not_equals"
+                  },
+                  {
+                    "input_value": "{{local_var.discoveredEmail}}",
+                    "compared_value": "null",
+                    "comparison_operator": "not_equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 309.5,
+            "y": 353.3544
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 12,
+      "connected_to": [
+        {
+          "target": 16,
+          "custom_handle": "false"
+        },
+        {
+          "target": 41,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": 3
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Did we find a username from OCSF evidence",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "or",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{local_var.discoveredUsername}}",
+                    "compared_value": "null",
+                    "comparison_operator": "not_equals"
+                  },
+                  {
+                    "input_value": "{{local_var.discoveredUsername}}",
+                    "compared_value": "\"\"",
+                    "comparison_operator": "not_equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1046.9636,
+            "y": 2057.8036
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 9,
+      "connected_to": [
+        {
+          "target": 17,
+          "custom_handle": "false"
+        },
+        {
+          "target": 26,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 2",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Discovered user's email in OCSF evidence: {{local_var.discoveredEmail}}\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"discoveryDetails\": {\n      \"evidenceIndex\": {{check-ocsf-evidence-for-user.index}},\n      \"email\": \"{{local_var.discoveredEmail}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 469.5,
+            "y": 530.0316
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 41,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 3
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get username from OCSF evidence",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "discoveredUsername",
+              "value": "{{Function.DEFAULT(check-ocsf-evidence-for-user.item.process.user.name, Function.DEFAULT(check-ocsf-evidence-for-user.item.user.name, null))}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 149.5,
+            "y": 530.0316
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 16,
+      "connected_to": [
+        {
+          "target": 13,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 3
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Get username from other alert data",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "discoveredUsername",
+              "value": "{{Function.DEFAULT(singularity-response-trigger.data.process.username, Function.DEFAULT(singularity-response-trigger.data.asset.lastLoggedInUser, Function.DEFAULT(singularity-response-trigger.data.detectionTime.asset.lastLoggedInUser, null)))}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1175.5079,
+            "y": 2234.4808000000003
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 17,
+      "connected_to": [
+        {
+          "target": 10,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Did we find a username from other alert data",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{local_var.discoveredUsername}}",
+                    "compared_value": "null",
+                    "comparison_operator": "not_equals"
+                  },
+                  {
+                    "input_value": "{{local_var.discoveredUsername}}",
+                    "compared_value": "\"\"",
+                    "comparison_operator": "not_equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1175.5079,
+            "y": 2411.1580000000004
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "connected_to": [
+        {
+          "target": 44,
+          "custom_handle": "true"
+        },
+        {
+          "target": 45,
+          "custom_handle": "false"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 5",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Discovered username {{local_var.discoveredUsername}} from other alert data (eg: loggedInUser or process.username)\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"userInfo\": {\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -948.5522000000001,
+            "y": 2587.8352000000004
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 44,
+      "connected_to": [
+        {
+          "target": 26,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Does OCSF username exist",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{local_var.discoveredUsername}}",
+                    "compared_value": "\"\"",
+                    "comparison_operator": "not_equals"
+                  },
+                  {
+                    "input_value": "{{local_var.discoveredUsername}}",
+                    "compared_value": "null",
+                    "comparison_operator": "not_equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 149.5,
+            "y": 706.7088
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 13,
+      "connected_to": [
+        {
+          "target": 42,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": 3
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is username an email address",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{Function.EXTRACT_EMAIL(local_var.discoveredUsername)}}",
+                    "compared_value": "null",
+                    "comparison_operator": "not_equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -926.3386,
+            "y": 2764.5124000000005
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 26,
+      "connected_to": [
+        {
+          "target": 14,
+          "custom_handle": "false"
+        },
+        {
+          "target": 43,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 3",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Discovered username in OCSF evidence: {{local_var.discoveredUsername}}\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"discoveryDetails\": {\n      \"evidenceIndex\": {{check-ocsf-evidence-for-user.index}},\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 228.25,
+            "y": 883.386
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 42,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 3
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 6",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"INFO\",\n    \"message\": \"Unable to discover a username or email address information from the alert.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"alert\": {{singularity-response-trigger.data}},\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{Function.APPEND(local_var.workflowMessages, \"unable to locate username or email address information in the alert\")}},\n      \"state\": \"ABORTED\"\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1268.5522,
+            "y": 2587.8352000000004
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 45,
+      "connected_to": [],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Does user include Windows domain",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{Function.INDEX_OF(local_var.discoveredUsername, \"\\\\\")}}",
+                    "compared_value": "-1",
+                    "comparison_operator": "not_equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1005.0886,
+            "y": 2941.1896000000006
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 14,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": "false"
+        },
+        {
+          "target": 50,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "break_loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Break",
+          "action_type": "break_loop"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 348.875,
+            "y": 1060.0632
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [],
+      "parent_action": 3
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Strip Windows domain from username",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "strippedUsername",
+              "value": "{{Function.SLICE(local_var.discoveredUsername, Function.ADD(Function.INDEX_OF(local_var.discoveredUsername, \"\\\\\"), 1))}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -786.0522000000001,
+            "y": 3117.8668000000007
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 50,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Copy discovered username",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "strippedUsername",
+              "value": "{{local_var.discoveredUsername}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1106.0522,
+            "y": 3117.8668000000007
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Add prefix and suffix to username",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "idpUsername",
+              "value": "{{Function.APPEND(local_var.idpUsernamePrefix, Function.APPEND(local_var.strippedUsername, local_var.idpUsernameSuffix))}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1005.0886,
+            "y": 3294.544000000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [
+        {
+          "target": 36,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 11",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Using {{local_var.idpUsername}} as the username for the IdP query\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1005.0886,
+            "y": 3471.221200000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 36,
+      "connected_to": [
+        {
+          "target": 21,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is IdP lookup disabled",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{local_var.idp}}",
+                    "compared_value": "\"none\"",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1005.0886,
+            "y": 3647.898400000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 21,
+      "connected_to": [
+        {
+          "target": 19,
+          "custom_handle": "false"
+        },
+        {
+          "target": 23,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is IdP Entra ID",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{local_var.idp}}",
+                    "compared_value": "\"msentra\"",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1173.0079,
+            "y": 3824.575600000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 19,
+      "connected_to": [
+        {
+          "target": 20,
+          "custom_handle": "false"
+        },
+        {
+          "target": 29,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is IdP Okta",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{local_var.idp}}",
+                    "compared_value": "\"okta\"",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1263.5522,
+            "y": 4001.252800000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 20,
+      "connected_to": [
+        {
+          "target": 30,
+          "custom_handle": "true"
+        },
+        {
+          "target": 48,
+          "custom_handle": "false"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "{{local_var.idpConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "73475bd9-3762-4f17-aab5-c544ec5ec31b",
+        "data": {
+          "name": "Retrieve User Email from Entra ID",
+          "action_type": "http_request",
+          "public_action_id": "0b794ce4-c25a-46b9-ab8d-53bce4482828",
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}<@/v1.0/users/@>{{local_var.idpUsername}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [
+            {
+              "parameter_name": "$select",
+              "parameter_value": "mail,userPrincipalName,id"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "Search for a user based on their ID or user principal name (usually their email address).",
+        "client_data": {
+          "position": {
+            "x": -545.125,
+            "y": 4001.252800000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 29,
+      "connected_to": [
+        {
+          "target": 24,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "{{local_var.idpConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "5ce5b70d-f12d-4955-8cbb-cce8e5dd9ad5",
+        "data": {
+          "name": "Retrieve User Email from Okta",
+          "action_type": "http_request",
+          "public_action_id": "58c2957e-a02e-4703-a46c-f622e3270927",
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}<@/api/v1/users/@>{{local_var.idpUsername}}",
+          "url_path": "/api/v1/users/<<okta_user_id>>",
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "Retrieves a user from your Okta organization",
+        "client_data": {
+          "position": {
+            "x": -1022.3022000000001,
+            "y": 4177.930000000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 30,
+      "connected_to": [
+        {
+          "target": 25,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 9",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"ERROR\",\n    \"message\": \"{{local_var.idp}}: This is an unknown value for an IdP -- please check the documentation and fix your workflow.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{Function.APPEND(local_var.workflowMessages, \"An unknown 'idp' value was specified in the workflow.\")}},\n      \"state\": \"FAILED\"\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1342.3022,
+            "y": 4177.930000000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 48,
+      "connected_to": [
+        {
+          "target": 28,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is email present in Entra ID record",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{Function.EXTRACT_EMAIL(retrieve-user-email-from-entra-id.body.mail)}}",
+                    "compared_value": "null",
+                    "comparison_operator": "not_equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -545.125,
+            "y": 4177.930000000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 24,
+      "connected_to": [
+        {
+          "target": 32,
+          "custom_handle": "true"
+        },
+        {
+          "target": 38,
+          "custom_handle": "false"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is email present in Okta record",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{Function.EXTRACT_EMAIL(retrieve-user-email-from-okta.body.profile.email)}}",
+                    "compared_value": "null",
+                    "comparison_operator": "not_equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1022.3022000000001,
+            "y": 4354.607200000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 25,
+      "connected_to": [
+        {
+          "target": 33,
+          "custom_handle": "true"
+        },
+        {
+          "target": 40,
+          "custom_handle": "false"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Purposely cause an error in the workflow 2",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "exitCode",
+              "value": "{{local_var.does_not_exist}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1342.3022,
+            "y": 4354.607200000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 28,
+      "connected_to": [],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Save user email address from Entra ID",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "discoveredEmail",
+              "value": "{{Function.EXTRACT_EMAIL(retrieve-user-email-from-entra-id.body.mail)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -143.875,
+            "y": 4354.607200000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 32,
+      "connected_to": [
+        {
+          "target": 37,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Save user email address from Okta",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "discoveredEmail",
+              "value": "{{Function.EXTRACT_EMAIL(retrieve-user-email-from-okta.body.profile.email)}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -433.4193,
+            "y": 4758.3002000000015
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 33,
+      "connected_to": [
+        {
+          "target": 39,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 12",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Discovered user's email in Entra ID profile: {{local_var.discoveredEmail}}\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"email\": \"{{local_var.discoveredEmail}}\",\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -94.08069999999998,
+            "y": 4758.3002000000015
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 37,
+      "connected_to": [
+        {
+          "target": 43,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 13",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Microsoft Entra ID user {{local_var.idpUsername}} does not exist or has no email address set.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -705.125,
+            "y": 4354.607200000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 38,
+      "connected_to": [
+        {
+          "target": 23,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 14",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Discovered user's email in Okta profile: {{local_var.discoveredEmail}}\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"email\": \"{{local_var.discoveredEmail}}\",\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -433.4193,
+            "y": 4934.977400000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 39,
+      "connected_to": [
+        {
+          "target": 43,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 15",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Okta user {{local_var.idpUsername}} does not exist or has no email address set.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1101.0522,
+            "y": 4531.284400000001
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 40,
+      "connected_to": [
+        {
+          "target": 23,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is IdP username fallback enabled",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{local_var.useIdPUsernameAsFallback}}",
+                    "compared_value": "true",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -963.2136,
+            "y": 4758.3002000000015
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 23,
+      "connected_to": [
+        {
+          "target": 22,
+          "custom_handle": "true"
+        },
+        {
+          "target": 35,
+          "custom_handle": "false"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 10",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"INFO\",\n    \"message\": \"Unable to discover email address information from the username found in the alert and IdP username fallback is disabled.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"alert\": {{singularity-response-trigger.data}},\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": \"ABORTED\"\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -1123.2136,
+            "y": 4934.977400000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 35,
+      "connected_to": [],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Is IdP username an email address",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{Function.EXTRACT_EMAIL(local_var.idpUsername)}}",
+                    "compared_value": "null",
+                    "comparison_operator": "not_equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -803.2136,
+            "y": 4934.977400000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 22,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": "false"
+        },
+        {
+          "target": 7,
+          "custom_handle": "true"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Append default email domain to username",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "discoveredEmail",
+              "value": "{{Function.APPEND(local_var.idpUsername, Function.APPEND(\"@\", local_var.idpUsernameFallbackEmailDomain))}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -963.2136,
+            "y": 5111.654600000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [
+        {
+          "target": 43,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Copy username to email",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "discoveredEmail",
+              "value": "{{local_var.idpUsername}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -643.2136,
+            "y": 5111.654600000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 7,
+      "connected_to": [
+        {
+          "target": 43,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 4",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Revoking Cloudflare Access sessions for {{local_var.discoveredEmail}} \",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"userInfo\": {\n      \"email\": \"{{local_var.discoveredEmail}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -214.70569999999998,
+            "y": 5288.331800000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 43,
+      "connected_to": [
+        {
+          "target": 31,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "85e105bb-c5d2-4550-ae7b-bf74c92b5e71",
+        "connection_name": "{{local_var.cloudflareConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "0dedd07c-0b9a-4205-9215-03ab1a95eb3a",
+        "data": {
+          "name": "Revoke All Access Tokens for User",
+          "action_type": "http_request",
+          "public_action_id": "0c2130ed-c52b-4893-981d-617f538626bd",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}<@/client/v4/accounts/@>{{local_var.cloudflareAccountID}}/access/organizations/revoke_user",
+          "url_path": "/client/v4/user/firewall/access_rules/rules/92f17202ed8bd63d69a66b86a49a8f6b",
+          "url_prefix": null,
+          "payload": "{\n  \"devices\": true,\n  \"email\": {{local_var.discoveredEmail}},\n  \"warp_session_reauth\": true\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": true
+        },
+        "state": "active",
+        "description": "Deletes an IP Access rule at the user level.",
+        "client_data": {
+          "position": {
+            "x": -214.70569999999998,
+            "y": 5465.009000000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 31,
+      "connected_to": [
+        {
+          "target": 8,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Did the revocation succeed",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{revoke-all-access-tokens-for-user.status_code}}",
+                    "compared_value": "200",
+                    "comparison_operator": "greater_than_or_equals"
+                  },
+                  {
+                    "input_value": "{{revoke-all-access-tokens-for-user.status_code}}",
+                    "compared_value": "300",
+                    "comparison_operator": "less_than"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -214.70569999999998,
+            "y": 5641.686200000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 8,
+      "connected_to": [
+        {
+          "target": 46,
+          "custom_handle": "true"
+        },
+        {
+          "target": 47,
+          "custom_handle": "false"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 7",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Cloudflare Access sessions for {{local_var.discoveredEmail}} have been revoked successfully.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"userInfo\": {\n      \"email\": \"{{local_var.discoveredEmail}}\"\n    },\n    \"cloudflare_api\": {\n      \"messages\": {{revoke-all-access-tokens-for-user.body.messages}}\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": \"SUCCEEDED\"\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -129.16139999999996,
+            "y": 5818.363400000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 46,
+      "connected_to": [],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": "{{local_var.sdlConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 8",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"ERROR\",\n    \"message\": \"Failed to revoke Cloudflare Access sessions for email {{local_var.discoveredEmail}}\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"userInfo\": {\n      \"email\": \"{{local_var.discoveredEmail}}\"\n    },\n    \"cloudflare_api\": {\n      \"errors\": {{revoke-all-access-tokens-for-user.body.errors}}\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{Function.APPEND(local_var.workflowMessages, \"Cloudflare API call returned one or more errors\")}},\n      \"state\": \"FAILED\"\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -449.16139999999996,
+            "y": 5818.363400000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 47,
+      "connected_to": [
+        {
+          "target": 27,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Purposely cause an error in the workflow",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "exitCode",
+              "value": "{{local_var.does_not_exist}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -449.16139999999996,
+            "y": 5995.040600000002
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 27,
+      "connected_to": [],
+      "parent_action": null
+    }
+  ]
+}

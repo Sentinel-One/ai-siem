@@ -78,27 +78,27 @@
           "variables": [
             {
               "name": "cloudflareAccountID",
-              "value": "\"a2aa3704f540db790417403d94496b60\"",
+              "value": "\"\"",
               "is_secret": false
             },
             {
               "name": "cloudflareConnectionName",
-              "value": "\"Cloudflare - acmedemo.org\"",
+              "value": "\"\"",
               "is_secret": false
             },
             {
               "name": "idp",
-              "value": "\"okta\"",
+              "value": "\"\"",
               "is_secret": false
             },
             {
               "name": "idpConnectionName",
-              "value": "\"Okta - acmedemo.org\"",
+              "value": "\"\"",
               "is_secret": false
             },
             {
               "name": "sdlConnectionName",
-              "value": "\"SentinelOne SDL connection\"",
+              "value": "\"\"",
               "is_secret": false
             }
           ],

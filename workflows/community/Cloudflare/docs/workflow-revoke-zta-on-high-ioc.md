@@ -154,6 +154,16 @@ If you wish to manually test the workflow:
 
 ## Troubleshooting the Workflow
 
+The workflow periodically logs messages to SentinelOne AI SIEM during execution. To review the log messages simply click **Event Search** in the navigation menu (1). Use the following search criteria:
+   - Select **All Data** from the dropdown (2) 
+   - Enter `dataSource.category='Workflow' dataSource.name='LogEntry' dataSource.vendor='Cloudflare'` for the search query (3).
+   - Select an appropriate time range to search (4).
+   - Click the **Search** button (5)
+   
+   <img src="./images/workflow-zta-ioc-16.png" />
+
+Simply review the log entries that are returned by clicking on any of them. Informational messages should show up with a medium severity level. Warnings should show up with a high severity level. Errors should show up with a critical severity level.
+
 ## Next Steps
 
 - [Return to Main Page](../README.md)

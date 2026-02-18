@@ -46,11 +46,11 @@ To configure the integration:
 
     | Region | Host / Base URL Value |
     |-|-|
-    | US | ingest.us1.sentinelone.net/services/collector/event |
-    | Canada | ingest.ca1.sentinelone.net/services/collector/event |
-    | Germany | ingest.eu1.sentinelone.net/services/collector/event |
-    | India | ingest.ap1.sentinelone.net/services/collector/event |
-    | Australia | ingest.apse2.sentinelone.net/services/collector/event |
+    | US | ingest.us1.sentinelone.net |
+    | Canada | ingest.ca1.sentinelone.net |
+    | Germany | ingest.eu1.sentinelone.net |
+    | India | ingest.ap1.sentinelone.net |
+    | Australia | ingest.apse2.sentinelone.net |
       
    <img src="./images/configure-sdl-07.png" width="70%" />
     

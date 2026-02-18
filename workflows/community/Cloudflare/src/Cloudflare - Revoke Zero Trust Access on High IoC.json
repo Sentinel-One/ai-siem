@@ -88,7 +88,7 @@
             },
             {
               "name": "idp",
-              "value": "\"\"",
+              "value": "\"okta\"",
               "is_secret": false
             },
             {
@@ -97,7 +97,7 @@
               "is_secret": false
             },
             {
-              "name": "sdlConnectionName",
+              "name": "sdlWriteConnectionName",
               "value": "\"\"",
               "is_secret": false
             }
@@ -258,8 +258,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -267,7 +267,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Starting HyperAutomation workflow\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
@@ -604,8 +604,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -613,7 +613,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Discovered user's email in OCSF evidence: {{local_var.discoveredEmail}}\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"discoveryDetails\": {\n      \"evidenceIndex\": {{check-ocsf-evidence-for-user.index}},\n      \"email\": \"{{local_var.discoveredEmail}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
@@ -822,8 +822,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -831,7 +831,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Discovered username {{local_var.discoveredUsername}} from other alert data (eg: loggedInUser or process.username)\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"userInfo\": {\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
@@ -1005,8 +1005,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -1014,7 +1014,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Discovered username in OCSF evidence: {{local_var.discoveredUsername}}\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"discoveryDetails\": {\n      \"evidenceIndex\": {{check-ocsf-evidence-for-user.index}},\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
@@ -1069,8 +1069,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -1078,7 +1078,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"INFO\",\n    \"message\": \"Unable to discover a username or email address information from the alert.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"alert\": {{singularity-response-trigger.data}},\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{Function.APPEND(local_var.workflowMessages, \"unable to locate username or email address information in the alert\")}},\n      \"state\": \"ABORTED\"\n    }\n  }\n}",
@@ -1354,8 +1354,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -1363,7 +1363,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Using {{local_var.idpUsername}} as the username for the IdP query\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
@@ -1722,8 +1722,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -1731,7 +1731,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"ERROR\",\n    \"message\": \"{{local_var.idp}}: This is an unknown value for an IdP -- please check the documentation and fix your workflow.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{Function.APPEND(local_var.workflowMessages, \"An unknown 'idp' value was specified in the workflow.\")}},\n      \"state\": \"FAILED\"\n    }\n  }\n}",
@@ -2034,8 +2034,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -2043,7 +2043,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Discovered user's email in Entra ID profile: {{local_var.discoveredEmail}}\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"email\": \"{{local_var.discoveredEmail}}\",\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
@@ -2098,8 +2098,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -2107,7 +2107,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Microsoft Entra ID user {{local_var.idpUsername}} does not exist or has no email address set.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
@@ -2162,8 +2162,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -2171,7 +2171,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Discovered user's email in Okta profile: {{local_var.discoveredEmail}}\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"email\": \"{{local_var.discoveredEmail}}\",\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
@@ -2226,8 +2226,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -2235,7 +2235,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Okta user {{local_var.idpUsername}} does not exist or has no email address set.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
@@ -2349,8 +2349,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -2358,7 +2358,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"INFO\",\n    \"message\": \"Unable to discover email address information from the username found in the alert and IdP username fallback is disabled.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"alert\": {{singularity-response-trigger.data}},\n    \"idp\": \"{{local_var.idp}}\",\n    \"userInfo\": {\n      \"idpUsername\": \"{{local_var.idpUsername}}\",\n      \"strippedUsername\": \"{{local_var.strippedUsername}}\",\n      \"username\": \"{{local_var.discoveredUsername}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": \"ABORTED\"\n    }\n  }\n}",
@@ -2557,8 +2557,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -2566,7 +2566,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Revoking Cloudflare Access sessions for {{local_var.discoveredEmail}} \",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"userInfo\": {\n      \"email\": \"{{local_var.discoveredEmail}}\"\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": {{local_var.workflowState}}\n    }\n  }\n}",
@@ -2621,7 +2621,7 @@
       "action": {
         "type": "http_request",
         "tag": "integration",
-        "connection_id": "85e105bb-c5d2-4550-ae7b-bf74c92b5e71",
+        "connection_id": null,
         "connection_name": "{{local_var.cloudflareConnectionName}}",
         "use_connection_name": true,
         "integration_id": "0dedd07c-0b9a-4205-9215-03ab1a95eb3a",
@@ -2746,8 +2746,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -2755,7 +2755,7 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
           "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Cloudflare Access sessions for {{local_var.discoveredEmail}} have been revoked successfully.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"userInfo\": {\n      \"email\": \"{{local_var.discoveredEmail}}\"\n    },\n    \"cloudflare_api\": {\n      \"messages\": {{revoke-all-access-tokens-for-user.body.messages}}\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": \"SUCCEEDED\"\n    }\n  }\n}",
@@ -2805,8 +2805,8 @@
       "action": {
         "type": "http_request",
         "tag": "core_action",
-        "connection_id": null,
-        "connection_name": "{{local_var.sdlConnectionName}}",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
         "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
@@ -2814,10 +2814,10 @@
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
           "url_path": null,
           "url_prefix": null,
-          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"ERROR\",\n    \"message\": \"Failed to revoke Cloudflare Access sessions for email {{local_var.discoveredEmail}}\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"userInfo\": {\n      \"email\": \"{{local_var.discoveredEmail}}\"\n    },\n    \"cloudflare_api\": {\n      \"errors\": {{revoke-all-access-tokens-for-user.body.errors}}\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{Function.APPEND(local_var.workflowMessages, \"Cloudflare API call returned one or more errors\")}},\n      \"state\": \"FAILED\"\n    }\n  }\n}",
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"ERROR\",\n    \"message\": \"Failed to revoke Cloudflare Access sessions for email {{local_var.discoveredEmail}}\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"userInfo\": {\n      \"email\": \"{{local_var.discoveredEmail}}\"\n    },\n    \"cloudflare_api\": {\n      \"response\": {{revoke-all-access-tokens-for-user}}\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{Function.APPEND(local_var.workflowMessages, \"Cloudflare API call returned one or more errors\")}},\n      \"state\": \"FAILED\"\n    }\n  }\n}",
           "parameters": [
             {
               "parameter_name": "sourcetype",

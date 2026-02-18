@@ -104,7 +104,7 @@ _Be sure to surround all string values with double quotes (`"`)._
 | `cloudflareConnectionName` | `string` | The value should be set to the name of the connection you created for Cloudflare earlier. |
 | `idp` | `string` | This is the IdP platform that will be used when resolving usernames to email addresses. It _must_ be one of the values in the supported IdP table below or else the workflow will abort. |
 | `idpConnectionName` | `string` | The value should be set to the name of the IdP connection you created earlier.  If `idp` is set to `none`, you may leave this as an empty string.  An example for the Microsoft Entra ID integration is shown below:  <br /><img src="./images/workflow-zta-ioc-08.png" /><br /> In this example, `idpConnectionName` should be set to `"Microsoft Entra ID - acmedemo.org"`. |
-| `sdlConnectionName` | `string` | The value should be set to the name of the connection you created for the SentinelOne SDL integration. |
+| `sdlWriteConnectionName` | `string` | The value should be set to the name of the connection you created for the SentinelOne SDL integration. |
 
 The following IdPs are supported:
 

@@ -39,7 +39,7 @@
       "assetTypeClassifier": "Virtual Server",
       "category": "Server",
       "subcategory": "Virtual Machine",
-      "name": "D2GH9C0WPR",
+      "name": "__DEVICE__",
       "osType": "UNKNOWN",
       "osVersion": "",
       "agentVersion": null,
@@ -62,7 +62,7 @@
         "assetTypeClassifier": "Virtual Server",
         "category": "Server",
         "subcategory": "Virtual Machine",
-        "name": "D2GH9C0WPR",
+        "name": "__DEVICE__",
         "osType": "UNKNOWN",
         "osVersion": "",
         "agentVersion": null,
@@ -191,8 +191,8 @@
       }
     },
     "process": {
-      "username": "STARFLEET\\jeanluc",
-      "userDisplayName": "jeanluc",
+      "username": "STARFLEET\\__USERNAME__",
+      "userDisplayName": "__USERNAME__",
       "userDomain": "STARFLEET",
       "parentName": "WRBrDa.exe",
       "cmdLine": null,

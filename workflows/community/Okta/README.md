@@ -26,4 +26,14 @@ Before continuing with these workflows, please review the following documentatio
 
 The following workflows are available:
 
-- [Okta - Send Device Risk Change Event via SSF](./docs/send-device-risk-change-event-via-ssf.md)
+- [Send Device Risk Change Event via SSF](./docs/send-device-risk-change-event-via-ssf.md)
+
+## References
+
+_The following links are simply provided as a reference. Information from these pages was used to generate the instructions for the Okta workflows._
+
+- [simple JSON Web Key generator](https://mkjwk.org/)
+- [Okta - Configure an SSF receiver and publish a SET](https://developer.okta.com/docs/guides/configure-ssf-receiver/main/)
+- [Okta - SSF Security Events Tokens API](https://developer.okta.com/docs/api/openapi/okta-management/management/tags/ssfsecurityeventtoken/ssfsecurityeventtoken/securityeventtokenrequestjwtbody)
+- [Okta - Entity Risk Policies](https://help.okta.com/oie/en-us/content/topics/itp/entity-risk-policy.htm)
+- [Okta - Configure a Shared Signal Receiver](https://help.okta.com/oie/en-us/content/topics/itp/configure-shared-signal-provider.htm?cshid=csh-config-shared-signal-provider)

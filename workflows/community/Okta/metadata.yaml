@@ -1,0 +1,12 @@
+metadata_details:
+  purpose: "Providing automated response actions between SentinelOne and Okta to mitigate threats and enhance security posture"
+  trigger_type: "alert | automatic"
+  integration_dependency: "Requires Okta subscription and API key authentication with appropriate permissions."
+  expected_actions_per_run: "Depends on the specific workflow"
+  human_in_the_loop: "no"
+  required_products: "Complete, AI SIEM, HyperAutomation"
+  tags: ["okta", "automation", "threat-mitigation", "security-posture"]
+  version: "v1.0"
+  author: "Josh Hogle <josh.hogle@sentinelone.com>"
+  last_updated: "2026-03-06"
+  

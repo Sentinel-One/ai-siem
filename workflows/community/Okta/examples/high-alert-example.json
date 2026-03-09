@@ -1,0 +1,232 @@
+{
+  "event_type": "alert",
+  "event_subtype": "CREATE",
+  "mgmt_id": 19488,
+  "data": {
+    "id": "019c43ea-8c7f-77e1-909f-5bcc7656d27e",
+    "name": "mimikatz.exe detected as Infostealer",
+    "description": "Windows file events analysis detected a malicious file known to SentinelOne's Cloud Intelligence",
+    "externalId": "2411197684524952174",
+    "storylineId": null,
+    "detectedAt": "2026-02-09T19:39:22Z",
+    "createdAt": "2026-02-09T19:39:22.936Z",
+    "updatedAt": "2026-02-09T19:39:22.934Z",
+    "firstSeenAt": "2026-02-09T19:39:22Z",
+    "lastSeenAt": "2026-02-09T19:39:22.934Z",
+    "sloDetails": null,
+    "classification": "INFO_STEALER",
+    "severity": "HIGH",
+    "confidenceLevel": "MALICIOUS",
+    "analystVerdict": "UNDEFINED",
+    "status": "NEW",
+    "result": "UNMITIGATED",
+    "detectionSource": {
+      "vendor": "SentinelOne",
+      "product": "EDR",
+      "engine": null
+    },
+    "analytics": {
+      "category": "Reputation",
+      "type": "OTHER",
+      "typeValue": "STATIC",
+      "name": "Agent Policy",
+      "uid": null
+    },
+    "asset": {
+      "id": "s6wjguxqi452ebkqnuywrrfseq",
+      "status": "INACTIVE",
+      "type": "UNKNOWN",
+      "assetTypeClassifier": "Virtual Server",
+      "category": "Server",
+      "subcategory": "Virtual Machine",
+      "name": "__DEVICE__",
+      "osType": "UNKNOWN",
+      "osVersion": "",
+      "agentVersion": null,
+      "agentUuid": null,
+      "connectivityToConsole": null,
+      "pendingReboot": false,
+      "lastLoggedInUser": null,
+      "policy": null,
+      "decommissioned": false,
+      "role": null,
+      "accessible": true,
+      "origin": "RESOURCES",
+      "deleted": false
+    },
+    "assets": [
+      {
+        "id": "s6wjguxqi452ebkqnuywrrfseq",
+        "status": "INACTIVE",
+        "type": "UNKNOWN",
+        "assetTypeClassifier": "Virtual Server",
+        "category": "Server",
+        "subcategory": "Virtual Machine",
+        "name": "__DEVICE__",
+        "osType": "UNKNOWN",
+        "osVersion": "",
+        "agentVersion": null,
+        "agentUuid": null,
+        "connectivityToConsole": null,
+        "pendingReboot": false,
+        "lastLoggedInUser": null,
+        "policy": null,
+        "decommissioned": false,
+        "role": null,
+        "accessible": false,
+        "origin": "RESOURCES",
+        "deleted": false
+      }
+    ],
+    "indicators": [],
+    "assignee": null,
+    "fileName": "N/A",
+    "fileHash": "N/A",
+    "noteExists": false,
+    "ticketIdExists": false,
+    "ticketId": null,
+    "realTime": {
+      "scope": {
+        "account": {
+          "id": "1472380766023399132",
+          "name": "Cloudflare"
+        },
+        "site": {
+          "id": "1472380766493161189",
+          "name": "Default site"
+        },
+        "group": {
+          "id": "1472380766518327014",
+          "name": "Default Group"
+        }
+      }
+    },
+    "detectionTime": {
+      "scope": {
+        "accountId": "1472380766023399132",
+        "accountName": "Cloudflare",
+        "siteName": "Default site",
+        "groupName": "Default Group"
+      },
+      "asset": {
+        "osType": "UNKNOWN",
+        "osName": null,
+        "osRevision": null,
+        "agentVersion": null,
+        "policy": "PROTECT",
+        "lastLoggedInUser": null,
+        "ipV4": null,
+        "ipV6": null,
+        "subscriptionTime": null,
+        "consoleIpAddress": null,
+        "domain": null
+      },
+      "assets": [
+        {
+          "scope": {
+            "accountId": "1472380766023399132",
+            "accountName": "Cloudflare",
+            "siteName": "Default site",
+            "groupName": "Default Group"
+          },
+          "asset": {
+            "osType": "UNKNOWN",
+            "osName": null,
+            "osRevision": null,
+            "agentVersion": null,
+            "policy": "PROTECT",
+            "lastLoggedInUser": null,
+            "ipV4": null,
+            "ipV6": null,
+            "subscriptionTime": null,
+            "consoleIpAddress": null,
+            "domain": null
+          },
+          "kubernetes": {
+            "clusterName": null,
+            "nodeName": null,
+            "nodeLabels": null,
+            "namespaceName": null,
+            "namespaceLabels": null,
+            "controllerName": null,
+            "controllerType": null,
+            "controllerLabels": null,
+            "podName": "",
+            "podLabels": null,
+            "containerName": "",
+            "containerImageName": "",
+            "containerId": "",
+            "containerLabels": null,
+            "containerNetworkStatus": null
+          },
+          "cloud": null,
+          "accessible": false,
+          "origin": "RESOURCES",
+          "deleted": false
+        }
+      ],
+      "kubernetes": {
+        "clusterName": null,
+        "nodeName": null,
+        "nodeLabels": null,
+        "namespaceName": null,
+        "namespaceLabels": null,
+        "controllerName": null,
+        "controllerType": null,
+        "controllerLabels": null,
+        "podName": "",
+        "podLabels": null,
+        "containerName": "",
+        "containerImageName": "",
+        "containerId": "",
+        "containerLabels": null,
+        "containerNetworkStatus": null
+      },
+      "cloud": null,
+      "attacker": null,
+      "targetUser": {
+        "name": null,
+        "emailAddress": "",
+        "domain": null
+      }
+    },
+    "process": {
+      "username": "STARFLEET\\__USERNAME__",
+      "userDisplayName": "__USERNAME__",
+      "userDomain": "STARFLEET",
+      "parentName": "WRBrDa.exe",
+      "cmdLine": null,
+      "file": {
+        "name": "mimikatz.exe",
+        "path": "C:\\Tmp\\mimikatz\\mimikatz.exe",
+        "size": 1250056,
+        "sha1": "d1f7832035c3e8a73cc78afd28cfd7f4cece6d20",
+        "sha256": "92804faaab2175dc501d73e814663058c78c0a042675a8937266357bcfb96c50",
+        "md5": "e930b05efe23891d19bc354a4209be3e",
+        "certSubject": "OPEN SOURCE DEVELOPER, BENJAMIN DELPY",
+        "certSerialNumber": "OPEN SOURCE DEVELOPER, BENJAMIN DELPY",
+        "certExpiresAt": null,
+        "signatureVerification": "Not signed"
+      }
+    },
+    "observables": [
+      {
+        "name": "process.name",
+        "typeName": null,
+        "type": "PROCESS",
+        "value": ""
+      }
+    ],
+    "attackSurfaces": [
+      "ENDPOINT"
+    ],
+    "counters": [],
+    "enrichments": [],
+    "dataSources": [],
+    "preemptiveMitigationType": null,
+    "relatedAlerts": [],
+    "exclusionHash": null,
+    "selfLink": "https://usea1-partners.sentinelone.net/incidents/unified-alerts?alertId=019c43ea-8c7f-77e1-909f-5bcc7656d27e",
+    "labels": []
+  }
+}

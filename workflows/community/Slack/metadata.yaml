@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: "AI SIEM workflow automation for Slack notifications and interactions."
+  trigger_type: "Singularity-response-trigger"
+  integration_dependency: "Slack connection, SentinelOne GraphQL Connection and SentinelOne REST API Connection"
+  expected_actions_per_run: "Depends on actions triggered by Slack messages, typically 80-200 per message"
+  human_in_the_loop: "yes"
+  required_products: "SentinelOne EDR, HyperAutomation"
+  tags: ["sentinelone", "slack", "automation", "notifications"]
+  version: "v1.0"
+  author: "Patryk Kostek"
+  last_updated: "2026-03-03"

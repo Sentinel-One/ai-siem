@@ -16,5 +16,5 @@ Before continuing with these workflows, please review the following documentatio
 
 The following workflows are available:
 
+- [Automated WAF Policy Enforcement Based on Risk Score](./docs/workflow-automated-waf-policy-risk.md)
 - [Revoke Zero Trust Access on High IoC](./docs/workflow-revoke-zta-on-high-ioc.md)
-- 

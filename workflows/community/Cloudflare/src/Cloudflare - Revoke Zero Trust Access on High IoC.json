@@ -43,12 +43,12 @@
         "description": null,
         "client_data": {
           "position": {
-            "x": -590,
-            "y": -336
+            "x": -590.0,
+            "y": -336.0
           },
           "dimensions": {
-            "width": 256,
-            "height": 100
+            "width": 256.0,
+            "height": 100.0
           },
           "collapsed": false
         },
@@ -78,42 +78,46 @@
           "variables": [
             {
               "name": "cloudflareAccountID",
-              "value": "\"\"",
+              "value": "",
               "is_secret": false
             },
             {
               "name": "cloudflareConnectionName",
-              "value": "\"\"",
+              "value": "",
               "is_secret": false
             },
             {
               "name": "idp",
-              "value": "\"okta\"",
+              "value": "",
               "is_secret": false
             },
             {
               "name": "idpConnectionName",
-              "value": "\"\"",
+              "value": "",
               "is_secret": false
             },
             {
               "name": "sdlWriteConnectionName",
-              "value": "\"\"",
+              "value": "",
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
         "client_data": {
           "position": {
-            "x": -590,
+            "x": -590.0,
             "y": -135.3228
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -162,18 +166,22 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
         "client_data": {
           "position": {
-            "x": -590,
+            "x": -590.0,
             "y": 41.35439999999994
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -227,18 +235,22 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
         "client_data": {
           "position": {
-            "x": -590,
+            "x": -590.0,
             "y": 218.0315999999999
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -297,12 +309,12 @@
         "description": "",
         "client_data": {
           "position": {
-            "x": -590,
+            "x": -590.0,
             "y": 394.7087999999999
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -342,7 +354,7 @@
             "y": 609.3859999999999
           },
           "dimensions": {
-            "width": 875,
+            "width": 875.0,
             "height": 1171.0632
           },
           "collapsed": false
@@ -381,7 +393,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -391,8 +407,8 @@
             "y": 176.6772
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -447,12 +463,12 @@
         "description": "",
         "client_data": {
           "position": {
-            "x": -590,
+            "x": -590.0,
             "y": 1881.1264
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -515,8 +531,8 @@
             "y": 353.3544
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -579,8 +595,8 @@
             "y": 2057.8036
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -647,8 +663,8 @@
             "y": 530.0316
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -682,7 +698,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -692,8 +712,8 @@
             "y": 530.0316
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -727,7 +747,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -737,8 +761,8 @@
             "y": 2234.4808000000003
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -797,8 +821,8 @@
             "y": 2411.1580000000004
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -865,8 +889,8 @@
             "y": 2587.8352000000004
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -925,8 +949,8 @@
             "y": 706.7088
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -980,8 +1004,8 @@
             "y": 2764.5124000000005
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1048,8 +1072,8 @@
             "y": 883.386
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1112,8 +1136,8 @@
             "y": 2587.8352000000004
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1162,8 +1186,8 @@
             "y": 2941.1896000000006
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1203,8 +1227,8 @@
             "y": 1060.0632
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1233,7 +1257,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -1243,8 +1271,8 @@
             "y": 3117.8668000000007
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1278,7 +1306,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -1288,8 +1320,8 @@
             "y": 3117.8668000000007
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1323,7 +1355,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -1333,8 +1369,8 @@
             "y": 3294.544000000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1397,8 +1433,8 @@
             "y": 3471.221200000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1452,8 +1488,8 @@
             "y": 3647.898400000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1511,8 +1547,8 @@
             "y": 3824.575600000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1570,8 +1606,8 @@
             "y": 4001.252800000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1640,8 +1676,8 @@
             "y": 4001.252800000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1701,8 +1737,8 @@
             "y": 4177.930000000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1765,8 +1801,8 @@
             "y": 4177.930000000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1820,8 +1856,8 @@
             "y": 4177.930000000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1879,8 +1915,8 @@
             "y": 4354.607200000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1918,7 +1954,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -1928,8 +1968,8 @@
             "y": 4354.607200000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -1958,7 +1998,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -1968,8 +2012,8 @@
             "y": 4354.607200000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2003,7 +2047,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -2013,8 +2061,8 @@
             "y": 4758.3002000000015
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2077,8 +2125,8 @@
             "y": 4758.3002000000015
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2141,8 +2189,8 @@
             "y": 4354.607200000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2205,8 +2253,8 @@
             "y": 4934.977400000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2269,8 +2317,8 @@
             "y": 4531.284400000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2324,8 +2372,8 @@
             "y": 4758.3002000000015
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2392,8 +2440,8 @@
             "y": 4934.977400000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2442,8 +2490,8 @@
             "y": 4934.977400000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2481,7 +2529,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -2491,8 +2543,8 @@
             "y": 5111.654600000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2526,7 +2578,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -2536,8 +2592,8 @@
             "y": 5111.654600000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2600,8 +2656,8 @@
             "y": 5288.331800000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2661,8 +2717,8 @@
             "y": 5465.009000000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2721,8 +2777,8 @@
             "y": 5641.686200000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2789,8 +2845,8 @@
             "y": 5818.363400000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2848,8 +2904,8 @@
             "y": 5818.363400000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -2883,7 +2939,11 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
@@ -2893,8 +2953,8 @@
             "y": 5995.040600000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },

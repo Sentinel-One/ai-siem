@@ -48,81 +48,25 @@
         "description": null,
         "client_data": {
           "position": {
-            "x": 0,
-            "y": 0
+            "x": 0.0,
+            "y": 0.0
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
         "snippet_workflow_id": null,
         "snippet_version_id": null
       },
-      "export_id": 9,
+      "export_id": 13,
       "connected_to": [
         {
           "target": 1,
           "custom_handle": null
         }
       ],
-      "parent_action": null
-    },
-    {
-      "action": {
-        "type": "http_request",
-        "tag": "integration",
-        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
-        "connection_name": "{{local_var.sdlConnectionName}}",
-        "use_connection_name": true,
-        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
-        "data": {
-          "name": "SDL Power Query",
-          "action_type": "http_request",
-          "public_action_id": "3b276194-7801-476f-856f-8a8a997f779e",
-          "method": "post",
-          "url": "{{Connection.protocol}}{{Connection.url}}<@/sdl/api/powerQuery@>",
-          "url_path": "/sdl/api/powerQuery",
-          "url_prefix": null,
-          "payload": "{\n  \"query\": {{local_var.eventSearchQuery}},\n  \"startTime\": \"1h\",\n  \"endTime\": \"\",\n  \"priority\": \"\",\n  \"teamEmails\": []\n}",
-          "parameters": [],
-          "retry_on_status_code": null,
-          "retry_on_status_codes": [
-            500
-          ],
-          "ssl_verification": true,
-          "timeout": 30,
-          "headers": {
-            "Content-Type": "application/json"
-          },
-          "use_authentication_data": true,
-          "use_proxy": false,
-          "proxy_user": null,
-          "proxy_password": null,
-          "proxy_host": null,
-          "proxy_port": null,
-          "redirect_follow": true,
-          "continue_on_fail": false
-        },
-        "state": "active",
-        "description": "Run a PowerQuery, where you can pipe one or many  search expressions into a set of commands to transform, manipulate, group, and summarize your data. This query option in SDL API is often referred to as the powerQuery API.",
-        "client_data": {
-          "position": {
-            "x": 0,
-            "y": 706.7088
-          },
-          "dimensions": {
-            "width": 256,
-            "height": 76
-          },
-          "collapsed": false
-        },
-        "snippet_workflow_id": null,
-        "snippet_version_id": null
-      },
-      "export_id": 7,
-      "connected_to": [],
       "parent_action": null
     },
     {
@@ -139,42 +83,46 @@
           "variables": [
             {
               "name": "cloudflareAccountID",
-              "value": "\"\"",
+              "value": "",
               "is_secret": false
             },
             {
               "name": "cloudflareConnectionName",
-              "value": "\"\"",
+              "value": "",
               "is_secret": false
             },
             {
               "name": "cloudflareBlacklistID",
-              "value": "\"\"",
+              "value": "",
               "is_secret": false
             },
             {
               "name": "sdlWriteConnectionName",
-              "value": "\"\"",
+              "value": "",
               "is_secret": false
             },
             {
               "name": "sdlReadConnectionName",
-              "value": "\"\"",
+              "value": "",
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
         "client_data": {
           "position": {
-            "x": 0,
+            "x": 0.0,
             "y": 176.6772
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -184,7 +132,7 @@
       "export_id": 1,
       "connected_to": [
         {
-          "target": 5,
+          "target": 6,
           "custom_handle": null
         }
       ],
@@ -218,28 +166,32 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
         "client_data": {
           "position": {
-            "x": 0,
+            "x": 0.0,
             "y": 353.3544
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
         "snippet_workflow_id": null,
         "snippet_version_id": null
       },
-      "export_id": 5,
+      "export_id": 6,
       "connected_to": [
         {
-          "target": 8,
+          "target": 9,
           "custom_handle": null
         }
       ],
@@ -288,22 +240,22 @@
         "description": "",
         "client_data": {
           "position": {
-            "x": 0,
+            "x": 0.0,
             "y": 530.0316
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
         "snippet_workflow_id": null,
         "snippet_version_id": null
       },
-      "export_id": 8,
+      "export_id": 9,
       "connected_to": [
         {
-          "target": 2,
+          "target": 3,
           "custom_handle": null
         }
       ],
@@ -327,28 +279,32 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
         "client_data": {
           "position": {
-            "x": 0,
+            "x": 0.0,
             "y": 706.7088
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
         "snippet_workflow_id": null,
         "snippet_version_id": null
       },
-      "export_id": 2,
+      "export_id": 3,
       "connected_to": [
         {
-          "target": 4,
+          "target": 5,
           "custom_handle": null
         }
       ],
@@ -359,8 +315,8 @@
         "type": "http_request",
         "tag": "integration",
         "connection_id": "5c203dfd-f8c7-4f08-8f47-bba694b2baf9",
-        "connection_name": "",
-        "use_connection_name": false,
+        "connection_name": "{{local_var.sdlReadConnectionName}}",
+        "use_connection_name": true,
         "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
         "data": {
           "name": "Get the raw event from SDL",
@@ -394,22 +350,22 @@
         "description": "Get events (log records) that match your query.",
         "client_data": {
           "position": {
-            "x": 0,
+            "x": 0.0,
             "y": 883.386
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
         "snippet_workflow_id": null,
         "snippet_version_id": null
       },
-      "export_id": 4,
+      "export_id": 5,
       "connected_to": [
         {
-          "target": 6,
+          "target": 7,
           "custom_handle": null
         }
       ],
@@ -449,25 +405,88 @@
         "description": "",
         "client_data": {
           "position": {
-            "x": 0,
+            "x": 0.0,
             "y": 1060.0632
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
         "snippet_workflow_id": null,
         "snippet_version_id": null
       },
-      "export_id": 6,
+      "export_id": 7,
       "connected_to": [
         {
-          "target": 3,
+          "target": 4,
           "custom_handle": "true"
+        },
+        {
+          "target": 10,
+          "custom_handle": "false"
         }
       ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 2",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"INFO\",\n    \"message\": \"No source IP was extracted from the alert.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": \"ABORTED\"\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -160.0,
+            "y": 1236.7404000000001
+          },
+          "dimensions": {
+            "width": 256.0,
+            "height": 76.0
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "connected_to": [],
       "parent_action": null
     },
     {
@@ -488,25 +507,29 @@
               "is_secret": false
             }
           ],
-          "variables_scope": "local"
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
         },
         "state": "active",
         "description": "",
         "client_data": {
           "position": {
-            "x": 78.75,
+            "x": 159.99999999999997,
             "y": 1236.7404000000001
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
         "snippet_workflow_id": null,
         "snippet_version_id": null
       },
-      "export_id": 3,
+      "export_id": 4,
       "connected_to": [
         {
           "target": 0,
@@ -549,18 +572,18 @@
           "proxy_host": null,
           "proxy_port": null,
           "redirect_follow": true,
-          "continue_on_fail": false
+          "continue_on_fail": true
         },
         "state": "active",
         "description": "Creates a new IP Access rule for all zones owned by the current user.",
         "client_data": {
           "position": {
-            "x": 78.75,
+            "x": 159.99999999999997,
             "y": 1413.4176000000002
           },
           "dimensions": {
-            "width": 256,
-            "height": 76
+            "width": 256.0,
+            "height": 76.0
           },
           "collapsed": false
         },
@@ -568,6 +591,242 @@
         "snippet_version_id": null
       },
       "export_id": 0,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Did the revocation succeed",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{add-ip-address-to-blacklist.status_code}}",
+                    "compared_value": "200",
+                    "comparison_operator": "greater_than_or_equals"
+                  },
+                  {
+                    "input_value": "{{add-ip-address-to-blacklist.status_code}}",
+                    "compared_value": "300",
+                    "comparison_operator": "less_than"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 159.99999999999997,
+            "y": 1590.0948000000003
+          },
+          "dimensions": {
+            "width": 256.0,
+            "height": 76.0
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": "true"
+        },
+        {
+          "target": 12,
+          "custom_handle": "false"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 3",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"FINER\",\n    \"message\": \"Added {{local_var.sourceIP}} has been added to blocklist successfully.\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"source_ip\": \"{{local_var.sourceIP}}\",\n    \"cloudflare_api\": {\n      \"messages\": {{add-ip-address-to-blacklist.body.messages}}\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{local_var.workflowMessages}},\n      \"state\": \"SUCCEEDED\"\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 320.0,
+            "y": 1766.7720000000004
+          },
+          "dimensions": {
+            "width": 256.0,
+            "height": 76.0
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 11,
+      "connected_to": [],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": "d311b0c4-1afc-4287-9ddb-283ef5072631",
+        "connection_name": "{{local_var.sdlWriteConnectionName}}",
+        "use_connection_name": true,
+        "integration_id": "ea6018b7-2a2f-44ca-b9b6-27a0434b0503",
+        "data": {
+          "name": "Send log entry to SDL 4",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/services/collector/event",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"host\": \"Cloudflare\",\n  \"source\": \"Workflow.LogEntry\",\n  \"dataSource\": {\n    \"name\": \"LogEntry\",\n    \"category\": \"Workflow\",\n    \"vendor\": \"Cloudflare\"\n  },\n  \"event\": {\n    \"severity\": \"ERROR\",\n    \"message\": \"Failed to add source IP {{local_var.sourceIP}} to blocklist\",\n    \"record\": {\n      \"type\": \"Cloudflare.Workflow.LogEntry\",\n      \"version\": 1\n    },\n    \"source_ip\": \"{{local_var.sourceIP}}\",\n    \"cloudflare_api\": {\n      \"response\": {{add-ip-address-to-blacklist.}}\n    },\n    \"workflow\": {\n      \"metadata\": {{local_var.workflowMetadata}},\n      \"messages\": {{Function.APPEND(local_var.workflowMessages, \"Cloudflare API call returned one or more errors\")}},\n      \"state\": \"FAILED\"\n    }\n  }\n}",
+          "parameters": [
+            {
+              "parameter_name": "sourcetype",
+              "parameter_value": "gron"
+            }
+          ],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0.0,
+            "y": 1766.7720000000004
+          },
+          "dimensions": {
+            "width": 256.0,
+            "height": 76.0
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 12,
+      "connected_to": [
+        {
+          "target": 8,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Purposely cause an error in the workflow",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "exitCode",
+              "value": "{{local_var.does_not_exist}}",
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0.0,
+            "y": 1943.4492000000005
+          },
+          "dimensions": {
+            "width": 256.0,
+            "height": 76.0
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 8,
       "connected_to": [],
       "parent_action": null
     }

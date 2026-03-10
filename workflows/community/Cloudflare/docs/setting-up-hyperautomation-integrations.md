@@ -30,19 +30,21 @@ To configure the integration:
    
    <img src="./images/configure-sdl-03.png" width="70%" />
 
-4. Back in the main **AI SIEM** screen, find the newly created key and copy it to the clipboard (1).
+4. Repeat the previous 2 steps to create a **New Read Key** as well.
+
+5. Back in the main **AI SIEM** screen, copy each the newly created keys to the clipboard (1) and then store them in a safe location for now.  You'll need them shortly.
    
    <img src="./images/configure-sdl-04.png" width="70%" />
 
-5. Now navigate to **Hyperautomation** (1) and click on **Integrations** (2) and then scroll to find the **SentinelOne SDL** integration (3) and click on it.
+6. Now navigate to **Hyperautomation** (1) and click on **Integrations** (2) and then scroll to find the **SentinelOne SDL** integration (3) and click on it.
    
    <img src="./images/configure-sdl-05.png" width="70%" />
 
-6. Click the **+ Add Connection** button (1).
+7. Click the **+ Add Connection** button (1).
    
    <img src="./images/configure-sdl-06.png" width="70%" />
 
-7. Enter a **Connection Name** (1) and a **Host/Base URL** (2) from the table below using the closest region to your geographic location. Paste the API key you created in step 4 into the **API Key** (3) field and click **Create Connection** (4).
+8. Enter a **Connection Name** (1) and a **Host/Base URL** (2) from the table below using the closest region to your geographic location. Paste the _write_ API key you created in step 4 into the **API Key** (3) field and click **Create Connection** (4).
 
     | Region | Host / Base URL Value |
     |-|-|
@@ -54,7 +56,9 @@ To configure the integration:
       
    <img src="./images/configure-sdl-07.png" width="70%" />
     
-8. Make a note of the **Connection Name** you used in the previous step.
+9.  Make a note of the **Connection Name** you used in the previous step.
+    
+10. Repeat the previous 3 steps to add a duplicate connection but instead use the _read_ API key and give the connection a unique name so you know that it is an SDL connection for querying data from SDL.
 
 ## Cloudflare (Required)
 
@@ -65,6 +69,7 @@ To configure the integration:
 1. Follow the steps to [create an API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) for your Cloudflare account ensuring that the token includes the following permissions:
 
     - **Account** | **Access: Organizations, Identity Providers and Groups** | **Revoke**
+    - **Account** | **Account Filter Lists** | **Edit**
    
     <img src="./images/configure-cf-01.png" />
 

@@ -12,17 +12,17 @@ Automatically enrich SentinelOne Singularity alerts containing Entra ID entities
 ## Mermaid Workflow Diagram
 
 ```mermaid
-flowchart TD
-    A[Singularity Alert Trigger] --> B[Extract Entra ID Entity<br/>(UPN, Device ID, etc.)]
-    B --> C[Authenticate & Call Microsoft Graph API]
-    C --> D{API Response}
-    D -->|Success| E[Parse Risk Score, Groups, Sign-ins, Policies]
-    E --> F[Update Singularity Case<br/>Add Enriched Fields + Tags]
-    F --> G[Conditional Actions<br/>High Risk → Notify / Contain]
-    G --> H[Log Execution for Audit & Feedback]
-
-    D -->|Error| I[Fallback to Cached Data or Manual Flag]
+flowchart TB
+    A["Singularity Alert Trigger"] --> B["Extract Entra ID Entity<br>(UPN, Device ID, etc.)"]
+    B --> C["Authenticate & Call Microsoft Graph API"]
+    C --> D{"API Response"}
+    D -- Success --> E["Parse Risk Score, Groups, Sign-ins, Policies"]
+    E --> F["Update Singularity Case<br>Add Enriched Fields + Tags"]
+    F --> G["Conditional Actions<br>High Risk → Notify / Contain"]
+    G --> H["Log Execution for Audit & Feedback"]
+    D -- Error --> I["Fallback to Cached Data\nor Manual Flag"]
     I --> H
+```
 	
 ## Use Case
 

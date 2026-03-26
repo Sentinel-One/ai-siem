@@ -1,0 +1,20 @@
+purpose: "Enrich Singularity alerts with Microsoft Entra ID user/device/context data"
+trigger_type: "alert"
+integration_dependency:
+  - "Microsoft Graph API"
+  - "Entra ID"
+  - "SentinelOne Singularity"
+expected_actions_per_run: 5
+human_in_the_loop: false
+required_products:
+  - "Singularity Platform"
+  - "Microsoft Entra ID"
+tags:
+  - "enrichment"
+  - "identity"
+  - "entra-id"
+  - "hyperautomation"
+version: "v1.0"
+documentation: "mermaid"
+last_updated: "2026-03-26"
+contributor: "jacob-kraniak"

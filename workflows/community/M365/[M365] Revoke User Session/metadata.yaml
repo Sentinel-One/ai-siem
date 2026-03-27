@@ -1,0 +1,26 @@
+purpose: |
+  Immediately revokes all active sessions for a Microsoft 365 user to force re-authentication and invalidate attacker-held sessions.
+
+trigger_type: alert
+integration_dependency:
+  - Microsoft 365
+  - Microsoft Graph API
+  - Entra ID
+
+human_in_the_loop: no
+expected_actions_per_run: 2
+
+tags:
+  - m365
+  - entra-id
+  - session-revocation
+  - containment
+  - hyperautomation
+
+mitre_attack_mapping: null
+data_sources:
+  - Entra ID sign-in logs
+  - Microsoft 365 audit logs
+
+version: "1.0.0"
+last_updated: "2026-03-27"

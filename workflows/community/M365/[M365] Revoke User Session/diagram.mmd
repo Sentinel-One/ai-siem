@@ -1,0 +1,12 @@
+flowchart TD
+    Start[Trigger: Alert Received] --> ExtractUPN["Extract userPrincipalName from alert payload"]
+    ExtractUPN --> Validate{"Validate UPN exists?"}
+    Validate -->|No| ErrorNote["Add error note: Missing UPN"]
+    Validate -->|Yes| DisableCall["Microsoft Graph: PATCH /users/{id} - accountEnabled: false"]
+    DisableCall --> Revoke["Microsoft Graph: POST /users/{id}/revokeSignInSessions"]
+    Revoke --> SuccessCheck{"Success?"}
+    SuccessCheck -->|Yes| UpdateNote["Update alert with success details + timestamp"]
+    SuccessCheck -->|No| ErrorPath["Update alert with failure reason + error code"]
+    UpdateNote --> End[Workflow Complete]
+    ErrorPath --> End
+    ErrorNote --> End

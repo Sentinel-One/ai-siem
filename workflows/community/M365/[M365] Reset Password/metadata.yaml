@@ -1,0 +1,25 @@
+purpose: |
+  Forces a password reset for a Microsoft 365 user account, typically as part of credential compromise remediation.
+
+trigger_type: alert
+integration_dependency:
+  - Microsoft 365
+  - Microsoft Graph API
+
+human_in_the_loop: conditional
+expected_actions_per_run: 3
+
+tags:
+  - m365
+  - identity-management
+  - credential-reset
+  - response
+  - hyperautomation
+
+mitre_attack_mapping: null
+data_sources:
+  - Microsoft 365 audit logs
+  - Entra ID sign-in logs
+
+version: "1.0.0"
+last_updated: "2026-03-27"

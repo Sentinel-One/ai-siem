@@ -1,0 +1,26 @@
+purpose: |
+  Automatically disables a Microsoft 365 user account as a containment action in response to high-risk security alerts (compromised account, anomalous behavior, or offboarding enforcement).
+
+trigger_type: alert
+integration_dependency:
+  - Microsoft 365
+  - Microsoft Graph API
+
+human_in_the_loop: conditional
+expected_actions_per_run: 3
+
+tags:
+  - m365
+  - identity-management
+  - containment
+  - response
+  - hyperautomation
+
+mitre_attack_mapping: null
+data_sources:
+  - Microsoft 365 audit logs
+  - Entra ID sign-in logs
+  - SentinelOne AI SIEM alerts
+
+version: "1.0.0"
+last_updated: "2026-03-27"

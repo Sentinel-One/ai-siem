@@ -1,0 +1,24 @@
+purpose: |
+  Re-enables a previously disabled Microsoft 365 user account. Typically used during legitimate offboarding reversal, account recovery, or false-positive remediation.
+
+trigger_type: alert
+integration_dependency:
+  - Microsoft 365
+  - Microsoft Graph API
+
+human_in_the_loop: yes
+expected_actions_per_run: 2
+
+tags:
+  - m365
+  - identity-management
+  - recovery
+  - hyperautomation
+
+mitre_attack_mapping: null
+data_sources:
+  - Microsoft 365 audit logs
+  - Entra ID sign-in logs
+
+version: "1.0.0"
+last_updated: "2026-03-27"

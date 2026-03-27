@@ -1,0 +1,26 @@
+purpose: |
+  Removes all mail forwarding rules from a Microsoft 365 mailbox to stop potential data exfiltration via forwarding rules set by an attacker.
+
+trigger_type: alert
+integration_dependency:
+  - Microsoft 365
+  - Microsoft Graph API
+  - Exchange Online
+
+human_in_the_loop: no
+expected_actions_per_run: 3
+
+tags:
+  - m365
+  - exchange-online
+  - data-exfiltration-prevention
+  - response
+  - hyperautomation
+
+mitre_attack_mapping: null
+data_sources:
+  - Microsoft 365 audit logs
+  - Exchange Online audit logs
+
+version: "1.0.0"
+last_updated: "2026-03-27"

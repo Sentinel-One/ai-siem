@@ -1,0 +1,33 @@
+# workflows/community/TEMPLATE/metadata.yaml  (or vendor equivalent)
+
+purpose: |
+  Brief one-paragraph description of what this hyperautomation achieves.
+  Can be threat response, vulnerability remediation, compliance check,
+  operational efficiency, etc.
+
+trigger_type: alert | scheduled | manual | webhook
+integration_dependency:
+  - SentinelOne Singularity
+  - Other product(s)
+
+required_products:
+  - Singularity XDR
+  - Singularity AI SIEM   # or whatever applies
+
+human_in_the_loop: yes | no | conditional
+expected_actions_per_run: 3-5   # rough count for complexity gauge
+
+# Optional / Contextual fields
+mitre_attack_mapping:         # ← only populate when relevant
+  tactics: []
+  techniques: []
+
+kill_chain_phase:             # optional
+data_sources:                 # optional, e.g. EDR, vulnerability scanner, etc.
+tags:
+  - hyperautomation
+  - vulnerability-management   # or compliance, operations, etc.
+  - sentinelone-native
+
+version: "1.0.0"
+last_updated: "2026-03-27"

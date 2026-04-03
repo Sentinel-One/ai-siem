@@ -7,8 +7,6 @@ metadata_details:
     for detection events and Entity Management (3004) for heartbeats.
   datasource_vendor: Kaspersky
   dataSource: Kaspersky KATA CEF
-  format: gron
-  ingestion_method: streaming
   dependency_summary: >
     Requires CEF syslog output enabled on the KATA appliance
     (Settings > SIEM Integration > CEF format). Compatible with
@@ -26,6 +24,6 @@ metadata_details:
       class_name: Entity Management
       event_types:
         - heartbeat
-  tags: kaspersky, kata, cef, detection, ioa, heartbeat, anti-targeted-attack, ocsf
+  tags: kaspersky, kata, cef, detection, heartbeat, ocsf
   version: latest
   author: Mario Ciccarelli (mario.ciccarelli@sentinelone.com)

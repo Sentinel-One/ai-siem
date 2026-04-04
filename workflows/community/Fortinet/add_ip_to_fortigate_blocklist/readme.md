@@ -34,3 +34,13 @@ flowchart TD
     UpdateNote --> End[Workflow Complete]
     ErrorPath --> End
 ```
+## Execution Steps (Directly from JSON)
+
+1. Receive manual trigger with ipToBlock parameter.
+2. Reset internal member list variable.
+3. Query FortiGate for existing address object matching the IP.
+4. Parse and flatten the response to check existence.
+5. If object does not exist → Create new address object (blocked_{IP} with /32 subnet).
+6. Check HTTP response status.
+7. On success or if object already existed → log the result.
+8. On failure → record error details.

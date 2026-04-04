@@ -1,5 +1,5 @@
 purpose: |
-  Automatically adds the source IP of high-risk Cloudflare traffic (risk_score < 25) to a custom blocklist.
+  Automatically adds the source IP of high-risk Cloudflare traffic (risk_score < 25) to a custom blocklist. 
   This dynamically updates linked WAF rules to block the attacker at the edge.
 
 trigger_type: alert

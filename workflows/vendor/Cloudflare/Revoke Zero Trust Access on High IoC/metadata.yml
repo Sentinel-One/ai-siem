@@ -1,0 +1,25 @@
+purpose: |
+  On high-severity ransomware, malware, or infostealer alerts, extracts a user identifier (email/username) from the alert and revokes all active Cloudflare Zero Trust sessions (including WARP clients) to force re-authentication.
+
+trigger_type: alert
+integration_dependency:
+  - Cloudflare Zero Trust / Access API
+  - Optional: Microsoft Entra ID or Okta (for email resolution)
+
+human_in_the_loop: no
+expected_actions_per_run: 7-9
+
+tags:
+  - cloudflare
+  - zero-trust
+  - session-revocation
+  - containment
+  - hyperautomation
+
+mitre_attack_mapping: null
+data_sources:
+  - SentinelOne AI SIEM alerts (OCSF evidence)
+  - Optional: Entra ID / Okta user data
+
+version: "1.0.0"
+last_updated: "2026-04-04"

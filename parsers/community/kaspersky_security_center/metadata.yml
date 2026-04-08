@@ -1,38 +1,65 @@
 metadata_details:
   purpose: >
-    Parses native LEEF 1.0 output from Kaspersky Security Center (KSC) v15.x.
-    Handles threat detection events (malware found/blocked/cured, network attacks,
-    password-protected archives), device control events (USB removable drive
-    disconnections), host management events (admin group moves, status changes),
-    task lifecycle events (update and scheduled task state transitions),
-    signature database updates, and hardware device removals reported by the
-    KSC network agent. Normalizes all events to OCSF Detection Finding (2004)
-    or Entity Management (3004) depending on event type.
+    Parses native LEEF 1.0 events from Kaspersky Security Center (KSC) and
+    normalizes them to OCSF Detection Finding (2004) and Entity Management
+    (3004). Supported coverage includes malware and object remediation events,
+    network attack detections,
+    password-protected archive findings, device-control disconnect events,
+    host critical-status alerts, task state changes, signature database updates,
+    host moves between administration groups, and hardware device removal events
+    reported by the KSC Network Agent.
   datasource_vendor: KasperskyLab
   dataSource: Kaspersky Security Center
   format: leef
   ingestion_method: syslog
   dependency_summary: >
-    Requires KSC to be configured for LEEF 1.0 output via syslog forwarding.
-    CEF and LEEF exports from KSC are limited to general events; full event
-    coverage including audit and system events requires the separate
-    KSC Syslog RFC 5424 parser. KATA (Anti Targeted Attack Platform) events
-    are handled by the dedicated KATA CEF parser.
+    Requires KSC to be configured to forward native LEEF 1.0 events over syslog.
+    This parser is intended for the KSC LEEF export stream and focuses on the
+    general event types exposed in that format. Audit, administrative, and other
+    broader KSC telemetry not emitted in LEEF should be handled by the separate
+    parser. Kaspersky Anti Targeted Attack Platform (KATA)
+    events are handled by the dedicated KATA CEF parser.
   performance_impact: >
-    The parser applies a large number of format patterns per log line due to the
-    wide variety of KSC LEEF event types and the nested EVC_EV_DESC block
-    parsing. Each format rule uses greedy regex with lookaheads. No measurable
-    impact expected at typical KSC syslog volumes (thousands of events per
-    minute); monitor at very high ingest rates (>100k EPS).
+    Moderate. The parser evaluates multiple format patterns per message to cover
+    several KSC LEEF event families and performs additional extraction from the
+    nested EVC_EV_DESC field when present. This is generally appropriate for
+    normal KSC syslog volumes, but very high ingest rates should be monitored
+    because event parsing relies on repeated regex matching across a broad set of
+    optional fields.
+  ocsf_classes:
+    - class_uid: 2004
+      class_name: Detection Finding
+      event_types:
+        - GNRL_EV_OBJECT_CURED
+        - GNRL_EV_OBJECT_BLOCKED
+        - GNRL_EV_OBJECT_NOTCURED
+        - GNRL_EV_OBJECT_DELETED
+        - GNRL_EV_ADSEC_DETECT
+        - GNRL_EV_VIRUS_FOUND
+        - GNRL_EV_VIRUS_FOUND_AND_BLOCKED
+        - GNRL_EV_VIRUS_FOUND_BY_KSN
+        - GNRL_EV_ATTACK_DETECTED
+        - GNRL_EV_DEVCTRL_DEV_UNPLUGGED
+        - GNRL_EV_PASSWD_ARCHIVE_FOUND
+        - KLSRV_HOST_STATUS_CRITICAL
+    - class_uid: 3004
+      class_name: Entity Management
+      event_types:
+        - KLPRCI_TaskState
+        - KLSRV_UPD_BASES_UPDATED
+        - KLSRV_HOST_MOVED_WITH_RULE_EX
+        - KLNAG_EV_DEVICE_REMOVE
   tags:
     - kaspersky
     - ksc
     - leef
+    - syslog
     - antivirus
-    - edr
     - device-control
     - usb
+    - malware
     - threat-detection
+    - network-attack
     - ocsf
     - detection-finding
     - entity-management

@@ -1,0 +1,9 @@
+metadata_details:
+  data_dependencies: "Endpoint Telemetry (URL, DNS, Process Creation, File, and IP Connect events)"
+  required_fields: "event.category, event.type, url.address, event.dns.request, event.dns.response, tgt.process.name, tgt.process.cmdline, tgt.file.extension, tgt.file.path, endpoint.name, endpoint.os, src.process.user, src.process.name"
+  description: "AI activity visibility dashboard for tracking AI-related web domains, DNS lookups, AI application launches, and local AI agent/model discovery."
+  usecase_type: "Visibility"
+  usecase_action: "Dashboard"
+  tags: dashboard, ai, genai, visibility, monitoring, community
+  version: "1.0"
+  author: "Matt Bouis, Victor Sepulveda, Pier-Luc Charbonneau"

@@ -1,0 +1,103 @@
+{
+  "actor": {
+    "id": "00u9823hjkLMN456P7q8",
+    "type": "User",
+    "alternateId": "ekvchlpb@example.com",
+    "displayName": "Ekvchlpb",
+    "detailEntry": null
+  },
+  "client": {
+    "userAgent": {
+      "rawUserAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
+      "os": "iOS",
+      "browser": "MOBILE_SAFARI"
+    },
+    "zone": "null",
+    "device": "Mobile",
+    "id": null,
+    "ipAddress": "30.220.57.13",
+    "geographicalContext": {
+      "city": "Amsterdam",
+      "state": "North Holland",
+      "country": "Netherlands",
+      "postalCode": "1012",
+      "geolocation": {
+        "lat": 52.3702,
+        "lon": 4.8952
+      }
+    }
+  },
+  "device": null,
+  "authenticationContext": {
+    "authenticationProvider": "OKTA_AUTHENTICATION_PROVIDER",
+    "credentialProvider": "OKTA_CREDENTIAL_PROVIDER",
+    "credentialType": "OTP",
+    "issuer": null,
+    "interface": null,
+    "authenticationStep": 1,
+    "rootSessionId": "trs9MfA2Bx",
+    "externalSessionId": "trs9MfA2BxK8pL"
+  },
+  "displayMessage": "User denied MFA verification",
+  "eventType": "user.authentication.auth_via_mfa",
+  "outcome": {
+    "result": "FAILURE",
+    "reason": "OKTA_VERIFY_DENIED_ACCESS"
+  },
+  "published": "2026-04-20T02:49:14.000Z",
+  "securityContext": {
+    "asNumber": 20473,
+    "asOrg": "The Constant Company, LLC",
+    "isp": "AS-CHOOPA",
+    "domain": null,
+    "isProxy": false
+  },
+  "severity": "DEBUG",
+  "debugContext": {
+    "debugData": {
+      "concurrencyPercentage": "10",
+      "requestId": "c6b06eb7-9bda-421a-8ec6-d2aa6ed27319",
+      "dtHash": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6",
+      "rateLimitPercentage": "5",
+      "networkConnection": "ANYWHERE",
+      "requestUri": "/api/v1/authn/factors/verify",
+      "url": "/api/v1/authn/factors/verify?rememberDevice=true"
+    }
+  },
+  "legacyEventType": "core.user.auth.mfa.verify_fail",
+  "transaction": {
+    "type": "WEB",
+    "id": "8ec6d2aa6ed27319c6b06eb79bda421a",
+    "detail": {}
+  },
+  "uuid": "054ded09-43ce-43f2-8954-79c09667bf73",
+  "version": "0",
+  "request": {
+    "ipChain": [
+      {
+        "ip": "203.0.113.89",
+        "geographicalContext": {
+          "city": "Amsterdam",
+          "state": "North Holland",
+          "country": "Netherlands",
+          "postalCode": "1012",
+          "geolocation": {
+            "lat": 52.3702,
+            "lon": 4.8952
+          }
+        },
+        "version": "V4",
+        "source": null
+      }
+    ]
+  },
+  "target": [
+    {
+      "id": "00u9823hjkLMN456P7q8",
+      "type": "User",
+      "alternateId": "alice.wonder@acmecorp.com",
+      "displayName": "Alice Wonder",
+      "detailEntry": null
+    }
+  ]
+}

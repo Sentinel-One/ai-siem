@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-04-20T03:27:45Z",
+  "process": "dhcpd",
+  "process_id": 711,
+  "dhcp_message_type": "DHCPRELEASE",
+  "client_mac": "d8:fd:59:f2:49:ed",
+  "client_ip": "192.168.1.200",
+  "interface": "eth0",
+  "client_hostname": "tablet01",
+  "message": "DHCPRELEASE of 192.168.1.200 from d8:fd:59:f2:49:ed (tablet01) via eth0"
+}

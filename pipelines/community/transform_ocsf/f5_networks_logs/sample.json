@@ -1,0 +1,3 @@
+{
+  "raw": "timestamp=2026-04-20T03:40:52.806301+00:00,hostname=f5-bigip-7,device_ip=193.212.102.47,module=ASM,event_type=XSS_ATTACK_DETECTED,severity=CRITICAL,facility=LOCAL0,priority=21,slot=1.2,tmm=3,virtual_server=vs_web_4,pool=pool_app_3,client_ip=11.5.143.204,server_ip=10.84.188.228,client_port=52965,server_port=8080,protocol=TCP,http_method=OPTIONS,uri=/login,user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36,attack_type=Cross-Site Scripting,signature_id=262889494,policy_name=asm_policy_1,violation_rating=1,request_status=alerted,support_id=5094746301607916,class_uid=4001,class_name=Network Activity,category_uid=4,category_name=Network Activity,activity_id=6,activity_name=Traffic,type_uid=400106,severity_id=5,status_id=2"
+}

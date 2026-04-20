@@ -1,0 +1,56 @@
+{
+  "timestamp": "2026-04-19T20:44:52.830848+00:00Z",
+  "insertId": "dns_8727507036194133",
+  "resource": {
+    "type": "gce_instance",
+    "labels": {
+      "project_id": "prod-web-123456",
+      "instance_id": "8191962455090388534",
+      "zone": "europe-west1-a"
+    }
+  },
+  "logName": "projects/dev-analytics-345678/logs/dns.googleapis.com%2Fdns_queries",
+  "severity": "INFO",
+  "jsonPayload": {
+    "queryName": "gstatic.com",
+    "queryType": "A",
+    "queryClass": "HS",
+    "responseCode": "NXDOMAIN",
+    "sourceIP": "26.248.187.2",
+    "protocol": "UDP",
+    "ednsClientSubnet": "",
+    "serverIP": "8.8.8.8",
+    "querySize": 219,
+    "responseSize": 91,
+    "latency": "478ms",
+    "cached": false,
+    "dnssecValidated": false,
+    "recursionAvailable": true,
+    "recursionDesired": true,
+    "authenticatedData": false,
+    "checkingDisabled": false,
+    "answersReturned": 0,
+    "authoritativeAnswer": false,
+    "geoLocation": {
+      "country": "AU",
+      "region": "California",
+      "city": "London",
+      "latitude": 72.245573,
+      "longitude": 14.030331
+    }
+  },
+  "httpRequest": {
+    "requestMethod": "POST",
+    "requestUrl": "https://dns.google/resolve?name=gstatic.com&type=A",
+    "userAgent": "curl/7.68.0",
+    "remoteIp": "107.110.6.122",
+    "status": 404,
+    "responseSize": 1385,
+    "latency": "0.445s"
+  },
+  "sourceLocation": {
+    "file": "dns_server.go",
+    "line": 207,
+    "function": "handleDNSQuery"
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "id": "1adb9476-8624-4ea2-a494-b8410823ce41",
+  "azureSubscriptionId": "f988569b-80ef-4275-9c88-ddfa3ca612c9",
+  "azureTenantId": "fb54f81f-6cf4-4e13-8625-ce8e66808fd1",
+  "activityGroupName": "Suspicious SharePoint file activity",
+  "assignedTo": "soc_analyst",
+  "category": "SuspiciousActivity",
+  "closedDateTime": "2026-04-22T00:40:53.224046Z",
+  "cloudAppStates": [
+    {
+      "destinationServiceIp": "207.235.193.79",
+      "destinationServiceName": "Azure Active Directory",
+      "riskScore": "56"
+    }
+  ],
+  "comments": [
+    "Alert generated at 2026-04-20 02:45:53",
+    "Under investigation"
+  ],
+  "confidence": 54,
+  "createdDateTime": "2026-04-20T02:45:53.224046Z",
+  "description": "Microsoft 365 security alert: Suspicious SharePoint file activity. This alert indicates potential suspiciousactivity activity detected in your environment.",
+  "detectionIds": [
+    "e0ab73f7-126f-48b7-a610-c33c32fbddcd"
+  ],
+  "eventDateTime": "2026-04-20T03:11:53.224046Z",
+  "feedback": "falsePositive",
+  "incidentIds": [],
+  "lastEventDateTime": "2026-04-20T03:23:53.224046Z",
+  "lastModifiedDateTime": "2026-04-20T03:40:53.224046Z",
+  "malwareStates": [],
+  "networkConnections": [
+    {
+      "applicationName": "unknown",
+      "destinationAddress": "13.212.164.91",
+      "destinationDomain": "login.microsoftonline.com",
+      "destinationPort": "993",
+      "destinationUrl": "https://domain-4.com/api/data",
+      "direction": "Inbound",
+      "domainRegisteredDateTime": "2025-09-06T03:40:53.224134Z",
+      "localDnsName": "workstation-160.company.com",
+      "natDestinationAddress": "140.54.255.65",
+      "natDestinationPort": "58746",
+      "natSourceAddress": "10.220.140.232",
+      "natSourcePort": "13621",
+      "protocol": "UDP",
+      "riskScore": "31",
+      "sourceAddress": "10.110.13.146",
+      "sourcePort": "36826",
+      "status": "Timeout",
+      "urlCategory": "Technology"
+    },
+    {
+      "applicationName": "unknown",
+      "destinationAddress": "166.182.195.1",
+      "destinationDomain": "login.microsoftonline.com",
+      "destinationPort": "8443",
+      "destinationUrl": "https://domain-77.com/api/data",
+      "direction": "Inbound",
+      "domainRegisteredDateTime": "2025-05-17T03:40:53.224154Z",
+      "localDnsName": "workstation-681.company.com",
+      "natDestinationAddress": "111.112.28.48",
+      "natDestinationPort": "17557",
+      "natSourceAddress": "10.109.186.209",
+      "natSourcePort": "58909",
+      "protocol": "UDP",
+      "riskScore": "59",
+      "sourceAddress": "10.84.199.56",
+      "sourcePort": "51573",
+      "status": "Timeout",
+      "urlCategory": "Technology"
+    }
+  ],
+  "processes": [
+    {
+      "accountName": "alice.williams",
+      "commandLine": "C:\\Windows\\System32\\cmd.exe -ExecutionPolicy Bypass 5d8a25e885af497d",
+      "createdDateTime": "2026-04-20T03:37:53.224172Z",
+      "fileHash": {
+        "hashType": "sha256",
+        "hashValue": "59bf91b6c26c42f8a7823bf466674d2e979c401d1815423a828edada93ec327d"
+      },
+      "integrityLevel": "Medium",
+      "isElevated": "false",
+      "name": "cmd.exe",
+      "parentProcessCreatedDateTime": "2026-04-20T02:02:53.224180Z",
+      "parentProcessId": 6973,
+      "parentProcessName": "explorer.exe",
+      "path": "C:\\Windows\\System32\\cmd.exe",
+      "processId": 1292
+    },
+    {
+      "accountName": "diana.prince",
+      "commandLine": "C:\\Windows\\System32\\wbem\\WMIC.exe -enc c5275434ecb04e56",
+      "createdDateTime": "2026-04-20T03:20:53.224188Z",
+      "fileHash": {
+        "hashType": "sha256",
+        "hashValue": "3bd06ce2284541b8a0a6124f6eea798182ce412a4d254e20864702d6df412669"
+      },
+      "integrityLevel": "Medium",
+      "isElevated": "true",
+      "name": "wmic.exe",
+      "parentProcessCreatedDateTime": "2026-04-20T02:24:53.224196Z",
+      "parentProcessId": 3072,
+      "parentProcessName": "explorer.exe",
+      "path": "C:\\Windows\\System32\\wbem\\WMIC.exe",
+      "processId": 2132
+    }
+  ],
+  "recommendedActions": [
+    "Investigate user activity",
+    "Review mailbox rules",
+    "Check for additional indicators",
+    "Validate with user"
+  ],
+  "registryKeyStates": [],
+  "securityResources": [
+    "Azure Active Directory Identity Protection"
+  ],
+  "severity": "high",
+  "sourceMaterials": [
+    "https://security.microsoft.com/alerts/efd86027-3425-491d-ae04-98c03e015db6",
+    "https://portal.office.com/adminportal/home#/MessageCenter/:/messages/44e6b530-af6f-4f63-ab08-16d0dd24a2ee"
+  ],
+  "status": "dismissed",
+  "tags": [
+    "suspiciousactivity",
+    "m365",
+    "security",
+    "automated"
+  ],
+  "title": "Microsoft 365 Alert: Suspicious SharePoint file activity",
+  "triggers": [
+    {
+      "name": "SuspiciousActivity_detection_rule",
+      "type": "SecurityEvent",
+      "value": "92"
+    }
+  ],
+  "userStates": [
+    {
+      "aadUserId": "5cc2c03f-4dbc-4e04-8596-48b43e0dbe9e",
+      "accountName": "alice.williams",
+      "domainName": "corp.local",
+      "emailRole": "recipient",
+      "isVpn": "true",
+      "logonDateTime": "2026-04-19T11:40:53.224223Z",
+      "logonId": "468636",
+      "logonIp": "223.116.38.16",
+      "logonLocation": "Remote",
+      "logonType": "Network",
+      "onPremisesSecurityIdentifier": "S-1-5-21-450395953-174258381-8319-7478",
+      "riskScore": "32",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "userPrincipalName": "alice.williams@corp.local"
+    }
+  ],
+  "vendorInformation": {
+    "provider": "Microsoft",
+    "providerVersion": "1.0",
+    "subProvider": "Microsoft 365 Defender",
+    "vendor": "Microsoft"
+  },
+  "riskScore": "46"
+}

@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-04-20T03:40:52.962457Z",
+  "vendor": "Microsoft",
+  "product": "Azure Ad Logs",
+  "version": "1.0",
+  "event_type": "security_event",
+  "message": "Sample Microsoft Azure Ad Logs event at 2026-04-20T03:40:52.962457Z",
+  "severity": "high",
+  "category": "security",
+  "source_ip": "192.168.250.146",
+  "user": "user4910",
+  "device": "device-967",
+  "log_level": "WARN",
+  "event_id": 23339,
+  "session_id": "sess_413015",
+  "class_name": "Security Event",
+  "activity_name": "Log Generated",
+  "risk_score": 91
+}

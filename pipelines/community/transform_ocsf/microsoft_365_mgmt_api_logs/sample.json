@@ -1,0 +1,168 @@
+{
+  "id": "d15d200c-cd0b-4c50-bf85-bd5fbcb96282",
+  "azureSubscriptionId": "3dfb1dbb-9d1b-4d63-bf46-b9623108eb33",
+  "azureTenantId": "843fbd74-0736-4324-94ba-6668a58f1b09",
+  "activityGroupName": "Anomalous file share activities",
+  "assignedTo": "unassigned",
+  "category": "CredentialTheft",
+  "closedDateTime": null,
+  "cloudAppStates": [
+    {
+      "destinationServiceIp": "11.137.83.182",
+      "destinationServiceName": "Microsoft 365",
+      "riskScore": "49"
+    }
+  ],
+  "comments": [
+    "Alert generated at 2026-04-20 02:44:52",
+    "Under investigation"
+  ],
+  "confidence": 52,
+  "createdDateTime": "2026-04-20T02:44:52.860151Z",
+  "description": "Microsoft 365 security alert: Anomalous file share activities. This alert indicates potential credentialtheft activity detected in your environment.",
+  "detectionIds": [
+    "87a92c2d-ac20-4bf7-8626-fbe07c3df9b9",
+    "c45b0d64-a785-4e0d-90f3-9fe5e3a80109",
+    "e4e6840f-41e4-45d6-ba91-f8083d9fc413"
+  ],
+  "eventDateTime": "2026-04-20T03:01:52.860151Z",
+  "feedback": "falsePositive",
+  "incidentIds": [],
+  "lastEventDateTime": "2026-04-20T03:14:52.860151Z",
+  "lastModifiedDateTime": "2026-04-20T03:40:52.860151Z",
+  "malwareStates": [],
+  "networkConnections": [
+    {
+      "applicationName": "outlook.exe",
+      "destinationAddress": "216.100.49.200",
+      "destinationDomain": "login.microsoftonline.com",
+      "destinationPort": "80",
+      "destinationUrl": "https://domain-41.com/api/data",
+      "direction": "Outbound",
+      "domainRegisteredDateTime": "2025-05-21T03:40:52.860252Z",
+      "localDnsName": "workstation-306.company.com",
+      "natDestinationAddress": "195.163.143.113",
+      "natDestinationPort": "10210",
+      "natSourceAddress": "10.97.156.182",
+      "natSourcePort": "46694",
+      "protocol": "UDP",
+      "riskScore": "99",
+      "sourceAddress": "10.5.233.144",
+      "sourcePort": "5337",
+      "status": "Timeout",
+      "urlCategory": "Technology"
+    },
+    {
+      "applicationName": "unknown",
+      "destinationAddress": "137.163.206.100",
+      "destinationDomain": "graph.microsoft.com",
+      "destinationPort": "53",
+      "destinationUrl": "https://domain-47.com/api/data",
+      "direction": "Outbound",
+      "domainRegisteredDateTime": "2025-11-07T03:40:52.860274Z",
+      "localDnsName": "workstation-200.internal.com",
+      "natDestinationAddress": "160.57.247.241",
+      "natDestinationPort": "28957",
+      "natSourceAddress": "10.127.51.233",
+      "natSourcePort": "18360",
+      "protocol": "TCP",
+      "riskScore": "6",
+      "sourceAddress": "10.122.85.27",
+      "sourcePort": "57489",
+      "status": "Timeout",
+      "urlCategory": "Suspicious"
+    }
+  ],
+  "processes": [
+    {
+      "accountName": "charlie.brown",
+      "commandLine": "C:\\Windows\\System32\\mshta.exe -ExecutionPolicy Bypass bd6ecbf070484fbf",
+      "createdDateTime": "2026-04-20T02:52:52.860294Z",
+      "fileHash": {
+        "hashType": "sha256",
+        "hashValue": "25cb4375616942c995e78b17bce23940453d9dd38fc04f02a0d218d63bb8dc50"
+      },
+      "integrityLevel": "High",
+      "isElevated": "false",
+      "name": "mshta.exe",
+      "parentProcessCreatedDateTime": "2026-04-20T03:34:52.860302Z",
+      "parentProcessId": 1954,
+      "parentProcessName": "explorer.exe",
+      "path": "C:\\Windows\\System32\\mshta.exe",
+      "processId": 9892
+    },
+    {
+      "accountName": "bob.jones",
+      "commandLine": "C:\\Windows\\System32\\cmd.exe -enc 9d51d6605ff744c7",
+      "createdDateTime": "2026-04-20T03:16:52.860311Z",
+      "fileHash": {
+        "hashType": "sha256",
+        "hashValue": "6440f4f899ae4eb8a4b8df32cdbe4d34f03447e9149440d9bcc3d7526470db9a"
+      },
+      "integrityLevel": "System",
+      "isElevated": "true",
+      "name": "cmd.exe",
+      "parentProcessCreatedDateTime": "2026-04-20T02:44:52.860318Z",
+      "parentProcessId": 6764,
+      "parentProcessName": "explorer.exe",
+      "path": "C:\\Windows\\System32\\cmd.exe",
+      "processId": 3701
+    }
+  ],
+  "recommendedActions": [
+    "Investigate user activity",
+    "Review mailbox rules",
+    "Check for additional indicators",
+    "Validate with user"
+  ],
+  "registryKeyStates": [],
+  "securityResources": [
+    "Microsoft Defender for Office 365",
+    "Microsoft Defender for Endpoint"
+  ],
+  "severity": "critical",
+  "sourceMaterials": [
+    "https://security.microsoft.com/alerts/297ec5a3-2081-4ad5-9cc3-5ec47399d7fd",
+    "https://portal.office.com/adminportal/home#/MessageCenter/:/messages/0217cb5c-2e79-482d-9c95-4bd2b5fd34e5"
+  ],
+  "status": "inProgress",
+  "tags": [
+    "credentialtheft",
+    "m365",
+    "security",
+    "automated"
+  ],
+  "title": "Microsoft 365 Alert: Anomalous file share activities",
+  "triggers": [
+    {
+      "name": "CredentialTheft_detection_rule",
+      "type": "SecurityEvent",
+      "value": "42"
+    }
+  ],
+  "userStates": [
+    {
+      "aadUserId": "68ce00f5-6788-4a9b-9070-5e7bfcac715b",
+      "accountName": "jane.smith",
+      "domainName": "office365.com",
+      "emailRole": "bcc",
+      "isVpn": "false",
+      "logonDateTime": "2026-04-19T14:40:52.860352Z",
+      "logonId": "418234",
+      "logonIp": "127.178.230.27",
+      "logonLocation": "London, UK",
+      "logonType": "RemoteInteractive",
+      "onPremisesSecurityIdentifier": "S-1-5-21-105005678-908102877-4614-4179",
+      "riskScore": "49",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "userPrincipalName": "jane.smith@office365.com"
+    }
+  ],
+  "vendorInformation": {
+    "provider": "Microsoft",
+    "providerVersion": "1.0",
+    "subProvider": "Microsoft 365 Defender",
+    "vendor": "Microsoft"
+  },
+  "riskScore": "82"
+}

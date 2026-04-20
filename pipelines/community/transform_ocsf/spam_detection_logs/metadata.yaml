@@ -1,0 +1,50 @@
+grade:
+  letter: B
+  score: 82
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Spam Detection Logs. Maps source events to OCSF Detection
+    Finding (class_uid=2004) following the processEvent contract.
+  datasource_vendor: community
+  dataSource: Spam Detection Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  sample_record: "{\n  \"GUID\": \"30098147-26c9-444f-9f39-51e7a1790fe1\",\n  \"QID\": \"Q688630\",\n\
+    \  \"id\": \"7de16791-edde-4eca-88ef-df50156b1e9a\",\n  \"messageID\": \"<b5c0cf02-478a-4e10-bdd7-75eba570227a@imposter-51.org>\"\
+    ,\n  \"messageTime\": \"2026-04-20T03:40:39.175Z\",\n  \"messageSize\": 627750,\n  \"subject\": \"\
+    Invoice #93225.pdf\",\n  \"sender\": \"wesley.tr01@imposter-51.org\",\n  \"fromAddress\": [\n    \"\
+    wesley.tr01@imposter-51.org\"\n  ],\n  \"headerFrom\": \"\\\"James LaForge\\\" <wesley.tr01@imposter-51.org>\"\
+    ,\n  \"senderIP\": \"5.128.94.180\",\n  \"recipient\": [\n    \"worf.laforge@gmail.com\"\n  ],\n \
+    \ \"toAddresses\": [\n    \"worf.laforge@gmail.com\"\n  ],\n  \"ccAddresses\": [],\n  \"replyToAddress\"\
+    : [\n    \"wesley.tr01@imposter-51.org\"\n  ],\n  \"headerReplyTo\": \"wesley.tr01@imposter-51.org\"\
+    ,\n  \"completelyRewritten\": \"false\",\n  \"cluster\": \"proofpoint-cluster-9\",\n  \"policyRoutes\"\
+    : [\n    \"block\"\n  ],\n  \"modulesRun\": [\n    \"dmarc\",\n    \"spam\",\n    \"spf\",\n    \"\
+    dkimv\",\n    \"av\",\n    \"impostor\",\n    \"attachment_defense\",\n    \"urldefense\"\n  ],\n\
+    \  \"spamScore\": 45,\n  \"phishScore\": 0,\n  \"malwareScore\": 84,\n  \"impostorScore\": 0,\n  \"\
+    threatsInfo\": [\n    {\n      \"threat\": \"FormBook\",\n      \"threatType\": \"malware\",\n   \
+    \   \"threatID\": \"c68cc578-fb1c-4369-b78a-c859d5567e00\",\n      \"threatStatus\": \"active\",\n\
+    \      \"classification\": \"malware\",\n      \"threatTime\": \"2026-04-20T03:40:39.175Z\"\n    }\n\
+    \  ],\n  \"messageParts\": [\n    {\n      \"disposition\": \"attached\",\n      \"sha256\": \"f3c64a44349f4baf8612fac7519d49ba9cf99a91982b4a3bbab9d506811010c7\"\
+    ,\n      \"md5\": \"a102877786c64"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 2004
+    class_name: Detection Finding
+    category_uid: 2
+    category_name: Findings
+  tags: community, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 82
+    orion_reviewed: true
+    orion_verdict: signed_off

@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-04-20T03:40:52.852521Z",
+  "vendor": "Manageengine",
+  "product": "Adauditplus Logs",
+  "version": "1.0",
+  "event_type": "security_event",
+  "message": "Sample Manageengine Adauditplus Logs event at 2026-04-20T03:40:52.852521Z",
+  "severity": "high",
+  "category": "security",
+  "source_ip": "192.168.103.115",
+  "user": "user8987",
+  "device": "device-267",
+  "log_level": "WARN",
+  "event_id": 29048,
+  "session_id": "sess_183079",
+  "class_name": "Security Event",
+  "activity_name": "Log Generated"
+}

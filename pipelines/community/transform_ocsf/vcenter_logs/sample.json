@@ -1,0 +1,3 @@
+{
+  "raw": "[event-90034] [1] [2026-04-20T03:40:53.196528+00:00Z] [UserLoginSessionEvent] [warning] [service-account@vsphere.local] [prod-db-01] [4923034] [User logged in on host esx01.corp.local]"
+}

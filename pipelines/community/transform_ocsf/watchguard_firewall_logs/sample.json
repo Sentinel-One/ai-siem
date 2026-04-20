@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-04-20T03:30:53Z",
+  "userName": "deanna.troi@starfleet.corp",
+  "sourceIp": "126.153.119.95",
+  "deviceId": "DS9-OPS-01",
+  "query": "memory-alpha.org",
+  "queryType": "SOA",
+  "responseCode": "REFUSED",
+  "answer": "",
+  "action": "ALLOWED",
+  "bytes_sent": 206,
+  "bytes_received": 899,
+  "response_time_ms": 376
+}

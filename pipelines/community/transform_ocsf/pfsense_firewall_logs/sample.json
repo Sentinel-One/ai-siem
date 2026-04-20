@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-04-20T03:33:53Z",
+  "userName": "jordy.laforge@starfleet.corp",
+  "sourceIp": "121.154.250.14",
+  "deviceId": "ENTERPRISE-BRIDGE-01",
+  "query": "vulcan-academy.org",
+  "queryType": "CNAME",
+  "responseCode": "NOERROR",
+  "answer": "",
+  "action": "ALLOWED",
+  "bytes_sent": 548,
+  "bytes_received": 694,
+  "response_time_ms": 126
+}

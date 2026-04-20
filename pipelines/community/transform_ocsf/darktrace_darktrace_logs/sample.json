@@ -1,0 +1,34 @@
+{
+  "time": 1776656453039,
+  "creationTime": 1776656158039,
+  "model": {
+    "name": "Device / Large Number of Model Breaches",
+    "description": "Multiple anomalous behaviors detected from a single device in a short time period",
+    "id": 251,
+    "version": 1,
+    "uuid": "bac136b2-b3e1-49e8-ad94-042db4a6798d"
+  },
+  "breachUrl": "https://darktrace-9a82a32e-0001-01/#modelbreach/78524",
+  "pbid": 7563027,
+  "score": 0.805,
+  "device": {
+    "hostname": "PROD-973",
+    "ip": "10.50.227.45",
+    "mac": "04:69:8b:6a:c0:6f",
+    "type": "iot",
+    "os": "Windows 11"
+  },
+  "triggeredComponents": [],
+  "commentCount": 4,
+  "acknowledged": false,
+  "category": "suspicious_activity",
+  "mitreTactics": [
+    "Discovery",
+    "Collection"
+  ],
+  "tags": [
+    "darktrace",
+    "anomaly",
+    "security"
+  ]
+}

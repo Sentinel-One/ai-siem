@@ -1,0 +1,89 @@
+{
+  "eventCategory": "Management",
+  "eventName": "CreateUser",
+  "eventSource": "iam.amazonaws.com",
+  "eventTime": "2026-04-20T03:40:52Z",
+  "eventVersion": "1.09",
+  "eventID": "4ad68099-cad0-4172-8711-dd15c4d352c9",
+  "eventType": "AwsApiCall",
+  "awsRegion": "us-west-2",
+  "readOnly": false,
+  "managementEvent": true,
+  "recipientAccountId": "987654321098",
+  "sourceIPAddress": "65.40.62.221",
+  "userAgent": "aws-cli/2.15.9 Python/3.11.4 Linux/5.10",
+  "tlsDetails": {
+    "tlsVersion": "TLSv1.2",
+    "cipherSuite": "ECDHE-RSA-AES128-GCM-SHA256",
+    "clientProvidedHostHeader": "iam.amazonaws.com"
+  },
+  "userIdentity": {
+    "type": "IAMUser",
+    "principalId": "AIDAMEDICAL6904",
+    "arn": "arn:aws:iam::987654321098:user/karen.martinez",
+    "accountId": "987654321098",
+    "accessKeyId": "AKIA2E99153C98AA4B52",
+    "userName": "karen.martinez",
+    "sessionContext": {
+      "sessionIssuer": {
+        "type": "Role",
+        "principalId": "AROANURSE",
+        "arn": "arn:aws:iam::987654321098:role/nurse",
+        "userName": "nurse",
+        "accountId": "987654321098"
+      },
+      "attributes": {
+        "creationDate": "2026-04-20T02:46:52Z",
+        "mfaAuthenticated": "true"
+      }
+    }
+  },
+  "requestID": "c32fabb4-8295-49e0-9cb0-8a1833ce49fa",
+  "requestParameters": {
+    "durationSeconds": 900,
+    "roleArn": "arn:aws:iam::987654321098:role/nurse",
+    "roleSessionName": "medical-session",
+    "externalId": "a3b57b57-e05c-46ff-9007-2402db4e6004",
+    "userName": "contractor.johnson",
+    "tags": [
+      {
+        "Key": "Office",
+        "Value": "Chicago"
+      },
+      {
+        "Key": "Department",
+        "Value": "Science"
+      }
+    ]
+  },
+  "responseElements": {
+    "assumedRoleUser": {
+      "assumedRoleId": "AROANURSE:medical-session",
+      "arn": "arn:aws:sts::987654321098:assumed-role/nurse/medical-session"
+    },
+    "credentials": {
+      "accessKeyId": "ASIADD7D979CACA44C1E",
+      "sessionToken": "IQoJb3JpZ2luX2VjEJ7//////////wEaCXVzLWVhc3QtMSJHMEUCIQD0b62c804fb42418e83d6fe294790a301",
+      "expiration": "2026-04-20T04:40:52Z"
+    },
+    "sourceIdentity": "karen.martinez"
+  },
+  "sharedEventID": "3d06df36-b385-486b-969f-f8f427a3f731",
+  "vpcEndpointId": "vpce-medical-55b991bf5",
+  "resources": [
+    {
+      "accountId": "987654321098",
+      "type": "AWS::S3::Bucket",
+      "ARN": "arn:aws:s3:::backup-sensor-data"
+    }
+  ],
+  "additionalEventData": {
+    "SignatureVersion": "SigV4",
+    "CipherSuite": "ECDHE-RSA-AES256-GCM-SHA384",
+    "bytesTransferredIn": 0,
+    "bytesTransferredOut": 6607,
+    "AuthenticationMethod": "AuthHeader",
+    "x-amz-id-2": "6cd81f33b33044aa9040972beaf35e0e"
+  },
+  "message": "karen.martinez from medical executed CreateUser on iam.amazonaws.com"
+}

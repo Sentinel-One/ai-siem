@@ -1,0 +1,93 @@
+{
+  "GUID": "30098147-26c9-444f-9f39-51e7a1790fe1",
+  "QID": "Q688630",
+  "id": "7de16791-edde-4eca-88ef-df50156b1e9a",
+  "messageID": "<b5c0cf02-478a-4e10-bdd7-75eba570227a@imposter-51.org>",
+  "messageTime": "2026-04-20T03:40:39.175Z",
+  "messageSize": 627750,
+  "subject": "Invoice #93225.pdf",
+  "sender": "wesley.tr01@imposter-51.org",
+  "fromAddress": [
+    "wesley.tr01@imposter-51.org"
+  ],
+  "headerFrom": "\"James LaForge\" <wesley.tr01@imposter-51.org>",
+  "senderIP": "5.128.94.180",
+  "recipient": [
+    "worf.laforge@gmail.com"
+  ],
+  "toAddresses": [
+    "worf.laforge@gmail.com"
+  ],
+  "ccAddresses": [],
+  "replyToAddress": [
+    "wesley.tr01@imposter-51.org"
+  ],
+  "headerReplyTo": "wesley.tr01@imposter-51.org",
+  "completelyRewritten": "false",
+  "cluster": "proofpoint-cluster-9",
+  "policyRoutes": [
+    "block"
+  ],
+  "modulesRun": [
+    "dmarc",
+    "spam",
+    "spf",
+    "dkimv",
+    "av",
+    "impostor",
+    "attachment_defense",
+    "urldefense"
+  ],
+  "spamScore": 45,
+  "phishScore": 0,
+  "malwareScore": 84,
+  "impostorScore": 0,
+  "threatsInfo": [
+    {
+      "threat": "FormBook",
+      "threatType": "malware",
+      "threatID": "c68cc578-fb1c-4369-b78a-c859d5567e00",
+      "threatStatus": "active",
+      "classification": "malware",
+      "threatTime": "2026-04-20T03:40:39.175Z"
+    }
+  ],
+  "messageParts": [
+    {
+      "disposition": "attached",
+      "sha256": "f3c64a44349f4baf8612fac7519d49ba9cf99a91982b4a3bbab9d506811010c7",
+      "md5": "a102877786c64a8aa90d2871ee7979cf",
+      "filename": "invoice.pdf.exe",
+      "contentType": "application/octet-stream",
+      "sandboxStatus": "threat"
+    },
+    {
+      "disposition": "inline",
+      "contentType": "text/html",
+      "oContentType": "text/html",
+      "isUnsupported": false,
+      "urls": [
+        {
+          "url": "http://fake-company-9.com/click?id=1f533ba6-9da9-421b-bdc9-b3e6fa5de348",
+          "isRewritten": true,
+          "threatStatus": "malicious"
+        }
+      ]
+    }
+  ],
+  "clickIP": "53.220.169.145",
+  "clickTime": "2026-04-20T03:46:39.175Z",
+  "threatURL": "https://threatinsight.proofpoint.com/#/threat_id/01c8372e-5be5-4752-9e1e-99c9db917ca3",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "event.type": "Click",
+  "unmapped.classification": "malware",
+  "unmapped.recipient": "worf.laforge@gmail.com",
+  "unmapped.sender": "wesley.tr01@imposter-51.org",
+  "url.url_string": "https://threatinsight.proofpoint.com/#/threat_id/dada8749-eccd-4db0-bbfe-2ae6c5ddd8f6",
+  "device.ip": "111.110.174.234",
+  "timestamp": "2026-04-20T03:40:39.175Z",
+  "spf": "fail",
+  "dkimv": "none",
+  "dmarc": "fail",
+  "xmailer": "Gmail Web"
+}

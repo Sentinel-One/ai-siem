@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-04-19T04:07:52Z",
+  "hostname": "conjur-standby",
+  "facility": "local0",
+  "severity": "warn",
+  "priority": 130,
+  "process_id": 5327,
+  "operation": "create",
+  "result": "failure",
+  "role": "admin:user:sysadmin",
+  "authenticator": "authn",
+  "user": "admin:user:sysadmin",
+  "message": "admin:user:sysadmin failure create on prod:policy:database"
+}

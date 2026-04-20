@@ -1,0 +1,43 @@
+grade:
+  letter: B
+  score: 85
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Darktrace Darktrace Logs. Maps source events to OCSF Detection
+    Finding (class_uid=2004) following the processEvent contract.
+  datasource_vendor: darktrace
+  dataSource: Darktrace Darktrace Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  sample_record: "{\n  \"time\": 1776656453039,\n  \"creationTime\": 1776656158039,\n  \"model\": {\n\
+    \    \"name\": \"Device / Large Number of Model Breaches\",\n    \"description\": \"Multiple anomalous\
+    \ behaviors detected from a single device in a short time period\",\n    \"id\": 251,\n    \"version\"\
+    : 1,\n    \"uuid\": \"bac136b2-b3e1-49e8-ad94-042db4a6798d\"\n  },\n  \"breachUrl\": \"https://darktrace-9a82a32e-0001-01/#modelbreach/78524\"\
+    ,\n  \"pbid\": 7563027,\n  \"score\": 0.805,\n  \"device\": {\n    \"hostname\": \"PROD-973\",\n \
+    \   \"ip\": \"10.50.227.45\",\n    \"mac\": \"04:69:8b:6a:c0:6f\",\n    \"type\": \"iot\",\n    \"\
+    os\": \"Windows 11\"\n  },\n  \"triggeredComponents\": [],\n  \"commentCount\": 4,\n  \"acknowledged\"\
+    : false,\n  \"category\": \"suspicious_activity\",\n  \"mitreTactics\": [\n    \"Discovery\",\n  \
+    \  \"Collection\"\n  ],\n  \"tags\": [\n    \"darktrace\",\n    \"anomaly\",\n    \"security\"\n \
+    \ ]\n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 2004
+    class_name: Detection Finding
+    category_uid: 2
+    category_name: Findings
+  tags: darktrace, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 85
+    orion_reviewed: true
+    orion_verdict: signed_off

@@ -1,0 +1,51 @@
+grade:
+  letter: F
+  score: 45
+  verdict: analyzer_limit
+  required_field_coverage_pct: 0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Okta. Maps source events to OCSF unclassified (class_uid=n/a)
+    following the processEvent contract.
+  datasource_vendor: okta
+  dataSource: Okta
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  sample_record: "{\n  \"actor\": {\n    \"id\": \"00u4729hjsVRU197Y5d7\",\n    \"type\": \"User\",\n\
+    \    \"alternateId\": \"pnnpydhb@example.com\",\n    \"displayName\": \"Pnnpydhb\",\n    \"detailEntry\"\
+    : null\n  },\n  \"client\": {\n    \"userAgent\": {\n      \"rawUserAgent\": \"Mozilla/5.0 (X11; Linux\
+    \ x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36\",\n      \"os\":\
+    \ \"Linux\",\n      \"browser\": \"CHROME\"\n    },\n    \"zone\": \"null\",\n    \"device\": \"Computer\"\
+    ,\n    \"id\": null,\n    \"ipAddress\": \"95.196.9.145\",\n    \"geographicalContext\": {\n     \
+    \ \"city\": \"Hyderabad\",\n      \"state\": \"Telangana\",\n      \"country\": \"India\",\n     \
+    \ \"postalCode\": \"500004\",\n      \"geolocation\": {\n        \"lat\": 17.3724,\n        \"lon\"\
+    : 78.4378\n      }\n    }\n  },\n  \"device\": null,\n  \"authenticationContext\": {\n    \"authenticationProvider\"\
+    : null,\n    \"credentialProvider\": null,\n    \"credentialType\": null,\n    \"issuer\": null,\n\
+    \    \"interface\": null,\n    \"authenticationStep\": 0,\n    \"rootSessionId\": \"102eA1R\",\n \
+    \   \"externalSessionId\": \"102eA1R2M\"\n  },\n  \"displayMessage\": \"Create API token\",\n  \"\
+    eventType\": \"system.api_token.create\",\n  \"outcome\": {\n    \"result\": \"SUCCESS\",\n    \"\
+    reason\": null\n  },\n  \"published\": \"2026-04-20T02:26:37.000Z\",\n  \"securityContext\": {\n \
+    \   \"asNumber\": 150008,\n    \"asOrg\": \"s r fibernet\",\n    \"isp\": \"pioneer elabs ltd.\",\n\
+    \    \"domain\": null,\n    \"isProxy\": false\n  },\n  \"severity\": \"OTHER\",\n  \"debugContext\"\
+    : {\n    \"debugData\": {\n      \"concurrencyPercentage\": \"50\",\n      \"requestId\": \"923c54e8-a3b4-4518-bc64-00b228adbe84\"\
+    ,"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: null
+    class_name: null
+    category_uid: null
+    category_name: null
+  tags: okta, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Observo platform UI)
+  validation:
+    harness_grade: F
+    harness_score: 45
+    orion_reviewed: true
+    orion_verdict: signed_off

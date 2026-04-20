@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-04-19T09:38:52.858366+00:00",
+  "event_id": "ME-218871",
+  "product": "ADSelfService Plus",
+  "event_category": "USER_MANAGEMENT",
+  "action": "ACCOUNT_UNLOCKED",
+  "severity": "INFO",
+  "description": "Account Unlocked event occurred",
+  "source_ip": "10.243.225.129",
+  "user_name": "user25",
+  "domain": "company.local",
+  "workstation": "WS-2726",
+  "computer_name": "PC-910",
+  "operating_system": "macOS Monterey",
+  "agent_version": "10.9.9.7860",
+  "location": "Data Center",
+  "department": "IT",
+  "target_user": "user45",
+  "target_user_dn": "CN=user45,OU=Users,DC=company,DC=local",
+  "organizational_unit": "Users",
+  "user_role": "Administrator",
+  "group_membership": [
+    "Group-16",
+    "Group-20",
+    "Group-10",
+    "Group-4"
+  ],
+  "compliance_status": "Unknown",
+  "audit_trail": "audit_8242341"
+}

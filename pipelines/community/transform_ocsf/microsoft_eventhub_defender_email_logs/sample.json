@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-04-20T03:40:52.867055Z",
+  "vendor": "Microsoft",
+  "product": "Eventhub Defender Email Logs",
+  "version": "1.0",
+  "event_type": "security_event",
+  "message": "Sample Microsoft Eventhub Defender Email Logs event at 2026-04-20T03:40:52.867055Z",
+  "severity": "low",
+  "category": "security",
+  "source_ip": "192.168.11.187",
+  "user": "user5277",
+  "device": "device-462",
+  "log_level": "INFO",
+  "event_id": 38435,
+  "session_id": "sess_225986",
+  "class_name": "Security Event",
+  "activity_name": "Log Generated"
+}

@@ -1,0 +1,3 @@
+{
+  "raw": "2026-04-19T19:07:52Z AkamaiDNS streamId=\"dns-662\" cliIP=\"4.61.218.110\" resolverIP=\"8.8.8.8\" domain=\"app.example.net\" recordType=\"AAAA\" responseCode=\"REFUSED\" answer=\"\" edge=\"edge-nyc\" ttl=0 bytes=64"
+}

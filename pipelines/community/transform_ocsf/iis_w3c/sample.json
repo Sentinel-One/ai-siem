@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-04-19T22:31:52Z",
+  "date": "2026-04-19",
+  "time": "22:31:52",
+  "client_ip": "50.114.195.96",
+  "username": "admin",
+  "sitename": "api.contoso.com",
+  "computername": "WEB02",
+  "server_ip": "192.0.2.92",
+  "server_port": 443,
+  "method": "PATCH",
+  "uri_stem": "/uploads",
+  "uri_query": "-",
+  "status_code": 403,
+  "bytes_sent": 328,
+  "bytes_received": 898,
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "referer": "https://contoso.com",
+  "cookie": "-",
+  "time_taken": 1875
+}

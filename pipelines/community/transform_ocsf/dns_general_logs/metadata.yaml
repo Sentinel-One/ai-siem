@@ -1,0 +1,39 @@
+grade:
+  letter: C
+  score: 77
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Dns General Logs. Maps source events to OCSF DNS Activity
+    (class_uid=4003) following the processEvent contract.
+  datasource_vendor: community
+  dataSource: Dns General Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  sample_record: "{\n  \"timestamp\": \"2026-04-20T03:15:24.059Z\",\n  \"log_level\": \"info\",\n  \"\
+    log_type\": \"queries\",\n  \"client_uid\": \"0x7f03630d15\",\n  \"client_ip\": \"192.0.2.63\",\n\
+    \  \"client_port\": 55015,\n  \"query_hostname\": \"mail.example.org\",\n  \"query_name\": \"mail.example.org\"\
+    ,\n  \"query_class\": \"IN\",\n  \"query_type\": \"NS\",\n  \"query_opcode\": \"U\",\n  \"message\"\
+    : \"client @0x7f03630d15 192.0.2.63#55015 (mail.example.org): query: mail.example.org IN NS + (U)\"\
+    \n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4003
+    class_name: DNS Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: community, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: C
+    harness_score: 77
+    orion_reviewed: true
+    orion_verdict: signed_off

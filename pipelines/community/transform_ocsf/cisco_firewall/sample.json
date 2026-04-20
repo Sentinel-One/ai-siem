@@ -1,0 +1,13 @@
+{
+  "raw": "<165>Apr 20 03:40:52 ftd-241 : FTD-1-430003: SrcIP: 192.168.110.231, DstIP: 203.0.113.236, ConnectionDuration: 1292, InitiatorBytes: 44088, ResponderBytes: 19778",
+  "timestamp": "2026-04-20T03:40:52.719548Z",
+  "vendor": "Cisco",
+  "product": "Firewall Threat Defense",
+  "event_type": "Close",
+  "event_id": "FTD-1-430003",
+  "hostname": "ftd-241",
+  "src_ip": "192.168.110.231",
+  "dst_ip": "203.0.113.236",
+  "user": "user1202",
+  "device_uuid": "5d5474e1-6f91-4f2c-996f-5ed470241331"
+}

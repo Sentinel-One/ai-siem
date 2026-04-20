@@ -1,7 +1,7 @@
 # transform_ocsf/
 
 OCSF-compliant Lua serializers for Observo Pipeline Manager, ready to be
-imported as `OCSFSerializer` transform nodes. 123 transforms covering the
+imported as `OCSFSerializer` transform nodes. 130 transforms covering the
 most common SentinelOne AI SIEM sources.
 
 ## What's in each subdirectory
@@ -56,8 +56,7 @@ Every transform in this directory was graded by a 5-module harness:
 5. Execution against a realistic source event with timestamp-type fuzzing
 
 They were additionally cross-checked by independent AI review (library-level
-pass plus per-outlier pass). 7 transforms that failed review are held back
-for classification/mapping remediation and will ship in a follow-up PR.
+pass plus per-outlier pass).
 
 ## Installing a transform into an Observo pipeline
 

@@ -1,0 +1,94 @@
+{
+  "GUID": "575ae10b-b6ff-4447-af2f-8d792e8148c0",
+  "QID": "Q896615",
+  "id": "e4915bcc-fbe1-4d0c-8f4e-e000a0ae6c9d",
+  "messageID": "<bb2a763a-b473-4206-b318-c56df6b1830b@suspicious-domain-86.org>",
+  "messageTime": "2026-04-20T03:35:59.671Z",
+  "messageSize": 858025,
+  "subject": "Scan from printer",
+  "sender": "haxorsaurus.crusher@suspicious-domain-86.org",
+  "fromAddress": [
+    "haxorsaurus.crusher@suspicious-domain-86.org"
+  ],
+  "headerFrom": "\"Jordy Picard\" <haxorsaurus.crusher@suspicious-domain-86.org>",
+  "senderIP": "91.138.86.33",
+  "recipient": [
+    "service@outlook.com"
+  ],
+  "toAddresses": [
+    "service@outlook.com"
+  ],
+  "ccAddresses": [],
+  "replyToAddress": [
+    "haxorsaurus.crusher@suspicious-domain-86.org"
+  ],
+  "headerReplyTo": "haxorsaurus.crusher@suspicious-domain-86.org",
+  "completelyRewritten": "true",
+  "cluster": "proofpoint-cluster-5",
+  "policyRoutes": [
+    "quarantine"
+  ],
+  "modulesRun": [
+    "urldefense",
+    "dmarc",
+    "attachment_defense",
+    "av",
+    "dkimv",
+    "spam"
+  ],
+  "spamScore": 43,
+  "phishScore": 0,
+  "malwareScore": 81,
+  "impostorScore": 0,
+  "threatsInfo": [
+    {
+      "threat": "Lokibot",
+      "threatType": "malware",
+      "threatID": "7964b1e4-5dbd-4a3c-8648-416e60947ffc",
+      "threatStatus": "active",
+      "classification": "malware",
+      "threatTime": "2026-04-20T03:35:59.671Z"
+    }
+  ],
+  "quarantineFolder": "Quarantine",
+  "quarantineRule": "Rule_malware_quarantine",
+  "messageParts": [
+    {
+      "disposition": "attached",
+      "sha256": "2e8db73c599e410481a6c241ffa9c48789d518ade9d848f290f52aca907f8612",
+      "md5": "28181f4f4af444a8879632f459936bef",
+      "filename": "scan.pdf",
+      "contentType": "application/octet-stream",
+      "sandboxStatus": "threat"
+    },
+    {
+      "disposition": "inline",
+      "contentType": "text/html",
+      "oContentType": "text/html",
+      "isUnsupported": false,
+      "urls": [
+        {
+          "url": "http://scam-site-90.com/click?id=a1658146-8541-4eb8-b6e0-45b3c65d1b3f",
+          "isRewritten": true,
+          "threatStatus": "malicious"
+        }
+      ]
+    }
+  ],
+  "clickIP": "195.75.129.222",
+  "clickTime": "2026-04-20T03:54:59.671Z",
+  "threatURL": "https://threatinsight.proofpoint.com/#/threat_id/9767e23c-4e6c-47fe-ac87-0eec6a0d1f84",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "event.type": "Click",
+  "unmapped.classification": "malware",
+  "unmapped.recipient": "service@outlook.com",
+  "unmapped.sender": "haxorsaurus.crusher@suspicious-domain-86.org",
+  "url.url_string": "https://threatinsight.proofpoint.com/#/threat_id/75b23b1a-f54d-4e25-9ec4-2fb9f47b8310",
+  "device.ip": "48.244.54.56",
+  "timestamp": "2026-04-20T03:35:59.671Z",
+  "spf": "fail",
+  "dkimv": "pass",
+  "dmarc": "none",
+  "xmailer": "Unknown",
+  "campaignId": "campaign_ef73d8fa"
+}

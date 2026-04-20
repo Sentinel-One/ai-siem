@@ -1,0 +1,23 @@
+grade:
+  letter: A
+  score: 93
+  verdict: signed_off
+  required_field_coverage_pct: 85.7
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: "OCSF Device Inventory Info (5001) serializer for SentinelOne agent telemetry. Extracts device identity, OS, and agent_list[] metadata from agent self-reports."
+  datasource_vendor: SentinelOne
+  dataSource: SentinelOne Agent Metrics
+  format: json
+  ocsf_version: 1.3.0
+  ingestion_method: "Observo OCSFSerializer (Lua-based transform)"
+  ocsf_mapping:
+    class_uid: 5001
+    class_name: "Device Inventory Info"
+    category_uid: 5
+    category_name: "Discovery"
+  tags: "observo, ocsf, lua, sentinelone, serializer, device_inventory_info, remediation_2026_04_19"
+  author: "Purple-Pipeline-Parser-Eater + Orion remediation pass 2026-04-19"
+  version: "v1.0"

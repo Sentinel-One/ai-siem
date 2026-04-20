@@ -128,3 +128,10 @@ Orion verdict is an independent AI review cross-check.
 | `aws_guardduty` | active | **F** | 45 | `analyzer_limit` | n/a | 0% |
 | `okta` | active | **F** | 45 | `analyzer_limit` | n/a | 0% |
 | `gcp_audit_logs` | active | **F** | 25 | `analyzer_limit` | n/a | 0% |
+| `agent_metrics_logs` | active | **A** | 93 | `signed_off` | 5001 | 85.7% |
+| `aws_vpc_flow` | active | **A** | 93 | `signed_off` | 4001 | 83.3% |
+| `microsoft_defender_for_cloud` | active | **A** | 90 | `signed_off` | 2004 | 87.5% |
+| `azure_ad` | active | **B** | 89 | `signed_off` | 3001 | 66.7% |
+| `proofpoint` | active | **B** | 84 | `signed_off` | 2004 | 87.5% |
+| `snyk` | active | **B** | 84 | `signed_off` | 2002 | 62.5% |
+| `tenable_vulnerability_management_audit_logging` | active | **C** | 77 | `signed_off` | 2002 | 62.5% |

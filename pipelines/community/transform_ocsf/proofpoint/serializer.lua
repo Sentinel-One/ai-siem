@@ -1,4 +1,4 @@
--- OCSF Detection Finding (2004) serializer for Proofpoint TAP email threat events.
+-- OCSF Detection Finding (2004) serializer for Proofpoint Mail email threat events.
 -- Remediation per 2026-04-19 Orion: reclassified from 4012 to 2004.
 
 local CLASS_UID = 2004
@@ -81,7 +81,7 @@ function buildSkeleton(t)
         severity_id = 1,
         status_id = 1,
         time = ts,
-        metadata = { version = "1.1.0", product = { name = "Proofpoint TAP", vendor_name = "Proofpoint" } },
+        metadata = { version = "1.1.0", product = { name = "Proofpoint Mail", vendor_name = "Proofpoint" } },
         finding_info = { uid = "unknown", title = "Proofpoint detection" },
         actor = { user = {} }, user = {}, evidences = {}, email = {}, cloud = { provider = "Proofpoint" },
         unmapped = {}
@@ -154,7 +154,7 @@ function processEvent(event)
 
     -- Metadata
     setNestedField(result, "metadata.uid", getValue(event, "id") or getValue(event, "GUID"))
-    setNestedField(result, "metadata.log_name", "proofpoint_tap")
+    setNestedField(result, "metadata.log_name", "proofpoint_mail")
     setNestedField(result, "metadata.event_code", tostring(getValue(event, "QID") or ""))
     setNestedField(result, "metadata.correlation_uid", getValue(event, "cluster"))
 

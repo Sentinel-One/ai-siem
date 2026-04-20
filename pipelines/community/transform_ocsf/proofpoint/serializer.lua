@@ -170,10 +170,24 @@ function processEvent(event)
         table.insert(result.observables, { name = "src_endpoint.ip", type = "IP Address", type_id = 2, value = getValue(event, "senderIP") })
     end
 
-    result.message = string.format("Proofpoint threat '%s' from %s to %s",
-        tostring(result.finding_info.title),
-        tostring(getValue(event, "sender") or "unknown"),
-        tostring((type(recipients) == 'table' and recipients[1]) or "unknown"))
+    -- message: prefer the source's own message/raw log text. Fall back to JSON-encoding
+    -- the raw event so the Observo Log Message panel shows the original payload rather
+    -- than a derived summary.
+    local raw_msg = getValue(event, "message")
+    if type(raw_msg) == 'string' and #raw_msg > 0 then
+        result.message = raw_msg
+    else
+        local ok, encoded = pcall(function()
+            local json = require('json')
+            return json.encode(event)
+        end)
+        if ok and type(encoded) == 'string' and #encoded > 0 then
+            result.message = encoded
+        else
+            -- Last-resort string cast (rare — keeps message non-empty for UI).
+            result.message = tostring(event)
+        end
+    end
     setNestedField(result, "raw_data", event)
     return result
 end

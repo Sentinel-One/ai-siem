@@ -51,49 +51,6 @@ function no_nulls(d)
     return d
 end
 
--- Minimal JSON encoder for the raw-event payload. Self-contained (no require).
--- Handles nil, booleans, numbers, strings, and tables (as objects or arrays).
--- Depth-limited at 8 to guard against pathological nesting; that's well beyond
--- anything we see in email or firewall logs.
-function encodeEventJson(v, depth)
-    if depth == nil then depth = 0 end
-    if depth > 8 then return '"[truncated]"' end
-    local t = type(v)
-    if v == nil or t == 'userdata' then return 'null' end
-    if t == 'boolean' or t == 'number' then return tostring(v) end
-    if t == 'string' then
-        local s = v
-        s = string.gsub(s, '\\', '\\\\')
-        s = string.gsub(s, '"', '\\"')
-        s = string.gsub(s, '\n', '\\n')
-        s = string.gsub(s, '\r', '\\r')
-        s = string.gsub(s, '\t', '\\t')
-        return '"' .. s .. '"'
-    end
-    if t == 'table' then
-        local is_array = true
-        local count = 0
-        for k, _ in pairs(v) do
-            count = count + 1
-            if type(k) ~= 'number' then is_array = false end
-        end
-        if count == 0 then return '{}' end
-        local parts = {}
-        if is_array then
-            for i = 1, count do
-                table.insert(parts, encodeEventJson(v[i], depth + 1))
-            end
-            return '[' .. table.concat(parts, ',') .. ']'
-        else
-            for k, val in pairs(v) do
-                table.insert(parts, '"' .. tostring(k) .. '":' .. encodeEventJson(val, depth + 1))
-            end
-            return '{' .. table.concat(parts, ',') .. '}'
-        end
-    end
-    return 'null'
-end
-
 function parseIsoMs(s)
     if type(s) ~= 'string' then return nil end
     local y, mo, d, h, mi, se = s:match("(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
@@ -213,17 +170,33 @@ function processEvent(event)
         table.insert(result.observables, { name = "src_endpoint.ip", type = "IP Address", type_id = 2, value = getValue(event, "senderIP") })
     end
 
-    -- message: prefer the source's own raw log text. If absent, serialize the event
-    -- inline using a self-contained JSON-like encoder. We deliberately avoid
-    -- require('json') / require('cjson') because the Observo Lua sandbox doesn't
-    -- always expose them and a failed require aborts the whole transform.
+    -- message: prefer the source's own raw log field if Proofpoint provides one.
+    -- Otherwise build a clean descriptive summary from the fields we have.
+    -- We never set 'from unknown to unknown' -- only include sender/recipient
+    -- when they're actually present on the event.
     local raw_msg = getValue(event, "message")
         or getValue(event, "rawMessage")
         or getValue(event, "raw_message")
     if type(raw_msg) == 'string' and #raw_msg > 0 then
         setNestedField(result, "message", raw_msg)
     else
-        setNestedField(result, "message", encodeEventJson(event))
+        local parts = {}
+        local threat = getValue(event, "threatName")
+            or getValue(event, "classification")
+            or "Proofpoint Mail event"
+        table.insert(parts, tostring(threat))
+        local subj = getValue(event, "subject")
+        if type(subj) == 'string' and #subj > 0 then
+            table.insert(parts, "subject=" .. subj)
+        end
+        local sender = getValue(event, "sender")
+        if type(sender) == 'string' and #sender > 0 then
+            table.insert(parts, "from=" .. sender)
+        end
+        if type(recipients) == 'table' and type(recipients[1]) == 'string' and #recipients[1] > 0 then
+            table.insert(parts, "to=" .. recipients[1])
+        end
+        setNestedField(result, "message", table.concat(parts, " | "))
     end
     setNestedField(result, "raw_data", event)
     return result

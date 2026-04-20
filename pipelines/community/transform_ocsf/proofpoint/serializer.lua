@@ -1,24 +1,16 @@
 -- OCSF Detection Finding (2004) serializer for Proofpoint Mail / Protection Server
 -- sendmail syslog events as delivered by Observo's PPS collector.
 --
--- Observo PARSES the sendmail line upstream and exposes structured fields
--- under event.sm.*. This serializer reads those directly and avoids regex:
---
---   event = {
---     data      = "<raw syslog line>",
---     id        = "<observo event uid>",
---     ts        = "2026-04-20T12:01:11.185179-05:00",
---     timestamp = "2026-04-20T17:01:45.850050142Z",
---     metadata  = { customerId, origin = { data = {agent, cid, theater} } },
---     pps       = { agent, cid, theater },
---     sm        = { qid, guid, from, to, msgid, sizeBytes, nrcpts, relay,
---                   mailer, stat, dsn, delay, xdelay, proto, daemon, auth,
---                   class, messageTs, pri },
---     tls       = { cipher, verify, version }
---   }
---
--- Log Message is always event.data so the raw syslog is visible in Observo.
--- Email fields are populated from event.sm.* (much more reliable than parsing).
+-- Incorporates Orion review fixes (2026-04-20):
+--   * parseIsoMs is timezone-aware (the raw syslog timestamp carries -05:00
+--     and we previously dropped it, yielding events 5h off).
+--   * no_nulls runs on the OUTPUT result, never on the incoming event (avoids
+--     mutating the event the downstream pipeline also sees).
+--   * Email delivery outcomes go into disposition_id (1 Allowed / 2 Blocked /
+--     14 Delayed / 25 Rejected) -- NOT status_id. For class 2004,
+--     status_id means New/In Progress/Suppressed/Resolved -- completely
+--     different semantics.
+--   * pcall-guarded os.time() throughout.
 
 local CLASS_UID = 2004
 local CATEGORY_UID = 2
@@ -62,6 +54,9 @@ function getValue(tbl, key, default)
     return v
 end
 
+-- Scrub userdata nil markers. Applied only to the OUTPUT result, never to
+-- the incoming event -- the pipeline downstream may still need the event
+-- intact.
 function no_nulls(d)
     if type(d) == 'table' then
         for k, v in pairs(d) do
@@ -72,8 +67,6 @@ function no_nulls(d)
     return d
 end
 
--- Strip <...> angle brackets from RFC5321 addresses. Returns the address
--- verbatim if no brackets are present.
 function stripBrackets(s)
     if type(s) ~= 'string' then return s end
     local inner = s:match("^<(.*)>$")
@@ -81,17 +74,38 @@ function stripBrackets(s)
     return s
 end
 
--- Parse an ISO-8601 timestamp like "2026-04-20T12:01:11.185179-05:00" into ms.
+-- Timezone-aware ISO-8601 parser. Handles "2026-04-20T12:01:11.185179-05:00"
+-- and normalizes to UTC milliseconds. os.time() on a calendar table treats
+-- the input as LOCAL time; to get a stable UTC ms we compute the local
+-- result then subtract our local epoch offset and add the parsed offset.
 function parseIsoMs(s)
     if type(s) ~= 'string' then return nil end
     local y, mo, d, h, mi, se = s:match("(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
     if not y then return nil end
-    local ok, v = pcall(function()
-        return os.time({year = tonumber(y), month = tonumber(mo), day = tonumber(d),
-                         hour = tonumber(h), min = tonumber(mi), sec = tonumber(se)}) * 1000
-    end)
-    if ok and v then return v end
-    return nil
+    local offset_secs = 0
+    if s:sub(-1) == "Z" then
+        offset_secs = 0
+    else
+        local sgn, oh, om = s:match("([%+%-])(%d%d):(%d%d)$")
+        if sgn and oh and om then
+            offset_secs = (tonumber(oh) * 3600 + tonumber(om) * 60)
+            if sgn == "-" then offset_secs = -offset_secs end
+        end
+    end
+    local yN, moN, dN = tonumber(y), tonumber(mo), tonumber(d)
+    local hN, miN, seN = tonumber(h), tonumber(mi), tonumber(se)
+    if not (yN and moN and dN and hN and miN and seN) then return nil end
+    local yAdj = yN
+    if moN <= 2 then yAdj = yN - 1 end
+    local era = math.floor(yAdj / 400)
+    local yoe = yAdj - era * 400
+    local mp
+    if moN > 2 then mp = moN - 3 else mp = moN + 9 end
+    local doy = math.floor((153 * mp + 2) / 5) + dN - 1
+    local doe = yoe * 365 + math.floor(yoe / 4) - math.floor(yoe / 100) + doy
+    local days = era * 146097 + doe - 719468
+    local utc_seconds = days * 86400 + hN * 3600 + miN * 60 + seN - offset_secs
+    return utc_seconds * 1000
 end
 
 function buildSkeleton(t)
@@ -102,7 +116,7 @@ function buildSkeleton(t)
         type_uid = 200401,
         activity_id = 1,
         severity_id = 1,
-        status_id = 1,
+        status_id = 1,  -- OCSF 2004: 1 = New (finding lifecycle, NOT delivery)
         time = ts,
         metadata = { version = "1.1.0",
                      product = { name = "Proofpoint Mail", vendor_name = "Proofpoint" } },
@@ -114,14 +128,15 @@ function buildSkeleton(t)
 end
 
 function processEvent(event)
-    if type(event) ~= 'table' then return buildSkeleton() end
-    no_nulls(event)
+    if type(event) ~= 'table' then return no_nulls(buildSkeleton()) end
 
     local sm = getValue(event, "sm") or {}
     local md = getValue(event, "metadata") or {}
     local origin_data = getNestedField(event, "metadata.origin.data") or {}
     local tls = getValue(event, "tls") or {}
 
+    -- Timestamp: prefer the per-event syslog ts (has -05:00 offset),
+    -- then the ingestion timestamp (has Z offset), then sm.messageTs.
     local ts = parseIsoMs(getValue(event, "ts"))
         or parseIsoMs(getValue(event, "timestamp"))
         or parseIsoMs(getValue(sm, "messageTs"))
@@ -129,8 +144,7 @@ function processEvent(event)
 
     local result = buildSkeleton(ts)
 
-    -- MESSAGE: the raw syslog line, verbatim. This is what the customer sees
-    -- in the Observo Log Message panel.
+    -- MESSAGE: the raw syslog line verbatim (what the analyst sees in Log Message).
     local raw_line = getValue(event, "data")
     if type(raw_line) == 'string' and #raw_line > 0 then
         setNestedField(result, "message", raw_line)
@@ -138,14 +152,13 @@ function processEvent(event)
         setNestedField(result, "message", "Proofpoint Mail event")
     end
 
-    -- finding_info: prefer sendmail queue id as uid, fall back to guid / observo id.
+    -- finding_info.uid: queue id preferred, then sm.guid, then event.id.
     local qid = getValue(sm, "qid") or getValue(sm, "guid") or getValue(event, "id") or "unknown"
     setNestedField(result, "finding_info.uid", tostring(qid))
 
     local stat = getValue(sm, "stat")
     local title
     if type(stat) == 'string' and #stat > 0 then
-        -- "Sent (...)" lines have the action in the stat prefix.
         local stat_word = stat:match("^(%a+)")
         title = "Proofpoint Mail " .. (stat_word or stat)
     elseif getValue(sm, "from") then
@@ -157,7 +170,7 @@ function processEvent(event)
     end
     setNestedField(result, "finding_info.title", title)
 
-    -- Email sender / actor
+    -- Actor / sender
     local sender = stripBrackets(getValue(sm, "from"))
     if type(sender) == 'string' and #sender > 0 then
         setNestedField(result, "actor.user.email_addr", sender)
@@ -165,7 +178,7 @@ function processEvent(event)
         setNestedField(result, "email.smtp_from", sender)
     end
 
-    -- Recipient: sm.to is an array OR the sm.to field may be absent on from= lines.
+    -- Recipient (array or single string)
     local primary_rcpt
     local rcpt_list = {}
     local sm_to = getValue(sm, "to")
@@ -189,7 +202,7 @@ function processEvent(event)
         setNestedField(result, "email.to", rcpt_list)
     end
 
-    -- Email envelope details
+    -- Email envelope
     local msgid = stripBrackets(getValue(sm, "msgid"))
     if type(msgid) == 'string' and #msgid > 0 then
         setNestedField(result, "email.message_uid", msgid)
@@ -200,42 +213,49 @@ function processEvent(event)
     if type(relay) == 'string' and #relay > 0 then
         setNestedField(result, "email.delivered_to", relay)
     end
-    local mailer = getValue(sm, "mailer")
-    if type(mailer) == 'string' then setNestedField(result, "email.x_originating_ip", mailer) end
 
-    -- Status from sendmail stat= or dsn=
+    -- DELIVERY OUTCOME -> disposition_id (NOT status_id, per OCSF 2004 semantics).
+    -- status_id on class 2004 is the finding lifecycle state
+    -- (1 New / 2 In Progress / 3 Suppressed / 4 Resolved). We leave it at 1 (New).
+    -- disposition_id carries the action outcome:
+    --   1  = Allowed (sent)
+    --   2  = Blocked (rejected/refused)
+    --   14 = Delayed (deferred/queued)
+    --   25 = Rejected (bounced)
     if type(stat) == 'string' and #stat > 0 then
         local s = stat:lower()
         if s:match("^sent") then
-            setNestedField(result, "status_id", 1) -- Success
-            setNestedField(result, "status", "Sent")
+            setNestedField(result, "disposition_id", 1)
+            setNestedField(result, "disposition", "Allowed")
         elseif s:match("defer") or s:match("queued") then
-            setNestedField(result, "status_id", 3)
-            setNestedField(result, "status", stat:sub(1, 40))
-        elseif s:match("bounce") or s:match("reject") or s:match("refus") or s:match("unknown") then
-            setNestedField(result, "status_id", 2)
-            setNestedField(result, "status", stat:sub(1, 40))
+            setNestedField(result, "disposition_id", 14)
+            setNestedField(result, "disposition", "Delayed")
+        elseif s:match("bounce") or s:match("unknown") or s:match("user unknown") then
+            setNestedField(result, "disposition_id", 25)
+            setNestedField(result, "disposition", "Rejected")
             setNestedField(result, "severity_id", 3)
-        else
-            setNestedField(result, "status", stat:sub(1, 40))
+        elseif s:match("reject") or s:match("refus") or s:match("block") then
+            setNestedField(result, "disposition_id", 2)
+            setNestedField(result, "disposition", "Blocked")
+            setNestedField(result, "severity_id", 3)
         end
     end
     local dsn = getValue(sm, "dsn")
     if type(dsn) == 'string' and #dsn > 0 then
-        setNestedField(result, "status_code", dsn)
+        setNestedField(result, "status_detail", "DSN " .. dsn)
     end
 
-    -- TLS context (if present, otherwise skip)
+    -- TLS context (skip "NONE" values)
     local tls_version = getValue(tls, "version")
-    if type(tls_version) == 'string' and tls_version ~= "NONE" then
+    if type(tls_version) == 'string' and tls_version ~= "NONE" and #tls_version > 0 then
         setNestedField(result, "tls.version", tls_version)
     end
     local tls_cipher = getValue(tls, "cipher")
-    if type(tls_cipher) == 'string' and tls_cipher ~= "NONE" then
+    if type(tls_cipher) == 'string' and tls_cipher ~= "NONE" and #tls_cipher > 0 then
         setNestedField(result, "tls.cipher", tls_cipher)
     end
 
-    -- Observo envelope -> metadata + cloud
+    -- Metadata & cloud context from Observo envelope
     setNestedField(result, "metadata.uid", getValue(event, "id"))
     setNestedField(result, "metadata.log_name", "proofpoint_mail")
     setNestedField(result, "metadata.correlation_uid",
@@ -291,5 +311,6 @@ function processEvent(event)
     end
 
     setNestedField(result, "raw_data", event)
-    return result
+    -- Scrub userdata on the RESULT only (not on event).
+    return no_nulls(result)
 end

@@ -1,0 +1,28 @@
+purpose: |
+  Automatically adds the source IP of high-risk Cloudflare traffic (risk_score < 25) to a custom blocklist. 
+  This dynamically updates linked WAF rules to block the attacker at the edge.
+
+trigger_type: alert
+integration_dependency:
+  - Cloudflare WAF / Lists API
+  - SentinelOne SDL (read connection)
+  - Cloudflare LogPush (HTTP Requests dataset)
+
+human_in_the_loop: no
+expected_actions_per_run: 5
+
+tags:
+  - cloudflare
+  - waf
+  - blocklist
+  - risk-score
+  - automated-response
+  - hyperautomation
+
+mitre_attack_mapping: null
+data_sources:
+  - Cloudflare HTTP Requests logs
+  - SentinelOne AI SIEM alerts
+
+version: "1.0.0"
+last_updated: "2026-04-04"

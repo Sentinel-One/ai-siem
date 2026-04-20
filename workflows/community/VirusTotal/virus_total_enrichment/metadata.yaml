@@ -1,0 +1,22 @@
+
+### `metadata.yaml` (Copy-Paste Ready)
+
+```yaml
+purpose: "Enrich Singularity alerts with VirusTotal file hash intelligence and add detailed note"
+trigger_type: "alert"
+integration_dependency:
+  - "VirusTotal API (v3)"
+  - "SentinelOne Singularity (Unified Alerts)"
+expected_actions_per_run: 8
+human_in_the_loop: false
+required_products:
+  - "Singularity Platform"
+tags:
+  - "enrichment"
+  - "threat-intel"
+  - "virustotal"
+  - "hyperautomation"
+version: "v1.0"
+documentation: "mermaid"
+last_updated: "2026-03-26"
+contributor: "jacob-kraniak"

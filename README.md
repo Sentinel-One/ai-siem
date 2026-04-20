@@ -160,6 +160,21 @@ All pipelines require:
 
 ---
 
+## Workflows / Hyperautomation
+
+Community response playbooks and Hyperautomation workflows are located in [`workflows/community/`](workflows/community/).
+
+We have introduced a standardized documentation approach:
+- Vendor-first folder structure with per-workflow subfolders
+- Consistent `metadata.yaml`
+- **Mermaid.js** diagrams for clear visualization of logic, decisions, and orchestration steps
+
+**Credit to Mermaid.js**: All diagrams are powered by the open-source **[mermaid-js/mermaid](https://github.com/mermaid-js/mermaid)** project. Huge thanks to the mermaid-js community and maintainers for making version-controlled, beautiful workflow documentation possible directly in Markdown.
+
+See [`workflows/community/README.md`](workflows/community/README.md) for the full documentation standard and examples.
+
+---
+
 ## Getting help
 Open an issue. Office hours TBD based on requests.
 

@@ -1,7 +1,24 @@
--- OCSF Detection Finding (2004) serializer for Proofpoint Mail / Protection Server.
--- Designed for maximum resilience: the Log Message field will ALWAYS show the
--- raw log payload regardless of whether the upstream pipeline parsed it into
--- fields or kept it as a syslog string.
+-- OCSF Detection Finding (2004) serializer for Proofpoint Mail / Protection Server
+-- sendmail syslog events as delivered by Observo's PPS collector.
+--
+-- Observo PARSES the sendmail line upstream and exposes structured fields
+-- under event.sm.*. This serializer reads those directly and avoids regex:
+--
+--   event = {
+--     data      = "<raw syslog line>",
+--     id        = "<observo event uid>",
+--     ts        = "2026-04-20T12:01:11.185179-05:00",
+--     timestamp = "2026-04-20T17:01:45.850050142Z",
+--     metadata  = { customerId, origin = { data = {agent, cid, theater} } },
+--     pps       = { agent, cid, theater },
+--     sm        = { qid, guid, from, to, msgid, sizeBytes, nrcpts, relay,
+--                   mailer, stat, dsn, delay, xdelay, proto, daemon, auth,
+--                   class, messageTs, pri },
+--     tls       = { cipher, verify, version }
+--   }
+--
+-- Log Message is always event.data so the raw syslog is visible in Observo.
+-- Email fields are populated from event.sm.* (much more reliable than parsing).
 
 local CLASS_UID = 2004
 local CATEGORY_UID = 2
@@ -55,67 +72,16 @@ function no_nulls(d)
     return d
 end
 
--- Flatten ANY value into a readable string. Never returns nil, never throws.
--- Tables become key=value comma lists (one level deep is enough for logs).
-function flattenToString(v, depth)
-    if depth == nil then depth = 0 end
-    if v == nil then return "" end
-    local t = type(v)
-    if t == 'string' then return v end
-    if t == 'number' or t == 'boolean' then return tostring(v) end
-    if depth > 3 then return "..." end
-    if t == 'table' then
-        local parts = {}
-        for k, val in pairs(v) do
-            local sk = tostring(k)
-            local sv = flattenToString(val, depth + 1)
-            if #sv > 200 then sv = string.sub(sv, 1, 200) end
-            table.insert(parts, sk .. "=" .. sv)
-        end
-        return table.concat(parts, " ")
-    end
-    return tostring(v) or ""
+-- Strip <...> angle brackets from RFC5321 addresses. Returns the address
+-- verbatim if no brackets are present.
+function stripBrackets(s)
+    if type(s) ~= 'string' then return s end
+    local inner = s:match("^<(.*)>$")
+    if inner then return inner end
+    return s
 end
 
--- Find the raw log text in the event, wherever the upstream pipeline put it.
--- Checks every known convention (data/message/raw/rawMessage/_raw/log/line).
--- If none present, falls back to flattening the whole event to a readable string.
-function pickRawMessage(event)
-    if type(event) ~= 'table' then return tostring(event) end
-    local candidates = {"data", "message", "rawMessage", "raw_message", "raw", "_raw", "log", "line", "body"}
-    for _, key in ipairs(candidates) do
-        local v = getValue(event, key)
-        if type(v) == 'string' and #v > 0 then
-            return v
-        end
-    end
-    -- Second pass: any top-level string value that looks like a log line
-    for _, v in pairs(event) do
-        if type(v) == 'string' and #v > 20 then
-            return v
-        end
-    end
-    -- Last resort: flatten the event
-    return flattenToString(event, 0)
-end
-
-function parseSendmailLine(line)
-    local out = {}
-    if type(line) ~= 'string' or #line == 0 then return out end
-    out.queue_id = line:match("sendmail%[[%d]+%]:%s+([%w%d]+)")
-    out.from_addr = line:match("[%s,]from=<([^>]+)>")
-        or line:match("^from=<([^>]+)>")
-        or line:match("[%s,]from=([^%s,>]+)")
-    out.to_addr = line:match("[%s,]to=<([^>]+)>")
-        or line:match("^to=<([^>]+)>")
-        or line:match("[%s,]to=([^%s,>]+)")
-    local sz = line:match("size=(%d+)")
-    if sz then out.size = tonumber(sz) end
-    out.stat = line:match("stat=([^,%s]+)")
-    out.relay = line:match("relay=([%w%.%-_]+)")
-    return out
-end
-
+-- Parse an ISO-8601 timestamp like "2026-04-20T12:01:11.185179-05:00" into ms.
 function parseIsoMs(s)
     if type(s) ~= 'string' then return nil end
     local y, mo, d, h, mi, se = s:match("(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
@@ -148,107 +114,156 @@ function buildSkeleton(t)
 end
 
 function processEvent(event)
-    if type(event) ~= 'table' then
-        local skel = buildSkeleton()
-        setNestedField(skel, "message", flattenToString(event, 0))
-        return skel
-    end
+    if type(event) ~= 'table' then return buildSkeleton() end
     no_nulls(event)
 
-    -- ALWAYS set message to something meaningful from the event.
-    local raw_msg = pickRawMessage(event)
-    local ts = parseIsoMs(raw_msg) or safeTimeMs()
+    local sm = getValue(event, "sm") or {}
+    local md = getValue(event, "metadata") or {}
+    local origin_data = getNestedField(event, "metadata.origin.data") or {}
+    local tls = getValue(event, "tls") or {}
+
+    local ts = parseIsoMs(getValue(event, "ts"))
+        or parseIsoMs(getValue(event, "timestamp"))
+        or parseIsoMs(getValue(sm, "messageTs"))
+        or safeTimeMs()
+
     local result = buildSkeleton(ts)
-    setNestedField(result, "message", raw_msg)
 
-    -- Best-effort sendmail parse (only runs usefully when raw_msg is a sendmail line).
-    local parsed = parseSendmailLine(raw_msg)
-
-    -- finding_info.uid
-    local uid = parsed.queue_id
-        or getValue(event, "id")
-        or getValue(event, "GUID")
-        or getValue(event, "messageID")
-        or "unknown"
-    setNestedField(result, "finding_info.uid", uid)
-
-    -- finding_info.title
-    local title
-    if parsed.stat then
-        title = "Proofpoint Mail " .. tostring(parsed.stat)
+    -- MESSAGE: the raw syslog line, verbatim. This is what the customer sees
+    -- in the Observo Log Message panel.
+    local raw_line = getValue(event, "data")
+    if type(raw_line) == 'string' and #raw_line > 0 then
+        setNestedField(result, "message", raw_line)
     else
-        title = getValue(event, "threatName")
-            or getValue(event, "subject")
-            or "Proofpoint Mail event"
+        setNestedField(result, "message", "Proofpoint Mail event")
+    end
+
+    -- finding_info: prefer sendmail queue id as uid, fall back to guid / observo id.
+    local qid = getValue(sm, "qid") or getValue(sm, "guid") or getValue(event, "id") or "unknown"
+    setNestedField(result, "finding_info.uid", tostring(qid))
+
+    local stat = getValue(sm, "stat")
+    local title
+    if type(stat) == 'string' and #stat > 0 then
+        -- "Sent (...)" lines have the action in the stat prefix.
+        local stat_word = stat:match("^(%a+)")
+        title = "Proofpoint Mail " .. (stat_word or stat)
+    elseif getValue(sm, "from") then
+        title = "Proofpoint Mail queued"
+    elseif getValue(sm, "to") then
+        title = "Proofpoint Mail delivery"
+    else
+        title = "Proofpoint Mail event"
     end
     setNestedField(result, "finding_info.title", title)
 
-    -- Actor / user
-    local sender = parsed.from_addr or getValue(event, "sender")
+    -- Email sender / actor
+    local sender = stripBrackets(getValue(sm, "from"))
     if type(sender) == 'string' and #sender > 0 then
         setNestedField(result, "actor.user.email_addr", sender)
         setNestedField(result, "email.from", sender)
         setNestedField(result, "email.smtp_from", sender)
     end
 
-    local tap_recipients = getValue(event, "recipient") or getValue(event, "toAddresses")
-    local primary_rcpt = parsed.to_addr
-    if not primary_rcpt and type(tap_recipients) == 'table' and type(tap_recipients[1]) == 'string' then
-        primary_rcpt = tap_recipients[1]
+    -- Recipient: sm.to is an array OR the sm.to field may be absent on from= lines.
+    local primary_rcpt
+    local rcpt_list = {}
+    local sm_to = getValue(sm, "to")
+    if type(sm_to) == 'table' then
+        for _, r in ipairs(sm_to) do
+            local clean = stripBrackets(r)
+            if type(clean) == 'string' and #clean > 0 then
+                table.insert(rcpt_list, clean)
+                if not primary_rcpt then primary_rcpt = clean end
+            end
+        end
+    elseif type(sm_to) == 'string' then
+        primary_rcpt = stripBrackets(sm_to)
+        if primary_rcpt and #primary_rcpt > 0 then rcpt_list = { primary_rcpt } end
     end
     if type(primary_rcpt) == 'string' and #primary_rcpt > 0 then
         setNestedField(result, "user.email_addr", primary_rcpt)
         setNestedField(result, "email.smtp_to", primary_rcpt)
-        setNestedField(result, "email.to", { primary_rcpt })
+    end
+    if #rcpt_list > 0 then
+        setNestedField(result, "email.to", rcpt_list)
     end
 
-    setNestedField(result, "email.message_uid", getValue(event, "messageID"))
-    setNestedField(result, "email.subject", getValue(event, "subject"))
-    if parsed.size then setNestedField(result, "email.size", parsed.size) end
-    if parsed.relay then setNestedField(result, "email.delivered_to", parsed.relay) end
+    -- Email envelope details
+    local msgid = stripBrackets(getValue(sm, "msgid"))
+    if type(msgid) == 'string' and #msgid > 0 then
+        setNestedField(result, "email.message_uid", msgid)
+    end
+    local size = tonumber(getValue(sm, "sizeBytes"))
+    if size then setNestedField(result, "email.size", size) end
+    local relay = getValue(sm, "relay")
+    if type(relay) == 'string' and #relay > 0 then
+        setNestedField(result, "email.delivered_to", relay)
+    end
+    local mailer = getValue(sm, "mailer")
+    if type(mailer) == 'string' then setNestedField(result, "email.x_originating_ip", mailer) end
 
-    -- Status
-    if parsed.stat then
-        local s = parsed.stat:lower()
-        if s:match("sent") then
-            setNestedField(result, "status_id", 1)
+    -- Status from sendmail stat= or dsn=
+    if type(stat) == 'string' and #stat > 0 then
+        local s = stat:lower()
+        if s:match("^sent") then
+            setNestedField(result, "status_id", 1) -- Success
             setNestedField(result, "status", "Sent")
         elseif s:match("defer") or s:match("queued") then
             setNestedField(result, "status_id", 3)
-            setNestedField(result, "status", parsed.stat)
-        elseif s:match("bounce") or s:match("reject") or s:match("refus") then
+            setNestedField(result, "status", stat:sub(1, 40))
+        elseif s:match("bounce") or s:match("reject") or s:match("refus") or s:match("unknown") then
             setNestedField(result, "status_id", 2)
-            setNestedField(result, "status", parsed.stat)
+            setNestedField(result, "status", stat:sub(1, 40))
             setNestedField(result, "severity_id", 3)
         else
-            setNestedField(result, "status", parsed.stat)
+            setNestedField(result, "status", stat:sub(1, 40))
         end
     end
+    local dsn = getValue(sm, "dsn")
+    if type(dsn) == 'string' and #dsn > 0 then
+        setNestedField(result, "status_code", dsn)
+    end
 
-    -- Metadata
+    -- TLS context (if present, otherwise skip)
+    local tls_version = getValue(tls, "version")
+    if type(tls_version) == 'string' and tls_version ~= "NONE" then
+        setNestedField(result, "tls.version", tls_version)
+    end
+    local tls_cipher = getValue(tls, "cipher")
+    if type(tls_cipher) == 'string' and tls_cipher ~= "NONE" then
+        setNestedField(result, "tls.cipher", tls_cipher)
+    end
+
+    -- Observo envelope -> metadata + cloud
     setNestedField(result, "metadata.uid", getValue(event, "id"))
     setNestedField(result, "metadata.log_name", "proofpoint_mail")
     setNestedField(result, "metadata.correlation_uid",
-        getNestedField(event, "metadata.customerId") or getValue(event, "cluster"))
+        getValue(sm, "guid") or getValue(md, "customerId"))
 
-    local agent_host = getNestedField(event, "metadata.origin.data.agent")
-        or getNestedField(event, "pps.agent")
-    if type(agent_host) == 'string' then
+    local agent_host = getValue(origin_data, "agent") or getNestedField(event, "pps.agent")
+    if type(agent_host) == 'string' and #agent_host > 0 then
         setNestedField(result, "src_endpoint.hostname", agent_host)
     end
-    local cid = getNestedField(event, "metadata.origin.data.cid")
-    if type(cid) == 'string' then setNestedField(result, "cloud.account.name", cid) end
-    local theater = getNestedField(event, "metadata.origin.data.theater")
-    if type(theater) == 'string' then setNestedField(result, "cloud.region", theater) end
+    local cid = getValue(origin_data, "cid") or getNestedField(event, "pps.cid")
+    if type(cid) == 'string' and #cid > 0 then
+        setNestedField(result, "cloud.account.name", cid)
+    end
+    local theater = getValue(origin_data, "theater") or getNestedField(event, "pps.theater")
+    if type(theater) == 'string' and #theater > 0 then
+        setNestedField(result, "cloud.region", theater)
+    end
 
     -- Evidences
-    if sender or primary_rcpt or parsed.queue_id then
+    if sender or primary_rcpt or qid then
         table.insert(result.evidences, { data = {
-            queue_id = parsed.queue_id,
+            queue_id = qid,
             sender = sender,
             recipient = primary_rcpt,
-            stat = parsed.stat,
-            relay = parsed.relay,
+            stat = stat,
+            relay = relay,
+            msgid = msgid,
+            size = size,
         }, type = "email_headers" })
     end
 
@@ -266,9 +281,13 @@ function processEvent(event)
         table.insert(result.observables,
             { name = "src_endpoint.hostname", type = "Hostname", type_id = 1, value = agent_host })
     end
-    if type(parsed.queue_id) == 'string' and #parsed.queue_id > 0 then
+    if type(qid) == 'string' and #qid > 0 and qid ~= "unknown" then
         table.insert(result.observables,
-            { name = "finding_info.uid", type = "Other UID", type_id = 40, value = parsed.queue_id })
+            { name = "finding_info.uid", type = "Other UID", type_id = 40, value = qid })
+    end
+    if type(msgid) == 'string' and #msgid > 0 then
+        table.insert(result.observables,
+            { name = "email.message_uid", type = "Other UID", type_id = 40, value = msgid })
     end
 
     setNestedField(result, "raw_data", event)

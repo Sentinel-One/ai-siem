@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-04-20T03:40:52Z",
+  "syslog_priority": 135,
+  "unix_timestamp": 1776656452,
+  "hostname": "meraki-mx64",
+  "log_type": "vpn_firewall",
+  "src_ip": "10.0.34.12",
+  "dst_ip": "93.184.232.81",
+  "protocol": "tcp",
+  "src_port": 64270,
+  "dst_port": 80,
+  "vpn_firewall_pattern": "blocked 443",
+  "message": "<135> 1776656452 meraki-mx64 vpn_firewall src=10.0.34.12 dst=93.184.232.81 protocol=tcp sport=64270 dport=80 pattern: blocked 443"
+}

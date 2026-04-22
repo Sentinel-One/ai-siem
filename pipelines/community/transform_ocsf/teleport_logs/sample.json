@@ -1,0 +1,11 @@
+{
+  "event": "role.deleted",
+  "uid": "e7d2d159-644e-4b21-81dd-d513007b2436",
+  "time": "2026-04-20T02:49:52.871481+00:00Z",
+  "user": "alice",
+  "cluster_name": "teleport.company.com",
+  "metadata": {
+    "origin": "cli",
+    "session_id": "7637dfbf-7133-4d45-95e2-a2323822fcb9"
+  }
+}

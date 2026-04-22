@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "component": "transform",
+  "template_name": "OCSFSerializer",
+  "display_name": "Ufw Firewall Logs",
+  "grade": {
+    "letter": "B",
+    "score": 85,
+    "verdict": "signed_off",
+    "required_field_coverage_pct": 100.0,
+    "source_field_coverage_pct": 100,
+    "tested_with_realistic_event": false,
+    "validated_at": "2026-04-19"
+  },
+  "ocsf": {
+    "class_uid": 4001,
+    "class_name": "Network Activity",
+    "category_uid": 4,
+    "category_name": "Network Activity",
+    "version": "1.3.0"
+  },
+  "description": "OCSF-compliant Lua serializer for Ufw Firewall Logs. Maps source events to OCSF Network Activity class_uid 4001.",
+  "vendor": "community",
+  "source_name": "ufw_firewall_logs-latest",
+  "version": "v1.0",
+  "parameters": [
+    {
+      "name": "serializer",
+      "type": "select",
+      "value": "ufw-firewall-logs-lua",
+      "description": "Serializer identifier used by Observo runtime"
+    },
+    {
+      "name": "lua",
+      "type": "lua_code",
+      "value": "-- UFW Firewall Logs OCSF Transformation\n-- Maps UFW firewall log events to OCSF Network Activity class\n\n-- Constants\nlocal CLASS_UID = 4001\nlocal CATEGORY_UID = 4\nlocal CLASS_NAME = \"Network Activity\"\nlocal CATEGORY_NAME = \"Network Activity\"\n\n-- Helper Functions\nfunction getNestedField(obj, path)\n    if obj == nil or path == nil or path == '' then return nil end\n    local current = obj\n    for key in string.gmatch(path, '[^.]+') do\n        if current == nil or current[key] == nil then return nil end\n        current = current[key]\n    end\n    return current\nend\n\nfunction setNestedField(obj, path, value)\n    if value == nil or path == nil or path == '' then return end\n    local keys = {}\n    for key in string.gmatch(path, '[^.]+') do table.insert(keys, key) end\n    if #keys == 0 then return end\n    local current = obj\n    for i = 1, #keys - 1 do\n        if current[keys[i]] == nil then current[keys[i]] = {} end\n        current = current[keys[i]]\n    end\n    current[keys[#keys]] = value\nend\n\nfunction getValue(tbl, key, default)\n    local value = tbl[key]\n    return value ~= nil and value or default\nend\n\nfunction no_nulls(d, rn)\n    if type(d) == \"table\" then\n        for k, v in pairs(d) do\n            if type(v) == \"userdata\" then d[k] = rn\n            elseif type(v) == \"table\" then no_nulls(v, rn) end\n        end\n    end\n    return d\nend\n\nfunction copyUnmappedFields(event, mappedPaths, result)\n    for k, v in pairs(event) do\n        if not mappedPaths[k] and k ~= \"_ob\" and v ~= nil and v ~= \"\" then\n            setNestedField(result, \"unmapped.\" .. k, v)\n        end\n    end\nend\n\n-- Parse UFW log message format\nfunction parseUfwMessage(message)\n    if type(message) ~= \"string\" then return {} end\n    \n    local parsed = {}\n    \n    -- Extract action (ALLOW/BLOCK/DENY)\n    local action = message:match(\"%[UFW ([A-Z]+)%]\") or message:match(\"UFW: ([A-Z]+)\")\n    if action then parsed.action = action end\n    \n    -- Extract source IP and port\n    local src_ip, src_port = message:match(\"SRC=([%d%.]+).-SPT=(%d+)\")\n    if src_ip then parsed.src_ip = src_ip end\n    if src_port then parsed.src_port = tonumber(src_port) end\n    \n    -- Extract destination IP and port\n    local dst_ip, dst_port = message:match(\"DST=([%d%.]+).-DPT=(%d+)\")\n    if dst_ip then parsed.dst_ip = dst_ip end\n    if dst_port then parsed.dst_port = tonumber(dst_port) end\n    \n    -- Extract protocol\n    local protocol = message:match(\"PROTO=([%w]+)\")\n    if protocol then parsed.protocol = protocol end\n    \n    -- Extract interface\n    local interface = message:match(\"IN=([%w%-%.]+)\")\n    if interface and interface ~= \"\" then parsed.interface_in = interface end\n    \n    local out_interface = message:match(\"OUT=([%w%-%.]+)\")\n    if out_interface and out_interface ~= \"\" then parsed.interface_out = out_interface end\n    \n    -- Extract MAC addresses\n    local mac = message:match(\"MAC=([%w%:]+)\")\n    if mac then parsed.mac = mac end\n    \n    -- Extract length\n    local len = message:match(\"LEN=(%d+)\")\n    if len then parsed.length = tonumber(len) end\n    \n    -- Extract TTL\n    local ttl = message:match(\"TTL=(%d+)\")\n    if ttl then parsed.ttl = tonumber(ttl) end\n    \n    return parsed\nend\n\n-- Map UFW action to OCSF activity_id\nfunction getActivityId(action)\n    if not action then return 99 end -- Other\n    local actionMap = {\n        ALLOW = 1,    -- Allow\n        BLOCK = 2,    -- Deny  \n        DENY = 2,     -- Deny\n        DROP = 2,     -- Deny\n        REJECT = 2    -- Deny\n    }\n    return actionMap[action:upper()] or 99\nend\n\n-- Map action to severity\nfunction getSeverityFromAction(action)\n    if not action then return 1 end -- Informational\n    local severityMap = {\n        ALLOW = 1,    -- Informational\n        BLOCK = 3,    -- Medium\n        DENY = 3,     -- Medium\n        DROP = 3,     -- Medium\n        REJECT = 3    -- Medium\n    }\n    return severityMap[action:upper()] or 1\nend\n\n-- Convert timestamp to milliseconds since epoch\nfunction parseTimestamp(timestamp)\n    if not timestamp then return os.time() * 1000 end\n    \n    -- Handle various timestamp formats\n    if type(timestamp) == \"number\" then\n        -- Already epoch time\n        return timestamp < 1e12 and timestamp * 1000 or timestamp\n    end\n    \n    if type(timestamp) == \"string\" then\n        -- Try ISO format\n        local year, month, day, hour, min, sec = timestamp:match(\"(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)\")\n        if year then\n            local time_table = {\n                year = tonumber(year),\n                month = tonumber(month),\n                day = tonumber(day),\n                hour = tonumber(hour),\n                min = tonumber(min),\n                sec = tonumber(sec),\n                isdst = false\n            }\n            return os.time(time_table) * 1000\n        end\n        \n        -- Try syslog format (Oct 15 14:30:25)\n        local months = {Jan=1, Feb=2, Mar=3, Apr=4, May=5, Jun=6, Jul=7, Aug=8, Sep=9, Oct=10, Nov=11, Dec=12}\n        local mon, day2, hour2, min2, sec2 = timestamp:match(\"(%a+)%s+(%d+)%s+(%d+):(%d+):(%d+)\")\n        if mon and months[mon] then\n            local time_table = {\n                year = os.date(\"%Y\"),\n                month = months[mon],\n                day = tonumber(day2),\n                hour = tonumber(hour2),\n                min = tonumber(min2),\n                sec = tonumber(sec2),\n                isdst = false\n            }\n            return os.time(time_table) * 1000\n        end\n    end\n    \n    return os.time() * 1000\nend\n\n-- Main transformation function\nfunction processEvent(event)\n    if type(event) ~= \"table\" then return nil end\n    \n    local result = {}\n    local mappedPaths = {}\n    \n    -- Set OCSF required fields\n    result.class_uid = CLASS_UID\n    result.category_uid = CATEGORY_UID\n    result.class_name = CLASS_NAME\n    result.category_name = CATEGORY_NAME\n    \n    -- Parse message field or raw log\n    local message = event.message or event.raw_data or event.log or event._raw or \"\"\n    local parsed = parseUfwMessage(message)\n    \n    -- Map activity and type\n    local activity_id = getActivityId(parsed.action)\n    result.activity_id = activity_id\n    result.type_uid = CLASS_UID * 100 + activity_id\n    \n    -- Set activity name\n    if parsed.action then\n        result.activity_name = \"Firewall \" .. parsed.action\n        mappedPaths.action = true\n    else\n        result.activity_name = \"Network Activity\"\n    end\n    \n    -- Set severity based on action\n    result.severity_id = getSeverityFromAction(parsed.action)\n    \n    -- Map timestamp\n    local timestamp = event.timestamp or event.time or event[\"@timestamp\"] or event.eventTime\n    result.time = parseTimestamp(timestamp)\n    if event.timestamp then mappedPaths.timestamp = true end\n    if event.time then mappedPaths.time = true end\n    if event[\"@timestamp\"] then mappedPaths[\"@timestamp\"] = true end\n    if event.eventTime then mappedPaths.eventTime = true end\n    \n    -- Map source endpoint\n    if parsed.src_ip then\n        setNestedField(result, \"src_endpoint.ip\", parsed.src_ip)\n    end\n    if parsed.src_port then\n        setNestedField(result, \"src_endpoint.port\", parsed.src_port)\n    end\n    \n    -- Map destination endpoint  \n    if parsed.dst_ip then\n        setNestedField(result, \"dst_endpoint.ip\", parsed.dst_ip)\n    end\n    if parsed.dst_port then\n        setNestedField(result, \"dst_endpoint.port\", parsed.dst_port)\n    end\n    \n    -- Map protocol\n    if parsed.protocol then\n        result.protocol_name = parsed.protocol\n    end\n    \n    -- Set metadata\n    setNestedField(result, \"metadata.product.name\", \"UFW Firewall\")\n    setNestedField(result, \"metadata.product.vendor_name\", \"Ubuntu\")\n    setNestedField(result, \"metadata.version\", \"1.0.0\")\n    \n    -- Set status based on action\n    if parsed.action then\n        if parsed.action == \"ALLOW\" then\n            result.status = \"Success\"\n            result.status_id = 1\n        else\n            result.status = \"Failure\" \n            result.status_id = 2\n        end\n    end\n    \n    -- Store original message\n    if message and message ~= \"\" then\n        result.message = message\n        mappedPaths.message = true\n        mappedPaths.raw_data = true\n        mappedPaths.log = true\n        mappedPaths[\"_raw\"] = true\n    end\n    \n    -- Add additional parsed fields to unmapped\n    if parsed.interface_in then\n        setNestedField(result, \"unmapped.interface_in\", parsed.interface_in)\n    end\n    if parsed.interface_out then  \n        setNestedField(result, \"unmapped.interface_out\", parsed.interface_out)\n    end\n    if parsed.mac then\n        setNestedField(result, \"unmapped.mac\", parsed.mac)\n    end\n    if parsed.length then\n        setNestedField(result, \"unmapped.packet_length\", parsed.length)\n    end\n    if parsed.ttl then\n        setNestedField(result, \"unmapped.ttl\", parsed.ttl)\n    end\n    \n    -- Copy unmapped fields\n    copyUnmappedFields(event, mappedPaths, result)\n    \n    -- Clean up nulls\n    result = no_nulls(result, nil)\n    \n    return result\nend",
+      "description": "Lua processEvent serializer \u2014 maps source fields to OCSF schema"
+    }
+  ],
+  "validation": {
+    "harness_grade": "B",
+    "harness_score": 85,
+    "harness_lint_score": 0.0,
+    "harness_required_coverage": 100.0,
+    "harness_field_coverage": 100,
+    "lua_validity": "pass",
+    "execution_passed": true,
+    "tested_with_realistic_event": false,
+    "orion_reviewed": true,
+    "orion_verdict": "signed_off",
+    "validated_at": "2026-04-19"
+  },
+  "provenance": {
+    "tier": "agent",
+    "source": "Purple-Pipeline-Parser-Eater AgenticLuaGenerator"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "identifier": "TTP Impersonation Protection",
+  "mimecastEvent": {
+    "date": "2026-04-20T03:40:53+0000",
+    "senderAddress": "CEO <ceo@fake-enterprise.com>",
+    "recipientAddress": "nyota.uhura@business.com",
+    "subject": "CEO: Quick question",
+    "messageId": "<019cd0cb-7aeb-48cc-91af-eca9651064c7@outlook.com>",
+    "impersonationType": "Display Name",
+    "targetedUser": "CEO",
+    "actionTriggered": "quarantine",
+    "route": "inbound",
+    "direction": "Inbound",
+    "confidence": 91,
+    "details": "Impersonation attempt detected: Display Name",
+    "ingestType": "ttp_impersonation"
+  }
+}

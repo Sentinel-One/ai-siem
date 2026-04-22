@@ -1,0 +1,101 @@
+{
+  "Record": {
+    "eventTime": "2026-04-20T03:36:06.2074Z",
+    "eventName": "UpdateUserRole",
+    "eventType": "Update User",
+    "eventID": "9975f265-e0d5-4b46-b097-8b7d2b6b62fc",
+    "requestID": "d8b655e6-bff3-464e-86a0-f6c405f49d39",
+    "userIdentity": {
+      "type": "User",
+      "principalId": "user-worf",
+      "accountId": "starfleet-command",
+      "userName": "worf.security"
+    },
+    "sourceIPAddress": "172.16.50.101",
+    "userAgent": "StarfleetAPI/2.0",
+    "requestParameters": {
+      "userEmail": "q.continuum@starfleet.corp",
+      "role": "captain",
+      "permissions": [
+        "read"
+      ],
+      "error": "invalid request format"
+    },
+    "responseElements": {
+      "status": "FAILED",
+      "message": "User role modification"
+    }
+  },
+  "body": {
+    "timestamp": "2026-04-20T03:36:06.2074Z",
+    "time": 1776656453207,
+    "class_uid": 8002,
+    "class_name": "Cloud Activity",
+    "category_uid": 8,
+    "category_name": "System Activity",
+    "activity_id": 3,
+    "activity_name": "Update User",
+    "type_uid": 800203,
+    "severity_id": 3,
+    "status_id": 2,
+    "src_endpoint": {
+      "ip": "172.16.50.101"
+    },
+    "user": {
+      "name": "worf.security",
+      "email_addr": "worf.security@starfleet.corp",
+      "account_uid": "user-worf",
+      "account_type": "User"
+    },
+    "service_account": {
+      "uid": "yBhxz8uPOLrRL7xz",
+      "name": "transporter-backup",
+      "account_type": "Service"
+    },
+    "cloud": {
+      "provider": "Wiz",
+      "region": "alpha-quadrant-1",
+      "account": "starfleet-command"
+    },
+    "status": "FAILED",
+    "message": "User role modification",
+    "enrichments": {
+      "action": "UpdateUserRole",
+      "action_parameters": {
+        "userEmail": "q.continuum@starfleet.corp",
+        "role": "captain",
+        "permissions": [
+          "read"
+        ],
+        "error": "invalid request format"
+      },
+      "user_agent": "StarfleetAPI/2.0"
+    },
+    "metadata": {
+      "correlation_uid": "9975f265-e0d5-4b46-b097-8b7d2b6b62fc",
+      "request_id": "d8b655e6-bff3-464e-86a0-f6c405f49d39",
+      "version": "1.0.0",
+      "product": {
+        "vendor_name": "Wiz",
+        "name": "Wiz Cloud Security"
+      }
+    },
+    "observables": [
+      {
+        "name": "src_ip",
+        "type": "IP Address",
+        "value": "172.16.50.101"
+      },
+      {
+        "name": "service_account",
+        "type": "User",
+        "value": "transporter-backup"
+      },
+      {
+        "name": "action",
+        "type": "Other",
+        "value": "UpdateUserRole"
+      }
+    ]
+  }
+}

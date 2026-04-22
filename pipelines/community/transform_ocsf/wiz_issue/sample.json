@@ -1,0 +1,67 @@
+{
+  "id": "wiz-issue-92324e96-d8d1-4e9a-bcb8-14eed356e1a5",
+  "targetExternalId": "arn:aws:s3:::company-public-assets",
+  "deleted": false,
+  "targetObjectProviderUniqueId": "arn:aws:s3:::company-public-assets",
+  "firstSeenAt": "2026-04-19T14:51:33.000Z",
+  "result": "FAIL",
+  "status": "REJECTED",
+  "severity": "MEDIUM",
+  "remediation": "Update bucket ACL to remove public access",
+  "resource": {
+    "id": "resource-8b1a9118-bd96-48fa-9661-c8fef99bc28c",
+    "providerId": "aws-account-123456789012",
+    "name": "company-public-assets",
+    "nativeType": "S3 Bucket",
+    "type": "BUCKET",
+    "region": "ap-northeast-1",
+    "subscription": {
+      "id": "sub-aws-prod-001",
+      "name": "AWS Production Account",
+      "externalId": "123456789012",
+      "cloudProvider": "AWS"
+    },
+    "projects": [
+      {
+        "id": "project-marketing-001",
+        "name": "Marketing Assets",
+        "riskProfile": {
+          "businessImpact": "MBI"
+        }
+      }
+    ],
+    "tags": [
+      {
+        "key": "Environment",
+        "value": "Production"
+      },
+      {
+        "key": "Department",
+        "value": "Marketing"
+      }
+    ]
+  },
+  "rule": {
+    "id": "rule-s3-public-001",
+    "graphId": "graph-rule-001",
+    "name": "S3 bucket is publicly accessible",
+    "description": "S3 bucket allows public read access",
+    "remediationInstructions": "Remove public ACL grants from bucket policy",
+    "functionAsControl": false
+  },
+  "securitySubCategories": [
+    {
+      "id": "cat-data-exposure-001",
+      "title": "Data Exposure",
+      "category": {
+        "id": "cat-parent-001",
+        "name": "Data Protection",
+        "framework": {
+          "id": "framework-cis-001",
+          "name": "CIS AWS Foundations Benchmark"
+        }
+      }
+    }
+  ],
+  "ignoreRules": null
+}

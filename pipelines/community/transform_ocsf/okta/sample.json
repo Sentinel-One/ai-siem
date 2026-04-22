@@ -1,0 +1,103 @@
+{
+  "actor": {
+    "id": "00u4729hjsVRU197Y5d7",
+    "type": "User",
+    "alternateId": "pnnpydhb@example.com",
+    "displayName": "Pnnpydhb",
+    "detailEntry": null
+  },
+  "client": {
+    "userAgent": {
+      "rawUserAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "os": "Linux",
+      "browser": "CHROME"
+    },
+    "zone": "null",
+    "device": "Computer",
+    "id": null,
+    "ipAddress": "95.196.9.145",
+    "geographicalContext": {
+      "city": "Hyderabad",
+      "state": "Telangana",
+      "country": "India",
+      "postalCode": "500004",
+      "geolocation": {
+        "lat": 17.3724,
+        "lon": 78.4378
+      }
+    }
+  },
+  "device": null,
+  "authenticationContext": {
+    "authenticationProvider": null,
+    "credentialProvider": null,
+    "credentialType": null,
+    "issuer": null,
+    "interface": null,
+    "authenticationStep": 0,
+    "rootSessionId": "102eA1R",
+    "externalSessionId": "102eA1R2M"
+  },
+  "displayMessage": "Create API token",
+  "eventType": "system.api_token.create",
+  "outcome": {
+    "result": "SUCCESS",
+    "reason": null
+  },
+  "published": "2026-04-20T02:26:37.000Z",
+  "securityContext": {
+    "asNumber": 150008,
+    "asOrg": "s r fibernet",
+    "isp": "pioneer elabs ltd.",
+    "domain": null,
+    "isProxy": false
+  },
+  "severity": "OTHER",
+  "debugContext": {
+    "debugData": {
+      "concurrencyPercentage": "50",
+      "requestId": "923c54e8-a3b4-4518-bc64-00b228adbe84",
+      "dtHash": "43fa03767e62cd45bf1b9ecf03ca2ee6f8d42c1248d6c3d5adcf990c055128a0",
+      "rateLimitPercentage": "50",
+      "networkConnection": "ANYWHERE",
+      "requestUri": "/api/internal/tokens",
+      "url": "/api/internal/tokens?expand=user"
+    }
+  },
+  "legacyEventType": "api.token.create",
+  "transaction": {
+    "type": "WEB",
+    "id": "bc6400b228adbe84923c54e8a3b44518",
+    "detail": {}
+  },
+  "uuid": "b2ece00c-6728-4e85-a08b-b0e3ccdcbaf2",
+  "version": "0",
+  "request": {
+    "ipChain": [
+      {
+        "ip": "103.99.111.142",
+        "geographicalContext": {
+          "city": "Hyderabad",
+          "state": "Telangana",
+          "country": "India",
+          "postalCode": "500004",
+          "geolocation": {
+            "lat": 17.3724,
+            "lon": 78.4378
+          }
+        },
+        "version": "V4",
+        "source": null
+      }
+    ]
+  },
+  "target": [
+    {
+      "id": "00T2lyn19",
+      "type": "Token",
+      "alternateId": "unknown",
+      "displayName": "Test",
+      "detailEntry": null
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-04-19T09:35:52Z",
+  "hostname": "web01",
+  "facility": "auth",
+  "severity": "warning",
+  "process_name": "su",
+  "process_id": 30423,
+  "username": "centos",
+  "src_ip": "93.196.223.221",
+  "src_port": 36553,
+  "auth_method": "pam",
+  "status": "failure",
+  "status_detail": "Authentication failed",
+  "message": "su: authentication failure for centos"
+}

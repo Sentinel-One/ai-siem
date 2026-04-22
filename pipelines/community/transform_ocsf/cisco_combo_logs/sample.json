@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-04-19T14:09:53.030684+00:00",
+  "hostname": "router-29",
+  "device_ip": "30.133.137.140",
+  "facility": "LOCAL4",
+  "severity": "info",
+  "mnemonic": "STATE",
+  "facility_mnemonic": "TRACKING",
+  "sequence_number": 342870,
+  "message": "1 ip sla 1 reachability Up->Down",
+  "raw_message": "*Apr 19 14:09:53.030: %TRACKING-INFO-STATE: 1 ip sla 1 reachability Up->Down",
+  "process_name": "TRACKING",
+  "ios_version": "12.9.4",
+  "hardware_platform": "C2960",
+  "uptime": "357 days, 0 hours, 49 minutes",
+  "location": "Branch-Office"
+}

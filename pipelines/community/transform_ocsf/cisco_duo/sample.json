@@ -1,0 +1,61 @@
+{
+  "timestamp": "2026-04-20T03:40:52Z",
+  "time": 1776656452716,
+  "class_uid": 3002,
+  "class_name": "Authentication",
+  "category_uid": 3,
+  "category_name": "Identity & Access Management",
+  "activity_id": 1,
+  "activity_name": "Logon",
+  "type_uid": 300201,
+  "severity_id": 1,
+  "status_id": 1,
+  "user": {
+    "name": "leonard.mccoy",
+    "account_uid": "leonard.mccoy",
+    "account_type": "User"
+  },
+  "src_endpoint": {
+    "ip": "198.51.100.150",
+    "location": {
+      "desc": "Seattle, US",
+      "city": "Seattle",
+      "country": "US"
+    }
+  },
+  "auth_protocol": "passcode",
+  "auth_protocol_id": 2,
+  "status": "SUCCESS",
+  "message": "TOTP passcode verified successfully",
+  "mfa_factors": [
+    {
+      "factor_type": "passcode",
+      "factor_result": "SUCCESS",
+      "factor_desc": "TOTP token"
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "product": {
+      "vendor_name": "Cisco",
+      "name": "Cisco Duo Security"
+    }
+  },
+  "observables": [
+    {
+      "name": "user",
+      "type": "User",
+      "value": "leonard.mccoy"
+    },
+    {
+      "name": "src_ip",
+      "type": "IP Address",
+      "value": "198.51.100.150"
+    },
+    {
+      "name": "auth_factor",
+      "type": "Other",
+      "value": "passcode"
+    }
+  ]
+}

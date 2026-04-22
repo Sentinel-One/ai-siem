@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-04-20T03:40:52.751732Z",
+  "vendor": "Cisco",
+  "product": "Meraki Flow Logs",
+  "version": "1.0",
+  "event_type": "security_event",
+  "message": "Sample Cisco Meraki Flow Logs event at 2026-04-20T03:40:52.751732Z",
+  "severity": "critical",
+  "category": "security",
+  "source_ip": "192.168.130.22",
+  "user": "user6200",
+  "device": "device-444",
+  "log_level": "WARN",
+  "event_id": 28251,
+  "session_id": "sess_177986",
+  "class_name": "Security Event",
+  "activity_name": "Log Generated",
+  "location": "Tokyo"
+}

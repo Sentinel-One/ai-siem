@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-04-19T23:56:52.753336+00:00",
+  "hostname": "asa-43",
+  "device_ip": "187.202.143.67",
+  "facility": "LOCAL3",
+  "severity": "info",
+  "mnemonic": "SUCCESS",
+  "facility_mnemonic": "SEC_LOGIN",
+  "sequence_number": 150664,
+  "message": "Login Success [user: admin] [Source: 104.124.71.157] [localport: 22]",
+  "raw_message": "*Apr 19 23:56:52.753: %SEC_LOGIN-INFO-SUCCESS: Login Success [user: admin] [Source: 104.124.71.157] [localport: 22]",
+  "process_name": "SEC_LOGIN",
+  "ios_version": "17.3.5",
+  "hardware_platform": "ASR1001",
+  "uptime": "48 days, 20 hours, 27 minutes",
+  "location": "Building-B",
+  "source_ip": "109.164.200.161",
+  "username": "netadmin",
+  "login_method": "Telnet",
+  "session_id": 814
+}

@@ -1,0 +1,44 @@
+{
+  "kind": "admin#reports#activity",
+  "id": {
+    "time": "2026-04-20T03:32:52.967234+00:00",
+    "uniqueQualifier": "4878542320735016189",
+    "applicationName": "admin",
+    "customerId": "C01NCC1701"
+  },
+  "etag": "\"d27c1b97272840a9b0d1738ada53d081\"",
+  "actor": {
+    "email": "starfleet-admin@enterprise.starfleet.corp",
+    "profileId": "328913592501844953"
+  },
+  "ipAddress": "123.60.216.77",
+  "events": [
+    {
+      "type": "USER_SETTINGS",
+      "name": "GRANT_ADMIN_ROLE",
+      "parameters": [
+        {
+          "name": "USER_EMAIL",
+          "value": "jean.picard@starfleet.corp"
+        },
+        {
+          "name": "USER_NAME",
+          "value": "Jean-Luc Picard"
+        },
+        {
+          "name": "SETTING_NAME",
+          "value": "Calendar"
+        },
+        {
+          "name": "NEW_VALUE",
+          "value": "ENABLED"
+        },
+        {
+          "name": "OLD_VALUE",
+          "value": "DISABLED"
+        }
+      ]
+    }
+  ],
+  "ownerDomain": "starfleet.corp"
+}

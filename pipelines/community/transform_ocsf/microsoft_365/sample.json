@@ -1,0 +1,170 @@
+{
+  "id": "cb1628d2-7c07-4435-9f4e-87fd44024d05",
+  "azureSubscriptionId": "6deb1e8b-896d-484a-a649-aeb6aebfeaf9",
+  "azureTenantId": "8c7e1716-01d8-4aeb-ac89-c691e8957e6f",
+  "activityGroupName": "Suspicious email forwarding",
+  "assignedTo": "unassigned",
+  "category": "MaliciousEmail",
+  "closedDateTime": "2026-04-20T13:40:52.634172Z",
+  "cloudAppStates": [
+    {
+      "destinationServiceIp": "135.249.79.95",
+      "destinationServiceName": "SharePoint Online",
+      "riskScore": "66"
+    }
+  ],
+  "comments": [
+    "Alert generated at 2026-04-20 03:33:52",
+    "Escalated to security team"
+  ],
+  "confidence": 97,
+  "createdDateTime": "2026-04-20T03:33:52.634172Z",
+  "description": "Microsoft 365 security alert: Suspicious email forwarding. This alert indicates potential maliciousemail activity detected in your environment.",
+  "detectionIds": [
+    "de01dafc-efd2-47a5-9d71-9ca354ae2bc5"
+  ],
+  "eventDateTime": "2026-04-20T03:36:52.634172Z",
+  "feedback": "falsePositive",
+  "incidentIds": [],
+  "lastEventDateTime": "2026-04-20T03:54:52.634172Z",
+  "lastModifiedDateTime": "2026-04-20T03:40:52.634172Z",
+  "malwareStates": [],
+  "networkConnections": [
+    {
+      "applicationName": "chrome.exe",
+      "destinationAddress": "199.227.89.52",
+      "destinationDomain": "graph.microsoft.com",
+      "destinationPort": "8080",
+      "destinationUrl": "https://domain-62.com/api/data",
+      "direction": "Outbound",
+      "domainRegisteredDateTime": "2025-07-18T03:40:52.634250Z",
+      "localDnsName": "workstation-937.internal.com",
+      "natDestinationAddress": "54.175.90.160",
+      "natDestinationPort": "41509",
+      "natSourceAddress": "10.79.101.231",
+      "natSourcePort": "40428",
+      "protocol": "UDP",
+      "riskScore": "24",
+      "sourceAddress": "10.246.169.54",
+      "sourcePort": "56074",
+      "status": "Timeout",
+      "urlCategory": "Malicious"
+    },
+    {
+      "applicationName": "teams.exe",
+      "destinationAddress": "77.78.37.51",
+      "destinationDomain": "suspicious-domain.com",
+      "destinationPort": "993",
+      "destinationUrl": "https://suspicious-domain-9.com/api/data",
+      "direction": "Inbound",
+      "domainRegisteredDateTime": "2025-12-29T03:40:52.634286Z",
+      "localDnsName": "workstation-611.company.com",
+      "natDestinationAddress": "112.48.136.205",
+      "natDestinationPort": "13031",
+      "natSourceAddress": "10.81.153.186",
+      "natSourcePort": "62464",
+      "protocol": "ICMP",
+      "riskScore": "70",
+      "sourceAddress": "10.106.169.99",
+      "sourcePort": "24233",
+      "status": "Timeout",
+      "urlCategory": "Malicious"
+    },
+    {
+      "applicationName": "outlook.exe",
+      "destinationAddress": "143.207.0.118",
+      "destinationDomain": "outlook.office365.com",
+      "destinationPort": "443",
+      "destinationUrl": "https://suspicious-domain-61.com/api/data",
+      "direction": "Outbound",
+      "domainRegisteredDateTime": "2026-04-02T03:40:52.634305Z",
+      "localDnsName": "workstation-181.internal.com",
+      "natDestinationAddress": "69.11.88.152",
+      "natDestinationPort": "30303",
+      "natSourceAddress": "10.117.172.211",
+      "natSourcePort": "16650",
+      "protocol": "ICMP",
+      "riskScore": "82",
+      "sourceAddress": "10.221.94.206",
+      "sourcePort": "37257",
+      "status": "Timeout",
+      "urlCategory": "Technology"
+    }
+  ],
+  "processes": [
+    {
+      "accountName": "bob.jones",
+      "commandLine": "C:\\Windows\\System32\\regsvr32.exe -ExecutionPolicy Bypass 1c17ec96df224690",
+      "createdDateTime": "2026-04-20T03:15:52.634324Z",
+      "fileHash": {
+        "hashType": "sha256",
+        "hashValue": "ca810c03ed064d33ad983d1f289575f907a64d598cb04f709955f5ac1e617080"
+      },
+      "integrityLevel": "Low",
+      "isElevated": "true",
+      "name": "regsvr32.exe",
+      "parentProcessCreatedDateTime": "2026-04-20T03:21:52.634333Z",
+      "parentProcessId": 8701,
+      "parentProcessName": "explorer.exe",
+      "path": "C:\\Windows\\System32\\regsvr32.exe",
+      "processId": 5212
+    }
+  ],
+  "recommendedActions": [
+    "Investigate user activity",
+    "Review mailbox rules",
+    "Check for additional indicators",
+    "Validate with user"
+  ],
+  "registryKeyStates": [],
+  "securityResources": [
+    "Microsoft Cloud App Security",
+    "Azure Security Center",
+    "Microsoft Defender for Office 365"
+  ],
+  "severity": "critical",
+  "sourceMaterials": [
+    "https://security.microsoft.com/alerts/f76fd6f1-7179-4045-a0ad-ca79d7ac572d",
+    "https://portal.office.com/adminportal/home#/MessageCenter/:/messages/cd845bfa-9e65-4051-896b-0b44d35b0cdd"
+  ],
+  "status": "dismissed",
+  "tags": [
+    "maliciousemail",
+    "m365",
+    "security",
+    "automated"
+  ],
+  "title": "Microsoft 365 Alert: Suspicious email forwarding",
+  "triggers": [
+    {
+      "name": "MaliciousEmail_detection_rule",
+      "type": "SecurityEvent",
+      "value": "79"
+    }
+  ],
+  "userStates": [
+    {
+      "aadUserId": "5bdb7c45-546d-4f19-8b7c-b24815554c57",
+      "accountName": "jane.smith",
+      "domainName": "company.com",
+      "emailRole": "sender",
+      "isVpn": "true",
+      "logonDateTime": "2026-04-19T07:40:52.634379Z",
+      "logonId": "903143",
+      "logonIp": "89.36.216.146",
+      "logonLocation": "Seattle, WA",
+      "logonType": "Batch",
+      "onPremisesSecurityIdentifier": "S-1-5-21-797898851-168380601-9172-4847",
+      "riskScore": "29",
+      "userAgent": "Microsoft Office/16.0 (Windows NT 10.0; Microsoft Outlook 16.0.14326; Pro)",
+      "userPrincipalName": "jane.smith@company.com"
+    }
+  ],
+  "vendorInformation": {
+    "provider": "Microsoft",
+    "providerVersion": "1.0",
+    "subProvider": "Microsoft 365 Defender",
+    "vendor": "Microsoft"
+  },
+  "riskScore": "75"
+}

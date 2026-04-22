@@ -1,0 +1,3 @@
+{
+  "raw": "timestamp=2026-04-20T03:40:53.033780+00:00,hostname=f5-bigip-1,device_ip=212.126.91.220,module=APM,event_type=SESSION_TERMINATED,severity=INFO,facility=LOCAL0,priority=21,slot=1.1,tmm=2,virtual_server=vs_api_5,pool=pool_web_4,client_ip=5.208.9.191,server_ip=10.29.4.69,client_port=49852,server_port=8443,protocol=HTTP,username=user84,session_id=sess_942865417,access_profile=ap_portal,authentication_method=RADIUS,virtual_server_name=/Common/vs_portal,client_type=VPN Client,geo_location=CA,bytes_in=7321,bytes_out=92900,packets_in=664,packets_out=883,class_uid=4001,class_name=Network Activity,category_uid=4,category_name=Network Activity,activity_id=6,activity_name=Traffic,type_uid=400106,severity_id=1,status_id=2"
+}

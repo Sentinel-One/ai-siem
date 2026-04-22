@@ -1,0 +1,60 @@
+{
+  "time": 1776656452626,
+  "creationTime": 1776656333626,
+  "model": {
+    "name": "Anomalous File / Internet Facing System File Download",
+    "description": "An internet-facing system has downloaded an unusual file type",
+    "id": 861,
+    "version": 4,
+    "uuid": "789427c6-14d5-4a2b-9e0c-2b0fafb27ed4"
+  },
+  "breachUrl": "https://darktrace-07fa459a-0001-01/#modelbreach/71659",
+  "pbid": 5394290,
+  "score": 0.722,
+  "device": {
+    "hostname": "PRINTER-971",
+    "ip": "10.98.33.252",
+    "mac": "55:de:36:e2:4a:d6",
+    "type": "router",
+    "os": "Unknown"
+  },
+  "triggeredComponents": [
+    {
+      "time": 1776656452626,
+      "uid": "eb6c21aa-6a55-4a9a-91f5-457fc94ac2d4",
+      "pid": 9692,
+      "detail": {
+        "fileName": "chrome_update.exe",
+        "fileHash": "ea54cb6d1ea944ee9c0a9e70a006c931",
+        "fileSize": 424534,
+        "downloadSource": "http://crypto-miner-4.io/download"
+      }
+    },
+    {
+      "time": 1776656452626,
+      "uid": "eb6c21aa-6a55-4a9a-91f5-457fc94ac2d4",
+      "pid": 9692,
+      "detail": {
+        "connections": 33,
+        "bytesIn": 7258485,
+        "bytesOut": 4496939,
+        "duration": 2974
+      }
+    }
+  ],
+  "commentCount": 4,
+  "acknowledged": true,
+  "category": "malware",
+  "mitreTactics": [
+    "Execution",
+    "Defense Evasion"
+  ],
+  "tags": [
+    "darktrace",
+    "anomaly",
+    "security",
+    "malware",
+    "trojan",
+    "virus"
+  ]
+}

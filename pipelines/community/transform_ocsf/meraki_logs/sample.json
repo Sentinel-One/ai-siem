@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-04-20T03:40:53.133310Z",
+  "vendor": "Cisco",
+  "product": "Meraki Flow Logs",
+  "version": "1.0",
+  "event_type": "security_event",
+  "message": "Sample Cisco Meraki Flow Logs event at 2026-04-20T03:40:53.133310Z",
+  "severity": "low",
+  "category": "security",
+  "source_ip": "192.168.41.45",
+  "user": "user3870",
+  "device": "device-758",
+  "log_level": "ERROR",
+  "event_id": 89722,
+  "session_id": "sess_622146",
+  "class_name": "Security Event",
+  "activity_name": "Log Generated",
+  "location": "New York",
+  "risk_score": 39
+}

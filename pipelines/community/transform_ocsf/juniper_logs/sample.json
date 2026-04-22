@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-04-19T15:41:53.123963+00:00",
+  "hostname": "srx-9",
+  "device_type": "SRX",
+  "device_ip": "109.152.148.91",
+  "facility": "daemon",
+  "severity": "error",
+  "tag": "kmd",
+  "process_name": "dcd",
+  "process_id": 2485,
+  "message": "BGP neighbor 192.168.1.2 down",
+  "event_category": "routing",
+  "software_version": "Junos 18.4R8",
+  "model": "SRX3022",
+  "serial_number": "FKLA0L3CD74",
+  "uptime": "348 days, 4:13:47",
+  "neighbor_ip": "145.166.193.89",
+  "routing_instance": "management",
+  "protocol": "BGP",
+  "as_number": 65091
+}

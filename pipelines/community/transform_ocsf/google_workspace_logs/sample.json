@@ -1,0 +1,48 @@
+{
+  "kind": "admin#reports#activity",
+  "id": {
+    "time": "2026-04-20T03:38:52.910326+00:00",
+    "uniqueQualifier": "6193158269834325158",
+    "applicationName": "drive",
+    "customerId": "C01NCC1701"
+  },
+  "etag": "\"ff756faf734e47b3abb4f69fcc7f1d15\"",
+  "actor": {
+    "email": "jean.picard@starfleet.corp",
+    "profileId": "354675235191832735"
+  },
+  "ipAddress": "10.32.233.51",
+  "events": [
+    {
+      "type": "access",
+      "name": "create",
+      "parameters": [
+        {
+          "name": "doc_id",
+          "value": "ac93c5381116458c9f0309c780ddfcd1"
+        },
+        {
+          "name": "doc_title",
+          "value": "Bridge Presentation.pptx"
+        },
+        {
+          "name": "doc_type",
+          "value": "spreadsheet"
+        },
+        {
+          "name": "visibility",
+          "value": "public"
+        },
+        {
+          "name": "owner",
+          "value": "jean.picard@starfleet.corp"
+        },
+        {
+          "name": "primary_event",
+          "boolValue": true
+        }
+      ]
+    }
+  ],
+  "ownerDomain": "starfleet.corp"
+}

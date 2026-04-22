@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-04-19T19:27:52.744586+00:00",
+  "hostname": "firewall-22",
+  "device_ip": "73.247.139.85",
+  "facility": "LOCAL1",
+  "severity": "info",
+  "mnemonic": "UPDOWN",
+  "facility_mnemonic": "LINK",
+  "sequence_number": 940259,
+  "message": "Interface GigabitEthernet0/0, changed state to down",
+  "raw_message": "*Apr 19 19:27:52.744: %LINK-INFO-UPDOWN: Interface GigabitEthernet0/0, changed state to down",
+  "process_name": "LINK",
+  "ios_version": "16.0.1",
+  "hardware_platform": "ISR4321",
+  "uptime": "266 days, 1 hours, 11 minutes",
+  "location": "Building-B",
+  "interface_name": "GigabitEthernet0/0",
+  "interface_status": "down",
+  "interface_speed": "10000Mbps",
+  "interface_duplex": "half"
+}

@@ -1,0 +1,141 @@
+{
+  "records": [
+    {
+      "time": "2026-04-20T03:40:52.922656Z",
+      "resourceId": "/tenants/10971e92-a42a-434d-b233-88301f11c1cd/providers/Microsoft.aadiam",
+      "operationName": "Sign-in activity",
+      "operationVersion": "1.0",
+      "category": "SignInLogs",
+      "tenantId": "24359ee6-fb4c-4069-8009-119fa3873ee7",
+      "resultType": "50074",
+      "resultSignature": "Error_50074",
+      "resultDescription": "Sign-in failure: 50074",
+      "durationMs": 4955,
+      "callerIpAddress": "10.48.238.85",
+      "correlationId": "3615eaba-317d-41d6-96d2-08aee90247d3",
+      "identity": "diana.prince@company.com",
+      "Level": 3,
+      "location": "United Kingdom",
+      "properties": {
+        "id": "987fe66f-f5f9-4d42-bad0-5db4c6b4b2da",
+        "createdDateTime": "2026-04-20T03:38:53.922656Z",
+        "userDisplayName": "Diana Prince",
+        "userPrincipalName": "diana.prince@company.com",
+        "userId": "0559e4af-58ed-4764-b7aa-c56c12c57abf",
+        "appId": "89bee1f7-5e6e-4d8a-9f3d-ecd601259da7",
+        "appDisplayName": "Office365 Shell WCSS-Client",
+        "resourceDisplayName": "Office365 Shell WCSS-Client",
+        "resourceId": "89bee1f7-5e6e-4d8a-9f3d-ecd601259da7",
+        "clientAppUsed": "Other clients",
+        "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Mobile/15E148 Safari/604.1",
+        "conditionalAccessStatus": "unknownFutureValue",
+        "originalRequestId": "0e7a88cc-3ade-48fe-a4fb-1bb84093cb25",
+        "isInteractive": true,
+        "tokenIssuerName": "Azure AD",
+        "tokenIssuerType": "AzureAD",
+        "processingTimeInMilliseconds": 1651,
+        "networkLocationDetails": [],
+        "signInEventTypes": [
+          "nonInteractiveUser"
+        ],
+        "servicePrincipalId": null,
+        "servicePrincipalName": null,
+        "statusCode": 50074,
+        "statusMessage": "Sign-in error 50074",
+        "uniqueTokenIdentifier": "462e0327-8046-4edc-b801-9cca27a8c3f6",
+        "requestId": "6322a2bf-7686-482b-ae4e-78f9ceead7c6",
+        "authenticationProtocol": "unknownFutureValue",
+        "incomingTokenType": "unknownFutureValue",
+        "flaggedForReview": false,
+        "isTenantRestricted": false,
+        "autonomousSystemNumber": 32910,
+        "crossTenantAccessType": "b2bDirectConnect",
+        "homeTenantId": "e995ae4f-6cb4-4c2b-a565-d3506bbb0e89",
+        "riskDetail": "none",
+        "riskLevelAggregated": "hidden",
+        "riskLevelDuringSignIn": "hidden",
+        "riskState": "none",
+        "authenticationContextClassReferences": [],
+        "authenticationDetails": [
+          {
+            "authenticationStepDateTime": "2026-04-20T03:40:34.922861Z",
+            "authenticationMethod": "Microsoft Authenticator app notification",
+            "authenticationMethodDetail": "Microsoft Authenticator app notification via mobile app",
+            "succeeded": true,
+            "authenticationStepRequirement": "primaryAuthentication",
+            "authenticationStepResultDetail": "methodSucceeded"
+          },
+          {
+            "authenticationStepDateTime": "2026-04-20T03:40:45.922872Z",
+            "authenticationMethod": "Microsoft Authenticator app code",
+            "authenticationMethodDetail": "Microsoft Authenticator app code via mobile app",
+            "succeeded": true,
+            "authenticationStepRequirement": "multiFactorAuthentication",
+            "authenticationStepResultDetail": "methodSucceeded"
+          },
+          {
+            "authenticationStepDateTime": "2026-04-20T03:40:35.922876Z",
+            "authenticationMethod": "Microsoft Authenticator app notification",
+            "authenticationMethodDetail": "Microsoft Authenticator app notification via mobile app",
+            "succeeded": true,
+            "authenticationStepRequirement": "multiFactorAuthentication",
+            "authenticationStepResultDetail": "methodSucceeded"
+          }
+        ],
+        "authenticationRequirementPolicies": [],
+        "authenticationStrengths": {
+          "id": "27e5079f-176d-47aa-8a5e-8aaf1e84294f",
+          "displayName": "Built-in Multi-factor authentication",
+          "allowedCombinations": [
+            "password,sms",
+            "password,voice",
+            "password,microsoftAuthenticatorPush"
+          ]
+        },
+        "deviceDetail": {
+          "deviceId": null,
+          "displayName": null,
+          "operatingSystem": "Unknown",
+          "browser": "Unknown",
+          "isManaged": false,
+          "isCompliant": false,
+          "trustType": "Unknown"
+        },
+        "location": {
+          "city": "London",
+          "state": "England",
+          "countryOrRegion": "United Kingdom",
+          "geoCoordinates": {
+            "latitude": 51.604345498614585,
+            "longitude": -0.09076875848958796
+          }
+        },
+        "ipAddress": "10.48.238.85",
+        "ipAddressFromResourceProvider": "10.48.238.85",
+        "appliedConditionalAccessPolicies": [
+          {
+            "id": "499976eb-d201-49ba-b303-5e4f8ab6c036",
+            "displayName": "Block high-risk sign-ins",
+            "enforcedGrantControls": [
+              "approvedApplication"
+            ],
+            "enforcedSessionControls": [],
+            "result": "failure"
+          },
+          {
+            "id": "af967569-2e34-4eab-a682-5a983f4310a1",
+            "displayName": "Block high-risk sign-ins",
+            "enforcedGrantControls": [],
+            "enforcedSessionControls": [],
+            "result": "failure"
+          }
+        ],
+        "status": {
+          "errorCode": 50074,
+          "failureReason": "Other",
+          "additionalDetails": "Sign-in error code: 50074"
+        }
+      }
+    }
+  ]
+}

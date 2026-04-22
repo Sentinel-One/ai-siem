@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-04-20T03:40:52.867901Z",
+  "vendor": "Microsoft",
+  "product": "Eventhub Defender Emailforcloud Logs",
+  "version": "1.0",
+  "event_type": "security_event",
+  "message": "Sample Microsoft Eventhub Defender Emailforcloud Logs event at 2026-04-20T03:40:52.867901Z",
+  "severity": "critical",
+  "category": "security",
+  "source_ip": "192.168.58.112",
+  "user": "user5878",
+  "device": "device-375",
+  "log_level": "WARN",
+  "event_id": 14525,
+  "session_id": "sess_530214",
+  "class_name": "Security Event",
+  "activity_name": "Log Generated",
+  "risk_score": 86
+}

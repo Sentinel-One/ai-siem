@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "component": "transform",
+  "template_name": "OCSFSerializer",
+  "display_name": "Squid Proxy Logs",
+  "grade": {
+    "letter": "C",
+    "score": 77,
+    "verdict": "signed_off",
+    "required_field_coverage_pct": 66.7,
+    "source_field_coverage_pct": 100,
+    "tested_with_realistic_event": false,
+    "validated_at": "2026-04-19"
+  },
+  "ocsf": {
+    "class_uid": 4002,
+    "class_name": "HTTP Activity",
+    "category_uid": 4,
+    "category_name": "Network Activity",
+    "version": "1.3.0"
+  },
+  "description": "OCSF-compliant Lua serializer for Squid Proxy Logs. Maps source events to OCSF HTTP Activity class_uid 4002.",
+  "vendor": "community",
+  "source_name": "squid_proxy_logs-latest",
+  "version": "v1.0",
+  "parameters": [
+    {
+      "name": "serializer",
+      "type": "select",
+      "value": "squid-proxy-logs-lua",
+      "description": "Serializer identifier used by Observo runtime"
+    },
+    {
+      "name": "lua",
+      "type": "lua_code",
+      "value": "-- Constants for OCSF HTTP Activity class\nlocal CLASS_UID = 4002\nlocal CATEGORY_UID = 4\n\n-- Nested field access (production-proven from Observo scripts)\nfunction getNestedField(obj, path)\n    if obj == nil or path == nil or path == '' then return nil end\n    local current = obj\n    for key in string.gmatch(path, '[^.]+') do\n        if current == nil or current[key] == nil then return nil end\n        current = current[key]\n    end\n    return current\nend\n\nfunction setNestedField(obj, path, value)\n    if value == nil or path == nil or path == '' then return end\n    local keys = {}\n    for key in string.gmatch(path, '[^.]+') do table.insert(keys, key) end\n    if #keys == 0 then return end\n    local current = obj\n    for i = 1, #keys - 1 do\n        if current[keys[i]] == nil then current[keys[i]] = {} end\n        current = current[keys[i]]\n    end\n    current[keys[#keys]] = value\nend\n\n-- Safe value access with default\nfunction getValue(tbl, key, default)\n    local value = tbl[key]\n    return value ~= nil and value or default\nend\n\n-- Replace userdata nil values (Observo sandbox quirk)\nfunction no_nulls(d, rn)\n    if type(d) == \"table\" then\n        for k, v in pairs(d) do\n            if type(v) == \"userdata\" then d[k] = rn\n            elseif type(v) == \"table\" then no_nulls(v, rn) end\n        end\n    end\n    return d\nend\n\n-- Collect unmapped fields (preserves data not in field mappings)\nfunction copyUnmappedFields(event, mappedPaths, result)\n    for k, v in pairs(event) do\n        if not mappedPaths[k] and k ~= \"_ob\" and v ~= nil and v ~= \"\" then\n            setNestedField(result, \"unmapped.\" .. k, v)\n        end\n    end\nend\n\n-- Convert ISO timestamp to milliseconds since epoch\nfunction convertTimestamp(timeStr)\n    if not timeStr or timeStr == \"\" then return nil end\n    \n    -- Try ISO format: 2024-01-01T12:00:00Z\n    local year, month, day, hour, min, sec = timeStr:match(\"(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)\")\n    if year then\n        return os.time({\n            year = tonumber(year),\n            month = tonumber(month),\n            day = tonumber(day),\n            hour = tonumber(hour),\n            min = tonumber(min),\n            sec = tonumber(sec),\n            isdst = false\n        }) * 1000\n    end\n    \n    return nil\nend\n\n-- Determine severity based on error codes and status\nfunction getSeverityId(event)\n    local errorCode = event.errorCode\n    local errorMessage = event.errorMessage\n    \n    -- If there are errors, set higher severity\n    if errorCode or errorMessage then\n        return 4 -- High severity for errors\n    end\n    \n    -- Default to informational for normal HTTP activity\n    return 1\nend\n\n-- Get activity name based on event content\nfunction getActivityName(event)\n    if event.errorCode then\n        return \"HTTP Error - \" .. tostring(event.errorCode)\n    elseif event.eventCategory then\n        return \"HTTP \" .. tostring(event.eventCategory)\n    else\n        return \"HTTP Request\"\n    end\nend\n\n-- Field mappings configuration\nlocal fieldMappings = {\n    -- OCSF required fields\n    {type = \"computed\", target = \"class_uid\", value = CLASS_UID},\n    {type = \"computed\", target = \"category_uid\", value = CATEGORY_UID},\n    {type = \"computed\", target = \"class_name\", value = \"HTTP Activity\"},\n    {type = \"computed\", target = \"category_name\", value = \"Network Activity\"},\n    \n    -- Source IP mapping\n    {type = \"direct\", source = \"sourceIPAddress\", target = \"src_endpoint.ip\"},\n    \n    -- User agent mapping\n    {type = \"direct\", source = \"userAgent\", target = \"http_request.user_agent\"},\n    \n    -- User identity mappings\n    {type = \"direct\", source = \"userIdentity.principalId\", target = \"actor.user.uid\"},\n    {type = \"direct\", source = \"userIdentity.accessKeyId\", target = \"actor.user.credential_uid\"},\n    {type = \"direct\", source = \"userIdentity.type\", target = \"actor.user.type\"},\n    {type = \"direct\", source = \"userIdentity.sessionContext.sessionIssuer.userName\", target = \"actor.user.name\"},\n    \n    -- Error mappings\n    {type = \"direct\", source = \"errorCode\", target = \"status_code\"},\n    {type = \"direct\", source = \"errorMessage\", target = \"status_detail\"},\n    \n    -- Request parameters as HTTP details\n    {type = \"direct\", source = \"requestParameters.Host\", target = \"http_request.url.hostname\"},\n    {type = \"direct\", source = \"requestParameters.bucketName\", target = \"http_request.url.path\"},\n    \n    -- AWS specific metadata\n    {type = \"direct\", source = \"awsRegion\", target = \"metadata.product.feature.name\"},\n    {type = \"direct\", source = \"eventVersion\", target = \"metadata.version\"},\n    {type = \"direct\", source = \"apiVersion\", target = \"http_request.version\"},\n    \n    -- TLS details\n    {type = \"direct\", source = \"tlsDetails.tlsVersion\", target = \"tls.version\"},\n    {type = \"direct\", source = \"tlsDetails.cipherSuite\", target = \"tls.cipher\"},\n    \n    -- Raw message\n    {type = \"direct\", source = \"message\", target = \"message\"},\n}\n\nfunction processEvent(event)\n    if type(event) ~= \"table\" then return nil end\n    \n    local result = {}\n    local mappedPaths = {}\n    \n    -- Apply field mappings\n    for _, mapping in ipairs(fieldMappings) do\n        if mapping.type == \"direct\" then\n            local value = getNestedField(event, mapping.source)\n            if value ~= nil and value ~= \"\" then \n                setNestedField(result, mapping.target, value)\n            end\n            mappedPaths[mapping.source] = true\n        elseif mapping.type == \"computed\" then\n            setNestedField(result, mapping.target, mapping.value)\n        end\n    end\n    \n    -- Set OCSF required fields with defaults\n    local function setDefault(path, val)\n        if getNestedField(result, path) == nil then \n            setNestedField(result, path, val)\n        end\n    end\n    \n    setDefault('activity_id', 99) -- Other activity\n    setDefault('severity_id', getSeverityId(event))\n    setDefault('activity_name', getActivityName(event))\n    \n    -- Calculate type_uid\n    local activityId = getNestedField(result, 'activity_id') or 99\n    result.type_uid = CLASS_UID * 100 + activityId\n    \n    -- Set timestamp - try eventTime first, then current time\n    local eventTime = event.eventTime\n    if eventTime then\n        result.time = convertTimestamp(eventTime)\n    end\n    if not result.time then\n        result.time = os.time() * 1000\n    end\n    \n    -- Set product metadata\n    setNestedField(result, \"metadata.product.name\", \"AWS CloudTrail\")\n    setNestedField(result, \"metadata.product.vendor_name\", \"Amazon Web Services\")\n    \n    -- Set HTTP status based on error presence\n    if event.errorCode then\n        setNestedField(result, \"http_response.code\", 500) -- Server error\n        setNestedField(result, \"http_response.message\", event.errorMessage or \"Internal Server Error\")\n    else\n        setNestedField(result, \"http_response.code\", 200) -- Success\n        setNestedField(result, \"http_response.message\", \"OK\")\n    end\n    \n    -- Set HTTP method (default to GET for proxy logs)\n    setDefault('http_request.http_method', 'GET')\n    \n    -- Create observables for key fields\n    local observables = {}\n    if event.sourceIPAddress then\n        table.insert(observables, {\n            type_id = 2,\n            type = \"IP Address\", \n            name = \"src_endpoint.ip\",\n            value = event.sourceIPAddress\n        })\n    end\n    if event.userIdentity and event.userIdentity.principalId then\n        table.insert(observables, {\n            type_id = 4,\n            type = \"User Name\",\n            name = \"actor.user.uid\", \n            value = event.userIdentity.principalId\n        })\n    end\n    if #observables > 0 then\n        result.observables = observables\n    end\n    \n    -- Track mapped paths for unmapped field collection\n    mappedPaths.eventTime = true\n    mappedPaths.eventID = true\n    mappedPaths.eventCategory = true\n    mappedPaths.recipientAccountId = true\n    mappedPaths[\"userIdentity.invokedBy\"] = true\n    mappedPaths[\"userIdentity.sessionContext.sessionIssuer.principalId\"] = true\n    mappedPaths[\"requestParameters.instanceId\"] = true\n    mappedPaths[\"requestParameters.availabilityZone\"] = true\n    mappedPaths[\"responseElements.credentials.accessKeyId\"] = true\n    mappedPaths[\"responseElements.credentials.expiration\"] = true\n    mappedPaths[\"additionalEventData.x-amz-id-2\"] = true\n    mappedPaths.vpcEndpointId = true\n    mappedPaths[\"resources.accountId\"] = true\n    mappedPaths[\"resources.type\"] = true\n    mappedPaths[\"resources.ARN\"] = true\n    \n    -- Copy unmapped fields to preserve data\n    copyUnmappedFields(event, mappedPaths, result)\n    \n    -- Clean up nil values and empty tables\n    result = no_nulls(result, nil)\n    \n    return result\nend",
+      "description": "Lua processEvent serializer \u2014 maps source fields to OCSF schema"
+    }
+  ],
+  "validation": {
+    "harness_grade": "C",
+    "harness_score": 77,
+    "harness_lint_score": 0.0,
+    "harness_required_coverage": 66.7,
+    "harness_field_coverage": 100,
+    "lua_validity": "pass",
+    "execution_passed": true,
+    "tested_with_realistic_event": false,
+    "orion_reviewed": true,
+    "orion_verdict": "signed_off",
+    "validated_at": "2026-04-19"
+  },
+  "provenance": {
+    "tier": "agent",
+    "source": "Purple-Pipeline-Parser-Eater AgenticLuaGenerator"
+  }
+}

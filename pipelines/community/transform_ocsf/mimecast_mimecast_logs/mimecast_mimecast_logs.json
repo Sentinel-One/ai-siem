@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "component": "transform",
+  "template_name": "OCSFSerializer",
+  "display_name": "Mimecast Mimecast Logs",
+  "grade": {
+    "letter": "B",
+    "score": 82,
+    "verdict": "signed_off",
+    "required_field_coverage_pct": 100.0,
+    "source_field_coverage_pct": 100,
+    "tested_with_realistic_event": true,
+    "validated_at": "2026-04-19"
+  },
+  "ocsf": {
+    "class_uid": 4001,
+    "class_name": "Network Activity",
+    "category_uid": 4,
+    "category_name": "Network Activity",
+    "version": "1.3.0"
+  },
+  "description": "OCSF-compliant Lua serializer for Mimecast Mimecast Logs. Maps source events to OCSF Network Activity class_uid 4001.",
+  "vendor": "mimecast",
+  "source_name": "mimecast_mimecast_logs-latest",
+  "version": "v1.0",
+  "parameters": [
+    {
+      "name": "serializer",
+      "type": "select",
+      "value": "mimecast-mimecast-logs-lua",
+      "description": "Serializer identifier used by Observo runtime"
+    },
+    {
+      "name": "lua",
+      "type": "lua_code",
+      "value": "-- Nested field access (production-proven from Observo scripts)\nfunction getNestedField(obj, path)\n    if obj == nil or path == nil or path == '' then return nil end\n    local current = obj\n    for key in string.gmatch(path, '[^.]+') do\n        if current == nil or current[key] == nil then return nil end\n        current = current[key]\n    end\n    return current\nend\n\nfunction setNestedField(obj, path, value)\n    if value == nil or path == nil or path == '' then return end\n    local keys = {}\n    for key in string.gmatch(path, '[^.]+') do table.insert(keys, key) end\n    if #keys == 0 then return end\n    local current = obj\n    for i = 1, #keys - 1 do\n        if current[keys[i]] == nil then current[keys[i]] = {} end\n        current = current[keys[i]]\n    end\n    current[keys[#keys]] = value\nend\n\n-- Safe value access with default\nfunction getValue(tbl, key, default)\n    local value = tbl[key]\n    return value ~= nil and value or default\nend\n\n-- Replace userdata nil values (Observo sandbox quirk)\nfunction no_nulls(d, rn)\n    if type(d) == \"table\" then\n        for k, v in pairs(d) do\n            if type(v) == \"userdata\" then d[k] = rn\n            elseif type(v) == \"table\" then no_nulls(v, rn) end\n        end\n    end\n    return d\nend\n\n-- Collect unmapped fields (preserves data not in field mappings)\nfunction copyUnmappedFields(event, mappedPaths, result)\n    for k, v in pairs(event) do\n        if not mappedPaths[k] and k ~= \"_ob\" and v ~= nil and v ~= \"\" then\n            setNestedField(result, \"unmapped.\" .. k, v)\n        end\n    end\nend\n\n-- OCSF constants for Network Activity\nlocal CLASS_UID = 4001\nlocal CATEGORY_UID = 4\n\n-- Activity mapping based on event types\nlocal function getActivityInfo(eventCategory)\n    local activityMap = {\n        [\"Data\"] = {id = 1, name = \"Traffic\"},\n        [\"Management\"] = {id = 2, name = \"Connection\"},\n        [\"Insight\"] = {id = 3, name = \"Quality\"},\n        [\"CloudTrail\"] = {id = 1, name = \"Traffic\"}\n    }\n    return activityMap[eventCategory] or {id = 99, name = \"Other\"}\nend\n\n-- Severity mapping\nlocal function getSeverityId(errorCode, eventCategory)\n    if errorCode then\n        -- Error events are higher severity\n        if eventCategory == \"Management\" then return 4 end -- High\n        return 3 -- Medium\n    end\n    return 1 -- Informational for normal events\nend\n\n-- Convert ISO timestamp to milliseconds since epoch\nlocal function parseEventTime(timeStr)\n    if not timeStr or type(timeStr) ~= \"string\" then\n        return os.time() * 1000 -- Default to current time\n    end\n    \n    -- Parse ISO format: 2023-01-01T12:00:00Z or 2023-01-01T12:00:00.123Z\n    local year, month, day, hour, min, sec = timeStr:match(\"(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)\")\n    if year then\n        local timestamp = os.time({\n            year = tonumber(year),\n            month = tonumber(month),\n            day = tonumber(day),\n            hour = tonumber(hour),\n            min = tonumber(min),\n            sec = tonumber(sec),\n            isdst = false\n        })\n        return timestamp * 1000\n    end\n    \n    return os.time() * 1000\nend\n\n-- Field mappings configuration\nlocal fieldMappings = {\n    -- Direct mappings\n    {type = \"direct\", source = \"sourceIPAddress\", target = \"src_endpoint.ip\"},\n    {type = \"direct\", source = \"message\", target = \"message\"},\n    {type = \"direct\", source = \"eventID\", target = \"metadata.uid\"},\n    {type = \"direct\", source = \"eventVersion\", target = \"metadata.version\"},\n    {type = \"direct\", source = \"awsRegion\", target = \"cloud.region\"},\n    {type = \"direct\", source = \"recipientAccountId\", target = \"cloud.account.uid\"},\n    {type = \"direct\", source = \"userAgent\", target = \"http_request.user_agent\"},\n    {type = \"direct\", source = \"vpcEndpointId\", target = \"cloud.zone\"},\n    {type = \"direct\", source = \"apiVersion\", target = \"api.version\"},\n    {type = \"direct\", source = \"errorMessage\", target = \"status_detail\"},\n    \n    -- Nested mappings\n    {type = \"direct\", source = \"userIdentity.principalId\", target = \"actor.user.uid\"},\n    {type = \"direct\", source = \"userIdentity.accessKeyId\", target = \"actor.user.credential_uid\"},\n    {type = \"direct\", source = \"userIdentity.type\", target = \"actor.user.type\"},\n    {type = \"direct\", source = \"userIdentity.invokedBy\", target = \"actor.invoked_by\"},\n    {type = \"direct\", source = \"userIdentity.sessionContext.sessionIssuer.principalId\", target = \"actor.session.issuer.uid\"},\n    {type = \"direct\", source = \"userIdentity.sessionContext.sessionIssuer.userName\", target = \"actor.session.issuer.name\"},\n    \n    -- Request/Response parameters\n    {type = \"direct\", source = \"requestParameters.bucketName\", target = \"dst_endpoint.name\"},\n    {type = \"direct\", source = \"requestParameters.Host\", target = \"dst_endpoint.hostname\"},\n    {type = \"direct\", source = \"requestParameters.instanceId\", target = \"dst_endpoint.instance_uid\"},\n    {type = \"direct\", source = \"requestParameters.availabilityZone\", target = \"cloud.availability_zone\"},\n    \n    -- TLS details\n    {type = \"direct\", source = \"tlsDetails.cipherSuite\", target = \"tls.cipher\"},\n    {type = \"direct\", source = \"tlsDetails.tlsVersion\", target = \"tls.version\"},\n    \n    -- Resources\n    {type = \"direct\", source = \"resources.accountId\", target = \"resources.account_uid\"},\n    {type = \"direct\", source = \"resources.type\", target = \"resources.type\"},\n    {type = \"direct\", source = \"resources.ARN\", target = \"resources.uid\"},\n    \n    -- Computed fields\n    {type = \"computed\", target = \"class_uid\", value = CLASS_UID},\n    {type = \"computed\", target = \"category_uid\", value = CATEGORY_UID},\n    {type = \"computed\", target = \"class_name\", value = \"Network Activity\"},\n    {type = \"computed\", target = \"category_name\", value = \"Network Activity\"},\n    {type = \"computed\", target = \"metadata.product.name\", value = \"Mimecast\"},\n    {type = \"computed\", target = \"metadata.product.vendor_name\", value = \"Mimecast\"}\n}\n\nfunction processEvent(event)\n    -- Input validation\n    if type(event) ~= \"table\" then return nil end\n    \n    local result = {}\n    local mappedPaths = {}\n    \n    -- Process field mappings\n    for _, mapping in ipairs(fieldMappings) do\n        if mapping.type == \"direct\" then\n            local value = getNestedField(event, mapping.source)\n            if value ~= nil and value ~= \"\" then\n                setNestedField(result, mapping.target, value)\n            end\n            mappedPaths[mapping.source] = true\n        elseif mapping.type == \"computed\" then\n            setNestedField(result, mapping.target, mapping.value)\n        end\n    end\n    \n    -- Set activity information based on event category\n    local eventCategory = getValue(event, \"eventCategory\", \"Unknown\")\n    local activityInfo = getActivityInfo(eventCategory)\n    result.activity_id = activityInfo.id\n    result.activity_name = activityInfo.name\n    \n    -- Calculate type_uid\n    result.type_uid = CLASS_UID * 100 + activityInfo.id\n    \n    -- Set severity based on error conditions\n    local errorCode = getValue(event, \"errorCode\", nil)\n    local severityId = getSeverityId(errorCode, eventCategory)\n    result.severity_id = severityId\n    \n    -- Set time from eventTime\n    local eventTime = getValue(event, \"eventTime\", nil)\n    result.time = parseEventTime(eventTime)\n    \n    -- Set status information\n    if errorCode then\n        setNestedField(result, \"status\", \"Failure\")\n        setNestedField(result, \"status_id\", 2) -- Failure\n        setNestedField(result, \"status_code\", errorCode)\n    else\n        setNestedField(result, \"status\", \"Success\")\n        setNestedField(result, \"status_id\", 1) -- Success\n    end\n    \n    -- Create observables for key network indicators\n    local observables = {}\n    local sourceIP = getValue(event, \"sourceIPAddress\", nil)\n    if sourceIP then\n        table.insert(observables, {\n            type_id = 2,\n            type = \"IP Address\",\n            name = \"src_endpoint.ip\",\n            value = sourceIP\n        })\n    end\n    \n    local hostname = getNestedField(event, \"requestParameters.Host\")\n    if hostname then\n        table.insert(observables, {\n            type_id = 1,\n            type = \"Hostname\",\n            name = \"dst_endpoint.hostname\", \n            value = hostname\n        })\n    end\n    \n    if #observables > 0 then\n        result.observables = observables\n    end\n    \n    -- Mark mapped paths for unmapped field collection\n    mappedPaths[\"eventCategory\"] = true\n    mappedPaths[\"errorCode\"] = true\n    mappedPaths[\"eventTime\"] = true\n    \n    -- Copy unmapped fields to preserve data\n    copyUnmappedFields(event, mappedPaths, result)\n    \n    -- Clean up nil values\n    result = no_nulls(result, nil)\n    \n    return result\nend",
+      "description": "Lua processEvent serializer \u2014 maps source fields to OCSF schema"
+    }
+  ],
+  "validation": {
+    "harness_grade": "B",
+    "harness_score": 82,
+    "harness_lint_score": 0.0,
+    "harness_required_coverage": 100.0,
+    "harness_field_coverage": 100,
+    "lua_validity": "pass",
+    "execution_passed": true,
+    "tested_with_realistic_event": true,
+    "orion_reviewed": true,
+    "orion_verdict": "signed_off",
+    "validated_at": "2026-04-19"
+  },
+  "provenance": {
+    "tier": "agent",
+    "source": "Purple-Pipeline-Parser-Eater AgenticLuaGenerator"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "exitTraffic": true,
+  "nodeId": "n07b6f0466aab42efCNTRL",
+  "physicalTraffic": {
+    "src": "13.148.174.68",
+    "dst": "207.253.172.89"
+  },
+  "subnetTraffic": {
+    "src": "100.97.127.156",
+    "dst": "196.221.15.113"
+  },
+  "proto": 6,
+  "start": "2026-04-20T03:39:36.195181+00:00Z",
+  "end": "2026-04-20T03:43:52.195181+00:00Z",
+  "bytesIn": 4600851,
+  "bytesOut": 9562264,
+  "packetsIn": 2235,
+  "packetsOut": 8133
+}

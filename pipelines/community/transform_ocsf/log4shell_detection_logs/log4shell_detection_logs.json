@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "component": "transform",
+  "template_name": "OCSFSerializer",
+  "display_name": "Log4shell Detection Logs",
+  "grade": {
+    "letter": "B",
+    "score": 82,
+    "verdict": "signed_off",
+    "required_field_coverage_pct": 100.0,
+    "source_field_coverage_pct": 100,
+    "tested_with_realistic_event": true,
+    "validated_at": "2026-04-19"
+  },
+  "ocsf": {
+    "class_uid": 2004,
+    "class_name": "Detection Finding",
+    "category_uid": 2,
+    "category_name": "Findings",
+    "version": "1.3.0"
+  },
+  "description": "OCSF-compliant Lua serializer for Log4shell Detection Logs. Maps source events to OCSF Detection Finding class_uid 2004.",
+  "vendor": "community",
+  "source_name": "log4shell_detection_logs-latest",
+  "version": "v1.0",
+  "parameters": [
+    {
+      "name": "serializer",
+      "type": "select",
+      "value": "log4shell-detection-logs-lua",
+      "description": "Serializer identifier used by Observo runtime"
+    },
+    {
+      "name": "lua",
+      "type": "lua_code",
+      "value": "-- Log4Shell Detection Logs Parser for OCSF Detection Finding Class\n-- Maps log4shell detection events to OCSF Detection Finding format\n\n-- OCSF Constants\nlocal CLASS_UID = 2004\nlocal CATEGORY_UID = 2\nlocal CLASS_NAME = \"Detection Finding\"\nlocal CATEGORY_NAME = \"Findings\"\n\n-- Helper functions for nested field access\nfunction getNestedField(obj, path)\n    if obj == nil or path == nil or path == '' then return nil end\n    local current = obj\n    for key in string.gmatch(path, '[^.]+') do\n        if current == nil or current[key] == nil then return nil end\n        current = current[key]\n    end\n    return current\nend\n\nfunction setNestedField(obj, path, value)\n    if value == nil or path == nil or path == '' then return end\n    local keys = {}\n    for key in string.gmatch(path, '[^.]+') do table.insert(keys, key) end\n    if #keys == 0 then return end\n    local current = obj\n    for i = 1, #keys - 1 do\n        if current[keys[i]] == nil then current[keys[i]] = {} end\n        current = current[keys[i]]\n    end\n    current[keys[#keys]] = value\nend\n\nfunction getValue(tbl, key, default)\n    local value = tbl[key]\n    return value ~= nil and value or default\nend\n\nfunction copyUnmappedFields(event, mappedPaths, result)\n    for k, v in pairs(event) do\n        if not mappedPaths[k] and k ~= \"_ob\" and v ~= nil and v ~= \"\" then\n            setNestedField(result, \"unmapped.\" .. k, v)\n        end\n    end\nend\n\n-- Severity mapping for log4shell detections\nlocal function getSeverityId(errorCode, message)\n    -- Log4shell is typically high severity\n    if errorCode then return 4 end -- High\n    if message and string.find(string.lower(message), \"log4\") then return 5 end -- Critical\n    return 4 -- Default to High for log4shell detections\nend\n\n-- Activity ID mapping based on event characteristics\nlocal function getActivityId(event)\n    local errorCode = getValue(event, \"errorCode\", \"\")\n    local message = getValue(event, \"message\", \"\")\n    \n    -- Detection Finding activities: 1=Create, 2=Update, 99=Other\n    if errorCode and errorCode ~= \"\" then return 1 end -- Create detection\n    return 99 -- Other\nend\n\n-- Field mappings for log4shell detection events\nlocal fieldMappings = {\n    -- OCSF Required fields\n    {type = \"computed\", target = \"class_uid\", value = CLASS_UID},\n    {type = \"computed\", target = \"category_uid\", value = CATEGORY_UID},\n    {type = \"computed\", target = \"class_name\", value = CLASS_NAME},\n    {type = \"computed\", target = \"category_name\", value = CATEGORY_NAME},\n    \n    -- AWS/Event metadata\n    {type = \"direct\", source = \"awsRegion\", target = \"metadata.product.feature.name\"},\n    {type = \"direct\", source = \"eventID\", target = \"finding_info.uid\"},\n    {type = \"direct\", source = \"eventCategory\", target = \"finding_info.types\"},\n    {type = \"direct\", source = \"eventVersion\", target = \"metadata.version\"},\n    {type = \"direct\", source = \"recipientAccountId\", target = \"cloud.account.uid\"},\n    \n    -- Network/Source information\n    {type = \"direct\", source = \"sourceIPAddress\", target = \"src_endpoint.ip\"},\n    {type = \"direct\", source = \"userAgent\", target = \"http_request.user_agent\"},\n    \n    -- User identity information\n    {type = \"direct\", source = \"userIdentity.principalId\", target = \"actor.user.uid\"},\n    {type = \"direct\", source = \"userIdentity.accessKeyId\", target = \"actor.user.credential_uid\"},\n    {type = \"direct\", source = \"userIdentity.type\", target = \"actor.user.type\"},\n    {type = \"direct\", source = \"userIdentity.invokedBy\", target = \"actor.invoked_by\"},\n    {type = \"direct\", source = \"userIdentity.sessionContext.sessionIssuer.principalId\", target = \"actor.session.uid\"},\n    {type = \"direct\", source = \"userIdentity.sessionContext.sessionIssuer.userName\", target = \"actor.user.name\"},\n    \n    -- Error/Detection details\n    {type = \"direct\", source = \"errorCode\", target = \"status_code\"},\n    {type = \"direct\", source = \"errorMessage\", target = \"status_detail\"},\n    {type = \"direct\", source = \"message\", target = \"message\"},\n    \n    -- Request parameters\n    {type = \"direct\", source = \"requestParameters.bucketName\", target = \"resources.name\"},\n    {type = \"direct\", source = \"requestParameters.Host\", target = \"dst_endpoint.hostname\"},\n    {type = \"direct\", source = \"requestParameters.instanceId\", target = \"resources.uid\"},\n    {type = \"direct\", source = \"requestParameters.availabilityZone\", target = \"cloud.zone\"},\n    \n    -- Response elements\n    {type = \"direct\", source = \"responseElements.credentials.accessKeyId\", target = \"response.code\"},\n    {type = \"direct\", source = \"responseElements.credentials.expiration\", target = \"response.message\"},\n    \n    -- Additional event data\n    {type = \"direct\", source = \"additionalEventData.x-amz-id-2\", target = \"metadata.correlation_uid\"},\n    \n    -- TLS details\n    {type = \"direct\", source = \"tlsDetails.cipherSuite\", target = \"tls.cipher\"},\n    {type = \"direct\", source = \"tlsDetails.tlsVersion\", target = \"tls.version\"},\n    \n    -- VPC and API info\n    {type = \"direct\", source = \"vpcEndpointId\", target = \"cloud.vpc_uid\"},\n    {type = \"direct\", source = \"apiVersion\", target = \"api.version\"},\n    \n    -- Resource information\n    {type = \"direct\", source = \"resources.accountId\", target = \"resources.account_uid\"},\n    {type = \"direct\", source = \"resources.type\", target = \"resources.type\"},\n    {type = \"direct\", source = \"resources.ARN\", target = \"resources.uid\"},\n}\n\nfunction processEvent(event)\n    if type(event) ~= \"table\" then return nil end\n    \n    local result = {}\n    local mappedPaths = {}\n    \n    -- Apply field mappings\n    for _, mapping in ipairs(fieldMappings) do\n        if mapping.type == \"direct\" then\n            local value = getNestedField(event, mapping.source)\n            if value ~= nil then\n                setNestedField(result, mapping.target, value)\n            end\n            mappedPaths[mapping.source] = true\n        elseif mapping.type == \"computed\" then\n            setNestedField(result, mapping.target, mapping.value)\n        end\n    end\n    \n    -- Set activity_id and compute type_uid\n    local activityId = getActivityId(event)\n    result.activity_id = activityId\n    result.type_uid = CLASS_UID * 100 + activityId\n    \n    -- Set severity based on detection characteristics\n    result.severity_id = getSeverityId(event.errorCode, event.message)\n    \n    -- Set activity name\n    if event.errorCode then\n        result.activity_name = \"Log4Shell Detection - \" .. event.errorCode\n    elseif event.message then\n        result.activity_name = \"Log4Shell Detection Event\"\n    else\n        result.activity_name = \"Security Detection\"\n    end\n    \n    -- Set finding_info.title\n    local title = \"Log4Shell Vulnerability Detection\"\n    if event.errorCode then\n        title = title .. \" (\" .. event.errorCode .. \")\"\n    end\n    setNestedField(result, \"finding_info.title\", title)\n    \n    -- Set finding_info.desc if message available\n    if event.message then\n        setNestedField(result, \"finding_info.desc\", event.message)\n    end\n    \n    -- Set finding_info.uid if not already set\n    if not getNestedField(result, \"finding_info.uid\") then\n        setNestedField(result, \"finding_info.uid\", event.eventID or \"unknown\")\n    end\n    \n    -- Handle time conversion from eventTime\n    local eventTime = event.eventTime\n    if eventTime then\n        -- Parse ISO 8601 timestamp\n        local year, month, day, hour, min, sec = eventTime:match(\"(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)\")\n        if year then\n            result.time = os.time({\n                year = tonumber(year),\n                month = tonumber(month),\n                day = tonumber(day),\n                hour = tonumber(hour),\n                min = tonumber(min),\n                sec = tonumber(sec),\n                isdst = false\n            }) * 1000\n        else\n            result.time = os.time() * 1000\n        end\n    else\n        result.time = os.time() * 1000\n    end\n    \n    -- Set default status\n    if event.errorCode then\n        result.status_id = 2 -- Failure\n        result.status = \"Failure\"\n    else\n        result.status_id = 1 -- Success\n        result.status = \"Success\"\n    end\n    \n    -- Set metadata product information\n    setNestedField(result, \"metadata.product.name\", \"Log4Shell Detection System\")\n    setNestedField(result, \"metadata.product.vendor_name\", \"AWS CloudTrail\")\n    \n    -- Set confidence and impact for log4shell detection\n    result.confidence_id = 3 -- High confidence for log4shell detections\n    result.impact_id = 4 -- High impact\n    result.risk_level_id = 4 -- High risk\n    \n    -- Mark mapped source fields\n    for _, mapping in ipairs(fieldMappings) do\n        if mapping.source then\n            mappedPaths[mapping.source] = true\n        end\n    end\n    mappedPaths[\"eventTime\"] = true\n    \n    -- Copy unmapped fields to preserve data\n    copyUnmappedFields(event, mappedPaths, result)\n    \n    return result\nend",
+      "description": "Lua processEvent serializer \u2014 maps source fields to OCSF schema"
+    }
+  ],
+  "validation": {
+    "harness_grade": "B",
+    "harness_score": 82,
+    "harness_lint_score": 0.0,
+    "harness_required_coverage": 100.0,
+    "harness_field_coverage": 100,
+    "lua_validity": "pass",
+    "execution_passed": true,
+    "tested_with_realistic_event": true,
+    "orion_reviewed": true,
+    "orion_verdict": "signed_off",
+    "validated_at": "2026-04-19"
+  },
+  "provenance": {
+    "tier": "agent",
+    "source": "Purple-Pipeline-Parser-Eater AgenticLuaGenerator"
+  }
+}

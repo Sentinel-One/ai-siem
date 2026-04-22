@@ -1,0 +1,3 @@
+{
+  "raw": "<134>Apr 20 03:36:35 vectra-brain vectra_json_health -: {\"version\":\"v3.3\",\"category\":\"health\",\"health_status\":\"critical\",\"cpu_usage\":90,\"memory_usage\":38,\"disk_usage\":60,\"capture_rate\":0.9512391732822396,\"active_hosts\":3969,\"active_accounts\":668,\"detections_per_hour\":198,\"brain_version\":\"7.5.0\",\"sensor_version\":\"7.5.0\",\"uptime_hours\":6544,\"vectra_timestamp\":\"2026-04-20T03:36:35.878541+00:00Z\",\"ts\":1776656195.878541}"
+}

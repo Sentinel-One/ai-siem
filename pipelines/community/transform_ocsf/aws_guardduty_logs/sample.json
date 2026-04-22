@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "2.0",
+  "accountId": "200759122295",
+  "region": "ap-south-1",
+  "partition": "aws",
+  "id": "eb19bf82-4550-40d2-a0b8-ae97533cc0f2",
+  "arn": "arn:aws:guardduty:ap-south-1::e5485011576b45629ceb37d38e001440:detector/e5485011576b45629ceb37d38e001440/finding/eb19bf82-4550-40d2-a0b8-ae97533cc0f2",
+  "type": "Trojan:EC2/BlackholeTraffic",
+  "title": "EC2 instance attempting connection to a blackholed IP address.",
+  "description": "EC2 instance is attempting to communicate with a blackholed IP on port 80.",
+  "severity": 6.9,
+  "createdAt": "2026-04-20T03:40:52Z",
+  "updatedAt": "2026-04-20T03:40:52Z",
+  "resource": {
+    "resourceType": "Instance",
+    "instanceDetails": {
+      "instanceId": "i-b0576047",
+      "instanceType": "m5.large",
+      "platform": null,
+      "networkInterfaces": [
+        {
+          "networkInterfaceId": "eni-5d368355",
+          "privateIpAddress": "205.23.239.219",
+          "publicIp": "247.4.224.86",
+          "ipv6Addresses": []
+        }
+      ],
+      "tags": []
+    }
+  },
+  "service": {
+    "serviceName": "guardduty",
+    "detectorId": "e5485011576b45629ceb37d38e001440",
+    "eventFirstSeen": "2026-04-20T03:40:52Z",
+    "eventLastSeen": "2026-04-20T03:40:52Z",
+    "count": 1,
+    "action": {
+      "actionType": "NETWORK_CONNECTION",
+      "networkConnectionAction": {
+        "connectionDirection": "OUTBOUND",
+        "protocol": "TCP",
+        "port": 80,
+        "remoteIpDetails": {
+          "ipAddressV4": "8.99.50.12",
+          "organization": {
+            "asn": "-1",
+            "asnOrg": "GeneratedASNOrg",
+            "isp": "GeneratedISP",
+            "org": "GeneratedORG"
+          }
+        }
+      }
+    }
+  }
+}

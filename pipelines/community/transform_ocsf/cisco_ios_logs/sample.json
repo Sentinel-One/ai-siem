@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-04-19T15:49:52.728587+00:00",
+  "hostname": "switch-2",
+  "device_ip": "49.78.43.47",
+  "facility": "LOCAL4",
+  "severity": "warning",
+  "mnemonic": "THRESHOLD_VIOLATION",
+  "facility_mnemonic": "SFF8472",
+  "sequence_number": 284954,
+  "message": "Te1/0/1: Temperature high warning; Operating value: 85.2 C, Threshold value: 85.0 C",
+  "raw_message": "*Apr 19 15:49:52.728: %SFF8472-WARNING-THRESHOLD_VIOLATION: Te1/0/1: Temperature high warning; Operating value: 85.2 C, Threshold value: 85.0 C",
+  "process_name": "SFF8472",
+  "ios_version": "14.4.5",
+  "hardware_platform": "C9300",
+  "uptime": "133 days, 19 hours, 57 minutes",
+  "location": "Building-B"
+}

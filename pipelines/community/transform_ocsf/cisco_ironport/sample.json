@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-04-20T03:30:52Z",
+  "hostname": "VOYAGER-ESA-PROD",
+  "facility": "mail",
+  "severity": "warn",
+  "message_id": "1307521",
+  "from_address": "miles.obrien@ferengi-commerce.net",
+  "to_address": "miles.obrien@starfleet.corp",
+  "subject": "Congratulations! You won the Academy Award!",
+  "src_ip": "7.31.209.75",
+  "dst_ip": "167.19.45.154",
+  "antispam_verdict": "Negative",
+  "antivirus_verdict": "Quarantined",
+  "verdict": "BLOCKED",
+  "message_size": 5987247,
+  "attachment_count": 5,
+  "connection_id": 8652,
+  "reputation_score": -3.2,
+  "vendor": "cisco",
+  "product": "ironport",
+  "log_type": "email_security"
+}

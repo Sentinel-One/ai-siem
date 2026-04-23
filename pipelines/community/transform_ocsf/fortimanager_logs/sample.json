@@ -1,0 +1,12 @@
+{
+  "raw": "2026-04-20 03:40:52 FortiManager-15 FortiManager: user=admin ui=SSH action=logout status=failed reason='Session timeout' srcip=192.168.168.119",
+  "timestamp": "2026-04-20T03:40:52.825394Z",
+  "vendor": "Fortinet",
+  "product": "FortiManager",
+  "event_type": "LOGIN_ATTEMPT",
+  "user": "admin",
+  "ui": "SSH",
+  "src_ip": "192.168.168.119",
+  "status": "failed",
+  "hostname": "FortiManager-15"
+}

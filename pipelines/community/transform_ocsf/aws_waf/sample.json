@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-04-20T03:40:52Z",
+  "formatVersion": "1.0",
+  "webaclId": "arn:aws:wafv2:us-east-1:757912648842:regional/webacl/ExampleWebACL-1711",
+  "ruleGroupId": "XSSRules",
+  "terminatingRuleType": "RATE_BASED",
+  "action": "CAPTCHA",
+  "httpRequest": {
+    "clientIp": "44.53.65.206",
+    "country": "IN",
+    "uri": "/products",
+    "args": "cmd=ls -la",
+    "httpVersion": "HTTP/1.1",
+    "httpMethod": "PUT",
+    "headers": [
+      {
+        "name": "Host",
+        "value": "example5.com"
+      },
+      {
+        "name": "User-Agent",
+        "value": "Googlebot/2.1"
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "type": "akamai_siem",
+  "attackData": {
+    "clientIP": "198.51.100.2",
+    "configId": "20933",
+    "policyId": "p_10245",
+    "rules": []
+  },
+  "httpMessage": {
+    "method": "DELETE",
+    "host": "api.example.com",
+    "path": "/search",
+    "status": 500
+  },
+  "botData": null,
+  "geo": {
+    "city": "Los Angeles",
+    "country": "US"
+  },
+  "userRiskData": {
+    "botScore": 6
+  },
+  "time": "2026-04-20T02:59:52.695008Z"
+}

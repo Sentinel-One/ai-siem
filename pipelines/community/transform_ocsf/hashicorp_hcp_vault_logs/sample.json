@@ -1,0 +1,73 @@
+{
+  "time": "2026-04-20T03:40:23.836066Z",
+  "type": "response",
+  "auth": {
+    "client_token": "hvs.ef6fdebc711945e6bb9fdc3668156e5f",
+    "accessor": "acc_dce24dcee39a40b7",
+    "display_name": "app-server-01",
+    "policies": [
+      "monitoring"
+    ],
+    "token_policies": [
+      "ci-cd"
+    ],
+    "metadata": {
+      "username": null,
+      "service": "app-server-01"
+    },
+    "entity_id": "ee471f8e-3ea2-4fe9-a450-d47edbbcda19",
+    "token_type": "recovery",
+    "token_ttl": 9809,
+    "token_issue_time": "2026-04-20T03:40:23.836066Z"
+  },
+  "request": {
+    "id": "7035f8ca-e46d-4ca2-8756-fe6f0c2e871c",
+    "operation": "policy_delete",
+    "mount_type": "kv",
+    "client_token": "hvs.2fc9fdb5cf1a463aa58ce18400a2a9cb",
+    "client_token_accessor": "acc_9dab867d05d24c50",
+    "namespace": {
+      "id": "root",
+      "path": ""
+    },
+    "path": "sys/policy/database-admin",
+    "data": {},
+    "policy_override": false,
+    "remote_address": "10.76.139.59",
+    "wrap_ttl": 0,
+    "headers": {
+      "user-agent": [
+        "terraform/1.3.0"
+      ],
+      "content-type": [
+        "application/json"
+      ],
+      "x-forwarded-for": [
+        "10.23.23.176"
+      ]
+    }
+  },
+  "response": {
+    "mount_type": "aws",
+    "data": null,
+    "status_code": 503,
+    "duration": 345,
+    "headers": {
+      "cache-control": [
+        "no-store"
+      ],
+      "content-type": [
+        "application/json"
+      ],
+      "x-vault-request-id": [
+        "7035f8ca-e46d-4ca2-8756-fe6f0c2e871c"
+      ]
+    }
+  },
+  "error": "service unavailable",
+  "cluster_id": "1cdc6e11-e83c-418a-91e5-c60d9543ed22",
+  "version": "1.12.0",
+  "build_date": "2023-10-20T09:15:00Z",
+  "hostname": "vault-1.company.com",
+  "node_id": "node_f68c9bd2"
+}

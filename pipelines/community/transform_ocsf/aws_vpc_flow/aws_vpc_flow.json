@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "component": "transform",
+  "template_name": "OCSFSerializer",
+  "display_name": "Aws Vpc Flow",
+  "grade": {
+    "letter": "A",
+    "score": 93,
+    "verdict": "signed_off",
+    "required_field_coverage_pct": 83.3,
+    "source_field_coverage_pct": 100,
+    "tested_with_realistic_event": true,
+    "validated_at": "2026-04-19"
+  },
+  "ocsf": {
+    "class_uid": 4001,
+    "class_name": "Network Activity",
+    "category_uid": 4,
+    "category_name": "Network Activity",
+    "version": "1.3.0"
+  },
+  "description": "OCSF Network Activity (4001) serializer for AWS VPC Flow Logs v2. Maps srcaddr/dstaddr/srcport/dstport/protocol/bytes/packets/action into OCSF endpoints, traffic, and connection_info.",
+  "vendor": "aws",
+  "dataSource": "AWS VPC Flow Logs",
+  "parameters": {
+    "lua_code": "-- OCSF Network Activity (4001) serializer for AWS VPC Flow Logs v2\n-- Remediation per 2026-04-19 Orion: correct source field names.\n\nlocal CLASS_UID = 4001\nlocal CATEGORY_UID = 4\nlocal TYPE_UID = 400101\n\n-- Safe millisecond clock (pcall-guarded per Observo sandbox rules)\nfunction safeTimeMs()\n    local ok, secs = pcall(os.time)\n    if ok and secs then return secs * 1000 end\n    return 0\nend\n\nfunction getNestedField(obj, path)\n    if obj == nil or path == nil or path == '' then return nil end\n    local cursor = obj\n    for key in string.gmatch(path, '[^.]+') do\n        if type(cursor) ~= 'table' then return nil end\n        if cursor[key] == nil then return nil end\n        cursor = cursor[key]\n    end\n    return cursor\nend\nfunction setNestedField(obj, path, value)\n    if obj == nil or value == nil or path == nil or path == '' then return end\n    if type(obj) ~= 'table' then return end\n    local keys = {}\n    for key in string.gmatch(path, '[^.]+') do table.insert(keys, key) end\n    if #keys == 0 then return end\n    local cursor = obj\n    local limit = #keys - 1\n    for i = 1, limit do\n        if cursor[keys[i]] == nil then cursor[keys[i]] = {} end\n        cursor = cursor[keys[i]]\n    end\n    cursor[keys[#keys]] = value\nend\nfunction getValue(tbl, key, default)\n    if tbl == nil then return default end\n    local v = tbl[key]\n    if v == nil then return default end\n    return v\nend\nfunction no_nulls(d)\n    if type(d) == 'table' then\n        for k, v in pairs(d) do\n            if type(v) == 'userdata' then d[k] = nil\n            elseif type(v) == 'table' then no_nulls(v) end\n        end\n    end\n    return d\nend\n\nfunction actionToId(action)\n    if action == nil then return 0 end\n    local s = string.upper(tostring(action))\n    if s == \"ACCEPT\" then return 1 end\n    if s == \"REJECT\" then return 2 end\n    return 0\nend\n\nfunction buildSkeleton(t)\n    local ts = t or safeTimeMs()\n    return {\n        class_uid = CLASS_UID,\n        category_uid = CATEGORY_UID,\n        type_uid = TYPE_UID,\n        activity_id = 6,\n        severity_id = 1,\n        time = ts,\n        metadata = { version = \"1.1.0\", product = { name = \"VPC Flow Logs\", vendor_name = \"AWS\" } },\n        src_endpoint = {}, dst_endpoint = {}, connection_info = {}, traffic = {}, cloud = { provider = \"AWS\" },\n        unmapped = {}\n    }\nend\n\nfunction processEvent(event)\n    if type(event) ~= 'table' then return buildSkeleton() end\n    no_nulls(event)\n\n    local start_ts = tonumber(getValue(event, \"start\"))\n    local end_ts = tonumber(getValue(event, \"end\"))\n    local ts = (start_ts and (start_ts * 1000)) or safeTimeMs()\n\n    local result = buildSkeleton(ts)\n\n    -- Endpoints\n    setNestedField(result, \"src_endpoint.ip\", getValue(event, \"srcaddr\"))\n    setNestedField(result, \"src_endpoint.port\", tonumber(getValue(event, \"srcport\")))\n    setNestedField(result, \"dst_endpoint.ip\", getValue(event, \"dstaddr\"))\n    setNestedField(result, \"dst_endpoint.port\", tonumber(getValue(event, \"dstport\")))\n    setNestedField(result, \"src_endpoint.interface_uid\", getValue(event, \"interface_id\"))\n\n    -- Connection protocol (IANA number)\n    local proto = tonumber(getValue(event, \"protocol\"))\n    setNestedField(result, \"connection_info.protocol_num\", proto)\n    if proto == 6 then setNestedField(result, \"connection_info.protocol_name\", \"tcp\")\n    elseif proto == 17 then setNestedField(result, \"connection_info.protocol_name\", \"udp\")\n    elseif proto == 1 then setNestedField(result, \"connection_info.protocol_name\", \"icmp\") end\n    setNestedField(result, \"connection_info.direction_id\", 3)\n\n    -- Traffic volumes\n    setNestedField(result, \"traffic.bytes_out\", tonumber(getValue(event, \"bytes\")))\n    setNestedField(result, \"traffic.packets_out\", tonumber(getValue(event, \"packets\")))\n\n    -- Action\n    local action_id = actionToId(getValue(event, \"action\"))\n    result.action_id = action_id\n    result.action = (action_id == 1) and \"Allowed\" or (action_id == 2) and \"Denied\" or \"Unknown\"\n    if action_id == 2 then result.severity_id = 3 end\n\n    -- Cloud context\n    setNestedField(result, \"cloud.account.uid\", getValue(event, \"account_id\"))\n    setNestedField(result, \"cloud.region\", getValue(event, \"region\"))\n    setNestedField(result, \"cloud.zone\", getValue(event, \"az_id\"))\n    setNestedField(result, \"cloud.vpc_uid\", getValue(event, \"vpc_id\"))\n\n    -- Timing\n    setNestedField(result, \"start_time\", start_ts and start_ts * 1000 or nil)\n    setNestedField(result, \"end_time\", end_ts and end_ts * 1000 or nil)\n    setNestedField(result, \"duration\", (start_ts and end_ts) and (end_ts - start_ts) * 1000 or nil)\n\n    -- Status\n    local status = getValue(event, \"flowlogstatus\")\n    setNestedField(result, \"status\", status)\n    setNestedField(result, \"status_id\", (status == \"OK\") and 1 or 0)\n\n    -- Observables\n    result.observables = {\n        { name = \"src_endpoint.ip\", type = \"IP Address\", type_id = 2, value = getValue(event, \"srcaddr\") },\n        { name = \"dst_endpoint.ip\", type = \"IP Address\", type_id = 2, value = getValue(event, \"dstaddr\") },\n    }\n\n    setNestedField(result, \"raw_data\", event)\n    setNestedField(result, \"metadata.log_name\", \"vpc-flow-logs-v\" .. tostring(getValue(event, \"version\", \"2\")))\n    return result\nend\n",
+    "ocsf_version": "1.3.0"
+  },
+  "validation": {
+    "harness_grade": {
+      "letter": "A",
+      "score": 93,
+      "verdict": "signed_off",
+      "required_field_coverage_pct": 83.3,
+      "source_field_coverage_pct": 100,
+      "tested_with_realistic_event": true,
+      "validated_at": "2026-04-19"
+    },
+    "harness_version": "2026-04-19",
+    "validated_at": "2026-04-19",
+    "methodology": "5-module Purple-Pipeline-Parser-Eater harness + Orion AI independent review",
+    "source": "remediation_pass_2026-04-19"
+  },
+  "provenance": {
+    "created_by": "remediation_pass_2026-04-19",
+    "orion_verdict_original": "real_concern",
+    "orion_remediation": "applied",
+    "remediation_ref": "output/harness_reports/orion_remediation_7_concerns.txt"
+  }
+}

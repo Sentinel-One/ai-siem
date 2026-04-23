@@ -1,0 +1,45 @@
+grade:
+  letter: B
+  score: 85
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Cisco Isa3000 Logs. Maps source events to OCSF Network Activity
+    (class_uid=4001) following the processEvent contract.
+  datasource_vendor: cisco
+  dataSource: Cisco Isa3000 Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  sample_record: "{\n  \"timestamp\": \"2026-04-19T19:28:52.737044+00:00\",\n  \"hostname\": \"ISA3000-4\"\
+    ,\n  \"device_ip\": \"192.168.5.42\",\n  \"event_type\": \"MODBUS\",\n  \"action\": \"READ_COILS\"\
+    ,\n  \"severity\": \"INFO\",\n  \"message_id\": \"ISA-489417\",\n  \"source_ip\": \"10.90.203.8\"\
+    ,\n  \"destination_ip\": \"192.168.8.42\",\n  \"source_port\": 48241,\n  \"destination_port\": 503,\n\
+    \  \"protocol\": \"TCP\",\n  \"zone_from\": \"TRUSTED\",\n  \"zone_to\": \"TRUSTED\",\n  \"policy_name\"\
+    : \"ISA_Policy_3\",\n  \"rule_name\": \"Rule_40\",\n  \"interface_in\": \"GigabitEthernet0/1\",\n\
+    \  \"interface_out\": \"GigabitEthernet0/0\",\n  \"bytes_sent\": 6499,\n  \"bytes_received\": 741,\n\
+    \  \"duration\": 696,\n  \"modbus_function_code\": 1,\n  \"modbus_function_name\": \"Read Coils\"\
+    ,\n  \"modbus_unit_id\": 32,\n  \"modbus_transaction_id\": 25002,\n  \"register_address\": 8589,\n\
+    \  \"register_count\": 2,\n  \"risk_level\": \"LOW\",\n  \"device_type\": \"Historian\",\n  \"plc_model\"\
+    : \"Allen-Bradley\",\n  \"industrial_zone\": \"Level 3\",\n  \"criticality\": \"Medium\",\n  \"safety_system\"\
+    : false,\n  \"process_area\": \"Production Line 2\"\n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4001
+    class_name: Network Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: cisco, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 85
+    orion_reviewed: true
+    orion_verdict: signed_off

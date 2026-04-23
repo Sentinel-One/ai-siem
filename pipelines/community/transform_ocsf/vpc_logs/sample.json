@@ -1,0 +1,21 @@
+{
+  "version": "2",
+  "account_id": "961993689209",
+  "interface_id": "eni-9747c42664d6496e9",
+  "srcaddr": "10.226.113.5",
+  "dstaddr": "203.0.113.73",
+  "srcport": 8082,
+  "dstport": 3389,
+  "protocol": 6,
+  "packets": 397,
+  "bytes": 20421,
+  "start": 1776656405,
+  "end": 1776656453,
+  "action": "REJECT",
+  "flowlogstatus": "OK",
+  "vpc_id": "vpc-d355004c",
+  "subnet_id": "subnet-07336de0",
+  "instance_id": "i-27ed8c65",
+  "region": "eu-central-1",
+  "az_id": "use1-az2"
+}

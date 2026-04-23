@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-04-20T03:34:52Z",
+  "userName": "deanna.troi@starfleet.corp",
+  "sourceIp": "51.25.59.27",
+  "deviceId": "ENTERPRISE-BRIDGE-02",
+  "query": "starfleet-academy.edu",
+  "queryType": "SRV",
+  "responseCode": "SERVFAIL",
+  "answer": "",
+  "action": "ALLOWED",
+  "bytes_sent": 54,
+  "bytes_received": 725,
+  "response_time_ms": 28
+}

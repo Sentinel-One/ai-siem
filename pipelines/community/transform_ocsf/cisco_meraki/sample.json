@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-04-20T03:40:52Z",
+  "syslog_priority": 135,
+  "unix_timestamp": 1776656452,
+  "hostname": "meraki-mx64",
+  "log_type": "ip_flow",
+  "src_ip": "10.0.84.250",
+  "dst_ip": "93.184.150.1",
+  "protocol": "icmp",
+  "src_port": 17356,
+  "dst_port": 4500,
+  "translated_src_ip": "172.16.199.123",
+  "translated_port": 4500,
+  "message": "<135> 1776656452 meraki-mx64 ip_flow src=10.0.84.250 dst=93.184.150.1 protocol=icmp sport=17356 dport=4500 translated_src_ip=172.16.199.123 translated_port=4500"
+}

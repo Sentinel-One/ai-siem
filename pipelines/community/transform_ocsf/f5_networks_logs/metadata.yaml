@@ -1,0 +1,37 @@
+grade:
+  letter: B
+  score: 85
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for F5 Networks Logs. Maps source events to OCSF Network Activity
+    (class_uid=4001) following the processEvent contract.
+  datasource_vendor: f5
+  dataSource: F5 Networks Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  sample_record: "{\n  \"raw\": \"timestamp=2026-04-20T03:40:52.806301+00:00,hostname=f5-bigip-7,device_ip=193.212.102.47,module=ASM,event_type=XSS_ATTACK_DETECTED,severity=CRITICAL,facility=LOCAL0,priority=21,slot=1.2,tmm=3,virtual_server=vs_web_4,pool=pool_app_3,client_ip=11.5.143.204,server_ip=10.84.188.228,client_port=52965,server_port=8080,protocol=TCP,http_method=OPTIONS,uri=/login,user_agent=Mozilla/5.0\
+    \ (Windows NT 10.0; Win64; x64) AppleWebKit/537.36,attack_type=Cross-Site Scripting,signature_id=262889494,policy_name=asm_policy_1,violation_rating=1,request_status=alerted,support_id=5094746301607916,class_uid=4001,class_name=Network\
+    \ Activity,category_uid=4,category_name=Network Activity,activity_id=6,activity_name=Traffic,type_uid=400106,severity_id=5,status_id=2\"\
+    \n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4001
+    class_name: Network Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: f5, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 85
+    orion_reviewed: true
+    orion_verdict: signed_off

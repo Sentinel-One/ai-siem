@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "component": "transform",
+  "template_name": "OCSFSerializer",
+  "display_name": "Azure Ad",
+  "grade": {
+    "letter": "B",
+    "score": 89,
+    "verdict": "signed_off",
+    "required_field_coverage_pct": 66.7,
+    "source_field_coverage_pct": 100,
+    "tested_with_realistic_event": true,
+    "validated_at": "2026-04-19"
+  },
+  "ocsf": {
+    "class_uid": 3001,
+    "class_name": "Account Change",
+    "category_uid": 3,
+    "category_name": "Identity & Access Management",
+    "version": "1.3.0"
+  },
+  "description": "OCSF Account Change (3001) serializer for Azure AD / Entra ID audit events. Maps operationType to OCSF activity_id and extracts target user and initiating actor from targetResources[] and initiatedBy.",
+  "vendor": "microsoft",
+  "dataSource": "Azure Active Directory / Entra ID Audit",
+  "parameters": {
+    "lua_code": "-- OCSF Account Change (3001) serializer for Azure AD / Entra ID audit events.\n-- Remediation per 2026-04-19 Orion: was 3004, corrected to 3001.\n\nlocal CLASS_UID = 3001\nlocal CATEGORY_UID = 3\n\n-- Safe millisecond clock (pcall-guarded per Observo sandbox rules)\nfunction safeTimeMs()\n    local ok, secs = pcall(os.time)\n    if ok and secs then return secs * 1000 end\n    return 0\nend\n\nfunction getNestedField(obj, path)\n    if obj == nil or path == nil or path == '' then return nil end\n    local cursor = obj\n    for key in string.gmatch(path, '[^.]+') do\n        if type(cursor) ~= 'table' then return nil end\n        if cursor[key] == nil then return nil end\n        cursor = cursor[key]\n    end\n    return cursor\nend\nfunction setNestedField(obj, path, value)\n    if obj == nil or value == nil or path == nil or path == '' then return end\n    if type(obj) ~= 'table' then return end\n    local keys = {}\n    for key in string.gmatch(path, '[^.]+') do table.insert(keys, key) end\n    if #keys == 0 then return end\n    local cursor = obj\n    local limit = #keys - 1\n    for i = 1, limit do\n        if cursor[keys[i]] == nil then cursor[keys[i]] = {} end\n        cursor = cursor[keys[i]]\n    end\n    cursor[keys[#keys]] = value\nend\nfunction getValue(tbl, key, default)\n    if tbl == nil then return default end\n    local v = tbl[key]\n    if v == nil then return default end\n    return v\nend\nfunction no_nulls(d)\n    if type(d) == 'table' then\n        for k, v in pairs(d) do\n            if type(v) == 'userdata' then d[k] = nil\n            elseif type(v) == 'table' then no_nulls(v) end\n        end\n    end\n    return d\nend\n\n-- Azure AD operationType -> OCSF activity_id\n-- 1=Create, 2=Read, 3=Update, 4=Delete, 5=Enable, 6=Disable (others unmapped -> 99 Other)\nfunction activityForOperation(op)\n    if op == nil then return 0 end\n    local s = tostring(op)\n    if type(s) ~= 'string' then return 0 end\n    s = string.lower(s)\n    if s:find(\"add\") or s:find(\"create\") then return 1 end\n    if s:find(\"get\") or s:find(\"read\") or s:find(\"list\") then return 2 end\n    if s:find(\"update\") or s:find(\"modif\") or s:find(\"change\") or s:find(\"patch\") then return 3 end\n    if s:find(\"delete\") or s:find(\"remov\") then return 4 end\n    if s:find(\"enable\") or s:find(\"unlock\") then return 5 end\n    if s:find(\"disable\") or s:find(\"lock\") then return 6 end\n    return 99\nend\n\nfunction parseIso8601ToMs(s)\n    if type(s) ~= 'string' then return nil end\n    local y, mo, d, h, mi, se = s:match(\"(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)\")\n    if not y then return nil end\n    local ok, t = pcall(function()\n        return os.time({year = tonumber(y), month = tonumber(mo), day = tonumber(d),\n            hour = tonumber(h), min = tonumber(mi), sec = tonumber(se)})\n    end)\n    if ok and t then return t * 1000 end\n    return nil\nend\n\nfunction buildSkeleton(t, act)\n    local ts = t or safeTimeMs()\n    return {\n        class_uid = CLASS_UID,\n        category_uid = CATEGORY_UID,\n        type_uid = 300100 + (act or 0),\n        activity_id = act or 0,\n        severity_id = 1,\n        time = ts,\n        metadata = { version = \"1.1.0\", product = { name = \"Azure AD\", vendor_name = \"Microsoft\" } },\n        user = {}, actor = { user = {} }, cloud = { provider = \"Azure\" },\n        unmapped = {}\n    }\nend\n\nfunction processEvent(event)\n    if type(event) ~= 'table' then return buildSkeleton() end\n    no_nulls(event)\n\n    local ts = parseIso8601ToMs(getValue(event, \"activityDateTime\")) or safeTimeMs()\n    local op = getValue(event, \"operationType\") or getValue(event, \"activityDisplayName\")\n    local activity_id = activityForOperation(op)\n\n    local result = buildSkeleton(ts, activity_id)\n\n    -- Target user\n    local targetResources = getValue(event, \"targetResources\") or {}\n    local target = targetResources[1] or {}\n    setNestedField(result, \"user.name\", getValue(target, \"userPrincipalName\") or getValue(target, \"displayName\"))\n    setNestedField(result, \"user.uid\", getValue(target, \"id\"))\n    setNestedField(result, \"user.type\", getValue(target, \"type\"))\n    setNestedField(result, \"user.full_name\", getValue(target, \"displayName\"))\n\n    -- Actor (initiating user)\n    local initiator = getNestedField(event, \"initiatedBy.user\") or {}\n    setNestedField(result, \"actor.user.name\", getValue(initiator, \"userPrincipalName\"))\n    setNestedField(result, \"actor.user.uid\", getValue(initiator, \"id\"))\n    setNestedField(result, \"actor.user.full_name\", getValue(initiator, \"displayName\"))\n    setNestedField(result, \"src_endpoint.ip\", getValue(initiator, \"ipAddress\"))\n\n    -- Tenant / cloud\n    setNestedField(result, \"cloud.account.uid\", getValue(event, \"tenantId\"))\n    setNestedField(result, \"cloud.account.type\", \"Azure AD Tenant\")\n\n    -- Result / status\n    local rres = getValue(event, \"result\") or \"success\"\n    local rres_low = string.lower(tostring(rres))\n    if rres_low == \"success\" then\n        result.status_id = 1; result.status = \"Success\"\n    else\n        result.status_id = 2; result.status = \"Failure\"; result.severity_id = 3\n    end\n    setNestedField(result, \"status_detail\", getValue(event, \"resultReason\"))\n\n    -- Modified properties -> enrichments\n    if target.modifiedProperties then\n        result.enrichments = {}\n        for _, prop in ipairs(target.modifiedProperties) do\n            table.insert(result.enrichments, {\n                name = getValue(prop, \"displayName\"),\n                data = { old = getValue(prop, \"oldValue\"), new = getValue(prop, \"newValue\") },\n                type = \"attribute_change\"\n            })\n        end\n    end\n\n    -- Metadata\n    setNestedField(result, \"metadata.uid\", getValue(event, \"id\"))\n    setNestedField(result, \"metadata.correlation_uid\", getValue(event, \"correlationId\"))\n    setNestedField(result, \"metadata.log_name\", getValue(event, \"category\"))\n    setNestedField(result, \"metadata.log_provider\", getValue(event, \"loggedByService\"))\n\n    -- Observables\n    result.observables = {}\n    if result.user and result.user.name then\n        table.insert(result.observables,\n            { name = \"user.name\", type = \"User Name\", type_id = 4, value = result.user.name })\n    end\n    if result.actor.user.name then\n        table.insert(result.observables,\n            { name = \"actor.user.name\", type = \"User Name\", type_id = 4, value = result.actor.user.name })\n    end\n    if getValue(initiator, \"ipAddress\") then\n        table.insert(result.observables,\n            { name = \"src_endpoint.ip\", type = \"IP Address\", type_id = 2, value = getValue(initiator, \"ipAddress\") })\n    end\n\n    result.message = string.format(\"Azure AD %s (%s) by %s\",\n        tostring(op or \"audit\"),\n        result.status or \"Unknown\",\n        tostring(result.actor.user.name or \"system\"))\n    setNestedField(result, \"raw_data\", event)\n\n    return result\nend\n",
+    "ocsf_version": "1.3.0"
+  },
+  "validation": {
+    "harness_grade": {
+      "letter": "B",
+      "score": 89,
+      "verdict": "signed_off",
+      "required_field_coverage_pct": 66.7,
+      "source_field_coverage_pct": 100,
+      "tested_with_realistic_event": true,
+      "validated_at": "2026-04-19"
+    },
+    "harness_version": "2026-04-19",
+    "validated_at": "2026-04-19",
+    "methodology": "5-module Purple-Pipeline-Parser-Eater harness + Orion AI independent review",
+    "source": "remediation_pass_2026-04-19"
+  },
+  "provenance": {
+    "created_by": "remediation_pass_2026-04-19",
+    "orion_verdict_original": "real_concern",
+    "orion_remediation": "applied",
+    "remediation_ref": "output/harness_reports/orion_remediation_7_concerns.txt"
+  }
+}

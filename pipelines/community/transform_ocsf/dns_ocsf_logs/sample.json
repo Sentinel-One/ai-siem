@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-04-20T02:59:21.063Z",
+  "log_level": "info",
+  "log_type": "queries",
+  "client_uid": "0x7f0221d1a9",
+  "client_ip": "10.155.105.73",
+  "client_port": 31890,
+  "query_hostname": "mail.example.org",
+  "query_name": "mail.example.org",
+  "query_class": "IN",
+  "query_type": "NS",
+  "query_opcode": "U",
+  "message": "client @0x7f0221d1a9 10.155.105.73#31890 (mail.example.org): query: mail.example.org IN NS + (U)"
+}

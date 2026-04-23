@@ -1,0 +1,71 @@
+{
+  "GUID": "115dda27-45c9-427b-8900-89894e9f7927",
+  "QID": "Q368233",
+  "id": "ae1de9b1-923d-4ca0-bbda-92ccc32734ae",
+  "messageID": "<872dea14-8a15-4202-b47b-c5d39f4de5b2@enterprise.starfleet>",
+  "messageTime": "2026-04-20T03:36:32.127Z",
+  "messageSize": 500297,
+  "subject": "Important: Update your payment information",
+  "sender": "beverly.troi@enterprise.starfleet",
+  "fromAddress": [
+    "beverly.troi@enterprise.starfleet"
+  ],
+  "headerFrom": "\"Haxorsaurus Android\" <beverly.troi@enterprise.starfleet>",
+  "senderIP": "65.23.101.101",
+  "recipient": [
+    "sales@starfleet.corp"
+  ],
+  "toAddresses": [
+    "sales@starfleet.corp"
+  ],
+  "ccAddresses": [],
+  "replyToAddress": [
+    "beverly.troi@enterprise.starfleet"
+  ],
+  "headerReplyTo": "beverly.troi@enterprise.starfleet",
+  "completelyRewritten": "true",
+  "cluster": "proofpoint-cluster-2",
+  "policyRoutes": [
+    "block"
+  ],
+  "modulesRun": [
+    "attachment_defense",
+    "spf",
+    "impostor",
+    "dmarc",
+    "spam",
+    "av",
+    "urldefense",
+    "dkimv"
+  ],
+  "spamScore": 49,
+  "phishScore": 90,
+  "malwareScore": 0,
+  "impostorScore": 0,
+  "threatsInfo": [
+    {
+      "threat": "Credential Phishing",
+      "threatType": "phish",
+      "threatID": "82f4ba74-f98e-4ddd-9d1a-7823edbed721",
+      "threatStatus": "active",
+      "classification": "phish",
+      "threatTime": "2026-04-20T03:36:32.127Z"
+    }
+  ],
+  "messageParts": [],
+  "clickIP": "10.228.15.189",
+  "clickTime": "2026-04-20T03:42:32.127Z",
+  "threatURL": "https://threatinsight.proofpoint.com/#/threat_id/e65e2e24-e93e-454e-9fc4-6b5f4f1d2869",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "event.type": "Click",
+  "unmapped.classification": "phish",
+  "unmapped.recipient": "sales@starfleet.corp",
+  "unmapped.sender": "beverly.troi@enterprise.starfleet",
+  "url.url_string": "https://threatinsight.proofpoint.com/#/threat_id/7b4715ee-7921-499b-b245-2db97c3ba1f2",
+  "device.ip": "10.206.49.178",
+  "timestamp": "2026-04-20T03:36:32.127Z",
+  "spf": "neutral",
+  "dkimv": "none",
+  "dmarc": "none",
+  "xmailer": "PHPMailer 6.5"
+}

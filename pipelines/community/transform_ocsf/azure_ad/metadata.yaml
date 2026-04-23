@@ -1,0 +1,23 @@
+grade:
+  letter: B
+  score: 89
+  verdict: signed_off
+  required_field_coverage_pct: 66.7
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: "OCSF Account Change (3001) serializer for Azure AD / Entra ID audit events. Maps operationType to OCSF activity_id and extracts target user and initiating actor from targetResources[] and initiatedBy."
+  datasource_vendor: Microsoft
+  dataSource: Azure Active Directory / Entra ID Audit
+  format: json
+  ocsf_version: 1.3.0
+  ingestion_method: "Observo OCSFSerializer (Lua-based transform)"
+  ocsf_mapping:
+    class_uid: 3001
+    class_name: "Account Change"
+    category_uid: 3
+    category_name: "Identity & Access Management"
+  tags: "observo, ocsf, lua, microsoft, serializer, account_change, remediation_2026_04_19"
+  author: "Purple-Pipeline-Parser-Eater + Orion remediation pass 2026-04-19"
+  version: "v1.0"

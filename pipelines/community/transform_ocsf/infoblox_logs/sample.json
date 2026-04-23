@@ -1,0 +1,13 @@
+{
+  "raw": "20-Apr-2026 03:40:53.222 infoblox-80 named[6886]: client 192.168.75.63#39479: query: example.com IN MX +E (10.0.10.3)",
+  "timestamp": "2026-04-20T03:40:53.222593Z",
+  "vendor": "Infoblox",
+  "product": "DDI",
+  "event_type": "DNS_QUERY",
+  "service": "named",
+  "hostname": "infoblox-80",
+  "client_ip": "192.168.75.63",
+  "server_ip": "10.0.10.3",
+  "domain": "example.com",
+  "assigned_ip": "192.168.100.60"
+}

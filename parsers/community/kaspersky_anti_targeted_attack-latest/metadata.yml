@@ -1,0 +1,29 @@
+metadata_details:
+  purpose: >
+    Parses CEF-formatted logs from Kaspersky Anti Targeted Attack Platform (KATA).
+    Handles three event types: heartbeat (appliance health), file_endpoint
+    (file-based detections from endpoint agents), and taaScanning (Targeted Attack
+    Analyzer behavioral IoA triggers). Normalizes to OCSF Detection Finding (2004)
+    for detection events and Entity Management (3004) for heartbeats.
+  datasource_vendor: Kaspersky
+  dataSource: Kaspersky KATA CEF
+  dependency_summary: >
+    Requires CEF syslog output enabled on the KATA appliance
+    (Settings > SIEM Integration > CEF format). Compatible with
+    KATA versions 7.1.1-531 and 7.1.3-533. Logs should be forwarded
+    via syslog (UDP/TCP 514 or custom port) to the Singularity Data Lake
+    ingestion endpoint.
+  performance_impact: Minimal - standard Gron parser processing
+  ocsf_classes:
+    - class_uid: 2004
+      class_name: Detection Finding
+      event_types:
+        - file_endpoint
+        - taaScanning
+    - class_uid: 3004
+      class_name: Entity Management
+      event_types:
+        - heartbeat
+  tags: kaspersky, kata, cef, detection, heartbeat, ocsf
+  version: latest
+  author: Mario Ciccarelli (mario.ciccarelli@sentinelone.com)

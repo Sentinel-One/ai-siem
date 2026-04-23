@@ -1,0 +1,49 @@
+{
+  "alertId": "2517403039049440997_0b2fc1ee-f1c2-4f5a-bf1d-58bd63b40e6a",
+  "alertDisplayName": "Suspicious RDP logon by unfamiliar principal",
+  "alertType": "SuspiciousRDP",
+  "severity": "High",
+  "status": "Active",
+  "timeGenerated": "2026-04-19T15:02:47.123Z",
+  "processingEndTime": "2026-04-19T15:02:50.014Z",
+  "description": "Analysis of host data detected suspicious logon activity consistent with brute-force attempts from an unfamiliar principal.",
+  "remediationSteps": [
+    "Review the list of authenticated sessions",
+    "Rotate credentials for the compromised account"
+  ],
+  "tactics": [
+    "CredentialAccess",
+    "LateralMovement"
+  ],
+  "techniques": [
+    "T1110",
+    "T1021"
+  ],
+  "subscriptionId": "a1b2c3d4-1234-5678-90ab-cdef01234567",
+  "resourceIdentifiers": [
+    {
+      "type": "AzureResource",
+      "azureResourceId": "/subscriptions/a1b2c3d4-1234-5678-90ab-cdef01234567/resourceGroups/prod-rg/providers/Microsoft.Compute/virtualMachines/web-vm-03"
+    }
+  ],
+  "compromisedEntity": "web-vm-03",
+  "entities": [
+    {
+      "type": "Account",
+      "name": "svc_deploy",
+      "aadUserId": null,
+      "host": "web-vm-03"
+    },
+    {
+      "type": "Ip",
+      "address": "198.51.100.77"
+    }
+  ],
+  "extendedProperties": {
+    "attacker IP": "198.51.100.77",
+    "user": "svc_deploy",
+    "detected logon attempts": "112"
+  },
+  "productComponentName": "Microsoft Defender for Cloud",
+  "vendorName": "Microsoft"
+}

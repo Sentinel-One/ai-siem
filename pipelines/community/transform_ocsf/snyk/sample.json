@@ -1,0 +1,73 @@
+{
+  "X-Snyk-Event": "project_snapshot/v0",
+  "X-Snyk-Transport-ID": "d4c9b2fb-0b1f-4b8a-a021-5a4c0f75e4d1",
+  "X-Snyk-Timestamp": "2026-04-19T18:42:11Z",
+  "project": {
+    "id": "1a0e14d3-1a50-4fa1-8b37-81f9b5c0a2c9",
+    "name": "acme-web/inventory-service:package.json",
+    "origin": "github",
+    "type": "npm",
+    "issueCountsBySeverity": {
+      "low": 2,
+      "medium": 3,
+      "high": 4,
+      "critical": 1
+    },
+    "lastTestedDate": "2026-04-19T18:41:57Z"
+  },
+  "org": {
+    "id": "3b8b9e13-6dcb-4a7a-ac64-52b38b1231de",
+    "name": "acme-security"
+  },
+  "group": {
+    "id": "a4e4a1a0-8b79-4c6e-a46a-1b9c9e0f4b61",
+    "name": "acme"
+  },
+  "newIssues": [
+    {
+      "id": "SNYK-JS-LODASH-1018905",
+      "issueType": "vuln",
+      "pkgName": "lodash",
+      "pkgVersions": [
+        "4.17.15"
+      ],
+      "issueData": {
+        "title": "Prototype Pollution in lodash",
+        "severity": "high",
+        "url": "https://snyk.io/vuln/SNYK-JS-LODASH-1018905",
+        "description": "All versions of package lodash are vulnerable to Prototype Pollution via the zipObjectDeep function.",
+        "identifiers": {
+          "CVE": [
+            "CVE-2020-8203"
+          ],
+          "CWE": [
+            "CWE-1321"
+          ]
+        },
+        "exploitMaturity": "proof-of-concept",
+        "semver": {
+          "vulnerable": [
+            "<4.17.20"
+          ]
+        },
+        "publicationTime": "2020-07-15T16:00:00Z",
+        "disclosureTime": "2019-07-26T00:00:00Z",
+        "CVSSv3": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssScore": 7.4,
+        "language": "js",
+        "patches": []
+      },
+      "isPatched": false,
+      "isIgnored": false,
+      "fixInfo": {
+        "isUpgradable": true,
+        "upgradePaths": [
+          [
+            "lodash@4.17.21"
+          ]
+        ]
+      }
+    }
+  ],
+  "removedIssues": []
+}

@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "component": "transform",
+  "template_name": "OCSFSerializer",
+  "display_name": "Microsoft Defender For Cloud",
+  "grade": {
+    "letter": "A",
+    "score": 90,
+    "verdict": "signed_off",
+    "required_field_coverage_pct": 87.5,
+    "source_field_coverage_pct": 100,
+    "tested_with_realistic_event": true,
+    "validated_at": "2026-04-19"
+  },
+  "ocsf": {
+    "class_uid": 2004,
+    "class_name": "Detection Finding",
+    "category_uid": 2,
+    "category_name": "Findings",
+    "version": "1.3.0"
+  },
+  "description": "OCSF Detection Finding (2004) serializer for Microsoft Defender for Cloud alerts. Extracts alertId, alertDisplayName, tactics, techniques, compromised entity, and subscription context.",
+  "vendor": "microsoft",
+  "dataSource": "Microsoft Defender for Cloud",
+  "parameters": {
+    "lua_code": "-- OCSF Detection Finding (2004) serializer for Microsoft Defender for Cloud alerts.\n-- Remediation per 2026-04-19 Orion: keep class 2004; fill finding_info, attacks[], resources[], cloud.\n\nlocal CLASS_UID = 2004\nlocal CATEGORY_UID = 2\n\n-- Safe millisecond clock (pcall-guarded per Observo sandbox rules)\nfunction safeTimeMs()\n    local ok, secs = pcall(os.time)\n    if ok and secs then return secs * 1000 end\n    return 0\nend\n\nfunction getNestedField(obj, path)\n    if obj == nil or path == nil or path == '' then return nil end\n    local cursor = obj\n    for key in string.gmatch(path, '[^.]+') do\n        if type(cursor) ~= 'table' then return nil end\n        if cursor[key] == nil then return nil end\n        cursor = cursor[key]\n    end\n    return cursor\nend\nfunction setNestedField(obj, path, value)\n    if obj == nil or value == nil or path == nil or path == '' then return end\n    if type(obj) ~= 'table' then return end\n    local keys = {}\n    for key in string.gmatch(path, '[^.]+') do table.insert(keys, key) end\n    if #keys == 0 then return end\n    local cursor = obj\n    local limit = #keys - 1\n    for i = 1, limit do\n        if cursor[keys[i]] == nil then cursor[keys[i]] = {} end\n        cursor = cursor[keys[i]]\n    end\n    cursor[keys[#keys]] = value\nend\nfunction getValue(tbl, key, default)\n    if tbl == nil then return default end\n    local v = tbl[key]\n    if v == nil then return default end\n    return v\nend\nfunction no_nulls(d)\n    if type(d) == 'table' then\n        for k, v in pairs(d) do\n            if type(v) == 'userdata' then d[k] = nil\n            elseif type(v) == 'table' then no_nulls(v) end\n        end\n    end\n    return d\nend\n\nfunction parseIsoMs(s)\n    if type(s) ~= 'string' then return nil end\n    local y, mo, d, h, mi, se = s:match(\"(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)\")\n    if not y then return nil end\n    local ok, v = pcall(function() return os.time({year=tonumber(y), month=tonumber(mo), day=tonumber(d), hour=tonumber(h), min=tonumber(mi), sec=tonumber(se)}) * 1000 end)\n    if ok then return v end\n    return nil\nend\n\nfunction severityId(s)\n    if s == nil then return 1 end\n    local v = string.lower(tostring(s))\n    if v == \"informational\" or v == \"info\" then return 1 end\n    if v == \"low\" then return 2 end\n    if v == \"medium\" then return 3 end\n    if v == \"high\" then return 4 end\n    if v == \"critical\" then return 5 end\n    return 1\nend\n\nfunction buildSkeleton(t)\n    local ts = t or safeTimeMs()\n    return {\n        class_uid = CLASS_UID,\n        category_uid = CATEGORY_UID,\n        type_uid = 200401,\n        activity_id = 1,\n        severity_id = 1,\n        status_id = 1,\n        time = ts,\n        metadata = { version = \"1.1.0\", product = { name = \"Defender for Cloud\", vendor_name = \"Microsoft\" } },\n        finding_info = { uid = \"unknown\", title = \"Microsoft Defender for Cloud alert\" },\n        attacks = {}, resources = {}, evidences = {}, cloud = { provider = \"Azure\" },\n        unmapped = {}\n    }\nend\n\nfunction processEvent(event)\n    if type(event) ~= 'table' then return buildSkeleton() end\n    no_nulls(event)\n\n    local ts = parseIsoMs(getValue(event, \"timeGenerated\")) or safeTimeMs()\n    local result = buildSkeleton(ts)\n\n    -- finding_info\n    setNestedField(result, \"finding_info.uid\", getValue(event, \"alertId\") or \"unknown\")\n    setNestedField(result, \"finding_info.title\", getValue(event, \"alertDisplayName\") or \"Defender for Cloud alert\")\n    setNestedField(result, \"finding_info.desc\", getValue(event, \"description\"))\n    setNestedField(result, \"finding_info.types\", { getValue(event, \"alertType\") })\n    local sol = getValue(event, \"remediationSteps\")\n    if type(sol) == 'table' then\n        setNestedField(result, \"finding_info.remediation.desc\", table.concat(sol, \"; \"))\n    end\n\n    -- status\n    local st = getValue(event, \"status\") or \"Active\"\n    local st_l = string.lower(tostring(st))\n    if st_l == \"active\" then setNestedField(result, \"status_id\", 1)\n    elseif st_l == \"resolved\" or st_l == \"dismissed\" then setNestedField(result, \"status_id\", 6)\n    else setNestedField(result, \"status_id\", 99) end\n    setNestedField(result, \"status\", st)\n    setNestedField(result, \"severity_id\", severityId(getValue(event, \"severity\")))\n\n    -- MITRE attacks[]\n    local tactics = getValue(event, \"tactics\") or {}\n    local techniques = getValue(event, \"techniques\") or {}\n    for i, tactic in ipairs(tactics) do\n        local entry = { tactic = { name = tostring(tactic) } }\n        if techniques[i] then\n            entry.technique = { uid = tostring(techniques[i]), name = tostring(techniques[i]) }\n        end\n        entry.version = \"14.1\"\n        table.insert(result.attacks, entry)\n    end\n\n    -- Cloud subscription\n    setNestedField(result, \"cloud.account.uid\", getValue(event, \"subscriptionId\"))\n\n    -- Resources\n    local ri = getValue(event, \"resourceIdentifiers\") or {}\n    for _, r in ipairs(ri) do\n        table.insert(result.resources, {\n            name = getValue(event, \"compromisedEntity\") or r.azureResourceId,\n            uid = r.azureResourceId,\n            type = r.type or \"AzureResource\",\n            cloud_partition = \"Azure\"\n        })\n    end\n    if #result.resources == 0 and getValue(event, \"compromisedEntity\") then\n        table.insert(result.resources, { name = getValue(event, \"compromisedEntity\"), type = \"AzureResource\" })\n    end\n\n    -- Evidences from entities\n    local entities = getValue(event, \"entities\") or {}\n    for _, e in ipairs(entities) do\n        table.insert(result.evidences, { data = e })\n    end\n\n    -- Metadata\n    setNestedField(result, \"metadata.uid\", getValue(event, \"alertId\"))\n    setNestedField(result, \"metadata.log_name\", getValue(event, \"productComponentName\"))\n    setNestedField(result, \"metadata.event_code\", getValue(event, \"alertType\"))\n\n    -- Observables from entities\n    result.observables = {}\n    for _, e in ipairs(entities) do\n        local et = string.lower(tostring(e.type or \"\"))\n        if et == \"ip\" and e.address then\n            table.insert(result.observables,\n                { name = \"entity.ip\", type = \"IP Address\", type_id = 2, value = e.address })\n        elseif et == \"account\" and e.name then\n            table.insert(result.observables, { name = \"entity.user\", type = \"User Name\", type_id = 4, value = e.name })\n        end\n    end\n\n    result.message = tostring(result.finding_info.title)\n    setNestedField(result, \"raw_data\", event)\n    return result\nend\n",
+    "ocsf_version": "1.3.0"
+  },
+  "validation": {
+    "harness_grade": {
+      "letter": "A",
+      "score": 90,
+      "verdict": "signed_off",
+      "required_field_coverage_pct": 87.5,
+      "source_field_coverage_pct": 100,
+      "tested_with_realistic_event": true,
+      "validated_at": "2026-04-19"
+    },
+    "harness_version": "2026-04-19",
+    "validated_at": "2026-04-19",
+    "methodology": "5-module Purple-Pipeline-Parser-Eater harness + Orion AI independent review",
+    "source": "remediation_pass_2026-04-19"
+  },
+  "provenance": {
+    "created_by": "remediation_pass_2026-04-19",
+    "orion_verdict_original": "real_concern",
+    "orion_remediation": "applied",
+    "remediation_ref": "output/harness_reports/orion_remediation_7_concerns.txt"
+  }
+}

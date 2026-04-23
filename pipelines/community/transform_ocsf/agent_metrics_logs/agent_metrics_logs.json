@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "component": "transform",
+  "template_name": "OCSFSerializer",
+  "display_name": "Agent Metrics Logs",
+  "grade": {
+    "letter": "A",
+    "score": 93,
+    "verdict": "signed_off",
+    "required_field_coverage_pct": 85.7,
+    "source_field_coverage_pct": 100,
+    "tested_with_realistic_event": true,
+    "validated_at": "2026-04-19"
+  },
+  "ocsf": {
+    "class_uid": 5001,
+    "class_name": "Device Inventory Info",
+    "category_uid": 5,
+    "category_name": "Discovery",
+    "version": "1.3.0"
+  },
+  "description": "OCSF Device Inventory Info (5001) serializer for SentinelOne agent telemetry. Extracts device identity, OS, and agent_list[] metadata from agent self-reports.",
+  "vendor": "sentinelone",
+  "dataSource": "SentinelOne Agent Metrics",
+  "parameters": {
+    "lua_code": "-- OCSF Device Inventory Info (class_uid 5001) serializer\n-- Source: SentinelOne agent telemetry / Observo Agent metrics logs\n-- Reclassified from 1007 Process Activity per 2026-04-19 Orion validation.\n\nlocal CLASS_UID = 5001\nlocal CATEGORY_UID = 5\nlocal TYPE_UID = 500101\nlocal ACTIVITY_ID = 1\n\n-- Safe millisecond clock (pcall-guarded per Observo sandbox rules)\nfunction safeTimeMs()\n    local ok, secs = pcall(os.time)\n    if ok and secs then return secs * 1000 end\n    return 0\nend\n\nfunction getNestedField(obj, path)\n    if obj == nil or path == nil or path == '' then return nil end\n    local cursor = obj\n    for key in string.gmatch(path, '[^.]+') do\n        if type(cursor) ~= 'table' then return nil end\n        if cursor[key] == nil then return nil end\n        cursor = cursor[key]\n    end\n    return cursor\nend\nfunction setNestedField(obj, path, value)\n    if obj == nil or value == nil or path == nil or path == '' then return end\n    if type(obj) ~= 'table' then return end\n    local keys = {}\n    for key in string.gmatch(path, '[^.]+') do table.insert(keys, key) end\n    if #keys == 0 then return end\n    local cursor = obj\n    local limit = #keys - 1\n    for i = 1, limit do\n        if cursor[keys[i]] == nil then cursor[keys[i]] = {} end\n        cursor = cursor[keys[i]]\n    end\n    cursor[keys[#keys]] = value\nend\nfunction getValue(tbl, key, default)\n    if tbl == nil then return default end\n    local v = tbl[key]\n    if v == nil then return default end\n    return v\nend\nfunction no_nulls(d)\n    if type(d) == 'table' then\n        for k, v in pairs(d) do\n            if type(v) == 'userdata' then d[k] = nil\n            elseif type(v) == 'table' then no_nulls(v) end\n        end\n    end\n    return d\nend\n\nfunction buildSkeleton(t)\n    local ts = t or safeTimeMs()\n    return {\n        class_uid = CLASS_UID,\n        category_uid = CATEGORY_UID,\n        type_uid = TYPE_UID,\n        activity_id = ACTIVITY_ID,\n        severity_id = 1,\n        time = ts,\n        metadata = {\n            version = \"1.1.0\",\n            product = { name = \"SentinelOne Agent\", vendor_name = \"SentinelOne\" }\n        },\n        device = {},\n        unmapped = {}\n    }\nend\n\nfunction processEvent(event)\n    if type(event) ~= 'table' then return buildSkeleton() end\n    no_nulls(event)\n\n    local ts = getValue(event, \"event.time\") or getValue(event, \"timestamp\") or safeTimeMs()\n    if type(ts) == 'string' then\n        local n = tonumber(ts); if n then ts = n end\n    end\n\n    local result = buildSkeleton(ts)\n\n    -- Device identity\n    local agent_uuid = getValue(event, \"agent.uuid\")\n    local endpoint_name = getValue(event, \"endpoint.name\")\n    setNestedField(result, \"device.uid\", agent_uuid or getValue(event, \"endpoint.uid\"))\n    setNestedField(result, \"device.name\", endpoint_name)\n    setNestedField(result, \"device.hostname\", endpoint_name)\n    setNestedField(result, \"device.type\", getValue(event, \"endpoint.type\"))\n\n    -- OS\n    setNestedField(result, \"device.os.name\", getValue(event, \"os.name\") or getValue(event, \"endpoint.os\"))\n    setNestedField(result, \"device.os.type\", getValue(event, \"endpoint.os\"))\n\n    -- Agent list\n    local agent_name = getValue(event, \"dataSource.vendor\") or \"SentinelOne Agent\"\n    local agent_version = getValue(event, \"agent.version\")\n    if agent_uuid or agent_version then\n        result.device.agent_list = {\n            {\n                name = tostring(agent_name),\n                version = agent_version and tostring(agent_version) or \"unknown\",\n                type = \"EDR\",\n                uid = agent_uuid\n            }\n        }\n    end\n\n    -- Org context\n    setNestedField(result, \"device.groups\", { { name = getValue(event, \"account.name\"), uid = getValue(event, \"account.id\") } })\n    setNestedField(result, \"device.location.desc\", getValue(event, \"site.name\"))\n\n    -- Metadata\n    setNestedField(result, \"metadata.uid\", getValue(event, \"event.id\"))\n    setNestedField(result, \"metadata.event_code\", getValue(event, \"meta.event.name\"))\n    setNestedField(result, \"metadata.log_name\", getValue(event, \"event.category\"))\n\n    -- Observables\n    result.observables = {}\n    if endpoint_name then\n        table.insert(result.observables, { name = \"device.name\", type = \"Hostname\", type_id = 1, value = endpoint_name })\n    end\n    if agent_uuid then\n        table.insert(result.observables, { name = \"device.uid\", type = \"Other UID\", type_id = 40, value = agent_uuid })\n    end\n\n    -- Preserve raw event for downstream debugging\n    setNestedField(result, \"unmapped.raw_event\", event)\n    setNestedField(result, \"raw_data\", event)\n    setNestedField(result, \"status_id\", 1)\n    setNestedField(result, \"message\", \"Device inventory info from \" .. tostring(getValue(event, \"dataSource.vendor\", \"agent\")))\n\n    return result\nend\n",
+    "ocsf_version": "1.3.0"
+  },
+  "validation": {
+    "harness_grade": {
+      "letter": "A",
+      "score": 93,
+      "verdict": "signed_off",
+      "required_field_coverage_pct": 85.7,
+      "source_field_coverage_pct": 100,
+      "tested_with_realistic_event": true,
+      "validated_at": "2026-04-19"
+    },
+    "harness_version": "2026-04-19",
+    "validated_at": "2026-04-19",
+    "methodology": "5-module Purple-Pipeline-Parser-Eater harness + Orion AI independent review",
+    "source": "remediation_pass_2026-04-19"
+  },
+  "provenance": {
+    "created_by": "remediation_pass_2026-04-19",
+    "orion_verdict_original": "real_concern",
+    "orion_remediation": "applied",
+    "remediation_ref": "output/harness_reports/orion_remediation_7_concerns.txt"
+  }
+}

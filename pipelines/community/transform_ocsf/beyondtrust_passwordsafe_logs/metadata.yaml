@@ -14,6 +14,8 @@ metadata_details:
   format: source-specific JSON/KV/syslog
   ocsf_version: 1.3.0
   ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "Syslog"
+  auth_type: "N/A"
   sample_record: "{\n  \"raw\": \"2026-04-20 03:36:32 10.0.0.150 {\\\"EventTime\\\":\\\"2026-04-20T03:36:32.710887Z\\\
     \",\\\"EventType\\\":\\\"UserLogout\\\",\\\"EventId\\\":\\\"e8b5e243-6e4a-48e1-a38b-93ee87daba95\\\
     \",\\\"UserId\\\":\\\"svc_backup\\\",\\\"UserName\\\":\\\"Service Account\\\",\\\"UserDisplayName\\\

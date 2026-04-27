@@ -14,6 +14,8 @@ metadata_details:
   format: source-specific JSON/KV/syslog
   ocsf_version: 1.3.0
   ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "Other - {Explain: Route 53 Resolver Query Logs to S3 or CloudWatch Logs}"
+  auth_type: "IAM Role"
   sample_record: "{\n  \"version\": \"1.100000\",\n  \"account_id\": \"213644108138\",\n  \"interface_id\"\
     : \"eni-02daa7e2\",\n  \"srcaddr\": \"10.101.151.110\",\n  \"dstaddr\": \"169.254.169.253\",\n  \"\
     srcport\": 49709,\n  \"dstport\": 53,\n  \"protocol\": 17,\n  \"packets\": 1,\n  \"bytes\": 503,\n\

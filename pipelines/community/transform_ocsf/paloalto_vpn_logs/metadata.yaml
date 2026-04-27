@@ -7,8 +7,10 @@ grade:
   tested_with_realistic_event: true
   validated_at: '2026-04-19'
 metadata_details:
-  purpose: OCSF-compliant Lua serializer for Paloalto Vpn Logs. Maps source events to OCSF Network Activity
-    (class_uid=4001) following the processEvent contract.
+  purpose: OCSF-compliant Lua serializer bound to the upstream parser at parsers/community/paloalto_vpn_logs-latest/.
+    Maps that parser's output to OCSF Network Activity (class_uid=4001) for PAN-OS GlobalProtect
+    VPN traffic logs. For general PAN-OS firewall logs (TRAFFIC, THREAT subtypes) see paloalto_logs/
+    or paloalto_alternate_logs/.
   datasource_vendor: palo_alto
   dataSource: Paloalto Vpn Logs
   format: source-specific JSON/KV/syslog

@@ -7,8 +7,13 @@ grade:
   tested_with_realistic_event: true
   validated_at: '2026-04-19'
 metadata_details:
-  purpose: OCSF-compliant Lua serializer for Paloalto Alternate Logs. Maps source events to OCSF Network
-    Activity (class_uid=4001) following the processEvent contract.
+  purpose: OCSF-compliant Lua serializer bound to the upstream parser at parsers/community/paloalto_alternate_logs-latest/.
+    Maps that parser's output to OCSF Network Activity (class_uid=4001) for an alternate field-name
+    convention of PAN-OS firewall logs (uses srcip / srcport / logtype rather than sourceip /
+    source_port / type, and adds verdict, threat_severity, threat_name, subtype). activity_id is
+    logType-aware (TRAFFIC+allow=1, TRAFFIC+deny=2, THREAT=6 Malicious Activity, URL=5 URL Activity).
+    Also normalizes numeric protocol identifiers (6 -> tcp, 17 -> udp, 1 -> icmp) and accepts
+    numeric severity strings. For the standard upstream parser see paloalto_logs/.
   datasource_vendor: palo_alto
   dataSource: Paloalto Alternate Logs
   format: source-specific JSON/KV/syslog

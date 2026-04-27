@@ -32,6 +32,19 @@ removed. It is functionally subsumed by
 Activity, `class_uid=4001`) for a broader range of log types. The now-empty
 `pipelines/community/serializers/` umbrella has been removed alongside it.
 
+### Changed - backfilled `ingest_mode` and `auth_type` on transform_ocsf/
+
+All 129 existing `pipelines/community/transform_ocsf/*/metadata.yaml` files
+now declare the `ingest_mode` and `auth_type` fields introduced by the
+pipelines reorganization above. Values were derived per entry by combining
+each transform's bound-parser metadata (when authoritative) with vendor and
+product knowledge for the entries where the parser metadata is unclear
+(`format: gron` with `ingestion_method: streaming` or `unknown`, or no
+parser binding). Resulting distribution: 56 Syslog, 39 API Call, and 34
+varied `Other - {Explain: ...}` (object store, Azure Event Hub, file-based
+agent, etc.). No serializer logic, pipeline JSON, or other metadata fields
+changed.
+
 ## [1.3.0] - 2025-10-28
 
 ### Added

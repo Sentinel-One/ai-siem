@@ -51,6 +51,25 @@ The three remaining PAN-OS OCSF transforms in
 and the field-name convention each expects, so users can choose between them
 without reading the Lua. No serializer logic changes.
 
+### Changed - migrated 91 community pipelines into push/pull/ taxonomy
+
+The empty scaffolding under `pipelines/push/{syslog,hec}/` and
+`pipelines/pull/{api,object_store}/` introduced in this release is now
+populated. 91 community pipelines have moved out of
+`pipelines/community/transform_ocsf/` and into ingest-mode-first paths:
+
+- 57 entries → `pipelines/push/syslog/<vendor>/<product>/`
+- 29 entries → `pipelines/pull/api/<vendor>/<product>/`
+- 5 entries → `pipelines/pull/object_store/<vendor>/<product>/`
+
+The bucket is determined by each entry's `ingest_mode` field. Git history is
+preserved on every entry (`git mv`). No serializer logic, metadata content,
+or pipeline JSON content changed; every change is a directory rename.
+
+15 entries remain in `pipelines/community/transform_ocsf/` as platform-
+agnostic OCSF overlays for generic / template / unknown-vendor data
+(`agent_metrics_logs`, `generic_access_logs`, `json_generic_logs`,
+`sample_test_logs`, etc.).
 ### Removed - 16 `transform_ocsf/` entries with first-party ingestion paths
 
 Removed 16 directories from `pipelines/community/transform_ocsf/` for vendors

@@ -32,6 +32,25 @@ removed. It is functionally subsumed by
 Activity, `class_uid=4001`) for a broader range of log types. The now-empty
 `pipelines/community/serializers/` umbrella has been removed alongside it.
 
+### Removed - F-graded `palo_alto_networks_firewall` transform
+
+`pipelines/community/transform_ocsf/palo_alto_networks_firewall/` has been
+removed. It was graded F (`analyzer_limit`, 0% required-field coverage), used
+a non-standard `class_uid=99602001` (SentinelOne Security Alert Extended) that
+diverged from the rest of the PAN-OS cluster (`class_uid=4001` Network
+Activity), and had no matching upstream parser in `parsers/community/` (its
+`source_name` lacked the `-latest` versioning suffix used by every other
+PAN-OS entry). The three remaining PAN-OS transforms (`paloalto_logs/`,
+`paloalto_alternate_logs/`, `paloalto_vpn_logs/`) are unaffected.
+
+### Documented - PAN-OS transform variant binding
+
+The three remaining PAN-OS OCSF transforms in
+`pipelines/community/transform_ocsf/` now declare in their `metadata.yaml`
+`purpose` field which upstream parser in `parsers/community/` they bind to
+and the field-name convention each expects, so users can choose between them
+without reading the Lua. No serializer logic changes.
+
 ## [1.3.0] - 2025-10-28
 
 ### Added

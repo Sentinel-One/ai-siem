@@ -1,0 +1,47 @@
+grade:
+  letter: B
+  score: 85
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Cisco Fmc Logs. Maps source events to OCSF Network Activity
+    (class_uid=4001) following the processEvent contract.
+  datasource_vendor: cisco
+  dataSource: Cisco Fmc Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "Syslog"
+  auth_type: "N/A"
+  sample_record: "{\n  \"timestamp\": \"2026-04-20T03:32:52.723426+00:00\",\n  \"event_id\": 9448853,\n\
+    \  \"event_type\": \"DNS\",\n  \"event_subtype\": \"DNS_EVENT\",\n  \"severity\": \"Info\",\n  \"\
+    action\": \"Drop\",\n  \"device_name\": \"ENTERPRISE-FTD-SECURITY-1\",\n  \"device_ip\": \"86.29.233.254\"\
+    ,\n  \"policy_name\": \"StarfleetSecurityPolicy_1\",\n  \"rule_name\": \"Directive_57\",\n  \"source_ip\"\
+    : \"155.7.232.29\",\n  \"destination_ip\": \"188.172.10.150\",\n  \"source_port\": 16743,\n  \"destination_port\"\
+    : 22,\n  \"protocol\": \"TCP\",\n  \"source_country\": \"IN\",\n  \"destination_country\": \"FR\"\
+    ,\n  \"application_protocol\": \"DNS\",\n  \"client_application\": \"curl\",\n  \"web_application\"\
+    : \"Nginx\",\n  \"bytes_sent\": 39732,\n  \"bytes_received\": 88425,\n  \"packets_sent\": 859,\n \
+    \ \"packets_received\": 275,\n  \"duration\": 1127,\n  \"dns_query\": \"starfleet.corp\",\n  \"dns_record_type\"\
+    : \"MX\",\n  \"dns_response_type\": \"Name Error\",\n  \"dns_ttl\": 83960,\n  \"source_latitude\"\
+    : 56.497201,\n  \"source_longitude\": -136.336536,\n  \"destination_latitude\": 24.435877,\n  \"destination_longitude\"\
+    : 19.513012\n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4001
+    class_name: Network Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: cisco, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 85
+    orion_reviewed: true
+    orion_verdict: signed_off

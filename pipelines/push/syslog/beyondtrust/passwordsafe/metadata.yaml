@@ -1,0 +1,54 @@
+grade:
+  letter: B
+  score: 85
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Beyondtrust Passwordsafe Logs. Maps source events to OCSF
+    Authentication (class_uid=3002) following the processEvent contract.
+  datasource_vendor: beyondtrust
+  dataSource: Beyondtrust Passwordsafe Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "Syslog"
+  auth_type: "N/A"
+  sample_record: "{\n  \"raw\": \"2026-04-20 03:36:32 10.0.0.150 {\\\"EventTime\\\":\\\"2026-04-20T03:36:32.710887Z\\\
+    \",\\\"EventType\\\":\\\"UserLogout\\\",\\\"EventId\\\":\\\"e8b5e243-6e4a-48e1-a38b-93ee87daba95\\\
+    \",\\\"UserId\\\":\\\"svc_backup\\\",\\\"UserName\\\":\\\"Service Account\\\",\\\"UserDisplayName\\\
+    \":\\\"Service Account\\\",\\\"UserRole\\\":\\\"Service Account\\\",\\\"UserDomain\\\":\\\"CORP\\\"\
+    ,\\\"SourceIP\\\":\\\"10.228.195.61\\\",\\\"UserAgent\\\":\\\"Mozilla/5.0 (Windows NT 10.0; Win64;\
+    \ x64) AppleWebKit/537.36\\\",\\\"SessionId\\\":\\\"sess_1ffdb085342040d4\\\",\\\"AccountId\\\":\\\
+    \"a9328233-6a81-4f57-9115-b4650719afae\\\",\\\"AccountName\\\":\\\"administrator\\\",\\\"AccountType\\\
+    \":\\\"Windows Domain\\\",\\\"AccountDescription\\\":\\\"CORP\\\\\\\\administrator\\\",\\\"SystemId\\\
+    \":\\\"5ff2ae25-6ae9-41ee-8b84-b9f871e3dad7\\\",\\\"SystemName\\\":\\\"FIREWALL01\\\",\\\"SystemDescription\\\
+    \":\\\"Firewall\\\",\\\"SystemType\\\":\\\"Palo Alto Networks\\\",\\\"SystemAddress\\\":\\\"10.121.106.59\\\
+    \",\\\"Action\\\":\\\"checkin\\\",\\\"Result\\\":\\\"Partial\\\",\\\"Severity\\\":\\\"Low\\\",\\\"\
+    Category\\\":\\\"Audit\\\",\\\"RequestId\\\":\\\"req_630014\\\",\\\"WorkflowId\\\":null,\\\"Duration\\\
+    \":3156,\\\"BytesTransferred\\\":0,\\\"RecordsAffected\\\":1,\\\"PolicyName\\\":\\\"Standard Access\
+    \ Policy\\\",\\\"RuleName\\\":\\\"Dual Authorization\\\",\\\"ComplianceState\\\":\\\"Non-Compliant\\\
+    \",\\\"RiskScore\\\":12,\\\"Tags\\\":[\\\"production\\\"],\\\"AuthenticationMethod\\\":\\\"OAuth\\\
+    \",\\\"AuthenticationResult\\\":\\\"Failed\\\",\\\"FailureReason\\\":null,\\\"LoginAttempts\\\":2,\\\
+    \"AuditTrail\\\":{\\\"CreatedBy\\\":\\\"svc_backup\\\",\\\"CreatedTime\\\":\\\"2026-04-20T03:36:32.710887Z\\\
+    \",\\\"ModifiedBy\\\":\\\"svc_backup\\\",\\\"ModifiedTime\\\":\\\"2026-04-20T03:36:32.710887Z\\\"\
+    ,\\\"Version"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 3002
+    class_name: Authentication
+    category_uid: 3
+    category_name: Identity & Access Management
+  tags: beyondtrust, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 85
+    orion_reviewed: true
+    orion_verdict: signed_off

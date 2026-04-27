@@ -13,6 +13,8 @@ metadata_details:
   format: json
   ocsf_version: 1.3.0
   ingestion_method: "Observo OCSFSerializer (Lua-based transform)"
+  ingest_mode: "Other - {Explain: SentinelOne agent self-reported telemetry}"
+  auth_type: "N/A"
   ocsf_mapping:
     class_uid: 5001
     class_name: "Device Inventory Info"

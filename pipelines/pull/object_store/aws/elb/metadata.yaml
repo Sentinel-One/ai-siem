@@ -1,0 +1,50 @@
+grade:
+  letter: B
+  score: 82
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Aws Elasticloadbalancer Logs. Maps source events to OCSF
+    HTTP Activity (class_uid=4002) following the processEvent contract.
+  datasource_vendor: aws
+  dataSource: Aws Elasticloadbalancer Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "Other - {Explain: object store (S3) for ELB access logs}"
+  auth_type: "IAM Role"
+  sample_record: "{\n  \"type\": \"https\",\n  \"time\": \"2026-04-20T03:40:52.700664Z\",\n  \"alb\":\
+    \ \"corporate-alb-3\",\n  \"client_ip\": \"192.168.10.200\",\n  \"client_port\": 41655,\n  \"backend_ip\"\
+    : \"172.16.1.50\",\n  \"backend_port\": 443,\n  \"request_processing_time\": 0.029082,\n  \"backend_processing_time\"\
+    : 0.076312,\n  \"response_processing_time\": 0.005963,\n  \"alb_status_code\": 404,\n  \"backend_status_code\"\
+    : 403,\n  \"received_bytes\": 903,\n  \"sent_bytes\": 5117,\n  \"request_verb\": \"OPTIONS\",\n  \"\
+    request_url\": \"https://company.corp/api/employees/roster\",\n  \"request_proto\": \"HTTP/1.1\",\n\
+    \  \"user_agent\": \"Corporate-Mobile-App/2.3.1 (Business; Android 12)\",\n  \"ssl_cipher\": \"ECDHE-RSA-AES128-GCM-SHA256\"\
+    ,\n  \"ssl_protocol\": \"TLSv1.2\",\n  \"target_group_arn\": \"arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/corporate-tg-5/3c2965f11e08afab\"\
+    ,\n  \"trace_id\": \"Root=1-89a84ecf-dbe37f5da1e7dc7763863b72\",\n  \"domain_name\": \"company.corp\"\
+    ,\n  \"chosen_cert_arn\": \"arn:aws:acm:us-east-1:123456789012:certificate/bc1bb2-c43f36db11e3f50bdc4db53-7af15\"\
+    ,\n  \"matched_rule_priority\": 57,\n  \"request_creation_time\": \"2026-04-20T03:40:52.700664Z\"\
+    ,\n  \"actions_executed\": \"redirect\",\n  \"redirect_url\": \"https://company.corp/login\",\n  \"\
+    error_reason\": \"TargetTimeout\",\n  \"target:port_list\": \"10.0.0.102:80\",\n  \"target_status_code_list\"\
+    : \"502\",\n  \"classification\": \"Desync\",\n  \"classification_reason\": \"HeaderValueInvalid\"\
+    \n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4002
+    class_name: HTTP Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: aws, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 82
+    orion_reviewed: true
+    orion_verdict: signed_off

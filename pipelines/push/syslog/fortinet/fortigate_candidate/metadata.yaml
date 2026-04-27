@@ -1,0 +1,41 @@
+grade:
+  letter: B
+  score: 82
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Fortinet Fortigate Candidate Logs. Maps source events to
+    OCSF Network Activity (class_uid=4001) following the processEvent contract.
+  datasource_vendor: fortinet
+  dataSource: Fortinet Fortigate Candidate Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "Syslog"
+  auth_type: "N/A"
+  sample_record: "{\n  \"raw\": \"devname=FortiGate-40F devid=FGT40FTK23099XSK logid=0001000014 identifier=3\
+    \ type=traffic subtype=local level=notice vd=root srcip=44.221.84.105 dstip=70.48.255.88 srcintf=wan\
+    \ srcintfrole=wan dstintf=root dstintfrole=undefined srccountry=Japan dstcountry=Canada sessionid=11109808\
+    \ proto=1 action=accept policyid=0 policytype=local-in-policy service=PING trandisp=noop app=PING\
+    \ duration=60 sentbyte=68 rcvdbyte=68 sentpkt=1 rcvdpkt=1 appcat=unscanned tz=-0400 date=2026-04-20\
+    \ time=03:40:52 eventtime=0001776656452826782\"\n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4001
+    class_name: Network Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: fortinet, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 82
+    orion_reviewed: true
+    orion_verdict: signed_off

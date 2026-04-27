@@ -5,6 +5,120 @@ All notable changes to the AI-SIEM repository will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed - pipelines/ reorganization
+
+The `pipelines/` directory has been restructured around ingestion mode rather
+than contributor provenance. New layout:
+
+- `pipelines/push/syslog/<vendor>/<product>/`
+- `pipelines/push/hec/<vendor>/<product>/`
+- `pipelines/pull/api/<vendor>/<product>/`
+- `pipelines/pull/object_store/<vendor>/<product>/`
+- `pipelines/community/transform_ocsf/<vendor>/<product>/`
+
+`metadata.yaml` for pipelines now includes `ingest_mode` and `auth_type` fields.
+The new schema applies to new pipelines added after this release; existing
+entries in `transform_ocsf/` will be backfilled in a follow-up. See
+`pipelines/community/README.md` for the full schema and naming conventions.
+
+### Removed - orphan PAN-OS serializer
+
+`pipelines/community/serializers/Palo Alto Networks/serializer.lua` has been
+removed. It is functionally subsumed by
+`pipelines/community/transform_ocsf/paloalto_logs/`, which is signed off with
+100% required-field coverage and produces the same OCSF class (Network
+Activity, `class_uid=4001`) for a broader range of log types. The now-empty
+`pipelines/community/serializers/` umbrella has been removed alongside it.
+
+### Removed - F-graded `palo_alto_networks_firewall` transform
+
+`pipelines/community/transform_ocsf/palo_alto_networks_firewall/` has been
+removed. It was graded F (`analyzer_limit`, 0% required-field coverage), used
+a non-standard `class_uid=99602001` (SentinelOne Security Alert Extended) that
+diverged from the rest of the PAN-OS cluster (`class_uid=4001` Network
+Activity), and had no matching upstream parser in `parsers/community/` (its
+`source_name` lacked the `-latest` versioning suffix used by every other
+PAN-OS entry). The three remaining PAN-OS transforms (`paloalto_logs/`,
+`paloalto_alternate_logs/`, `paloalto_vpn_logs/`) are unaffected.
+
+### Documented - PAN-OS transform variant binding
+
+The three remaining PAN-OS OCSF transforms in
+`pipelines/community/transform_ocsf/` now declare in their `metadata.yaml`
+`purpose` field which upstream parser in `parsers/community/` they bind to
+and the field-name convention each expects, so users can choose between them
+without reading the Lua. No serializer logic changes.
+
+### Changed - migrated 91 community pipelines into push/pull/ taxonomy
+
+The empty scaffolding under `pipelines/push/{syslog,hec}/` and
+`pipelines/pull/{api,object_store}/` introduced in this release is now
+populated. 91 community pipelines have moved out of
+`pipelines/community/transform_ocsf/` and into ingest-mode-first paths:
+
+- 57 entries → `pipelines/push/syslog/<vendor>/<product>/`
+- 29 entries → `pipelines/pull/api/<vendor>/<product>/`
+- 5 entries → `pipelines/pull/object_store/<vendor>/<product>/`
+
+The bucket is determined by each entry's `ingest_mode` field. Git history is
+preserved on every entry (`git mv`). No serializer logic, metadata content,
+or pipeline JSON content changed; every change is a directory rename.
+
+15 entries remain in `pipelines/community/transform_ocsf/` as platform-
+agnostic OCSF overlays for generic / template / unknown-vendor data
+(`agent_metrics_logs`, `generic_access_logs`, `json_generic_logs`,
+`sample_test_logs`, etc.).
+### Removed - 16 `transform_ocsf/` entries with first-party ingestion paths
+
+Removed 16 directories from `pipelines/community/transform_ocsf/` for vendors
+whose log streams are typically delivered to AI SIEM via first-party or
+vendor-native ingestion paths in supported deployments, rather than via
+community-contributed Observo transforms:
+
+- `aws_guardduty_logs/`, `aws_waf/`
+- `azure_ad/`, `azure_platform/`
+- `cisco_duo/`
+- `darktrace_darktrace_logs/`
+- `microsoft_defender_for_cloud/`, `microsoft_entra_logs/`,
+  `microsoft_eventhub_azure_signin_logs/`,
+  `microsoft_eventhub_defender_email_logs/`,
+  `microsoft_eventhub_defender_emailforcloud_logs/`
+- `netskope/`
+- `proofpoint/`
+- `snyk/`
+- `tenable_vulnerability_management_audit_logging/`
+- `wiz_cloud_security_logs/`
+
+Each removed entry was previously signed_off and functional; this is a scope
+refinement, not a quality fix. The community pipelines directory is intended
+for vendors that require contributor-authored parsing and OCSF mapping; users
+who specifically need a community transform for one of these vendors can
+recover it from git history.
+### Removed - 7 broken-legacy `transform_ocsf/` entries
+
+The following directories have been removed from
+`pipelines/community/transform_ocsf/`:
+
+- `aws_cloudtrail/`
+- `aws_guardduty/`
+- `darktrace/`
+- `gcp_audit_logs/`
+- `microsoft_365/`
+- `okta/`
+- `wiz_issue/`
+
+Each shares the broken-legacy fingerprint already established by
+`palo_alto_networks_firewall/` in the previous release: sub-passing grade
+(D or F), `verdict: analyzer_limit`, `class_uid: null`, 0% required-field
+coverage, no matching upstream parser in `parsers/community/`, `source_name`
+without the `-latest` versioning suffix used by every working entry, and
+long-form Python-port style code (632–1720 lines). Each removed entry has
+at least one working alternative covering the same vendor cluster
+(e.g. `aws_guardduty_logs/`, `darktrace_darktrace_logs/`, `okta_logs/`,
+`microsoft_365_mgmt_api_logs/`, `wiz_cloud_security_logs/`).
+
 ## [1.3.0] - 2025-10-28
 
 ### Added

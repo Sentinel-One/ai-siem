@@ -1,0 +1,44 @@
+grade:
+  letter: B
+  score: 85
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer bound to the upstream parser at parsers/community/paloalto_alternate_logs-latest/.
+    Maps that parser's output to OCSF Network Activity (class_uid=4001) for an alternate field-name
+    convention of PAN-OS firewall logs (uses srcip / srcport / logtype rather than sourceip /
+    source_port / type, and adds verdict, threat_severity, threat_name, subtype). activity_id is
+    logType-aware (TRAFFIC+allow=1, TRAFFIC+deny=2, THREAT=6 Malicious Activity, URL=5 URL Activity).
+    Also normalizes numeric protocol identifiers (6 -> tcp, 17 -> udp, 1 -> icmp) and accepts
+    numeric severity strings. For the standard upstream parser see paloalto_logs/.
+  datasource_vendor: palo_alto
+  dataSource: Paloalto Alternate Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "Syslog"
+  auth_type: "N/A"
+  sample_record: "{\n  \"raw\": \",2026/04/20 03:40:53,691730434167825,TRAFFIC,deny,,2026/04/20 03:37:07,10.179.150.164,198.29.82.93,10.179.150.164,198.29.82.93,block-default,corp\\\
+    \\amanda.peterson,,dns,vsys1,trust,dmz,ethernet1/7,ethernet1/4,FORWARD,,538008,1,23369,21,23369,21,0x0,tcp,deny,969,653,316,1,2026/04/20\
+    \ 03:37:07,37,networking,,873468,0x0,DE,DE,,0,0,tcp-fin,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,\"\
+    \n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4001
+    class_name: Network Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: palo_alto, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 85
+    orion_reviewed: true
+    orion_verdict: signed_off

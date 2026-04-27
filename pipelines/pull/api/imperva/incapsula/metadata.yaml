@@ -1,0 +1,49 @@
+grade:
+  letter: B
+  score: 85
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Incapsula Incapsula Logs. Maps source events to OCSF Network
+    Activity (class_uid=4001) following the processEvent contract.
+  datasource_vendor: imperva
+  dataSource: Incapsula Incapsula Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "API Call"
+  auth_type: "API Key & Secret"
+  sample_record: "{\n  \"timestamp\": \"2026-04-20T01:19:53.112882+00:00\",\n  \"log_id\": \"inc_6968672632\"\
+    ,\n  \"account_id\": \"843279\",\n  \"site_id\": \"82975751\",\n  \"request_id\": \"8761827421665422\"\
+    ,\n  \"client_ip\": \"187.40.132.184\",\n  \"client_country\": \"IT\",\n  \"client_country_code\"\
+    : \"CN\",\n  \"client_asn\": 28769,\n  \"client_asn_name\": \"Cloudflare Inc.\",\n  \"server_ip\"\
+    : \"10.102.66.37\",\n  \"host\": \"api.example.com\",\n  \"method\": \"DELETE\",\n  \"uri\": \"/wp-admin/admin-ajax.php\"\
+    ,\n  \"query_string\": \"?cmd=cat /etc/passwd\",\n  \"user_agent\": \"python-requests/2.25.1\",\n\
+    \  \"referer\": \"https://google.com/search\",\n  \"request_size\": 7389,\n  \"response_code\": 500,\n\
+    \  \"response_size\": 1661,\n  \"response_time\": 2765,\n  \"action\": \"Monitor\",\n  \"rule_name\"\
+    : \"rule_295\",\n  \"rule_id\": 12932,\n  \"policy_name\": \"policy_31\",\n  \"attack_type\": \"\"\
+    ,\n  \"severity\": \"\",\n  \"session_id\": \"sess_216261576\",\n  \"visit_id\": \"visit_682202818\"\
+    ,\n  \"is_bot\": false,\n  \"command_pattern\": \"; cat /etc/passwd\",\n  \"client_latitude\": -24.214914,\n\
+    \  \"client_longitude\": 66.61884,\n  \"client_city\": \"Los Angeles\",\n  \"ssl_protocol\": \"TLSv1.2\"\
+    ,\n  \"ssl_cipher\": \"AES128-SHA\",\n  \"ssl_client_verify\": \"SUCCESS\",\n  \"cache_status\": \"\
+    BYPASS\",\n  \"edge_location\": \"eu-central-1\"\n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4001
+    class_name: Network Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: imperva, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 85
+    orion_reviewed: true
+    orion_verdict: signed_off

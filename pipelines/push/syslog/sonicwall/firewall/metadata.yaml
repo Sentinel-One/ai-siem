@@ -1,0 +1,50 @@
+grade:
+  letter: B
+  score: 85
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Sonicwall Firewall Logs. Maps source events to OCSF Network
+    Activity (class_uid=4001) following the processEvent contract.
+  datasource_vendor: sonicwall
+  dataSource: Sonicwall Firewall Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "Syslog"
+  auth_type: "N/A"
+  sample_record: "{\n  \"datetime\": \"2026-04-20T03:37:53.173316+00:00\",\n  \"user\": [\n    \"user58@company.com\"\
+    \n  ],\n  \"department\": \"IT\",\n  \"locationname\": \"San Jose\",\n  \"cdport\": 143,\n  \"csport\"\
+    : 51333,\n  \"sdport\": \"0\",\n  \"ssport\": \"0\",\n  \"csip\": \"10.71.221.162\",\n  \"cdip\":\
+    \ \"41.39.28.238\",\n  \"ssip\": \"0.0.0.0\",\n  \"sdip\": \"0.0.0.0\",\n  \"tsip\": \"142.61.85.25\"\
+    ,\n  \"tunsport\": \"0\",\n  \"tuntype\": \"ZscalerClientConnector\",\n  \"action\": \"Redirect\"\
+    ,\n  \"dnat\": \"No\",\n  \"stateful\": \"Yes\",\n  \"aggregate\": \"No\",\n  \"nwsvc\": \"Teams\"\
+    ,\n  \"nwapp\": \"udp\",\n  \"proto\": \"UDP\",\n  \"ipcat\": \"Miscellaneous or Unknown\",\n  \"\
+    destcountry\": \"AU\",\n  \"avgduration\": 4755,\n  \"rulelabel\": \"Default Firewall Filtering Rule\"\
+    ,\n  \"inbytes\": 2369,\n  \"outbytes\": 4780,\n  \"duration\": 2,\n  \"durationms\": 3543,\n  \"\
+    numsessions\": \"1\",\n  \"ipsrulelabel\": \"None\",\n  \"threatcat\": \"None\",\n  \"threatname\"\
+    : \"None\",\n  \"deviceowner\": \"user\",\n  \"devicehostname\": \"DEVICE77\",\n  \"threat_score\"\
+    : \"0\",\n  \"threat_severity\": \"None\",\n  \"class_uid\": 4001,\n  \"class_name\": \"Network Activity\"\
+    ,\n  \"category_uid\": 4,\n  \"category_name\": \"Network Activity\",\n  \"activity_id\": 6,\n  \"\
+    activity_name\": \"Traffic\",\n  \"type_uid\": 400106,\n  \"severity_id\": 1,\n  \"status_id\": 1\n\
+    }"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4001
+    class_name: Network Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: sonicwall, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 85
+    orion_reviewed: true
+    orion_verdict: signed_off

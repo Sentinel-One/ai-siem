@@ -1,0 +1,45 @@
+grade:
+  letter: B
+  score: 82
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Manageengine General Logs. Maps source events to OCSF Network
+    Activity (class_uid=4001) following the processEvent contract.
+  datasource_vendor: manageengine
+  dataSource: Manageengine General Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "Syslog"
+  auth_type: "N/A"
+  sample_record: "{\n  \"timestamp\": \"2026-04-19T09:38:52.858366+00:00\",\n  \"event_id\": \"ME-218871\"\
+    ,\n  \"product\": \"ADSelfService Plus\",\n  \"event_category\": \"USER_MANAGEMENT\",\n  \"action\"\
+    : \"ACCOUNT_UNLOCKED\",\n  \"severity\": \"INFO\",\n  \"description\": \"Account Unlocked event occurred\"\
+    ,\n  \"source_ip\": \"10.243.225.129\",\n  \"user_name\": \"user25\",\n  \"domain\": \"company.local\"\
+    ,\n  \"workstation\": \"WS-2726\",\n  \"computer_name\": \"PC-910\",\n  \"operating_system\": \"macOS\
+    \ Monterey\",\n  \"agent_version\": \"10.9.9.7860\",\n  \"location\": \"Data Center\",\n  \"department\"\
+    : \"IT\",\n  \"target_user\": \"user45\",\n  \"target_user_dn\": \"CN=user45,OU=Users,DC=company,DC=local\"\
+    ,\n  \"organizational_unit\": \"Users\",\n  \"user_role\": \"Administrator\",\n  \"group_membership\"\
+    : [\n    \"Group-16\",\n    \"Group-20\",\n    \"Group-10\",\n    \"Group-4\"\n  ],\n  \"compliance_status\"\
+    : \"Unknown\",\n  \"audit_trail\": \"audit_8242341\"\n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4001
+    class_name: Network Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: manageengine, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 82
+    orion_reviewed: true
+    orion_verdict: signed_off

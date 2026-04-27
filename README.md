@@ -23,8 +23,15 @@ ai-siem/                # AI SIEM core structure (260+ components)
   ├── detections/      # Detection rules (8 detections with metadata)
   │   └── community/   # Community-contributed detection rules
   ├── monitors/        # Python monitoring scripts for Dataset Agent (log_gen, maxmind, powerquery)
-  ├── pipelines/       # Observo Pipeline Templates for data transformation (5 pipelines)
-  │   └── community/   # AWS S3, Cisco Duo, Netskope, Okta, ProofPoint
+  ├── pipelines/       # Observo pipeline templates
+  │   ├── push/        # Vendor pushes to us (syslog/CEF/LEEF/KV or direct HEC)
+  │   │   ├── syslog/<vendor>/<product>/
+  │   │   └── hec/<vendor>/<product>/
+  │   ├── pull/        # We fetch from the vendor (REST API or object store)
+  │   │   ├── api/<vendor>/<product>/
+  │   │   └── object_store/<vendor>/<product>/
+  │   └── community/
+  │       └── transform_ocsf/<vendor>/<product>/  # OCSF normalization overlays
   ├── parsers/         # Parsing logic and configurations (165 parsers)
   │   ├── community/   # 148 community parsers (*.conf + metadata)
   │   └── sentinelone/ # 17 official marketplace parsers (*.conf + metadata)
@@ -113,50 +120,32 @@ The monitors directory contains Python scripts for use with the Dataset Agent:
 
 ---
 
-## Pipelines Installation Guide
+## Pipelines
 
-### Observo Pipeline Integration
-The pipelines directory contains pre-configured Observo pipeline templates for ingesting and transforming data from various sources:
+The `pipelines/` directory holds Observo pipeline templates for SentinelOne
+AI SIEM, organized by ingest mode:
 
-#### Available Pipeline Templates
-1. **AWS S3 CloudTrail** (`aws_s3_cloudtrail/`)
-   - Ingests CloudTrail logs from S3 buckets via SQS/SNS
-   - Transforms to OCSF format with extensive field mapping
-   - **Required credentials:**
-     - `auth.assume_role`: `arn:aws:iam::<your_accountid>:role/<role you created>`
-     - `auth.external_id`: Your external ID for role assumption
+- `pipelines/push/{syslog,hec}/<vendor>/<product>/` — vendor pushes events to us
+- `pipelines/pull/{api,object_store}/<vendor>/<product>/` — we fetch from the vendor
+- `pipelines/community/transform_ocsf/<vendor>/<product>/` — OCSF normalization
+  overlays that run on top of upstream-ingested data
 
-2. **Cisco Duo Logs** (`cisco_duo_logs/`)
-   - Collects authentication, administrator, and telephony logs
-   - Supports checkpointing for incremental data collection
-   - **Required credentials:**
-     - `DUO_API_HOST`: `<your_host>.duosecurity.com`
-     - `DUO_INTEGRATION_KEY`: Your integration key
-     - `DUO_SECRET_KEY`: Your secret key
+The full directory taxonomy, required `metadata.yaml` fields, and naming
+conventions are documented in [`pipelines/community/README.md`](pipelines/community/README.md).
 
-3. **Netskope Alerts** (`netskope_alerts/`)
-   - Ingests Netskope security alerts
-   - Transforms to OCSF format
+### Installing a community pipeline
 
-4. **Okta Log Collector** (`okta_log_collector/`)
-   - Collects Okta identity and access management logs
-   - Supports incremental log collection
-
-5. **ProofPoint Logs** (`proofpoint_log/`)
-   - Ingests ProofPoint email security logs
-   - OCSF transformation included
-
-### Pipeline Installation Steps
-1. Import the JSON configuration file into your Observo instance
-2. Update authentication credentials with your specific values
-3. Configure the SentinelOne AI SIEM destination endpoint
-4. Deploy and activate the pipeline
-
-### Configuration Requirements
-All pipelines require:
-- **SentinelOne HEC Token**: Replace `********` with your actual token
-- **Endpoint URL**: Verify the correct region endpoint (default: `https://ingest.us1.sentinelone.net`)
-- **Source-specific credentials**: See individual pipeline requirements above
+1. Navigate to the relevant `pipelines/{push,pull}/<mode>/<vendor>/<product>/`
+   or `pipelines/community/transform_ocsf/<vendor>/<product>/` directory.
+2. Import the JSON template into your Observo instance, or apply the Lua
+   serializer to the appropriate transform stage.
+3. Update authentication credentials per the `metadata.yaml` `dependencies`
+   block.
+4. Configure the SentinelOne AI SIEM HEC destination:
+   - **HEC token** — replace the placeholder in the import.
+   - **Endpoint URL** — verify regional endpoint
+     (default `https://ingest.us1.sentinelone.net`).
+5. Deploy and activate.
 
 ---
 
@@ -240,6 +229,31 @@ metadata_details:
   monitor_type: "Threshold | Anomaly | Heartbeat | Availability"
   trigger_frequency: "Polling interval or triggering condition"
   expected_behavior: "Describe the action or alert that should result"
+  tags: "Optional tagging"
+  version: "v1.0"
+
+# Pipelines
+# File: metadata.yaml
+# Schema applies to new pipelines; existing entries will be backfilled in a follow-up.
+# Top-level `grade:` block is produced by the automated grader — do not hand-author.
+metadata_details:
+  vendor: "<canonical_vendor_key>"      # lowercase, underscored
+  product: "<canonical_product_key>"    # lowercase, underscored
+  ingest_mode: "HEC | Syslog | API Call | Other - {Explain, e.g. websocket, object store}"
+  auth_type: "N/A | HEC Token | OAuth | API Key & Secret | Bearer Token | Basic | mTLS | IAM Role | Other - {Explain}"
+  syslog_format: "CEF | LEEF | RFC5424 | RFC3164 | Vendor KV"   # optional, push/syslog/ only
+  purpose: "What the pipeline ingests/transforms and into which OCSF classes"
+  source_template: "Source template name as it appears in the pipeline manager"
+  source_vendor: "Vendor display name"
+  destination_template: "SentinelOne AI SIEM"
+  destination_type: "SPLUNK_HEC_LOGS"
+  transform_templates: "Description of OCSF / Lua serializer logic"
+  input_schema: "Expected input record fields"
+  output_schema: "Resulting OCSF event shape"
+  scheduling: "Polling interval / event-driven / N/A"
+  retry_behavior: "Backoff and failure handling"
+  dependencies: "Auth credentials, IAM, queues, etc."
+  performance_impact: "Throughput and tuning notes"
   tags: "Optional tagging"
   version: "v1.0"
 ```

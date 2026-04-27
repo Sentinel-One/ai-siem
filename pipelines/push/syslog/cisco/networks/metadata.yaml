@@ -1,0 +1,44 @@
+grade:
+  letter: B
+  score: 85
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Cisco Networks Logs. Maps source events to OCSF Network Activity
+    (class_uid=4001) following the processEvent contract.
+  datasource_vendor: cisco
+  dataSource: Cisco Networks Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "Syslog"
+  auth_type: "N/A"
+  sample_record: "{\n  \"timestamp\": \"2026-04-19T23:56:52.753336+00:00\",\n  \"hostname\": \"asa-43\"\
+    ,\n  \"device_ip\": \"187.202.143.67\",\n  \"facility\": \"LOCAL3\",\n  \"severity\": \"info\",\n\
+    \  \"mnemonic\": \"SUCCESS\",\n  \"facility_mnemonic\": \"SEC_LOGIN\",\n  \"sequence_number\": 150664,\n\
+    \  \"message\": \"Login Success [user: admin] [Source: 104.124.71.157] [localport: 22]\",\n  \"raw_message\"\
+    : \"*Apr 19 23:56:52.753: %SEC_LOGIN-INFO-SUCCESS: Login Success [user: admin] [Source: 104.124.71.157]\
+    \ [localport: 22]\",\n  \"process_name\": \"SEC_LOGIN\",\n  \"ios_version\": \"17.3.5\",\n  \"hardware_platform\"\
+    : \"ASR1001\",\n  \"uptime\": \"48 days, 20 hours, 27 minutes\",\n  \"location\": \"Building-B\",\n\
+    \  \"source_ip\": \"109.164.200.161\",\n  \"username\": \"netadmin\",\n  \"login_method\": \"Telnet\"\
+    ,\n  \"session_id\": 814\n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4001
+    class_name: Network Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: cisco, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 85
+    orion_reviewed: true
+    orion_verdict: signed_off

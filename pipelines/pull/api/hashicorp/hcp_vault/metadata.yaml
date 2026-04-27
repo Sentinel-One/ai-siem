@@ -1,0 +1,52 @@
+grade:
+  letter: B
+  score: 85
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Hashicorp Hcp Vault Logs. Maps source events to OCSF Network
+    Activity (class_uid=4001) following the processEvent contract.
+  datasource_vendor: hashicorp
+  dataSource: Hashicorp Hcp Vault Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "API Call"
+  auth_type: "Bearer Token"
+  sample_record: "{\n  \"time\": \"2026-04-20T03:40:23.836066Z\",\n  \"type\": \"response\",\n  \"auth\"\
+    : {\n    \"client_token\": \"hvs.ef6fdebc711945e6bb9fdc3668156e5f\",\n    \"accessor\": \"acc_dce24dcee39a40b7\"\
+    ,\n    \"display_name\": \"app-server-01\",\n    \"policies\": [\n      \"monitoring\"\n    ],\n \
+    \   \"token_policies\": [\n      \"ci-cd\"\n    ],\n    \"metadata\": {\n      \"username\": null,\n\
+    \      \"service\": \"app-server-01\"\n    },\n    \"entity_id\": \"ee471f8e-3ea2-4fe9-a450-d47edbbcda19\"\
+    ,\n    \"token_type\": \"recovery\",\n    \"token_ttl\": 9809,\n    \"token_issue_time\": \"2026-04-20T03:40:23.836066Z\"\
+    \n  },\n  \"request\": {\n    \"id\": \"7035f8ca-e46d-4ca2-8756-fe6f0c2e871c\",\n    \"operation\"\
+    : \"policy_delete\",\n    \"mount_type\": \"kv\",\n    \"client_token\": \"hvs.2fc9fdb5cf1a463aa58ce18400a2a9cb\"\
+    ,\n    \"client_token_accessor\": \"acc_9dab867d05d24c50\",\n    \"namespace\": {\n      \"id\": \"\
+    root\",\n      \"path\": \"\"\n    },\n    \"path\": \"sys/policy/database-admin\",\n    \"data\"\
+    : {},\n    \"policy_override\": false,\n    \"remote_address\": \"10.76.139.59\",\n    \"wrap_ttl\"\
+    : 0,\n    \"headers\": {\n      \"user-agent\": [\n        \"terraform/1.3.0\"\n      ],\n      \"\
+    content-type\": [\n        \"application/json\"\n      ],\n      \"x-forwarded-for\": [\n        \"\
+    10.23.23.176\"\n      ]\n    }\n  },\n  \"response\": {\n    \"mount_type\": \"aws\",\n    \"data\"\
+    : null,\n    \"status_code\": 503,\n    \"duration\": 345,\n    \"headers\": {\n      \"cache-control\"\
+    : [\n        \"no-store\"\n      ],\n      \"content-type\": [\n        \"application/json\"\n   \
+    \   ],\n      \"x-vault-request-id\": [\n        \"7035f8ca-e46d-4ca2-8756-fe6"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4001
+    class_name: Network Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: hashicorp, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 85
+    orion_reviewed: true
+    orion_verdict: signed_off

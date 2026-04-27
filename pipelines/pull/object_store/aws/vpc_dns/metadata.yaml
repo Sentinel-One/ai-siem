@@ -1,0 +1,44 @@
+grade:
+  letter: B
+  score: 85
+  verdict: signed_off
+  required_field_coverage_pct: 100.0
+  source_field_coverage_pct: 100
+  tested_with_realistic_event: true
+  validated_at: '2026-04-19'
+metadata_details:
+  purpose: OCSF-compliant Lua serializer for Aws Vpc Dns Logs. Maps source events to OCSF Network Activity
+    (class_uid=4001) following the processEvent contract.
+  datasource_vendor: aws
+  dataSource: Aws Vpc Dns Logs
+  format: source-specific JSON/KV/syslog
+  ocsf_version: 1.3.0
+  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingest_mode: "Other - {Explain: Route 53 Resolver Query Logs to S3 or CloudWatch Logs}"
+  auth_type: "IAM Role"
+  sample_record: "{\n  \"version\": \"1.100000\",\n  \"account_id\": \"213644108138\",\n  \"interface_id\"\
+    : \"eni-02daa7e2\",\n  \"srcaddr\": \"10.101.151.110\",\n  \"dstaddr\": \"169.254.169.253\",\n  \"\
+    srcport\": 49709,\n  \"dstport\": 53,\n  \"protocol\": 17,\n  \"packets\": 1,\n  \"bytes\": 503,\n\
+    \  \"windowstart\": 1776632452,\n  \"windowend\": 1776632512,\n  \"action\": \"ACCEPT\",\n  \"flowlogstatus\"\
+    : \"OK\",\n  \"query_name\": \"services.company.corp\",\n  \"query_type\": \"AAAA\",\n  \"query_class\"\
+    : \"IN\",\n  \"rcode\": \"NOERROR\",\n  \"rdata\": \"\",\n  \"answers\": 2,\n  \"transport\": \"UDP\"\
+    ,\n  \"vpc_id\": \"vpc-01c95d3a\",\n  \"subnet_id\": \"subnet-05f2572f\",\n  \"instance_id\": \"i-03d0aee2\"\
+    ,\n  \"query_timestamp\": \"2026-04-19T21:00:52Z\",\n  \"firewall_rule_action\": \"PASS\",\n  \"threat_list_name\"\
+    : \"\",\n  \"threat_list_id\": \"\"\n}"
+  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+    must match the field layout exercised by the Lua mappings.
+  performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
+    nested access.
+  ocsf_mapping:
+    class_uid: 4001
+    class_name: Network Activity
+    category_uid: 4
+    category_name: Network Activity
+  tags: aws, ocsf, lua, serializer, transform
+  version: v1.0
+  author: Community (imported from Purple-Pipeline-Parser-Eater)
+  validation:
+    harness_grade: B
+    harness_score: 85
+    orion_reviewed: true
+    orion_verdict: signed_off

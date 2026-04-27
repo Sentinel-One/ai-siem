@@ -70,6 +70,54 @@ or pipeline JSON content changed; every change is a directory rename.
 agnostic OCSF overlays for generic / template / unknown-vendor data
 (`agent_metrics_logs`, `generic_access_logs`, `json_generic_logs`,
 `sample_test_logs`, etc.).
+### Removed - 16 `transform_ocsf/` entries with first-party ingestion paths
+
+Removed 16 directories from `pipelines/community/transform_ocsf/` for vendors
+whose log streams are typically delivered to AI SIEM via first-party or
+vendor-native ingestion paths in supported deployments, rather than via
+community-contributed Observo transforms:
+
+- `aws_guardduty_logs/`, `aws_waf/`
+- `azure_ad/`, `azure_platform/`
+- `cisco_duo/`
+- `darktrace_darktrace_logs/`
+- `microsoft_defender_for_cloud/`, `microsoft_entra_logs/`,
+  `microsoft_eventhub_azure_signin_logs/`,
+  `microsoft_eventhub_defender_email_logs/`,
+  `microsoft_eventhub_defender_emailforcloud_logs/`
+- `netskope/`
+- `proofpoint/`
+- `snyk/`
+- `tenable_vulnerability_management_audit_logging/`
+- `wiz_cloud_security_logs/`
+
+Each removed entry was previously signed_off and functional; this is a scope
+refinement, not a quality fix. The community pipelines directory is intended
+for vendors that require contributor-authored parsing and OCSF mapping; users
+who specifically need a community transform for one of these vendors can
+recover it from git history.
+### Removed - 7 broken-legacy `transform_ocsf/` entries
+
+The following directories have been removed from
+`pipelines/community/transform_ocsf/`:
+
+- `aws_cloudtrail/`
+- `aws_guardduty/`
+- `darktrace/`
+- `gcp_audit_logs/`
+- `microsoft_365/`
+- `okta/`
+- `wiz_issue/`
+
+Each shares the broken-legacy fingerprint already established by
+`palo_alto_networks_firewall/` in the previous release: sub-passing grade
+(D or F), `verdict: analyzer_limit`, `class_uid: null`, 0% required-field
+coverage, no matching upstream parser in `parsers/community/`, `source_name`
+without the `-latest` versioning suffix used by every working entry, and
+long-form Python-port style code (632–1720 lines). Each removed entry has
+at least one working alternative covering the same vendor cluster
+(e.g. `aws_guardduty_logs/`, `darktrace_darktrace_logs/`, `okta_logs/`,
+`microsoft_365_mgmt_api_logs/`, `wiz_cloud_security_logs/`).
 
 ## [1.3.0] - 2025-10-28
 

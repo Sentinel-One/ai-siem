@@ -13,6 +13,8 @@ metadata_details:
   format: json
   ocsf_version: 1.3.0
   ingestion_method: "Observo OCSFSerializer (Lua-based transform)"
+  ingest_mode: "Other - {Explain: VPC Flow Logs to S3 or CloudWatch Logs}"
+  auth_type: "IAM Role"
   ocsf_mapping:
     class_uid: 4001
     class_name: "Network Activity"

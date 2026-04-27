@@ -51,6 +51,33 @@ The three remaining PAN-OS OCSF transforms in
 and the field-name convention each expects, so users can choose between them
 without reading the Lua. No serializer logic changes.
 
+### Removed - 16 `transform_ocsf/` entries with first-party ingestion paths
+
+Removed 16 directories from `pipelines/community/transform_ocsf/` for vendors
+whose log streams are typically delivered to AI SIEM via first-party or
+vendor-native ingestion paths in supported deployments, rather than via
+community-contributed Observo transforms:
+
+- `aws_guardduty_logs/`, `aws_waf/`
+- `azure_ad/`, `azure_platform/`
+- `cisco_duo/`
+- `darktrace_darktrace_logs/`
+- `microsoft_defender_for_cloud/`, `microsoft_entra_logs/`,
+  `microsoft_eventhub_azure_signin_logs/`,
+  `microsoft_eventhub_defender_email_logs/`,
+  `microsoft_eventhub_defender_emailforcloud_logs/`
+- `netskope/`
+- `proofpoint/`
+- `snyk/`
+- `tenable_vulnerability_management_audit_logging/`
+- `wiz_cloud_security_logs/`
+
+Each removed entry was previously signed_off and functional; this is a scope
+refinement, not a quality fix. The community pipelines directory is intended
+for vendors that require contributor-authored parsing and OCSF mapping; users
+who specifically need a community transform for one of these vendors can
+recover it from git history.
+
 ## [1.3.0] - 2025-10-28
 
 ### Added

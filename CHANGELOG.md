@@ -5,6 +5,33 @@ All notable changes to the AI-SIEM repository will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed - pipelines/ reorganization
+
+The `pipelines/` directory has been restructured around ingestion mode rather
+than contributor provenance. New layout:
+
+- `pipelines/push/syslog/<vendor>/<product>/`
+- `pipelines/push/hec/<vendor>/<product>/`
+- `pipelines/pull/api/<vendor>/<product>/`
+- `pipelines/pull/object_store/<vendor>/<product>/`
+- `pipelines/community/transform_ocsf/<vendor>/<product>/`
+
+`metadata.yaml` for pipelines now includes `ingest_mode` and `auth_type` fields.
+The new schema applies to new pipelines added after this release; existing
+entries in `transform_ocsf/` will be backfilled in a follow-up. See
+`pipelines/community/README.md` for the full schema and naming conventions.
+
+### Removed - orphan PAN-OS serializer
+
+`pipelines/community/serializers/Palo Alto Networks/serializer.lua` has been
+removed. It is functionally subsumed by
+`pipelines/community/transform_ocsf/paloalto_logs/`, which is signed off with
+100% required-field coverage and produces the same OCSF class (Network
+Activity, `class_uid=4001`) for a broader range of log types. The now-empty
+`pipelines/community/serializers/` umbrella has been removed alongside it.
+
 ## [1.3.0] - 2025-10-28
 
 ### Added

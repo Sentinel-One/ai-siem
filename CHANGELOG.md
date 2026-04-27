@@ -77,6 +77,28 @@ refinement, not a quality fix. The community pipelines directory is intended
 for vendors that require contributor-authored parsing and OCSF mapping; users
 who specifically need a community transform for one of these vendors can
 recover it from git history.
+### Removed - 7 broken-legacy `transform_ocsf/` entries
+
+The following directories have been removed from
+`pipelines/community/transform_ocsf/`:
+
+- `aws_cloudtrail/`
+- `aws_guardduty/`
+- `darktrace/`
+- `gcp_audit_logs/`
+- `microsoft_365/`
+- `okta/`
+- `wiz_issue/`
+
+Each shares the broken-legacy fingerprint already established by
+`palo_alto_networks_firewall/` in the previous release: sub-passing grade
+(D or F), `verdict: analyzer_limit`, `class_uid: null`, 0% required-field
+coverage, no matching upstream parser in `parsers/community/`, `source_name`
+without the `-latest` versioning suffix used by every working entry, and
+long-form Python-port style code (632–1720 lines). Each removed entry has
+at least one working alternative covering the same vendor cluster
+(e.g. `aws_guardduty_logs/`, `darktrace_darktrace_logs/`, `okta_logs/`,
+`microsoft_365_mgmt_api_logs/`, `wiz_cloud_security_logs/`).
 
 ## [1.3.0] - 2025-10-28
 

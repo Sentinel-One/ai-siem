@@ -1,0 +1,153 @@
+{
+  "name": "Workshop",
+  "description": "",
+  "actions": [
+    {
+      "action": {
+        "type": "singularity_response_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Singularity Response Trigger",
+          "action_type": "singularity_response_trigger",
+          "filter_groups": [
+            {
+              "condition": {
+                "input_value": "name",
+                "compared_value": "your name here",
+                "comparison_operator": "contains"
+              },
+              "is_disabled": false,
+              "run_automatically": true,
+              "event_type": "alert",
+              "event_subtypes": [
+                "CREATE"
+              ]
+            }
+          ]
+        },
+        "state": "active",
+        "description": null,
+        "client_data": {
+          "position": {
+            "x": -250,
+            "y": -150
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Variable",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "manager_email",
+              "value": "your-email",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -250,
+            "y": 26.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "send_email",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Send Email",
+          "action_type": "send_email",
+          "subject": "Verification Training",
+          "to": [
+            "{{local_var.manager_email}}"
+          ],
+          "cc": [],
+          "bcc": [],
+          "reply_to": [],
+          "mime_type": "text/plain",
+          "body": "Hi, \nThis is an automated message from sentinelone confirming my completion of the DataPipelines course.\n\nCheers!",
+          "attachments": [],
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -250,
+            "y": 203.3544
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [],
+      "parent_action": null
+    }
+  ]
+}

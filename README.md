@@ -35,7 +35,10 @@ ai-siem/                # AI SIEM core structure (260+ components)
   ├── parsers/         # Parsing logic and configurations (165 parsers)
   │   ├── community/   # 148 community parsers (*.conf + metadata)
   │   └── sentinelone/ # 17 official marketplace parsers (*.conf + metadata)
-  └── workflows/       # Automated playbooks and responses (3 workflows with metadata)
+  └── workflows/       # Automated playbooks and responses
+      ├── community/   # Community-developed HyperAutomation Workflows
+      ├── docs-guides/ # Detailed documentation guides on importing/configuring HA Workflows
+      └── vendor/      # HyperAutomation Workflows developed by S1 Staff + Partner vendors
 ```
 
 ---

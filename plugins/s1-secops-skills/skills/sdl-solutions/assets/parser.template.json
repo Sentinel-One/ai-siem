@@ -1,0 +1,34 @@
+{
+  "_comment": "Enrichment parser. The two computeFields lookups stamp device_*/user_* context on every event. The mappings block then exposes the device identity in OCSF fields so DETECTIONS can bind the Target Asset. ASSET-MAPPING MINIMUM for events-type detection rules: device.uid = the numeric console agent id (device_agentid from the endpoint lookup, NOT the uuid) PLUS an endpoint class_uid (1xxx, e.g. 1007). Binding reconciles device.uid against the live Asset Inventory, so a real enrolled agent id is required. Set {{ENDPOINT_CLASS_UID}} to the source's real OCSF class; it must be an endpoint class (1xxx) for events-rule auto-binding. If this source is NOT endpoint activity (network/identity/cloud), leave class_uid as the source's real class and bind detections via a scheduled rule with entityMappings on the device_host / device_agentid / device_agentuuid columns instead (that path binds for any source). See powerquery/references/detection-rules.md for the tested binding matrix. UNIVERSAL KEY: the unified asset id (device_assetid / user_assetid, the `id` from datasource assets) resolves ANY asset type (device / identity / cloud); stamp it into device.uid (devices) or user.uid (identities) with the matching class_uid. For an identity-centric source, stamp user.uid = user_assetid + an Identity class_uid (3xxx, e.g. 3002) instead of device.uid + 1007.",
+  "timezone": "UTC",
+  "attributes": {
+    "metadata.version": "1.0.0",
+    "dataSource.category": "security",
+    "dataSource.name": "{{DATASOURCE_NAME}}",
+    "dataSource.vendor": "{{PREFIX}}"
+  },
+  "formats": [
+    {
+      "id": "enrich",
+      "format": "{{HOSTNAME_FIELD}}=${{HOSTNAME_FIELD}}$ {{USERNAME_FIELD}}=${{USERNAME_FIELD}}$ action=$action$ outcome=$outcome$",
+      "halt": true,
+      "rewrites": [
+        { "action": "computeFields", "expression": "| lookup device_assetid, device_os, device_ip, device_agentid, device_agentuuid, device_lastuser, device_site, device_criticality, device_riskfactors from {{ENDPOINT_TABLE}} by hostname = {{HOSTNAME_FIELD}}" },
+        { "action": "computeFields", "expression": "| lookup user_assetid, user_principal, user_sid, user_domain, user_dn, user_groups, user_privileged, user_criticality, user_riskfactors from {{IDENTITY_TABLE}} by username = {{USERNAME_FIELD}}" }
+      ]
+    }
+  ],
+  "mappings": {
+    "version": 1,
+    "mappings": [
+      {
+        "predicate": "true",
+        "transformations": [
+          { "copy": { "from": ["device_agentid", "device_assetid"], "to": "device.uid" } },
+          { "copy": { "from": ["device_agentuuid"], "to": "device.agent.uuid" } },
+          { "constant": { "value": {{ENDPOINT_CLASS_UID}}, "field": "class_uid" } }
+        ]
+      }
+    ]
+  }
+}

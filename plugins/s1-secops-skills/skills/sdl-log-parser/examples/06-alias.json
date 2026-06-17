@@ -1,0 +1,19 @@
+// Trivial alias parser. Use when a built-in does exactly what you need and you just
+// want a vendor-named entrypoint.
+//
+// Any reference to /logParsers/MyJSONBased now resolves to the built-in `json`.
+//
+// Caveats:
+//   - aliasTo cannot chain (target must be a real parser, not another alias).
+//   - aliasTo is MUTUALLY EXCLUSIVE with everything else — including the required
+//     default attributes (metadata.version, dataSource.category, dataSource.name,
+//     dataSource.vendor). If you need those attributes to land on every event, you
+//     cannot use aliasTo. Instead, copy the built-in's body into a full parser and
+//     add the attributes block.
+//   - Practical guidance: use aliasTo only for throwaway/demo cases where the
+//     downstream pipeline does NOT require the default attributes. For production
+//     use, prefer a full parser with the required defaults.
+
+{
+  aliasTo: "json"
+}

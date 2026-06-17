@@ -1,0 +1,40 @@
+// Freeform key=value lines with an optional bracketed timestamp.
+//
+// Sample lines:
+//   [2026-04-20 10:25:34] src=10.0.0.5 dst=10.0.0.9 user=alice result=allow
+//   src=10.0.0.6 dst=10.0.0.9 user=someone bytes=12345 result=deny reason="policy block"
+//
+// Extraction plan:
+//   First format: optional bracketed timestamp if present on the line.
+//   Second format: repeating key=value catch-all. Quoted values are honored via
+//     the `quoteOrSpace` pattern.
+
+{
+  attributes: {
+    // Required pipeline defaults.
+    "metadata.version":    "1.0.0",
+    "dataSource.category": "security",
+    "dataSource.name":     "Generic Key-Value Source",
+    "dataSource.vendor":   "Unknown",
+    dataset: "kv_generic"
+  },
+
+  patterns: {
+    ts: "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}"
+  },
+
+  formats: [
+    // NOTE: capture the bracketed stamp as `ts_raw`, not `timestamp`. The
+    // reserved `timestamp` field silently drops events when it receives a
+    // non-epoch string (tenant-validated April 2026).
+    {
+      id: "optional-timestamp",
+      format: "\\[$ts_raw=ts$\\] .*"
+    },
+    {
+      id: "kv-catchall",
+      format: ".*$_=identifier$=$_=quoteOrSpace$",
+      repeat: true
+    }
+  ]
+}

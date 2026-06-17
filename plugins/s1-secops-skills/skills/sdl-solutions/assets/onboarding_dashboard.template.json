@@ -1,0 +1,78 @@
+{
+  "_comment": "Starter dashboard skeleton for an onboarded source. Deploy with sdl_put_file to /dashboards/<PREFIX> Overview. Replace {{TOKENS}} with the source's normalised OCSF fields discovered in Step 0/1. Keep number panels terminated with | limit 1. Use stacked_bar/line (never area) for query-driven time series, and match the timebucket to the duration (24h:10m, 7d:1h, 30d:1d). Project enriched device_*/user_* fields so panels carry asset context. Remove panels the source does not populate; add source-specific panels (URL category, IDS signature, geo) as needed.",
+  "configType": "TABBED",
+  "duration": "24h",
+  "description": "{{DATASOURCE_NAME}} onboarding overview. Operational view of the {{DATASOURCE_NAME}} source after OCSF normalisation and asset enrichment.",
+  "tabs": [
+    {
+      "tabName": "Overview",
+      "graphs": [
+        {
+          "graphStyle": "markdown",
+          "markdown": "## {{DATASOURCE_NAME}} Overview\nNormalised and asset-enriched view of the **{{DATASOURCE_NAME}}** source (`dataSource.name='{{DATASOURCE_NAME}}'`). Default window: last 24h. Use the time picker to widen.",
+          "layout": { "w": 60, "h": 4, "x": 0, "y": 0 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Total Events (24h)",
+          "query": "dataSource.name='{{DATASOURCE_NAME}}' | group n=count() | limit 1",
+          "options": { "format": "commas", "suffix": " events" },
+          "sparklineConfig": { "enabled": true },
+          "layout": { "w": 15, "h": 9, "x": 0, "y": 4 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Distinct Source IPs",
+          "query": "dataSource.name='{{DATASOURCE_NAME}}' {{IP_SRC_FIELD}}=* | group n=estimate_distinct({{IP_SRC_FIELD}}) | limit 1",
+          "options": { "format": "commas", "suffix": " IPs" },
+          "layout": { "w": 15, "h": 9, "x": 15, "y": 4 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Distinct Users",
+          "query": "dataSource.name='{{DATASOURCE_NAME}}' {{USER_FIELD}}=* | group n=estimate_distinct({{USER_FIELD}}) | limit 1",
+          "options": { "format": "commas", "suffix": " users" },
+          "layout": { "w": 15, "h": 9, "x": 30, "y": 4 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Distinct Devices",
+          "query": "dataSource.name='{{DATASOURCE_NAME}}' device_agentuuid=* | group n=estimate_distinct(device_agentuuid) | limit 1",
+          "options": { "format": "commas", "suffix": " devices" },
+          "layout": { "w": 15, "h": 9, "x": 45, "y": 4 }
+        },
+        {
+          "graphStyle": "stacked_bar",
+          "title": "Event Volume Over Time",
+          "query": "dataSource.name='{{DATASOURCE_NAME}}' | group events=count() by timestamp=timebucket('10m'), {{ACTION_FIELD}} | sort timestamp",
+          "xAxis": "time",
+          "layout": { "w": 40, "h": 12, "x": 0, "y": 13 }
+        },
+        {
+          "graphStyle": "pie",
+          "title": "Action Breakdown",
+          "query": "dataSource.name='{{DATASOURCE_NAME}}' {{ACTION_FIELD}}=* | group events=count() by {{ACTION_FIELD}} | sort -events | limit 10",
+          "layout": { "w": 20, "h": 12, "x": 40, "y": 13 }
+        },
+        {
+          "graphStyle": "table",
+          "title": "Top Source Talkers (with device context)",
+          "query": "dataSource.name='{{DATASOURCE_NAME}}' {{IP_SRC_FIELD}}=* | group events=count() by {{IP_SRC_FIELD}}, device_lastuser, device_criticality | sort -events | limit 25",
+          "layout": { "w": 30, "h": 12, "x": 0, "y": 25 }
+        },
+        {
+          "graphStyle": "table",
+          "title": "Top Users (enriched)",
+          "query": "dataSource.name='{{DATASOURCE_NAME}}' {{USER_FIELD}}=* | group events=count() by {{USER_FIELD}}, user_principal, user_privileged, user_criticality | sort -events | limit 25",
+          "layout": { "w": 30, "h": 12, "x": 30, "y": 25 }
+        },
+        {
+          "graphStyle": "table",
+          "title": "Top Destinations",
+          "query": "dataSource.name='{{DATASOURCE_NAME}}' {{IP_DST_FIELD}}=* | group events=count() by {{IP_DST_FIELD}}, {{PORT_FIELD}} | sort -events | limit 25",
+          "layout": { "w": 60, "h": 12, "x": 0, "y": 37 }
+        }
+      ]
+    }
+  ]
+}

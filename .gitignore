@@ -49,3 +49,12 @@ CLAUDE.md
 LOCAL_*.md
 LOCAL_*.txt
 *_LOCAL_ONLY.*
+# --- s1-secops-skills plugin: keep its CLAUDE.md (operating instructions) tracked ---
+!plugins/s1-secops-skills/CLAUDE.md
+
+# --- Secrets: never commit real credentials ---
+**/credentials.json
+*.env
+.env.*
+*.pem
+*.key

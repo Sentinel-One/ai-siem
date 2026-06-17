@@ -1,0 +1,48 @@
+// JSON body with a non-JSON envelope prefix.
+//
+// Sample line the parser targets:
+//   2026-04-20T10:25:34.123Z host-7 app:myservice {"user":"alice","action":"login","meta":{"ip":"10.0.0.5","country":"US"}}
+//
+// Extraction plan:
+//   timestamp at the start, then `host` and an `app:<name>` tag, then a JSON body.
+//   Use `dottedJson` under an `unmapped.` prefix so nested fields become
+//   `unmapped.user`, `unmapped.action`, `unmapped.meta.ip`, `unmapped.meta.country`.
+//
+// Three things the tenant's parser insists on for this shape:
+//   (1) The JSON capture MUST have an explicit `=json` pattern — without a pattern
+//       the default `quotable` stops at the first whitespace and the whole format
+//       fails to match.
+//   (2) `{parse=dottedJson}` only flattens JSON subfields when the capture NAME
+//       is a dotted prefix like `unmapped.` (trailing dot). A non-prefix name
+//       (`$payload{parse=dottedJson}$`) captures the raw JSON string but emits no
+//       dotted subfields.
+//   (3) Downstream mappings can `rename` the `unmapped.*` fields to OCSF or
+//       vendor-native names — this is the canonical ai-siem community pattern.
+
+{
+  attributes: {
+    // Required pipeline defaults.
+    "metadata.version":    "1.0.0",
+    "dataSource.category": "application",
+    "dataSource.name":     "MyService",
+    "dataSource.vendor":   "Internal",
+    dataset: "my_service"
+  },
+
+  patterns: {
+    iso: "\\d{4}-\\d{2}-\\d{2}T[0-9:.]+Z"
+  },
+
+  formats: [
+    // NOTE: Capturing an ISO8601 string into the reserved `timestamp` field
+    // silently drops the event on this tenant. Capture as `ts_raw`; the ingest
+    // pipeline's own receive-time is fine for near-real-time forwarding.
+    {
+      id: "json-envelope",
+      format: "$ts_raw=iso$ $host$ app:$app$ $unmapped.=json{parse=dottedJson}$",
+      halt: true
+    }
+  ],
+
+  discardAttributes: ["message"]
+}

@@ -1,0 +1,942 @@
+# Inventory Unified Actions
+
+3 endpoints.
+
+## `POST /web/api/v2.1/xdr/assets/actions/fetch-agent-ids`
+**Loads all agent ids for the unified actions**
+`operationId`: `_web_api_xdr_assets_actions_fetch-agent-ids_post`
+
+Loads all agent ids for the unified actions
+
+Required permissions: `XDR Inventory.view`
+
+Parameters:
+- `tagsKey__contains` [query, array] — Free-text filter by tag key (supports multiple values)
+- `agentOperationalState__nin` [query, array] — The agent operational state (not in)
+- `assetCriticality__nin` [query, array] — The criticality that each asset belongs to (not in)
+- `legacyIdentityPolicyName` [query, array] — Legacy Identity Policy Name
+- `infectionStatus__nin` [query, array] — The status alerts of the asset (not in)
+- `osVersion` [query, array] — The operating system version of the device
+- `state__nin` [query, array] — The state of the instance (not in)
+- `groupType` [query, array] — The Group Type
+- `missingCoverage` [query, array] — The missing coverage for the asset
+- `allTagsKeyValue` [query, array] — User and cloud tags
+- `cloudProviderAccountName__nin` [query, array] — The cloud provider account name (not in)
+- `agentConsoleMigrationStatus__nin` [query, array] — The agent console migration status (not in)
+- `k8sRunningOnNodes__contains` [query, array] — Running on nodes
+- `objectCategory` [query, array] — The Object Category
+- `cloudResourceId__contains` [query, array] — The cloud resource ID
+- `cloudProviderSubscriptionId__contains` [query, array] — The cloud provider subscription ID
+- `tagsKey__nin` [query, array] — Tag Keys (not in)
+- `agentDiskMetricsFreePercentage__between` [query, string] — The agent free disk percentage on any of the disks
+- `tagsKey__exists` [query, array] — Tag Keys exists
+- `scanStatus__nin` [query, array] — The CDS malware scan status (not in)
+- `cpu__contains` [query, array] — The CPU
+- `region` [query, array] — The region
+- `memoryReadable` [query, array] — The memory of the device in human readable format
+- `encryptionType__nin` [query, array] — The encryption type (not in)
+- `ipAddress__contains` [query, array] — The IP addresses
+- `tagsKeyValue__contains` [query, array] — Free-text filter by tag key value (supports multiple values)
+- `userPrincipalName` [query, array] — The User Principal Name
+- `cloudTagsKey__nin` [query, array] — The cloud tags key (not in)
+- `k8sRunningOnNodes` [query, array] — Running on Nodes
+- `tagsKey` [query, array] — Tag Keys
+- `agentVssProtectionStatus__nin` [query, array] — The agent VSS protection status (not in)
+- `state` [query, array] — The state of the instance
+- `riskFactors__nin` [query, array] — The risk factors associated with the asset (not in)
+- `tagsKey__nexists` [query, array] — Tag Keys not exists
+- `entraidGroupType` [query, array] — Entra ID Group Type
+- `identityAdMachine__contains` [query, array] — AD machine or its groups
+- `classification` [query, array] — Classification
+- `cloudProviderAccountId__contains` [query, array] — The cloud provider account ID
+- `imageName__contains` [query, array] — Free-text filter by the image name
+- `agentMissingPermissions` [query, array] — The agent missing permissions
+- `isAdConnector` [query, array] — Is AD Connector
+- `agentLocation__nin` [query, array] — The agent location (not in)
+- `os` [query, array] — The operating system of the device
+- `groupIds` [query, array] — List of Group IDs to filter by
+- `mail` [query, array] — The Email Address
+- `agentDvConnectivityLastUpdatedDt__between` [query, string] — The SDL connectivity last active
+- `subnets__contains` [query, array] — The subnets
+- `rangerTagsKey` [query, array] — The ranger tags key
+- `networkName__nin` [query, array] — The network name (not in)
+- `threatDetectionStatus__nin` [query, array] — Threat Detection Status (not in)
+- `onPremisesSamAccountName__contains` [query, array] — On Premises SAM Account Name
+- `agentDvConnectivity` [query, array] — The connection status between the agent and the SDL service
+- `activeCoverage__nin` [query, array] — The active coverage for the asset (not in)
+- `agentConsoleConnectivity` [query, array] — The agent console connectivity
+- `agentIdrConnectivity` [query, array] — The agent Idr connectivity
+- `allTagsKeyValue__nin` [query, array] — User and cloud tags (not in)
+- `networkName` [query, array] — The network name
+- `region__nin` [query, array] — The region (not in)
+- `agentConfigurableNetworkQuarantine__nin` [query, array] — Whether the agent can configure network quarantine (not in)
+- `allTagsKey__nin` [query, array] — User and cloud tag keys (not in)
+- `gatewayIps__contains` [query, array] — The gateway IPs
+- `manufacturer__nin` [query, array] — The manufacturer of the device (not in)
+- `samAccountName` [query, array] — The SAM Account Name
+- `onPremisesLastSyncTime__between` [query, array] — On Premises Last Sync Time
+- `cloudTagsKeyValue__nin` [query, array] — The cloud tags key value (not in)
+- `surfaces` [query, array] — The Surface that each asset belongs to
+- `objectCount__nin` [query, array] — The number of objects in the bucket (not in)
+- `onPremisesDomainName` [query, array] — On Premises Domain Name
+- `forest` [query, array] — The Forest Name
+- `k8sResourceId__contains` [query, array] — Kubernetes Resource ID
+- `agentPendingActions` [query, array] — The agent pending actions
+- `osNameVersion__nin` [query, array] — The operating system name and version of the device (not in)
+- `serialNumber` [query, array] — The serial number
+- `missingCoverage__nin` [query, array] — The missing coverage for the asset (not in)
+- `assetStatus__nin` [query, array] — The status of the asset (not in)
+- `lastActiveDt__between` [query, string] — The last active date
+- `state__contains` [query, array] — The state
+- `detectedFromSite` [query, array] — The site from which the device was detected
+- `identityAd__contains` [query, array] — Any AD string
+- `onPremisesUserPrincipalName__contains` [query, array] — On Premises User Principal Name
+- `agentInstallerType` [query, array] — The agent installer type
+- `legacy_identity_policy_name__contains` [query, array] — The legacy identity policy name
+- `onPremisesSecurityIdentifier` [query, array] — On Premises Security Identifier
+- `privileged` [query, array] — Whether the AD Entity is privileged or not
+- `eppUnsupportedUnknown` [query, array] — The agent supported or unknown state
+- `agentDiskMetricsVolumeType` [query, array] — The agent disk metrics volume type
+- `passwordNeverExpire` [query, array] — Whether the password never expires
+- `region__contains` [query, array] — The geographical area where cloud resources are hosted
+- `agentHealthStatus__nin` [query, array] — The agent health status (not in)
+- `agentRangerVersion__nin` [query, array] — The agent network scanner version (not in)
+- `deviceReview__nin` [query, array] — The asset review (not in)
+- `threatDetectionPolicyStatus` [query, array] — Threat Detection Policy
+- `cloudProviderAccountName` [query, array] — The cloud provider account name
+- `rangerTagKeyValue__contains` [query, array] — Free-text filter by Ranger tag key value (supports multiple values)
+- `deleted` [query, array] — Whether the AD Entity is deleted or not
+- `securityEnabled` [query, array] — Security Enabled
+- `assetContactEmail__nin` [query, array] — Asset Contact Email (not in)
+- `onPremisesSyncEnabled` [query, array] — On Premises Sync Enabled
+- `agentDiskMetricsFreePercentage__lte` [query, number] — The agent free disk percentage on any of the disks
+- `k8sNode__contains` [query, array] — The Kubernetes node
+- `alertSeverity` [query, array] — The severity of the alert
+- `mail__contains` [query, array] — The Email Address
+- `cloudTagsKeyValue` [query, array] — The cloud tags key value
+- `k8sNode__nin` [query, array] — The Kubernetes Node (not in)
+- `accountIds` [query, array] — List of Account IDs to filter by
+- `serialNumber__nin` [query, array] — The serial number (not in)
+- `agentDecommissioned` [query, array] — Whether the agent is decommissioned
+- `agentSubscribeOnDt__between` [query, string] — The agent subscribe time
+- `onPremisesDistinguishedName__contains` [query, array] — 
+- `expirationTime__between` [query, array] — Expiration Time
+- `domain__contains` [query, array] — The domain
+- `osNameVersion__contains` [query, array] — The OS names and versions
+- `resourceType__nin` [query, array] — The canonical name for the resource type (not in)
+- `names` [query, array] — Name
+- `gatewayMacs__contains` [query, array] — The gateway MACs
+- `onPremisesDistinguishedName` [query, array] — On Premises Distinguished Name
+- `cn` [query, array] — The LDAP Common Name
+- `agentCustomerIdentifier__contains` [query, array] — The customer identifier
+- `os__nin` [query, array] — The operating system of the device (not in)
+- `k8sCluster__nin` [query, array] — The Kubernetes Cluster (not in)
+- `cn__contains` [query, array] — The LDAP Common Name
+- `onPremisesUserPrincipalName` [query, array] — On Premises User Principal Name
+- `k8sNamespace__contains` [query, array] — Namespace Name
+- `cn__nin` [query, array] — The LDAP Common Name (not in)
+- `manufacturer__contains` [query, array] — The manufacturer
+- `onPremisesDomainName__contains` [query, array] — On Premises Distinguished Name
+- `k8sResourceId` [query, array] — The Kubernetes Resource ID
+- `lastLogonTime__between` [query, string] — The Last time of User Login
+- `udpPorts` [query, array] — The UDP ports
+- `assetContactEmail` [query, array] — Asset Contact Email
+- `riskFactors` [query, array] — The risk factors associated with the asset
+- `objectClass__nin` [query, array] — The Object Class (not in)
+- `agentFullDiskScanDt__between` [query, string] — The agent full disk scan date
+- `k8sLabelsUnifiedKey__contains` [query, array] — Free-text filter by Kubernetes Labels key (supports multiple values)
+- `agentAntiTamperingStatus__nin` [query, array] — The agent anti tampering status (not in)
+- `objectCount` [query, array] — The number of objects in the bucket
+- `assetEnvironment` [query, array] — The environment that the asset exists in - AWS | Azure | GCP | Active Directory
+- `osFamily` [query, array] — The operating system family of the device
+- `identityAdUser__contains` [query, array] — AD user or their groups
+- `entraidGroupType__nin` [query, array] — Entra ID Group Type (not in)
+- `givenName` [query, array] — Given Name
+- `forest__nin` [query, array] — The Forest Name (not in)
+- `surfaces__nin` [query, array] — The Surface that each asset belongs to (not in)
+- `adsEnabled` [query, array] — ADS Enabled
+- `rangerTagsKey__nin` [query, array] — The ranger tags key (not in)
+- `encryptionType` [query, array] — The encryption type
+- `onPremisesSecurityIdentifier__contains` [query, array] — 
+- `agentLocation` [query, array] — The agent location
+- `agentPendingActions__nin` [query, array] — The agent pending actions (not in)
+- `id__in` [query, array] — The ID
+- `agentUninstalled` [query, array] — Whether the agent is uninstalled
+- `proxyAddresses` [query, array] — Proxy Addresses
+- `cloudTagsKeyValue__contains` [query, array] — Free-text filter by cloud tag key value (supports multiple values)
+- `resourceType__contains` [query, array] — The Asset Type
+- `memoryReadable__nin` [query, array] — The memory of the device in human readable format (not in)
+- `k8sLabelsUnifiedKeyValue__contains` [query, array] — Free-text filter by Kubernetes Labels key value (supports multiple values)
+- `agentUuid__contains` [query, array] — The UUID
+- `tagsKeyValue` [query, array] — Tags
+- `k8sCluster__contains` [query, array] — The Kubernetes cluster
+- `cloudProviderOrganizationUnit__contains` [query, array] — The cloud provider organization unit
+- `assetCriticality` [query, array] — The criticality that each asset belongs to
+- `rangerTagsKeyValue` [query, array] — The ranger tags key value
+- `cloudProviderOrganization__contains` [query, array] — The cloud provider organization
+- `agentLocationAwareness__contains` [query, array] — The location awareness
+- `isDcServer` [query, array] — Is DC Server
+- `samAccountName__nin` [query, array] — The SAM Account Name (not in)
+- `identityAdUserDistinguishedName__contains` [query, array] — AD user DN
+- `objectSid__contains` [query, array] — The Object SID
+- `jobTitle` [query, array] — Job Title
+- `groupType__nin` [query, array] — The Group Type (not in)
+- `osFamily__nin` [query, array] — The operating system family of the device (not in)
+- `agentOperationalState` [query, array] — The agent operational state
+- `userAccountControl` [query, array] — The User Account Control
+- `agentNetworkStatus` [query, array] — The agent network status
+- `ageGroup` [query, array] — Age Group
+- `macAddresses__contains` [query, array] — The MAC addresses
+- `k8sCluster` [query, array] — The Kubernetes Cluster
+- `agentVssServiceStatus` [query, array] — The agent VSS service status
+- `proxyAddresses__contains` [query, array] — Proxy Addresses
+- `agentRangerStatus__nin` [query, array] — The agent network scanner status (not in)
+- `objectGuid__contains` [query, array] — The Object GUID
+- `detectedFromSite__nin` [query, array] — The site from which the device was detected (not in)
+- `name__contains` [query, array] — The name
+- `k8sAnnotationsUnifiedKey__contains` [query, array] — Free-text filter by Kubernetes Annotations key (supports multiple values)
+- `applicationName` [query, array] — The name of the application installed on a workstation or a server
+- `threatDetectionStatus__contains` [query, array] — The threat detection status
+- `firstSeenDt__between` [query, string] — The first seen date
+- `lastUpdateDt__between` [query, string] — The last update date
+- `lockOutTime__between` [query, string] — Lock-out Time
+- `k8sNode` [query, array] — The Kubernetes Node
+- `agentPendingUninstall` [query, array] — Whether the agent is pending uninstall
+- `agentAntiTamperingStatus` [query, array] — The agent anti tampering status
+- `discoveryMethods__nin` [query, array] — The discovery methods (not in)
+- `cloudProviderAccountId__nin` [query, array] — The cloud provider account id (not in)
+- `k8sClusterId` [query, array] — The Kubernetes Cluster ID
+- `agentVssServiceStatus__nin` [query, array] — The agent VSS service status (not in)
+- `agentVssLastSnapshotDt__between` [query, string] — The agent VSS last snapshot date
+- `agentAgentVersion__nin` [query, array] — The agent version (not in)
+- `agentHasLocalConfig` [query, array] — Whether the agent has local configuration
+- `allTagsKey__nexists` [query, array] — User and cloud tag keys not exists
+- `agentMissingPermissions__nin` [query, array] — The agent missing permissions (not in)
+- `agentPendingUpgrade` [query, array] — Whether the agent is pending upgrade
+- `manufacturer` [query, array] — The manufacturer of the device
+- `servicePrincipalName__contains` [query, array] — The Service Principal Name
+- `agentVssRollbackStatus` [query, array] — The agent VSS rollback status
+- `siteIds` [query, array] — List of Site IDs to filter by
+- `deletedTime__between` [query, array] — Deleted Time
+- `s1UpdatedAt__between` [query, string] — The Last Seen date and time for the asset
+- `agentInstallerType__nin` [query, array] — The agent installer type (not in)
+- `resourceType` [query, array] — The canonical name for the resource type
+- `assetEnvironment__nin` [query, array] — The environment that the asset exists in - AWS | Azure | GCP | Active Directory (not in)
+- `k8sVersion__nin` [query, array] — The Kubernetes Version (not in)
+- `names__nin` [query, array] — Name (not in)
+- `agentUuid` [query, array] — Match by the agent UUID
+- `cloudTagsKey` [query, array] — The cloud tags key
+- `coreCount` [query, array] — The number of cores
+- `osVersion__nin` [query, array] — The operating system version of the device (not in)
+- `serviceAccount` [query, array] — The Service Account
+- `subCategory__nin` [query, array] — The sub-category that each resource belongs to (not in)
+- `discoveryMethods` [query, array] — The discovery methods
+- `k8sVersion` [query, array] — The Kubernetes Version
+- `infectionStatus` [query, array] — The status alerts of the asset
+- `tcpPorts` [query, array] — The TCP ports
+- `givenName__contains` [query, array] — Given Name
+- `activeCoverage` [query, array] — The active coverage for the asset
+- `countsFor` [query, array] — The columns for which filter count would be returned for
+- `coreCount__nin` [query, array] — The number of cores (not in)
+- `rangerTagKey__contains` [query, array] — Free-text filter by Ranger tag key (supports multiple values)
+- `threatDetectionStatus` [query, array] — Threat Detection Status
+- `rangerTagsKeyValue__nin` [query, array] — The ranger tags key value (not in)
+- `architecture__nin` [query, array] — The architecture of the device (not in)
+- `k8sNamespace` [query, array] — The Kubernetes Namespace Name
+- `identityAdMachineDistinguishedName__contains` [query, array] — AD machine DN
+- `agentS1AgentLiveUpdatesVersion__contains` [query, array] — Live update ID
+- `k8sType` [query, array] — The Kubernetes Type
+- `onPremisesSamAccountName` [query, array] — On Premises SAM Account Name
+- `userPrincipalName__contains` [query, array] — The User Principal Name
+- `uniqueName` [query, array] — Unique Name
+- `cloudProviderAccountId` [query, array] — The cloud provider account id
+- `agentNetworkStatus__nin` [query, array] — The agent network status (not in)
+- `isRogues` [query, array] — Whether the instance is a rogue or not
+- `subCategory` [query, array] — The sub-category that each resource belongs to
+- `osNameVersion` [query, array] — The operating system name and version of the device
+- `onPremisesImmutableId` [query, array] — On Premises Immutable Id
+- `agentRangerStatus` [query, array] — The agent network scanner status
+- `osVersion__contains` [query, array] — The OS versions
+- `deviceReview` [query, array] — The asset review
+- `allTagsKey` [query, array] — User and cloud tag keys
+- `serialNumber__contains` [query, array] — The serial number
+- `hostnames__contains` [query, array] — The hostnames
+- `department` [query, array] — Department
+- `identityAdMachineMembership__contains` [query, array] — AD machine groups
+- `otherMails__contains` [query, array] — Other Mails
+- `k8sType__nin` [query, array] — The Kubernetes Type (not in)
+- `distinguishedName__contains` [query, array] — The Distinguished Name
+- `objectClass` [query, array] — The Object Class
+- `forest__contains` [query, array] — The Forest Name
+- `k8sAnnotationsUnifiedKeyValue__contains` [query, array] — Free-text filter by Kubernetes Annotations key value (supports multiple values)
+- `otherMails` [query, array] — Other Mails
+- `visibility` [query, array] — Visibility
+- `scanStatus__contains` [query, array] — The CDS malware scan status
+- `agentVssRollbackStatus__nin` [query, array] — The agent VSS rollback status (not in)
+- `agentConsoleMigrationStatus` [query, array] — The agent console migration status
+- `architecture` [query, array] — The architecture of the device
+- `badPasswordTime__between` [query, string] — Bad Password Time
+- `identityAdUserMembership__contains` [query, array] — AD user groups
+- `agentDvConnectivity__nin` [query, array] — The connection status between the agent and the SDL service (not in)
+- `displayName__contains` [query, array] — The Display Name
+- `last_modified_time__between` [query, string] — Lock-out Time
+- `employeeType` [query, array] — Employee Type
+- `agentVssProtectionStatus` [query, array] — The agent VSS protection status
+- `id__contains` [query, array] — The ID
+- `cloudProviderAccountName__contains` [query, array] — The cloud provider account name
+- `internalIps__contains` [query, array] — The internal IPs
+- `assetStatus` [query, array] — The status of the asset
+- `eppUnsupportedUnknown__nin` [query, array] — The agent supported or unknown state (not in)
+- `surname` [query, array] — Surname
+- `agentConfigurableNetworkQuarantine` [query, array] — Whether the agent can configure network quarantine
+- `agentHealthStatus` [query, array] — The agent health status
+- `agentRangerVersion` [query, array] — The agent network scanner version
+- `domain__nin` [query, array] — The domain of the device (not in)
+- `agentDiskMetricsVolumeType__nin` [query, array] — The agent disk metrics volume type (not in)
+- `agentLastLoggedInUser__contains` [query, array] — The last logged in user
+- `k8sClusterId__contains` [query, array] — Kubernetes Cluster ID
+- `cloudTagsKey__contains` [query, array] — Free-text filter by cloud tag key (supports multiple values)
+- `tagsKeyValue__nin` [query, array] — Tags (not in)
+- `agentAgentVersion` [query, array] — The agent version
+- `allTagsKey__exists` [query, array] — User and cloud tag keys exists
+- `objectCategory__nin` [query, array] — The Object Category (not in)
+- `userAccountControl__nin` [query, array] — The User Account Control (not in)
+- `agentDiskMetricsFreePercentage__gte` [query, number] — The agent free disk percentage on any of the disks
+- `agentAgentVersion__contains` [query, array] — The agent version
+- `domain` [query, array] — The domain of the device
+- `userPasswordExpiryTimeComputed__between` [query, string] — The User Password Expiry Time
+- `scanStatus` [query, array] — The CDS malware scan status
+- `agentVssVolumesDiffAreaFreePercentage__between` [query, string] — The agent free VSS volume percentage on any of the volumes
+- `agentDiskEncryption` [query, array] — The agent disk encryption
+- `enabled` [query, array] — Whether the Identity Group is enabled or not
+- `userPrincipalName__nin` [query, array] — The User Principal Name (not in)
+- `cloudProviderProjectId__contains` [query, array] — The cloud provider project ID
+- `body` [body, v2_1.inventory.unified_actions.schemas_AffectedEntitiesSchema] — 
+
+Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
+
+## `POST /web/api/v2.1/xdr/assets/actions/fetch-unified-actions`
+**Get Available Actions by Asset/Entity Type**
+`operationId`: `_web_api_xdr_assets_actions_fetch-unified-actions_post`
+
+Get Available Actions by Asset/Entity Type
+
+Required permissions: `XDR Inventory.view`
+
+Parameters:
+- `tagsKey__contains` [query, array] — Free-text filter by tag key (supports multiple values)
+- `agentOperationalState__nin` [query, array] — The agent operational state (not in)
+- `assetCriticality__nin` [query, array] — The criticality that each asset belongs to (not in)
+- `legacyIdentityPolicyName` [query, array] — Legacy Identity Policy Name
+- `infectionStatus__nin` [query, array] — The status alerts of the asset (not in)
+- `osVersion` [query, array] — The operating system version of the device
+- `state__nin` [query, array] — The state of the instance (not in)
+- `groupType` [query, array] — The Group Type
+- `missingCoverage` [query, array] — The missing coverage for the asset
+- `allTagsKeyValue` [query, array] — User and cloud tags
+- `cloudProviderAccountName__nin` [query, array] — The cloud provider account name (not in)
+- `agentConsoleMigrationStatus__nin` [query, array] — The agent console migration status (not in)
+- `k8sRunningOnNodes__contains` [query, array] — Running on nodes
+- `objectCategory` [query, array] — The Object Category
+- `cloudResourceId__contains` [query, array] — The cloud resource ID
+- `cloudProviderSubscriptionId__contains` [query, array] — The cloud provider subscription ID
+- `tagsKey__nin` [query, array] — Tag Keys (not in)
+- `agentDiskMetricsFreePercentage__between` [query, string] — The agent free disk percentage on any of the disks
+- `tagsKey__exists` [query, array] — Tag Keys exists
+- `scanStatus__nin` [query, array] — The CDS malware scan status (not in)
+- `cpu__contains` [query, array] — The CPU
+- `region` [query, array] — The region
+- `memoryReadable` [query, array] — The memory of the device in human readable format
+- `encryptionType__nin` [query, array] — The encryption type (not in)
+- `ipAddress__contains` [query, array] — The IP addresses
+- `tagsKeyValue__contains` [query, array] — Free-text filter by tag key value (supports multiple values)
+- `userPrincipalName` [query, array] — The User Principal Name
+- `cloudTagsKey__nin` [query, array] — The cloud tags key (not in)
+- `k8sRunningOnNodes` [query, array] — Running on Nodes
+- `tagsKey` [query, array] — Tag Keys
+- `agentVssProtectionStatus__nin` [query, array] — The agent VSS protection status (not in)
+- `state` [query, array] — The state of the instance
+- `riskFactors__nin` [query, array] — The risk factors associated with the asset (not in)
+- `tagsKey__nexists` [query, array] — Tag Keys not exists
+- `entraidGroupType` [query, array] — Entra ID Group Type
+- `identityAdMachine__contains` [query, array] — AD machine or its groups
+- `classification` [query, array] — Classification
+- `cloudProviderAccountId__contains` [query, array] — The cloud provider account ID
+- `imageName__contains` [query, array] — Free-text filter by the image name
+- `agentMissingPermissions` [query, array] — The agent missing permissions
+- `isAdConnector` [query, array] — Is AD Connector
+- `agentLocation__nin` [query, array] — The agent location (not in)
+- `os` [query, array] — The operating system of the device
+- `groupIds` [query, array] — List of Group IDs to filter by
+- `mail` [query, array] — The Email Address
+- `agentDvConnectivityLastUpdatedDt__between` [query, string] — The SDL connectivity last active
+- `subnets__contains` [query, array] — The subnets
+- `rangerTagsKey` [query, array] — The ranger tags key
+- `networkName__nin` [query, array] — The network name (not in)
+- `threatDetectionStatus__nin` [query, array] — Threat Detection Status (not in)
+- `onPremisesSamAccountName__contains` [query, array] — On Premises SAM Account Name
+- `agentDvConnectivity` [query, array] — The connection status between the agent and the SDL service
+- `activeCoverage__nin` [query, array] — The active coverage for the asset (not in)
+- `agentConsoleConnectivity` [query, array] — The agent console connectivity
+- `agentIdrConnectivity` [query, array] — The agent Idr connectivity
+- `allTagsKeyValue__nin` [query, array] — User and cloud tags (not in)
+- `networkName` [query, array] — The network name
+- `region__nin` [query, array] — The region (not in)
+- `agentConfigurableNetworkQuarantine__nin` [query, array] — Whether the agent can configure network quarantine (not in)
+- `allTagsKey__nin` [query, array] — User and cloud tag keys (not in)
+- `gatewayIps__contains` [query, array] — The gateway IPs
+- `manufacturer__nin` [query, array] — The manufacturer of the device (not in)
+- `samAccountName` [query, array] — The SAM Account Name
+- `onPremisesLastSyncTime__between` [query, array] — On Premises Last Sync Time
+- `cloudTagsKeyValue__nin` [query, array] — The cloud tags key value (not in)
+- `surfaces` [query, array] — The Surface that each asset belongs to
+- `objectCount__nin` [query, array] — The number of objects in the bucket (not in)
+- `onPremisesDomainName` [query, array] — On Premises Domain Name
+- `forest` [query, array] — The Forest Name
+- `k8sResourceId__contains` [query, array] — Kubernetes Resource ID
+- `agentPendingActions` [query, array] — The agent pending actions
+- `osNameVersion__nin` [query, array] — The operating system name and version of the device (not in)
+- `serialNumber` [query, array] — The serial number
+- `missingCoverage__nin` [query, array] — The missing coverage for the asset (not in)
+- `assetStatus__nin` [query, array] — The status of the asset (not in)
+- `lastActiveDt__between` [query, string] — The last active date
+- `state__contains` [query, array] — The state
+- `detectedFromSite` [query, array] — The site from which the device was detected
+- `identityAd__contains` [query, array] — Any AD string
+- `onPremisesUserPrincipalName__contains` [query, array] — On Premises User Principal Name
+- `agentInstallerType` [query, array] — The agent installer type
+- `legacy_identity_policy_name__contains` [query, array] — The legacy identity policy name
+- `onPremisesSecurityIdentifier` [query, array] — On Premises Security Identifier
+- `privileged` [query, array] — Whether the AD Entity is privileged or not
+- `eppUnsupportedUnknown` [query, array] — The agent supported or unknown state
+- `agentDiskMetricsVolumeType` [query, array] — The agent disk metrics volume type
+- `passwordNeverExpire` [query, array] — Whether the password never expires
+- `region__contains` [query, array] — The geographical area where cloud resources are hosted
+- `agentHealthStatus__nin` [query, array] — The agent health status (not in)
+- `agentRangerVersion__nin` [query, array] — The agent network scanner version (not in)
+- `deviceReview__nin` [query, array] — The asset review (not in)
+- `threatDetectionPolicyStatus` [query, array] — Threat Detection Policy
+- `cloudProviderAccountName` [query, array] — The cloud provider account name
+- `rangerTagKeyValue__contains` [query, array] — Free-text filter by Ranger tag key value (supports multiple values)
+- `deleted` [query, array] — Whether the AD Entity is deleted or not
+- `securityEnabled` [query, array] — Security Enabled
+- `assetContactEmail__nin` [query, array] — Asset Contact Email (not in)
+- `onPremisesSyncEnabled` [query, array] — On Premises Sync Enabled
+- `agentDiskMetricsFreePercentage__lte` [query, number] — The agent free disk percentage on any of the disks
+- `k8sNode__contains` [query, array] — The Kubernetes node
+- `alertSeverity` [query, array] — The severity of the alert
+- `mail__contains` [query, array] — The Email Address
+- `cloudTagsKeyValue` [query, array] — The cloud tags key value
+- `k8sNode__nin` [query, array] — The Kubernetes Node (not in)
+- `accountIds` [query, array] — List of Account IDs to filter by
+- `serialNumber__nin` [query, array] — The serial number (not in)
+- `agentDecommissioned` [query, array] — Whether the agent is decommissioned
+- `agentSubscribeOnDt__between` [query, string] — The agent subscribe time
+- `onPremisesDistinguishedName__contains` [query, array] — 
+- `expirationTime__between` [query, array] — Expiration Time
+- `domain__contains` [query, array] — The domain
+- `osNameVersion__contains` [query, array] — The OS names and versions
+- `resourceType__nin` [query, array] — The canonical name for the resource type (not in)
+- `names` [query, array] — Name
+- `gatewayMacs__contains` [query, array] — The gateway MACs
+- `onPremisesDistinguishedName` [query, array] — On Premises Distinguished Name
+- `cn` [query, array] — The LDAP Common Name
+- `agentCustomerIdentifier__contains` [query, array] — The customer identifier
+- `os__nin` [query, array] — The operating system of the device (not in)
+- `k8sCluster__nin` [query, array] — The Kubernetes Cluster (not in)
+- `cn__contains` [query, array] — The LDAP Common Name
+- `onPremisesUserPrincipalName` [query, array] — On Premises User Principal Name
+- `k8sNamespace__contains` [query, array] — Namespace Name
+- `cn__nin` [query, array] — The LDAP Common Name (not in)
+- `manufacturer__contains` [query, array] — The manufacturer
+- `onPremisesDomainName__contains` [query, array] — On Premises Distinguished Name
+- `k8sResourceId` [query, array] — The Kubernetes Resource ID
+- `lastLogonTime__between` [query, string] — The Last time of User Login
+- `udpPorts` [query, array] — The UDP ports
+- `assetContactEmail` [query, array] — Asset Contact Email
+- `riskFactors` [query, array] — The risk factors associated with the asset
+- `objectClass__nin` [query, array] — The Object Class (not in)
+- `agentFullDiskScanDt__between` [query, string] — The agent full disk scan date
+- `k8sLabelsUnifiedKey__contains` [query, array] — Free-text filter by Kubernetes Labels key (supports multiple values)
+- `agentAntiTamperingStatus__nin` [query, array] — The agent anti tampering status (not in)
+- `objectCount` [query, array] — The number of objects in the bucket
+- `assetEnvironment` [query, array] — The environment that the asset exists in - AWS | Azure | GCP | Active Directory
+- `osFamily` [query, array] — The operating system family of the device
+- `identityAdUser__contains` [query, array] — AD user or their groups
+- `entraidGroupType__nin` [query, array] — Entra ID Group Type (not in)
+- `givenName` [query, array] — Given Name
+- `forest__nin` [query, array] — The Forest Name (not in)
+- `surfaces__nin` [query, array] — The Surface that each asset belongs to (not in)
+- `adsEnabled` [query, array] — ADS Enabled
+- `rangerTagsKey__nin` [query, array] — The ranger tags key (not in)
+- `encryptionType` [query, array] — The encryption type
+- `onPremisesSecurityIdentifier__contains` [query, array] — 
+- `agentLocation` [query, array] — The agent location
+- `agentPendingActions__nin` [query, array] — The agent pending actions (not in)
+- `id__in` [query, array] — The ID
+- `agentUninstalled` [query, array] — Whether the agent is uninstalled
+- `proxyAddresses` [query, array] — Proxy Addresses
+- `cloudTagsKeyValue__contains` [query, array] — Free-text filter by cloud tag key value (supports multiple values)
+- `resourceType__contains` [query, array] — The Asset Type
+- `memoryReadable__nin` [query, array] — The memory of the device in human readable format (not in)
+- `k8sLabelsUnifiedKeyValue__contains` [query, array] — Free-text filter by Kubernetes Labels key value (supports multiple values)
+- `agentUuid__contains` [query, array] — The UUID
+- `tagsKeyValue` [query, array] — Tags
+- `k8sCluster__contains` [query, array] — The Kubernetes cluster
+- `cloudProviderOrganizationUnit__contains` [query, array] — The cloud provider organization unit
+- `assetCriticality` [query, array] — The criticality that each asset belongs to
+- `rangerTagsKeyValue` [query, array] — The ranger tags key value
+- `cloudProviderOrganization__contains` [query, array] — The cloud provider organization
+- `agentLocationAwareness__contains` [query, array] — The location awareness
+- `isDcServer` [query, array] — Is DC Server
+- `samAccountName__nin` [query, array] — The SAM Account Name (not in)
+- `identityAdUserDistinguishedName__contains` [query, array] — AD user DN
+- `objectSid__contains` [query, array] — The Object SID
+- `jobTitle` [query, array] — Job Title
+- `groupType__nin` [query, array] — The Group Type (not in)
+- `osFamily__nin` [query, array] — The operating system family of the device (not in)
+- `agentOperationalState` [query, array] — The agent operational state
+- `userAccountControl` [query, array] — The User Account Control
+- `agentNetworkStatus` [query, array] — The agent network status
+- `ageGroup` [query, array] — Age Group
+- `macAddresses__contains` [query, array] — The MAC addresses
+- `k8sCluster` [query, array] — The Kubernetes Cluster
+- `agentVssServiceStatus` [query, array] — The agent VSS service status
+- `proxyAddresses__contains` [query, array] — Proxy Addresses
+- `agentRangerStatus__nin` [query, array] — The agent network scanner status (not in)
+- `objectGuid__contains` [query, array] — The Object GUID
+- `detectedFromSite__nin` [query, array] — The site from which the device was detected (not in)
+- `name__contains` [query, array] — The name
+- `k8sAnnotationsUnifiedKey__contains` [query, array] — Free-text filter by Kubernetes Annotations key (supports multiple values)
+- `applicationName` [query, array] — The name of the application installed on a workstation or a server
+- `threatDetectionStatus__contains` [query, array] — The threat detection status
+- `firstSeenDt__between` [query, string] — The first seen date
+- `lastUpdateDt__between` [query, string] — The last update date
+- `lockOutTime__between` [query, string] — Lock-out Time
+- `k8sNode` [query, array] — The Kubernetes Node
+- `agentPendingUninstall` [query, array] — Whether the agent is pending uninstall
+- `agentAntiTamperingStatus` [query, array] — The agent anti tampering status
+- `discoveryMethods__nin` [query, array] — The discovery methods (not in)
+- `cloudProviderAccountId__nin` [query, array] — The cloud provider account id (not in)
+- `k8sClusterId` [query, array] — The Kubernetes Cluster ID
+- `agentVssServiceStatus__nin` [query, array] — The agent VSS service status (not in)
+- `agentVssLastSnapshotDt__between` [query, string] — The agent VSS last snapshot date
+- `agentAgentVersion__nin` [query, array] — The agent version (not in)
+- `agentHasLocalConfig` [query, array] — Whether the agent has local configuration
+- `allTagsKey__nexists` [query, array] — User and cloud tag keys not exists
+- `agentMissingPermissions__nin` [query, array] — The agent missing permissions (not in)
+- `agentPendingUpgrade` [query, array] — Whether the agent is pending upgrade
+- `manufacturer` [query, array] — The manufacturer of the device
+- `servicePrincipalName__contains` [query, array] — The Service Principal Name
+- `agentVssRollbackStatus` [query, array] — The agent VSS rollback status
+- `siteIds` [query, array] — List of Site IDs to filter by
+- `deletedTime__between` [query, array] — Deleted Time
+- `s1UpdatedAt__between` [query, string] — The Last Seen date and time for the asset
+- `agentInstallerType__nin` [query, array] — The agent installer type (not in)
+- `resourceType` [query, array] — The canonical name for the resource type
+- `assetEnvironment__nin` [query, array] — The environment that the asset exists in - AWS | Azure | GCP | Active Directory (not in)
+- `k8sVersion__nin` [query, array] — The Kubernetes Version (not in)
+- `names__nin` [query, array] — Name (not in)
+- `agentUuid` [query, array] — Match by the agent UUID
+- `cloudTagsKey` [query, array] — The cloud tags key
+- `coreCount` [query, array] — The number of cores
+- `osVersion__nin` [query, array] — The operating system version of the device (not in)
+- `serviceAccount` [query, array] — The Service Account
+- `subCategory__nin` [query, array] — The sub-category that each resource belongs to (not in)
+- `discoveryMethods` [query, array] — The discovery methods
+- `k8sVersion` [query, array] — The Kubernetes Version
+- `infectionStatus` [query, array] — The status alerts of the asset
+- `tcpPorts` [query, array] — The TCP ports
+- `givenName__contains` [query, array] — Given Name
+- `activeCoverage` [query, array] — The active coverage for the asset
+- `countsFor` [query, array] — The columns for which filter count would be returned for
+- `coreCount__nin` [query, array] — The number of cores (not in)
+- `rangerTagKey__contains` [query, array] — Free-text filter by Ranger tag key (supports multiple values)
+- `threatDetectionStatus` [query, array] — Threat Detection Status
+- `rangerTagsKeyValue__nin` [query, array] — The ranger tags key value (not in)
+- `architecture__nin` [query, array] — The architecture of the device (not in)
+- `k8sNamespace` [query, array] — The Kubernetes Namespace Name
+- `identityAdMachineDistinguishedName__contains` [query, array] — AD machine DN
+- `agentS1AgentLiveUpdatesVersion__contains` [query, array] — Live update ID
+- `k8sType` [query, array] — The Kubernetes Type
+- `onPremisesSamAccountName` [query, array] — On Premises SAM Account Name
+- `userPrincipalName__contains` [query, array] — The User Principal Name
+- `uniqueName` [query, array] — Unique Name
+- `cloudProviderAccountId` [query, array] — The cloud provider account id
+- `agentNetworkStatus__nin` [query, array] — The agent network status (not in)
+- `isRogues` [query, array] — Whether the instance is a rogue or not
+- `subCategory` [query, array] — The sub-category that each resource belongs to
+- `osNameVersion` [query, array] — The operating system name and version of the device
+- `onPremisesImmutableId` [query, array] — On Premises Immutable Id
+- `agentRangerStatus` [query, array] — The agent network scanner status
+- `osVersion__contains` [query, array] — The OS versions
+- `deviceReview` [query, array] — The asset review
+- `allTagsKey` [query, array] — User and cloud tag keys
+- `serialNumber__contains` [query, array] — The serial number
+- `hostnames__contains` [query, array] — The hostnames
+- `department` [query, array] — Department
+- `identityAdMachineMembership__contains` [query, array] — AD machine groups
+- `otherMails__contains` [query, array] — Other Mails
+- `k8sType__nin` [query, array] — The Kubernetes Type (not in)
+- `distinguishedName__contains` [query, array] — The Distinguished Name
+- `objectClass` [query, array] — The Object Class
+- `forest__contains` [query, array] — The Forest Name
+- `k8sAnnotationsUnifiedKeyValue__contains` [query, array] — Free-text filter by Kubernetes Annotations key value (supports multiple values)
+- `otherMails` [query, array] — Other Mails
+- `visibility` [query, array] — Visibility
+- `scanStatus__contains` [query, array] — The CDS malware scan status
+- `agentVssRollbackStatus__nin` [query, array] — The agent VSS rollback status (not in)
+- `agentConsoleMigrationStatus` [query, array] — The agent console migration status
+- `architecture` [query, array] — The architecture of the device
+- `badPasswordTime__between` [query, string] — Bad Password Time
+- `identityAdUserMembership__contains` [query, array] — AD user groups
+- `agentDvConnectivity__nin` [query, array] — The connection status between the agent and the SDL service (not in)
+- `displayName__contains` [query, array] — The Display Name
+- `last_modified_time__between` [query, string] — Lock-out Time
+- `employeeType` [query, array] — Employee Type
+- `agentVssProtectionStatus` [query, array] — The agent VSS protection status
+- `id__contains` [query, array] — The ID
+- `cloudProviderAccountName__contains` [query, array] — The cloud provider account name
+- `internalIps__contains` [query, array] — The internal IPs
+- `assetStatus` [query, array] — The status of the asset
+- `eppUnsupportedUnknown__nin` [query, array] — The agent supported or unknown state (not in)
+- `surname` [query, array] — Surname
+- `agentConfigurableNetworkQuarantine` [query, array] — Whether the agent can configure network quarantine
+- `agentHealthStatus` [query, array] — The agent health status
+- `agentRangerVersion` [query, array] — The agent network scanner version
+- `domain__nin` [query, array] — The domain of the device (not in)
+- `agentDiskMetricsVolumeType__nin` [query, array] — The agent disk metrics volume type (not in)
+- `agentLastLoggedInUser__contains` [query, array] — The last logged in user
+- `k8sClusterId__contains` [query, array] — Kubernetes Cluster ID
+- `cloudTagsKey__contains` [query, array] — Free-text filter by cloud tag key (supports multiple values)
+- `tagsKeyValue__nin` [query, array] — Tags (not in)
+- `agentAgentVersion` [query, array] — The agent version
+- `allTagsKey__exists` [query, array] — User and cloud tag keys exists
+- `objectCategory__nin` [query, array] — The Object Category (not in)
+- `userAccountControl__nin` [query, array] — The User Account Control (not in)
+- `agentDiskMetricsFreePercentage__gte` [query, number] — The agent free disk percentage on any of the disks
+- `agentAgentVersion__contains` [query, array] — The agent version
+- `domain` [query, array] — The domain of the device
+- `userPasswordExpiryTimeComputed__between` [query, string] — The User Password Expiry Time
+- `scanStatus` [query, array] — The CDS malware scan status
+- `agentVssVolumesDiffAreaFreePercentage__between` [query, string] — The agent free VSS volume percentage on any of the volumes
+- `agentDiskEncryption` [query, array] — The agent disk encryption
+- `enabled` [query, array] — Whether the Identity Group is enabled or not
+- `userPrincipalName__nin` [query, array] — The User Principal Name (not in)
+- `cloudProviderProjectId__contains` [query, array] — The cloud provider project ID
+- `body` [body, v2_1.inventory.unified_actions.schemas_AffectedEntitiesSchema] — 
+
+Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
+
+## `POST /web/api/v2.1/xdr/assets/actions/perform-unified-action`
+**Perform an Action on selected assets/entities**
+`operationId`: `_web_api_xdr_assets_actions_perform-unified-action_post`
+
+Perform an Action on selected assets/entities
+
+Required permissions: `XDR Inventory.create, XDR Inventory.delete, XDR Inventory.edit`
+
+Parameters:
+- `tagsKey__contains` [query, array] — Free-text filter by tag key (supports multiple values)
+- `agentOperationalState__nin` [query, array] — The agent operational state (not in)
+- `assetCriticality__nin` [query, array] — The criticality that each asset belongs to (not in)
+- `legacyIdentityPolicyName` [query, array] — Legacy Identity Policy Name
+- `infectionStatus__nin` [query, array] — The status alerts of the asset (not in)
+- `osVersion` [query, array] — The operating system version of the device
+- `state__nin` [query, array] — The state of the instance (not in)
+- `groupType` [query, array] — The Group Type
+- `missingCoverage` [query, array] — The missing coverage for the asset
+- `allTagsKeyValue` [query, array] — User and cloud tags
+- `cloudProviderAccountName__nin` [query, array] — The cloud provider account name (not in)
+- `agentConsoleMigrationStatus__nin` [query, array] — The agent console migration status (not in)
+- `k8sRunningOnNodes__contains` [query, array] — Running on nodes
+- `objectCategory` [query, array] — The Object Category
+- `cloudResourceId__contains` [query, array] — The cloud resource ID
+- `cloudProviderSubscriptionId__contains` [query, array] — The cloud provider subscription ID
+- `tagsKey__nin` [query, array] — Tag Keys (not in)
+- `agentDiskMetricsFreePercentage__between` [query, string] — The agent free disk percentage on any of the disks
+- `tagsKey__exists` [query, array] — Tag Keys exists
+- `scanStatus__nin` [query, array] — The CDS malware scan status (not in)
+- `cpu__contains` [query, array] — The CPU
+- `region` [query, array] — The region
+- `memoryReadable` [query, array] — The memory of the device in human readable format
+- `encryptionType__nin` [query, array] — The encryption type (not in)
+- `ipAddress__contains` [query, array] — The IP addresses
+- `tagsKeyValue__contains` [query, array] — Free-text filter by tag key value (supports multiple values)
+- `userPrincipalName` [query, array] — The User Principal Name
+- `cloudTagsKey__nin` [query, array] — The cloud tags key (not in)
+- `k8sRunningOnNodes` [query, array] — Running on Nodes
+- `tagsKey` [query, array] — Tag Keys
+- `agentVssProtectionStatus__nin` [query, array] — The agent VSS protection status (not in)
+- `state` [query, array] — The state of the instance
+- `riskFactors__nin` [query, array] — The risk factors associated with the asset (not in)
+- `tagsKey__nexists` [query, array] — Tag Keys not exists
+- `entraidGroupType` [query, array] — Entra ID Group Type
+- `identityAdMachine__contains` [query, array] — AD machine or its groups
+- `classification` [query, array] — Classification
+- `cloudProviderAccountId__contains` [query, array] — The cloud provider account ID
+- `imageName__contains` [query, array] — Free-text filter by the image name
+- `agentMissingPermissions` [query, array] — The agent missing permissions
+- `isAdConnector` [query, array] — Is AD Connector
+- `agentLocation__nin` [query, array] — The agent location (not in)
+- `os` [query, array] — The operating system of the device
+- `groupIds` [query, array] — List of Group IDs to filter by
+- `mail` [query, array] — The Email Address
+- `agentDvConnectivityLastUpdatedDt__between` [query, string] — The SDL connectivity last active
+- `subnets__contains` [query, array] — The subnets
+- `rangerTagsKey` [query, array] — The ranger tags key
+- `networkName__nin` [query, array] — The network name (not in)
+- `threatDetectionStatus__nin` [query, array] — Threat Detection Status (not in)
+- `onPremisesSamAccountName__contains` [query, array] — On Premises SAM Account Name
+- `agentDvConnectivity` [query, array] — The connection status between the agent and the SDL service
+- `activeCoverage__nin` [query, array] — The active coverage for the asset (not in)
+- `agentConsoleConnectivity` [query, array] — The agent console connectivity
+- `agentIdrConnectivity` [query, array] — The agent Idr connectivity
+- `allTagsKeyValue__nin` [query, array] — User and cloud tags (not in)
+- `networkName` [query, array] — The network name
+- `region__nin` [query, array] — The region (not in)
+- `agentConfigurableNetworkQuarantine__nin` [query, array] — Whether the agent can configure network quarantine (not in)
+- `allTagsKey__nin` [query, array] — User and cloud tag keys (not in)
+- `gatewayIps__contains` [query, array] — The gateway IPs
+- `manufacturer__nin` [query, array] — The manufacturer of the device (not in)
+- `samAccountName` [query, array] — The SAM Account Name
+- `onPremisesLastSyncTime__between` [query, array] — On Premises Last Sync Time
+- `cloudTagsKeyValue__nin` [query, array] — The cloud tags key value (not in)
+- `surfaces` [query, array] — The Surface that each asset belongs to
+- `objectCount__nin` [query, array] — The number of objects in the bucket (not in)
+- `onPremisesDomainName` [query, array] — On Premises Domain Name
+- `forest` [query, array] — The Forest Name
+- `k8sResourceId__contains` [query, array] — Kubernetes Resource ID
+- `agentPendingActions` [query, array] — The agent pending actions
+- `osNameVersion__nin` [query, array] — The operating system name and version of the device (not in)
+- `serialNumber` [query, array] — The serial number
+- `missingCoverage__nin` [query, array] — The missing coverage for the asset (not in)
+- `assetStatus__nin` [query, array] — The status of the asset (not in)
+- `lastActiveDt__between` [query, string] — The last active date
+- `state__contains` [query, array] — The state
+- `detectedFromSite` [query, array] — The site from which the device was detected
+- `identityAd__contains` [query, array] — Any AD string
+- `onPremisesUserPrincipalName__contains` [query, array] — On Premises User Principal Name
+- `agentInstallerType` [query, array] — The agent installer type
+- `legacy_identity_policy_name__contains` [query, array] — The legacy identity policy name
+- `onPremisesSecurityIdentifier` [query, array] — On Premises Security Identifier
+- `privileged` [query, array] — Whether the AD Entity is privileged or not
+- `eppUnsupportedUnknown` [query, array] — The agent supported or unknown state
+- `agentDiskMetricsVolumeType` [query, array] — The agent disk metrics volume type
+- `passwordNeverExpire` [query, array] — Whether the password never expires
+- `region__contains` [query, array] — The geographical area where cloud resources are hosted
+- `agentHealthStatus__nin` [query, array] — The agent health status (not in)
+- `agentRangerVersion__nin` [query, array] — The agent network scanner version (not in)
+- `deviceReview__nin` [query, array] — The asset review (not in)
+- `threatDetectionPolicyStatus` [query, array] — Threat Detection Policy
+- `cloudProviderAccountName` [query, array] — The cloud provider account name
+- `rangerTagKeyValue__contains` [query, array] — Free-text filter by Ranger tag key value (supports multiple values)
+- `deleted` [query, array] — Whether the AD Entity is deleted or not
+- `securityEnabled` [query, array] — Security Enabled
+- `assetContactEmail__nin` [query, array] — Asset Contact Email (not in)
+- `onPremisesSyncEnabled` [query, array] — On Premises Sync Enabled
+- `agentDiskMetricsFreePercentage__lte` [query, number] — The agent free disk percentage on any of the disks
+- `k8sNode__contains` [query, array] — The Kubernetes node
+- `alertSeverity` [query, array] — The severity of the alert
+- `mail__contains` [query, array] — The Email Address
+- `cloudTagsKeyValue` [query, array] — The cloud tags key value
+- `k8sNode__nin` [query, array] — The Kubernetes Node (not in)
+- `accountIds` [query, array] — List of Account IDs to filter by
+- `serialNumber__nin` [query, array] — The serial number (not in)
+- `agentDecommissioned` [query, array] — Whether the agent is decommissioned
+- `agentSubscribeOnDt__between` [query, string] — The agent subscribe time
+- `onPremisesDistinguishedName__contains` [query, array] — 
+- `expirationTime__between` [query, array] — Expiration Time
+- `domain__contains` [query, array] — The domain
+- `osNameVersion__contains` [query, array] — The OS names and versions
+- `resourceType__nin` [query, array] — The canonical name for the resource type (not in)
+- `names` [query, array] — Name
+- `gatewayMacs__contains` [query, array] — The gateway MACs
+- `onPremisesDistinguishedName` [query, array] — On Premises Distinguished Name
+- `cn` [query, array] — The LDAP Common Name
+- `agentCustomerIdentifier__contains` [query, array] — The customer identifier
+- `os__nin` [query, array] — The operating system of the device (not in)
+- `k8sCluster__nin` [query, array] — The Kubernetes Cluster (not in)
+- `cn__contains` [query, array] — The LDAP Common Name
+- `onPremisesUserPrincipalName` [query, array] — On Premises User Principal Name
+- `k8sNamespace__contains` [query, array] — Namespace Name
+- `cn__nin` [query, array] — The LDAP Common Name (not in)
+- `manufacturer__contains` [query, array] — The manufacturer
+- `onPremisesDomainName__contains` [query, array] — On Premises Distinguished Name
+- `k8sResourceId` [query, array] — The Kubernetes Resource ID
+- `lastLogonTime__between` [query, string] — The Last time of User Login
+- `udpPorts` [query, array] — The UDP ports
+- `assetContactEmail` [query, array] — Asset Contact Email
+- `riskFactors` [query, array] — The risk factors associated with the asset
+- `objectClass__nin` [query, array] — The Object Class (not in)
+- `agentFullDiskScanDt__between` [query, string] — The agent full disk scan date
+- `k8sLabelsUnifiedKey__contains` [query, array] — Free-text filter by Kubernetes Labels key (supports multiple values)
+- `agentAntiTamperingStatus__nin` [query, array] — The agent anti tampering status (not in)
+- `objectCount` [query, array] — The number of objects in the bucket
+- `assetEnvironment` [query, array] — The environment that the asset exists in - AWS | Azure | GCP | Active Directory
+- `osFamily` [query, array] — The operating system family of the device
+- `identityAdUser__contains` [query, array] — AD user or their groups
+- `entraidGroupType__nin` [query, array] — Entra ID Group Type (not in)
+- `givenName` [query, array] — Given Name
+- `forest__nin` [query, array] — The Forest Name (not in)
+- `surfaces__nin` [query, array] — The Surface that each asset belongs to (not in)
+- `adsEnabled` [query, array] — ADS Enabled
+- `rangerTagsKey__nin` [query, array] — The ranger tags key (not in)
+- `encryptionType` [query, array] — The encryption type
+- `onPremisesSecurityIdentifier__contains` [query, array] — 
+- `agentLocation` [query, array] — The agent location
+- `agentPendingActions__nin` [query, array] — The agent pending actions (not in)
+- `id__in` [query, array] — The ID
+- `agentUninstalled` [query, array] — Whether the agent is uninstalled
+- `proxyAddresses` [query, array] — Proxy Addresses
+- `cloudTagsKeyValue__contains` [query, array] — Free-text filter by cloud tag key value (supports multiple values)
+- `resourceType__contains` [query, array] — The Asset Type
+- `memoryReadable__nin` [query, array] — The memory of the device in human readable format (not in)
+- `k8sLabelsUnifiedKeyValue__contains` [query, array] — Free-text filter by Kubernetes Labels key value (supports multiple values)
+- `agentUuid__contains` [query, array] — The UUID
+- `tagsKeyValue` [query, array] — Tags
+- `k8sCluster__contains` [query, array] — The Kubernetes cluster
+- `cloudProviderOrganizationUnit__contains` [query, array] — The cloud provider organization unit
+- `assetCriticality` [query, array] — The criticality that each asset belongs to
+- `rangerTagsKeyValue` [query, array] — The ranger tags key value
+- `cloudProviderOrganization__contains` [query, array] — The cloud provider organization
+- `agentLocationAwareness__contains` [query, array] — The location awareness
+- `isDcServer` [query, array] — Is DC Server
+- `samAccountName__nin` [query, array] — The SAM Account Name (not in)
+- `identityAdUserDistinguishedName__contains` [query, array] — AD user DN
+- `objectSid__contains` [query, array] — The Object SID
+- `jobTitle` [query, array] — Job Title
+- `groupType__nin` [query, array] — The Group Type (not in)
+- `osFamily__nin` [query, array] — The operating system family of the device (not in)
+- `agentOperationalState` [query, array] — The agent operational state
+- `userAccountControl` [query, array] — The User Account Control
+- `agentNetworkStatus` [query, array] — The agent network status
+- `ageGroup` [query, array] — Age Group
+- `macAddresses__contains` [query, array] — The MAC addresses
+- `k8sCluster` [query, array] — The Kubernetes Cluster
+- `agentVssServiceStatus` [query, array] — The agent VSS service status
+- `proxyAddresses__contains` [query, array] — Proxy Addresses
+- `agentRangerStatus__nin` [query, array] — The agent network scanner status (not in)
+- `objectGuid__contains` [query, array] — The Object GUID
+- `detectedFromSite__nin` [query, array] — The site from which the device was detected (not in)
+- `name__contains` [query, array] — The name
+- `k8sAnnotationsUnifiedKey__contains` [query, array] — Free-text filter by Kubernetes Annotations key (supports multiple values)
+- `applicationName` [query, array] — The name of the application installed on a workstation or a server
+- `threatDetectionStatus__contains` [query, array] — The threat detection status
+- `firstSeenDt__between` [query, string] — The first seen date
+- `lastUpdateDt__between` [query, string] — The last update date
+- `lockOutTime__between` [query, string] — Lock-out Time
+- `k8sNode` [query, array] — The Kubernetes Node
+- `agentPendingUninstall` [query, array] — Whether the agent is pending uninstall
+- `agentAntiTamperingStatus` [query, array] — The agent anti tampering status
+- `discoveryMethods__nin` [query, array] — The discovery methods (not in)
+- `cloudProviderAccountId__nin` [query, array] — The cloud provider account id (not in)
+- `k8sClusterId` [query, array] — The Kubernetes Cluster ID
+- `agentVssServiceStatus__nin` [query, array] — The agent VSS service status (not in)
+- `agentVssLastSnapshotDt__between` [query, string] — The agent VSS last snapshot date
+- `agentAgentVersion__nin` [query, array] — The agent version (not in)
+- `agentHasLocalConfig` [query, array] — Whether the agent has local configuration
+- `allTagsKey__nexists` [query, array] — User and cloud tag keys not exists
+- `agentMissingPermissions__nin` [query, array] — The agent missing permissions (not in)
+- `agentPendingUpgrade` [query, array] — Whether the agent is pending upgrade
+- `manufacturer` [query, array] — The manufacturer of the device
+- `servicePrincipalName__contains` [query, array] — The Service Principal Name
+- `agentVssRollbackStatus` [query, array] — The agent VSS rollback status
+- `siteIds` [query, array] — List of Site IDs to filter by
+- `deletedTime__between` [query, array] — Deleted Time
+- `s1UpdatedAt__between` [query, string] — The Last Seen date and time for the asset
+- `agentInstallerType__nin` [query, array] — The agent installer type (not in)
+- `resourceType` [query, array] — The canonical name for the resource type
+- `assetEnvironment__nin` [query, array] — The environment that the asset exists in - AWS | Azure | GCP | Active Directory (not in)
+- `k8sVersion__nin` [query, array] — The Kubernetes Version (not in)
+- `names__nin` [query, array] — Name (not in)
+- `agentUuid` [query, array] — Match by the agent UUID
+- `cloudTagsKey` [query, array] — The cloud tags key
+- `coreCount` [query, array] — The number of cores
+- `osVersion__nin` [query, array] — The operating system version of the device (not in)
+- `serviceAccount` [query, array] — The Service Account
+- `subCategory__nin` [query, array] — The sub-category that each resource belongs to (not in)
+- `discoveryMethods` [query, array] — The discovery methods
+- `k8sVersion` [query, array] — The Kubernetes Version
+- `infectionStatus` [query, array] — The status alerts of the asset
+- `tcpPorts` [query, array] — The TCP ports
+- `givenName__contains` [query, array] — Given Name
+- `activeCoverage` [query, array] — The active coverage for the asset
+- `countsFor` [query, array] — The columns for which filter count would be returned for
+- `coreCount__nin` [query, array] — The number of cores (not in)
+- `rangerTagKey__contains` [query, array] — Free-text filter by Ranger tag key (supports multiple values)
+- `threatDetectionStatus` [query, array] — Threat Detection Status
+- `rangerTagsKeyValue__nin` [query, array] — The ranger tags key value (not in)
+- `architecture__nin` [query, array] — The architecture of the device (not in)
+- `k8sNamespace` [query, array] — The Kubernetes Namespace Name
+- `identityAdMachineDistinguishedName__contains` [query, array] — AD machine DN
+- `agentS1AgentLiveUpdatesVersion__contains` [query, array] — Live update ID
+- `k8sType` [query, array] — The Kubernetes Type
+- `onPremisesSamAccountName` [query, array] — On Premises SAM Account Name
+- `userPrincipalName__contains` [query, array] — The User Principal Name
+- `uniqueName` [query, array] — Unique Name
+- `cloudProviderAccountId` [query, array] — The cloud provider account id
+- `agentNetworkStatus__nin` [query, array] — The agent network status (not in)
+- `isRogues` [query, array] — Whether the instance is a rogue or not
+- `subCategory` [query, array] — The sub-category that each resource belongs to
+- `osNameVersion` [query, array] — The operating system name and version of the device
+- `onPremisesImmutableId` [query, array] — On Premises Immutable Id
+- `agentRangerStatus` [query, array] — The agent network scanner status
+- `osVersion__contains` [query, array] — The OS versions
+- `deviceReview` [query, array] — The asset review
+- `allTagsKey` [query, array] — User and cloud tag keys
+- `serialNumber__contains` [query, array] — The serial number
+- `hostnames__contains` [query, array] — The hostnames
+- `department` [query, array] — Department
+- `identityAdMachineMembership__contains` [query, array] — AD machine groups
+- `otherMails__contains` [query, array] — Other Mails
+- `k8sType__nin` [query, array] — The Kubernetes Type (not in)
+- `distinguishedName__contains` [query, array] — The Distinguished Name
+- `objectClass` [query, array] — The Object Class
+- `forest__contains` [query, array] — The Forest Name
+- `k8sAnnotationsUnifiedKeyValue__contains` [query, array] — Free-text filter by Kubernetes Annotations key value (supports multiple values)
+- `otherMails` [query, array] — Other Mails
+- `visibility` [query, array] — Visibility
+- `scanStatus__contains` [query, array] — The CDS malware scan status
+- `agentVssRollbackStatus__nin` [query, array] — The agent VSS rollback status (not in)
+- `agentConsoleMigrationStatus` [query, array] — The agent console migration status
+- `architecture` [query, array] — The architecture of the device
+- `badPasswordTime__between` [query, string] — Bad Password Time
+- `identityAdUserMembership__contains` [query, array] — AD user groups
+- `agentDvConnectivity__nin` [query, array] — The connection status between the agent and the SDL service (not in)
+- `displayName__contains` [query, array] — The Display Name
+- `last_modified_time__between` [query, string] — Lock-out Time
+- `employeeType` [query, array] — Employee Type
+- `agentVssProtectionStatus` [query, array] — The agent VSS protection status
+- `id__contains` [query, array] — The ID
+- `cloudProviderAccountName__contains` [query, array] — The cloud provider account name
+- `internalIps__contains` [query, array] — The internal IPs
+- `assetStatus` [query, array] — The status of the asset
+- `eppUnsupportedUnknown__nin` [query, array] — The agent supported or unknown state (not in)
+- `surname` [query, array] — Surname
+- `agentConfigurableNetworkQuarantine` [query, array] — Whether the agent can configure network quarantine
+- `agentHealthStatus` [query, array] — The agent health status
+- `agentRangerVersion` [query, array] — The agent network scanner version
+- `domain__nin` [query, array] — The domain of the device (not in)
+- `agentDiskMetricsVolumeType__nin` [query, array] — The agent disk metrics volume type (not in)
+- `agentLastLoggedInUser__contains` [query, array] — The last logged in user
+- `k8sClusterId__contains` [query, array] — Kubernetes Cluster ID
+- `cloudTagsKey__contains` [query, array] — Free-text filter by cloud tag key (supports multiple values)
+- `tagsKeyValue__nin` [query, array] — Tags (not in)
+- `agentAgentVersion` [query, array] — The agent version
+- `allTagsKey__exists` [query, array] — User and cloud tag keys exists
+- `objectCategory__nin` [query, array] — The Object Category (not in)
+- `userAccountControl__nin` [query, array] — The User Account Control (not in)
+- `agentDiskMetricsFreePercentage__gte` [query, number] — The agent free disk percentage on any of the disks
+- `agentAgentVersion__contains` [query, array] — The agent version
+- `domain` [query, array] — The domain of the device
+- `userPasswordExpiryTimeComputed__between` [query, string] — The User Password Expiry Time
+- `scanStatus` [query, array] — The CDS malware scan status
+- `agentVssVolumesDiffAreaFreePercentage__between` [query, string] — The agent free VSS volume percentage on any of the volumes
+- `agentDiskEncryption` [query, array] — The agent disk encryption
+- `enabled` [query, array] — Whether the Identity Group is enabled or not
+- `userPrincipalName__nin` [query, array] — The User Principal Name (not in)
+- `cloudProviderProjectId__contains` [query, array] — The cloud provider project ID
+- `body` [body, v2_1.inventory.unified_actions.schemas_PerformActionRequestSchema] — 
+
+Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

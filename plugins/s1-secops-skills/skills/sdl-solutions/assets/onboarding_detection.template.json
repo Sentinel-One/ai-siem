@@ -1,0 +1,29 @@
+{
+  "_comment": "STAR scheduled PowerQuery detection rule for an onboarded source. POST to /web/api/v2.1/cloud-detection/rules. queryType MUST be scheduled and queryLang MUST be 2.0 for a PowerQuery body. treatAsThreat is UNDEFINED and networkQuarantine false because mitigation is not supported on scheduled rules. Keep aggregation inside group. The PQ body MUST end with an explicit '| columns ...' that projects the metric, the key OCSF/vendor fields, AND the enriched device_*/user_* context (lookup after group), so the alert carries asset context and there are named columns for entityMappings to map. 'entityMappings' maps output columns to security entities and is CAPPED AT 3 ENTRIES (a 4th returns 400 'Longer than maximum length 3'); pick the 3 highest-value identity/asset columns (e.g. device_host, src_ip, dst_ip). 'coolOffSettings.renotifyMinutes' is the re-notify suppression per entity: tie it to severity and the run cadence, do NOT default to 24h (that masks an ongoing threat for a day). Suggested: High active-threat rules ~60 (re-notify each cycle), Medium recon/anomaly ~240. Scope via filter.accountIds or filter.siteIds. New rules land Disabled; enable with PUT /cloud-detection/rules/enable (rules show 'Activating' then become Active within ~1 hour).",
+  "data": {
+    "name": "{{PREFIX}} - {{DETECTION_NAME}}",
+    "description": "{{DETECTION_DESCRIPTION}} MITRE ATT&CK: {{MITRE_TACTIC}} / {{MITRE_TECHNIQUE}}.",
+    "queryType": "scheduled",
+    "queryLang": "2.0",
+    "severity": "{{SEVERITY}}",
+    "status": "Disabled",
+    "expirationMode": "Permanent",
+    "treatAsThreat": "UNDEFINED",
+    "networkQuarantine": false,
+    "coolOffSettings": { "renotifyMinutes": {{RENOTIFY_MINUTES}} },
+    "entityMappings": [
+      { "columnName": "{{ENTITY_COL_1}}" },
+      { "columnName": "{{ENTITY_COL_2}}" },
+      { "columnName": "{{ENTITY_COL_3}}" }
+    ],
+    "scheduledParams": {
+      "query": "{{PQ_BODY_ENDING_WITH_COLUMNS_PROJECTION}}",
+      "runIntervalMinutes": 60,
+      "lookbackWindowMinutes": 60,
+      "alertPerRow": false,
+      "disableStreaksLogic": false,
+      "threshold": { "value": 0, "operator": "Greater" }
+    }
+  },
+  "filter": { "{{SCOPE_KEY}}": ["{{SCOPE_ID}}"] }
+}

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - plugins/ and mcp/ (SentinelOne SecOps skills + MCP server)
+
+- `plugins/s1-secops-skills/` - a Claude plugin bundling seven SentinelOne SecOps skills (powerquery, mgmt-console-api, sdl-api, sdl-dashboard, sdl-log-parser, sdl-solutions, hyperautomation), with built `.plugin`/`.skill` bundles in `dist/` for one-step install.
+- `mcp/sentinelone-mcp/` - the SentinelOne MCP server (Node.js) plus `mcp/docker/` container build.
+- Root `.claude-plugin/marketplace.json` registers the repo as an installable plugin marketplace.
+- Contributed content is licensed under the repository's AGPL-3.0.
+
 ### Changed - pipelines/ reorganization
 
 The `pipelines/` directory has been restructured around ingestion mode rather

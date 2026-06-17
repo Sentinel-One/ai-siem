@@ -1,0 +1,50 @@
+{
+  "name": "@pmoses-s1/s1-secops-mcp",
+  "version": "1.2.2",
+  "description": "MCP server orchestrating SentinelOne skills, APIs, and SOC analyst context. Stdio or Streamable HTTP transport with per-user bearer auth for team deployments.",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "s1-secops-mcp": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "lib/",
+    "tools/",
+    "deploy/",
+    "scripts/",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "start": "node index.js",
+    "start:http": "node index.js --transport http",
+    "dev": "node --watch index.js",
+    "test": "node --test tests/smoke.test.mjs tests/stdio-transport.test.mjs tests/http-transport.test.mjs",
+    "regen:readme": "node scripts/regen-readme-tools-table.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sentinel-One/ai-siem.git",
+    "directory": "s1-secops-mcp"
+  },
+  "homepage": "https://github.com/Sentinel-One/ai-siem/tree/main/mcp/s1-secops-mcp#readme",
+  "bugs": "https://github.com/Sentinel-One/ai-siem/issues",
+  "keywords": [
+    "mcp",
+    "sentinelone",
+    "model-context-protocol",
+    "soc",
+    "powerquery",
+    "sdl",
+    "singularity-data-lake",
+    "claude"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

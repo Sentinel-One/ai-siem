@@ -1,0 +1,51 @@
+// Multi-line Java / Python stack traces.
+//
+// Sample event (multiple physical lines, one logical event):
+//   [2026-04-20 10:25:34] ERROR myservice: caught unexpected exception
+//           at com.acme.Service.run(Service.java:42)
+//           at com.acme.Main.main(Main.java:10)
+//   Caused by: java.lang.RuntimeException: boom
+//           at com.acme.Thing.doThing(Thing.java:99)
+//
+// Extraction plan:
+//   lineGroupers: a new event starts at `[YYYY-MM-DD HH:MM:SS]`. Keep accumulating while
+//     following lines are indented (start with whitespace) OR start with `Caused by:`.
+//   formats: extract timestamp, severity, service, and summary. The stack body stays
+//     in `message`.
+
+{
+  attributes: {
+    // Required pipeline defaults.
+    "metadata.version":    "1.0.0",
+    "dataSource.category": "application",
+    "dataSource.name":     "Application Exceptions",
+    "dataSource.vendor":   "Internal",
+    dataset: "app_exceptions"
+  },
+
+  patterns: {
+    ts: "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}"
+  },
+
+  lineGroupers: [
+    {
+      start: "^\\[\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\]",
+      continueThrough: "^(\\s+|Caused by:|\\.{3} \\d+ more)"
+    }
+  ],
+
+  formats: [
+    // NOTE:
+    //  - `timestamp` is reserved; capturing a non-epoch string there silently
+    //    drops the event. Use `ts_raw`.
+    //  - `severity` is ALSO reserved — the ingest pipeline coerces any value
+    //    to an integer 0–6 against its own `info`/`warn`/`error` vocabulary.
+    //    Capture the word ERROR/WARN/INFO as `severity_name` (or any
+    //    non-colliding field) so the raw string survives.
+    {
+      id: "header",
+      format: "\\[$ts_raw=ts$\\] $severity_name$ $service$: $summary$",
+      halt: true
+    }
+  ]
+}

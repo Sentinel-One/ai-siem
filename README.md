@@ -35,7 +35,10 @@ ai-siem/                # AI SIEM core structure (260+ components)
   ├── parsers/         # Parsing logic and configurations (165 parsers)
   │   ├── community/   # 148 community parsers (*.conf + metadata)
   │   └── sentinelone/ # 17 official marketplace parsers (*.conf + metadata)
-  └── workflows/       # Automated playbooks and responses (3 workflows with metadata)
+  ├── workflows/       # Automated playbooks and responses (3 workflows with metadata)
+  ├── plugins/         # Claude plugins (skills bundled for Cowork / Claude Code)
+  │   └── s1-secops-skills/  # 7 SentinelOne SecOps skills + built .plugin/.skill bundles
+  └── mcp/             # SentinelOne MCP server (Node.js) + container build
 ```
 
 ---

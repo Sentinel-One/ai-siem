@@ -1,0 +1,58 @@
+[Unit]
+Description=SentinelOne MCP server (Streamable HTTP, team-shared)
+Documentation=https://github.com/Sentinel-One/ai-siem/tree/main/mcp/s1-secops-mcp
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mcp
+Group=mcp
+
+# Server credentials (the S1 service-user token + SDL keys) and bearer tokens.
+# Both are written by deploy/install.sh; rotate by editing then `systemctl reload`
+# (which sends SIGHUP and reloads bearer tokens without dropping connections).
+EnvironmentFile=/etc/s1-secops-mcp/server.env
+Environment=MCP_BEARER_TOKENS_FILE=/etc/s1-secops-mcp/bearer-tokens.json
+Environment=S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json
+
+ExecStart=/usr/bin/env node %h/.npm-global/lib/node_modules/@pmoses-s1/s1-secops-mcp/index.js \
+  --transport http \
+  --host 127.0.0.1 \
+  --port 8765 \
+  --path /mcp
+
+# SIGHUP reloads the bearer token file without restart.
+ExecReload=/bin/kill -HUP $MAINPID
+
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+# NOTE: MemoryDenyWriteExecute=true and LockPersonality=true are incompatible
+# with Node.js V8 JIT (W+X mappings). Including them causes a silent SIGTRAP
+# at startup with no useful log output. Leave them off for Node services.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+ReadWritePaths=
+
+# Resource limits
+LimitNOFILE=4096
+TasksMax=64
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=s1-secops-mcp
+
+[Install]
+WantedBy=multi-user.target

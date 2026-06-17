@@ -1,0 +1,11 @@
+config.json
+*.pyc
+__pycache__/
+reports/
+charts/
+baselines/
+*.tmp
+*.log
+*.jpg
+*.pdf
+.DS_Store

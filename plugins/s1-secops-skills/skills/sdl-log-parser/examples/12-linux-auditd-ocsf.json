@@ -1,0 +1,210 @@
+// SDL log parser example: Linux auditd over syslog -> OCSF
+//
+// Source: Linux Audit daemon (auditd) records forwarded over syslog via audispd.
+//   Sample line:
+//   <182>Jun  1 07:33:07 audispd: type=SYSCALL msg=audit(1780299187.226:146262535): arch=c000003e
+//     syscall=105 success=yes exit=0 ppid=201297 pid=201309 auid=4294967295 uid=0 gid=0 euid=0
+//     comm="runc:[2:INIT]" exe="/runc" subj=runc key="priv_esc" SYSCALL=setuid UID="root" ...
+//
+// What this example demonstrates:
+//   - Format A  : ` type=`-anchored record-type + audit-event-id capture. The leading SPACE in the
+//                 ` type=` anchor is mandatory: a bare `type=` greedy anchor lands on `nametype=`
+//                 inside PATH records and drops them. The trailing ` msg=audit(` literal keeps the
+//                 format auditd-specific.
+//   - Format A2 : EXECVE-only arg-vector capture into a flat scratch `_cmdline`, cleaned into a
+//                 readable OCSF process.cmd_line by a computeFields PowerQuery replace() (the
+//                 `replace` MAPPER op is a no-op on this tenant, and there is no hex decode for the
+//                 hex `proctitle`, so the readable command comes from EXECVE args, not PROCTITLE).
+//   - Format B  : the canonical key=value catch-all (leading `.*` + repeat) extracting every field.
+//   - mappings  : v1 FIRST-MATCH-WINS, fanning one source to multiple OCSF classes by record type,
+//                 with per-op `predicate` status/severity derivation.
+//
+// All OCSF dotted paths verified against references/ocsf-schema-documentation.md.
+{
+  timezone: "UTC",
+
+  attributes: {
+    // 4 mandatory default attributes
+    "metadata.version":    "1.1.3",
+    "dataSource.category": "security",
+    "dataSource.name":     "Linux Audit",
+    "dataSource.vendor":   "Linux",
+    // product / provider metadata
+    "metadata.product.vendor_name": "Linux",
+    "metadata.product.name":        "Linux Audit (auditd)",
+    "metadata.log_provider":        "auditd"
+  },
+
+  formats: [
+    // Format A: record-type + audit event id. ` type=` is SPACE-anchored to avoid the `nametype=`
+    // collision in PATH records; the trailing ` msg=audit(` literal keeps this auditd-specific.
+    {
+      id: "auditd-frame",
+      format: "$_a{regex=[\\s\\S]* type=}$$audit_record_type{regex=[A-Z0-9_]+}$$_b{regex= msg=audit\\(}$$audit_event_epoch{regex=[0-9.]+}$:$audit_event_id{regex=[0-9]+}$",
+      discardAttributes: ["_a", "_b"]
+    },
+
+    // Format A2: EXECVE arg vector -> flat scratch `_cmdline`, cleaned by computeFields, then renamed
+    // to process.cmd_line in mappings. Anchored on ` argc=N ` (unique to EXECVE), so it never fires
+    // on SYSCALL (a0..a3 there are register values). PowerQuery string literals are single-quoted,
+    // so the regex's double-quotes are literal. Turns `a0="cp" a1="/x"` into `cp /x`.
+    {
+      id: "execve-cmdline",
+      format: "$_e{regex=[\\s\\S]* argc=[0-9]+ }$$_cmdline{regex=[\\s\\S]+}$",
+      discardAttributes: ["_e"],
+      rewrites: [
+        { action: "computeFields",
+          expression: "| let _cmdline = replace(_cmdline, 'a[0-9]+=\"([^\"]*)\"', '$1')" }
+      ]
+    },
+
+    // Format B: key=value catch-all. Leading `.*` is REQUIRED so the engine scans past the syslog
+    // priority/timestamp/tag to the first key=value pair; repeat walks the rest.
+    {
+      id: "kv-catchall",
+      format: ".*$_=identifier$=$_=quoteOrSpace$",
+      repeat: true
+    }
+  ],
+
+  mappings: {
+    version: 1,
+    mappings: [
+      // Process Activity (1007): EXECVE -- promote the cleaned scratch field to process.cmd_line.
+      {
+        predicate: "audit_record_type == 'EXECVE'",
+        transformations: [
+          { constant: { field: "class_uid",     value: 1007 } },
+          { constant: { field: "class_name",    value: "Process Activity" } },
+          { constant: { field: "category_uid",  value: 1 } },
+          { constant: { field: "category_name", value: "System Activity" } },
+          { constant: { field: "activity_id",   value: 0 } },
+          { constant: { field: "activity_name", value: "Unknown" } },
+          { rename:  { from: "_cmdline", to: "process.cmd_line" } }
+        ]
+      },
+
+      // Process Activity (1007): SYSCALL / PROCTITLE / BPRM_FCAPS / MMAP.
+      {
+        predicate: "audit_record_type == 'SYSCALL' || audit_record_type == 'PROCTITLE' || audit_record_type == 'BPRM_FCAPS' || audit_record_type == 'MMAP'",
+        transformations: [
+          { constant: { field: "class_uid",     value: 1007 } },
+          { constant: { field: "class_name",    value: "Process Activity" } },
+          { constant: { field: "category_uid",  value: 1 } },
+          { constant: { field: "category_name", value: "System Activity" } },
+          { constant: { field: "activity_id",   value: 0 } },
+          { constant: { field: "activity_name", value: "Unknown" } },
+          { rename: { from: "pid",  to: "process.pid" } },
+          { rename: { from: "ppid", to: "process.parent_process.pid" } },
+          { rename: { from: "comm", to: "process.name" } },
+          { rename: { from: "exe",  to: "process.file.path" } },
+          { rename: { from: "uid",  to: "process.uid" } },
+          { rename: { from: "auid", to: "process.auid" } },
+          { rename: { from: "euid", to: "process.euid" } },
+          { rename: { from: "egid", to: "process.egid" } },
+          { rename: { from: "ses",  to: "process.session.uid" } },
+          // syscall success -> OCSF status (success=yes|no is a string field). Per-op predicates.
+          { constant: { field: "status_id", value: 1, predicate: "success == 'yes'" } },
+          { constant: { field: "status",    value: "Success", predicate: "success == 'yes'" } },
+          { constant: { field: "status_id", value: 2, predicate: "success == 'no'" } },
+          { constant: { field: "status",    value: "Failure", predicate: "success == 'no'" } }
+        ]
+      },
+
+      // File System Activity (1001): PATH / CWD. (PATH parses correctly only because of the ` type=`
+      // space anchor above; bare `type=` would have dropped every PATH record via `nametype=`.)
+      {
+        predicate: "audit_record_type == 'PATH' || audit_record_type == 'CWD'",
+        transformations: [
+          { constant: { field: "class_uid",     value: 1001 } },
+          { constant: { field: "class_name",    value: "File System Activity" } },
+          { constant: { field: "category_uid",  value: 1 } },
+          { constant: { field: "category_name", value: "System Activity" } },
+          { constant: { field: "activity_id",   value: 0 } },
+          { constant: { field: "activity_name", value: "Unknown" } },
+          { copy:   { from: "name", to: "file.path" } },
+          { rename: { from: "name", to: "file.name" } }
+        ]
+      },
+
+      // Authentication (3002): login / credential / session records.
+      {
+        predicate: "audit_record_type == 'USER_AUTH' || audit_record_type == 'USER_LOGIN' || audit_record_type == 'USER_LOGOUT' || audit_record_type == 'USER_START' || audit_record_type == 'USER_END' || audit_record_type == 'USER_ERR' || audit_record_type == 'CRED_ACQ' || audit_record_type == 'CRED_DISP' || audit_record_type == 'CRED_REFR' || audit_record_type == 'LOGIN' || audit_record_type == 'CHAUTHTOK' || audit_record_type == 'GRP_AUTH'",
+        transformations: [
+          { constant: { field: "class_uid",     value: 3002 } },
+          { constant: { field: "class_name",    value: "Authentication" } },
+          { constant: { field: "category_uid",  value: 3 } },
+          { constant: { field: "category_name", value: "Identity & Access Management" } },
+          { rename: { from: "acct", to: "user.name" } },
+          { rename: { from: "pid",  to: "process.pid" } },
+          { rename: { from: "exe",  to: "process.file.path" } },
+          { constant: { field: "status_id", value: 1, predicate: "res == 'success'" } },
+          { constant: { field: "status",    value: "Success", predicate: "res == 'success'" } },
+          { constant: { field: "status_id", value: 2, predicate: "res == 'failed'" } },
+          { constant: { field: "status",    value: "Failure", predicate: "res == 'failed'" } }
+        ]
+      },
+
+      // Account Change (3001): user account lifecycle / role changes.
+      {
+        predicate: "audit_record_type == 'ADD_USER' || audit_record_type == 'DEL_USER' || audit_record_type == 'USER_MGMT' || audit_record_type == 'USER_CHAUTHTOK' || audit_record_type == 'ACCT_LOCK' || audit_record_type == 'ACCT_UNLOCK' || audit_record_type == 'ROLE_ASSIGN' || audit_record_type == 'ROLE_REMOVE' || audit_record_type == 'ROLE_MODIFY' || audit_record_type == 'USER_ROLE_CHANGE'",
+        transformations: [
+          { constant: { field: "class_uid",     value: 3001 } },
+          { constant: { field: "class_name",    value: "Account Change" } },
+          { constant: { field: "category_uid",  value: 3 } },
+          { constant: { field: "category_name", value: "Identity & Access Management" } },
+          { constant: { field: "activity_id",   value: 0 } },
+          { constant: { field: "activity_name", value: "Unknown" } },
+          { rename: { from: "acct", to: "user.name" } },
+          { rename: { from: "pid",  to: "process.pid" } },
+          { rename: { from: "exe",  to: "process.file.path" } }
+        ]
+      },
+
+      // Group Management (3006): group lifecycle.
+      {
+        predicate: "audit_record_type == 'ADD_GROUP' || audit_record_type == 'DEL_GROUP' || audit_record_type == 'GRP_MGMT' || audit_record_type == 'GRP_CHAUTHTOK'",
+        transformations: [
+          { constant: { field: "class_uid",     value: 3006 } },
+          { constant: { field: "class_name",    value: "Group Management" } },
+          { constant: { field: "category_uid",  value: 3 } },
+          { constant: { field: "category_name", value: "Identity & Access Management" } },
+          { constant: { field: "activity_id",   value: 0 } },
+          { constant: { field: "activity_name", value: "Unknown" } },
+          { rename: { from: "acct", to: "user.name" } },
+          { rename: { from: "pid",  to: "process.pid" } },
+          { rename: { from: "exe",  to: "process.file.path" } }
+        ]
+      },
+
+      // Detection Finding (2004): SELinux denials, seccomp, anomalies, integrity. severity_id 3
+      // (Medium) is a sane default for these security-relevant record types; tune downstream.
+      {
+        predicate: "audit_record_type == 'AVC' || audit_record_type == 'SECCOMP' || audit_record_type == 'ANOM_ABEND' || audit_record_type == 'ANOM_PROMISCUOUS' || audit_record_type == 'ANOM_LINK' || audit_record_type == 'ANOM_EXEC' || audit_record_type == 'INTEGRITY_PCR' || audit_record_type == 'INTEGRITY_DATA' || audit_record_type == 'INTEGRITY_METADATA'",
+        transformations: [
+          { constant: { field: "class_uid",     value: 2004 } },
+          { constant: { field: "class_name",    value: "Detection Finding" } },
+          { constant: { field: "category_uid",  value: 2 } },
+          { constant: { field: "category_name", value: "Findings" } },
+          { constant: { field: "severity_id",   value: 3 } },
+          { rename: { from: "pid",  to: "process.pid" } },
+          { rename: { from: "comm", to: "process.name" } },
+          { rename: { from: "exe",  to: "process.file.path" } }
+        ]
+      },
+
+      // Network Activity (4001): socket address + netfilter packet records.
+      {
+        predicate: "audit_record_type == 'SOCKADDR' || audit_record_type == 'NETFILTER_PKT'",
+        transformations: [
+          { constant: { field: "class_uid",     value: 4001 } },
+          { constant: { field: "class_name",    value: "Network Activity" } },
+          { constant: { field: "category_uid",  value: 4 } },
+          { constant: { field: "category_name", value: "Network Activity" } },
+          { constant: { field: "activity_id",   value: 0 } },
+          { constant: { field: "activity_name", value: "Unknown" } }
+        ]
+      }
+    ]
+  }
+}

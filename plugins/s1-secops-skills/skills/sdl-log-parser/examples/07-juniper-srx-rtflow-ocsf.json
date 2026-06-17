@@ -1,0 +1,106 @@
+// Juniper SRX RT_FLOW_SESSION_CREATE in structured-data syslog (RFC 5424-ish).
+//
+// Sample line:
+//   2025-05-08T18:53:47.998+11:00 AUGS-SRX-MGT-VC RT_FLOW - RT_FLOW_SESSION_CREATE [junos@2636.1.1.1.2.39 source-address="172.16.32.136" source-port="55434" destination-address="10.40.1.99" ...]
+//
+// Output schema: OCSF Network Activity (class_uid=4001), activity_id=1 (open) for SESSION_CREATE.
+//
+// Strategy:
+//   1. Capture the syslog framing and the structured-data body.
+//   2. Run a repeating fragment over the structured-data body that captures every `key="value"` pair.
+//   3. Use a `mappings` block to rename vendor-native fields to OCSF dotted names.
+
+{
+  attributes: {
+    // Required pipeline defaults — present on every parser.
+    "metadata.version":    "1.0.0",
+    "dataSource.category": "network",
+    "dataSource.name":     "Juniper SRX",
+    "dataSource.vendor":   "Juniper",
+    // Vendor/product metadata.
+    "metadata.product.vendor_name": "Juniper",
+    "metadata.product.name": "SRX",
+    "metadata.log_provider": "rt_flow",
+    // OCSF class metadata.
+    "class_uid": 4001,
+    "class_name": "Network Activity",
+    "category_uid": 4,
+    "category_name": "Network Activity"
+  },
+
+  patterns: {
+    iso: "\\d{4}-\\d{2}-\\d{2}T[0-9:.+\\-Z]+",
+    sd_id: "[A-Za-z0-9._@\\-]+"
+  },
+
+  formats: [
+    {
+      id: "rtflow-frame",
+      attributes: {
+        "metadata.event_code": "RT_FLOW_SESSION_CREATE",
+        "activity_id": 1,
+        "activity_name": "Open"
+      },
+      format: "$time=iso$ $src_endpoint.hostname$ $procname$ - $event_id$ \\[$sd_id=sd_id$ $sd_body$\\]"
+    },
+    {
+      id: "rtflow-extension",
+      format: ".*$_=identifier$=\"$_=quotableNoEscape$\"",
+      repeat: true,
+      // computeFields must run AFTER the k=v pairs have been extracted — so it lives on
+      // this (repeating) format rather than the frame format.
+      rewrites: [
+        { action: "computeFields",
+          expression: "| let tls.is_encrypted = encrypted == 'YES' ? true : (encrypted == 'NO' ? false : null)" }
+      ]
+    }
+  ],
+
+  // Mappings block — rename vendor-native dashed names to OCSF dotted names.
+  // Tenant expects: version:1, and transformations shaped as { "<op>": { ... } }.
+  mappings: {
+    version: 1,
+    mappings: [
+      {
+        predicate: "metadata.event_code == 'RT_FLOW_SESSION_CREATE'",
+        transformations: [
+          { rename: { from: "source-address",            to: "src_endpoint.ip" } },
+          { rename: { from: "source-port",               to: "src_endpoint.port" } },
+          { rename: { from: "destination-address",       to: "dst_endpoint.ip" } },
+          { rename: { from: "destination-port",          to: "dst_endpoint.port" } },
+          { rename: { from: "nat-source-address",        to: "connection_info.src_translated.ip" } },
+          { rename: { from: "nat-source-port",           to: "connection_info.src_translated.port" } },
+          { rename: { from: "nat-destination-address",   to: "connection_info.dst_translated.ip" } },
+          { rename: { from: "nat-destination-port",      to: "connection_info.dst_translated.port" } },
+          { rename: { from: "src-nat-rule-name",         to: "connection_info.src_translated.policy_name" } },
+          { rename: { from: "dst-nat-rule-name",         to: "connection_info.dst_translated.policy_name" } },
+          { rename: { from: "protocol-id",               to: "connection_info.protocol_num" } },
+          { rename: { from: "policy-name",               to: "policy.name" } },
+          { rename: { from: "source-zone-name",          to: "src_endpoint.zone" } },
+          { rename: { from: "destination-zone-name",     to: "dst_endpoint.zone" } },
+          { rename: { from: "session-id-32",             to: "connection_info.session.uid" } },
+          { rename: { from: "packet-incoming-interface", to: "src_endpoint.interface_name" } },
+          { rename: { from: "application",               to: "app_name" } },
+          { rename: { from: "nested-application",        to: "app.profile" } },
+          { rename: { from: "service-name",              to: "service.name" } },
+          { rename: { from: "username",                  to: "actor.user.name" } },
+          { rename: { from: "roles",                     to: "actor.user.groups" } },
+          { cast:   { field: "src_endpoint.port",             type: "int" } },
+          { cast:   { field: "dst_endpoint.port",             type: "int" } },
+          // Copy protocol_num to protocol_name, then enum-cast the copy.
+          { copy:   { from: "connection_info.protocol_num",
+                      to:   "connection_info.protocol_name" } },
+          { cast:   { field: "connection_info.protocol_num",  type: "int" } },
+          { cast:   { field: "connection_info.protocol_name",
+                      type: "enum",
+                      enum: { "6": "TCP", "17": "UDP", "1": "ICMP" } } },
+          { drop:   { field: "encrypted" } },
+          { drop:   { field: "sd_body" } },
+          { drop:   { field: "sd_id" } }
+        ]
+      }
+    ]
+  },
+
+  discardAttributes: ["sd_body", "sd_id"]
+}

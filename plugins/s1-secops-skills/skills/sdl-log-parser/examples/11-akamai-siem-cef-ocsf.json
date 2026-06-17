@@ -1,0 +1,187 @@
+{
+  // Akamai SIEM — CEF log parser
+  // OCSF class: HTTP Activity (4002)
+  //
+  // Reference example for the **inline-predicate-on-`constant`-op** pattern that
+  // works around v1 mappings' first-match-wins constraint. Lifted from the
+  // production /logParsers/akamaiParser on a live tenant (v1.0.7, 2026-05-27).
+  //
+  // Why this example exists:
+  //
+  //   1. CEF over syslog without the syslog frame (Akamai SIEM ships the bare
+  //      CEF body via their SIEM connector — no `<PRI>timestamp host` prefix).
+  //   2. Live demonstration of the inline-predicate technique:
+  //        • 4 conditional `severity_id` ops (CEF 0-10 → OCSF enum bucketing)
+  //        • 9 conditional `action`/`action_id`/`firewall_rule.name` ops
+  //        • 4 conditional `disposition_id` ops
+  //        • 4 conditional `status`/`status_id` ops
+  //      All 21 conditional ops fire from a single `predicate: "true"` mapping
+  //      entry. Splitting them into multiple entries breaks first-match-wins.
+  //   3. OCSF `severity_id` bucketing — NEVER pass through raw vendor severity.
+  //      Akamai's CEF 0-10 maps to OCSF enum {1, 3, 4, 5}; raw value preserved
+  //      under `akamai.severity`.
+  //   4. Dual-emit for back-compat: events keep both `http_request.url.text`
+  //      (native naming used by other parsers on the tenant) AND
+  //      `http_request.url.url_string` (OCSF canonical) — same for `cef_sig_id`
+  //      → `unmapped.cef_sig_id` + `akamai.sig_id`. Useful when an existing
+  //      parser version's field names are baked into dashboards/STAR rules.
+  //   5. Vendor-specific gotcha: Akamai SIEM puts the HTTP version on CEF
+  //      `app=h2`, not the more-conventional `ver=`. The `copy ver` + `copy app`
+  //      pair gives first-of-N coverage.
+
+  timezone: "UTC",
+
+  attributes: {
+    // Mandatory four
+    "metadata.version": "1.0.7",
+    "dataSource.category": "security",
+    "dataSource.name": "Akamai",
+    "dataSource.vendor": "Akamai",
+    // Product
+    "metadata.product.name": "Akamai SIEM",
+    "metadata.product.vendor_name": "Akamai",
+    "metadata.log_provider": "akamai_siem",
+    // OCSF class: HTTP Activity (4002)
+    "class_uid": 4002,
+    "class_name": "HTTP Activity",
+    "category_uid": 4,
+    "category_name": "Network Activity",
+    "activity_id": 3,
+    "activity_name": "Traffic",
+    "type_uid": 400203
+    // severity_id is NOT set here — derived per-event in mappings below.
+  },
+
+  patterns: {
+    notPipe: "[^|]*"
+  },
+
+  formats: [
+    // CEF header: pipe-delimited positional fields, then KV extension body.
+    {
+      id: "cef-header",
+      format: "CEF:$cefVersion=notPipe$\\|$cef_vendor=notPipe$\\|$cef_product=notPipe$\\|$cef_dev_version=notPipe$\\|$cef_sig_id=notPipe$\\|$cef_name=notPipe$\\|$cef_severity=notPipe$\\|$cef_extension$",
+      discardAttributes: ["cefVersion", "cef_vendor", "cef_product", "cef_dev_version", "cef_extension"]
+    },
+    // KV catch-all on the extension. Leading `.*` is REQUIRED (see Critical pitfalls #1).
+    {
+      id: "cef-kv",
+      format: ".*$_=identifier$=$_=quoteOrSpace$",
+      repeat: true,
+      discardAttributes: ["cs1Label", "cs2Label", "cs3Label", "cs4Label", "cs5Label", "cs6Label", "c6a2Label", "flexString1Label", "flexString2Label"]
+    }
+  ],
+
+  // Drop the raw event body and the raw CEF severity. cef_severity is dropped
+  // at the root because we copy it to `akamai.severity` first and then derive
+  // `severity_id` from the copy.
+  discardAttributes: ["message", "cef_severity"],
+
+  mappings: {
+    version: 1,
+    mappings: [
+      {
+        predicate: "true",
+        transformations: [
+          // ===== Preserve raw CEF severity (numeric) =====
+          { copy: { from: "cef_severity", to: "akamai.severity" } },
+
+          // ===== Network endpoints =====
+          { rename: { from: "src",   to: "src_endpoint.ip" } },
+          { rename: { from: "dst",   to: "dst_endpoint.ip" } },
+          { rename: { from: "dhost", to: "dst_endpoint.hostname" } },
+          { rename: { from: "dpt",   to: "dst_endpoint.port" } },
+
+          // ===== HTTP request =====
+          // Dual-emit URL: OCSF canonical .text + back-compat .url_string.
+          { copy:   { from: "request",       to: "http_request.url.url_string" } },
+          { rename: { from: "request",       to: "http_request.url.text" } },
+          { rename: { from: "requestMethod", to: "http_request.http_method" } },
+          // Akamai SIEM puts HTTP version on `app=h2`. Try `ver` first (CEF
+          // convention), then `app` — copy is idempotent so the second only
+          // populates http_request.version if the first didn't.
+          { copy: { from: "ver", to: "http_request.version" } },
+          { copy: { from: "app", to: "http_request.version" } },
+          { rename: { from: "app", to: "app_name" } },
+
+          // ===== HTTP response =====
+          // Dual-emit response code: OCSF http_response.code + http_status (legacy).
+          { copy:   { from: "AkamaiSiemResponseStatus", to: "http_response.code" } },
+          { rename: { from: "AkamaiSiemResponseStatus", to: "http_status" } },
+          { cast:   { field: "http_response.code", type: "int" } },
+          { cast:   { field: "http_status",        type: "int" } },
+          // Dual-emit bytes-out: traffic.bytes_out + http_response.length.
+          { copy:   { from: "out", to: "http_response.length" } },
+          { rename: { from: "out", to: "traffic.bytes_out" } },
+          { cast:   { field: "http_response.length", type: "int" } },
+          { cast:   { field: "traffic.bytes_out",    type: "int" } },
+
+          // ===== Geo enrichment =====
+          { rename: { from: "AkamaiSiemCountry",   to: "src_endpoint.location.country" } },
+          { rename: { from: "AkamaiSiemCity",      to: "src_endpoint.location.city" } },
+          { rename: { from: "AkamaiSiemContinent", to: "src_endpoint.location.continent" } },
+          { rename: { from: "AkamaiSiemRegion",    to: "src_endpoint.location.region" } },
+
+          // ===== CEF metadata (dual emit: legacy akamai.* + native unmapped/metadata) =====
+          { copy:   { from: "cef_sig_id", to: "akamai.sig_id" } },
+          { rename: { from: "cef_sig_id", to: "unmapped.cef_sig_id" } },
+          { copy:   { from: "cef_name",   to: "akamai.event_name" } },
+          { rename: { from: "cef_name",   to: "metadata.log_name" } },
+
+          // ===== Disposition / rule metadata / TLS / ASN / firewall policy =====
+          { rename:   { from: "act",                  to: "disposition" } },
+          { rename:   { from: "AkamaiSiemRuleTags",   to: "unmapped.rule_tags" } },
+          { rename:   { from: "AkamaiSiemTLSVersion", to: "tls.version" } },
+          { rename:   { from: "AkamaiSiemASN",        to: "src_endpoint.autonomous_system.number" } },
+          { rename:   { from: "flexString2",          to: "firewall_rule.uid" } },
+          { constant: { field: "firewall_rule.type",  value: "WAF" } },
+
+          // =====================================================================
+          //   INLINE-PREDICATE-ON-CONSTANT-OP PATTERN
+          //
+          // The 21 ops below are conditional — each `constant` carries its own
+          // `predicate:` field. Do NOT split these into multiple top-level mapping
+          // entries; v1 mappings are first-match-wins and only the first matching
+          // entry fires. By keeping them inside this `predicate: "true"` entry
+          // with inline op-level predicates, all 21 evaluate per-event.
+          //
+          // Predicate type rules (see SKILL.md "Predicate type-mismatch silently
+          // fails on captured numerics"):
+          //   • akamai.severity is NUMBER → use bare numerics: akamai.severity >= 4
+          //   • disposition is STRING → use quoted strings: disposition == 'alert'
+          //   • http_response.code is cast to int above → numeric: code >= 400
+          // =====================================================================
+
+          // ----- severity_id from raw CEF 0-10 → OCSF enum bucket -----
+          { constant: { field: "severity_id", value: 1, predicate: "akamai.severity >= 0 && akamai.severity <= 3"  } },
+          { constant: { field: "severity_id", value: 3, predicate: "akamai.severity >= 4 && akamai.severity <= 6"  } },
+          { constant: { field: "severity_id", value: 4, predicate: "akamai.severity >= 7 && akamai.severity <= 8"  } },
+          { constant: { field: "severity_id", value: 5, predicate: "akamai.severity >= 9 && akamai.severity <= 10" } },
+
+          // ----- action / action_id / firewall_rule.name from disposition -----
+          { constant: { field: "action",             value: "Allowed",  predicate: "disposition == 'alert' || disposition == 'Alert' || disposition == 'allow' || disposition == 'Allow' || disposition == 'allowed' || disposition == 'Allowed'" } },
+          { constant: { field: "action_id",          value: 1,          predicate: "disposition == 'alert' || disposition == 'Alert' || disposition == 'allow' || disposition == 'Allow' || disposition == 'allowed' || disposition == 'Allowed'" } },
+          { constant: { field: "firewall_rule.name", value: "Monitor",  predicate: "disposition == 'alert' || disposition == 'Alert' || disposition == 'allow' || disposition == 'Allow' || disposition == 'allowed' || disposition == 'Allowed'" } },
+          { constant: { field: "action",             value: "Denied",   predicate: "disposition == 'deny' || disposition == 'Deny' || disposition == 'denied' || disposition == 'Denied' || disposition == 'block' || disposition == 'Block' || disposition == 'blocked' || disposition == 'Blocked'" } },
+          { constant: { field: "action_id",          value: 2,          predicate: "disposition == 'deny' || disposition == 'Deny' || disposition == 'denied' || disposition == 'Denied' || disposition == 'block' || disposition == 'Block' || disposition == 'blocked' || disposition == 'Blocked'" } },
+          { constant: { field: "firewall_rule.name", value: "Block",    predicate: "disposition == 'deny' || disposition == 'Deny' || disposition == 'denied' || disposition == 'Denied' || disposition == 'block' || disposition == 'Block' || disposition == 'blocked' || disposition == 'Blocked'" } },
+          { constant: { field: "action",             value: "Observed", predicate: "disposition == 'monitor' || disposition == 'Monitor'" } },
+          { constant: { field: "action_id",          value: 3,          predicate: "disposition == 'monitor' || disposition == 'Monitor'" } },
+          { constant: { field: "firewall_rule.name", value: "Monitor",  predicate: "disposition == 'monitor' || disposition == 'Monitor'" } },
+
+          // ----- disposition_id (Akamai-specific enum) -----
+          { constant: { field: "disposition_id", value: 19, predicate: "disposition == 'alert' || disposition == 'Alert'" } },
+          { constant: { field: "disposition_id", value: 1,  predicate: "disposition == 'allow' || disposition == 'Allow' || disposition == 'allowed' || disposition == 'Allowed'" } },
+          { constant: { field: "disposition_id", value: 2,  predicate: "disposition == 'deny' || disposition == 'Deny' || disposition == 'denied' || disposition == 'Denied' || disposition == 'block' || disposition == 'Block' || disposition == 'blocked' || disposition == 'Blocked'" } },
+          { constant: { field: "disposition_id", value: 5,  predicate: "disposition == 'monitor' || disposition == 'Monitor'" } },
+
+          // ----- status / status_id from HTTP response code (OCSF: 1=Success, 2=Failure) -----
+          { constant: { field: "status",    value: "Success", predicate: "http_response.code >= 100 && http_response.code < 400" } },
+          { constant: { field: "status_id", value: 1,         predicate: "http_response.code >= 100 && http_response.code < 400" } },
+          { constant: { field: "status",    value: "Failure", predicate: "http_response.code >= 400" } },
+          { constant: { field: "status_id", value: 2,         predicate: "http_response.code >= 400" } }
+        ]
+      }
+    ]
+  }
+}

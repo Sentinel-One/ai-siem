@@ -653,3 +653,20 @@ For `app="HTTPS.BROWSER"`, `raw_app` becomes `"HTTPS.BROWSER"` and `app_name` be
 All attempts to embed a literal `"` in the format string (single-quoted outer, double-quoted outer, regex `/pattern/`) produce "Start quote with no matching end quote" or "Expected a quoted string". The engine treats `"` as a string delimiter regardless of quoting style. The two-pass workaround avoids this entirely.
 
 **Invoke the PowerQuery skill before authoring parse expressions.** The skill references official documentation and reaches the correct pattern faster than ad-hoc trial-and-error.
+
+
+---
+
+## Render-only defects: validate with screenshots, not just the API
+
+`validate_dashboard.py` proves each panel's query returns rows. It does NOT prove the panel renders: the browser, not the API, is where a markdown tile shows "Untitled", a `let`-arithmetic panel shows "Couldn't load content", a number reads its unit twice, or a chart legend breaks. Query replay is blind to all of these.
+
+**Hard rule: after every dashboard deploy, ask the user for screenshots of each tab, read them, fix every visual defect in the JSON, and re-deploy, without being asked.** It is the final, mandatory deploy step, not optional polish.
+
+Render-only defects seen live (S-26.1) and their fixes:
+
+- **z-score / ratio panel shows "Couldn't load content: Identifier 'a-b' is ambiguous".** Arithmetic in a `let` needs spaces around every operator: `(live_count - baseline_avg) / baseline_stddev`. A detection-rule body copied from the console may already have spaces while a hand-written panel does not, so check both. This silently fails the entire panel, not just the expression.
+- **Markdown header reads "Untitled".** Set a short plain-text `title`; a markdown panel with no `title` key renders "Untitled". Keep prose (no repeated `##` heading) in `markdown`.
+- **Number reads the unit twice ("34 principals" under "Active principals").** Drop `options.suffix` when the title already names the unit; keep `{format, precision}` only.
+- **Single-series `stacked_bar` with a stray legend token.** Group only by `timebucket(...)` for a clean total series (or use a `line`/`donut`), or `| transpose <dim> on timestamp` for a real per-category series. Grouping by a dimension WITHOUT transposing produces a confusing single series plus a stray legend entry.
+- **Categorical bar/line panel errors "first column ... should have numeric value in epoch".** `graphStyle: "bar"`, `"line"`, and `"area"` default to a time x-axis and require an epoch first column. For a by-category bar chart use `graphStyle: "stacked_bar"` with `"xAxis": "grouped_data"` and a `(category, value)` query. Plain `bar` is not a categorical bar chart.

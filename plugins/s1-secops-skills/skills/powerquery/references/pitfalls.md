@@ -631,3 +631,12 @@ Don't keep re-running slightly rephrased versions — the Purple MCP docs warn e
 ### Results look plausible but wrong magnitude
 
 Common cause: grouping dropped a field you assumed was still present, or duplicate rows from a `union`. Add `columns` at the end to make the exact shape explicit, then re-inspect.
+
+
+## Ingest-health validated pitfalls
+
+- `replace_all(...)` returns "Unknown function" on this engine; use `replace(...)`.
+- `count(field=*)` returns "Don't understand [*]"; count non-null rows with a flag: `| let f = (field ? 1 : 0) | group n = sum(f)`.
+- A second `group` cannot reference a field renamed in the first group: after `group ... by source = dataSource.name`, key the next group on `by source`, not `by source = dataSource.name` ("undefined field 'dataSource.name'").
+- Do not transpose on `dataSource.name` or a device key (values contain spaces); use honeycomb, single-series time charts, or `grouped_data`.
+- `avg()`, `stddev()`, `pct(N, x)` and `p10/p90/p999` all work in `group` (do not treat them as missing).

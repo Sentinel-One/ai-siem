@@ -298,3 +298,11 @@ Do not ingest, do not judge a rule "not firing", and do not strip attributes to 
 2. Confirm the threshold (`filter count >= N`) doesn't zero out the result for a known-good example — walk `N` down until you see a row, then set `N` slightly above what a benign environment would produce.
 3. Run it over 7 days for baseline volume: expected row count × 7 ≈ what a week of alerting will look like.
 4. If the `group`-intermediate ever exceeds 1,000 rows in a 24-hour window, tighten the initial filter.
+
+
+## Lookup table size and per-device detections (validated)
+
+- `savelookup` / `| lookup` datatables can be up to **150MB per table** (extensible by contacting SentinelOne); table size is essentially never the design blocker. Do not treat lookups as capped to a small row count.
+- A `lookup` used INSIDE a scheduled `cloud-detection` rule is additionally validated for load size (on at least one tenant a ~26,800-row lookup table was rejected with "Maximum number of rows allowed is 10000"). Treat this as a soft, tenant-configurable limit: use a coarser key (hour-of-day = 24 buckets instead of hour-of-week = 168) or a volume floor to keep the rule's lookup small, or request an increase. It is not a reason to abandon a lookup-based detection.
+- Name the pipeline join expression differently from the table key: `| lookup col from t by <tableKey> = <expr>` (e.g. `by devkey = dk`), not `by devkey = devkey`, which can fail the rule parser with "Expected ')'".
+- Bound per-device / high-cardinality detections by doing the baseline `lookup` + `filter exp_gib > 0` per event BEFORE the `group`, so the intermediate stays within the 1,000-row alert budget.

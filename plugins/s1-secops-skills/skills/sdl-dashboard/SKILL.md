@@ -31,6 +31,8 @@ This workflow is mandatory for every new or modified dashboard. Steps 0, 1, and 
 
    **`validate_dashboard.py` MUST be run as a background process** — at ~10s per panel, a 30-panel dashboard takes 5 minutes; a 60-panel dashboard takes 10-30 minutes. Both exceed the MCP timeout. Start it with `python3 scripts/validate_dashboard.py ... > /tmp/validate_out.txt 2>&1 &`, confirm the PID, then poll `len(json.load(open(evidence_json)))` vs the expected panel count in short separate calls. The script persists results after every panel (idempotent), so a cancelled poll never loses work. When a `stacked_bar` or `line` panel using `| transpose` returns 0 rows in validation, cross-check whether the corresponding number panel for the same source shows data — if it does, the empty result is a V1-API artefact, not a broken query. Document it in the Appendix as confirmed false-empty and do not remove the panel.
 
+8. **Screenshot review with the user (MANDATORY).** API validation proves each panel's query returns rows; it does NOT prove the panel RENDERS. Render-only failures happen in the browser, not the API, so `validate_dashboard.py` cannot see them: a panel showing "Couldn't load content", a markdown tile showing "Untitled", a number reading "34 principals" under a title that already says principals, an empty chart, or a broken legend. After EVERY deploy, ALWAYS ask the user to open the dashboard and send screenshots of each tab, then read them, diagnose each visual defect, fix the JSON, and re-deploy, without waiting to be asked. Prompt explicitly, e.g.: "The dashboard is deployed at /dashboards/<name>. Please open it and send screenshots of each tab so I can catch any render-only issues and fix them automatically." Treat this as part of deployment, not optional polish. Fixes for the common render-only defects are in the **Quick triage** table.
+
 ## Pre-authoring discovery
 
 Different tenants connect different data sources, and even the same tenant drifts between sessions as parsers are updated. Authoring a panel from a remembered schema is the single most common cause of empty-or-misleading dashboards.
@@ -129,8 +131,11 @@ The patterns below produce HTTP 500s or silent renderer failures on current SDL 
 | `\| matches '<regex>'` with `\\s` / `\\d` escapes inside the regex literal | 500 server error |
 | Anything after `\| transpose` (terminal command) | "transpose can only be used as the last command" |
 | `graphStyle: "area"` panel with a `query` field (not `plots: [...]`) | Indefinite spinner, no error surfaced |
-| Hyphenated arithmetic: `total-min`, `max-min` without spaces | "Identifier is ambiguous" error |
+| Hyphenated arithmetic in ANY `let`, including z-scores / ratios: `(live-base)/sd`, `total-min` without spaces | "Identifier is ambiguous", the WHOLE panel fails with "Couldn't load content". Always write `(live - base) / sd` |
 | `markdown` panel with `content:` field instead of `markdown:` | Renders blank tile, no error |
+| `markdown` panel with NO `title` key (S-26.1) | Header renders "Untitled". Set a short plain-text `title`; prose only in `markdown` |
+| Number panel `suffix` repeats the unit already in the `title` | Reads "34 principals" under title "Active principals". Put the unit in the title OR the suffix, not both |
+| `graphStyle: "bar"` / `"line"` / `"area"` with a categorical (non-time) first column | "The first column of power query output should have numeric value in epoch s/ms/us/ns" error. For a category bar chart use `"stacked_bar"` with `"xAxis": "grouped_data"` and a `(category, value)` query |
 
 ### Patterns that DO work and should be preferred
 
@@ -530,7 +535,7 @@ Accepts GitHub-flavored Markdown. Good for section headers, links, or explanatio
 > no error** — the API accepts it, the UI just has nothing to display. Always
 > use `"markdown": "..."`.
 
-> **Title duplication:** the SDL UI renders the `"title"` field as a header above the panel body. Do NOT repeat the same heading inside the `"markdown"` body. A common mistake is setting `"title": "## Policy Enforcement"` (with the `##` markdown prefix) and then starting the markdown body with `## Policy Enforcement\nDescription...` — this produces the heading twice. Keep the `title` field as plain text and put only the descriptive prose (no repeated heading) inside `"markdown"`.
+> **Title duplication:** the SDL UI renders the `"title"` field as a header above the panel body. Do NOT repeat the same heading inside the `"markdown"` body. A common mistake is setting `"title": "## Policy Enforcement"` (with the `##` markdown prefix) and then starting the markdown body with `## Policy Enforcement\nDescription...` — this produces the heading twice. Keep the `title` field as plain text and put only the descriptive prose (no repeated heading) inside `"markdown"`. Also: a markdown panel with NO `title` key renders an "Untitled" header in S-26.1 (observed live), so always set a short plain-text `title`.
 
 ```json
 {
@@ -551,6 +556,9 @@ preemptively when authoring panels of these shapes.
 | Symptom | Root cause | Fix |
 |---|---|---|
 | Markdown panel renders blank, no error | Wrong body field | Use `markdown:` (NOT `content:`) — see Markdown panel section above |
+| Markdown panel header shows "Untitled" | No `title` key on the markdown panel (S-26.1) | Add a short plain-text `title`; keep prose (no repeated `##` heading) in `markdown` |
+| Number panel reads the unit twice, e.g. "34 principals" under "Active principals (24h)" | `options.suffix` duplicates a unit already in the `title` | Remove `suffix` (or drop the unit from the title); keep `{format, precision}` only |
+| Category bar/line panel errors "The first column ... should have numeric value in epoch" | `graphStyle: "bar"` / `"line"` / `"area"` default to a TIME x-axis and require an epoch first column; a `(category, count)` query has a string first column | Use `graphStyle: "stacked_bar"` with `"xAxis": "grouped_data"`; keep the `(category, value)` query. `bar` alone is NOT a categorical bar chart |
 | `area` chart with `query` field shows an indefinite spinner; no error in UI | `graphStyle: "area"` is built around the `plots: [...]` pattern. A query-driven multi-series chart that ends in `transpose` does not render under `area`. | Switch to `graphStyle: "stacked_bar"` (or `"line"`) with `xAxis: "time"`. The query body stays the same. |
 | `plots`-based line or area panel returns "No results found" even though data clearly exists (confirmed via a number or table panel on the same source) | The `plots: [{ "filter": "...", "facet": "..." }]` filter mechanism silently ignores fields in the `unmapped.*` namespace. Any predicate like `unmapped.action='deny'` in a `filter` string inside `plots` matches 0 events regardless of actual data volume. No error is surfaced — the panel just shows empty. | Replace with a PowerQuery `stacked_bar` + `\| transpose` panel. The PowerQuery engine fully supports `unmapped.*` fields. The query body is equivalent: `<source-filter> unmapped.action in ('deny', ...) \| group count=count() by timestamp=timebucket('1h'), action=unmapped.action \| transpose action on timestamp`. |
 | `Couldn't load content` — `field=[DashboardPlotQuery.plotIndex] error=[Facet for plot at index: 0 is invalid]` | `"facet": "count()"` (with parentheses) is invalid in a `plots` array. Only `"facet": "count"` (no parentheses) is accepted. The community examples in older docs show `count()` — this is wrong. | Use `"facet": "count"` (no parentheses) in every plots entry. |

@@ -118,7 +118,9 @@ Two distinct concepts:
 
 See [commands-reference §4](commands-reference.md#4-group) for the full list. These collapse groups of rows into one row.
 
-**Confirmed working** (tested live): `count()`, `sum(x)`, `min(x)`, `max(x)`, `any(x)`, `estimate_distinct(x)`, `median(x)`, `p50(x)` / `p95(x)` / `p99(x)`, `array_agg(x[, N])`, `array_agg_distinct(x[, N])`, `oldest(ts)`, `newest(ts)`, `min_by(x, ord)`, `max_by(x, ord)`.
+**Confirmed working** (tested live): `count()`, `sum(x)`, `avg(x)`, `stddev(x)`, `min(x)`, `max(x)`, `any(x)`, `estimate_distinct(x)`, `median(x)`, `p10(x)` / `p50(x)` / `p90(x)` / `p95(x)` / `p99(x)` / `p999(x)`, `pct(N, x)`, `array_agg(x[, N])`, `array_agg_distinct(x[, N])`, `oldest(ts)`, `newest(ts)`, `min_by(x, ord)`, `max_by(x, ord)`.
+
+`avg(x)` is the group mean and `stddev(x)` is the sample standard deviation; percentiles support `p10/p50/p90/p95/p99/p999` and the general `pct(N, x)`. Tenant-validated.
 
 **Avoid** on general tenants (return 500 error on this deployment even though docs list them):
 - `percentile(x, N)` — use `p50` / `p95` / `p99` instead.

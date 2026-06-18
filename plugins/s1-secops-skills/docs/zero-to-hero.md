@@ -64,7 +64,7 @@ You can also be explicit. "Use the SDL log parser skill to..." or "switch to Pow
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default. |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import. |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions from one short prompt: data source onboarding (raw stream to OCSF, enrichment, dashboard, MITRE detections, threat-response flow) and asset enrichment of raw logs. Orchestrates the other six skills. |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions from one short prompt: data source onboarding (raw stream to OCSF, enrichment, dashboard, MITRE detections, threat-response flow) , asset enrichment of raw logs, and UEBA behavioral anomaly detection (z-score baselining of any signal). Orchestrates the other six skills. |
 
 Plus `CLAUDE.md` at the repo root, which transforms Claude into a **Principal SOC Analyst**: a structured investigator that runs the same enrichment, correlation, and reasoning process a senior analyst would, on every alert, every time.
 

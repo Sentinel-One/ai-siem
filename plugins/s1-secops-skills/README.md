@@ -25,30 +25,35 @@ A full-stack AI analyst for SentinelOne, built as a set of Claude skills, three 
 
 ## Architecture overview
 
-Three layers work together in every session:
+The layers work together top-down. CLAUDE.md is the main instruction layer and decides what to do; it invokes skills as needed. For a whole-solution request the `sdl-solutions` umbrella skill runs first and orchestrates the primitive skills; the skills then reach live APIs through the MCP servers.
 
 ```
-CLAUDE.md            SOC Analyst persona: session protocol, evidence rules,
-                     investigation workflow, classification gates
-       │
+CLAUDE.md                  Main instruction layer: SOC Analyst persona, session protocol,
+                           evidence rules, investigation workflow, classification gates.
+                           Decides what to do and invokes skills as needed.
+       │  invokes skills
        ▼
-MCP Servers          Live API access, outside the Cowork sandbox proxy
-  s1-secops-mcp    26 tools: PowerQuery, SDL, Mgmt Console REST, UAM, Hyperautomation
-  purple-mcp         Alert triage, Purple AI NLQ, Deep Visibility, assets, vulnerabilities
-  threat-intel-mcp   External IOC enrichment (required for CRITICAL classification)
-       │
+sdl-solutions              Umbrella orchestrator. On a "deploy / onboard / monitor a whole
+                           solution" request it runs first, collects parameters, previews,
+                           then drives the primitive skills below in dependency order.
+       │  orchestrates
        ▼
-Skills (SKILL.md)    Procedural knowledge: confirmed API schemas, field requirements, usage patterns
-  mgmt-console-api   Mgmt Console REST + UAM + Purple AI + HA
-  powerquery          PowerQuery authoring and execution
-  sdl-api             SDL log ingest and config file ops
-  sdl-dashboard       Dashboard JSON authoring and deployment
-  sdl-log-parser      Parser authoring and validation
-  hyperautomation     Workflow JSON authoring and import
-  sdl-solutions       Repeatable SDL solution deployment (onboarding, enrichment)
+Primitive skills (SKILL.md)  Procedural knowledge: confirmed API schemas, field requirements, patterns
+  powerquery                 PowerQuery authoring and execution
+  sdl-dashboard              Dashboard JSON authoring and deployment
+  sdl-log-parser             Parser authoring and validation
+  hyperautomation            Workflow JSON authoring and import
+  sdl-api                    SDL log ingest and config file ops
+  mgmt-console-api           Mgmt Console REST + UAM + Purple AI + HA
+       │  call live APIs through
+       ▼
+MCP Servers                Live API access, outside the Cowork sandbox proxy
+  s1-secops-mcp              PowerQuery, SDL, Mgmt Console REST, UAM, Hyperautomation
+  purple-mcp                 Alert triage, Purple AI NLQ, Deep Visibility, assets, vulnerabilities
+  threat-intel-mcp           External IOC enrichment (required for CRITICAL classification)
 ```
 
-**Skills** encode confirmed API behavior, including field schemas and usage patterns validated against live tenants, so Claude doesn't guess field names. **MCP servers** bypass the Cowork sandbox proxy to reach `*.sentinelone.net` directly. **CLAUDE.md** defines the operating persona that instructs how to investigate, what evidence to gather, and how to classify findings.
+**CLAUDE.md** is the brain: it sets the operating persona and invokes skills as the task demands. **sdl-solutions** is the umbrella skill: for whole-solution work it runs first and orchestrates the primitive skills (PowerQuery, dashboard, parser, Hyperautomation, SDL API, Mgmt Console) in order, previewing before it deploys. **Skills** encode confirmed API behavior, including field schemas validated against live tenants, so Claude doesn't guess field names, and they reach `*.sentinelone.net` through the **MCP servers**, which bypass the Cowork sandbox proxy. For a single query, dashboard, parser, or workflow, Claude calls the matching primitive skill directly without the umbrella.
 
 Full architecture details: [docs/architecture.md](./docs/architecture.md)
 
@@ -66,7 +71,7 @@ The plugin bundles every skill; installing it is sufficient. No individual skill
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. See [docs/sdl-dashboard.md](./docs/sdl-dashboard.md) for all supported panel types |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) and asset enrichment of raw logs (device/user context from the Asset Inventory). Orchestrates the skills above |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioral anomaly detection (z-score baselining of any signal), and per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications). Orchestrates the skills above |
 
 ---
 
@@ -359,6 +364,12 @@ parameter interview, previews the rendered config, then deploys and validates.
 - *"Onboard our Zscaler logs end to end: OCSF parser, asset-enriched dashboard, MITRE-mapped detections, and a SOC threat-response playbook"*
 - *"Onboard cisco_meraki and add the response automation that VirusTotal-checks the destination, then blocks the IOC and quarantines the source host on a malicious verdict"*
 
+**UEBA behavioral anomaly detection** (baseline ANY signal, security or not, and flag z-score deviations: SPIKE, DROP, SILENT, NEW-BEHAVIOR). Full guide: [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md).
+
+- *"Run a behavioral baseline on Okta and tell me what's anomalous"*
+- *"Deploy UEBA anomaly detection for FortiGate on the Acme site"*
+- *"Monitor the Avelios Medical app for unusual user behavior"*
+
 **Asset enrichment of raw logs** (device/user context from the Asset Inventory). Full guide: [docs/solutions/asset-enrichment.md](./docs/solutions/asset-enrichment.md).
 
 - *"Deploy the asset enrichment solution for Acme on the Acme site"*
@@ -370,6 +381,17 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 
 - *"Add enrichment: device context and open vulnerabilities, keyed on hostname"*
 - *"Enrich each event with user AD groups and privilege, and the device criticality"*
+
+**UEBA behavioral anomaly detection** (baseline ANY signal per (action, principal), z-score SPIKE/DROP/SILENT/NEW). Full guide: [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md).
+
+- *"Run a behavioral baseline on Okta and tell me what's anomalous"*
+- *"Deploy UEBA anomaly detection for FortiGate on the Acme site"*
+
+**Ingest health monitoring (per device)** (per-firewall/endpoint/server anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with email on every failure). Full guide: [docs/solutions/ingest-health-monitoring.md](./docs/solutions/ingest-health-monitoring.md).
+
+- *"Deploy ingest health monitoring per device on the Acme site"*
+- *"Monitor ingest per firewall and endpoint and email soc@acme.com on any failure"*
+- *"Alert me when a specific firewall or endpoint stops sending logs"*
 
 ---
 
@@ -432,6 +454,9 @@ This repo includes Windsurf workflow files in `.windsurf/workflows/`. Each workf
 | [docs/sdl-dashboard.md](./docs/sdl-dashboard.md) | All supported panel types and dashboard features with confirmed JSON examples |
 | [docs/solutions/data-source-onboarding.md](./docs/solutions/data-source-onboarding.md) | SDL Solutions: onboard a raw source end to end (OCSF, enrichment, dashboard, detections, threat-response flow) from one prompt |
 | [docs/solutions/asset-enrichment.md](./docs/solutions/asset-enrichment.md) | SDL Solutions: enrich raw logs with device/user/vuln/alert context from the Asset Inventory, with prompt examples |
+| [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md) | SDL Solutions: baseline ANY signal and detect z-score anomalies (SPIKE/DROP/SILENT/NEW), deployed as a baseline lookup, scheduled rule, nightly refresh, and dashboard |
+| [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md) | SDL Solutions: baseline ANY signal per (action, principal) and detect SPIKE/DROP/SILENT/NEW deviations with a z-score, deployed as a baseline lookup, scheduled rule, nightly refresh, and dashboard |
+| [docs/solutions/ingest-health-monitoring.md](./docs/solutions/ingest-health-monitoring.md) | SDL Solutions: per-device ingest health (per firewall/endpoint/server) on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, parser drift, with a dashboard and email notifications |
 | [docs/detection-asset-binding.md](./docs/detection-asset-binding.md) | Which event attributes make STAR detection alerts auto-populate the Target Asset (device, identity, cloud), the tested per-type binding matrix, and how the asset enrichment solution supplies them |
 | [mgmt-console-api/SKILL.md](./mgmt-console-api/SKILL.md) | Deep reference: confirmed field schemas and required API parameters per endpoint |
 | [mgmt-console-api/tests/README.md](./mgmt-console-api/tests/README.md) | Reversible lifecycle test patterns and per-test field notes |

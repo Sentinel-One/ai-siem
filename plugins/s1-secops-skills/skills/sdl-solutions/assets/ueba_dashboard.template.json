@@ -1,0 +1,75 @@
+{
+  "_comment": "UEBA anomaly dashboard for the ueba-anomaly-detection solution. Deploy with sdl_put_file to /dashboards/{{PREFIX}} {{SOURCE}} Anomalies. Panels join the live window against the baseline lookup {{BASELINE_TABLE}} (built by ueba_baseline_savelookup.pq) and compute z = (live - baseline_avg) / baseline_stddev, mirroring the detection rule. RENDERING RULES (validated S-26.1, learned the hard way): (1) ARITHMETIC needs spaces around every operator inside `let`: write `(live_count - baseline_avg) / baseline_stddev`, NOT `(live_count-baseline_avg)/baseline_stddev`, the unspaced form fails the whole panel with 'Couldn't load content: Identifier live_count-baseline_avg is ambiguous'. (2) MARKDOWN panel needs a PLAIN-TEXT `title` (no title key renders 'Untitled'); put prose only in `markdown`, do not repeat the title as a `##` heading. (3) NUMBER panels: do NOT set a `suffix` that repeats the unit already in the title (title 'Active principals' + suffix ' principals' reads '34 principals'). (4) Number panels end with `| limit 1`. Replace {{TOKENS}} with the discovered fields and rendered table name.",
+  "configType": "TABBED",
+  "duration": "24h",
+  "description": "UEBA behavioral anomaly view for {{SOURCE}}. principal={{PRINCIPAL}} action={{ACTION}} baseline={{BASELINE_TABLE}} (|z| >= {{Z_HARD}}).",
+  "tabs": [
+    {
+      "tabName": "Anomalies",
+      "graphs": [
+        {
+          "graphStyle": "markdown",
+          "title": "{{SOURCE}}: UEBA Behavioral Anomalies",
+          "markdown": "Live 24h volume per **(action, principal)** scored against the {{BASELINE_DAYS}}-day baseline `{{BASELINE_TABLE}}`. **SPIKE / DROP** = `|z| >= {{Z_HARD}}` standard deviations from normal. **New-behavior** = a pair active now with no baseline. The 24h window matches the baseline unit. principal = `{{PRINCIPAL}}`, action = `{{ACTION}}`.",
+          "layout": { "w": 60, "h": 4, "x": 0, "y": 0 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Anomalies (|z| >= {{Z_HARD}})",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg, baseline_stddev=baseline_stddev from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter baseline_avg=* | let z = (live_count - baseline_avg) / baseline_stddev | filter z >= {{Z_HARD}} OR z <= -{{Z_HARD}} | group n=count() | limit 1",
+          "options": { "format": "commas", "precision": "0" },
+          "layout": { "w": 20, "h": 8, "x": 0, "y": 4 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "New-behavior pairs (no baseline)",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter !(baseline_avg=*) | group n=count() | limit 1",
+          "options": { "format": "commas", "precision": "0" },
+          "layout": { "w": 20, "h": 8, "x": 20, "y": 4 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Active principals (24h)",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} {{PRINCIPAL}}=* | group n=estimate_distinct({{PRINCIPAL}}) | limit 1",
+          "options": { "format": "commas", "precision": "0" },
+          "layout": { "w": 20, "h": 8, "x": 40, "y": 4 }
+        },
+        {
+          "graphStyle": "line",
+          "title": "Event volume over time",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} {{ACTION}}=* | group events=count() by timestamp=timebucket('30m') | sort timestamp",
+          "xAxis": "time",
+          "lineSmoothing": "straightLines",
+          "layout": { "w": 40, "h": 12, "x": 0, "y": 12 }
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Action breakdown (24h)",
+          "maxPieSlices": 10,
+          "dataLabelType": "PERCENTAGE",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} {{ACTION}}=* | group events=count() by {{ACTION}} | sort -events",
+          "layout": { "w": 20, "h": 12, "x": 40, "y": 12 }
+        },
+        {
+          "graphStyle": "table",
+          "title": "Top SPIKE / DROP anomalies (by |z|)",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg, baseline_stddev=baseline_stddev from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter baseline_avg=* | let z = (live_count - baseline_avg) / baseline_stddev | let az = abs(z) | filter az >= {{Z_HARD}} | let direction = (z >= 0 ? 'SPIKE' : 'DROP') | sort -az | columns principal_v, action_v, live_count, baseline_avg, baseline_stddev, z, direction | limit 50",
+          "layout": { "w": 60, "h": 14, "x": 0, "y": 24 }
+        },
+        {
+          "graphStyle": "table",
+          "title": "New-behavior (active now, no baseline)",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter !(baseline_avg=*) | sort -live_count | columns principal_v, action_v, live_count | limit 50",
+          "layout": { "w": 30, "h": 14, "x": 0, "y": 38 }
+        },
+        {
+          "graphStyle": "stacked_bar",
+          "title": "Top principals by volume (24h)",
+          "xAxis": "grouped_data",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} {{PRINCIPAL}}=* | group events=count() by {{PRINCIPAL}} | sort -events | limit 15",
+          "layout": { "w": 30, "h": 14, "x": 30, "y": 38 }
+        }
+      ]
+    }
+  ]
+}

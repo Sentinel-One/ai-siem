@@ -1,45 +1,41 @@
 # Architecture
 
-This document explains how the three layers of the SentinelOne AI analyst stack fit together: the Claude skills, the MCP servers, and the CLAUDE.md operating instructions.
+This document explains how the layers of the SentinelOne AI analyst stack fit together, top-down: the CLAUDE.md operating instructions that drive every session, the umbrella sdl-solutions skill that orchestrates whole-solution deploys, the primitive Claude skills, and the MCP servers that reach the live APIs.
 
 ---
 
-## The three layers
+## The layers
+
+The stack runs top-down: CLAUDE.md decides what to do and invokes skills; the umbrella
+`sdl-solutions` skill orchestrates the primitive skills for whole-solution work; the skills reach the
+live APIs through the MCP servers.
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  CLAUDE.md : SOC Analyst persona, evidence rules, session protocol │
-│  Loaded as a resource via s1-secops-mcp at session start          │
-└────────────────────────────┬────────────────────────────────────────┘
-                             │ instructs Claude how to investigate
-                             ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  MCP Servers : live API access, bypasses Cowork sandbox proxy      │
-│                                                                     │
-│  s1-secops-mcp (this repo, Node.js, local process)               │
-│    26 tools: PowerQuery, SDL API, Hyperautomation, Mgmt REST, UAM,  │
-│              UAM Ingest                                              │
-│                                                                     │
-│  purple-mcp (Python, fetched via uvx from GitHub)                  │
-│    alert triage, Purple AI NLQ, Deep Visibility, UAM, assets       │
-│                                                                     │
-│  threat-intel-mcp (required; use your org's approved provider)     │
-│    external IOC enrichment; required for CRITICAL classification    │
-│    VirusTotal shown as example: any equivalent MCP works          │
-└────────────────────────────┬────────────────────────────────────────┘
-                             │ tools Claude calls
-                             ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│  Skills (SKILL.md files) : procedural knowledge Claude reads       │
-│  Loaded when a relevant request triggers the skill                  │
-│                                                                     │
-│  mgmt-console-api   SDL query, Mgmt REST, UAM, Purple  │
-│  powerquery         PowerQuery authoring and execution  │
-│  sdl-api            SDL log ingest, config file ops     │
-│  sdl-dashboard      Dashboard JSON authoring/deploy     │
-│  sdl-log-parser     Parser authoring and validation     │
-│  hyperautomation    Workflow JSON authoring/import      │
-└─────────────────────────────────────────────────────────────────────┘
+CLAUDE.md                       Main instruction layer: SOC Analyst persona, session protocol,
+                                evidence rules, investigation workflow, classification gates.
+                                Loaded as a resource via s1-secops-mcp at session start. Decides what
+                                to do and invokes skills as needed.
+       |  invokes skills
+       v
+sdl-solutions                   Umbrella orchestrator. On a "deploy / onboard / monitor a whole
+                                solution" request it runs first, collects parameters, previews,
+                                then drives the primitive skills below in dependency order.
+                                (Skipped when the ask is a single query, parser, or workflow.)
+       |  orchestrates
+       v
+Primitive skills (SKILL.md)     Procedural knowledge Claude reads when a request triggers them:
+  powerquery                     PowerQuery authoring and execution
+  sdl-dashboard                  Dashboard JSON authoring and deployment
+  sdl-log-parser                 Parser authoring and validation
+  hyperautomation                Workflow JSON authoring and import
+  sdl-api                        SDL log ingest and config file ops
+  mgmt-console-api               Mgmt Console REST, UAM, Purple AI, HA
+       |  call MCP tools, which reach the APIs
+       v
+MCP Servers                     Live API access, outside the Cowork sandbox proxy:
+  s1-secops-mcp                  PowerQuery, SDL API, Hyperautomation, Mgmt REST, UAM, UAM ingest
+  purple-mcp                     alert triage, Purple AI NLQ, Deep Visibility, assets, vulnerabilities
+  threat-intel-mcp               external IOC enrichment (required for CRITICAL classification)
 ```
 
 ---
@@ -107,6 +103,8 @@ Each skill folder contains a `SKILL.md` that Claude reads when a relevant reques
 - MCP tool guidance (which tool to use for which operation)
 
 The skills are read-only procedural knowledge. They do not execute API calls directly when loaded: they instruct Claude on *how* to use the MCP tools and scripts to execute operations correctly.
+
+`sdl-solutions` is the umbrella skill in this layer: for a whole-solution request (onboard a source, asset enrichment, UEBA, or ingest health monitoring) it runs first, collects parameters, previews, and orchestrates the primitive skills in dependency order, instead of each skill being invoked independently.
 
 ---
 

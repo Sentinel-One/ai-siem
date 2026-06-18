@@ -123,7 +123,7 @@ c.keys["config_read_key"] = ""
 
 ## sdl-solutions
 
-**Triggers on:** deploying a packaged, repeatable SDL solution into a specific customer environment from one short prompt, rather than authoring a single query, parser, or workflow. Onboarding: "onboard cisco_meraki logs", "bring our FortiGate source into AI SIEM and build detections", "set up detections and a dashboard for <source>". Asset enrichment: "deploy the asset enrichment solution", "enrich logs with device/user info for <customer>", "set up SDL asset enrichment on <site>".
+**Triggers on:** deploying a packaged, repeatable SDL solution into a specific customer environment from one short prompt, rather than authoring a single query, parser, or workflow. Onboarding: "onboard cisco_meraki logs", "bring our FortiGate source into AI SIEM and build detections", "set up detections and a dashboard for <source>". Asset enrichment: "deploy the asset enrichment solution", "enrich logs with device/user info for <customer>", "set up SDL asset enrichment on <site>". UEBA: "run a behavioral baseline on <source>", "deploy UEBA anomaly detection for <source>", "flag users whose activity is off their 30-day normal". Ingest health: "deploy ingest health monitoring", "monitor ingest per device/firewall/endpoint", "alert me when a source or device stops sending logs", "detect ingest spikes/drops/lag", "find parser drift".
 
 **What it provides:**
 
@@ -131,11 +131,13 @@ c.keys["config_read_key"] = ""
 - **Solution catalog:**
   - **Data source onboarding** — take a raw log stream already reaching the tenant and operationalise it end to end: locate the source by its `parser` attribute, normalise it to OCSF, enrich with device/user asset context, then build a dashboard, MITRE-mapped STAR detections (with entity/asset mapping and severity-tuned cool-offs), and a SOC threat-response Hyperautomation playbook (alert to VirusTotal-gated containment).
   - **Asset enrichment of raw logs** — enrich ingested events with device and user context (OS, IP, agent UUID, AD groups, SID, criticality, risk factors) from the Asset Inventory via `savelookup` tables, in parser (ingest-time), query-time, and automatic-lookup modes, plus a Hyperautomation refresh flow.
+  - **UEBA behavioral anomaly detection**: baseline ANY signal (security or not) per (action, principal), score the live 24h window with a z-score, and surface SPIKE/DROP/SILENT/NEW deviations; deploy as a persisted baseline lookup, a scheduled PowerQuery detection rule, a nightly refresh, and a dashboard.
+  - **Ingest health monitoring (per device)** — per-firewall/endpoint/server anomaly detection on a 7-day hour-of-day seasonal baseline rebuilt daily: volume spike/drop (z-score), ingest lag (p95 over SLA), ingest loss (a device went silent), and parser drift; deploys per-device baseline lookups, scheduled PowerQuery detections, an ingest-loss watchdog flow, a dashboard, and an email-notification flow for every failure.
 - Parameterized templates under `assets/` (savelookup queries, enrichment parser, dashboard skeleton, STAR detection envelope, threat-response and refresh workflows) driven by tokens such as `{{PREFIX}}`, `{{DATASOURCE_NAME}}`, `{{PARSER_NAME}}`, `{{SITE_ID}}`, `{{ACCOUNT_ID}}`.
 
 **Depends on:** `sdl-log-parser` (parser/OCSF), `powerquery` (datasource + savelookup), `sdl-dashboard` (dashboard), `mgmt-console-api` (STAR rules, site/scope), `sdl-api` (deploy config, ingest), `hyperautomation` (response/refresh flows).
 
-**Playbooks:** `references/data-source-onboarding.md`, `references/asset-enrichment.md`. Add new solutions as `references/<solution>.md` plus templates, and name them in the skill description so they trigger.
+**Playbooks:** `references/data-source-onboarding.md`, `references/asset-enrichment.md`, `references/ueba-anomaly-detection.md`, `references/ingest-health-monitoring.md`. Add new solutions as `references/<solution>.md` plus templates, and name them in the skill description so they trigger.
 
 Full reference: `sdl-solutions/SKILL.md`
 

@@ -9,6 +9,15 @@ This is part of the `sdl-solutions` skill. It orchestrates the primitive skills
 (`powerquery`, `sdl-api`, `sdl-log-parser`,
 `hyperautomation`); it does not reimplement them.
 
+## Features
+
+- **Device + user context on every event** — OS, IP, agent UUID, site, AD principal, SID, group membership, privilege, asset criticality, and risk factors, sourced from the Singularity Asset Inventory.
+- **Multi-select enrichment catalog** — Device, User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context; pick any combination in one prompt.
+- **Three deployment modes** — ingest-time (parser stamps context and enables asset auto-binding on detections), query-time (`| lookup`, no parser), or automatic lookup (small shared reference sets).
+- **Asset auto-binding for detections** — stamps the unified asset id / console agent id plus a `class_uid` so STAR alerts resolve the real Target Asset.
+- **Daily refresh** — a Hyperautomation flow rebuilds the `savelookup` tables so context stays current; empty inventory values are suppressed to null.
+- **Source-agnostic keys** — keyed on hostname/username (`samAccountName` or the multi-domain-safe `principalName`), with IP-keyed tables for network sources.
+
 ## Run it with one prompt
 
 The skill runs a short parameter interview, previews the rendered config, then deploys and

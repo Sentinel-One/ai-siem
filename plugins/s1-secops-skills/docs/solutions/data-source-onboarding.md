@@ -10,6 +10,16 @@ This is part of the `sdl-solutions` skill. It orchestrates the primitive skills
 `mgmt-console-api`, `hyperautomation`) in order and validates each stage
 against live data before moving on.
 
+## Features
+
+- **One-prompt onboarding** — name a source and the skill locates it by its `parser` attribute, then normalises, enriches, dashboards, detects, and adds response, end to end.
+- **OCSF normalisation** — sets the four mandatory attributes (`dataSource.name`/`vendor`/`category`, `metadata.version`) and maps vendor fields to verified OCSF fields (never invented).
+- **Asset enrichment built in** — device/user context is joined onto every event so detections bind a real Target Asset, not "Unknown Device".
+- **MITRE-mapped detections** — STAR scheduled rules for the source class, each mapped to ATT&CK, with entity mapping and severity-tuned cool-offs.
+- **SOC threat-response playbook** — an alert-triggered Hyperautomation flow extracts IOCs, gates on VirusTotal, then blocks the IOC and network-quarantines the source host on a malicious verdict.
+- **Operational dashboard** — volume over time, action breakdown, top talkers/users/devices, geo, and any IDS/threat signatures the source emits.
+- **Validated stage by stage** — parser propagation, the normalised stream, detections, and the flow are each checked against live data before the next step.
+
 ## Run it with one prompt
 
 Name a source and that is enough to start. Example prompts:

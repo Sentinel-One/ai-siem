@@ -12,7 +12,25 @@ This is part of the `sentinelone-sdl-solutions` skill. It orchestrates the primi
 the scheduled rules, `sentinelone-hyperautomation` for the baseline-builder, notifier, and watchdog
 flows, `sentinelone-sdl-dashboard` for the dashboard); it does not reimplement them.
 
+## Features
+
+- **Per-device granularity** — a universal device key resolves each firewall (`device.name`), endpoint (`endpoint.name` / `agent.uuid`), and syslog/host sender (`hostname`), falling back to the source name.
+- **Seasonal anomaly detection, not static thresholds** — per-device z-score against the device's own 7-day hour-of-day baseline (spike `z >= +3`, drop `z <= -3`), so it does not false-alarm on normal daily rhythm; the baseline is rebuilt daily by a Hyperautomation flow.
+- **Every failure scenario covered** — per-device volume spike, volume drop, ingest lag (p95 over SLA), ingest loss (a continuously-active device went silent), and parser drift.
+- **Email on every failure** — one alert-triggered notifier flow for all detections, plus a per-device ingest-loss watchdog.
+- **Comprehensive dashboard** — 5 tabs (Overview, Devices, Volume & Sources, Latency & Lag, Parser Health) using number, line, bar, donut, table, and honeycomb panels.
+- **Cost-aware** — `sca:bytesToCharge` drives volume and a chargeback view; validated cost, clock-skew, coverage-gap, and quota-trend extensions are included.
+- **Bounded and safe at scale** — a device floor plus a per-event baseline lookup keep high-cardinality sources within the detection-rule budget; lookup datatables can be up to 150MB (extensible via SentinelOne).
+
 ## Run it with one prompt
+
+The whole solution deploys from a single prompt:
+
+> *"Deploy the ingest health monitoring solution per device to the Acme site and email soc@acme.com on every failure."*
+
+That one prompt seeds the two baseline tables, creates and enables the per-device detections (volume spike/drop, ingest lag, parser drift), imports the Baseline Builder, Alert Notifier, and Ingest Loss Watchdog flows, and deploys the dashboard, previewing each step before it runs and asking only for the site and the notify address.
+
+More targeted prompts:
 
 - *"Deploy ingest health monitoring per device on the Acme site"*
 - *"Monitor ingest per firewall and endpoint and email soc@acme.com on any failure"*

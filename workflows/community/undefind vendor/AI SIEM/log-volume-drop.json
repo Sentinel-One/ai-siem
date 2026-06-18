@@ -1,0 +1,694 @@
+{
+  "name": "Detect Volume Drop",
+  "description": "",
+  "actions": [
+    {
+      "action": {
+        "type": "scheduled_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Scheduled Trigger",
+          "action_type": "scheduled_trigger",
+          "schedule_method": "interval",
+          "until": null,
+          "max_runs": 1,
+          "schedule_value": [
+            {
+              "schedule_method": "interval",
+              "interval_unit": "minutes",
+              "interval_value": 20,
+              "tz": "America/Denver"
+            }
+          ],
+          "start_at": null,
+          "start_at_method": "immediately",
+          "ends_on": "never"
+        },
+        "state": "active",
+        "description": null,
+        "client_data": {
+          "position": {
+            "x": -75.21259954398425,
+            "y": 59.969664550218624
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 11,
+      "connected_to": [
+        {
+          "target": 7,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "GatherStatistics",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "query",
+              "value": "dataSource.name = * NOT(serverHost contains 'meta')\n| group bytes = sum(sca:bytesToCharge) by dataSource.name\n| let reduction_factor = 0.5          // 0.5 = 50% of last week; tune as needed\n| compare last_week=timeshift('1w')",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -75.21259954398425,
+            "y": 236.64686455021862
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 7,
+      "connected_to": [
+        {
+          "target": 3,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "03f609c0-5b44-4e1d-93ec-3f21a40b6d17",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "92cfc975-2e0f-4c96-be29-00ea2fa91805",
+        "data": {
+          "name": "BuildData Models",
+          "action_type": "http_request",
+          "public_action_id": "6e45734c-a920-48e3-9f30-4d491878801b",
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/api/<@powerQuery@>",
+          "url_path": "/api/timeseriesQuery",
+          "url_prefix": null,
+          "payload": "{\n  \"query\": \"{{local_var.query}}\",\n  \"startTime\": \"1d\",\n  \"endTime\": \"0d\"\n\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false,
+          "body_type": null
+        },
+        "state": "active",
+        "description": "Run a PowerQuery, where you can pipe one or many search expressions into a set of commands to transform, manipulate, group, and summarize your data.",
+        "client_data": {
+          "position": {
+            "x": -75.21259954398425,
+            "y": 412.3240645502186
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 3,
+      "connected_to": [
+        {
+          "target": 10,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Process Volume Drop Rows",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "pq_volume_drop_jq",
+              "value": ".body as $b\n| ($b.columns | map(.name)) as $keys\n| [ $b.values[]\n    | [ $keys , . ] | transpose | map({(.[0]): .[1]}) | add\n  ]\n| map(\n    . as $row\n    | ($row.bytes // 0) as $curr\n    | (\n        $row[\"bytes (last_week)\"]\n        // $row.last_week_bytes\n        // (try ($row.last_week.bytes) catch 0)\n        // 0\n      ) as $prev\n    | ($row[\"dataSource.name\"] // $row.datasource // \"unknown\") as $source\n    | (($prev > 0) and ($curr / $prev < 0.5)) as $is_anomaly\n    | select($is_anomaly)\n    | {\n        data_source: $source,\n        bytes: $curr,\n        last_week_bytes: $prev,\n        percent_of_last_week: (if $prev > 0 then ($curr / $prev) else 0 end),\n        anomaly: $is_anomaly,\n        analysis: (\n          \"Data source \" + $source\n          + \" dropped to \"\n          + (if $prev > 0 then ((100 * $curr / $prev) | tostring) else \"0\" end)\n          + \"% of last week's volume\"\n        ),\n        original: $row\n      }\n  )",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
+        },
+        "state": "active",
+        "description": "jq program that converts the PowerQuery table into filtered events",
+        "client_data": {
+          "position": {
+            "x": -75.21259954398425,
+            "y": 588.0012645502186
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Filter Volume Drop Events",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "event",
+              "value": "{{Function.JQ(builddata-models, local_var.pq_volume_drop_jq)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
+        },
+        "state": "active",
+        "description": "Run the jq program and capture the filtered events",
+        "client_data": {
+          "position": {
+            "x": -75.21259954398425,
+            "y": 763.6784645502187
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "connected_to": [
+        {
+          "target": 9,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Loop",
+          "action_type": "loop",
+          "loop_type": "dynamic",
+          "number_of_iterations": "1",
+          "object_to_iterate": "{{local_var.event[0]}}",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": -331.21259954398425,
+            "y": 977.3556645502185
+          },
+          "dimensions": {
+            "width": 768,
+            "height": 1166.0632
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 9,
+      "connected_to": [
+        {
+          "target": 4,
+          "custom_handle": "inner",
+          "payload": null
+        },
+        {
+          "target": 12,
+          "custom_handle": "inner",
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Condition",
+          "action_type": "condition",
+          "condition_type": "simple",
+          "condition": {
+            "operator": "and",
+            "conditions": [
+              {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "{{loop.item.anomaly}}",
+                    "compared_value": "true",
+                    "comparison_operator": "equals"
+                  }
+                ]
+              }
+            ]
+          },
+          "conditions": null,
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 113.75,
+            "y": 176.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": "false",
+          "payload": null
+        }
+      ],
+      "parent_action": 9
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": "e696beda-7fcf-47bb-a742-a7460e3a6481",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "92cfc975-2e0f-4c96-be29-00ea2fa91805",
+        "data": {
+          "name": "Write Data Models 2 2",
+          "action_type": "http_request",
+          "public_action_id": "49f9eb6d-ac3b-4efb-b635-009cda2e27ef",
+          "method": "post",
+          "url": "https://ingest.us1.sentinelone.net/services/collector/event?sourcetype=log_volume_analysis",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{{loop.item}}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false,
+          "body_type": null
+        },
+        "state": "active",
+        "description": "Add Events to DataSet",
+        "client_data": {
+          "position": {
+            "x": 433.75,
+            "y": 176.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 12,
+      "connected_to": [],
+      "parent_action": 9
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Bind Volume Drop Analysis",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "analysis",
+              "value": "{{loop.item.analysis}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
+        },
+        "state": "active",
+        "description": "Expose the current row's narrative for downstream alert text",
+        "client_data": {
+          "position": {
+            "x": 35,
+            "y": 353.3544
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 5,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": 9
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Craft Alert ID",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "alertID",
+              "value": "{{Function.STRING(Function.MUL(42424242, Function.DATETIME_TO_MS(Function.DATETIME_NOW())))}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
+        },
+        "state": "active",
+        "description": "Use a time based formula to generate a unique alert ID",
+        "client_data": {
+          "position": {
+            "x": 35,
+            "y": 529.0316
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": 9
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Alert Body",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "alertBody",
+              "value": "{\n  \"severity\": \"high\",\n  \"category_uid\": 2,\n  \"class_uid\": 99602001,\n  \"class_name\": \"S1 Security Alert\",\n  \"type_uid\": 9960200101,\n  \"type_name\": \"S1 Security Alert: Create\",\n  \"category_name\": \"Findings\",\n  \"activity_id\": 1,\n  \"resources\": [\n    {\n      \"uid\": \"RP-{{Function.RANDOM_STRING(8)}}\",\n      \"name\": \"Anomalie Detection\"\n    }\n  ],\n  \"metadata\": {\n    \"version\": \"1.1.0\",\n    \"extension\": {\n      \"name\": \"s1\",\n      \"uid\": \"{{Function.STRING(998)}}\",\n      \"version\": \"0.1.0\"\n    },\n    \"product\": {\n      \"name\": \"Hyperautomation\",\n      \"vendor_name\": \"SentinelOne\"\n    },\n    \"logged_time\": {{Function.DATETIME_TO_MS(Function.DATETIME_NOW())}},\n    \"modified_time\": {{Function.DATETIME_TO_MS(Function.DATETIME_NOW())}}\n  },\n  \"time\": {{Function.DATETIME_TO_MS(Function.DATETIME_NOW())}},\n  \"attack_surface_ids\": [1],\n  \"severity_id\": 4,\n  \"state_id\": 1,\n  \"s1_classification_id\": 1,\n  \"finding_info\": {\n    \"uid\": \"{{local_var.alertID}}\",\n    \"title\": \"Week Over Week Log Volume Drop in {{loop.item.data_source}}\",\n    \"desc\": \"{{Function.STRING(local_var.analysis)}}\",\n    \"related_events\": [\n      {\n        \"attacks\": [\n          {\n            \"tactic\": {\n              \"name\": \"System Network Connections Discovery\",\n              \"src_url\": \"https://attack.mitre.org/techniques/T1049\",\n              \"uid\": \"T1049\"\n            }\n          }\n        ],\n        \"message\": \"Suspicious Activity\",\n        \"observables\": [\n          {\n          \"name\": \"unmapped.data\",\n          \"type_id\": 99,\n          \"value\": \"null\"\n          },\n          {\n            \"name\": \"unmapped.username\",\n            \"type_id\": 4,\n            \"value\": \"null\"\n          },\n          {\n            \"name\": \"unmapped.hostname\",\n            \"type_id\": 1,\n            \"value\": \"null\"\n          }\n        ],\n        \"severity_id\": 1,\n        \"time\": {{Function.DATETIME_TO_MS(Function.DATETIME_NOW())}},\n        \"type\": \"Data\",\n        \"uid\": \"RP4242424242\"\n      }\n    ]\n  },\n  \"evidences\": [\n    {\n      \"actor\": {\n        \"user\": {\n          \"domain\": \"{{Function.STRING(local_var.analysis)}}\",\n          \"name\": \"{{Function.STRING(local_var.analysis)}}\"\n        }\n      }\n    }\n  ]\n}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
+        },
+        "state": "active",
+        "description": "Format a valid OSCF alert body.",
+        "client_data": {
+          "position": {
+            "x": 35,
+            "y": 704.7088
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": 9
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Alert formatting",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "alertFormatted",
+              "value": "{  \n  \"name\":\"evidence\",\n  \"data\":{{Function.STRING(local_var.alertBody)}}\n}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
+        },
+        "state": "active",
+        "description": "Convert the whole alert body in a string.",
+        "client_data": {
+          "position": {
+            "x": 35,
+            "y": 880.386
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [
+        {
+          "target": 8,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": 9
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "core_action",
+        "connection_id": "cffe3baf-4126-4b11-80b4-3773b78b0a5a",
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "ef645af9-ed60-4efd-882e-bf534442ce86",
+        "data": {
+          "name": "IngestAlert",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "https://ingest.us1.sentinelone.net/v1/alerts",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{{Function.BASE64_DECODE_AS_BYTES(Function.COMPRESS([local_var.alertFormatted], \"gzip\"))}}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [],
+          "ssl_verification": true,
+          "timeout": 30,
+          "headers": {
+            "Content-Encoding": "gzip",
+            "Content-Type": "application/json",
+            "S1-Scope": "2117898686183598593",
+            "S1-Trace-ID": "HAThreatOps-1234:alwayslog"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "proxy_user": null,
+          "proxy_password": null,
+          "proxy_host": null,
+          "proxy_port": null,
+          "redirect_follow": true,
+          "continue_on_fail": false,
+          "body_type": null
+        },
+        "state": "active",
+        "description": "Codify the alert for ingestion and send it to the ingestion gateway",
+        "client_data": {
+          "position": {
+            "x": 35,
+            "y": 1056.0632
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 75
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 8,
+      "connected_to": [],
+      "parent_action": 9
+    }
+  ]
+}

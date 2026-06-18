@@ -14,13 +14,13 @@ flows, `sentinelone-sdl-dashboard` for the dashboard); it does not reimplement t
 
 ## Features
 
-- **Per-device granularity** — a universal device key resolves each firewall (`device.name`), endpoint (`endpoint.name` / `agent.uuid`), and syslog/host sender (`hostname`), falling back to the source name.
-- **Seasonal anomaly detection, not static thresholds** — per-device z-score against the device's own 7-day hour-of-day baseline (spike `z >= +3`, drop `z <= -3`), so it does not false-alarm on normal daily rhythm; the baseline is rebuilt daily by a Hyperautomation flow.
-- **Every failure scenario covered** — per-device volume spike, volume drop, ingest lag (p95 over SLA), ingest loss (a continuously-active device went silent), and parser drift.
-- **Email on every failure** — one alert-triggered notifier flow for all detections, plus a per-device ingest-loss watchdog.
-- **Comprehensive dashboard** — 5 tabs (Overview, Devices, Volume & Sources, Latency & Lag, Parser Health) using number, line, bar, donut, table, and honeycomb panels.
-- **Cost-aware** — `sca:bytesToCharge` drives volume and a chargeback view; validated cost, clock-skew, coverage-gap, and quota-trend extensions are included.
-- **Bounded and safe at scale** — a device floor plus a per-event baseline lookup keep high-cardinality sources within the detection-rule budget; lookup datatables can be up to 150MB (extensible via SentinelOne).
+- **Per-device granularity**: a universal device key resolves each firewall (`device.name`), endpoint (`endpoint.name` / `agent.uuid`), and syslog/host sender (`hostname`), falling back to the source name.
+- **Seasonal anomaly detection, not static thresholds**: per-device z-score against the device's own 7-day hour-of-day baseline (spike `z >= +3`, drop `z <= -3`), so it does not false-alarm on normal daily rhythm; the baseline is rebuilt daily by a Hyperautomation flow.
+- **Every failure scenario covered**: per-device volume spike, volume drop, ingest lag (p95 over SLA), ingest loss (a continuously-active device went silent), and parser drift.
+- **Email on every failure**: one alert-triggered notifier flow for all detections, plus a per-device ingest-loss watchdog.
+- **Comprehensive dashboard**: 5 tabs (Overview, Devices, Volume & Sources, Latency & Lag, Parser Health) using number, line, bar, donut, table, and honeycomb panels.
+- **Cost-aware**: `sca:bytesToCharge` drives volume and a chargeback view; validated cost, clock-skew, coverage-gap, and quota-trend extensions are included.
+- **Bounded and safe at scale**: a device floor plus a per-event baseline lookup keep high-cardinality sources within the detection-rule budget; lookup datatables can be up to 150MB (extensible via SentinelOne).
 
 ## Run it with one prompt
 

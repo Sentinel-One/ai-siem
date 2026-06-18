@@ -15,12 +15,12 @@ for the dashboard); it does not reimplement them.
 
 ## Features
 
-- **Source-agnostic** — baselines ANY security or non-security signal; the principal and action fields are auto-picked from the source schema, so EDR, identity, firewall, cloud, SaaS, email, and custom apps work with no per-source code.
-- **Four deviation classes** — SPIKE, DROP, SILENT (a normally-active pair went quiet), and NEW-BEHAVIOR (a first-seen pair).
-- **Per (action, principal) z-score baseline** — mean and standard deviation over a 7/30/90-day window, day-of-week stratified to remove weekday/weekend false positives.
-- **Two ways to run** — an interactive on-demand report for hunts and tuning, or a production deploy (baseline lookup + scheduled PowerQuery rule + nightly refresh + dashboard).
-- **Tiered alerting** — hard/soft z thresholds route page vs triage vs dashboard-only; SILENT and NEW-BEHAVIOR are routed separately with their own floors.
-- **Asset-bound alerts** — the scheduled rule maps the principal entity so anomalies are attributable to a real user/host.
+- **Source-agnostic**: baselines ANY security or non-security signal; the principal and action fields are auto-picked from the source schema, so EDR, identity, firewall, cloud, SaaS, email, and custom apps work with no per-source code.
+- **Four deviation classes**: SPIKE, DROP, SILENT (a normally-active pair went quiet), and NEW-BEHAVIOR (a first-seen pair).
+- **Per (action, principal) z-score baseline**: mean and standard deviation over a 7/30/90-day window, day-of-week stratified to remove weekday/weekend false positives.
+- **Two ways to run**: an interactive on-demand report for hunts and tuning, or a production deploy (baseline lookup + scheduled PowerQuery rule + nightly refresh + dashboard).
+- **Tiered alerting**: hard/soft z thresholds route page vs triage vs dashboard-only; SILENT and NEW-BEHAVIOR are routed separately with their own floors.
+- **Asset-bound alerts**: the scheduled rule maps the principal entity so anomalies are attributable to a real user/host.
 
 ## Run it with one prompt
 

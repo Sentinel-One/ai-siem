@@ -12,13 +12,13 @@ against live data before moving on.
 
 ## Features
 
-- **One-prompt onboarding** — name a source and the skill locates it by its `parser` attribute, then normalises, enriches, dashboards, detects, and adds response, end to end.
-- **OCSF normalisation** — sets the four mandatory attributes (`dataSource.name`/`vendor`/`category`, `metadata.version`) and maps vendor fields to verified OCSF fields (never invented).
-- **Asset enrichment built in** — device/user context is joined onto every event so detections bind a real Target Asset, not "Unknown Device".
-- **MITRE-mapped detections** — STAR scheduled rules for the source class, each mapped to ATT&CK, with entity mapping and severity-tuned cool-offs.
-- **SOC threat-response playbook** — an alert-triggered Hyperautomation flow extracts IOCs, gates on VirusTotal, then blocks the IOC and network-quarantines the source host on a malicious verdict.
-- **Operational dashboard** — volume over time, action breakdown, top talkers/users/devices, geo, and any IDS/threat signatures the source emits.
-- **Validated stage by stage** — parser propagation, the normalised stream, detections, and the flow are each checked against live data before the next step.
+- **One-prompt onboarding**: name a source and the skill locates it by its `parser` attribute, then normalises, enriches, dashboards, detects, and adds response, end to end.
+- **OCSF normalisation**: sets the four mandatory attributes (`dataSource.name`/`vendor`/`category`, `metadata.version`) and maps vendor fields to verified OCSF fields (never invented).
+- **Asset enrichment built in**: device/user context is joined onto every event so detections bind a real Target Asset, not "Unknown Device".
+- **MITRE-mapped detections**: STAR scheduled rules for the source class, each mapped to ATT&CK, with entity mapping and severity-tuned cool-offs.
+- **SOC threat-response playbook**: an alert-triggered Hyperautomation flow extracts IOCs, gates on VirusTotal, then blocks the IOC and network-quarantines the source host on a malicious verdict.
+- **Operational dashboard**: volume over time, action breakdown, top talkers/users/devices, geo, and any IDS/threat signatures the source emits.
+- **Validated stage by stage**: parser propagation, the normalised stream, detections, and the flow are each checked against live data before the next step.
 
 ## Run it with one prompt
 
@@ -77,7 +77,7 @@ draft unless you ask to enable them), and a SOC threat-response Hyperautomation 
 - HA import needs the **Hyper Automate.write** scope and a scope on the URL: `?accountIds=<acct>`
   for an account-level import or `?siteIds=<site>` for a site; with no scope it returns a misleading
   `403`. To make an imported draft visible to the team without running it, call the publish endpoint
-  (`POST /hyper-automate/api/v1/workflows/{id}/publish`, returns `204`) — it becomes an inactive
+  (`POST /hyper-automate/api/v1/workflows/{id}/publish`, returns `204`), it becomes an inactive
   Shared Draft. Delete a workflow with `DELETE /hyper-automate/api/v1/workflows/{id}?accountIds=<acct>`
   (`204`, soft/recoverable); scope it to where the workflow lives.
 

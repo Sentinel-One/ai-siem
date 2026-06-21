@@ -476,12 +476,48 @@ Query must return at least one text column and one numeric column. Good for per-
 
 ---
 
-### Heatmap panel (2D time heatmap)
+### Heatmap panel (time OR categorical 2D matrix)
 
 `graphStyle`: `"heatmap"`
 
-Time on x-axis, category on y-axis, color intensity = event density. Distinct from `honeycomb` (static cells) — `heatmap` is always time-series. Query must use `timebucket()` + `transpose` to produce a time × category matrix. The timestamp column must be named `timestamp`.
+A 2D matrix where color intensity is the aggregated value of each cell. As of S-26.x the x-axis can be **time OR a category**, and cells can carry **in-cell data labels**. Distinct from `honeycomb` (free-form hex cells). In every mode the **anchor column** (the field named after `on` in `transpose`) becomes the x-axis, and the transposed field's values become the y-axis rows.
 
+**Two x-axis modes:**
+
+| Mode | x-axis | Query shape | `xAxis` key |
+|---|---|---|---|
+| Time (classic) | timebuckets | `... \| group <m>=count() by <yCat>, timestamp=timebucket('1h') \| transpose <yCat> on timestamp` | omit (or `"time"`) |
+| Categorical | a category column | `... \| group <m>=count() by <xCat>, <yCat> \| transpose <yCat> on <xCat>` | `"grouped_data"` |
+
+**Heatmap options (live-confirmed on S-26.x, captured from what the SDL UI writes):**
+
+| Key | Value | Effect |
+|---|---|---|
+| `"xAxis"` | `"grouped_data"` | Render a non-time first column as a categorical x-axis. Without it the renderer expects an epoch first column, so a category query renders blank. |
+| `"showDataLabels"` | `"true"` (string, not boolean) | Print each cell's value inside the cell. Omit for color-only. |
+| `"colorScheme"` | `"red"` \| `"blue"` \| `"green"` (more in the UI) | Named color ramp; `red`, `blue`, `green` confirmed to render. |
+| `"colorSchemeOrder"` | `"standard"` \| `"inverted"` | Direction of the ramp; `"inverted"` flips which end is the hot color. |
+| `"linkConfig"` | `{ "template": "<url>" }` | Make cells click-through to a URL, e.g. a pre-filtered Unified Alerts view. |
+
+**Categorical heatmap example** (alerts severity x product, data labels + click-through, live-validated):
+```json
+{
+  "title": "Alerts by severity and product",
+  "graphStyle": "heatmap",
+  "query": "dataSource.name='alert' severity_id=* finding_info.uid=* | group count=count() by Product=metadata.product.name, severity_id | transpose severity_id on Product",
+  "xAxis": "grouped_data",
+  "showDataLabels": "true",
+  "colorScheme": "red",
+  "colorSchemeOrder": "standard",
+  "numberOfRanges": 5,
+  "rangesCreation": "automatic",
+  "heatmapRangeConfig": ["-∞", "", "", "", "", "∞"],
+  "linkConfig": { "template": "https://<console>.sentinelone.net/incidents/unified-alerts?viewType=all" },
+  "layout": { "h": 20, "w": 30, "x": 0, "y": 0 }
+}
+```
+
+**Time heatmap example** (classic, x-axis = time, requires `timebucket()` and the anchor column named `timestamp`):
 ```json
 {
   "title": "Identity Logon Activity by User [heatmap]",
@@ -498,12 +534,11 @@ Time on x-axis, category on y-axis, color intensity = event density. Distinct fr
 
 **Critical `heatmapRangeConfig` rule:** `rangesCreation: "automatic"` means SDL computes the threshold boundaries from the data. The `heatmapRangeConfig` array must use empty strings `""` for all middle elements. Providing explicit values (e.g. `"10"`, `"50"`) conflicts with automatic mode and causes the panel to render blank with no error. Correct form for 5 ranges: `["-∞", "", "", "", "", "∞"]` (N+1 elements for N ranges). Do not add explicit middle values unless you also change `rangesCreation` away from `"automatic"`.
 
-**Pre-filter to top-N users before transpose:** After `transpose`, any (user, timebucket) cell with no events becomes null. To keep the heatmap readable and avoid sparse null columns, use `| filter user_name in (...)` to pin the user set to the most active accounts. Find candidates first: `| group count=count() by user.name | sort -count | limit 15 | columns user.name`.
+**Pre-filter to top-N categories before transpose:** After `transpose`, any (category, anchor) cell with no events becomes null. To keep the heatmap readable and avoid sparse null columns, use `| filter <field> in (...)` to pin the transposed set to the most active values. Find candidates first: `| group count=count() by <field> | sort -count | limit 15 | columns <field>`.
 
 **When to use heatmap:**
-- Login activity per user over time (insider threat, off-hours spikes)
-- Hourly event volume across sources or endpoints
-- Day-of-week × hour activity patterns
+- Categorical x-axis: alerts by severity x product or asset category, detections by OS x technique, any (category x category) count matrix.
+- Time x-axis: login activity per user over time (insider threat, off-hours spikes), hourly event volume across sources or endpoints, day-of-week x hour activity patterns.
 
 ---
 

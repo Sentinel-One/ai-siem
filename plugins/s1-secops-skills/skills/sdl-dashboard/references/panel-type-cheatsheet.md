@@ -13,7 +13,7 @@
 | `gauge` | Radial gauge | PQ | Like `number` but renders a visual arc/dial. `colorRangeConfig.ranges[]` sets color bands per numeric range. Use for SOC queue health, capacity, and backlog. |
 | `bullet` | Bullet / KPI vs target | PQ | Shows actual value vs SLA target across color-coded zones. Full config below. |
 | `honeycomb` | Honeycomb heatmap | PQ | Cells colored by value. Use `columns` to alias the text + numeric columns. Good for process/port density. |
-| `heatmap` | 2D time heatmap | PQ | Time on x-axis, category on y-axis, color = event density. Query must use `timebucket` + `transpose`. `heatmapRangeConfig` sets bands. |
+| `heatmap` | 2D matrix (time OR categorical x) | PQ | Color = cell value. x-axis = time (classic) or a category (`xAxis: "grouped_data"`, S-26.x+). Query uses `transpose`. Options: `showDataLabels: "true"`, `colorSchemeOrder: "inverted"`, `linkConfig`. `heatmapRangeConfig` sets bands. |
 | `sankey` | Sankey flow diagram | PQ | Shows flows between nodes weighted by count. Query must return `source`, `target`, `c`. Full config below. |
 | `scattered_bubble` | Bubble scatter chart | PQ | 3D scatter: x, y, bubble-size from 3 numeric columns. Optional `label` column. `scatteredBubbleConfig: {showLabel: true}`. |
 | `table` (graphStyle `""`) | Table | PQ | Default for PQ panels. `showBarsColumn: "true"` adds inline bar chart. |
@@ -158,10 +158,11 @@ Use `array(0, 1, 2).expand()` to fan a single event row into multiple Sankey lin
 
 ## Heatmap panel
 
-2D heatmap with time on x-axis and a category on y-axis. Color intensity = event density.
-Distinct from `honeycomb` (which is static cells) — `heatmap` is time-series.
+2D matrix; color intensity = the cell's aggregated value. The x-axis can be **time OR a category** (S-26.x+). Distinct from `honeycomb` (free-form hex cells).
 
-**Query pattern**: same as a multi-series line chart. Use `timebucket` + `transpose` to produce a time × category matrix.
+**Query pattern**: `| group <m>=count() by <xCat>, <yCat> | transpose <yCat> on <xCat>`. The anchor (the field named after `on`) becomes the x-axis. For a categorical x-axis add `xAxis: "grouped_data"`; for the classic time x-axis use `timebucket()` and name the anchor `timestamp`.
+
+**New options (live-confirmed on S-26.x):** `xAxis: "grouped_data"` (categorical x), `showDataLabels: "true"` (in-cell values; string, not boolean), `colorSchemeOrder: "inverted"` (flip ramp), `linkConfig: {template: "<url>"}` (click-through). `colorScheme` accepts `red` / `blue` / `green`.
 
 ```javascript
 {
@@ -420,7 +421,7 @@ endpoint.os = #OS#
 - **Distribution**: Does NOT use `query`: use `filter` (search expression) and `facet` (the numeric field). The `filter` field uses the old-style SDL filter syntax — do NOT use `field != null` for null checks, as this causes `field=[filter] error=[Illegal value [null]]`. Use `field=*` instead (matches any non-null value). The `facet` field MUST be a native NUMBER field in the SDL schema — string fields (even ones that look numeric like `traffic.bytes_in`) silently return an empty panel. Confirm the field type with `| group min=min(field), max=max(field)` before using it; if min/max return NaN or STRING, the field is not numeric. The `number()` cast in the `facet` expression (e.g. `facet: "number(traffic.bytes_in)"`) does NOT work for distribution panels — SDL checks the schema-level field type at render time, before the cast runs, so a string field stays blank even after casting.
 - **Sankey**: Query must output exactly `source`, `target`, `c` column names. Use `array(...).expand()` for multi-hop link expansion.
 - **Scattered bubble**: First 3 numeric columns = x, y, size. Add `label` column for point labels.
-- **Heatmap/multi-series line**: Must use `timebucket()` in `group by`. Timestamp column must be named `timestamp`. Use `transpose field on timestamp` for the matrix.
+- **Heatmap/multi-series line**: time mode uses `timebucket()` in `group by` with the anchor named `timestamp` (`transpose field on timestamp`). Heatmap also supports a categorical x-axis (S-26.x+): `group by <xCat>, <yCat> | transpose <yCat> on <xCat>` plus `xAxis: "grouped_data"`.
 - **Bullet**: First numeric column = actual value; second numeric column = SLA/target. Third column = row label.
 - **Tabbed table**: `tabbed: "true"` and `tabVariant: "tile"` are both required. Outer `query` is the fallback.
 - **Null check — always use `field=*`, never `field != null`**: `field=*` is the SDL predicate for "field is present and non-null". `field != null` is parsed as a literal string comparison to `"null"` in old-style filter syntax and returns wrong results or a parse error. Applies in both the initial filter predicate (before the first `|`) and in `| filter` commands: `dataSource.name='alert' severity_id=*` not `severity_id != null`.

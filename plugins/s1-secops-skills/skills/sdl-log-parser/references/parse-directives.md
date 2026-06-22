@@ -75,11 +75,34 @@ This is how the community PARSER_TEMPLATE captures the entire event into `unmapp
 
 **Dotted source keys are flat, not nested.** When a source JSON key literally contains a dot (e.g. `"user.email": "alice@example.com"`), gron flattens it into `unmapped.user.email` as a FLAT field name. In mappings, reference it with the literal path — `from: "unmapped.user.email"` — and do NOT escape the dots. `from: "unmapped.user\\.email"` will NOT match on current tenants (tenant-validated April 2026). This contradicts the escape-the-dots guidance in the upstream PARSER_TEMPLATE.conf in ai-siem; prefer the tenant-validated form.
 
+**gron DOES expand arrays — into `[N]`-indexed attributes, not lossy strings. Index with `[N]`, never `.N.`** This corrects the common misconception (including elsewhere in this skill) that "gron drops arrays" or "flattens arrays to a lossy string." gron emits one queryable attribute per array leaf, using bracket-index notation:
+
+```
+"signInEventTypes":["nonInteractiveUser"]          -> unmapped.signInEventTypes[0] = "nonInteractiveUser"
+"additionalDetails":[{"key":"UserType","value":"Member"}]
+                                                   -> unmapped.additionalDetails[0].key   = "UserType"
+                                                      unmapped.additionalDetails[0].value = "Member"
+"targetResources":[{"id":"x","modifiedProperties":[{"displayName":"d","newValue":"n"}]}]
+                                                   -> unmapped.targetResources[0].id = "x"
+                                                      unmapped.targetResources[0].modifiedProperties[0].displayName = "d"
+                                                      unmapped.targetResources[0].modifiedProperties[0].newValue    = "n"
+```
+
+The trap that makes it *look* like arrays were dropped: querying with dot-index (`unmapped.targetResources.0.id`) returns null. The actual key uses brackets (`unmapped.targetResources[0].id`). Tenant-validated 2026-06-22 (Microsoft Entra ID sign-in + directory-audit logs, deeply nested arrays).
+
+Choose the capture per goal:
+- **gron / dottedJson** -> every array element becomes its own `[N]`-indexed attribute. Use this when you want each leaf queryable / mappable (this is almost always what "extract all fields" means).
+- **strictDottedJson / strict\*** -> the array is preserved as one JSON value (consumable by PowerQuery `array_from_json()` / `array_get()`), NOT split into per-element attributes.
+
+Scalar and nested-object flattening is identical across gron, dottedJson, and the strict variants; they differ ONLY in array handling.
+
+**Querying `[N]` attributes: they are stored but a raw PowerQuery `columns`/`filter` clause cannot type the `[`.** `| columns unmapped.x[0].y` fails to parse ("Unable to parse the entire query"); backticks fail ("Don't understand [`]"); double-quotes turn the name into a string literal. The fields ARE present and queryable through the Event Search field picker and the V1 query / `powerquery_schema_discover` endpoint — so do not conclude extraction failed just because `columns` rejects the name. To confirm `[N]` fields during validation, use `powerquery_schema_discover` (returns full event JSON) rather than a `columns` projection. Tenant-validated 2026-06-22.
+
 See `references/ai-siem-catalog.md` §"Useful reference parsers by shape" for the canonical example, and `examples/08-gron-capture-template.json` for a ready-to-use scaffold.
 
-### Strict variants (keep arrays parseable by PowerQuery)
+### Strict variants (keep arrays as one parseable JSON value)
 
-Non-strict variants flatten arrays into human-readable but lossy strings that `array_from_json()` cannot consume. If you plan to run PowerQuery array functions on the parsed output, use the `strict*` variant:
+Non-strict `gron`/`dottedJson` expand arrays into per-element `[N]`-indexed attributes (see the gron-array note above) — great when you want each leaf queryable, but you then cannot run PowerQuery array functions over the array as a whole. If you instead want the array preserved as a single JSON value that `array_from_json()` / `array_get()` can consume, use the `strict*` variant:
 
 - `strictJson`, `strictDottedJson`
 - `strictEscapedJson`, `strictDottedEscapedJson`

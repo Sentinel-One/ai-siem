@@ -240,12 +240,14 @@ identity (serviceAccount, adminCount, groupType, objectGuid, whenChanged), endpo
 and cross-datasource tables from `datasource vulnerabilities` / `misconfigurations` / `alerts`
 keyed by assetName or user.
 
-## Reference deployment (validated)
+## Deployed artifacts
 
-A first deployment was validated on tenant usea1-purple, site pmoses demo: tables
-`assetIdentityLookup` (292 rows) and `assetEndpointLookup` (2000 rows), parser
-`/logParsers/testLookup` (metadata.version 1.1.0), and the workflow "Refresh Asset Lookups
-(testLookup)" (deactivated). The line `hostname=ABRAX username=adm.webb action=logon` enriched to
-device_os "Windows 11 Pro", device_criticality "high", device_riskfactors ["High Value"],
-user_principal IMPERIUM\\adm.webb, user_sid S-1-5-21-1068759508-3553314729-511895651-1136,
-user_groups ["Domain Admins"], with user_criticality and user_riskfactors suppressed to null.
+A full deployment produces the artifacts below. Each renders from a template in `assets/` and is deployed through the matching primitive skill. The `<prefix>` is the solution/customer code.
+
+| Artifact | Template | Deployed to | Purpose |
+|---|---|---|---|
+| Endpoint lookup builder | `assets/savelookup_endpoint.pq` | SDL datatable `/datatables/<prefix>EndpointLookup` | Persist device context (OS, IP, agent id/uuid, site, criticality, risk factors) keyed by hostname |
+| Identity lookup builder | `assets/savelookup_identity.pq` | SDL datatable `/datatables/<prefix>IdentityLookup` | Persist AD/user context (principal, SID, domain, DN, groups, privileged, criticality) keyed by samAccountName |
+| IP-keyed endpoint builder | `assets/savelookup_endpoint_byip.pq` | SDL datatable `/datatables/<prefix>EndpointByIp` | Device context keyed by IP for network sources that carry no hostname |
+| Enrichment parser | `assets/parser.template.json` | AI SIEM parser `/logParsers/<prefix>_enrich` | Stamp device/user context plus `device.uid`/`user.uid` and `class_uid` on every event at ingest (parser mode) |
+| Refresh workflow | `assets/refresh_workflow.template.json` | Hyperautomation workflow import | Re-run the savelookup builders on a schedule so the lookup tables stay current |

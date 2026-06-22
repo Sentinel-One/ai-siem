@@ -1,0 +1,113 @@
+{
+  "_comment": "Exclusion-effectiveness dashboard for the scheduled-detection-exclusions solution. Deploy with sdl_put_file to /dashboards/{{PREFIX}} Exclusions. Re-target by swapping {{SOURCE}} (dataSource.name), the two lookup tables (asset CSV keyed cidr =:cidr <ip field>; custom CSV keyed value =:anycase <value field>), and {{BASE_FILTER}}. Tab 1 = exclusion effectiveness (every 'excluded' panel is the inverse anti-join excl_* = *; total = excluded + kept in one window). Tab 2 = the post-exclusion (kept) threat view. READABILITY / CORRECTNESS RULES (do not regress): (1) NO markdown banner panels, on this tenant graphStyle 'markdown' renders as an empty 'Untitled' box; put context in the dashboard-level 'description' instead, which renders under the title. (2) NEVER put a number-panel suffix that repeats the panel title (title 'Excluded (suppressed)' + value '17,478 suppressed' is redundant). Only use a suffix that adds a real unit the title lacks, e.g. '%' on a rate. Use options.format 'commas' for counts. (3) All panels are LIVE queries against the tenant, never hardcode counts. (4) Inside a 'let' ternary use '!= null' (the '= *' presence operator is only valid in a filter predicate). (5) Arithmetic needs spaces: 'total - excluded', not 'total-excluded'. (6) timebucket('1h') over 7d; terminate number panels with '| limit 1'.",
+  "configType": "TABBED",
+  "duration": "7d",
+  "description": "Scheduled-detection exclusions for {{SOURCE}} (live tenant data). Tab 1: what the CSV exclusion lists suppress vs what survives. Tab 2: the net threat signal after exclusions. Excluded + Net = Total in any window.",
+  "tabs": [
+    {
+      "tabName": "Exclusion Effectiveness",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Total candidate detections",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | group n=count() | limit 1",
+          "options": { "format": "commas" },
+          "sparklineConfig": { "enabled": true },
+          "layout": { "w": 15, "h": 9, "x": 0, "y": 0 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Excluded (suppressed)",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | filter (excl_asset=* OR excl_domain=*) | group n=count() | limit 1",
+          "options": { "format": "commas" },
+          "sparklineConfig": { "enabled": true },
+          "layout": { "w": 15, "h": 9, "x": 15, "y": 0 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Net detections (kept)",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | filter (excl_asset=null AND excl_domain=null) | group n=count() | limit 1",
+          "options": { "format": "commas" },
+          "sparklineConfig": { "enabled": true },
+          "layout": { "w": 15, "h": 9, "x": 30, "y": 0 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Exclusion rate",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | let is_excl=(excl_asset=null AND excl_domain=null ? 0 : 1) | group total=count(), excl=sum(is_excl) | let pct = 100.0*excl/total | columns pct | limit 1",
+          "options": { "suffix": "%" },
+          "layout": { "w": 15, "h": 9, "x": 45, "y": 0 }
+        },
+        {
+          "graphStyle": "stacked_bar",
+          "title": "Detections over time: Excluded vs Kept",
+          "xAxis": "time",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | let status=(excl_asset=null AND excl_domain=null ? 'Kept' : 'Excluded') | group n=count() by timestamp=timebucket('1h'), status | sort timestamp",
+          "layout": { "w": 40, "h": 12, "x": 0, "y": 9 }
+        },
+        {
+          "graphStyle": "pie",
+          "title": "Excluded by list",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | filter (excl_asset=* OR excl_domain=*) | let excl_list=(excl_asset != null ? 'Asset list' : 'Domain list') | group suppressed=count() by excl_list | sort -suppressed",
+          "layout": { "w": 20, "h": 12, "x": 40, "y": 9 }
+        },
+        {
+          "graphStyle": "pie",
+          "title": "Excluded by reason",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | filter (excl_asset=* OR excl_domain=*) | let excl_reason=(excl_asset != null ? excl_asset : excl_domain) | group suppressed=count() by excl_reason | sort -suppressed | limit 10",
+          "layout": { "w": 30, "h": 12, "x": 0, "y": 21 }
+        },
+        {
+          "graphStyle": "table",
+          "title": "Top suppressed values",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | filter (excl_asset=* OR excl_domain=*) | let excl_value=(excl_asset != null ? {{IP_FIELD}} : {{VALUE_FIELD}}) | let excl_list=(excl_asset != null ? 'Asset list' : 'Domain list') | let excl_reason=(excl_asset != null ? excl_asset : excl_domain) | group suppressed=count() by excl_value, excl_list, excl_reason | sort -suppressed | limit 25",
+          "layout": { "w": 30, "h": 12, "x": 30, "y": 21 }
+        }
+      ]
+    },
+    {
+      "tabName": "DNS Security Context (after exclusions)",
+      "graphs": [
+        {
+          "graphStyle": "number",
+          "title": "Net failed resolutions (kept)",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | filter (excl_asset=null AND excl_domain=null) | group n=count() | limit 1",
+          "options": { "format": "commas" },
+          "sparklineConfig": { "enabled": true },
+          "layout": { "w": 20, "h": 9, "x": 0, "y": 0 }
+        },
+        {
+          "graphStyle": "line",
+          "title": "NXDOMAIN over time (kept)",
+          "xAxis": "time",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | filter (excl_asset=null AND excl_domain=null) | filter rcode='NXDOMAIN' | group nxdomain=count() by timestamp=timebucket('1h') | sort timestamp",
+          "layout": { "w": 40, "h": 9, "x": 20, "y": 0 }
+        },
+        {
+          "graphStyle": "pie",
+          "title": "Response code mix (kept)",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | filter (excl_asset=null AND excl_domain=null) | group queries=count() by rcode | sort -queries | limit 10",
+          "layout": { "w": 20, "h": 12, "x": 0, "y": 9 }
+        },
+        {
+          "graphStyle": "table",
+          "title": "Top failed values (kept)",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | filter (excl_asset=null AND excl_domain=null) | group failed=count() by {{VALUE_FIELD}} | sort -failed | limit 25",
+          "layout": { "w": 40, "h": 12, "x": 20, "y": 9 }
+        },
+        {
+          "graphStyle": "table",
+          "title": "Top offending assets (kept)",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | filter (excl_asset=null AND excl_domain=null) | group failed=count(), distinct_values=estimate_distinct({{VALUE_FIELD}}) by {{IP_FIELD}} | sort -failed | limit 25",
+          "layout": { "w": 30, "h": 12, "x": 0, "y": 21 }
+        },
+        {
+          "graphStyle": "table",
+          "title": "Record types (kept)",
+          "query": "dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}}=* | lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr {{IP_FIELD}} | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase {{VALUE_FIELD}} | filter (excl_asset=null AND excl_domain=null) | group queries=count() by query.type | sort -queries | limit 15",
+          "layout": { "w": 30, "h": 12, "x": 30, "y": 21 }
+        }
+      ]
+    }
+  ]
+}

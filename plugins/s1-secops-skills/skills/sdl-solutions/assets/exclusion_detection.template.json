@@ -1,0 +1,29 @@
+{
+  "_comment": "STAR scheduled PowerQuery detection rule with a CSV-driven exclusion anti-join for third-party SDL sources. POST to /web/api/v2.1/cloud-detection/rules. The PQ body filters the base detection, then for each exclusion list adds: '| lookup excl_X = reason from <TABLE>.csv by <KEY_COL> <OP> <EVENT_FIELD> | filter excl_X = null' (null = NOT on the list = kept). Chain multiple lists with distinct join vars (excl_asset, excl_domain). Always add the null-entity guard '<KEY_FIELD> = *' to the base filter so a null asset is never alerted. queryType MUST be scheduled and queryLang MUST be 2.0. treatAsThreat is UNDEFINED and networkQuarantine false (mitigation not supported on scheduled rules). Keep aggregation inside group. Body MUST end with '| columns ...' projecting the metric + entity columns. entityMappings is capped at 3. coolOffSettings.renotifyMinutes ties to severity/cadence (do NOT default to 24h). New rules land Disabled; enable with PUT /cloud-detection/rules/enable. List with isLegacy=false or scheduled rules are hidden.",
+  "data": {
+    "name": "{{PREFIX}} - {{DETECTION_NAME}}",
+    "description": "{{DETECTION_DESCRIPTION}} Known-good activity is suppressed at detection time via CSV exclusion lists ({{EXCL_TABLES_HUMAN}}). MITRE ATT&CK: {{MITRE_TACTIC}} / {{MITRE_TECHNIQUE}}.",
+    "queryType": "scheduled",
+    "queryLang": "2.0",
+    "severity": "{{SEVERITY}}",
+    "status": "Disabled",
+    "expirationMode": "Permanent",
+    "treatAsThreat": "UNDEFINED",
+    "networkQuarantine": false,
+    "coolOffSettings": { "renotifyMinutes": {{RENOTIFY_MINUTES}} },
+    "entityMappings": [
+      { "columnName": "{{ENTITY_COL_1}}" },
+      { "columnName": "{{ENTITY_COL_2}}" },
+      { "columnName": "{{ENTITY_COL_3}}" }
+    ],
+    "scheduledParams": {
+      "query": "{{PQ_BODY_WITH_EXCLUSION_ANTIJOIN_ENDING_IN_COLUMNS}}",
+      "runIntervalMinutes": {{RUN_INTERVAL_MINUTES}},
+      "lookbackWindowMinutes": {{LOOKBACK_MINUTES}},
+      "alertPerRow": false,
+      "disableStreaksLogic": false,
+      "threshold": { "value": {{THRESHOLD_VALUE}}, "operator": "{{THRESHOLD_OP}}" }
+    }
+  },
+  "filter": { "{{SCOPE_KEY}}": ["{{SCOPE_ID}}"] }
+}

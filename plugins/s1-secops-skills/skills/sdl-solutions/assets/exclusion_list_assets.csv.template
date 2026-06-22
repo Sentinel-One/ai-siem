@@ -1,0 +1,4 @@
+cidr,reason,owner,added
+10.0.0.0/8,Internal RFC1918 client range,NetOps,{{ADDED_DATE}}
+192.168.0.0/16,Internal RFC1918 client range,NetOps,{{ADDED_DATE}}
+{{SCANNER_IP}}/32,Known vulnerability scanner,SecOps,{{ADDED_DATE}}

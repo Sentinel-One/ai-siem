@@ -10,13 +10,13 @@ custom app all work without per-source code.
 
 This playbook orchestrates primitives that already exist; it does not reimplement them:
 
-- The engine is `sentinelone-mgmt-console-api` `scripts/baseline_anomaly.py`, a resumable,
+- The engine is `mgmt-console-api` `scripts/baseline_anomaly.py`, a resumable,
   source-agnostic baseline + z-score detector (schema discovery, daily slicing, pooled or
   day-of-week strategy, SPIKE/DROP/SILENT/NEW output, checkpointed state).
 - The PowerQuery building blocks (per-day count, live count, pooled and DoW merges, silent and
-  new-behavior detectors, the productionised lookup pattern) are in `sentinelone-powerquery`
+  new-behavior detectors, the productionised lookup pattern) are in `powerquery`
   `examples/behavioral-baselines.md`. Read it before authoring any baseline query by hand.
-- Field selection is `sentinelone-mgmt-console-api` `scripts/inspect_source.py` (`pick_keys`).
+- Field selection is `mgmt-console-api` `scripts/inspect_source.py` (`pick_keys`).
 
 ## What "anomaly detection over a specified baseline" means here
 
@@ -187,21 +187,13 @@ rule id, workflow id, dashboard path, site) and the top anomalies found on the f
 - **Low-cardinality sources.** A source driven by one service account (validated: Google Workspace,
   one `authorize` principal) produces a thin baseline. Still valid, just few pairs to score.
 
-## Reference deployment (validated)
+## Deployed artifacts
 
-Validated on tenant usea1-purple, site `pmoses demo` (siteId 2056852093198736293), 2026-06-18,
-source `Okta`, principal `actor.user.email_addr`, action `activity_name`, pooled baseline:
+A full deployment produces the artifacts below. Each renders from a template in `assets/` and is deployed through the matching primitive skill. The `<prefix>` is the solution/customer code.
 
-- Baseline lookup `uebaOktaBaseline` built via a single `savelookup` LRQ over a 7-day window:
-  172 pairs, n_days up to 8. The LRQ completed server-side and wrote the table even though the
-  interactive `powerquery_run` wrapper reported a 30s poll timeout, proving the timeout is a client
-  poll budget, not an LRQ limit. A 3-day window completes within the wrapper budget directly.
-- Detection run live against the 7-day baseline returned a robust SPIKE (`john.doe@example.com` /
-  Other, live 20 vs 8.86 +/- 1.57, n_days 7, z 7.08); the noisier 3-day baseline surfaced 7 pairs
-  at the same threshold, so the wider window tightens stddev and cuts false positives. Output
-  matched the engine's client-side detection. A NEW-BEHAVIOR cluster also appeared: a first-seen
-  identity `kyle@creasoncaffeine.com` that logged on, did MFA, accessed the Okta admin app,
-  attempted a protected action, redeemed an emailed credential, reset its password and created an
-  API token, plus two new OIDC clients granting tokens.
-- Source-agnostic key-picking confirmed across three schemas: Okta (security identity), Google
-  Workspace (non-security SaaS audit), Avelios Medical (non-security custom healthcare).
+| Artifact | Template | Deployed to | Purpose |
+|---|---|---|---|
+| Baseline lookup builder | `assets/ueba_baseline_savelookup.pq` | SDL datatable `/datatables/<prefix><source>Baseline` | Compute per-pair mean and stddev over the baseline window and persist the top pairs for live z-scoring |
+| UEBA detection rule | `assets/ueba_detection.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | Score the 24h live window per pair against the baseline, alert on `|z| >= z_hard`, bind `principal_v` via `entityMappings` |
+| Baseline refresh workflow | `assets/ueba_refresh_workflow.template.json` | Hyperautomation workflow import | Rebuild the baseline table nightly over the trailing window (Bearer SDL connection) |
+| UEBA dashboard | `assets/ueba_dashboard.template.json` | `sdl_put_file /dashboards/<prefix> <source> Anomalies` | Anomaly count, new-behavior count, active principals, volume over time, top SPIKE/DROP and new-behavior tables |

@@ -297,96 +297,17 @@ the example normalised-and-enriched record, then hand off the rendered files.
   the `computeFields` rewrite runs before `mappings` renames). Reuse ONE generic IP-keyed table
   (for example `assetEndpointByIp`) across all network sources rather than building one per source.
 
-## Reference deployment (validated 2026-06-13, usea1-purple)
+## Deployed artifacts
 
-First live onboarding: **Cisco Meraki** (`onboard cisco_meraki logs`).
+A full deployment produces the artifacts below. Each renders from a template in `assets/` and is deployed through the matching primitive skill. The `<prefix>` is the solution/customer code.
 
-- Source located by `parser='cisco_meraki-latest'` (≈13k events / 7d); no `/logParsers/` file and
-  no `dataSource.name`, confirming the un-normalised onboarding gap. Subtypes: `flows`,
-  `vpn_firewall`, `ip_flow`. Body is JSON-per-line in `message`.
-- Parser `/logParsers/cisco_meraki-latest` created, then corrected to v1.1.0:
-  `$unmapped.=json{parse=dottedJson}$` flatten, `mappings` (v1) renaming to clean vendor fields
-  (`log_type`, `src_ip`, `dst_ip`, `src_port`, `dst_port`, `protocol`, `vpn_firewall_pattern`,
-  `connection_status`, `mac_address`) plus OCSF copies (`src_endpoint.ip/port/mac`,
-  `dst_endpoint.ip/port`, `connection_info.protocol_name`, `device.hostname`) and Network Activity
-  class attributes (`class_uid` 4001, `category_uid` 4, `type_uid` 400106).
-- Device enrichment via IP-keyed lookup table `merakiEndpointByIp` (built from
-  `datasource assets from 'surface/endpoint'`, keyed on `agentLastReportedIp`), joined
-  `by device_ip = unmapped.src_ip`.
-- Iteration learned: the bare `$json{parse=json}$` form emitted no fields; the dotted-prefix
-  capture fixed it. Each deploy took 3 to 5 minutes to activate.
-- Device-by-IP enrichment confirmed live: a line with `src_ip` matching an S1 agent IP enriched
-  to `device_host`, `device_os`, `device_agentuuid` from `merakiEndpointByIp`.
-- Deployed live: parser `/logParsers/cisco_meraki-latest` (v1.1.0), dashboard
-  `/dashboards/Cisco Meraki Overview`, lookup `/datatables/merakiEndpointByIp`, and 4 account-scope
-  STAR detections (Draft): perimeter beaconing (T1071.001), host fan-out scan (T1046), high-risk
-  port (T1021/T1571), ICMP anomaly (T1095/T1048).
-- **HA import needs the `Hyper Automate.write` scope.** The workflow-import-export `import`
-  endpoint returns `403 Insufficient permissions` if the API token lacks it, even when the mgmt
-  API (detections, IOCs) and SDL writes (parser, dashboard, savelookup, HEC) all succeed. If the
-  import 403s, stop and have the user grant the scope or supply a key that has it, then re-import.
-  Once the scope was granted, the site-scoped import succeeded:
-  `POST /web/api/v2.1/hyper-automate/api/public/workflow-import-export/import?siteIds=<SITE_ID>`
-  with body `{ "data": <workflow> }`. The HA deliverable is the **Meraki Threat Response**
-  playbook (alert-triggered, VT-gated containment) from `assets/threat_response_workflow.template.json`.
-- **Delete a workflow with a REST `DELETE`:** `DELETE /hyper-automate/api/v1/workflows/{id}?accountIds=<acct>`
-  → `204` (soft, recoverable; validated end to end: import to publish to delete to gone-from-list).
-  Scope with `?accountIds=` or `?siteIds=` to match where the workflow lives; a `404 "Object not
-  found"` means the id is not under that scope or is already deleted.
-- **Account-level import uses the public endpoint with `?accountIds=`.** `POST
-  /hyper-automate/api/public/workflow-import-export/import?accountIds=<acct>` imports at account
-  scope; the v1 endpoint with `?_scopeId=<acct>&_scopeLevel=account` returns `403`. Site import uses
-  the same public endpoint with `?siteIds=<site>`.
-- **Activation needs bound connections.** `POST
-  /hyper-automate/api/public/workflows/{id}/{versionId}/activation?accountIds=<acct>` returns
-  `400 "Some actions in this workflow have invalid references"` when the integration `http_request`
-  actions (`use_authentication_data: true`, `connection_id: null`) have no connection bound, or when
-  placeholders (VT key, webhook) are unresolved. Bind the SentinelOne connection and set the keys in
-  the console builder first, then activate, then `POST .../deactivate?accountIds=<acct>` to publish
-  without running. A freshly imported response playbook therefore lands as a `draft` for the analyst
-  to finalise; do not expect to activate it straight from the template.
-- **Make a private draft visible to the team without activating it: publish it.** An imported draft
-  is private to the importing user until it is either activated or published. `POST
-  /hyper-automate/api/v1/workflows/{id}/publish` (bodyless, scope via `?accountIds=`/`?siteIds=`,
-  returns 204) transitions Private Draft to Shared Draft, so the flow shows up in the team UI in an
-  `inactive` (not-running) state. Use this to hand off a reviewed-but-not-yet-runnable playbook, and
-  to surface an unwanted draft so it can be deleted in the console.
-- **Scheduled-trigger `schedule_method` must be `daily`/`weekly`/`monthly`/`interval`/`cron`.**
-  `"hourly"` is rejected with HTTP 422. For an hourly check use
-  `"schedule_method": "interval"` with `schedule_value:[{interval_unit:"hours", interval_value:1}]`
-  and `start_at_method:"date"` + a `start_at` ISO timestamp.
-
-## Reference deployment: Zscaler Internet Access (validated 2026-06-16, usea1-purple)
-
-Second live onboarding: **Zscaler Internet Access** firewall logs (`onboard zscaler logs`).
-
-- Source located by `parser='zscaler_firewall_logs-latest'` with no `/logParsers/` file and no
-  `dataSource.name` (the un-normalised onboarding gap). Body is ZIA firewall JSON-per-line in `message`.
-- Field map (ZIA to OCSF): client source `csip` to `src_ip` / `src_endpoint.ip`, `csport` to
-  `src_port`; client destination `cdip` to `dst_ip` / `dst_endpoint.ip`, `cdport` to `dst_port`;
-  `proto` to `protocol`; `action` (Allow/Redirect/Block/Drop) to `action` + `disposition`; `nwsvc`
-  to `service`; `nwapp` to `app_name`; `inbytes`/`outbytes` to `traffic.bytes_in`/`traffic.bytes_out`;
-  `destcountry` to `dst_endpoint.location.country`; `rulelabel` to `firewall_rule.name`;
-  `devicehostname` to `src_endpoint.hostname`; threat fields `threatcat`/`threatname`/`threat_score`/
-  `threat_severity` preserved. Class set as constants: `class_uid` 4001, `category_uid` 4,
-  `type_uid` 400106, `activity_id` 6.
-- The `user` field is a single-element JSON array. Non-strict `dottedJson` rendered it as the
-  bracket-string `[a@b.com]` and `unmapped.user.0` was null; recovered the scalar with a
-  `computeFields` rewrite `| let user = (unmapped.user == null ? null : replace(unmapped.user,
-  '[][]', ''))`. This forced a v1.0.0 to v1.0.1 reparse. See the bracket-string note in
-  `sdl-log-parser/references/parse-directives.md`.
-- Device enrichment via the shared IP-keyed table `assetEndpointByIp` (built from
-  `assets/savelookup_endpoint_byip.pq`), joined `by device_ip = unmapped.csip` (network source keys
-  on the internal client IP).
-- Deployed live: parser `/logParsers/zscaler_firewall_logs-latest` (v1.0.1), dashboard
-  `/dashboards/Zscaler Internet Access Overview` (Overview + Threats tabs), lookup
-  `/datatables/assetEndpointByIp`, 5 account-scope STAR detections (Active): C2/Botnet (T1071),
-  Cryptocurrency Mining (T1496), DNS Tunneling (T1071.004/T1048), Malware-Ransomware File Delivery
-  (T1105/T1566), Data Theft (T1567/T1048), and the account-scope HA flow "Zscaler Threat Response"
-  (imported as Private Draft, then published to Shared Draft).
-- Enable-endpoint quirk: `PUT /cloud-detection/rules/enable` rejects `isLegacy` in the filter
-  (`400 Unknown field`); `{"filter": {"ids": [...]}}` alone succeeded with `{"affected": 5}`.
-- Detection validation on seeded data: count/volume-threshold rules (high-frequency blocked retries,
-  allowed-C2) returned zero rows because the seed stream is low-cardinality (about one event per
-  source IP); category rules (`threat_category='...'`) returned rows. Led the validation gate with
-  category rules.
+| Artifact | Template | Deployed to | Purpose |
+|---|---|---|---|
+| Source parser (OCSF + enrichment) | `assets/parser.template.json` | AI SIEM parser `/logParsers/<parser-name>` | Normalise the raw stream to OCSF, set the four mandatory attributes, and stamp device/user context plus `device.uid`/`class_uid` |
+| Endpoint lookup builder | `assets/savelookup_endpoint.pq` | SDL datatable `/datatables/<prefix>EndpointLookup` | Persist device context keyed by hostname for the parser `lookup` |
+| Identity lookup builder | `assets/savelookup_identity.pq` | SDL datatable `/datatables/<prefix>IdentityLookup` | Persist AD/user context keyed by samAccountName for the parser `lookup` |
+| IP-keyed endpoint builder | `assets/savelookup_endpoint_byip.pq` | SDL datatable `/datatables/<prefix>EndpointByIp` | Device context keyed by IP for network sources that key enrichment on client IP |
+| Source dashboard | `assets/onboarding_dashboard.template.json` | `sdl_put_file /dashboards/<prefix> Overview` | Operational view: ingest volume, action breakdown, top talkers/ports/users/devices, geo, signatures |
+| Source detections | `assets/onboarding_detection.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | MITRE-mapped scheduled detections for the source class with `entityMappings` Target-Asset binding |
+| Threat-response workflow | `assets/threat_response_workflow.template.json` | Hyperautomation workflow import | Alert-triggered SOC playbook: extract IOCs, VT-gate, contain, document, notify |
+| Refresh workflow | `assets/refresh_workflow.template.json` | Hyperautomation workflow import | Re-run the savelookup builders on a schedule so enrichment tables stay current |

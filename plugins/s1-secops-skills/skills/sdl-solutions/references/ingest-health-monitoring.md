@@ -76,20 +76,6 @@ Add this as `references/ingest-health-monitoring.md`, tokenized templates in `as
 trigger terms in the frontmatter.
 
 
-## Deployed artefacts (per deployment)
-
-A full deploy creates, scoped as noted:
-
-- Tenant datatables: `ingestHealthBaseline` (per source+device+hour-of-day) and
-  `ingestHealthSourceStats` (per source+device), rebuilt daily by the Baseline Builder flow.
-- Account-level SDL dashboard `/dashboards/Ingest Health Monitoring` (5 tabs: Overview, Devices,
-  Volume & Sources, Latency & Lag, Parser Health).
-- Site-scoped STAR scheduled detections: Volume Spike (Medium), Volume Drop (High) and Ingest Lag
-  (Medium) per device, plus Parser Drift (High) per parser. A New/Unbaselined-Source rule is
-  optional and left disabled.
-- Site-scoped Hyperautomation flows: Baseline Builder (daily), Alert Notifier (alert-triggered
-  email on any "Ingest Health" alert), Ingest Loss Watchdog (hourly per-device anti-join email).
-
 ## Tested vs not tested
 
 Tested live (LRQ) before deploy:
@@ -126,3 +112,15 @@ Not fully tested (needs the console or a live cycle):
   instead of per-event byte sums.
 - Tie each rule's cool-off to its severity and run cadence; review the New/Unbaselined-Source rule
   before enabling.
+
+## Deployed artifacts
+
+A full deployment produces the artifacts below. Each renders from a template in `assets/` and is deployed through the matching primitive skill. The `<prefix>` is the solution/customer code.
+
+| Artifact | Template | Deployed to | Purpose |
+|---|---|---|---|
+| Baseline Builder workflow | `assets/ingesthealth_baseline_builder.workflow.template.json` | Hyperautomation workflow import | Rebuild the `ingestHealthBaseline` and `ingestHealthSourceStats` datatables daily from a 7-day hour-of-day window (Bearer SDL connection) |
+| Ingest health detections | `assets/ingesthealth_detections.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | Per-device Volume Spike, Volume Drop, Ingest Lag and per-parser Parser Drift scheduled rules vs the seasonal baseline |
+| Ingest Loss Watchdog workflow | `assets/ingesthealth_watchdog.workflow.template.json` | Hyperautomation workflow import | Hourly per-device anti-join that emails when a baselined device stops sending logs |
+| Ingest health dashboard | `assets/ingesthealth_dashboard.template.json` | `sdl_put_file /dashboards/Ingest Health Monitoring` | Five-tab view: Overview, Devices, Volume & Sources, Latency & Lag, Parser Health |
+| Alert Notifier workflow | `assets/ingesthealth_alert_notifier.workflow.template.json` | Hyperautomation workflow import | Alert-triggered email on any "Ingest Health" detection |

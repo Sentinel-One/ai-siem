@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - sdl-solutions: scheduled detection exclusions (s1-secops-skills v1.2.2)
+
+- New `sdl-solutions` solution **scheduled detection exclusions**: suppress known-good noise in a scheduled detection over a third-party source by keying it against a CSV exclusion list (assets by IP/CIDR/host, or custom domains/users/values) loaded as an SDL lookup and applied with a lookup anti-join, plus an exclusion-effectiveness dashboard. CIDR/wildcard matches (which the STAR rule validator rejects) run via a Hyperautomation flow that posts a self-contained OCSF S1 SecurityAlert (`class_uid 99602001`) to UAM. Adds `references/scheduled-detection-exclusions.md`, six `assets/exclusion_*` templates, and `docs/solutions/scheduled-detection-exclusions.md`.
+- All `sdl-solutions` playbooks now end with a standardized **Deployed artifacts** table (template, deploy target, purpose) in place of the old per-deployment "Reference deployment" notes.
+- Plugin version bumped to **1.2.2** (`.claude-plugin/plugin.json`, marketplace entry) and rebuilt bundles in `dist/`.
+
 ### Added - plugins/ and mcp/ (SentinelOne SecOps skills + MCP server)
 
 - `plugins/s1-secops-skills/` - a Claude plugin bundling seven SentinelOne SecOps skills (powerquery, mgmt-console-api, sdl-api, sdl-dashboard, sdl-log-parser, sdl-solutions, hyperautomation), with built `.plugin`/`.skill` bundles in `dist/` for one-step install.

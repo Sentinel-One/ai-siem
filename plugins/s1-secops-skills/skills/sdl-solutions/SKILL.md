@@ -1,7 +1,7 @@
 ---
 name: sdl-solutions
 author: Prithvi Moses <prithvi.moses@sentinelone.com>
-description: Deploy packaged, repeatable SentinelOne Singularity Data Lake (SDL) solutions into a customer site from one short prompt. Use when the user wants to onboard, deploy, or roll out a whole SDL solution. Catalog - (1) data source onboarding (raw stream to OCSF, enrichment, dashboard, MITRE detections, threat-response flow); (2) asset enrichment of raw logs from the Asset Inventory; (3) UEBA behavioral anomaly detection, per (action, principal) z-score SPIKE/DROP/SILENT/NEW; (4) per-device ingest health monitoring on a 7-day hour-of-day baseline (volume spike/drop, ingest lag, ingest loss, parser drift) with dashboard and email. Triggers - "onboard cisco_meraki logs", "deploy the asset enrichment solution", "deploy UEBA anomaly detection for a source", "deploy ingest health monitoring", "alert when a source or device stops sending logs". Orchestrates the powerquery, sdl-log-parser, sdl-dashboard, sdl-api, mgmt-console-api, and hyperautomation skills. NOT for one-off queries or standalone parser authoring.
+description: Deploy packaged, repeatable SentinelOne Singularity Data Lake (SDL) solutions into a site from one prompt. Use when the user wants to onboard, deploy, or roll out a whole SDL solution. Catalog: (1) data source onboarding (raw to OCSF, enrichment, dashboard, MITRE detections, threat response); (2) asset enrichment from the Asset Inventory; (3) UEBA behavioral anomaly detection (per action/principal z-score: SPIKE/DROP/SILENT/NEW); (4) per-device ingest health monitoring (7-day baseline: spike/drop/lag/silence/parser drift); (5) scheduled detection exclusions, suppress known-good noise in a scheduled PowerQuery detection over a third-party source via a CSV exclusion list (assets by IP/CIDR/host or custom domains/users/values) and a lookup anti-join, with an effectiveness dashboard. Triggers: 'onboard <source> logs', 'deploy UEBA/asset enrichment/ingest health', 'add a detection exclusion for <source>', 'exclude these assets/domains from a detection'. NOT for one-off queries or standalone parser authoring.
 ---
 
 # SentinelOne SDL Solutions
@@ -23,6 +23,7 @@ parser, dashboard, or workflow, use the matching primitive skill directly.
 | Asset enrichment | Enrich ingested raw logs with device and user context (OS, IP, agent UUID, AD groups, SID, criticality, risk factors) from the Asset Inventory, at ingest or at query time | `references/asset-enrichment.md` |
 | UEBA behavioral anomaly detection | Baseline ANY security or non-security signal per (action, principal) over a chosen window and detect deviations with a z-score: SPIKE, DROP, SILENT, and NEW-BEHAVIOR. Interactive engine for investigation, or a production deploy (baseline lookup + scheduled PowerQuery rule + nightly refresh + dashboard) | `references/ueba-anomaly-detection.md` |
 | Ingest health monitoring (per device) | Per-device ingest health: anomaly detection on a 7-day hour-of-day seasonal baseline refreshed daily, detecting when a specific firewall, endpoint, or server spikes, drops, lags (p95), or goes silent, plus parser drift. Deploys per-device baseline lookups, scheduled PowerQuery detections, an ingest-loss watchdog flow, a 5-tab dashboard, and an email-notification flow for every failure | `references/ingest-health-monitoring.md` |
+| Scheduled detection exclusions | Suppress known-good noise in a scheduled PowerQuery detection over a third-party SDL source. The analyst supplies a CSV of assets (IP/CIDR/host) or a custom list (domains/users/values); it loads as an SDL lookup table and the rule omits matching rows via a lookup anti-join (`\| lookup ... \| filter <col> = null`). Deploys the lookup table, the scheduled STAR rule, an optional source-of-truth refresh flow, and an exclusion-effectiveness dashboard (excluded vs kept, by list/reason/value) | `references/scheduled-detection-exclusions.md` |
 
 More solutions are added under `references/<solution>.md` plus templates under `assets/`. See
 "Adding a new solution" below.
@@ -74,6 +75,11 @@ This skill orchestrates the SentinelOne primitive skills. Load the ones a playbo
 - `assets/onboarding_detection.template.json` - STAR scheduled PowerQuery detection-rule envelope (onboarding)
 - `assets/threat_response_workflow.template.json` - Hyperautomation SOC threat-response playbook (alert trigger to VirusTotal enrich to VT-gated containment: IOC block + endpoint quarantine, then note + notify) for an onboarded source's detections
 - `assets/onboarding_dashboard.template.json` - starter tabbed dashboard skeleton for an onboarded source
+- `assets/exclusion_list_assets.csv.template` - asset exclusion list (IP / CIDR, keyed `cidr =:cidr <ip field>`)
+- `assets/exclusion_list_custom.csv.template` - custom-value exclusion list (domain / user / value, keyed `value =:anycase <field>`)
+- `assets/exclusion_detection.template.json` - STAR scheduled PowerQuery rule wrapping a base detection with the lookup anti-join (chain multiple lists with distinct `excl_*` join vars)
+- `assets/exclusion_dashboard.template.json` - exclusion-effectiveness dashboard (excluded vs kept, over time, by list / reason / value, plus a post-exclusion threat tab)
+- `assets/exclusion_refresh_workflow.template.json` - optional nightly rebuild of a source-of-truth (savelookup) exclusion list
 
 Common tokens: `{{PREFIX}}`, `{{IDENTITY_TABLE}}`, `{{ENDPOINT_TABLE}}`, `{{PARSER_NAME}}`,
 `{{DATASOURCE_NAME}}`, `{{VENDOR}}`, `{{HOSTNAME_FIELD}}`, `{{USERNAME_FIELD}}`, `{{USERNAME_KEY}}`

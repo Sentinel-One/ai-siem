@@ -18,6 +18,7 @@ primitive skill directly.
 | Asset enrichment | Enrich raw logs with device, user, vulnerability, misconfiguration, alert, or cloud context from the Asset Inventory, at ingest or at query time | [guide](../docs/solutions/asset-enrichment.md) | [`references/asset-enrichment.md`](references/asset-enrichment.md) |
 | UEBA behavioral anomaly detection | Baseline ANY security or non-security signal per (action, principal) and detect z-score deviations: SPIKE, DROP, SILENT, NEW-BEHAVIOR. Run interactively to investigate, or deploy a baseline lookup, a scheduled PowerQuery rule, a nightly refresh, and a dashboard | [guide](../docs/solutions/ueba-anomaly-detection.md) | [`references/ueba-anomaly-detection.md`](references/ueba-anomaly-detection.md) |
 | Ingest health monitoring (per device) | Per-device ingest health (per firewall, endpoint, server) on a 7-day hour-of-day seasonal baseline rebuilt daily: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications | [guide](../docs/solutions/ingest-health-monitoring.md) | [`references/ingest-health-monitoring.md`](references/ingest-health-monitoring.md) |
+| Scheduled detection exclusions | Suppress known-good noise in a scheduled detection over a third-party source by keying it against a CSV exclusion list (assets by IP/CIDR/host, or custom domains/users/values) via a lookup anti-join, with an exclusion-effectiveness dashboard | [guide](../docs/solutions/scheduled-detection-exclusions.md) | [`references/scheduled-detection-exclusions.md`](references/scheduled-detection-exclusions.md) |
 
 ## Outcomes
 
@@ -30,6 +31,7 @@ What the solutions deliver, framed as the result rather than the mechanism:
 | Every alert and log arrives with business context | Asset enrichment attaches device, user, vulnerability, misconfiguration, alert, and cloud context at ingest or query time, so investigations and the alert queue prioritise by business impact with no manual lookup. |
 | Catch behavioral anomalies on any signal, no per-source code | UEBA baselines per (action, principal) on any security or non-security source and scores the live window with a z-score, surfacing spikes, drops, entities that went silent, and first-seen behavior. Deploys as a persisted baseline, a scheduled rule, a nightly refresh, and a dashboard. |
 | Know the moment a device stops sending or misbehaves | Ingest health monitoring baselines every firewall, endpoint, and server and detects per-device volume spikes, drops, ingest lag, silence, and parser drift, emailing on every failure so a broken collector or a drifting parser is caught in minutes, not at the next investigation. |
+| Tune out known-good noise without losing real signal | Scheduled detection exclusions let an analyst suppress an allowlisted set of assets or values from a detection with one CSV, applied at detection time via a lookup anti-join, plus a dashboard that shows exactly what each list is suppressing so an over-broad exclusion that hides a real threat is caught. |
 
 ## Run it with one prompt
 
@@ -40,6 +42,7 @@ What the solutions deliver, framed as the result rather than the mechanism:
 - *"Run a behavioral baseline on Okta and tell me what's anomalous"*
 - *"Deploy UEBA anomaly detection for FortiGate on the Acme site"*
 - *"Deploy ingest health monitoring per device and email the SOC on any failure"*
+- *"Stop my Akamai DNS detection from alerting on our scanner subnets and corporate domains, here's the list"*
 
 Adding an enrichment is a single multi-select question (Device, User/AD, Vulnerabilities,
 Misconfigurations, Open alerts, Cloud). Everything else is auto-derived and shown in the preview.

@@ -142,6 +142,8 @@ SKU: Ops Center only; not available on FedRAMP or self-hosted at time of writing
 
 - `from` is a **list**; first existing key wins.
 - `default` optional — used when no source hits.
+- **An empty string `""` counts as "exists" and wins the first-of-N race.** `copy {from: ["userId", "servicePrincipalId"]}` where `userId` is present but `""` copies the empty string, NOT `servicePrincipalId`. This silently breaks identity-coalesce / fallback patterns (e.g. service-principal sign-ins where `userPrincipalName`/`userId` are empty but `servicePrincipalName`/`servicePrincipalId` hold the real identity). Fix by dropping empty strings upstream (best done in the collector/Lua serializer, which should omit `""` values), or `drop` the empty source field before the `copy`. Tenant-validated 2026-06-22 (Microsoft Entra ID service-principal sign-ins).
+- **Use `copy` (leaves source) vs `rename` (removes source) deliberately.** Copying a source into an OCSF field leaves the original under `unmapped.*` as a duplicate. When you don't need the original retained, prefer `rename` so the field doesn't linger in `unmapped` (e.g. `rename unmapped.createdDateTime -> metadata.original_time` rather than `copy`, to avoid a duplicate `unmapped.createdDateTime`).
 
 ### `cast` — convert a field's type or enum
 
@@ -211,6 +213,8 @@ Think of `constant` as "add a field that the source didn't have, possibly becaus
 { drop_tree: { field: "raw_internals" } }
 ```
 
+**`drop` and `drop_tree` work on gron-flattened dotted AND `[N]`-indexed keys.** `drop_tree {field: "unmapped._ob"}` removes `unmapped._ob.source`; `drop_tree {field: "unmapped.timestamp"}` removes the whole `unmapped.timestamp.*` set; `drop {field: "unmapped._azure_event_type"}` removes the scalar. This is the right way to strip pipeline envelope noise (`_ob`, an `os.date` `timestamp` table, `_azure_event_type`, `host`, `port`, `source_type`) that a collector adds. Because v1 mappings are first-match-wins, duplicate these drops into EVERY per-shape mapping block (or strip the envelope upstream in the collector/Lua so the parser never sees it; do both for defense-in-depth). Tenant-validated 2026-06-22.
+
 ### `copy_tree` — copy a subtree
 
 ```js
@@ -222,6 +226,14 @@ Object-to-object is additive; type mismatches replace. Empty-string `from: ""` c
 ### `rename_tree` — rename a subtree
 
 Same shape as `rename`, but operates on an object subtree. Additive when types match, replacing otherwise.
+
+**`rename_tree` relocates a whole gron `[N]` array subtree, preserving indices.** This is the clean way to lift an array out of `unmapped` into an OCSF object. Example (Entra directory-audit change records):
+
+```js
+{ rename_tree: { from: "unmapped.targetResources[0].modifiedProperties", to: "entity.data" } }
+```
+
+moves every `unmapped.targetResources[0].modifiedProperties[i].{displayName,oldValue,newValue}` to `entity.data[i].{displayName,oldValue,newValue}`. Do NOT escape the brackets, and don't be misled by dot-index — the source keys are bracket-indexed (`[i]`). First-match-wins still applies, so place it in the block that matches the event shape. Tenant-validated 2026-06-22.
 
 ### `hash` — hash a string field
 
@@ -250,6 +262,8 @@ Algorithms: `sha1`, `sha256`. Output is lowercase hex with no `0x` prefix.
 // Boolean collapse
 { reduce_array: { field: "flags", kind: "boolean_or", to: "any_flag_set" } }
 ```
+
+> **Tenant `reduce_array` v1 schema differs from the shapes above.** On the current Ops Center tenant (2026-06-22), `putFile` rejected `{ reduce_array: { field, kind, ... } }`: first with `400: Missing required key 'from'` (it wants **`from`**, not `field`), then with `400: Missing required key 'type'` (it wants **`type`**, not `kind`). So the deploy-validated shape is `{ reduce_array: { from: "...", type: "params"|"string_concat"|"find"|"boolean_or", key/separator/regexp: ..., to: "..." } }`. Also note `reduce_array` needs a real array input; if your source array was flattened to `[N]`-indexed scalars by gron/dottedJson (not a JSON value), `reduce_array` has nothing to fold — capture with a `strict*` variant if you need the array intact, or use `rename_tree` to relocate the `[N]` subtree instead.
 
 ### `replace` — regex replace on a field value
 

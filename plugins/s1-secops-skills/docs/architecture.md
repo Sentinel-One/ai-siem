@@ -17,23 +17,23 @@ CLAUDE.md                       Main instruction layer: SOC Analyst persona, ses
                                 to do and invokes skills as needed.
        |  invokes skills
        v
-sdl-solutions                   Umbrella orchestrator. On a "deploy / onboard / monitor a whole
+sdl-solutions       Umbrella orchestrator. On a "deploy / onboard / monitor a whole
                                 solution" request it runs first, collects parameters, previews,
                                 then drives the primitive skills below in dependency order.
                                 (Skipped when the ask is a single query, parser, or workflow.)
        |  orchestrates
        v
 Primitive skills (SKILL.md)     Procedural knowledge Claude reads when a request triggers them:
-  powerquery                     PowerQuery authoring and execution
-  sdl-dashboard                  Dashboard JSON authoring and deployment
-  sdl-log-parser                 Parser authoring and validation
-  hyperautomation                Workflow JSON authoring and import
-  sdl-api                        SDL log ingest and config file ops
-  mgmt-console-api               Mgmt Console REST, UAM, Purple AI, HA
+  powerquery         PowerQuery authoring and execution
+  sdl-dashboard      Dashboard JSON authoring and deployment
+  sdl-log-parser     Parser authoring and validation
+  hyperautomation    Workflow JSON authoring and import
+  sdl-api            SDL log ingest and config file ops
+  mgmt-console-api   Mgmt Console REST, UAM, Purple AI, HA
        |  call MCP tools, which reach the APIs
        v
 MCP Servers                     Live API access, outside the Cowork sandbox proxy:
-  s1-secops-mcp                  PowerQuery, SDL API, Hyperautomation, Mgmt REST, UAM, UAM ingest
+  s1-secops-mcp                PowerQuery, SDL API, Hyperautomation, Mgmt REST, UAM, UAM ingest
   purple-mcp                     alert triage, Purple AI NLQ, Deep Visibility, assets, vulnerabilities
   threat-intel-mcp               external IOC enrichment (required for CRITICAL classification)
 ```
@@ -52,7 +52,7 @@ MCP Servers                     Live API access, outside the Cowork sandbox prox
 - Alert classification rules (no CRITICAL verdict without independent threat intel confirmation)
 - Anomaly detection checklist (frequency, timing, geolocation, privilege, chain anomalies)
 
-`s1-secops-mcp` exposes `CLAUDE.md` as an MCP resource (`sentinelone://soc-context`) and prompt (`soc_analyst`). Claude reads it at session start. The file lives in `plugins/s1-secops-skills/CLAUDE.md`; editing it and restarting the MCP server immediately changes Claude's operating behavior.
+`s1-secops-mcp` exposes `CLAUDE.md` as an MCP resource (`sentinelone://soc-context`) and prompt (`soc_analyst`). Claude reads it at session start. The file lives in `claude-skills/CLAUDE.md`; editing it and restarting the MCP server immediately changes Claude's operating behavior.
 
 ### s1-secops-mcp
 
@@ -104,7 +104,7 @@ Each skill folder contains a `SKILL.md` that Claude reads when a relevant reques
 
 The skills are read-only procedural knowledge. They do not execute API calls directly when loaded: they instruct Claude on *how* to use the MCP tools and scripts to execute operations correctly.
 
-`sdl-solutions` is the umbrella skill in this layer: for a whole-solution request (onboard a source, asset enrichment, UEBA, or ingest health monitoring) it runs first, collects parameters, previews, and orchestrates the primitive skills in dependency order, instead of each skill being invoked independently.
+`sdl-solutions` is the umbrella skill in this layer: for a whole-solution request (onboard a source, asset enrichment, UEBA, ingest health monitoring, or scheduled detection exclusions) it runs first, collects parameters, previews, and orchestrates the primitive skills in dependency order, instead of each skill being invoked independently.
 
 ---
 
@@ -182,29 +182,24 @@ Claude reads powerquery SKILL.md → writes hunt query
 ## Directory layout
 
 ```
-ai-siem/
-  .claude-plugin/marketplace.json   Marketplace catalog (lists the plugin)
-  plugins/
-    s1-secops-skills/               Plugin root: all 7 skills + packaging
-      .claude-plugin/plugin.json    Plugin manifest
-      CLAUDE.md                     SOC Analyst persona and operating instructions
-      README.md                     High-level overview (this project)
-      docs/                         Detailed documentation (this folder)
-        architecture.md             How all layers fit together (this file)
-        skills.md                   Per-skill capability reference
-        mcp-tools.md                All MCP tool schemas and usage notes
-        credentials.md              Credential keys, resolution order, where to find each
-        testing.md                  Test coverage: what was validated, gotchas per surface
-      hooks/  scripts/  dist/       SessionStart cred hook, build script, built bundles
-      skills/
-        mgmt-console-api/ Skill: Management Console REST + SDL + UAM + Purple AI
-        powerquery/       Skill: PowerQuery authoring and execution
-        sdl-api/          Skill: SDL log ingest and config file operations
-        sdl-dashboard/    Skill: SDL dashboard authoring and deployment
-        sdl-log-parser/   Skill: SDL log parser authoring and validation
-        hyperautomation/  Skill: Hyperautomation workflow authoring and import
-        sdl-solutions/    Skill: repeatable SDL solution deployment (onboarding, enrichment)
-  mcp/
-    s1-secops-mcp/                MCP server (Node.js): 26 tools, stdio or HTTP
-    docker/                         Container build for the MCP stack
+claude-skills/
+  CLAUDE.md                     SOC Analyst persona and operating instructions
+  README.md                     High-level overview (this project)
+  credentials.json              Your credentials (gitignored; not in repo)
+  docs/                         Detailed documentation (this folder)
+    architecture.md             How all layers fit together (this file)
+    skills.md                   Per-skill capability reference
+    mcp-tools.md                All MCP tool schemas and usage notes
+    credentials.md              Credential keys, resolution order, where to find each
+    testing.md                  Test coverage: what was validated, gotchas per surface
+  mgmt-console-api/ Skill: Management Console REST + SDL + UAM + Purple AI
+  powerquery/       Skill: PowerQuery authoring and execution
+  sdl-api/          Skill: SDL log ingest and config file operations
+  sdl-dashboard/    Skill: SDL dashboard authoring and deployment
+  sdl-log-parser/   Skill: SDL log parser authoring and validation
+  hyperautomation/  Skill: Hyperautomation workflow authoring and import
+  sdl-solutions/    Skill: repeatable SDL solution deployment (onboarding, enrichment)
+  s1-secops-mcp/              MCP server (Node.js): 26 tools, stdio or HTTP
+  skills-plugin/    Distributable plugin bundle (all 7 skills)
+  assets/                       Screenshots and images for documentation
 ```

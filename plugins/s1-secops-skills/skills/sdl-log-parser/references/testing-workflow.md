@@ -77,8 +77,35 @@ A duplicate-`Nonce` response (`status: "success", message: "ignoring request, du
 | `put_file` → `error/client/badParam` | JSON syntax error. Run the body through a JSON5-tolerant validator; watch for unmatched braces or trailing commas inside format strings. |
 | HEC ingest → `error/client/badParam` with "unknown parser" | Wrong `parser:` header name, or putFile hadn't replicated yet (retry after a few seconds). |
 | `power_query` returns rows but expected fields are null | Line format didn't match. Check: regex escaping (`\\d` not `\d`), delimiter mismatches, `halt: true` on an earlier format eating the line, `message`-as-field-name mistake. |
-| `power_query` returns zero rows | `host_tag` isn't set (upload header `server-host` missing) or too short a `start_time` window. Widen to 30m. |
+| `power_query` returns zero rows | `host_tag` isn't set (upload header `server-host` missing) or too short a `start_time` window. Widen to 30m. **Also check event time:** if the parser sets event time from a field in the log (a `timestamp` rewrite off `createdDateTime`/`activityDateTime`/etc.), events are stamped at the log's own time, not ingest time — so a log a few hours old falls outside a `10m`/`1h` window seconds after you ingest it. Widen `start_time` to `24h`/`7d` (or filter by a `claude_test=<nonce>` field instead of time). |
 | Field X populated sometimes, null others | The format works for some variants and not others. Add a fragment format for the other shape, or widen the regex. |
+| Re-ingested event still shows the OLD shape on a LIVE source | Parser propagation is ~3-5 min; a continuously-ingesting source keeps producing events parsed by the PREVIOUS version during that window, and SDL does not re-parse historical events. A "still broken" event is usually pre-propagation, not a parser bug. Confirm with the version canary below before concluding anything. |
+| `| columns unmapped.x[0].y` → "Unable to parse the entire query" | You can't type a `[N]` array-index field name in a raw PowerQuery `columns`/`filter` clause (backticks and quotes don't help). The field exists; read it via `powerquery_schema_discover` or the Event Search field picker instead. |
+
+## Version canary: confirm WHICH parser version parsed an event
+
+Parser propagation is ~3-5 min on the tenant, and on a live source events keep flowing through the old version during that window. Make "which version produced this event" observable:
+
+1. Bump `metadata.version` on every deploy (semver).
+2. After deploying, poll until the new version appears in the live stream:
+
+   ```python
+   c.power_query(query="dataSource.name='Microsoft Entra ID' | group c=count() by metadata.version",
+                 start_time="30m")
+   ```
+
+3. When validating a specific re-ingested sample, check `metadata.version` on that event — if it still shows the prior version, you're looking at a pre-propagation event; wait and re-ingest, don't "fix" a non-bug.
+
+## Validating array (`[N]`) and bracketed fields
+
+`gron`/`dottedJson` expand arrays into `[N]`-indexed attributes (e.g. `unmapped.targetResources[0].modifiedProperties[0].newValue`). A raw `power_query` `columns`/`filter` clause **cannot type the `[`**, so use `powerquery_schema_discover` (V1 query endpoint) to see the full event JSON including every `[N]` key and confirm where values landed (and that envelope noise was dropped, that `rename_tree` moved a subtree, etc.):
+
+```python
+# returns confirmedFields (all attribute names) + allSampleAttributes (full per-event JSON)
+discover(dataSourceName="Microsoft Entra ID", maxEvents=30, startTime="24h")
+```
+
+Caveat: for a source that also emits SDL metering, the sample mixes real events with `logVolume`/`logBytes` rows — read past those. This is the most reliable way to verify array-heavy parsers, since the values are unreachable via a normal `columns` projection.
 
 ## Isolating which format matched
 

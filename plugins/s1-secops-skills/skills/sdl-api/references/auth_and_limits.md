@@ -68,6 +68,8 @@ Non-query operations:
 - Aggregate request bytes per operation: starting budget **30 MB**, refill **4 MB/s**.
 - **12 concurrent requests** max from the same API key.
 
+Usage Metering datasource calls (`| datasource "metering"` for `tenants` / `reports` / `report_name`) have their own cap: **50 requests/sec with a 100-request burst**, and require the `Metering Reports - View` permission. See `methods.md` → Usage Metering reports.
+
 ### Ingestion (moved to HEC)
 
 Raw-log/event ingestion is no longer part of this skill; use the HEC ingest path. HEC ingest limits are documented with the HEC tooling.

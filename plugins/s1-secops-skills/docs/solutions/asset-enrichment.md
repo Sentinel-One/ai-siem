@@ -114,6 +114,6 @@ not `"[]"`. `metadata.version` is the parser propagation canary.
 ## For engineers
 
 The execution detail (savelookup builders, parser template, deploy order, gotchas) lives in the
-playbook the skill reads: [`sdl-solutions/references/asset-enrichment.md`](../../sdl-solutions/references/asset-enrichment.md).
+playbook the skill reads: [`sdl-solutions/references/asset-enrichment.md`](../../skills/sdl-solutions/references/asset-enrichment.md).
 The `datasource` command reference is
-[`powerquery/references/datasource-command.md`](../../powerquery/references/datasource-command.md).
+[`powerquery/references/datasource-command.md`](../../skills/powerquery/references/datasource-command.md).

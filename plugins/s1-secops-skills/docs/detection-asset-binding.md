@@ -6,7 +6,7 @@ populate its **Target Asset** with the real device, identity, or cloud resource,
 or `jdoe (AD User)` on the alert versus a blank "Unknown Device" they have to chase down manually.
 
 Everything here is tenant-validated (usea1-purple, 2026-06-14). The full tested matrix lives in the
-PowerQuery skill: [`powerquery/references/detection-rules.md`](../powerquery/references/detection-rules.md).
+PowerQuery skill: [`powerquery/references/detection-rules.md`](../skills/powerquery/references/detection-rules.md).
 
 ## How events-rule binding works
 
@@ -93,12 +93,12 @@ automatically:
 
 Full guide and prompts: [docs/solutions/asset-enrichment.md](./solutions/asset-enrichment.md). The
 deployable playbook and templates are in the
-[`sdl-solutions`](../sdl-solutions/references/asset-enrichment.md) skill.
+[`sdl-solutions`](../skills/sdl-solutions/references/asset-enrichment.md) skill.
 
 ## References
 
 - Tested binding matrix and the exact minimum per asset type:
-  [`powerquery/references/detection-rules.md`](../powerquery/references/detection-rules.md)
+  [`powerquery/references/detection-rules.md`](../skills/powerquery/references/detection-rules.md)
 - Asset enrichment solution (enrich logs with the binding identifiers):
   [docs/solutions/asset-enrichment.md](./solutions/asset-enrichment.md)
 - Data source onboarding (OCSF + enrichment + detections that bind assets):

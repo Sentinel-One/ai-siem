@@ -227,7 +227,7 @@ Cowork projects are durable workspaces with their own folder, plugins, and CLAUD
 1. In Claude Desktop, open **Cowork** and click **New Project**.
 2. Name it `PrincipalSOCAnalyst`.
 3. Click **Select Folder** and pick any folder on your machine. This becomes the project workspace.
-4. Optionally drop a copy of [`CLAUDE.md`](https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/CLAUDE.md) into the project folder. The Docker image ships a default CLAUDE.md, so this step is optional; provide your own only to override it. To use a project-folder copy, mount the folder read-only and point `S1_CLAUDE_MD_PATH` at it in the `s1-secops-mcp` args (see [`docs/docker.md`](./docker.md#claudemd-customization)). The `s1-secops-mcp` server reads it at session start and exposes it as the `sentinelone://soc-context` resource.
+4. Optionally drop a copy of [`CLAUDE.md`](https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/plugins/s1-secops-skills/CLAUDE.md) into the project folder. The Docker image ships a default CLAUDE.md, so this step is optional; provide your own only to override it. To use a project-folder copy, mount the folder read-only and point `S1_CLAUDE_MD_PATH` at it in the `s1-secops-mcp` args (see [`docs/docker.md`](./docker.md#claudemd-customization)). The `s1-secops-mcp` server reads it at session start and exposes it as the `sentinelone://soc-context` resource.
 5. Confirm `s1-secops-skills` appears under **Personal plugins**, and that `s1-secops-mcp`, `purple-mcp`, and your threat intel MCP appear under **MCP Servers**.
 
 ### Step 5: Verify the install
@@ -458,7 +458,7 @@ It runs through every MCP and skill, reports what's healthy, and gives a precise
 | [`docs/credentials.md`](./credentials.md) | Every credential key and where to find it |
 | [`docs/sdl-dashboard.md`](./sdl-dashboard.md) | Every supported panel type with confirmed JSON examples |
 | [`docs/testing.md`](./testing.md) | Test coverage matrix and confirmed API field requirements |
-| [`mgmt-console-api/SKILL.md`](../mgmt-console-api/SKILL.md) | Confirmed field schemas and required parameters per endpoint |
+| [`mgmt-console-api/SKILL.md`](../skills/mgmt-console-api/SKILL.md) | Confirmed field schemas and required parameters per endpoint |
 
 ### Operate at scale
 

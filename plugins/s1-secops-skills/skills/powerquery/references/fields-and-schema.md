@@ -183,6 +183,56 @@ For those `message`-style sources, use:
 
 ---
 
+## SDL billing and metering fields
+
+Singularity Data Lake stamps every ingested event with a small set of `sca:`-prefixed metering fields. These are not OCSF or EDR fields; they are added by the ingest pipeline and exist on **every** data source, so they are the reliable way to measure ingest volume, build a chargeback view, and detect ingest lag without depending on a source's own schema. The `sca:` prefix is a colon-namespaced identifier (colons are legal in field names, see `syntax-and-operators.md` §4), so reference the field verbatim including the colon.
+
+| Field | Unit | Meaning |
+|---|---|---|
+| `sca:bytesToCharge` | bytes | Billable size of the event. Sum it to get ingest volume per source, device, or account, and to drive chargeback. |
+| `sca:ingestTime` | epoch **seconds** | When SDL ingested the event. Note the unit mismatch with `timestamp`, which is nanoseconds. Subtract the two to measure ingest lag. |
+
+**Always cast with `number()` before arithmetic.** These columns are string-prone (type-locked at first ingest), so `sum()` / `avg()` / comparisons can silently return NaN on the raw field. Wrap every metering field in `number()` first.
+
+**Open the query with a presence check, never a bare `*`.** Lead with `sca:bytesToCharge=*` (or `sca:ingestTime=*`) plus `dataSource.name=*` so the initial filter is valid.
+
+### Ingest volume (the common case)
+
+```
+dataSource.name='Windows Event Logs' endpoint.name='D01-QCDC01'
+| group gb = sum(sca:bytesToCharge) / 1024 / 1024 / 1024
+```
+
+Works for any source / endpoint combination. Divide by `1024 / 1024 / 1024` for GiB (binary) or by `1_000_000_000` for GB (decimal), depending on preference. For a version that is safe against string-typed columns, cast first: `sum(number(sca:bytesToCharge)) / 1024 / 1024 / 1024`.
+
+Per-source volume leaderboard:
+
+```
+sca:bytesToCharge=* dataSource.name=*
+| let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024
+| group GiB = sum(gib), events = count() by source = dataSource.name
+| sort -GiB
+| limit 25
+```
+
+### Ingest lag (event time vs ingest time)
+
+`sca:ingestTime` is in seconds; `timestamp` is in nanoseconds. Convert before subtracting:
+
+```
+sca:ingestTime=* dataSource.name=*
+| let ingest_ts = number(sca:ingestTime)
+| let evt_ts = number(timestamp) / 1000000000
+| let lag_min = (ingest_ts - evt_ts) / 60
+| filter lag_min > 0
+| group p95_lag_min = p95(lag_min) by source = dataSource.name
+| sort -p95_lag_min
+```
+
+Source: used throughout the `sdl-solutions` ingest-health-monitoring templates (volume, chargeback, lag, and per-device baseline panels and detections).
+
+---
+
 ## Finding fields you don't know
 
 If you don't know the field name, either:

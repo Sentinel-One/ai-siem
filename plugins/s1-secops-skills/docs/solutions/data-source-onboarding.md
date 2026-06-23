@@ -96,4 +96,4 @@ playbook was authored for VT-gated containment.
 
 The full execution detail (the editability rule, parser steps, propagation, dashboard and
 detection design rules, the threat-response playbook) lives in the playbook the skill reads:
-[`sdl-solutions/references/data-source-onboarding.md`](../../sdl-solutions/references/data-source-onboarding.md).
+[`sdl-solutions/references/data-source-onboarding.md`](../../skills/sdl-solutions/references/data-source-onboarding.md).

@@ -110,7 +110,7 @@ Four steps:
 
 1. `docker pull ghcr.io/pmoses-s1/s1-mcps:1.2.2`
 2. Paste the [Docker MCP config](./docs/docker.md#step-2-configure-mcp-servers) into `claude_desktop_config.json` and replace the placeholders with your tokens and region URLs.
-3. Install the [`.plugin` file](./s1-secops-skills/dist/) via Cowork → Customize → Browse plugins.
+3. Install the [`.plugin` file](./dist/) via Cowork → Customize → Browse plugins.
 4. Create a Cowork project named `PrincipalSOCAnalyst`, open it, and run `smoke test s1 skills` to verify.
 
 Full Docker reference (prerequisites, credential keys, troubleshooting, upgrades): [docs/docker.md](./docs/docker.md)
@@ -458,5 +458,5 @@ This repo includes Windsurf workflow files in `.windsurf/workflows/`. Each workf
 | [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md) | SDL Solutions: baseline ANY signal per (action, principal) and detect SPIKE/DROP/SILENT/NEW deviations with a z-score, deployed as a baseline lookup, scheduled rule, nightly refresh, and dashboard |
 | [docs/solutions/ingest-health-monitoring.md](./docs/solutions/ingest-health-monitoring.md) | SDL Solutions: per-device ingest health (per firewall/endpoint/server) on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, parser drift, with a dashboard and email notifications |
 | [docs/detection-asset-binding.md](./docs/detection-asset-binding.md) | Which event attributes make STAR detection alerts auto-populate the Target Asset (device, identity, cloud), the tested per-type binding matrix, and how the asset enrichment solution supplies them |
-| [mgmt-console-api/SKILL.md](./mgmt-console-api/SKILL.md) | Deep reference: confirmed field schemas and required API parameters per endpoint |
-| [mgmt-console-api/tests/README.md](./mgmt-console-api/tests/README.md) | Reversible lifecycle test patterns and per-test field notes |
+| [mgmt-console-api/SKILL.md](./skills/mgmt-console-api/SKILL.md) | Deep reference: confirmed field schemas and required API parameters per endpoint |
+| [mgmt-console-api/tests/README.md](./skills/mgmt-console-api/tests/README.md) | Reversible lifecycle test patterns and per-test field notes |

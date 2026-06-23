@@ -1,0 +1,218 @@
+{
+  "_comment": "SOC threat-response playbook for an onboarded source's detections. Alert trigger -> extract IOCs -> VirusTotal enrich the external dst_ip -> gate on a malicious verdict -> contain (block IOC + network-quarantine the source endpoint) -> document on the alert + notify SOC. Internal-only alerts (no external IOC) branch to analyst triage. Tokens: {{SOURCE_LABEL}} (string used to match the rule names, e.g. 'Meraki'), {{ACCOUNT_ID}}, {{VT_API_KEY}}, {{NOTIFY_WEBHOOK_URL}}, {{IOC_TTL_HOURS_NEG}} (negative hours-forward for validUntil, e.g. -2160 for 90d). Confirm the alert field paths (dst_ip/src_ip/device_agentuuid) against a real fired alert. Keep run_automatically false until you trust the flow; set true for full auto. Bind the 'SentinelOne' mgmt connection (ApiToken) for S1 actions.",
+  "name": "{{SOURCE_LABEL}} Threat Response",
+  "description": "SOC analyst response playbook for the {{SOURCE_LABEL}} detections: enrich the external IOC, and on a VirusTotal-confirmed malicious verdict block the IP and network-quarantine the source endpoint, then document and notify. Internal-only alerts route to analyst triage.",
+  "actions": [
+    {
+      "action": {
+        "type": "singularity_response_trigger", "tag": "core_action",
+        "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null,
+        "state": "active", "description": "Fire on a {{SOURCE_LABEL}} detection alert (HIGH/MEDIUM).",
+        "client_data": { "position": { "x": 0, "y": 0 }, "dimensions": { "width": 256, "height": 100 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Singularity Response Trigger", "action_type": "singularity_response_trigger",
+          "filter_groups": [{
+            "condition": { "operator": "and", "conditions": [
+              { "input_value": "name", "compared_value": "{{SOURCE_LABEL}}", "comparison_operator": "contains" },
+              { "input_value": "severity", "compared_value": "[\"HIGH\",\"MEDIUM\"]", "comparison_operator": "in" }
+            ]},
+            "is_disabled": false, "run_automatically": false, "event_type": "alert", "event_subtypes": ["CREATE"]
+          }]
+        }
+      },
+      "export_id": 0, "connected_to": [{ "target": 1, "custom_handle": null }], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable", "tag": "core_action",
+        "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null,
+        "state": "active", "description": "Extract internal host, external destination, agent UUID from the alert.",
+        "client_data": { "position": { "x": 0, "y": 150 }, "dimensions": { "width": 256, "height": 100 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Extract IOCs", "action_type": "variable",
+          "variables": [
+            { "name": "dst_ip", "value": "{{Function.DEFAULT(singularity-response-trigger.data.dst_ip, \"no-ip\")}}", "should_use_as_output": false, "is_secret": false },
+            { "name": "src_ip", "value": "{{Function.DEFAULT(singularity-response-trigger.data.src_ip, \"no-ip\")}}", "should_use_as_output": false, "is_secret": false },
+            { "name": "agent_uuid", "value": "{{Function.DEFAULT(singularity-response-trigger.data.device_agentuuid, \"no-agent\")}}", "should_use_as_output": false, "is_secret": false }
+          ],
+          "variables_scope": "local"
+        }
+      },
+      "export_id": 1, "connected_to": [{ "target": 2, "custom_handle": null }], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition", "tag": "core_action",
+        "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null,
+        "state": "active", "description": "Does the alert carry an external destination IP?",
+        "client_data": { "position": { "x": 0, "y": 300 }, "dimensions": { "width": 256, "height": 100 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Has External dst_ip", "action_type": "condition", "condition_type": "multi", "condition": null,
+          "conditions": [ { "input_value": "{{local_var.dst_ip}}", "compared_value": "no-ip", "comparison_operator": "not_equals" } ],
+          "conditions_relationship": "and"
+        }
+      },
+      "export_id": 2, "connected_to": [ { "target": 3, "custom_handle": "true" }, { "target": 9, "custom_handle": "false" } ], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request", "tag": "integration",
+        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "state": "active", "description": "VirusTotal reputation for the external destination IP.",
+        "client_data": { "position": { "x": -150, "y": 450 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "VirusTotal Enrich dst_ip", "action_type": "http_request", "public_action_id": null,
+          "method": "get", "url": "https://www.virustotal.com/api/v3/ip_addresses/{{local_var.dst_ip}}",
+          "url_path": null, "url_prefix": null, "payload": null,
+          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
+          "ssl_verification": true, "timeout": 60,
+          "headers": { "x-apikey": "{{VT_API_KEY}}", "Content-Type": "application/json" },
+          "use_authentication_data": false, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+        }
+      },
+      "export_id": 3, "connected_to": [{ "target": 4, "custom_handle": null }], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "condition", "tag": "core_action",
+        "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null,
+        "state": "active", "description": "VT succeeded AND at least one engine flagged the IP malicious.",
+        "client_data": { "position": { "x": -150, "y": 600 }, "dimensions": { "width": 256, "height": 100 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "VT Malicious", "action_type": "condition", "condition_type": "multi", "condition": null,
+          "conditions": [
+            { "input_value": "{{virustotal-enrich-dst-ip.status_code}}", "compared_value": "200", "comparison_operator": "equals" },
+            { "input_value": "{{virustotal-enrich-dst-ip.body.data.attributes.last_analysis_stats.malicious}}", "compared_value": "0", "comparison_operator": "greater_than" }
+          ],
+          "conditions_relationship": "and"
+        }
+      },
+      "export_id": 4, "connected_to": [ { "target": 5, "custom_handle": "true" }, { "target": 8, "custom_handle": "false" } ], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request", "tag": "integration",
+        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "state": "active", "description": "Block the malicious destination IP as a Threat Intelligence IOC.",
+        "client_data": { "position": { "x": -300, "y": 750 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Block dst_ip IOC", "action_type": "http_request", "public_action_id": null,
+          "method": "post", "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/threat-intelligence/iocs",
+          "url_path": null, "url_prefix": null,
+          "payload": "{\n  \"data\": [{\n    \"externalId\": \"{{SOURCE_LABEL}}ThreatResponse\",\n    \"source\": \"{{SOURCE_LABEL}} Threat Response workflow\",\n    \"type\": \"IPV4\",\n    \"value\": \"{{local_var.dst_ip}}\",\n    \"originalRiskScore\": \"90\",\n    \"method\": \"EQUALS\",\n    \"name\": \"{{SOURCE_LABEL}} VT-confirmed malicious destination\",\n    \"description\": \"Auto-blocked: VirusTotal flagged this destination malicious for alert {{singularity-response-trigger.data.id}}.\",\n    \"category\": \"threats\",\n    \"validUntil\": \"{{Function.DELTA_NOW({{IOC_TTL_HOURS_NEG}})}}\",\n    \"creationTime\": \"{{Function.DATETIME_NOW()}}\"\n  }],\n  \"filter\": { \"accountIds\": [\"{{ACCOUNT_ID}}\"] }\n}",
+          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
+          "ssl_verification": true, "timeout": 60,
+          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
+          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+        }
+      },
+      "export_id": 5, "connected_to": [{ "target": 6, "custom_handle": null }], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request", "tag": "integration",
+        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "state": "active", "description": "Network-quarantine the source endpoint by agent UUID.",
+        "client_data": { "position": { "x": -300, "y": 900 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Isolate Source Endpoint", "action_type": "http_request", "public_action_id": null,
+          "method": "post", "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/agents/actions/disconnect",
+          "url_path": null, "url_prefix": null,
+          "payload": "{\n  \"filter\": { \"uuids\": [\"{{local_var.agent_uuid}}\"] },\n  \"data\": {}\n}",
+          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
+          "ssl_verification": true, "timeout": 60,
+          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
+          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+        }
+      },
+      "export_id": 6, "connected_to": [{ "target": 7, "custom_handle": null }], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request", "tag": "integration",
+        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "state": "active", "description": "Document containment on the alert (UAM GraphQL add note).",
+        "client_data": { "position": { "x": -300, "y": 1050 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Add Note - Contained", "action_type": "http_request", "public_action_id": null,
+          "method": "post", "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql",
+          "url_path": null, "url_prefix": null,
+          "payload": "{\n  \"query\": \"mutation AddAlertNote { addAlertNote(text: \\\"{{Function.HTML_ENCODE(local_var.dst_ip)}} confirmed malicious by VirusTotal. CONTAINED: destination blocked as IOC and source host {{Function.HTML_ENCODE(local_var.src_ip)}} (agent {{Function.HTML_ENCODE(local_var.agent_uuid)}}) network-quarantined.\\\", alertId: \\\"{{singularity-response-trigger.data.id}}\\\") { data { alertId } } }\"\n}",
+          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
+          "ssl_verification": true, "timeout": 60,
+          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
+          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+        }
+      },
+      "export_id": 7, "connected_to": [{ "target": 10, "custom_handle": null }], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request", "tag": "integration",
+        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "state": "active", "description": "VT clean/inconclusive: note for analyst review, no containment.",
+        "client_data": { "position": { "x": 0, "y": 750 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Add Note - Analyst Review", "action_type": "http_request", "public_action_id": null,
+          "method": "post", "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql",
+          "url_path": null, "url_prefix": null,
+          "payload": "{\n  \"query\": \"mutation AddAlertNote { addAlertNote(text: \\\"VirusTotal did not confirm {{Function.HTML_ENCODE(local_var.dst_ip)}} malicious. No auto-containment. Analyst review recommended for source {{Function.HTML_ENCODE(local_var.src_ip)}}.\\\", alertId: \\\"{{singularity-response-trigger.data.id}}\\\") { data { alertId } } }\"\n}",
+          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
+          "ssl_verification": true, "timeout": 60,
+          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
+          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+        }
+      },
+      "export_id": 8, "connected_to": [{ "target": 10, "custom_handle": null }], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request", "tag": "integration",
+        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "state": "active", "description": "Internal-only alert (no external IOC): route to analyst triage.",
+        "client_data": { "position": { "x": 250, "y": 450 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Add Note - Internal Triage", "action_type": "http_request", "public_action_id": null,
+          "method": "post", "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql",
+          "url_path": null, "url_prefix": null,
+          "payload": "{\n  \"query\": \"mutation AddAlertNote { addAlertNote(text: \\\"Internal-behaviour {{SOURCE_LABEL}} alert with no single external IOC. Source {{Function.HTML_ENCODE(local_var.src_ip)}} flagged for analyst triage.\\\", alertId: \\\"{{singularity-response-trigger.data.id}}\\\") { data { alertId } } }\"\n}",
+          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
+          "ssl_verification": true, "timeout": 60,
+          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
+          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+        }
+      },
+      "export_id": 9, "connected_to": [{ "target": 10, "custom_handle": null }], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request", "tag": "integration",
+        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "state": "active", "description": "Notify the SOC channel. Replace the URL with your Slack/Teams/webhook target.",
+        "client_data": { "position": { "x": 0, "y": 1200 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Notify SOC", "action_type": "http_request", "public_action_id": null,
+          "method": "post", "url": "{{NOTIFY_WEBHOOK_URL}}",
+          "url_path": null, "url_prefix": null,
+          "payload": "{\n  \"text\": \"{{SOURCE_LABEL}} Threat Response ran for alert {{singularity-response-trigger.data.id}} ({{singularity-response-trigger.data.name}}). Source {{local_var.src_ip}} -> destination {{local_var.dst_ip}}. See alert notes for the action taken.\"\n}",
+          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
+          "ssl_verification": true, "timeout": 60,
+          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
+          "use_authentication_data": false, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+        }
+      },
+      "export_id": 10, "connected_to": [], "parent_action": null
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "name": "{{PREFIX}} Asset Lookups Refresh",
+  "description": "Daily refresh of the SDL datatables for the asset-enrichment solution. Re-runs the savelookup queries against the assets datasource so {{IDENTITY_TABLE}} and {{ENDPOINT_TABLE}} stay current. Bind a SentinelOne connection before activating. Import with ?siteIds={{SITE_ID}}.",
+  "actions": [
+    {
+      "action": {
+        "type": "scheduled_trigger",
+        "tag": "core_action",
+        "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null,
+        "state": "active",
+        "description": "Run daily at {{SCHEDULE_HOUR}}:00 UTC",
+        "client_data": { "position": { "x": 0, "y": 0 }, "dimensions": { "width": 256, "height": 100 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Scheduled Trigger",
+          "action_type": "scheduled_trigger",
+          "schedule_method": "daily",
+          "until": null,
+          "max_runs": 1,
+          "schedule_value": [ { "schedule_method": "daily", "minute": 0, "hour": {{SCHEDULE_HOUR}}, "tz": "UTC" } ],
+          "start_at_method": "immediately",
+          "start_at": null,
+          "ends_on": "never"
+        }
+      },
+      "export_id": 2,
+      "connected_to": [ { "target": 1, "custom_handle": null } ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "state": "active",
+        "description": "Refresh {{IDENTITY_TABLE}} via savelookup.",
+        "client_data": { "position": { "x": 0, "y": 177 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Refresh Identity Lookup",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries",
+          "url_path": null, "url_prefix": null,
+          "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(24)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"| datasource assets from 'surface/identity' | filter resourceType = 'AD User' | filter objectSid = * | columns username={{USERNAME_KEY}}, user_principal=principalName, user_sid=objectSid, user_domain=domain, user_dn=distinguishedName, user_groups=memberOf, user_privileged=privileged, user_criticality=assetCriticality, _rf=riskFactors | let user_riskfactors = (_rf == '[]' ? null : _rf) | columns username, user_principal, user_sid, user_domain, user_dn, user_groups, user_privileged, user_criticality, user_riskfactors | limit 1000 | savelookup '{{IDENTITY_TABLE}}'\",\n    \"resultType\": \"TABLE\"\n  }\n}",
+          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
+          "ssl_verification": true, "timeout": 60,
+          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
+          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+        }
+      },
+      "export_id": 1,
+      "connected_to": [ { "target": 0, "custom_handle": null } ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "state": "active",
+        "description": "Refresh {{ENDPOINT_TABLE}} via savelookup.",
+        "client_data": { "position": { "x": 0, "y": 354 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Refresh Endpoint Lookup",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries",
+          "url_path": null, "url_prefix": null,
+          "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(24)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"| datasource assets from 'surface/endpoint' | filter name = * | filter agentUuid = * | columns hostname=name, device_os=os, device_ip=agentLastReportedIp, device_agentuuid=agentUuid, device_lastuser=agentLastLoggedInUser, device_site=s1SiteName, device_criticality=assetCriticality, _rf=riskFactors | let device_riskfactors = (_rf == '[]' ? null : _rf) | columns hostname, device_os, device_ip, device_agentuuid, device_lastuser, device_site, device_criticality, device_riskfactors | limit 2000 | savelookup '{{ENDPOINT_TABLE}}'\",\n    \"resultType\": \"TABLE\"\n  }\n}",
+          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
+          "ssl_verification": true, "timeout": 60,
+          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
+          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+        }
+      },
+      "export_id": 0,
+      "connected_to": [],
+      "parent_action": null
+    }
+  ]
+}

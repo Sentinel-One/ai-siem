@@ -1,0 +1,4 @@
+value,reason,owner,added
+{{EXCLUDED_VALUE_1}},{{REASON_1}},{{OWNER}},{{ADDED_DATE}}
+{{EXCLUDED_VALUE_2}},{{REASON_2}},{{OWNER}},{{ADDED_DATE}}
+{{EXCLUDED_VALUE_3}},{{REASON_3}},{{OWNER}},{{ADDED_DATE}}

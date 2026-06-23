@@ -1,0 +1,152 @@
+{
+  "name": "Ingest Health - Alert Notifier",
+  "description": "Emails {{NOTIFY_EMAIL}} on any 'Ingest Health' detection alert (per-device spike/drop/lag, parser drift). send_email is a core action; no connection needed.",
+  "actions": [
+    {
+      "action": {
+        "type": "singularity_response_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "state": "active",
+        "description": "Fire on any 'Ingest Health' alert.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
+        "data": {
+          "name": "Singularity Response Trigger",
+          "action_type": "singularity_response_trigger",
+          "filter_groups": [
+            {
+              "condition": {
+                "operator": "and",
+                "conditions": [
+                  {
+                    "input_value": "name",
+                    "compared_value": "Ingest Health",
+                    "comparison_operator": "contains"
+                  }
+                ]
+              },
+              "is_disabled": false,
+              "run_automatically": true,
+              "event_type": "alert",
+              "event_subtypes": [
+                "CREATE"
+              ]
+            }
+          ]
+        }
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "state": "active",
+        "description": "Capture name.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 177
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
+        "data": {
+          "name": "Extract Context",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "alert_name",
+              "value": "{{Function.DEFAULT(singularity-response-trigger.data.name, \"Ingest Health alert\")}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        }
+      },
+      "export_id": 1,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "send_email",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "state": "active",
+        "description": "Email recipient.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 354
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 120
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
+        "data": {
+          "name": "Email SOC",
+          "action_type": "send_email",
+          "subject": "[SentinelOne] Ingest Health Alert: {{singularity-response-trigger.data.name}} ({{singularity-response-trigger.data.severity}})",
+          "to": [
+            "{{NOTIFY_EMAIL}}"
+          ],
+          "cc": [],
+          "bcc": [],
+          "reply_to": [],
+          "mime_type": "text/html",
+          "body": "<h2>SentinelOne Ingest Health Alert</h2><p>An ingest-health detection has fired (per-device).</p><table style='border-collapse:collapse' cellpadding='6'><tr><td><b>Detection</b></td><td>{{singularity-response-trigger.data.name}}</td></tr><tr><td><b>Severity</b></td><td>{{singularity-response-trigger.data.severity}}</td></tr><tr><td><b>Description</b></td><td>{{singularity-response-trigger.data.description}}</td></tr><tr><td><b>Alert ID</b></td><td>{{singularity-response-trigger.data.id}}</td></tr></table><p>Open: <a href='https://{{CONSOLE_HOST}}/alerts'>Unified Alerts</a></p>",
+          "attachments": [],
+          "continue_on_fail": false
+        }
+      },
+      "export_id": 0,
+      "connected_to": [],
+      "parent_action": null
+    }
+  ]
+}

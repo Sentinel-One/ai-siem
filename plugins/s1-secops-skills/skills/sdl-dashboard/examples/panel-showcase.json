@@ -1,0 +1,285 @@
+{
+  "configType": "TABBED",
+  "duration": "24h",
+  "description": "Panel Showcase — every supported panel type and dashboard feature in one dashboard. Deployed at /dashboards/panel-showcase.",
+  "tabs": [
+    {
+      "tabName": "SOC Overview",
+      "filters": [
+        { "facet": "s1_detection_metadata.site_name", "name": "Site" }
+      ],
+      "graphs": [
+        {
+          "graphStyle": "markdown",
+          "title": "SOC Overview",
+          "markdown": "KPI counters, severity distribution, event volume trends, indicator density, detection funnel, and multi-source event explorer, sourced from live EDR, Identity, and alert data. Use the **Site** filter above to scope all panels to a specific site.",
+          "layout": { "h": 5, "w": 60, "x": 0, "y": 0 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Total Alerts [number]",
+          "query": "dataSource.name='alert'\n| group count=count()",
+          "options": { "format": "commas", "suffix": " alerts" },
+          "sparklineConfig": { "enabled": true },
+          "layout": { "h": 10, "w": 15, "x": 0, "y": 5 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Identity Logon Failures [number]",
+          "query": "dataSource.name='Identity' unmapped.type='Logon Failure' | group count=count()",
+          "options": { "format": "commas", "suffix": " failures", "color": "#E0483C" },
+          "sparklineConfig": { "enabled": true },
+          "trendConfig": {
+            "enabled": true,
+            "upwardsMeaning": "NEGATIVE",
+            "indicators": {
+              "arrow": { "enabled": true },
+              "number": { "enabled": true, "calculationType": "PERCENTAGE" }
+            }
+          },
+          "layout": { "h": 10, "w": 15, "x": 15, "y": 5 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Active EDR Endpoints [number]",
+          "query": "dataSource.name='SentinelOne' | group agents=estimate_distinct(endpoint.name)",
+          "options": { "format": "commas", "suffix": " endpoints" },
+          "layout": { "h": 10, "w": 15, "x": 30, "y": 5 }
+        },
+        {
+          "graphStyle": "gauge",
+          "title": "Open Alert Queue [gauge]",
+          "query": "dataSource.name='alert'\n| group value=count()",
+          "colorRangeConfig": {
+            "ranges": [
+              { "color": "#1CAA5D", "range": { "min": 0, "max": 500 } },
+              { "color": "#E6752D", "range": { "min": 500, "max": 2000 } },
+              { "color": "#E0483C", "range": { "min": 2000, "max": 10000 } }
+            ]
+          },
+          "layout": { "h": 10, "w": 15, "x": 45, "y": 5 }
+        },
+        {
+          "graphStyle": "donut",
+          "title": "Alert Severity Distribution [donut]",
+          "query": "dataSource.name='alert' severity_id != null\n| group count=count() by severity_id\n| filter severity_id >= 1\n| let label = severity_id == 5 ? 'Critical' : severity_id == 4 ? 'High' : severity_id == 3 ? 'Medium' : severity_id == 2 ? 'Low' : 'Info'\n| group count=sum(count) by label\n| filter label != null",
+          "maxPieSlices": 6,
+          "dataLabelType": "PERCENTAGE",
+          "totalNumberConfig": { "enabled": true },
+          "layout": { "h": 22, "w": 20, "x": 0, "y": 15 }
+        },
+        {
+          "graphStyle": "stacked_bar",
+          "xAxis": "grouped_data",
+          "title": "Top Alert Titles [stacked bar]",
+          "query": "dataSource.name='alert' finding_info.title != null\n| group count=count() by title=finding_info.title\n| sort -count | limit 8\n| columns title, count",
+          "layout": { "h": 22, "w": 20, "x": 20, "y": 15 }
+        },
+        {
+          "graphStyle": "stacked_bar",
+          "xAxis": "time",
+          "yScale": "linear",
+          "title": "EDR Event Categories Over Time [stacked bar]",
+          "query": "dataSource.name='SentinelOne'\n| filter event.category in ('process', 'file', 'dns', 'ip', 'indicators', 'logins')\n| group count=count() by category=event.category, timestamp=timebucket('1h')\n| transpose category on timestamp",
+          "layout": { "h": 22, "w": 20, "x": 40, "y": 15 }
+        },
+        {
+          "graphStyle": "honeycomb",
+          "title": "Indicator Category Density [honeycomb]",
+          "query": "dataSource.name='SentinelOne' event.category='indicators' indicator.category != null\n| group value=count() by label=indicator.category\n| sort -value | limit 15",
+          "honeycombColorScheme": "red",
+          "honeycombRangeConfig": [0, 1000, 10000, 100000],
+          "layout": { "h": 22, "w": 30, "x": 0, "y": 37 }
+        },
+        {
+          "graphStyle": "funnel",
+          "title": "Threat Detection Funnel [funnel]",
+          "query": "| union\n(\n  dataSource.name='SentinelOne' event.type=*\n  | group Count=count() by Step='1 - Collected Events'\n),\n(\n  dataSource.name='SentinelOne' src.process.storyline.id=*\n  | group Count=estimate_distinct(src.process.storyline.id) by Step='2 - Storylines'\n),\n(\n  dataSource.name='SentinelOne' event.category='indicators' indicator.name=*\n  | group Count=estimate_distinct(indicator.name) by Step='3 - Indicators'\n),\n(\n  dataSource.name='alert' finding_info.internal_uid=*\n  | group Count=estimate_distinct(finding_info.internal_uid) by Step='4 - Alerts'\n)\n| columns Step, Count",
+          "orientation": "horizontal",
+          "funnelOptions": {
+            "colorScheme": "default",
+            "colorSchemeOrder": "standard",
+            "autoScale": "true"
+          },
+          "layout": { "h": 22, "w": 30, "x": 30, "y": 37 }
+        },
+        {
+          "graphStyle": "",
+          "showBarsColumn": false,
+          "title": "Multi-Source Event Explorer [tabbed table]",
+          "tabbed": "true",
+          "tabVariant": "tile",
+          "query": "dataSource.name='alert' finding_info.title != null\n| group count=count() by finding_info.title, metadata.product.name\n| sort -count | limit 20",
+          "tabs": [
+            {
+              "title": "Top Alerts",
+              "query": "dataSource.name='alert' finding_info.title != null\n| group count=count() by finding_info.title, metadata.product.name\n| sort -count | limit 20"
+            },
+            {
+              "title": "EDR Indicators",
+              "query": "dataSource.name='SentinelOne' event.category='indicators' indicator.category != null\n| group count=count() by indicator.category, indicator.name\n| sort -count | limit 20"
+            },
+            {
+              "title": "Identity Failures",
+              "query": "dataSource.name='Identity' unmapped.type='Logon Failure'\n| group count=count() by user.name, src_endpoint.ip\n| sort -count | limit 20"
+            },
+            {
+              "title": "FortiGate Top Actions",
+              "query": "dataSource.name='FortiGate' unmapped.action != null\n| group count=count(), bytes_in=sum(number(traffic.bytes_in)), bytes_out=sum(number(traffic.bytes_out)) by src_endpoint.ip, dst_endpoint.ip, unmapped.action\n| filter bytes_in > 0 OR bytes_out > 0\n| sort -count | limit 20"
+            }
+          ],
+          "layout": { "h": 25, "w": 60, "x": 0, "y": 59 }
+        }
+      ]
+    },
+    {
+      "tabName": "Threat Hunting",
+      "filters": [
+        { "facet": "dataSource.name", "name": "Data Source" }
+      ],
+      "graphs": [
+        {
+          "graphStyle": "markdown",
+          "title": "Threat Hunting",
+          "markdown": "Advanced panel types for analyst workflows: alert SLA tracking, login heatmaps, authentication flow analysis, process network outlier detection, traffic volume histogram, and EDR event volume trends.",
+          "layout": { "h": 5, "w": 60, "x": 0, "y": 0 }
+        },
+        {
+          "graphStyle": "bullet",
+          "title": "Alert Volume vs SLA Threshold [bullet]",
+          "query": "dataSource.name='alert' severity_id != null\n| group value=count() by severity_id\n| filter severity_id >= 1\n| filter severity_id <= 5\n| let target = severity_id == 5 ? 50 : severity_id == 4 ? 100 : severity_id == 3 ? 300 : severity_id == 2 ? 1000 : 3000\n| let label = severity_id == 5 ? 'Critical' : severity_id == 4 ? 'High' : severity_id == 3 ? 'Medium' : severity_id == 2 ? 'Low' : 'Info'\n| sort -severity_id\n| columns value, target, label",
+          "bulletColorScheme": "semantic",
+          "coloringMode": "ranges",
+          "colorSchemeOrder": "standard",
+          "rangesCreation": "automatic",
+          "numberOfRanges": 4,
+          "layout": { "h": 22, "w": 30, "x": 0, "y": 5 }
+        },
+        {
+          "graphStyle": "line",
+          "title": "Identity Auth Events Over Time [line]",
+          "lineSmoothing": "smoothCurves",
+          "plotNulls": "connected",
+          "plots": [
+            { "filter": "dataSource.name='Identity' unmapped.type='Logon Success'", "label": "Logon Success", "color": "#1CAA5D", "facet": "rate" },
+            { "filter": "dataSource.name='Identity' unmapped.type='Logon Failure'", "label": "Logon Failure", "color": "#E0483C", "facet": "rate" },
+            { "filter": "dataSource.name='Identity' unmapped.type='TGT Request'", "label": "Kerberos TGT", "color": "#9559F7", "facet": "rate" }
+          ],
+          "layout": { "h": 22, "w": 30, "x": 30, "y": 5 }
+        },
+        {
+          "graphStyle": "heatmap",
+          "title": "Identity Logon Activity by User [heatmap]",
+          "query": "dataSource.name='Identity' unmapped.type='Logon Success' user.name=* user.name != ''\n| group EventCount=count() by user_name=user.name, timestamp=timebucket('1h')\n| filter EventCount > 0\n| filter user_name in ('OktaService', 'THEBORG-1AUE$', 'THEBORG-116O$', 'WIN-1LHT45GN058$', 'GREAT-HALLDC$', 'WAYNETOWER-PROX$', 'DC01$', 'DC$', 'SYSTEM', 'svc_adconnector', 'DC-WIN11-PROX$', 'jeanluc', 'DC-WIN11X1-PROX$', 'FILESERVER2019$', 'Robin')\n| transpose user_name on timestamp",
+          "colorScheme": "red",
+          "colorSchemeOrder": "standard",
+          "numberOfRanges": 5,
+          "rangesCreation": "automatic",
+          "heatmapRangeConfig": ["-∞", "", "", "", "", "∞"],
+          "layout": { "h": 22, "w": 30, "x": 0, "y": 27 }
+        },
+        {
+          "graphStyle": "sankey",
+          "title": "Login Flow: Source IP to User Domain [sankey]",
+          "query": "dataSource.name='Identity' unmapped.type='Logon Success' user.domain != null src_endpoint.ip != null\n| group c=count() by source=src_endpoint.ip, target=user.domain\n| filter source != '' AND target != ''\n| sort -c | limit 25\n| columns source, target, c",
+          "colorMatching": "automatic",
+          "sankeyColorScheme": "default",
+          "showNodeValues": "true",
+          "layout": { "h": 22, "w": 30, "x": 30, "y": 27 }
+        },
+        {
+          "graphStyle": "scattered_bubble",
+          "title": "Process Network Outliers [scatter bubble]",
+          "description": "Upper-right outliers = processes contacting many IPs across many ports. Bubble size = unique destination ports.",
+          "query": "dataSource.name='SentinelOne' event.category='ip' src.process.name != null\n| group connections=count(), dests=estimate_distinct(dst.ip.address), ports=estimate_distinct(dst.port.number) by src.process.name\n| filter connections > 5\n| sort -connections | limit 30\n| columns connections, dests, ports, label=src.process.name",
+          "scatteredBubbleConfig": { "showLabel": true },
+          "layout": { "h": 22, "w": 30, "x": 0, "y": 49 }
+        },
+        {
+          "graphStyle": "stacked_bar",
+          "xAxis": "grouped_data",
+          "title": "FortiGate Inbound Traffic by Size [bar histogram]",
+          "query": "dataSource.name='FortiGate' traffic.bytes_in=*\n| let bytes = number(traffic.bytes_in)\n| filter bytes > 0\n| let bucket = bytes < 1000 ? '1. <1 KB' : bytes < 10000 ? '2. 1-10 KB' : bytes < 100000 ? '3. 10-100 KB' : bytes < 1000000 ? '4. 100KB-1MB' : bytes < 10000000 ? '5. 1-10 MB' : '6. >10 MB'\n| group count=count() by bucket\n| sort bucket\n| columns bucket, count",
+          "layout": { "h": 22, "w": 30, "x": 30, "y": 49 }
+        },
+        {
+          "graphStyle": "stacked",
+          "title": "EDR Event Volume Over Time [stacked area]",
+          "query": "dataSource.name='SentinelOne'\n| filter event.category in ('process', 'file', 'dns', 'ip', 'indicators', 'logins', 'registry')\n| group count=count() by category=event.category, timestamp=timebucket('1h')\n| transpose category on timestamp",
+          "layout": { "h": 22, "w": 60, "x": 0, "y": 71 }
+        }
+      ]
+    },
+    {
+      "tabName": "Panel Features",
+      "filters": [
+        { "facet": "metadata.product.name", "name": "Alert Product" }
+      ],
+      "graphs": [
+        {
+          "graphStyle": "markdown",
+          "title": "Panel Features",
+          "markdown": "Demonstrates remaining panel features: **distribution** histogram of network destination ports, **area chart** using plots array (not PowerQuery), **gauge with estimate_distinct**, **number panel with console drill-through link**, **pie chart**, and **`filters[]`**: the Alert Product dropdown above is a tab-level `filters[]` widget — selecting a product filters all panels on this tab in real time. This is the correct filtering mechanism for TABBED dashboards. Note: `#VarName#` query substitution only works in flat (non-TABBED) dashboards.",
+          "layout": { "h": 5, "w": 60, "x": 0, "y": 0 }
+        },
+        {
+          "graphStyle": "number",
+          "title": "Critical & High Alerts [number + drillthrough]",
+          "query": "dataSource.name='alert' severity_id=*\n| let sev = number(severity_id)\n| filter sev >= 4\n| group count=count()",
+          "options": { "format": "commas", "suffix": " alerts" },
+          "sparklineConfig": { "enabled": true },
+          "chartLinkConfig": { "url": "/incidents/unified-alerts" },
+          "layout": { "h": 10, "w": 30, "x": 0, "y": 5 }
+        },
+        {
+          "graphStyle": "gauge",
+          "title": "Distinct Alert Types [gauge + estimate_distinct]",
+          "query": "dataSource.name='alert' finding_info.title=*\n| group value=estimate_distinct(finding_info.title)",
+          "colorRangeConfig": {
+            "ranges": [
+              { "color": "#1CAA5D", "range": { "min": 0, "max": 25 } },
+              { "color": "#E6752D", "range": { "min": 25, "max": 75 } },
+              { "color": "#E0483C", "range": { "min": 75, "max": 500 } }
+            ]
+          },
+          "layout": { "h": 10, "w": 30, "x": 30, "y": 5 }
+        },
+        {
+          "graphStyle": "distribution",
+          "title": "Network Destination Ports [distribution]",
+          "filter": "dataSource.name='SentinelOne' event.category='ip' dst.port.number=*",
+          "facet": "dst.port.number",
+          "layout": { "h": 22, "w": 30, "x": 0, "y": 15 }
+        },
+        {
+          "graphStyle": "area",
+          "title": "EDR Event Rate by Category [area - plots]",
+          "lineSmoothing": "smoothCurves",
+          "plotNulls": "connected",
+          "plots": [
+            { "filter": "dataSource.name='SentinelOne' event.category='process'", "label": "Process", "facet": "rate", "color": "#9559F7" },
+            { "filter": "dataSource.name='SentinelOne' event.category='ip'",      "label": "Network", "facet": "rate", "color": "#1CAA5D" },
+            { "filter": "dataSource.name='SentinelOne' event.category='file'",    "label": "File",    "facet": "rate", "color": "#E6752D" },
+            { "filter": "dataSource.name='SentinelOne' event.category='dns'",     "label": "DNS",     "facet": "rate", "color": "#0998E7" }
+          ],
+          "layout": { "h": 22, "w": 30, "x": 30, "y": 15 }
+        },
+        {
+          "graphStyle": "pie",
+          "title": "Alerts by Product [pie]",
+          "query": "dataSource.name='alert' metadata.product.name=*\n| group count=count() by metadata.product.name\n| sort -count",
+          "maxPieSlices": 8,
+          "dataLabelType": "PERCENTAGE",
+          "layout": { "h": 22, "w": 30, "x": 0, "y": 37 }
+        },
+        {
+          "graphStyle": "",
+          "showBarsColumn": true,
+          "title": "Alerts by Title [filters[] active above]",
+          "query": "dataSource.name='alert' finding_info.title=*\n| group count=count() by finding_info.title, metadata.product.name\n| sort -count | limit 20",
+          "layout": { "h": 22, "w": 30, "x": 30, "y": 37 }
+        }
+      ]
+    }
+  ]
+}

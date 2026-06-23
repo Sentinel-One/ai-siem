@@ -1,0 +1,41 @@
+{
+  "name": "s1-secops-skills",
+  "version": "1.2.2",
+  "description": "SentinelOne SecOps skills for Claude: PowerQuery threat hunting, Management Console API, Singularity Data Lake API, SDL dashboard authoring, SDL log parsing, Hyperautomation workflow generation, source-agnostic behavioral baselining with z-score anomaly detection, and packaged SDL solution deployment (data source onboarding to OCSF with device/user enrichment, dashboard, MITRE-mapped detections and a threat-response flow; plus asset enrichment of raw logs).",
+  "author": {
+    "name": "Prithvi Moses",
+    "email": "prithvi.moses@sentinelone.com"
+  },
+  "keywords": [
+    "sentinelone",
+    "secops",
+    "siem",
+    "powerquery",
+    "pq",
+    "query",
+    "edr",
+    "xdr",
+    "hyperautomation",
+    "baseline",
+    "anomaly-detection",
+    "ueba",
+    "asset-enrichment",
+    "onboarding",
+    "ocsf",
+    "solutions"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bootstrap_creds.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "license": "AGPL-3.0",
+  "homepage": "https://github.com/Sentinel-One/ai-siem"
+}

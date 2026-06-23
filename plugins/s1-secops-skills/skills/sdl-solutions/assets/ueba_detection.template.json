@@ -1,0 +1,27 @@
+{
+  "_comment": "UEBA z-score anomaly detection rule for the ueba-anomaly-detection solution. STAR scheduled PowerQuery rule. POST to /web/api/v2.1/cloud-detection/rules. queryType MUST be scheduled and queryLang MUST be 2.0; treatAsThreat UNDEFINED and networkQuarantine false (scheduled rules do not mitigate). The body counts the live window per (action_v, principal_v), JOINS the persisted baseline lookup {{BASELINE_TABLE}} built by ueba_baseline_savelookup.pq, computes z = (live - baseline_avg)/baseline_stddev, and keeps |z| >= {{Z_HARD}}. CADENCE MUST MATCH THE BASELINE UNIT: the baseline is per-DAY counts, so runIntervalMinutes and lookbackWindowMinutes are 1440 (24h) so the live count is one day vs the daily baseline. 'filter baseline_avg = *' drops pairs with no baseline (those are NEW-BEHAVIOR; surface them with the new-behavior variant in the playbook). entityMappings binds the UEBA principal (principal_v) as the alert entity (cap 3). alertPerRow true raises one bound alert per anomalous principal; at the z>=3 hard tier this is low-volume. renotifyMinutes 1440 suppresses re-alert within a day per entity. Tenant-validated body on 'Okta' (usea1-purple / pmoses demo, 2026-06-18): returned 7 SPIKE/DROP anomalies (z -7.51..+7.42), identical to the engine's client-side detection. Rule lands Disabled; enable with PUT /web/api/v2.1/cloud-detection/rules/enable.",
+  "data": {
+    "name": "{{PREFIX}} - {{SOURCE}} behavioral anomaly (|z|>={{Z_HARD}})",
+    "description": "UEBA z-score anomaly detection on {{SOURCE}}. Flags (action, principal) pairs whose {{LIVE_LABEL}} volume deviates >= {{Z_HARD}} standard deviations from the {{BASELINE_DAYS}}-day behavioral baseline ({{BASELINE_TABLE}}). principal={{PRINCIPAL}} action={{ACTION}} strategy={{STRATIFY}}. MITRE ATT&CK: {{MITRE_TACTIC}} / {{MITRE_TECHNIQUE}}.",
+    "queryType": "scheduled",
+    "queryLang": "2.0",
+    "severity": "{{SEVERITY}}",
+    "status": "Disabled",
+    "expirationMode": "Permanent",
+    "treatAsThreat": "UNDEFINED",
+    "networkQuarantine": false,
+    "coolOffSettings": { "renotifyMinutes": {{RENOTIFY_MINUTES}} },
+    "entityMappings": [
+      { "columnName": "principal_v" }
+    ],
+    "scheduledParams": {
+      "query": "dataSource.name = '{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}} = * AND {{ACTION}} = * | group live_count = count() by action_v = {{ACTION}}, principal_v = {{PRINCIPAL}} | lookup baseline_avg = baseline_avg, baseline_stddev = baseline_stddev, n_days = n_days from {{BASELINE_TABLE}} by action_v = action_v, principal_v = principal_v | filter baseline_avg = * | let z = (live_count - baseline_avg) / baseline_stddev | filter z >= {{Z_HARD}} OR z <= -{{Z_HARD}} | let direction = (z >= 0 ? 'SPIKE' : 'DROP') | sort -z | columns principal_v, action_v, live_count, baseline_avg, baseline_stddev, z, direction | limit 100",
+      "runIntervalMinutes": 1440,
+      "lookbackWindowMinutes": 1440,
+      "alertPerRow": true,
+      "disableStreaksLogic": false,
+      "threshold": { "value": 0, "operator": "Greater" }
+    }
+  },
+  "filter": { "{{SCOPE_KEY}}": ["{{SCOPE_ID}}"] }
+}

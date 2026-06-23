@@ -1,0 +1,142 @@
+{
+  // -----------------------------------------------------------
+  // Linux PAM session (syslog) → OCSF Authentication (3002)
+  //
+  // Target line (RFC 3164, from /var/log/auth.log or journald-forwarded):
+  //   <86>Apr 19 19:36:10 ad-pve-2 CRON[2292341]: pam_unix(cron:session): session closed for user root
+  //
+  // Produced by the `pam_unix.so` module whenever any PAM-aware
+  // program (sshd, sudo, login, su, cron, systemd-logind, etc.)
+  // opens or closes a session. This parser covers BOTH the `opened`
+  // and `closed` variants and derives OCSF `activity_id`:
+  //     "session opened" → 1 (Logon)
+  //     "session closed" → 2 (Logoff)
+  //
+  // PRI decoding (e.g. `<86>`):
+  //   facility = floor(86/8) = 10 (security/authorization)
+  //   severity = 86 % 8      = 6  (informational)
+  // We capture `pri` as a plain digit field — `{parse=syslogPriority}`
+  // has caused silent event drops on this tenant.
+  //
+  // Classic-syslog timestamps carry no timezone, so `timezone: "UTC"`
+  // is set at parser level. Switch to the collector's actual TZ if
+  // your forwarders aren't in UTC.
+  // -----------------------------------------------------------
+  "timezone": "UTC",
+
+  "attributes": {
+    // Four required pipeline defaults.
+    "metadata.version":    "1.0.0",
+    "dataSource.category": "identity",
+    "dataSource.name":     "Linux PAM",
+    "dataSource.vendor":   "Linux",
+
+    // Product metadata.
+    "metadata.product.vendor_name": "Linux",
+    "metadata.product.name":        "PAM (pam_unix)",
+    "metadata.log_provider":        "pam_unix",
+
+    // OCSF class — Authentication (3002) under Identity & Access Management (3).
+    "class_uid":     3002,
+    "class_name":    "Authentication",
+    "category_uid":  3,
+    "category_name": "Identity & Access Management"
+  },
+
+  "patterns": {
+    // Classic-syslog timestamp: "Apr 19 19:36:10" (spaces before single-digit day).
+    "syslogTs": "[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}"
+  },
+
+  "formats": [
+    {
+      // Capture the RFC 3164 frame AND the pam_unix(...) body in one
+      // format. `$pri=digits$` keeps PRI as a plain integer — we
+      // decode facility/severity in the mappings block below.
+      // `actor.process.name` / `actor.process.pid` are OCSF-dotted;
+      // SDL captures them as flat field names without any escaping.
+      "id": "pam-session",
+      "format": "<$pri=digits$>$ts_raw=syslogTs$ $device.hostname$ $actor.process.name$\\[$actor.process.pid=digits$\\]: pam_unix\\($unmapped.pam_service$:session\\): session $unmapped.pam_action$ for user $user.name$"
+    }
+  ],
+
+  "mappings": {
+    "version": 1,
+    "mappings": [
+      {
+        "predicate": "true",
+        "transformations": [
+          // ---- Time -----------------------------------------------
+          // Classic syslog ("Apr 19 19:36:10") carries no year and no
+          // timezone. The ingest pipeline's own receive-time field is
+          // close enough for near-real-time forwarding, so we leave
+          // `time` unset and stash the raw stamp as `unmapped.ts_raw`
+          // for forensic use.
+          //
+          // IMPORTANT: do NOT capture the stamp into the reserved
+          // `timestamp` field as a string — it makes the ingest
+          // pipeline drop the event silently. We use `ts_raw` above
+          // precisely to avoid that.
+          { "copy": { "from": "ts_raw", "to": "unmapped.ts_raw" } },
+          { "drop": { "field": "ts_raw" } },
+
+          // ---- PRI → facility / severity (syslog semantics) --------
+          // NOTE: v1 mapper engine has no arithmetic. We keep `pri`
+          // as-is (cast to int for cheap filtering) and emit the
+          // OCSF severity constants below based on the pam_action —
+          // PAM session open/close are always informational. If you
+          // need dynamic severity from PRI, compute it in PowerQuery
+          // with `floor(pri/8)` and `pri mod 8`.
+          { "cast": { "field": "pri", "type": "int" } },
+          { "cast": { "field": "actor.process.pid", "type": "int" } },
+
+          // ---- Keep pam_action / pam_service as queryable metadata -
+          { "copy": { "from": "unmapped.pam_action",  "to": "unmapped.pam_action_raw" } },
+          { "copy": { "from": "unmapped.pam_service", "to": "unmapped.pam_service_raw" } },
+
+          // ---- Activity: map pam_action → OCSF Authentication ------
+          // "opened" → Logon (1), "closed" → Logoff (2).
+          { "constant": { "value": 1, "field": "activity_id",
+                          "predicate": "unmapped.pam_action == 'opened'" } },
+          { "constant": { "value": "Logon", "field": "activity_name",
+                          "predicate": "unmapped.pam_action == 'opened'" } },
+          { "constant": { "value": 2, "field": "activity_id",
+                          "predicate": "unmapped.pam_action == 'closed'" } },
+          { "constant": { "value": "Logoff", "field": "activity_name",
+                          "predicate": "unmapped.pam_action == 'closed'" } },
+
+          // ---- Status --------------------------------------------
+          // pam_unix only emits "session opened/closed" on success.
+          // Authentication failures surface via a different line
+          // ("authentication failure; ...") — handle those in a
+          // separate format + mapping entry branched on a format-id
+          // sentinel.
+          { "constant": { "value": 1,         "field": "status_id", "predicate": "true" } },
+          { "constant": { "value": "Success", "field": "status",    "predicate": "true" } },
+
+          // ---- Severity ------------------------------------------
+          // Emit `severity_id` (int) and `severity_name` (string).
+          // NEVER set `severity` directly — it is reserved and the
+          // ingest pipeline coerces to 0-6 against its own vocabulary.
+          { "constant": { "value": 1,                "field": "severity_id",   "predicate": "true" } },
+          { "constant": { "value": "Informational", "field": "severity_name", "predicate": "true" } },
+
+          // ---- Session uid (best-effort) -------------------------
+          // PAM doesn't emit a session id; the tuple (hostname, pid,
+          // user, time) is usually sufficient. If downstream hunts
+          // want a session primary key, compute it in PowerQuery.
+          // Leaving session.uid intentionally unset for now.
+
+          // ---- User type constant --------------------------------
+          // OCSF user.type_id 1 = "User". PAM cares about POSIX users.
+          { "constant": { "value": 1,      "field": "user.type_id", "predicate": "true" } },
+          { "constant": { "value": "User", "field": "user.type",    "predicate": "true" } }
+        ]
+      }
+    ]
+  },
+
+  // Keep the original message during iteration — uncomment for
+  // production to save storage.
+  "discardAttributes": []
+}

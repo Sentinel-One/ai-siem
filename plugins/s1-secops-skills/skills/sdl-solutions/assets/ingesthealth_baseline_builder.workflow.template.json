@@ -1,0 +1,170 @@
+{
+  "name": "Ingest Health - Baseline Builder",
+  "description": "Daily per-device baseline rebuild over 168h. Device = OCSF/host identity coalesce, falling back to source. Hour-of-day seasonal profile. Writes ingestHealthBaseline (per source+device+hour-of-day) and ingestHealthSourceStats (per source+device sigma + liveness). Datatable storage limit is 150MB (extensible via S1). Bind 'SentinelOne SDL' (Bearer).",
+  "actions": [
+    {
+      "action": {
+        "type": "scheduled_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "state": "active",
+        "description": "Daily 02:00 UTC",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
+        "data": {
+          "name": "Scheduled Trigger",
+          "action_type": "scheduled_trigger",
+          "schedule_method": "daily",
+          "until": null,
+          "max_runs": 1,
+          "schedule_value": [
+            {
+              "schedule_method": "daily",
+              "minute": 0,
+              "hour": 2,
+              "tz": "UTC"
+            }
+          ],
+          "start_at_method": "immediately",
+          "start_at": null,
+          "ends_on": "never"
+        }
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "state": "active",
+        "description": "Rebuild per-device baseline.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 177
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
+        "data": {
+          "name": "Build Ingest Baseline",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(168)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group h_gib = sum(gib), h_events = count() by source = dataSource.name, device, hourbucket = timebucket('1 hour') | let hod = simpledateformat(hourbucket, 'HH', 'GMT') | group exp_gib = avg(h_gib), exp_ev = avg(h_events), samples = count() by source, device, hod | filter exp_ev >= 5 | let srckey = format('%s||%s||%s', source, device, hod) | columns srckey, source, device, hod, samples, exp_gib, exp_ev | limit 500000 | savelookup 'ingestHealthBaseline'\",\n    \"resultType\": \"TABLE\"\n  }\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 90,
+          "headers": {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": null
+        }
+      },
+      "export_id": 1,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "state": "active",
+        "description": "Rebuild per-device stats.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 354
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
+        "data": {
+          "name": "Build Source Stats",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(168)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group h_gib = sum(gib), h_events = count() by source = dataSource.name, device, hourbucket = timebucket('1 hour') | group mean_gib = avg(h_gib), sig_gib = stddev(h_gib), mean_ev = avg(h_events), sig_ev = stddev(h_events), active_hours = count(), total_gib = sum(h_gib), total_events = sum(h_events), last_seen = max(hourbucket), first_seen = min(hourbucket) by source, device | filter active_hours >= 24 and mean_ev >= 5 | let devkey = format('%s||%s', source, device) | columns devkey, source, device, mean_gib, sig_gib, mean_ev, sig_ev, active_hours, total_gib, total_events, first_seen, last_seen | limit 500000 | savelookup 'ingestHealthSourceStats'\",\n    \"resultType\": \"TABLE\"\n  }\n}",
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 90,
+          "headers": {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": null
+        }
+      },
+      "export_id": 0,
+      "connected_to": [],
+      "parent_action": null
+    }
+  ]
+}

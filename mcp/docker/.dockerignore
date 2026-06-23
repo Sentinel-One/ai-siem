@@ -1,0 +1,40 @@
+# Build context allowlist via deny-everything-then-include is awkward in
+# Dockerfile syntax, so keep the context lean by excluding the obvious bulk.
+# The Dockerfile only needs CLAUDE.md and docker/entrypoint.sh.
+
+.git
+.github
+node_modules
+**/node_modules
+**/__pycache__
+**/.venv
+**/.pytest_cache
+
+# Build artefacts
+sentinelone-skills-plugin/dist/
+*.tar.gz
+*.zip
+
+# Heavy reference / test data not needed inside the image
+sentinelone-mgmt-console-api/spec/
+**/tests/
+tests/
+spec/
+docs/assets/
+assets/
+
+# Editor & OS junk
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.log
+
+# Office docs (sometimes dropped in the repo root for one-offs)
+*.pptx
+*.docx
+*.xlsx
+*.pdf
+
+# Windsurf workflow files (not needed at runtime)
+.windsurf/

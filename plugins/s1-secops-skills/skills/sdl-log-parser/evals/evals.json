@@ -1,0 +1,29 @@
+{
+  "skill_name": "sdl-log-parser",
+  "evals": [
+    {
+      "id": 0,
+      "name": "cef-over-syslog",
+      "prompt": "I have FortiGate-style firewall logs coming in via syslog and need a parser. Sample log file: evals/samples/cef.log\n\nWrite an SDL parser that extracts the syslog priority, timestamp, host, the CEF header fields (vendor, product, version, signature_id, name, severity), and every key=value pair in the extension (src, dst, spt, dpt, proto, act, etc.). Then deploy it to my SDL tenant under a `claude_test_` prefixed name, ingest the sample, and query it back to prove the fields populated correctly. Show me the parser file and the query result.",
+      "files": ["evals/samples/cef.log"],
+      "expected_output": "An augmented-JSON parser deployed via putFile. Sample ingested via HEC ingest with a unique server-host. powerQuery shows 3 rows with non-null src, dst, spt, dpt, proto, act, signature_id, severity fields.",
+      "assertions": []
+    },
+    {
+      "id": 1,
+      "name": "json-with-envelope",
+      "prompt": "I have a stream of authentication events. Each line is `<ISO-timestamp> <host> app:<name> <json-body>` where the JSON body has nested `meta` data. Sample: evals/samples/json_envelope.log\n\nBuild a parser that extracts timestamp + host + app from the prefix and flattens the JSON body using dotted notation (so `meta.ip`, `meta.country`, `meta.mfa` are queryable as fields). Deploy it under a `claude_test_` name, ingest, and confirm via a powerQuery that user, action, result, meta.ip, meta.country, and meta.mfa are all populated.",
+      "files": ["evals/samples/json_envelope.log"],
+      "expected_output": "Parser uses {parse=dottedJson} on the body. powerQuery returns 3 rows with all 6 expected fields populated (3 distinct users, mix of success/failed, country US/RU, mfa true/false).",
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "multiline-stack",
+      "prompt": "I'm trying to ingest application logs that have multi-line Java exceptions. Each event starts with a `[YYYY-MM-DD HH:MM:SS]` header and the stack trace follows on indented lines. Sample: evals/samples/multiline_stack.log\n\nBuild a parser that uses lineGroupers to fold the stack trace into the same event as its header, then extracts timestamp, severity (ERROR/WARN/INFO), service, and a short summary. Deploy under `claude_test_` prefix, ingest the sample, and prove via powerQuery that I get 3 logical events back (not 8 lines), with severity and summary populated.",
+      "files": ["evals/samples/multiline_stack.log"],
+      "expected_output": "Parser has a lineGroupers block with start=`^\\[\\d{4}-\\d{2}-\\d{2} ...` plus a continueThrough/haltBefore. powerQuery returns exactly 3 rows. severity field has values ERROR, WARN, ERROR. summary field is non-null on each.",
+      "assertions": []
+    }
+  ]
+}

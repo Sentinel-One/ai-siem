@@ -1,0 +1,58 @@
+{
+  "name": "{{PREFIX}} Exclusion List Refresh",
+  "description": "Nightly rebuild of the {{SOURCE}} detection exclusion list from a source of truth (for example Asset-Inventory entries tagged for allowlisting). Re-runs the savelookup builder so {{EXCL_TABLE_BARE}} tracks live state, then the scheduled detection rule joins it. ONLY needed for the savelookup / source-of-truth path; an analyst-supplied static CSV needs no refresh (re-put the file to change it). Bind the 'SentinelOne SDL' connection (Bearer) before activating, NOT the 'SentinelOne' mgmt connection (that signs as ApiToken and the /sdl/v2/api/queries action returns 500 'Header must start with Bearer'). Import with ?siteIds={{SITE_ID}}. Imported flows land as a private draft; publish or activate to run.",
+  "actions": [
+    {
+      "action": {
+        "type": "scheduled_trigger",
+        "tag": "core_action",
+        "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null,
+        "state": "active",
+        "description": "Run daily at {{SCHEDULE_HOUR}}:00 UTC",
+        "client_data": { "position": { "x": 0, "y": 0 }, "dimensions": { "width": 256, "height": 100 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Scheduled Trigger",
+          "action_type": "scheduled_trigger",
+          "schedule_method": "daily",
+          "until": null,
+          "max_runs": 1,
+          "schedule_value": [ { "schedule_method": "daily", "minute": 0, "hour": {{SCHEDULE_HOUR}}, "tz": "UTC" } ],
+          "start_at_method": "immediately",
+          "start_at": null,
+          "ends_on": "never"
+        }
+      },
+      "export_id": 1,
+      "connected_to": [ { "target": 0, "custom_handle": null } ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "state": "active",
+        "description": "Rebuild {{EXCL_TABLE_BARE}} via savelookup from the source-of-truth query.",
+        "client_data": { "position": { "x": 0, "y": 177 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": {
+          "name": "Rebuild Exclusion List",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries",
+          "url_path": null, "url_prefix": null,
+          "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(24)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"{{SAVELOOKUP_BUILDER_QUERY}}\",\n    \"resultType\": \"TABLE\"\n  }\n}",
+          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
+          "ssl_verification": true, "timeout": 60,
+          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
+          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+        }
+      },
+      "export_id": 0,
+      "connected_to": [],
+      "parent_action": null
+    }
+  ]
+}

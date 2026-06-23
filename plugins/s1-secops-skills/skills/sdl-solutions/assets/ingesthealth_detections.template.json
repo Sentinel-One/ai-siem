@@ -1,0 +1,162 @@
+{
+  "_comment": "Per-device STAR scheduled PowerQuery rules (hour-of-day seasonal). POST to /cloud-detection/rules; set {{SITE_ID}}. Spike/drop/lag restrict to baselined devices via a per-event lookup before the group, keeping intermediate rows bounded on high-cardinality sources. Datatable storage limit is 150MB (extensible via S1); hour-of-day keeps lookup tables small. Tables ingestHealthBaseline / ingestHealthSourceStats must exist (Baseline Builder flow). Ingest loss is per-device via the Watchdog flow.",
+  "rules": [
+    {
+      "data": {
+        "name": "Ingest Health - Volume Spike vs Baseline (per device)",
+        "description": "Per-device ingest volume for the current hour-of-day is >= 3 sigma ABOVE the device's seasonal baseline. Restricted to baselined devices via a per-event lookup so cardinality stays bounded.",
+        "queryType": "scheduled",
+        "queryLang": "2.0",
+        "severity": "Medium",
+        "status": "Disabled",
+        "expirationMode": "Permanent",
+        "treatAsThreat": "UNDEFINED",
+        "networkQuarantine": false,
+        "coolOffSettings": {
+          "renotifyMinutes": 60
+        },
+        "entityMappings": [
+          {
+            "columnName": "device"
+          },
+          {
+            "columnName": "source"
+          }
+        ],
+        "scheduledParams": {
+          "query": "sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | let hod = simpledateformat(timestamp, 'HH', 'GMT') | let mykey = format('%s||%s||%s', dataSource.name, device, hod) | lookup exp_gib, exp_ev from ingestHealthBaseline by srckey = mykey | filter exp_gib > 0 | group cur_gib = sum(gib), cur_events = count(), exp_gib = any(exp_gib), exp_ev = any(exp_ev), first_seen = oldest(timestamp), last_seen = newest(timestamp) by source = dataSource.name, device, hod | let dk = format('%s||%s', source, device) | lookup sig_gib, sig_ev from ingestHealthSourceStats by devkey = dk | let z_gib = (sig_gib > 0 ? (cur_gib - exp_gib) / sig_gib : 0) | let z_ev = (sig_ev > 0 ? (cur_events - exp_ev) / sig_ev : 0) | filter z_gib >= 3 | columns source, device, hod, cur_gib, exp_gib, sig_gib, z_gib, cur_events, exp_ev, z_ev, first_seen, last_seen | sort -z_gib | limit 100",
+          "runIntervalMinutes": 60,
+          "lookbackWindowMinutes": 60,
+          "alertPerRow": false,
+          "disableStreaksLogic": false,
+          "threshold": {
+            "value": 0,
+            "operator": "Greater"
+          }
+        }
+      },
+      "filter": {
+        "siteIds": [
+          "{{SITE_ID}}"
+        ]
+      }
+    },
+    {
+      "data": {
+        "name": "Ingest Health - Volume Drop vs Baseline (per device)",
+        "description": "Per-device ingest volume for the current hour-of-day is >= 3 sigma BELOW the device's seasonal baseline (partial collection loss for that device).",
+        "queryType": "scheduled",
+        "queryLang": "2.0",
+        "severity": "High",
+        "status": "Disabled",
+        "expirationMode": "Permanent",
+        "treatAsThreat": "UNDEFINED",
+        "networkQuarantine": false,
+        "coolOffSettings": {
+          "renotifyMinutes": 120
+        },
+        "entityMappings": [
+          {
+            "columnName": "device"
+          },
+          {
+            "columnName": "source"
+          }
+        ],
+        "scheduledParams": {
+          "query": "sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | let hod = simpledateformat(timestamp, 'HH', 'GMT') | let mykey = format('%s||%s||%s', dataSource.name, device, hod) | lookup exp_gib, exp_ev from ingestHealthBaseline by srckey = mykey | filter exp_gib > 0 | group cur_gib = sum(gib), cur_events = count(), exp_gib = any(exp_gib), exp_ev = any(exp_ev), first_seen = oldest(timestamp), last_seen = newest(timestamp) by source = dataSource.name, device, hod | let dk = format('%s||%s', source, device) | lookup sig_gib, sig_ev from ingestHealthSourceStats by devkey = dk | let z_gib = (sig_gib > 0 ? (cur_gib - exp_gib) / sig_gib : 0) | let z_ev = (sig_ev > 0 ? (cur_events - exp_ev) / sig_ev : 0) | filter z_gib <= -3 | columns source, device, hod, cur_gib, exp_gib, sig_gib, z_gib, cur_events, exp_ev, z_ev, first_seen, last_seen | sort z_gib | limit 100",
+          "runIntervalMinutes": 60,
+          "lookbackWindowMinutes": 60,
+          "alertPerRow": false,
+          "disableStreaksLogic": false,
+          "threshold": {
+            "value": 0,
+            "operator": "Greater"
+          }
+        }
+      },
+      "filter": {
+        "siteIds": [
+          "{{SITE_ID}}"
+        ]
+      }
+    },
+    {
+      "data": {
+        "name": "Ingest Health - Ingest Lag (per device, p95 over SLA)",
+        "description": "A specific device's end-to-end ingest latency p95 exceeds 15 minutes. Restricted to baselined devices.",
+        "queryType": "scheduled",
+        "queryLang": "2.0",
+        "severity": "Medium",
+        "status": "Disabled",
+        "expirationMode": "Permanent",
+        "treatAsThreat": "UNDEFINED",
+        "networkQuarantine": false,
+        "coolOffSettings": {
+          "renotifyMinutes": 240
+        },
+        "entityMappings": [
+          {
+            "columnName": "device"
+          },
+          {
+            "columnName": "source"
+          }
+        ],
+        "scheduledParams": {
+          "query": "sca:ingestTime=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let dk = format('%s||%s', dataSource.name, device) | lookup mon = total_events from ingestHealthSourceStats by devkey = dk | filter mon > 0 | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | group p95_lag = p95(lag_min), p99_lag = p99(lag_min), median_lag = median(lag_min), events = count(), first_seen = oldest(timestamp), last_seen = newest(timestamp) by source = dataSource.name, device | filter p95_lag > 15 | columns source, device, p95_lag, p99_lag, median_lag, events, first_seen, last_seen | sort -p95_lag | limit 100",
+          "runIntervalMinutes": 60,
+          "lookbackWindowMinutes": 60,
+          "alertPerRow": false,
+          "disableStreaksLogic": false,
+          "threshold": {
+            "value": 0,
+            "operator": "Greater"
+          }
+        }
+      },
+      "filter": {
+        "siteIds": [
+          "{{SITE_ID}}"
+        ]
+      }
+    },
+    {
+      "data": {
+        "name": "Ingest Health - Parser Drift",
+        "description": "A parser that normally normalises now emits events without dataSource.name/category at >= 5%. Per-parser (device n/a).",
+        "queryType": "scheduled",
+        "queryLang": "2.0",
+        "severity": "High",
+        "status": "Disabled",
+        "expirationMode": "Permanent",
+        "treatAsThreat": "UNDEFINED",
+        "networkQuarantine": false,
+        "coolOffSettings": {
+          "renotifyMinutes": 240
+        },
+        "entityMappings": [
+          {
+            "columnName": "parser"
+          }
+        ],
+        "scheduledParams": {
+          "query": "parser=* | let is_unparsed = ((dataSource.name && dataSource.category) ? 0 : 1) | group total = count(), unparsed = sum(is_unparsed), first_seen = oldest(timestamp), last_seen = newest(timestamp) by parser | let normalised = total - unparsed | filter normalised > 0 | filter unparsed > 0 | let drift_ratio = unparsed / total | filter drift_ratio >= 0.05 | columns parser, total, unparsed, normalised, drift_ratio, first_seen, last_seen | sort -unparsed | limit 100",
+          "runIntervalMinutes": 60,
+          "lookbackWindowMinutes": 60,
+          "alertPerRow": false,
+          "disableStreaksLogic": false,
+          "threshold": {
+            "value": 0,
+            "operator": "Greater"
+          }
+        }
+      },
+      "filter": {
+        "siteIds": [
+          "{{SITE_ID}}"
+        ]
+      }
+    }
+  ]
+}

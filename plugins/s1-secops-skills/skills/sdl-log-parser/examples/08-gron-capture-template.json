@@ -1,0 +1,120 @@
+{
+  // -----------------------------------------------------------
+  // Gron-capture + mappings template.
+  //
+  // Pattern (lifted from the ai-siem community PARSER_TEMPLATE):
+  //   1. Capture the entire incoming JSON-ish event into `unmapped.*`
+  //      with a single `$unmapped.{parse=gron}$` format.
+  //   2. Do every OCSF rename/copy/cast/constant inside one
+  //      `mappings` block (v1 singular syntax).
+  //
+  // When to use this:
+  //   - The source emits JSON-per-line or dotted-key lines.
+  //   - You want all field-mapping logic in one place (easier to
+  //     review, diff, and bump `metadata.version`).
+  //   - You expect to add more target fields over time — extending
+  //     the `mappings` array is cheaper than adding new formats.
+  //
+  // When NOT to use this:
+  //   - Source is CSV/pipe/positional (use `commaSeparatedvalues`).
+  //   - Source has a vendor envelope + embedded body you want to
+  //     unwrap (use `{parse=dottedJson}` on the body field instead).
+  //   - Multiple distinct event shapes in one stream — prefer
+  //     format-id-as-sentinel (see examples/07 or the AWS RDS parser).
+  // -----------------------------------------------------------
+  "attributes": {
+    // Four required defaults on every parser:
+    "metadata.version":    "1.0.0",
+    "dataSource.category": "security",
+    "dataSource.name":     "PRODUCT_NAME",
+    "dataSource.vendor":   "VENDOR_NAME",
+    // OCSF class metadata + vendor product metadata:
+    "metadata.product.name":        "PRODUCT_NAME",
+    "metadata.product.vendor_name": "VENDOR_NAME",
+    "class_uid":      3002,
+    "class_name":     "Authentication",
+    "category_uid":   3,
+    "category_name":  "Identity & Access Management"
+  },
+
+  "formats": [
+    {
+      // One format, captures EVERYTHING into `unmapped.*`.
+      "format": "$unmapped.{parse=gron}$",
+      "rewrites": [
+        // Pull the timestamp out of unmapped so the ingest pipeline
+        // can use it as the event time. `$0` = the whole matched
+        // value (no transformation needed).
+        {
+          "input":   "unmapped.timestamp",
+          "output":  "timestamp",
+          "match":   ".*",
+          "replace": "$0"
+        }
+      ]
+    }
+  ],
+
+  "mappings": {
+    "version": 1,
+    "mappings": [
+      {
+        "predicate": "true",
+        "transformations": [
+          // --- Time handling ------------------------------------------
+          { "copy": { "from": "unmapped.timestamp", "to": "time" } },
+          { "cast": { "field": "time", "type": "iso8601TimestampToEpochSec" } },
+
+          // --- Identity ----------------------------------------------
+          // NOTE: when gron flattens a source key that contains dots
+          // (e.g. `"user.email"`) under a prefix (`unmapped.`), the
+          // resulting field is a FLAT dotted key (`unmapped.user.email`),
+          // not a nested object. The mapper treats the `from:` path as
+          // the literal field name. Do NOT escape the source dots.
+          // (Tenant-validated April 2026.)
+          { "rename": { "from": "unmapped.user.email", "to": "actor.user.email_addr" } },
+          { "rename": { "from": "unmapped.user.name",  "to": "actor.user.name" } },
+
+          // --- Network -----------------------------------------------
+          { "rename": { "from": "unmapped.source.ip",       "to": "src_endpoint.ip" } },
+          { "rename": { "from": "unmapped.source.port",     "to": "src_endpoint.port" } },
+          { "rename": { "from": "unmapped.destination.ip",  "to": "dst_endpoint.ip" } },
+          { "rename": { "from": "unmapped.destination.port", "to": "dst_endpoint.port" } },
+          { "cast":   { "field": "src_endpoint.port",        "type": "int" } },
+          { "cast":   { "field": "dst_endpoint.port",        "type": "int" } },
+
+          // --- Outcome / status --------------------------------------
+          // `constant` conditional on a vendor-native status code →
+          // OCSF status_id / activity_id triple.
+          { "rename":   { "from": "unmapped.status", "to": "status" } },
+          { "constant": { "value": 1, "field": "status_id",
+                          "predicate": "status == 'SUCCESS'" } },
+          { "constant": { "value": 2, "field": "status_id",
+                          "predicate": "status == 'FAILURE'" } },
+          { "constant": { "value": 1, "field": "activity_id",
+                          "predicate": "status == 'SUCCESS'" } },
+          { "constant": { "value": "Logon", "field": "activity_name",
+                          "predicate": "status == 'SUCCESS'" } },
+
+          // --- Severity ----------------------------------------------
+          // NOTE: do NOT set `severity` to OCSF string labels ("Informational",
+          // "Medium", etc.) — `severity` is a RESERVED SDL field that the
+          // ingest pipeline coerces to an integer 0–6 against its own
+          // vocabulary (`info`/`warn`/`error`/...). OCSF labels collide.
+          // Emit `severity_id` (integer) only, or use a non-colliding field
+          // name like `severity_name` if you really need the OCSF string.
+          { "constant": { "value": 1, "field": "severity_id",
+                          "predicate": "status == 'SUCCESS'" } },
+          { "constant": { "value": "Informational", "field": "severity_name",
+                          "predicate": "status == 'SUCCESS'" } },
+          { "constant": { "value": 3, "field": "severity_id",
+                          "predicate": "status == 'FAILURE'" } },
+          { "constant": { "value": "Medium", "field": "severity_name",
+                          "predicate": "status == 'FAILURE'" } }
+        ]
+      }
+    ]
+  },
+
+  "discardAttributes": ["message"]
+}

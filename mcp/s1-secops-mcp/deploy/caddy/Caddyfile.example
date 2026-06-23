@@ -1,0 +1,110 @@
+# Caddyfile for s1-secops-mcp behind TLS on a private network.
+#
+# Two adjustments before using:
+#   1. Replace mcp.s1.internal with your DNS name (or Tailscale hostname).
+#   2. Decide on a TLS strategy:
+#        tls internal      Caddy's built-in CA (good for private networks;
+#                          distribute the root cert to clients).
+#        tls <email>       Let's Encrypt over HTTP-01 (needs public DNS + port 80).
+#        tls /path/to/cert.pem /path/to/key.pem
+#                          Bring your own cert from an internal PKI.
+#
+# AWS users: Let's Encrypt refuses to issue for *.amazonaws.com hostnames by
+# policy. When you use the `tls <email>` shorthand, Caddy automatically falls
+# back to ZeroSSL (also free, also publicly trusted, no policy block). The
+# end-state cert should have `issuer=ZeroSSL ECC DV SSL CA 2`. Port 80 must
+# be open in the SG for HTTP-01 to complete.
+#
+# DO NOT mix `tls <email>` with an `issuer acme { ... }` block — Caddy errors
+# with "cannot mix issuer subdirective with other issuer-specific subdirectives".
+# Pick one form: the email shorthand on its own line, OR a full `tls { ... }`
+# block with the email moved inside the `issuer acme` stanza. Not both.
+#
+# Why Caddy and not nginx? Caddy auto-renews certs, has zero config for SSE
+# streaming (flush_interval handled), and is one binary with no system Python
+# or Lua dependency. Equally valid alternative: nginx with the snippet at the
+# bottom of this file.
+
+mcp.s1.internal {
+    tls internal
+
+    # Strict bearer-token enforcement. The MCP server also enforces tokens
+    # when MCP_BEARER_TOKENS_FILE is set, but checking here too means we never
+    # forward unauthenticated traffic to the backend.
+    #
+    # To bypass Caddy auth (and rely solely on the MCP server's enforcement),
+    # delete the @authorized matcher and the handle blocks below, leaving only
+    # the reverse_proxy.
+    @anyAuth header_regexp Authorization "^Bearer\s+\S+$"
+
+    handle @anyAuth {
+        reverse_proxy 127.0.0.1:8765 {
+            # MCP responses are streamed; flush immediately so partial replies
+            # reach the client without sitting in a buffer.
+            flush_interval -1
+
+            # Reasonable timeouts for long-running PowerQueries (LRQ can take
+            # ~30s on heavy queries). Increase if you see 504s on big queries.
+            transport http {
+                read_timeout 90s
+                write_timeout 90s
+                response_header_timeout 30s
+            }
+        }
+    }
+
+    handle {
+        respond "unauthorized" 401 {
+            close
+        }
+    }
+
+    # Standard security headers.
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+        -Server
+    }
+
+    # Healthcheck pass-through (no auth needed on /healthz).
+    @health path /healthz /health
+    handle @health {
+        reverse_proxy 127.0.0.1:8765
+    }
+
+    # Access log to journald via systemd-journald, structured JSON.
+    log {
+        output stdout
+        format json
+        level INFO
+    }
+}
+
+# ─── nginx equivalent (commented; copy if you prefer nginx) ──────────────────
+# upstream mcp_backend {
+#     server 127.0.0.1:8765;
+#     keepalive 16;
+# }
+# server {
+#     listen 443 ssl http2;
+#     server_name mcp.s1.internal;
+#     ssl_certificate     /etc/ssl/certs/mcp.s1.internal.crt;
+#     ssl_certificate_key /etc/ssl/private/mcp.s1.internal.key;
+#
+#     location = /healthz {
+#         proxy_pass http://mcp_backend;
+#     }
+#
+#     location / {
+#         if ($http_authorization !~ "^Bearer\s+\S+$") {
+#             return 401;
+#         }
+#         proxy_pass http://mcp_backend;
+#         proxy_http_version 1.1;
+#         proxy_set_header Connection "";
+#         proxy_buffering off;
+#         proxy_read_timeout 90s;
+#         proxy_send_timeout 90s;
+#     }
+# }

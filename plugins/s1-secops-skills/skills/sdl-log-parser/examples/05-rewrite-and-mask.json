@@ -1,0 +1,58 @@
+// Demonstrates rewrites that (a) mask a secret, (b) derive a severity_band via computeFields.
+//
+// Sample line:
+//   2026-04-20T10:25:34Z host-9 loginServlet email=user@url.com password=chewy1 result=success sev=4
+//
+// Goals:
+//   - Parse the basic fields.
+//   - Mask the password value inside both `message` and the captured `password` field.
+//   - Add `severity_band` = "high" / "medium" / "low" based on the numeric `sev` field,
+//     using a computeFields expression (PowerQuery subset).
+
+{
+  attributes: {
+    // Required pipeline defaults.
+    "metadata.version":    "1.0.0",
+    "dataSource.category": "identity",
+    "dataSource.name":     "Login Service",
+    "dataSource.vendor":   "Internal",
+    dataset: "login_events"
+  },
+
+  patterns: {
+    iso: "\\d{4}-\\d{2}-\\d{2}T[0-9:]+Z"
+  },
+
+  formats: [
+    {
+      id: "login",
+      format: "$timestamp=iso$ $host$ loginServlet email=$email$ password=$password$ result=$result$ sev=$sev$",
+      halt: true,
+
+      rewrites: [
+        // Redact the secret inside `message` so the raw log stops leaking it.
+        // NOTE: This tenant REQUIRES an explicit `output:` field on regex-based
+        // rewrites — without it, put_file returns
+        // `Syntax error: No output field specified`. Set output = input to
+        // modify the field in place.
+        { input: "message",  match: "password=[^ ]+", replacement: "password=[REDACTED]", replaceAll: true, output: "message" },
+
+        // Also redact the captured password field in place. Use computeFields
+        // rather than a regex-match rewrite: per the docs, "a rule whose regex
+        // matches the entire value is silently ignored" (this wording appears
+        // about `message`, but on this tenant the same behavior applies to any
+        // captured field — `.*`, `.+`, and `^.+$` all leave the value empty or
+        // unchanged). The PowerQuery `| let` form sidesteps the issue and also
+        // doesn't require an `output:` field, since computeFields writes to the
+        // LHS of the assignment.
+        { action: "computeFields", expression: "| let password = '[REDACTED]'" },
+
+        // Derive severity_band from the numeric sev. Uses the PowerQuery subset allowed
+        // inside computeFields — TERNARY (a ? b : c), NOT if(a, b, c). `if(...)` returns
+        // `Unknown function 'if'` on the live tenant. Equality is `==`, not `=`.
+        { action: "computeFields",
+          expression: "| let severity_band = sev >= 5 ? 'high' : (sev >= 3 ? 'medium' : 'low')" }
+      ]
+    }
+  ]
+}

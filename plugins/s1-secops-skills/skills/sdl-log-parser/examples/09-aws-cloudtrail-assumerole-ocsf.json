@@ -1,0 +1,202 @@
+{
+  // -----------------------------------------------------------
+  // AWS CloudTrail → OCSF Authentication (3002)
+  //
+  // Target shape: one CloudTrail JSON event per line (the standard
+  // record emitted when CloudTrail is shipped to S3 / Firehose / a
+  // log-forwarder that unrolls `Records[]` into NDJSON).
+  //
+  // Why Authentication 3002 (not API Activity 6003)?
+  //   sts:AssumeRole mints temporary credentials — a session grant.
+  //   OCSF's Authentication class is the idiomatic fit; it carries
+  //   `session.credential_uid`, `session.expiration_time`, and
+  //   `session.issuer` which line up exactly with CloudTrail's
+  //   responseElements.credentials + assumedRoleUser.
+  //
+  //   For other CloudTrail event names (e.g. ec2:RunInstances,
+  //   s3:PutObject) add a new format with its own `activity_id` /
+  //   `class_uid` (API Activity 6003 is the usual fallback for
+  //   non-auth management events). Use format-id-sentinel predicates
+  //   (see examples/AWS RDS in ai-siem) to branch mappings cleanly.
+  //
+  // Strategy:
+  //   1. Capture the whole JSON record into `unmapped.*` via gron
+  //      (the same pattern validated in examples/08).
+  //   2. Rename/copy into OCSF dotted names inside a single v1
+  //      mappings block. Dotted source keys (e.g. `user.email`) stay
+  //      FLAT under `unmapped.*` — reference them literally, do NOT
+  //      escape the dots (tenant-validated April 2026).
+  //   3. Emit reserved-field-safe severity via `severity_id` only
+  //      (OCSF string labels collide with SDL's reserved `severity`).
+  // -----------------------------------------------------------
+  "attributes": {
+    // Four required pipeline defaults
+    "metadata.version":    "1.0.0",
+    "dataSource.category": "cloud",
+    "dataSource.name":     "AWS CloudTrail",
+    "dataSource.vendor":   "AWS",
+
+    // Product metadata
+    "metadata.product.vendor_name": "AWS",
+    "metadata.product.name":        "CloudTrail",
+    "metadata.log_provider":        "CloudTrail",
+
+    // OCSF class — Authentication (3002) under Identity & Access Management (3)
+    "class_uid":     3002,
+    "class_name":    "Authentication",
+    "category_uid":  3,
+    "category_name": "Identity & Access Management",
+
+    // Cloud-provider constants
+    "cloud.provider": "AWS"
+  },
+
+  "formats": [
+    {
+      // Capture everything into `unmapped.*`. Dotted source keys
+      // stay flat (`unmapped.userIdentity.principalId` is one field
+      // name, not a nested object).
+      //
+      // WHY dottedJson (not gron) on this tenant:
+      //   `{parse=gron}` DROPS JSON arrays entirely — `unmapped.resources`
+      //   comes back as `null` on ingest, tenant-validated April 2026.
+      //   `{parse=dottedJson}` preserves arrays as a JSON-string-encoded
+      //   scalar at the parent path (e.g. `unmapped.resources` =
+      //   '[{"ARN":"...","type":"..."}]'), which downstream PowerQuery
+      //   can then `parse_json` over. Neither directive flattens array
+      //   elements into indexed subfields like `resources.0.ARN` —
+      //   that's not a feature on this tenant.
+      //
+      // NOTE: Do NOT add a `rewrites` that pulls `unmapped.eventTime`
+      // into the reserved `timestamp` field — combined with the
+      // `copy → cast` pair on `time` below, the event gets silently
+      // dropped on this tenant. Mapping `time` in the mappings block
+      // is sufficient for hunts; the event-time field the ingest
+      // pipeline actually stamps is also fine because the payload is
+      // ingested close to real-time.
+      "format": "$unmapped.{parse=dottedJson}$"
+    }
+  ],
+
+  "mappings": {
+    "version": 1,
+    "mappings": [
+      {
+        "predicate": "true",
+        "transformations": [
+          // ---- Time ------------------------------------------------
+          { "copy": { "from": "unmapped.eventTime", "to": "time" } },
+          { "cast": { "field": "time", "type": "iso8601TimestampToEpochSec" } },
+
+          // ---- Identity (`user.*`) ---------------------------------
+          // CloudTrail's userIdentity maps to OCSF `user` for Auth 3002.
+          // Reference fields with the flat dotted key that gron emits.
+          { "rename": { "from": "unmapped.userIdentity.principalId", "to": "user.uid" } },
+          { "rename": { "from": "unmapped.userIdentity.accountId",   "to": "user.account.uid" } },
+          { "rename": { "from": "unmapped.userIdentity.type",        "to": "user.type" } },
+          { "rename": { "from": "unmapped.userIdentity.userName",    "to": "user.name" } },
+          { "rename": { "from": "unmapped.userIdentity.arn",         "to": "user.uid_alt" } },
+          { "rename": { "from": "unmapped.userIdentity.invokedBy",   "to": "actor.invoked_by" } },
+
+          // ---- Session (the NEW session granted by AssumeRole) -----
+          // For sts:AssumeRole, responseElements.credentials.accessKeyId
+          // is the issued credential. assumedRoleUser.arn is the
+          // assumed-role identity (OCSF `session.issuer`).
+          { "rename": { "from": "unmapped.responseElements.credentials.accessKeyId",
+                        "to":   "session.credential_uid" } },
+          { "rename": { "from": "unmapped.responseElements.credentials.expiration",
+                        "to":   "session.expiration_time" } },
+          { "rename": { "from": "unmapped.responseElements.assumedRoleUser.arn",
+                        "to":   "session.issuer" } },
+          { "rename": { "from": "unmapped.responseElements.assumedRoleUser.assumedRoleId",
+                        "to":   "session.uid" } },
+          { "rename": { "from": "unmapped.requestParameters.roleSessionName",
+                        "to":   "session.uuid" } },
+
+          // ---- Network / source endpoint ---------------------------
+          { "rename": { "from": "unmapped.sourceIPAddress", "to": "src_endpoint.ip" } },
+
+          // ---- HTTP request (user-agent only — CloudTrail doesn't
+          //      carry method/URL; for TLS details see tlsDetails.*)
+          { "rename": { "from": "unmapped.userAgent", "to": "http_request.user_agent" } },
+
+          // ---- API operation --------------------------------------
+          // The CloudTrail event itself is an API call. OCSF `api.*`
+          // is the universal place to stash operation metadata that
+          // doesn't fit anywhere else — keep it even for Auth 3002
+          // so hunts can filter by eventName.
+          { "rename": { "from": "unmapped.eventName",    "to": "api.operation" } },
+          { "rename": { "from": "unmapped.eventSource",  "to": "api.service.name" } },
+          { "rename": { "from": "unmapped.requestID",    "to": "api.request.uid" } },
+          { "rename": { "from": "unmapped.eventID",      "to": "api.response.uid" } },
+          { "rename": { "from": "unmapped.eventVersion", "to": "api.version" } },
+
+          // ---- Cloud context ---------------------------------------
+          { "rename": { "from": "unmapped.awsRegion",          "to": "cloud.region" } },
+          { "rename": { "from": "unmapped.recipientAccountId", "to": "cloud.account.uid" } },
+
+          // ---- TLS details (flat subfields, OCSF `tls.*`) ----------
+          { "rename": { "from": "unmapped.tlsDetails.tlsVersion",
+                        "to":   "tls.version" } },
+          { "rename": { "from": "unmapped.tlsDetails.cipherSuite",
+                        "to":   "tls.cipher" } },
+          { "rename": { "from": "unmapped.tlsDetails.clientProvidedHostHeader",
+                        "to":   "tls.sni" } },
+
+          // ---- Target resource -------------------------------------
+          // IMPORTANT: Neither `{parse=gron}` nor `{parse=dottedJson}`
+          // flattens JSON arrays into indexed subfields on this tenant.
+          //   - gron DROPS arrays (null at the parent path).
+          //   - dottedJson PRESERVES arrays as a JSON-string-encoded
+          //     scalar at the parent path.
+          // We use dottedJson above precisely so we can surface the
+          // raw resources array (below), then downstream PowerQuery
+          // consumers can `parse_json` over `resources_raw` to walk
+          // into individual resource entries. The stable singleton
+          // identity (the roleArn from requestParameters, which is
+          // already scalar) is also mirrored to `resource_uid` for
+          // cheap flat filtering.
+          //
+          // If you need per-element OCSF `resources[]` structure,
+          // either:
+          //   1. pre-expand the array client-side into one event per
+          //      element before ingest, or
+          //   2. add `reduce_array` / compute-field rewrites in a
+          //      follow-on mapping entry.
+          { "copy":   { "from": "unmapped.resources",                     "to": "resources_raw" } },
+          { "rename": { "from": "unmapped.requestParameters.roleArn",    "to": "resource_uid" } },
+          { "rename": { "from": "unmapped.requestParameters.externalId", "to": "actor.authorizations.policy.uid" } },
+
+          // ---- Constants for Authentication 3002 -------------------
+          // OCSF activity_id for sts:AssumeRole is "Authentication Ticket" (3)
+          // — the event mints a temporary credential, it is not a user logon.
+          { "constant": { "value": 3, "field": "activity_id",
+                          "predicate": "api.operation == 'AssumeRole'" } },
+          { "constant": { "value": "Authentication Ticket", "field": "activity_name",
+                          "predicate": "api.operation == 'AssumeRole'" } },
+
+          // Success/failure: CloudTrail records a top-level `errorCode`
+          // on failures. The v1 mapper engine does not support
+          // `== null` / `!= null` predicates, so we default to success
+          // and rely on downstream PowerQuery to detect failures via
+          // `status_detail` being populated. Extend with a second
+          // mapping entry + format-id sentinel if you need the full
+          // success/failure fan-out. Defaults:
+          { "rename":   { "from": "unmapped.errorCode",    "to": "status_detail" } },
+          { "rename":   { "from": "unmapped.errorMessage", "to": "status_code" } },
+          { "constant": { "value": 1,         "field": "status_id", "predicate": "true" } },
+          { "constant": { "value": "Success", "field": "status",    "predicate": "true" } },
+
+          // Severity — emit integer `severity_id` (reserved-field-safe)
+          // and OCSF string label as `severity_name`. Never set `severity`
+          // directly: SDL's reserved pipeline rewrites it to an int 0-6
+          // against its own vocabulary.
+          { "constant": { "value": 1,               "field": "severity_id",   "predicate": "true" } },
+          { "constant": { "value": "Informational","field": "severity_name","predicate": "true" } }
+        ]
+      }
+    ]
+  },
+
+  "discardAttributes": ["message"]
+}

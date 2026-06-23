@@ -1,0 +1,30 @@
+metadata_details:
+  title: "n-1 Automatic Upgrade Policy"
+  description: |
+    Daily scheduled hyperautomation workflow that maintains an "N-1" Windows agent upgrade policy.
+    It automatically detects the latest generally-available (GA) Windows package and ensures the 
+    N-1 policy always points to the previous stable version. Supports site, account, or group scope.
+  purpose: |
+    Keeps a dedicated N-1 upgrade policy in sync so organizations can safely stage upgrades 
+    (test on a pilot group first, then promote to N-1 → N). Reduces manual policy maintenance 
+    and prevents agents from falling too far behind.
+  trigger_type: scheduled
+  schedule: Daily at 00:00 America/Los_Angeles
+  integration_dependency: |
+    SentinelOne Management Console (Singularity Platform) with API access.
+    Requires a connection with sufficient permissions to read/write upgrade policies and packages.
+  expected_actions_per_run: 10
+  human_in_the_loop: false
+  required_products: SentinelOne EDR / Singularity Platform (Hyperautomation enabled)
+  tags:
+    - management
+    - upgrade-policy
+    - hyperautomation
+    - windows
+    - n-1
+  version: "1.0"
+  author: jacob-kraniak (community contribution)
+  last_updated: "2026-04-20"
+  compatibility:
+    singularity_ha: "Supported"
+    ai_siem: "N/A (pure Hyperautomation)"

@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: "Detects linus process activity from network monitoring tools"
+  mitre_tactic_technique: "T1040 - Network Discovery, T1018 - Remote System Discovery, T1590 - Gather Victim Network Information"
+  datasource: "SentinelOne Endpoint"
+  search_type: ""
+  severity: "Medium"
+  expected_alert_scenario: "Alerts on any matching activity for network monitoring tools."
+  performance_impact: "Minimal"
+  tags: ["detection", "alert", "metasploit", "nmap"]
+  version: "latest"
+  author: "SentinelOne"

@@ -1,0 +1,16 @@
+metadata_details:
+  purpose: "Detects usage of unsanctioned KMS activator tools (e.g., KMSpico, HEU_KMS_Activator, AutoPico, KMSELDI, KMSAuto Net, microKMS, W10DigitalActivation) via process paths, command lines, and known malicious hashes. High-risk activity often associated with software piracy and potential malware."
+  mitre_tactic_technique: |
+    T1543 - Create or Modify System Process
+    T1548 - Abuse Elevation Control Mechanism (Privilege Escalation)
+    T1068 - Exploitation for Privilege Escalation
+    T1213 - Data from Information Repositories
+    TA0005 - Defense Evasion (common with activators)
+  datasource: "SentinelOne EDR"
+  search_type: "star_rule"
+  usecase_plus: "Strong correlation opportunity with privilege escalation events, file/registry modifications, network C2 activity, or unusual child processes. Supports Governance, Risk, and Compliance (GRC) programs by identifying licensing violations and shadow IT that introduce supply-chain and malware risks."
+  severity: "High"
+  expected_alert_scenario: "Strong correlation opportunity with privilege escalation events, file/registry modifications, network C2 activity, or unusual child processes. Supports Governance, Risk, and Compliance (GRC) programs by identifying licensing violations and shadow IT that introduce supply-chain and malware risks."
+  performance_impact: "Low - Targeted string and hash matching on process events."
+  tags: ["kms-activator", "piracy", "license", "windows", "grc", "shadow-it", "high-risk"]
+  version: "v1.0"

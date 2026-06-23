@@ -1,0 +1,11 @@
+metadata_details:
+  purpose: "Informational detection of unsanctioned 3rd-party messaging apps (WhatsApp, Signal, Telegram, WeChat, KakaoTalk, QQ) for shadow IT control."
+  mitre_tactic_technique: "T1213.005 - Data from Information Repositories: Messaging Applications"  # Contextual reference
+  datasource: "SentinelOne EDR (Deep Visibility)"
+  search_type: "star_rule"
+  usecase_plus: "Correlates with network events to known messaging domains for higher fidelity."
+  severity: "Information"
+  expected_alert_scenario: "Flags process/file activity from consumer messaging clients; no auto-response."
+  performance_impact: "Low - Targeted query with path/process filters."
+  tags: ["shadow-it", "messaging", "data-loss", "governance", "exfiltration"]
+  version: "v1.0"

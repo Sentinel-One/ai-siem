@@ -1,6 +1,12 @@
-# Playbook: scheduled detection exclusions
+# Playbook: detection exclusions (single-event or scheduled)
 
-Suppress known-good noise in a scheduled PowerQuery detection rule by keying the rule
+This solution suppresses known-good noise in a SentinelOne Custom Detection (STAR) rule. It builds
+the exclusion as either a **STAR single-event rule** (inline hardcoded negative list in a boolean
+S1QL body) or a **scheduled PowerQuery detection** (CSV lookup table + anti-join + effectiveness
+dashboard). **Always ask the user which rule type first** (see Step 0). The scheduled path is
+described in full below; the single-event path is in "Single-event rule path".
+
+Scheduled path overview: suppress known-good noise in a scheduled PowerQuery detection rule by keying the rule
 against a CSV exclusion list. The analyst supplies a CSV of assets (hosts, IPs, CIDRs) or a
 custom list of values (domains, users, URLs, rule IDs), the solution loads it as an SDL lookup
 table, and the detection rule omits any row that matches the list. The exclusion is applied at
@@ -25,6 +31,77 @@ enough to start:
 > "Build a `<source>` detection that ignores anything from assets tagged `scanner`."
 
 Whatever the prompt leaves out, confirm it with the questions below before deploying, do not assume.
+
+## Step 0: choose the rule type (ask the user first)
+
+This solution can build the exclusion as either of two STAR Custom Detection rule types. **Always ask which one before configuring anything else**, because the parameters and the exclusion mechanic differ by type:
+
+| | STAR single-event (`queryType: "events"`) | Scheduled detection (`queryType: "scheduled"`) |
+|---|---|---|
+| Detection body | one boolean S1QL filter, NO pipes, in `data.s1ql` | PowerQuery (pipes) in `data.scheduledParams.query` |
+| Exclusion mechanic | **inline hardcoded** negative list in the filter: `... AND NOT (<field> in:anycase ('a','b',...))` | **CSV lookup anti-join**: `\| lookup excl = reason from <table> by <key> <op> <field> \| filter excl = null` |
+| Exclusion list lives | hardcoded in the rule body | an SDL datatable CSV (edit without touching the rule) |
+| Fires | per matching event, streaming at ingest | on a schedule over a lookback window |
+| Aggregation / thresholds | no (single event) | yes (`group`, counts, `estimate_distinct`) |
+| Effectiveness dashboard | not applicable (no anti-join inverse to count) | yes (excluded vs kept, by list / reason / value) |
+| Mitigation | inline Active Response on the rule (`treatAsThreat`, `networkQuarantine`) or an HA flow off the alert | no inline Active Response (`treatAsThreat` must be `UNDEFINED`); mitigate via an HA flow off the alert |
+| Best when | the base detection is a deterministic single-event signature and the exclusion list is small and stable | the detection aggregates, or the list is large / dynamic / shared and needs an audit trail |
+
+Prompt to ask:
+
+> "Should this exclusion be a **STAR single-event rule** (inline hardcoded exclusion list, fires per event, supports mitigation) or a **scheduled detection** (CSV exclusion list + anti-join + effectiveness dashboard)?"
+
+If single-event, follow "Single-event rule path" directly below and stop there. If scheduled, skip that section and follow "How the exclusion works" plus Steps 1 to 6 (the lookup / anti-join playbook).
+
+## Single-event rule path
+
+A single-event rule body is one boolean S1QL expression with NO pipes, so there is no `lookup` and no CSV table; the exclusion is a hardcoded negative list inside the filter. This is the right shape when the base detection is itself a single-event signature (a specific process + cmdline, a registry write, one log line) and the allowlist is small and stable.
+
+Body shape (goes in `data.s1ql`):
+
+```
+<base single-event filter> AND NOT (<EXCL_FIELD> in:anycase ('<val1>','<val2>',...))
+```
+
+Worked example (encoded PowerShell, excluding engineering accounts), tenant-validated 2026-06-24:
+
+```
+dataSource.name = 'SentinelOne' AND event.type = 'Process Creation'
+AND src.process.name in ('powershell.exe','pwsh.exe')
+AND src.process.cmdline matches '(?i)\s-(e|en|enc|enco|encod|encode|encoded|encodedc|encodedco|encodedcom|encodedcomm|encodedcomma|encodedcomman|encodedcommand)\b'
+AND NOT (src.process.user in:anycase ('corp\jdoe','corp\asmith'))
+```
+
+Deploy envelope (render `assets/exclusion_detection_single_event.template.json`):
+
+```json
+{
+  "data": {
+    "name": "{{DETECTION_NAME}}",
+    "description": "{{DETECTION_DESCRIPTION}} (MITRE {{MITRE_TECHNIQUE}}).",
+    "queryType": "events",
+    "queryLang": "2.0",
+    "severity": "{{SEVERITY}}",
+    "status": "Active",
+    "expirationMode": "Permanent",
+    "treatAsThreat": "UNDEFINED",
+    "networkQuarantine": false,
+    "s1ql": "{{BASE_FILTER}} AND NOT ({{EXCL_FIELD}} in:anycase ({{EXCL_LIST}}))"
+  },
+  "filter": {"{{SCOPE_KEY}}": ["{{SCOPE_ID}}"]}
+}
+```
+
+Single-event rule rules:
+
+- **Backslash escaping (validated).** The engine matches a SINGLE backslash. Write one backslash in the console UI (`('corp\jdoe')`, `matches '(?i)\s...'`); double each backslash in the JSON POST body (`corp\\jdoe`, `\\s`) so JSON decoding restores one. The double-backslash form typed into the UI does NOT match.
+- **`in:anycase`** makes the exclusion case-insensitive. Match the exact value format the field carries (for example `src.process.user` is `DOMAIN\username` on EDR).
+- **No lookup, no dashboard.** The list is hardcoded; to change it, edit the rule body (`PUT /web/api/v2.1/cloud-detection/rules/{id}`). For a large or frequently-changing list, use the scheduled path instead.
+- **Auto-binds the Target Asset** from the matched event; no `entityMappings` needed.
+- **Inline mitigation is available** on single-event rules: set `treatAsThreat` to `Suspicious`/`Malicious` and `networkQuarantine` deliberately for active response. (Scheduled rules cannot act inline, but any alert, including a scheduled-rule alert, can trigger a Hyperautomation flow that mitigates.)
+- Deploy with `POST /web/api/v2.1/cloud-detection/rules`, enable with `PUT /web/api/v2.1/cloud-detection/rules/enable`, list with `isLegacy=false`.
+
+If the analyst chose single-event, you are done after deploying and validating the body. Everything below (lookup table, anti-join, refresh flow, effectiveness dashboard) is the **scheduled** path.
 
 ## How the exclusion works
 
@@ -57,7 +134,7 @@ Chain more than one list by adding a second `lookup` + `filter` pair (for exampl
 allowlist AND a domain allowlist in the same rule). Use distinct join-variable names
 (`excl_asset`, `excl_domain`) so the two stages do not collide.
 
-All five operators are tenant-validated on Akamai DNS (account `pmoses - demo account`, 2026-06-22):
+All five operators are tenant-validated on Akamai DNS (2026-06-22):
 `=:cidr` (51 internal RFC1918 + 1 scanner /32), `=:anycase` on a custom value (domain), `=:anycase`
 on a host-style field (`edge`: list entry `EDGE-NYC` matched `edge-nyc`, proving case-insensitivity,
 3,375 rows), `=:wildcard` (`api.%` matched `api.example.com` 3,074; `%.example.net` matched
@@ -106,6 +183,11 @@ by the dashboard, and the null-entity guard (`{{KEY_FIELD}} = *`) so the rule ne
 null asset.
 
 ## Parameters and tokens
+
+Single-event-path tokens (used only when the rule type is `events`): `{{DETECTION_NAME}}`,
+`{{DETECTION_DESCRIPTION}}`, `{{MITRE_TECHNIQUE}}`, `{{BASE_FILTER}}` (the boolean single-event
+filter, no pipes), `{{EXCL_FIELD}}` (the field the inline list matches, e.g. `src.process.user`),
+and `{{EXCL_LIST}}` (the quoted, comma-separated hardcoded values, e.g. `'corp\jdoe'`).
 
 | Token | Meaning | Default |
 |---|---|---|
@@ -188,7 +270,7 @@ before/after counts (run the body once, then run it again with the `filter excl_
 removed, and show total vs kept). The difference is what the list will suppress.
 
 STAR scheduled-rule hard rules (do not skip): `queryType` = `scheduled`, `queryLang` = `2.0`,
-`treatAsThreat` = `UNDEFINED`, `networkQuarantine` = false (mitigation is not allowed on scheduled
+`treatAsThreat` = `UNDEFINED`, `networkQuarantine` = false (inline Active Response is not allowed on scheduled
 rules), aggregation stays inside `group`, the body ends in an explicit `| columns` projection, and
 `entityMappings` is capped at 3 columns. Add the null-entity guard `{{KEY_FIELD}} = *` so a null
 asset never becomes an alert.
@@ -281,6 +363,7 @@ deployed through the matching primitive skill. The `<prefix>` is the solution/cu
 |---|---|---|---|
 | Asset exclusion list | `assets/exclusion_list_assets.csv.template` | SDL datatable `/datatables/<prefix>ExclAssets.csv` | CSV of IP / CIDR / host values to suppress; keyed `cidr =:cidr <ip field>` (subnets) or `=:anycase <host field>` |
 | Custom exclusion list | `assets/exclusion_list_custom.csv.template` | SDL datatable `/datatables/<prefix>ExclValues.csv` | CSV of arbitrary values (domain / user / URL / id); keyed `value =:anycase`, `=`, or `=:wildcard <field>` |
+| Single-event detection rule | `assets/exclusion_detection_single_event.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` (`queryType: events`) | Single-event base signature with the exclusion as an inline hardcoded `AND NOT (<field> in:anycase (...))` negative list in `data.s1ql`. No lookup table, no dashboard. Supports mitigation |
 | Scheduled detection rule | `assets/exclusion_detection.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | Base detection wrapped with the lookup anti-join (`\| lookup ... \| filter excl = null`). Supports `=` and `=:anycase` only |
 | CIDR/wildcard detection + UAM alert | `assets/exclusion_detection_ha_workflow.template.json` | Hyperautomation workflow (account/site scope) | Runs the `=:cidr` / `=:wildcard` exclusion the STAR validator rejects, via the SDL LRQ (launch + poll), then posts a self-contained OCSF S1 SecurityAlert (`class_uid 99602001`) to UAM with the offender mapped as indicator + asset |
 | Exclusion-effectiveness dashboard | `assets/exclusion_dashboard.template.json` | `sdl_put_file /dashboards/<prefix> Exclusions` | Total vs excluded vs net, exclusion rate, excluded over time, by list / reason / value, plus the post-exclusion threat view |

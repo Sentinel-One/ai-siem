@@ -29,7 +29,7 @@ for the dashboard); it does not reimplement them.
 - *"Baseline our Google Workspace audit logs and flag spikes"*
 - *"Monitor the Avelios Medical app for unusual user behavior"*
 - *"Find users whose activity today is way off their 30-day normal"*
-- *"Deploy UEBA anomaly detection for Okta on the pmoses demo site, 7-day pooled baseline, z >= 3, with a nightly refresh and dashboard"* (fully specified: spells out the optional parameters so the skill skips the questions)
+- *"Deploy UEBA anomaly detection for Okta on the Acme site, 7-day pooled baseline, z >= 3, with a nightly refresh and dashboard"* (fully specified: spells out the optional parameters so the skill skips the questions)
 
 **Short or detailed, both work.** You only have to name the source (and, for production, the site).
 Everything else has a default: 30-day day-of-week baseline, z >= 3 hard / 2 soft, top-500 pairs,
@@ -84,9 +84,69 @@ window are auto-derived from schema discovery and shown in the preview, not prom
 | Refresh workflow | Hyperautomation (nightly) | rebuilds the baseline lookup over the trailing window |
 | Dashboard | `/dashboards/<prefix> <source> Anomalies` | anomaly count, new-behavior, volume over time, top SPIKE/DROP and new-behavior tables |
 
+## The baseline_anomaly.py pipeline (interactive / CLI)
+
+The interactive mode is a source-agnostic pipeline at
+`sentinelone-mgmt-console-api/scripts/baseline_anomaly.py`. For any `dataSource.name` it:
+
+1. **Auto-discovers the schema** via `inspect_source.discover_schema()` and picks `principal_field` (user / host / IP / role) and `action_field` (event.type / activity_name / action) from what the source actually carries, with no per-source hardcoding.
+2. **Slices the baseline window into N daily LRQ queries** (default 30 days), running 3 in parallel under the per-user 3 rps cap. Each slice produces (action, principal, count) rows for that day. Daily slicing avoids the LRQ per-call deadline that single 7d/30d aggregates routinely exceed.
+3. **Runs one 24h live slice** in the same shape.
+4. **Merges client-side** with one of two strategies: `pooled` (all daily samples in one bucket per pair; simple, but flags weekend silence as anomalous) or `dow` (a separate bucket per pair per day-of-week; removes the weekday/weekend false positive cleanly, and is the production tier).
+5. **Surfaces three anomaly classes** every run: matched z-score deviations (SPIKE/DROP), silent pairs (active in baseline, zero live), and new-behavior pairs (live, no baseline at all; routed to a separate triage queue).
+
+CLI:
+
+```bash
+# Auto-discover principal/action, 30-day DoW-stratified baseline, default Z=2.0
+python sentinelone-mgmt-console-api/scripts/baseline_anomaly.py --source "Okta"
+
+# Network source: auto-discover picks device.name + event.type
+python sentinelone-mgmt-console-api/scripts/baseline_anomaly.py --source "FortiGate" --days 14
+
+# Override fields if you know better
+python sentinelone-mgmt-console-api/scripts/baseline_anomaly.py --source "Zscaler Internet Access" \
+    --principal src.ip.address --action unmapped.action
+
+# Pooled (no DoW stratification) and a tighter threshold
+python sentinelone-mgmt-console-api/scripts/baseline_anomaly.py --source "CloudTrail" \
+    --stratify pooled --z 3.0
+```
+
+State is checkpointed to `<plugin>/baselines/baseline_anomaly_<slug>_state.json` so the script is
+resumable across short shell budgets; final results land in `baseline_anomaly_<slug>_result.json`.
+
+In a Cowork chat session, just ask (the PowerQuery skill delegates to mgmt-console-api automatically):
+
+```
+Build a 30-day behavioral baseline for Okta and show me anomalies for today.
+Find users behaving differently from their typical pattern across all SaaS sources.
+Run anomaly detection on FortiGate: which devices have unusual traffic today vs the last two weeks?
+Which CloudTrail roles are silent today that were active every day last week?
+```
+
+## Why this matters
+
+Three production failure modes a basic moving-average baseline misses, and this pipeline catches:
+
+- **Silent pairs are dropped by the basic two-side join.** A critical account active every weekday and silent today never enters the join output. The pipeline walks the baseline keys explicitly to surface them.
+- **Pooled baselines flag every weekend.** A 30-day pooled baseline with 22 weekday + 8 weekend samples produces a high stddev, so on a Sunday every weekday-only pair looks anomalous. Day-of-week stratification makes the comparison apples-to-apples.
+- **One-size-fits-all principal field does not work.** Okta uses `actor.user.email_addr`, CloudTrail uses `actor.user.name` (role), FortiGate uses `device.name` or `src.ip.address`, SentinelOne uses `src.process.user`. The schema-discovery step picks the right one per source.
+
+## Productionising as a STAR / PowerQuery Alert rule
+
+For a recurring detection rather than ad-hoc, the production pattern persists the baseline and reads it at detection time:
+
+1. Schedule a Hyperautomation workflow nightly to run the daily slices and write the DoW-stratified baseline to a config-managed lookup table via `| savelookup '<source>_baseline_dow', 'merge'`.
+2. Author a PowerQuery Alert / scheduled rule body that runs the live query, joins the baseline table via `| lookup`, and filters on `(live_count - avg) / sd >= 3.0 OR <= -3.0`.
+3. Tier the threshold: `|z| >= 3.0` for auto-page, `|z| >= 2.0` for analyst review queue, with separate paths for silent and new-behavior pairs.
+
+Full PQ building blocks and the rule-body shape are in
+`sentinelone-powerquery/examples/behavioral-baselines.md`.
+
 ## Validated
 
-Validated on `Okta` (site `pmoses demo`, 2026-06-18): a 7-day baseline lookup `uebaOktaBaseline`
+Validated on `Okta` (2026-06-18): a 7-day baseline lookup `uebaOktaBaseline`
 (172 pairs, n_days up to 8) was built by a single `savelookup` LRQ that completed server-side even
 after the interactive wrapper reported a 30s poll timeout. Detection scored live traffic against it
 and returned a robust SPIKE (`john.doe@example.com` / Other, z 7.08), identical to the engine, plus

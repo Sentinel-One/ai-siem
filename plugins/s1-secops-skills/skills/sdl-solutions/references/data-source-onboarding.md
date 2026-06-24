@@ -177,7 +177,7 @@ Detection design rules that hold on this tenant:
 
 - **Scheduled rules only for PowerQuery bodies:** `queryType: scheduled`, `queryLang: "2.0"`,
   PQ in `data.scheduledParams.query`, `treatAsThreat: "UNDEFINED"`, `networkQuarantine: false`.
-  Mitigation/active-response is not supported on scheduled rules; the verdict surfaces via the
+  Inline active-response is not supported on scheduled rules (drive mitigation from a Hyperautomation flow off the alert); the verdict surfaces via the
   rule severity.
 - **Aggregation lives inside `group`.** No `count_distinct(x)` outside a grouping function;
   simplify to `| group hits=count() by ...`.

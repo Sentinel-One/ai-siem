@@ -2,6 +2,82 @@
 
 PowerQuery Alerts (and STAR / Custom Detection rules that use a PowerQuery body) have tighter limits than ad-hoc hunts. This file covers how to write detection rule bodies that are correct, cheap, and reliably fire.
 
+## The three Custom Detection (STAR) rule types
+
+Every Custom Detection / STAR rule is created at `POST /web/api/v2.1/cloud-detection/rules` with `queryLang: "2.0"`, and listed with `isLegacy=false`. There are three `queryType` values; each puts its logic in a different field and uses a different language. Pick the type by what the detection needs to express.
+
+| Type | `queryType` | Body lives in | Body language | Fires | Asset binding | Mitigation (Active Response) | Use for |
+|---|---|---|---|---|---|---|---|
+| **STAR single-event** | `events` | `data.s1ql` | boolean S1QL, NO pipes | per matching event, streaming at ingest | automatic, from the matched event | inline Active Response (`treatAsThreat` Suspicious/Malicious, `networkQuarantine`) or HA flow | deterministic single-event signatures (a process + cmdline, a registry write, one log line) |
+| **STAR multi-event (correlation)** | `correlation` | `data.correlationParams` (`s1ql` stays `""`) | each sub-query is boolean S1QL, NO pipes | when sub-query match thresholds are met inside a time window, grouped by an entity | automatic, from the matched events; `entityMappings` optional | inline Active Response (`treatAsThreat`) or HA flow | thresholds (N of X), multi-stage chains, ordered sequences (A then B) |
+| **Scheduled (PowerQuery)** | `scheduled` | `data.scheduledParams.query` (`s1ql` stays `""`) | PowerQuery, pipes allowed | on a schedule (`runIntervalMinutes`) over a lookback window | NOT automatic, set `entityMappings` on the projected columns | via HA flow off the alert (`treatAsThreat` must be `UNDEFINED`, `networkQuarantine` false; no inline Active Response) | aggregation, statistics/baselines, cross-field grouping, lookup/anti-join exclusions |
+
+Decision guide:
+
+- The signal is one event you can describe with a boolean filter, **single-event**.
+- The signal is "N occurrences" or "A then B" across several events, correlated by a user/host/IP, **correlation**.
+- The signal needs `group`, `estimate_distinct`, `sum`, a `lookup` / anti-join, or any pipe, **scheduled**.
+
+The "Hard limits" below and the "Scheduled detection rule, full option set" section apply to the scheduled (PowerQuery-body) type. Single-event and correlation bodies are boolean S1QL and are not bound by the 1,000-row / 1 MB PowerQuery limits.
+
+### Single-event (`queryType: "events"`)
+
+Body is one boolean S1QL expression with NO pipes, in `data.s1ql`. Operators match a PowerQuery initial filter (`=`, `in`, `in:anycase`, `contains`, `matches`, `AND`/`OR`/`NOT`). The Target Asset binds automatically from the matched event.
+
+```json
+{
+  "data": {
+    "name": "...", "description": "... (include MITRE IDs)",
+    "queryType": "events", "queryLang": "2.0",
+    "severity": "High", "status": "Active", "expirationMode": "Permanent",
+    "treatAsThreat": "UNDEFINED", "networkQuarantine": false,
+    "s1ql": "dataSource.name = 'SentinelOne' AND event.type = 'Process Creation' AND src.process.name in ('powershell.exe','pwsh.exe') AND src.process.cmdline matches '(?i)\\s-(e|en|enc|enco|encod|encode|encoded|encodedc|encodedco|encodedcom|encodedcomm|encodedcomma|encodedcomman|encodedcommand)\\b'"
+  },
+  "filter": {"accountIds": ["<accountId>"]}
+}
+```
+
+There is no `lookup` in a single-event body (no pipes). To exclude known-good accounts/hosts, hardcode an inline negative list: `AND NOT (src.process.user in:anycase ('domain\\user1','domain\\user2'))`. Tenant-validated as an events rule 2026-06-24.
+
+### Correlation (`queryType: "correlation"`)
+
+`s1ql` stays empty; the logic lives in `data.correlationParams`:
+
+- `entity`: the field events are grouped/correlated by. `user` is tenant-confirmed; device/endpoint/IP-style entities also exist.
+- `matchInOrder`: `false` = sub-queries may match in any order; `true` = ordered sequence (sub-query 1, then 2, and so on).
+- `timeWindow.windowMinutes`: the correlation window.
+- `subQueries[]`: each `{ "matchesRequired": N, "subQuery": "<boolean S1QL, no pipes>" }`. One sub-query with `matchesRequired: N` is a threshold detection (N of the same event by entity in the window). Multiple sub-queries form a multi-stage / sequence detection.
+
+```json
+{
+  "data": {
+    "name": "...", "description": "... (include MITRE IDs)",
+    "queryType": "correlation", "queryLang": "2.0",
+    "severity": "High", "status": "Active", "expirationMode": "Permanent",
+    "s1ql": "",
+    "correlationParams": {
+      "entity": "user",
+      "matchInOrder": false,
+      "timeWindow": {"windowMinutes": 60},
+      "subQueries": [
+        {"matchesRequired": 2, "subQuery": "event.type = 'Process Creation' and src.process.name in ('powershell.exe','pwsh.exe') and src.process.cmdline matches '(?i)\\s-enc'"}
+      ]
+    }
+  },
+  "filter": {"accountIds": ["<accountId>"]}
+}
+```
+
+Tenant-validated 2026-06-24: a single-subQuery correlation (`entity:"user"`, `matchInOrder:false`, `windowMinutes:60`, `matchesRequired:2`) was accepted (created Draft, then deleted). The existing "Abnormal Spike in SSH Login Failures" rule uses two sub-queries with `matchesRequired:500` each over a 60-minute window.
+
+### Scheduled (`queryType: "scheduled"`)
+
+PowerQuery body (pipes allowed) in `data.scheduledParams.query`; needs `entityMappings` to bind the asset; no inline Active Response (mitigate via a Hyperautomation flow off the alert instead). Covered in full in "Deploying a rule via the API" and "Scheduled detection rule, full option set" below.
+
+### S1QL string escaping in `events` / `correlation` bodies (validated)
+
+The detection engine matches against a SINGLE backslash. In the raw query text you type in the console UI, write one backslash (`matches '(?i)\s-...\b'`, `in:anycase ('domain\user')`). In the JSON POST body, double each backslash (`\\s`, `\\b`, `domain\\user`) so that after JSON decoding the engine receives one. Tenant-validated 2026-06-24: a single-backslash `in:anycase ('corp\jdoe')` excluded the account, while the double-backslash form let it leak through; likewise `(?i)\s-no` matched live command lines but `(?i)\\s-no` matched nothing.
+
 ## Hard limits
 
 - **1,000 rows maximum** on any intermediate table (including inside `group` and `join`).
@@ -172,7 +248,7 @@ Confirmed on a live tenant: the same rule that showed "Unknown Device" with no `
 Other paths that bind the entity:
 - **Events-type rules** (`queryType: "events"`): the entity is taken from the matched event automatically, with no `entityMappings`. The console binds a **Device** by reconciling the event's device identity against inventory. `i.scheme` is NOT required, and `account.id` / `site.id` come from the ingest scope (S1-Scope header), not the event body. Fields like `event.type` / `src.process.*` matter only if the rule's `s1ql` filters on them.
   - **Do NOT trust the cloud-detection REST `agentRealtimeInfo` block as proof of binding.** Tenant-tested 2026-06-14: an event carrying ONLY the top-level `agent.uuid` made the REST payload's `agentRealtimeInfo` resolve hostname/OS/agent-id for display, but the console alert still showed **Target Asset = "Unknown Device"**. `agentRealtimeInfo` is a uuid lookup for display; it is not the entity binding. Confirm the actual **Target Asset** via `datasource alerts` (`assetName` / `assetAgentUuid`, which matches the console) or the console UI, never the REST `agentRealtimeInfo`.
-  - **Minimum to bind the Target Asset (pinned by bisection, 2026-06-14): two fields, `device.uid` + `class_uid`.** `device.uid` must carry the **numeric console agent id** (the `agentRealtimeInfo.id` / console agent id, e.g. `2497649316206445895`, NOT the agent UUID), and `class_uid` must be an endpoint class (tested with `1007`). With just those two on a custom `dataSource.name`, the events-rule alert bound the real endpoint (`assetName` medicalcenter, OS Windows, real `assetId`); the platform resolved `assetAgentUuid` from inventory even though the event carried no uuid.
+  - **Minimum to bind the Target Asset (pinned by bisection, 2026-06-14): two fields, `device.uid` + `class_uid`.** `device.uid` must carry the **numeric console agent id** (the `agentRealtimeInfo.id` / console agent id, e.g. `2497649316206445895`, NOT the agent UUID), and `class_uid` must be an endpoint class (tested with `1007`). With just those two on a custom `dataSource.name`, the events-rule alert bound the real endpoint (`assetName` corp-ws-01, OS Windows, real `assetId`); the platform resolved `assetAgentUuid` from inventory even though the event carried no uuid.
     - The console agent id must be in **`device.uid`** specifically: the same numeric id placed only in `agent.id` did NOT bind, and `endpoint.uid` was redundant.
     - `class_uid` is required: the same identity fields without any `class_uid` left the asset "Unknown Device".
     - Not needed for binding: `agent.uuid`, `device.agent.uuid`, `agent.id`, `endpoint.name`, `endpoint.uid`, `event.type`. A uuid only populates the REST `agentRealtimeInfo` display, never the Target Asset.
@@ -211,7 +287,7 @@ Every option on the rule's Overview page maps to a field in the `POST/PUT /cloud
 | Deduplication logic | `data.scheduledParams.disableStreaksLogic` | inverse: dedup ON ⇔ `disableStreaksLogic:false` |
 | Cool off period | `data.scheduledParams` cool-off settings | suppression window; only present in the payload when enabled (exact key not captured here because it was disabled) |
 | Hide logic | `data.hideLogic` | bool |
-| Treat as threat (Active Response) | `data.treatAsThreat` | `UNDEFINED` / `Suspicious` / `Malicious`. Scheduled rules must use `UNDEFINED` — mitigation/active-response is not supported on scheduled rules |
+| Treat as threat (Active Response) | `data.treatAsThreat` | `UNDEFINED` / `Suspicious` / `Malicious`. Scheduled rules must use `UNDEFINED`: no inline active-response on the rule itself. Drive mitigation from a Hyperautomation flow triggered by the alert instead (any alert can trigger an HA flow) |
 | Network quarantine | `data.networkQuarantine` | bool; not supported on scheduled rules |
 
 ## Deploying a rule via the API
@@ -221,6 +297,7 @@ Every option on the rule's Overview page maps to a field in the `POST/PUT /cloud
 | `queryType` | `queryLang` | Result |
 |---|---|---|
 | `scheduled` | `"2.0"` | Correct path for PowerQuery (pipe) rules. Body goes in `data.scheduledParams.query`; accepts pipe syntax. |
+| `correlation` | `"2.0"` | Multi-event correlation rules. `s1ql` stays empty; logic goes in `data.correlationParams` (`entity`, `matchInOrder`, `timeWindow.windowMinutes`, and `subQueries[]` each `{matchesRequired, subQuery}` where `subQuery` is boolean S1QL with NO pipes). Tenant-confirmed 2026-06-24. |
 | `events` | `"2.0"` | Correct path for events rules. Body is a boolean S1QL filter with NO pipes, placed in `data.s1ql` (e.g. `dataSource.name='Okta' and unmapped.legacyEventType contains 'token.detect_reuse'`). The `400 Don't understand [|]` happens only when the body contains a pipe; events bodies cannot use PowerQuery pipe syntax. Confirmed: every live events rule on this tenant (Okta, Palo Alto, Windows Event Logs, SentinelOne) uses `queryLang:"2.0"`. |
 | `events` | `"2.1"` | HTTP 400 `queryLang: "2.1" is not a valid choice`; the 2.1 dialect is not in the enum. |
 | `events` | `"1.0"` | Also accepted for events (legacy default), but live rules use `"2.0"`. Boolean S1QL only, no pipes. |
@@ -257,7 +334,7 @@ Notes on the shape:
 - **Run interval and lookback:** match these (e.g. 60 / 60) for non-overlapping evaluation. Setting `lookbackWindowMinutes` higher than `runIntervalMinutes` causes overlap and duplicate alerts.
 - **`status`:** new rules land as `Draft` on creation regardless of the requested status. Enable separately with `PUT /web/api/v2.1/cloud-detection/rules/enable` (body `{"filter": {"ids": [...], "accountIds": [...]}}`).
 - **No `disableAgentMitigation` field:** that property is not part of the scheduled-rule schema. Including it returns HTTP 400 `Unknown field`. Cloud-source PQ rules do not need it.
-- **No `treatAsThreat: "Malicious"`:** scheduled rules accept `treatAsThreat: "UNDEFINED"` (or omit) and `networkQuarantine: false`. Mitigation actions are not supported on scheduled rules.
+- **No `treatAsThreat: "Malicious"`:** scheduled rules accept `treatAsThreat: "UNDEFINED"` (or omit) and `networkQuarantine: false`. Inline (on-rule) mitigation is not supported on scheduled rules; drive mitigation from a Hyperautomation flow triggered by the alert instead.
 
 ### If creation fails with `feature not enabled` or equivalent
 

@@ -202,73 +202,15 @@ These skills turn Claude into a hands-on SentinelOne analyst and engineer. Once 
 
 ## Behavioral baselining + anomaly detection
 
-A source-agnostic pipeline for building behavioral baselines and surfacing statistical anomalies on any log source ingested into SDL. Lives in `mgmt-console-api/scripts/baseline_anomaly.py`; documented PQ building blocks are in `powerquery/examples/behavioral-baselines.md`.
+A source-agnostic pipeline for building behavioral baselines and surfacing statistical anomalies
+(SPIKE / DROP / SILENT / NEW-BEHAVIOR) on any log source ingested into SDL, baselined per
+(principal, action) with day-of-week stratification and z-scoring. Run it interactively for a hunt,
+or deploy it as a persisted baseline + scheduled rule + nightly refresh + dashboard.
 
-### What it does
-
-For any `dataSource.name`, the pipeline:
-
-1. **Auto-discovers the schema** via `inspect_source.discover_schema()` and picks `principal_field` (user / host / IP / role) and `action_field` (event.type / activity_name / action) from what the source actually carries, with no per-source hardcoding.
-2. **Slices the baseline window into N daily LRQ queries** (default 30 days), running 3 in parallel under the per-user 3 rps cap. Each slice produces (action, principal, count) rows for that day. Daily slicing avoids the LRQ per-call deadline that single 7d/30d aggregates routinely exceed.
-3. **Runs one 24h live slice** in the same shape.
-4. **Merges client-side** with one of two strategies:
-   - **`pooled`**: all daily samples in one bucket per (action, principal). Simple, but flags weekend silence as anomalous.
-   - **`dow`**: separate bucket per (action, principal, day-of-week). Eliminates the weekday/weekend false-positive cleanly and is the production tier.
-5. **Surfaces three anomaly classes** on every run:
-   - **Matched z-score deviations**: pair active in both windows but live count differs from baseline avg by more than `Z_THRESHOLD * stddev` (SPIKE or DROP).
-   - **Silent pairs**: pair active in baseline but with zero live events. Catches "user X went dark on a day they're normally active."
-   - **New-behavior pairs**: pair seen live but with no baseline at all. Could be a new user, fresh recon activity, or attacker noise, routed to a separate triage queue.
-
-### Why this matters
-
-Three production failure modes that a basic moving-avg baseline misses, and this pipeline catches:
-
-- **Silent pairs are dropped by the basic two-side join.** A critical user account that was active every weekday and is silent today never enters the join output. The pipeline walks the baseline keys explicitly to surface them.
-- **Pooled baselines flag every weekend.** A 30-day pooled baseline with 22 weekday + 8 weekend samples produces a high stddev, but on a Sunday every weekday-only pair looks anomalous. Day-of-week stratification makes the comparison apples-to-apples.
-- **One-size-fits-all principal field doesn't work.** Okta uses `actor.user.email_addr`. CloudTrail uses `actor.user.name` (role). FortiGate uses `device.name` or `src.ip.address`. SentinelOne uses `src.process.user`. The schema-discovery step picks the right one per source.
-
-### How to use it
-
-**One-shot CLI:**
-
-```bash
-# Auto-discover principal/action, 30-day DoW-stratified baseline, default Z=2.0
-python mgmt-console-api/scripts/baseline_anomaly.py --source "Okta"
-
-# Network source: auto-discover picks device.name + event.type
-python mgmt-console-api/scripts/baseline_anomaly.py --source "FortiGate" --days 14
-
-# Override fields if you know better
-python mgmt-console-api/scripts/baseline_anomaly.py --source "Zscaler Internet Access" \
-    --principal src.ip.address --action unmapped.action
-
-# Pooled (no DoW stratification) and a tighter threshold
-python mgmt-console-api/scripts/baseline_anomaly.py --source "CloudTrail" \
-    --stratify pooled --z 3.0
-```
-
-State is checkpointed to `<plugin>/baselines/baseline_anomaly_<slug>_state.json` so the script is resumable across short shell budgets. Final results land in `baseline_anomaly_<slug>_result.json`.
-
-**In a Cowork chat session:**
-
-Just ask. The PowerQuery skill delegates to the mgmt-console-api skill automatically.
-
-```
-Build a 30-day behavioral baseline for Okta and show me anomalies for today.
-Find users behaving differently from their typical pattern across all SaaS sources.
-Run anomaly detection on FortiGate: which devices have unusual traffic today vs the last two weeks?
-Which CloudTrail roles are silent today that were active every day last week?
-```
-
-### Productionising as a STAR / PowerQuery Alert rule
-
-For a recurring detection (rather than ad-hoc), the production pattern persists the baseline and reads it at detection time:
-
-1. Schedule a Hyperautomation workflow nightly to run the daily slices and write the DoW-stratified baseline to a config-managed lookup table via `| savelookup '<source>_baseline_dow', 'merge'`.
-2. Author a PowerQuery Alert rule body that runs the live query, joins the baseline table via `| lookup`, and filters on `(live_count - avg) / sd >= 3.0 OR <= -3.0`.
-3. Tier the threshold: `|z| >= 3.0` for auto-page, `|z| >= 2.0` for analyst review queue, separate path for silent pairs and new-behavior pairs.
-
-Full PQ building blocks and the rule-body shape are in `powerquery/examples/behavioral-baselines.md`.
+Full guide, including the `baseline_anomaly.py` CLI, the three production failure modes it handles,
+interactive and Cowork-chat usage, and productionising as a STAR / PowerQuery Alert rule, is in
+[docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md). PQ building
+blocks are in `powerquery/examples/behavioral-baselines.md`.
 
 ---
 
@@ -360,7 +302,7 @@ parameter interview, previews the rendered config, then deploys and validates.
 
 - *"Onboard the cisco_meraki logs on the Acme site"*
 - *"Bring our new FortiGate firewall source into AI SIEM and build detections and a dashboard"*
-- *"Set up detections and a dashboard for the Okta source on pmoses demo"*
+- *"Set up detections and a dashboard for the Okta source on the Acme site"*
 - *"Onboard our Zscaler logs end to end: OCSF parser, asset-enriched dashboard, MITRE-mapped detections, and a SOC threat-response playbook"*
 - *"Onboard cisco_meraki and add the response automation that VirusTotal-checks the destination, then blocks the IOC and quarantines the source host on a malicious verdict"*
 
@@ -382,16 +324,19 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 - *"Add enrichment: device context and open vulnerabilities, keyed on hostname"*
 - *"Enrich each event with user AD groups and privilege, and the device criticality"*
 
-**UEBA behavioral anomaly detection** (baseline ANY signal per (action, principal), z-score SPIKE/DROP/SILENT/NEW). Full guide: [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md).
-
-- *"Run a behavioral baseline on Okta and tell me what's anomalous"*
-- *"Deploy UEBA anomaly detection for FortiGate on the Acme site"*
-
 **Ingest health monitoring (per device)** (per-firewall/endpoint/server anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with email on every failure). Full guide: [docs/solutions/ingest-health-monitoring.md](./docs/solutions/ingest-health-monitoring.md).
 
 - *"Deploy ingest health monitoring per device on the Acme site"*
 - *"Monitor ingest per firewall and endpoint and email soc@acme.com on any failure"*
 - *"Alert me when a specific firewall or endpoint stops sending logs"*
+
+**Detection exclusions** (suppress known-good noise in a STAR rule: a single-event rule with an inline hardcoded exclusion list, or a scheduled rule with a CSV lookup anti-join plus an effectiveness dashboard; the skill asks which rule type first). Full guide: [docs/solutions/scheduled-detection-exclusions.md](./docs/solutions/scheduled-detection-exclusions.md).
+
+- *"Exclude my engineering team from the encoded-PowerShell detection"*
+- *"Stop my Akamai DNS detection from alerting on our scanner subnets and corporate domains, here's the list"*
+- *"Add a single-event STAR detection for encoded PowerShell that ignores our DevOps service accounts"*
+
+For the full per-solution breakdown, outcomes, and more example prompts, see the solution skill's own README: [skills/sdl-solutions/README.md](./skills/sdl-solutions/README.md).
 
 ---
 
@@ -454,9 +399,10 @@ This repo includes Windsurf workflow files in `.windsurf/workflows/`. Each workf
 | [docs/sdl-dashboard.md](./docs/sdl-dashboard.md) | All supported panel types and dashboard features with confirmed JSON examples |
 | [docs/solutions/data-source-onboarding.md](./docs/solutions/data-source-onboarding.md) | SDL Solutions: onboard a raw source end to end (OCSF, enrichment, dashboard, detections, threat-response flow) from one prompt |
 | [docs/solutions/asset-enrichment.md](./docs/solutions/asset-enrichment.md) | SDL Solutions: enrich raw logs with device/user/vuln/alert context from the Asset Inventory, with prompt examples |
-| [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md) | SDL Solutions: baseline ANY signal and detect z-score anomalies (SPIKE/DROP/SILENT/NEW), deployed as a baseline lookup, scheduled rule, nightly refresh, and dashboard |
-| [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md) | SDL Solutions: baseline ANY signal per (action, principal) and detect SPIKE/DROP/SILENT/NEW deviations with a z-score, deployed as a baseline lookup, scheduled rule, nightly refresh, and dashboard |
+| [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md) | SDL Solutions: baseline ANY signal per (action, principal) and detect z-score anomalies (SPIKE/DROP/SILENT/NEW), deployed as a baseline lookup, scheduled rule, nightly refresh, and dashboard |
 | [docs/solutions/ingest-health-monitoring.md](./docs/solutions/ingest-health-monitoring.md) | SDL Solutions: per-device ingest health (per firewall/endpoint/server) on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, parser drift, with a dashboard and email notifications |
+| [docs/solutions/scheduled-detection-exclusions.md](./docs/solutions/scheduled-detection-exclusions.md) | SDL Solutions: suppress known-good noise in a STAR Custom Detection rule, built as a single-event rule (inline hardcoded exclusion) or a scheduled rule (CSV lookup anti-join + effectiveness dashboard); asks the rule type first |
+| [docs/detection-rule-types.md](./docs/detection-rule-types.md) | The three STAR / Custom Detection rule types (single-event, multi-event correlation, scheduled PowerQuery): API shapes, when to use each, S1QL backslash escaping, and why asset enrichment is the prerequisite for asset-mapped alerts |
 | [docs/detection-asset-binding.md](./docs/detection-asset-binding.md) | Which event attributes make STAR detection alerts auto-populate the Target Asset (device, identity, cloud), the tested per-type binding matrix, and how the asset enrichment solution supplies them |
 | [mgmt-console-api/SKILL.md](./skills/mgmt-console-api/SKILL.md) | Deep reference: confirmed field schemas and required API parameters per endpoint |
 | [mgmt-console-api/tests/README.md](./skills/mgmt-console-api/tests/README.md) | Reversible lifecycle test patterns and per-test field notes |

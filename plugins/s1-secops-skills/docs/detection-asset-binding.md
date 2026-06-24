@@ -2,11 +2,18 @@
 
 How to make a SentinelOne **events-type (single-event) STAR / Custom Detection** alert automatically
 populate its **Target Asset** with the real device, identity, or cloud resource, instead of showing
-"Unknown Device". This is the difference between an analyst seeing `medicalcenter (Windows desktop)`
+"Unknown Device". This is the difference between an analyst seeing `corp-ws-01 (Windows desktop)`
 or `jdoe (AD User)` on the alert versus a blank "Unknown Device" they have to chase down manually.
 
-Everything here is tenant-validated (usea1-purple, 2026-06-14). The full tested matrix lives in the
+Everything here is tenant-validated (2026-06-14). The full tested matrix lives in the
 PowerQuery skill: [`powerquery/references/detection-rules.md`](../skills/powerquery/references/detection-rules.md).
+
+**Related:** for the three rule types (single-event, multi-event correlation, scheduled) and which to
+use when, see [detection-rule-types.md](./detection-rule-types.md). Asset binding on third-party and
+custom sources depends on the asset identity being **enriched into the raw log first**, the raw log
+does not carry the console asset id on its own, so the asset enrichment solution
+([`docs/solutions/asset-enrichment.md`](./solutions/asset-enrichment.md)) is the prerequisite for
+asset-mapped STAR alerts on those sources.
 
 ## How events-rule binding works
 
@@ -46,7 +53,7 @@ parser-less `isParsed` events against a live account-scoped events rule, read ba
 
 | Asset type | Event attributes | Resolved Target Asset |
 |---|---|---|
-| Endpoint / device | `device.uid` = console agent id + `class_uid` 1007 | `medicalcenter` (Windows desktop), validated end to end |
+| Endpoint / device | `device.uid` = console agent id + `class_uid` 1007 | `corp-ws-01` (Windows desktop), validated end to end |
 | Identity | `user.uid` = unified asset id + `class_uid` 3002 | `jdoe` (Identity / AD User) |
 | Cloud resource | `device.uid` = unified asset id + `class_uid` 6003 | `/aws/ecs/...` (Governance / AWS CloudWatch Log Group) |
 

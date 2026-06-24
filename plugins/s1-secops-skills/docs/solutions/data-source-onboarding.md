@@ -83,7 +83,7 @@ draft unless you ask to enable them), and a SOC threat-response Hyperautomation 
 
 ## Validated reference
 
-First live onboarding (2026-06-13, usea1-purple): **Cisco Meraki** via `onboard cisco_meraki logs`.
+First live onboarding (2026-06-13): **Cisco Meraki** via `onboard cisco_meraki logs`.
 The source was located by `parser='cisco_meraki-latest'` with no parser file and no
 `dataSource.name` (the un-normalised gap); the parser was created and corrected to OCSF Network
 Activity with a dotted-prefix JSON flatten, and device enrichment was added via an IP-keyed

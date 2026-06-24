@@ -1,0 +1,16 @@
+{
+  "_comment": "STAR SINGLE-EVENT Custom Detection rule with an INLINE hardcoded exclusion list. POST to /web/api/v2.1/cloud-detection/rules. queryType MUST be 'events' and queryLang '2.0'. The body is ONE boolean S1QL expression with NO pipes in data.s1ql; there is no lookup table and no dashboard. The exclusion is a hardcoded negative list appended to the base filter: 'AND NOT ({{EXCL_FIELD}} in:anycase ({{EXCL_LIST}}))'. Use this type when the base detection is a deterministic single-event signature and the allowlist is small and stable; use the scheduled template (exclusion_detection.template.json) when you need aggregation or a large/dynamic CSV exclusion list. BACKSLASH ESCAPING (validated 2026-06-24): the engine matches a SINGLE backslash, so write one backslash in the console UI but DOUBLE each backslash in this JSON ({{EXCL_LIST}} like 'corp\\jdoe', regex like '\\s'...'\\b') so JSON decoding restores one. Events rules auto-bind the Target Asset from the matched event (no entityMappings). Mitigation IS supported on events rules: set treatAsThreat to Suspicious/Malicious and networkQuarantine deliberately if active response is wanted (default UNDEFINED/false = alert-only). New rules land Disabled; enable with PUT /cloud-detection/rules/enable. List with isLegacy=false.",
+  "data": {
+    "name": "{{PREFIX}} - {{DETECTION_NAME}}",
+    "description": "{{DETECTION_DESCRIPTION}} Known-good activity is suppressed inline via a hardcoded exclusion list on {{EXCL_FIELD}}. MITRE ATT&CK: {{MITRE_TACTIC}} / {{MITRE_TECHNIQUE}}.",
+    "queryType": "events",
+    "queryLang": "2.0",
+    "severity": "{{SEVERITY}}",
+    "status": "Disabled",
+    "expirationMode": "Permanent",
+    "treatAsThreat": "UNDEFINED",
+    "networkQuarantine": false,
+    "s1ql": "{{BASE_FILTER}} AND NOT ({{EXCL_FIELD}} in:anycase ({{EXCL_LIST}}))"
+  },
+  "filter": { "{{SCOPE_KEY}}": ["{{SCOPE_ID}}"] }
+}

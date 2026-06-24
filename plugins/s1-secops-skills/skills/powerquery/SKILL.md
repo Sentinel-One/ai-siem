@@ -251,7 +251,15 @@ Prefer subqueries for exclusion/inclusion; reach for `join` when a row must "kno
 
 ## Writing detection rules vs ad-hoc hunts
 
-A PowerQuery used as a detection rule body (STAR / Custom Detection / PowerQuery Alert) is more constrained than a hunt query:
+SentinelOne Custom Detection (STAR) rules come in three `queryType` flavors, all created at `POST /web/api/v2.1/cloud-detection/rules` with `queryLang: "2.0"`:
+
+- **STAR single-event** (`queryType: "events"`): body is one boolean S1QL filter with NO pipes in `data.s1ql`, fires per matching event. Use for deterministic single-event signatures.
+- **STAR multi-event / correlation** (`queryType: "correlation"`): `s1ql` empty, logic in `data.correlationParams` (entity + `subQueries[]` with per-query `matchesRequired` over a `timeWindow`). Use for thresholds (N of X) and A-then-B sequences.
+- **Scheduled** (`queryType: "scheduled"`): a PowerQuery body (pipes allowed) in `data.scheduledParams.query`, runs on a schedule. Use for aggregation, baselines, and lookup/anti-join exclusions.
+
+Only the **scheduled** type uses a PowerQuery body, and only it is bound by the constraints below. Single-event and correlation bodies are boolean S1QL (the same grammar as a PQ initial filter, no pipes).
+
+A PowerQuery scheduled-rule body is more constrained than a hunt query:
 
 - Intermediate and output tables must stay under 1,000 rows and 1 MB of RAM.
 - No `nolimit`.
@@ -259,7 +267,7 @@ A PowerQuery used as a detection rule body (STAR / Custom Detection / PowerQuery
 - The rule should produce one row per finding, with stable columns the detection engine can map to alert fields (e.g., `agent.uuid`, `endpoint.name`, `src.process.storyline.id`, `timestamp`).
 - Keep the initial filter as specific as possible — this is what's evaluated in the summary service and is what gates cost.
 
-For detection rule patterns and a checklist, see `references/detection-rules.md` and `examples/detection-library.md`.
+For all three rule types (API shapes, the correlation `correlationParams` block, the events/correlation S1QL escaping rule), detection patterns, and a checklist, see `references/detection-rules.md` and `examples/detection-library.md`.
 
 ## A minimal but realistic example
 

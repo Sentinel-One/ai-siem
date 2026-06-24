@@ -64,6 +64,7 @@ before iterating on real action graphs.
 
 Notes:
 - `dynamic_properties: {}` is valid — the manual-trigger node renders with no input fields.
+- **ALWAYS publish a newly created or imported workflow to a Shared Draft.** A workflow created or imported via the API lands as a **Private Draft owned by the API token's user** (for example, the service user), so it is invisible in the console to the human who requested it. Immediately after a successful import, publish it: `POST /hyper-automate/api/v1/workflows/{workflow_id}/publish?accountIds=<acct>` (bodyless `{}`, returns 204; state stays `inactive`, meaning shared but not running). Use `siteIds=<id>` for a site-scoped workflow. See `references/api-integration.md` section 8a. Skip this only when you are activating the workflow, since activation auto-publishes. You can only publish a draft owned by the token's user; publishing another user's private draft returns 403 "Workflow can't be published".
 - Activate the imported workflow with
   `POST /workflows/{workflow_id}/{version_id}/activation?siteIds=<id>` (returns 204).
 - Don't forget the scope param: see `references/api-integration.md` for the
@@ -136,6 +137,10 @@ Once resolved, validate them using the two-step test in `references/api-integrat
 (system health check + token permission check). Only proceed with import/trigger/activate
 after both checks pass. Always use a personal Console User API token, not a Service User
 token — see `references/api-integration.md` for the reason.
+
+### Step 6: Publish so the requester can see it (REQUIRED after any API import)
+A workflow imported or created via the API is a **Private Draft owned by the token's user** and is not visible to anyone else in the console, including the person who asked for it. After a successful import, ALWAYS publish it to a **Shared Draft**:
+`POST /hyper-automate/api/v1/workflows/{workflow_id}/publish?accountIds=<acct>` (bodyless `{}`, returns 204). The workflow stays `inactive` (shared but not running). Use `siteIds=<id>` for a site-scoped workflow. Skip this step only when you are activating the workflow, since activation publishes automatically. See `references/api-integration.md` section 8a.
 
 ---
 

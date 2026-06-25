@@ -12,7 +12,7 @@ SDL parsers are **augmented JSON**: unquoted keys are allowed, string values can
 6. [Line groupers (multi-line)](#line-groupers-multi-line)
 7. [Rewrites](#rewrites)
 8. [Special fields: timestamp, severity, message](#special-fields-timestamp-severity-message)
-9. [Discard, halt, repeat, skipNumericConversion, intermittentTimestamps](#behavior-flags)
+9. [Discard, halt, repeat, skipNumericConversion, intermittentTimestamps](#behaviour-flags)
 10. [Associations (correlate non-adjacent lines)](#associations)
 11. [Aliases](#aliases)
 12. [Parse limits](#parse-limits)
@@ -62,7 +62,7 @@ Formats are tried in declaration order against the **whole line**. A format that
 
 A format that starts with `.*` matches *anywhere* in the line, not just the start. This is the "line fragment" idiom used to share captures across related event variants. Combined with `halt: true` it's how you build "first match wins" logic.
 
-### Anchoring fragment captures (regex behavior)
+### Anchoring fragment captures (regex behaviour)
 
 When a fragment format pulls a token out of the middle of a line, the prefix's regex must commit the engine to the right position. Three related rules:
 
@@ -164,7 +164,7 @@ lineGroupers: [
 ]
 ```
 
-| Continuation mode | Behavior |
+| Continuation mode | Behaviour |
 |---|---|
 | `continueThrough` | Keep accumulating while following lines match the pattern (e.g., stack traces indented). |
 | `continuePast` | Accumulate matches, then one more line (e.g., `\`-terminated continuation). |
@@ -217,7 +217,7 @@ Missing → `info` (3).
 
 **`message`** — raw event text, reserved. Cannot be captured into. Rewrite rules can modify a portion (a rule whose regex matches the entire value is silently ignored). Drop it via `discardAttributes: ["message"]` — highly recommended for JSON-parsed logs to reduce storage.
 
-## Behavior flags
+## Behaviour flags
 
 - `discard: true` on a format — drop events matching the format. Discarded events don't count toward log volume.
 - `discard: { filter: "keep = false" }` (S-24.4.5+) — conditional drop driven by a `computeFields` rewrite that sets a boolean field.

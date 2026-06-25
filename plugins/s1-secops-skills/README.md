@@ -14,7 +14,7 @@ A full-stack AI analyst for SentinelOne, built as a set of Claude skills, three 
   - [How to activate in other environments](#how-to-activate-in-other-environments)
   - [What happens in a session](#what-happens-in-a-session)
 - [What you can do](#what-you-can-do)
-- [Behavioral baselining + anomaly detection](#behavioral-baselining--anomaly-detection)
+- [Behavioural baselining + anomaly detection](#behavioural-baselining--anomaly-detection)
 - [Example questions](#example-questions)
 - [Installing, upgrading, and configuration](#installing-and-upgrading)
 - [Team VM deployment (s1-secops-mcp)](#team-vm-deployment-s1-secops-mcp)
@@ -53,7 +53,7 @@ MCP Servers                Live API access, outside the Cowork sandbox proxy
   threat-intel-mcp           External IOC enrichment (required for CRITICAL classification)
 ```
 
-**CLAUDE.md** is the brain: it sets the operating persona and invokes skills as the task demands. **sdl-solutions** is the umbrella skill: for whole-solution work it runs first and orchestrates the primitive skills (PowerQuery, dashboard, parser, Hyperautomation, SDL API, Mgmt Console) in order, previewing before it deploys. **Skills** encode confirmed API behavior, including field schemas validated against live tenants, so Claude doesn't guess field names, and they reach `*.sentinelone.net` through the **MCP servers**, which bypass the Cowork sandbox proxy. For a single query, dashboard, parser, or workflow, Claude calls the matching primitive skill directly without the umbrella.
+**CLAUDE.md** is the brain: it sets the operating persona and invokes skills as the task demands. **sdl-solutions** is the umbrella skill: for whole-solution work it runs first and orchestrates the primitive skills (PowerQuery, dashboard, parser, Hyperautomation, SDL API, Mgmt Console) in order, previewing before it deploys. **Skills** encode confirmed API behaviour, including field schemas validated against live tenants, so Claude doesn't guess field names, and they reach `*.sentinelone.net` through the **MCP servers**, which bypass the Cowork sandbox proxy. For a single query, dashboard, parser, or workflow, Claude calls the matching primitive skill directly without the umbrella.
 
 Full architecture details: [docs/architecture.md](./docs/architecture.md)
 
@@ -65,13 +65,13 @@ The plugin bundles every skill; installing it is sufficient. No individual skill
 
 | Skill | What it does |
 |---|---|
-| mgmt-console-api | Query and act on the Management Console: threats, alerts, agents, sites, RemoteOps, Deep Visibility, Hyperautomation, Purple AI, UAM. Includes the source-agnostic behavioral baselining + anomaly detection pipeline (`baseline_anomaly.py`) |
+| mgmt-console-api | Query and act on the Management Console: threats, alerts, agents, sites, RemoteOps, Deep Visibility, Hyperautomation, Purple AI, UAM. Includes the source-agnostic behavioural baselining + anomaly detection pipeline (`baseline_anomaly.py`) |
 | powerquery | Write, debug, and run PowerQuery for threat hunting, STAR detection rules, SDL dashboards, and statistical baseline / anomaly detection rule bodies |
 | sdl-api | Ingest events, run queries, and manage configuration files (parsers, dashboards, lookups) via the Singularity Data Lake API |
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. See [docs/sdl-dashboard.md](./docs/sdl-dashboard.md) for all supported panel types |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioral anomaly detection (z-score baselining of any signal), and per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications). Orchestrates the skills above |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), and per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications). Orchestrates the skills above |
 
 ---
 
@@ -95,7 +95,7 @@ The plugin bundles every skill; installing it is sufficient. No individual skill
 | **New detections the same day a threat emerges** | When a new TTP or campaign breaks, its behaviour is turned into a validated, MITRE-mapped PowerQuery or STAR detection and deployed in hours, not the weeks a hand-authored rule normally takes. |
 | **Onboard any new data source in minutes** | A raw, unreadable stream becomes OCSF-normalised, parsed, dashboarded, and detection-covered in a single session. Coverage stops being gated by quarters of engineering backlog. |
 | **Find threats hiding in app and business logs** | Detection and investigation reach beyond traditional security telemetry into custom application and business logs, surfacing fraud and abuse that no SIEM was watching. Engineers, not only analysts, can run it. |
-| **Proactive anomaly detection at machine speed** | Source-agnostic behavioral baselining flags deviations with no known signature (impossible travel, off-hours access, first-seen processes, beaconing), catching novel and insider threats between analyst shifts. |
+| **Proactive anomaly detection at machine speed** | Source-agnostic behavioural baselining flags deviations with no known signature (impossible travel, off-hours access, first-seen processes, beaconing), catching novel and insider threats between analyst shifts. |
 | **Lower cost than the legacy SIEM model** | The Singularity Data Lake keeps all data hot and searchable at flat-rate, indexless economics rather than per-gigabyte ingest pricing, and the bring-your-own-AI run cost is negligible against analyst hours and SIEM licensing. |
 
 **Key metrics:** `< 5 min` mean investigation time · `100%` IOC enrichment coverage · `Real-time` MITRE ATT&CK mapping · `70%+` L1 capacity freed · `minutes` to onboard a new source · `hours` from emerging threat to live detection
@@ -196,13 +196,13 @@ These skills turn Claude into a hands-on SentinelOne analyst and engineer. Once 
 
 **Data lake operations**: ingest custom telemetry, list and manage configuration files, deploy or update parsers and dashboards, and run arbitrary queries through the SDL API.
 
-**Behavioral baselining and anomaly detection**: build per-(principal, action) statistical baselines on any data source (Okta, FortiGate, CloudTrail, SentinelOne, Mimecast, Zeek, or anything else ingested into SDL) and surface deviations automatically. The skill auto-discovers the right principal field (user, host, IP, role) and action field (event.type, activity_name, action) per source so you don't hardcode field names. See [Behavioral baselining](#behavioral-baselining--anomaly-detection) below.
+**Behavioural baselining and anomaly detection**: build per-(principal, action) statistical baselines on any data source (Okta, FortiGate, CloudTrail, SentinelOne, Mimecast, Zeek, or anything else ingested into SDL) and surface deviations automatically. The skill auto-discovers the right principal field (user, host, IP, role) and action field (event.type, activity_name, action) per source so you don't hardcode field names. See [Behavioural baselining](#behavioural-baselining--anomaly-detection) below.
 
 ---
 
-## Behavioral baselining + anomaly detection
+## Behavioural baselining + anomaly detection
 
-A source-agnostic pipeline for building behavioral baselines and surfacing statistical anomalies
+A source-agnostic pipeline for building behavioural baselines and surfacing statistical anomalies
 (SPIKE / DROP / SILENT / NEW-BEHAVIOR) on any log source ingested into SDL, baselined per
 (principal, action) with day-of-week stratification and z-scoring. Run it interactively for a hunt,
 or deploy it as a persisted baseline + scheduled rule + nightly refresh + dashboard.
@@ -227,9 +227,9 @@ These are real questions you can ask. Claude will pick the right skill automatic
 - *"Show me the top 20 destination IPs for outbound connections from Windows servers this week"*
 - *"Write a STAR detection rule that fires when a script interpreter spawns a network tool"*
 
-### Behavioral baselining and anomaly detection
+### Behavioural baselining and anomaly detection
 
-- *"Build a 30-day behavioral baseline for Okta and show me anomalies for today"*
+- *"Build a 30-day behavioural baseline for Okta and show me anomalies for today"*
 - *"Run a day-of-week-stratified baseline on FortiGate and surface devices with unusual traffic patterns"*
 - *"Which CloudTrail roles are silent today that were active every day last week?"*
 - *"Find users in Google Workspace whose activity volume today is more than 3 standard deviations from their typical day"*
@@ -272,7 +272,7 @@ These are real questions you can ask. Claude will pick the right skill automatic
 
 - *"Start a new investigation session: enumerate live data sources and pull today's open alerts"*
 - *"Triage alert ID `abc123`: get the full details, check notes and history, enrich any IOCs through the threat-intel MCP, and give me a verdict"*
-- *"Enrich this file hash `aabbccdd...`: detection ratio, behavioral analysis, C2 infrastructure, and threat actor attribution"*
+- *"Enrich this file hash `aabbccdd...`: detection ratio, behavioural analysis, C2 infrastructure, and threat actor attribution"*
 - *"Pivot on IP `1.2.3.4`: what malware communicates with it, what domains resolve to it, and is it associated with any APT group?"*
 - *"Cross-correlate this IOC across all connected data sources: check firewall, Okta, Zeek, and CloudTrail for any trace of `1.2.3.4`"*
 - *"Check endpoint `DESKTOP-XYZ` for anomalies: run the full anomaly checklist across process, network, and identity data"*
@@ -306,11 +306,11 @@ parameter interview, previews the rendered config, then deploys and validates.
 - *"Onboard our Zscaler logs end to end: OCSF parser, asset-enriched dashboard, MITRE-mapped detections, and a SOC threat-response playbook"*
 - *"Onboard cisco_meraki and add the response automation that VirusTotal-checks the destination, then blocks the IOC and quarantines the source host on a malicious verdict"*
 
-**UEBA behavioral anomaly detection** (baseline ANY signal, security or not, and flag z-score deviations: SPIKE, DROP, SILENT, NEW-BEHAVIOR). Full guide: [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md).
+**UEBA behavioural anomaly detection** (baseline ANY signal, security or not, and flag z-score deviations: SPIKE, DROP, SILENT, NEW-BEHAVIOR). Full guide: [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md).
 
-- *"Run a behavioral baseline on Okta and tell me what's anomalous"*
+- *"Run a behavioural baseline on Okta and tell me what's anomalous"*
 - *"Deploy UEBA anomaly detection for FortiGate on the Acme site"*
-- *"Monitor the Avelios Medical app for unusual user behavior"*
+- *"Monitor the Avelios Medical app for unusual user behaviour"*
 
 **Asset enrichment of raw logs** (device/user context from the Asset Inventory). Full guide: [docs/solutions/asset-enrichment.md](./docs/solutions/asset-enrichment.md).
 
@@ -335,6 +335,12 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 - *"Exclude my engineering team from the encoded-PowerShell detection"*
 - *"Stop my Akamai DNS detection from alerting on our scanner subnets and corporate domains, here's the list"*
 - *"Add a single-event STAR detection for encoded PowerShell that ignores our DevOps service accounts"*
+
+**Risk-Based Alerting (RBA)** (publish noisy observations as low-noise risk events into a `risk` index, accumulate risk per user/host object amplified by asset risk factors, and fire one high-fidelity alert when a 24h cumulative-score or 7d multi-MITRE-tactic threshold is crossed). Full guide: [docs/solutions/risk-based-alerting.md](./docs/solutions/risk-based-alerting.md).
+
+- *"Deploy risk-based alerting for users and hosts on the Acme site"*
+- *"Set up RBA: score encoded PowerShell, recon, LOLBins, and log clearing, and alert when a user accumulates enough risk across tactics"*
+- *"Roll out RBA with asset-criticality risk factors and a risk leaderboard dashboard"*
 
 For the full per-solution breakdown, outcomes, and more example prompts, see the solution skill's own README: [skills/sdl-solutions/README.md](./skills/sdl-solutions/README.md).
 
@@ -402,6 +408,7 @@ This repo includes Windsurf workflow files in `.windsurf/workflows/`. Each workf
 | [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md) | SDL Solutions: baseline ANY signal per (action, principal) and detect z-score anomalies (SPIKE/DROP/SILENT/NEW), deployed as a baseline lookup, scheduled rule, nightly refresh, and dashboard |
 | [docs/solutions/ingest-health-monitoring.md](./docs/solutions/ingest-health-monitoring.md) | SDL Solutions: per-device ingest health (per firewall/endpoint/server) on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, parser drift, with a dashboard and email notifications |
 | [docs/solutions/scheduled-detection-exclusions.md](./docs/solutions/scheduled-detection-exclusions.md) | SDL Solutions: suppress known-good noise in a STAR Custom Detection rule, built as a single-event rule (inline hardcoded exclusion) or a scheduled rule (CSV lookup anti-join + effectiveness dashboard); asks the rule type first |
+| [docs/solutions/risk-based-alerting.md](./docs/solutions/risk-based-alerting.md) | SDL Solutions: Risk-Based Alerting in SDL, publish noisy observations as risk events into a `risk` index, accumulate risk per user/host object amplified by asset risk factors, and fire one high-fidelity alert on a 24h cumulative-score or 7d multi-MITRE-tactic threshold; deploys contributors, factor table, collector flow, four incident rules, and a dashboard |
 | [docs/detection-rule-types.md](./docs/detection-rule-types.md) | The three STAR / Custom Detection rule types (single-event, multi-event correlation, scheduled PowerQuery): API shapes, when to use each, S1QL backslash escaping, and why asset enrichment is the prerequisite for asset-mapped alerts |
 | [docs/detection-asset-binding.md](./docs/detection-asset-binding.md) | Which event attributes make STAR detection alerts auto-populate the Target Asset (device, identity, cloud), the tested per-type binding matrix, and how the asset enrichment solution supplies them |
 | [mgmt-console-api/SKILL.md](./skills/mgmt-console-api/SKILL.md) | Deep reference: confirmed field schemas and required API parameters per endpoint |

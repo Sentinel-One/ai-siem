@@ -22,7 +22,7 @@ A `{parse=X}` directive inside a field matcher runs a secondary parser on the ca
 
 ## URI and URL-like values
 
-| Directive | Behavior |
+| Directive | Behaviour |
 |---|---|
 | `uri` | Split a URL into `Path` plus each query parameter as its own field (subfield naming above). |
 | `uriMultivalue` | Same but duplicate query keys become comma-joined strings instead of overwriting. |
@@ -32,7 +32,7 @@ A `{parse=X}` directive inside a field matcher runs a secondary parser on the ca
 
 > **Parent capture is consumed, not preserved.** When `{parse=uri}` or `{parse=uriAttributes}` runs, the parent field's captured value disappears from the event after parsing on at least some current tenants (validated April 2026 against a Singularity Data Lake tenant with relative URLs). Only the generated subfields remain. If you need the raw URL/query string in addition to the parsed pieces, capture it twice: once with the parse directive, once into a sibling scratch field that you keep, and `rename` the scratch one to your preferred OCSF target in `mappings`. Equivalent workaround: split path and query in the format string itself (`$path{regex=[^? ]+}$\??$qs{regex=[^ ]*}{parse=uriAttributes}$`) so the path stays as a top-level field.
 
-> **Relative URLs and `{parse=uri}`.** `{parse=uri}` is documented as splitting a "URL" into path + query, and works correctly for absolute URLs (`http://host/path?foo=bar`). For relative URLs (`/path?foo=bar`), behavior on tested tenants is to emit `<prefix>Path` only and silently drop the query subfields. Prefer `{parse=uriAttributes}` on the query-string portion (split manually with regex), which reliably emits `<prefix><CapitalizedKey>` siblings regardless of whether a scheme/host is present.
+> **Relative URLs and `{parse=uri}`.** `{parse=uri}` is documented as splitting a "URL" into path + query, and works correctly for absolute URLs (`http://host/path?foo=bar`). For relative URLs (`/path?foo=bar`), behaviour on tested tenants is to emit `<prefix>Path` only and silently drop the query subfields. Prefer `{parse=uriAttributes}` on the query-string portion (split manually with regex), which reliably emits `<prefix><CapitalizedKey>` siblings regardless of whether a scheme/host is present.
 
 ## JSON bodies
 
@@ -109,7 +109,7 @@ Non-strict `gron`/`dottedJson` expand arrays into per-element `[N]`-indexed attr
 - `strictUrlEncodedJson`, `strictDottedUrlEncodedJson`
 - `strictBase64EncodedJson`, `strictDottedBase64EncodedJson`
 
-Non-array behavior is identical to the non-strict variant.
+Non-array behaviour is identical to the non-strict variant.
 
 **Single-element arrays in non-strict mode become a bracket-wrapped string, not an indexable field.** A source field like `"user": ["a@b.com"]` parsed with non-strict `dottedJson` lands as the literal string `unmapped.user = "[a@b.com]"` (brackets kept, inner quotes stripped). Indexing it as `unmapped.user.0` returns null, so a `copy` or `rename` from `unmapped.user.0` is a silent no-op. If you only need the scalar (not the array), strip the brackets in a `computeFields` rewrite before the `mappings` block: `| let user = (unmapped.user == null ? null : replace(unmapped.user, '[][]', ''))`. The `[][]` regex class matches either bracket without escaping. If you need the value as a real array, use `strictDottedJson` with `array_get(...)` / `array_from_json(...)` instead. Tenant-validated 2026-06-16 on Zscaler firewall logs.
 
@@ -123,7 +123,7 @@ Non-array behavior is identical to the non-strict variant.
 
 ## Key/value and separated values
 
-| Directive | Behavior |
+| Directive | Behaviour |
 |---|---|
 | `commaKeyValues` | `key=value, key=value, ...`. |
 | `commaSeparatedValues` | Positional; rename columns via a `mappings` section on the format. |
@@ -140,7 +140,7 @@ formats: [
 
 ## SQL normalization
 
-| Directive | Behavior |
+| Directive | Behaviour |
 |---|---|
 | `sqlToSignature` | Replace string / numeric literals with `?` so similar queries aggregate. |
 | `sqlWithDoubleQuotesToSignature` | Same, but preserves `"..."` as identifiers (Postgres-style). |

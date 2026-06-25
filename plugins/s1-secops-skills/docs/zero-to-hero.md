@@ -24,7 +24,7 @@ You don't pick skills manually. You describe the outcome you want in plain Engli
 
 ### Why skills matter
 
-Without a skill, Claude has to guess at the things every API has too many of: field names, endpoint paths, required parameters, output shapes, version-specific behavior. Guessing produces plausible-looking but broken code, wrong field references, and hallucinated fields. Skills replace guesswork with knowledge that has been validated against a live tenant.
+Without a skill, Claude has to guess at the things every API has too many of: field names, endpoint paths, required parameters, output shapes, version-specific behaviour. Guessing produces plausible-looking but broken code, wrong field references, and hallucinated fields. Skills replace guesswork with knowledge that has been validated against a live tenant.
 
 For SentinelOne specifically: the Management Console exposes 781 operations across 113 tags. The SDL API has its own auth model, log ingest format, and configuration filesystem. PowerQuery has reserved-field rewrites, type-locked columns, and a per-call deadline that aggregates can blow through. STAR rules have one schema; PowerQuery Alerts have another. Skills capture all of this so Claude doesn't have to rediscover it on every request.
 
@@ -58,13 +58,13 @@ You can also be explicit. "Use the SDL log parser skill to..." or "switch to Pow
 
 | Skill | What it does |
 |---|---|
-| mgmt-console-api | Query and act on the Management Console: threats, alerts, agents, sites, RemoteOps, Deep Visibility, Hyperautomation, Purple AI, UAM. Includes the source-agnostic behavioral baselining + anomaly detection pipeline. |
+| mgmt-console-api | Query and act on the Management Console: threats, alerts, agents, sites, RemoteOps, Deep Visibility, Hyperautomation, Purple AI, UAM. Includes the source-agnostic behavioural baselining + anomaly detection pipeline. |
 | powerquery | Write, debug, and run PowerQuery for threat hunting, STAR detection rules, SDL dashboards, and statistical baseline / anomaly detection rule bodies. |
 | sdl-api | Ingest events, run queries, and manage configuration files (parsers, dashboards, lookups) via the Singularity Data Lake API. |
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default. |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import. |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions from one short prompt: data source onboarding (raw stream to OCSF, enrichment, dashboard, MITRE detections, threat-response flow) , asset enrichment of raw logs, and UEBA behavioral anomaly detection (z-score baselining of any signal). Orchestrates the other six skills. |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions from one short prompt: data source onboarding (raw stream to OCSF, enrichment, dashboard, MITRE detections, threat-response flow) , asset enrichment of raw logs, and UEBA behavioural anomaly detection (z-score baselining of any signal). Orchestrates the other six skills. |
 
 Plus `CLAUDE.md` at the repo root, which transforms Claude into a **Principal SOC Analyst**: a structured investigator that runs the same enrichment, correlation, and reasoning process a senior analyst would, on every alert, every time.
 
@@ -332,16 +332,16 @@ any IOCs through the threat-intel MCP, and give me a verdict.
 
 What you'll get: the full alert payload, prior analyst notes, MDR verdict, asset criticality lookup, every IOC enriched through the configured threat-intel MCP (VirusTotal in the default bundle), MITRE mapping, and a calibrated verdict. If the verdict is CRITICAL or TRUE POSITIVE, you'll see the threat intel evidence inline.
 
-### Behavioral baselining and anomaly detection
+### Behavioural baselining and anomaly detection
 
 Skill: `mgmt-console-api` (the `baseline_anomaly.py` pipeline) plus `powerquery` for the rule body.
 
 ```
-Build a 30-day behavioral baseline for Okta and show me anomalies for today.
+Build a 30-day behavioural baseline for Okta and show me anomalies for today.
 Use day-of-week stratification.
 ```
 
-What you'll get: schema auto-discovery to pick the right `principal_field` (e.g. `actor.user.email_addr` for Okta) and `action_field`, 30 daily slices run in parallel under the per-user 3 rps cap, a 24-hour live slice, and three anomaly classes returned: matched z-score deviations (spike or drop), silent pairs (active in baseline, zero today), and new-behavior pairs (active today, no baseline at all).
+What you'll get: schema auto-discovery to pick the right `principal_field` (e.g. `actor.user.email_addr` for Okta) and `action_field`, 30 daily slices run in parallel under the per-user 3 rps cap, a 24-hour live slice, and three anomaly classes returned: matched z-score deviations (spike or drop), silent pairs (active in baseline, zero today), and new-behaviour pairs (active today, no baseline at all).
 
 For a recurring detection, ask Claude to productionise it as a PowerQuery Alert rule with a `| savelookup` baseline and `| lookup` join.
 
@@ -464,7 +464,7 @@ It runs through every MCP and skill, reports what's healthy, and gives a precise
 
 Once you're past first-run, the next leverage points are:
 
-- **Schedule recurring tasks** with `coworkScheduledTasksEnabled: true` (it's already in the config snippet above). Examples: nightly behavioral baseline refresh, hourly alert digest to Slack, weekly threat summary as a `.docx`.
+- **Schedule recurring tasks** with `coworkScheduledTasksEnabled: true` (it's already in the config snippet above). Examples: nightly behavioural baseline refresh, hourly alert digest to Slack, weekly threat summary as a `.docx`.
 - **Productionise hunts as detection rules.** Anything you find useful in chat can be promoted to a recurring detection.
 - **Add custom data sources.** Author a parser, deploy it, and the skills handle every other source the same way (auto-discovery means no per-source hardcoding).
 

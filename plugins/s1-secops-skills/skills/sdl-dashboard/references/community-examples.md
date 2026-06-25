@@ -393,7 +393,7 @@ Bubble scatter charts for outlier detection. x = distinct ports, y = distinct de
 {
   configType: "TABBED",
   tabs: [{
-    tabName: "Behavioral Heatmaps",
+    tabName: "Behavioural Heatmaps",
     graphs: [
       {
         graphStyle: "heatmap",

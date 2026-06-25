@@ -811,7 +811,7 @@ Everything else in this skill talks to `<tenant>.sentinelone.net/web/api/v2.1/..
 
 **Endpoints:**
 
-- `POST /v1/indicators` -- raw behavioral indicators. Each must carry `metadata.profiles = ["s1/security_indicator"]` and a unique `metadata.uid` (this is the join key). Batching: send many indicators in one call by passing a list; the client concatenates + gzips.
+- `POST /v1/indicators` -- raw behavioural indicators. Each must carry `metadata.profiles = ["s1/security_indicator"]` and a unique `metadata.uid` (this is the join key). Batching: send many indicators in one call by passing a list; the client concatenates + gzips.
 - `POST /v1/alerts` -- SecurityAlert wrappers. Each references its indicator(s) via `finding_info.related_events[].uid == indicator.metadata.uid`. A single alert can reference multiple indicators (one entry per indicator). The server stitches them into `alert.rawIndicators` / the UAM Indicators tab once both land. **Call with ONE alert per POST.** The wire format accepts multi-alert bodies and the gateway returns HTTP 202, but the stitcher silently drops all but one alert in a multi-alert batch (your-tenant 2026-04-22); loop one at a time, or use `post_alert_with_indicators` which enforces the safe pattern.
 
 **Supported indicator classes (via builders):**
@@ -943,7 +943,7 @@ What IS controllable is the asset classification. `metadata.product.name` + `met
 
 Pass these via `build_alert_referencing(detection_product=..., detection_vendor=...)` when you want a demo alert to visually resemble an agent-generated alert. `get_alert` now defaults to `_ALERT_DETAIL_FIELDS` which includes the `assets { ... }` block; `list_alerts` / `paginate_alerts` still default to `_ALERT_CORE_FIELDS` (cheap) and accept an explicit `fields=_ALERT_DETAIL_FIELDS` override when callers want the asset join on every edge.
 
-Full empirical matrix including per-field behavior and probing recipes: `references/ASSET_LINKAGE.md`.
+Full empirical matrix including per-field behaviour and probing recipes: `references/ASSET_LINKAGE.md`.
 
 ## Data source + schema discovery
 
@@ -1033,7 +1033,7 @@ elif prim_key:
 
 ## Source-agnostic baseline + anomaly detection
 
-`scripts/baseline_anomaly.py` is the productionised end-to-end pipeline for behavioral baselining and z-score anomaly detection on ANY data source. It composes the schema-discovery + key-picker + LRQ runner already in this skill, so a caller never has to hand-pick principal/action fields per source.
+`scripts/baseline_anomaly.py` is the productionised end-to-end pipeline for behavioural baselining and z-score anomaly detection on ANY data source. It composes the schema-discovery + key-picker + LRQ runner already in this skill, so a caller never has to hand-pick principal/action fields per source.
 
 What it does:
 
@@ -1041,7 +1041,7 @@ What it does:
 2. Runs N daily count slices (default 30) via `pq.run_pq()` over the baseline window. Daily slicing avoids the LRQ per-call deadline; `max_workers=3` respects the per-user 3 rps cap.
 3. Runs one 24h live slice.
 4. Merges slices client-side. Supports two baseline strategies: pooled (all daily samples in one bucket) and DoW-stratified (one bucket per day-of-week — eliminates weekday/weekend false-positives).
-5. Surfaces three anomaly classes on every run: matched-pair z-score deviations (SPIKE/DROP), silent pairs (baseline → live=0), and new-behavior pairs (live with no baseline).
+5. Surfaces three anomaly classes on every run: matched-pair z-score deviations (SPIKE/DROP), silent pairs (baseline → live=0), and new-behaviour pairs (live with no baseline).
 
 Usage:
 

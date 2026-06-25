@@ -1,6 +1,6 @@
-# Playbook: UEBA behavioral anomaly detection
+# Playbook: UEBA behavioural anomaly detection
 
-Take ANY signal already reaching the tenant, security or non-security, and detect behavioral
+Take ANY signal already reaching the tenant, security or non-security, and detect behavioural
 anomalies against a baseline the source builds from its own history. The solution baselines
 per `(action, principal)` pair, scores the live window with a z-score, and surfaces four classes
 of deviation: SPIKE, DROP, SILENT (a pair that went quiet), and NEW-BEHAVIOR (a pair with no
@@ -14,7 +14,7 @@ This playbook orchestrates primitives that already exist; it does not reimplemen
   source-agnostic baseline + z-score detector (schema discovery, daily slicing, pooled or
   day-of-week strategy, SPIKE/DROP/SILENT/NEW output, checkpointed state).
 - The PowerQuery building blocks (per-day count, live count, pooled and DoW merges, silent and
-  new-behavior detectors, the productionised lookup pattern) are in `powerquery`
+  new-behaviour detectors, the productionised lookup pattern) are in `powerquery`
   `examples/behavioral-baselines.md`. Read it before authoring any baseline query by hand.
 - Field selection is `mgmt-console-api` `scripts/inspect_source.py` (`pick_keys`).
 
@@ -51,7 +51,7 @@ Ask the user which they want if it is not obvious. "Run a baseline on `<source>`
 - **Optional: baseline window (default 30 days).** 7 quick and noisy, 30 the production sweet spot,
   90 captures monthly seasonality at higher query cost.
 - **Optional: z threshold (default hard 3.0, soft 2.0).** Tier it: hard `|z|>=3.0` auto-alert,
-  soft `|z|>=2.0` triage, silent path `|z|>=2.5` with a baseline-average floor, new-behavior routed
+  soft `|z|>=2.0` triage, silent path `|z|>=2.5` with a baseline-average floor, new-behaviour routed
   to a curation queue rather than alerted outright.
 - **Production only, optional: site, schedule hour, severity, prefix.** Resolve the site name to a
   siteId. Default refresh 02:00 UTC, severity Medium, prefix a short solution/customer code.
@@ -108,7 +108,7 @@ python scripts/baseline_anomaly.py --source "{{SOURCE}}" report --z {{Z_HARD}}
 
 State and results checkpoint to `baselines/baseline_anomaly_<slug>_state.json` and `_result.json`,
 so the run survives short shell budgets. Report the three classes back to the user: matched
-SPIKE/DROP (by `|z|`), silent pairs, and new-behavior pairs. This is the path to use for an
+SPIKE/DROP (by `|z|`), silent pairs, and new-behaviour pairs. This is the path to use for an
 investigation or to tune thresholds before deploying a rule.
 
 ## Step 3 (production): build the baseline lookup
@@ -146,7 +146,7 @@ them, route differently per `behavioral-baselines.md`:
 
 - **Silent pairs:** swap the live group for a baseline-keyed walk; flag pairs with `live_count = 0`
   and `baseline_avg` above a per-source floor (`|z|>=2.5`). Route to a separate, lower-urgency rule.
-- **New-behavior:** keep `| filter !(baseline_avg = *)` after the lookup. Route to a
+- **New-behaviour:** keep `| filter !(baseline_avg = *)` after the lookup. Route to a
   baseline-curation queue rather than alerting outright.
 
 ## Step 5 (production): refresh + dashboard
@@ -158,8 +158,8 @@ them, route differently per `behavioral-baselines.md`:
   endpoint). Imported flows land as a private draft; publish or activate to run.
 - **Dashboard.** Render `assets/ueba_dashboard.template.json` and `sdl_put_file` to
   `/dashboards/{{PREFIX}} {{SOURCE}} Anomalies`. Panels join the same lookup and show anomaly count,
-  new-behavior count, active principals, volume over time, the top SPIKE/DROP table, and the
-  new-behavior table.
+  new-behaviour count, active principals, volume over time, the top SPIKE/DROP table, and the
+  new-behaviour table.
 
 ## Step 6: validate and summarise
 
@@ -173,7 +173,7 @@ rule id, workflow id, dashboard path, site) and the top anomalies found on the f
 - **Cadence must match the baseline unit.** Daily baseline, 24h live window, 1440-minute rule
   interval. An hourly rule against a daily baseline is the classic false-positive generator.
 - **`stddev = 0` and `n_days < 2` are dropped.** A perfectly flat pair has infinite z; a one-day
-  pair has no stddev. Both fall through to the new-behavior path, not the z path.
+  pair has no stddev. Both fall through to the new-behaviour path, not the z path.
 - **DoW stddev.** The server-side savelookup computes stddev over active days only. The engine
   zero-pads inactive sampled days, which is more honest (a pair active 2 of 4 Sundays is not as
   "reliable" as 4 of 4). Use the engine when DoW accuracy matters.
@@ -182,8 +182,8 @@ rule id, workflow id, dashboard path, site) and the top anomalies found on the f
 - **Lookup cap.** Datatables are up to 150 MB; the `{{TOPK}}` cap keeps high-cardinality sources
   bounded. Persist the top pairs by baseline_avg. Automatic-lookup caps (100 rows) do NOT apply here.
 - **Sparse / intermittent sources.** A source that reports only some days (validated: Avelios
-  Medical reported 2 of 7 days) yields few pairs with `n_days >= 2`; most behavior shows up as
-  new-behavior. That is correct, not a failure; report it as such.
+  Medical reported 2 of 7 days) yields few pairs with `n_days >= 2`; most behaviour shows up as
+  new-behaviour. That is correct, not a failure; report it as such.
 - **Low-cardinality sources.** A source driven by one service account (validated: Google Workspace,
   one `authorize` principal) produces a thin baseline. Still valid, just few pairs to score.
 
@@ -196,4 +196,4 @@ A full deployment produces the artifacts below. Each renders from a template in 
 | Baseline lookup builder | `assets/ueba_baseline_savelookup.pq` | SDL datatable `/datatables/<prefix><source>Baseline` | Compute per-pair mean and stddev over the baseline window and persist the top pairs for live z-scoring |
 | UEBA detection rule | `assets/ueba_detection.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | Score the 24h live window per pair against the baseline, alert on `|z| >= z_hard`, bind `principal_v` via `entityMappings` |
 | Baseline refresh workflow | `assets/ueba_refresh_workflow.template.json` | Hyperautomation workflow import | Rebuild the baseline table nightly over the trailing window (Bearer SDL connection) |
-| UEBA dashboard | `assets/ueba_dashboard.template.json` | `sdl_put_file /dashboards/<prefix> <source> Anomalies` | Anomaly count, new-behavior count, active principals, volume over time, top SPIKE/DROP and new-behavior tables |
+| UEBA dashboard | `assets/ueba_dashboard.template.json` | `sdl_put_file /dashboards/<prefix> <source> Anomalies` | Anomaly count, new-behaviour count, active principals, volume over time, top SPIKE/DROP and new-behaviour tables |

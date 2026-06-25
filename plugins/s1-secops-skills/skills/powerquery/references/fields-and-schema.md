@@ -132,9 +132,9 @@ Well-known SIDs (`S-1-5-18` SYSTEM, `S-1-5-19` LOCAL SERVICE, `S-1-5-20` NETWORK
 
 ---
 
-## Indicator (behavioral detection) fields
+## Indicator (behavioural detection) fields
 
-SentinelOne's built-in behavioral indicators.
+SentinelOne's built-in behavioural indicators.
 
 | Field | Meaning |
 |---|---|

@@ -929,7 +929,7 @@ The `chat.delete` cleanup is a recurring polish step in mature flows.
   "method": "post",
   "url": "https://api.openai.com/v1/chat/completions",
   "headers": { "Authorization": "Bearer <key>", "Content-Type": "application/json" },
-  "payload": "{ \"model\": \"gpt-3.5-turbo\", \"messages\": [{ \"role\": \"user\", \"content\": \"Summarise this for a SOC analyst: {{get-a-summary-of-all-behavior-reports-for-a-file.body}}\" }] }"
+  "payload": "{ \"model\": \"gpt-3.5-turbo\", \"messages\": [{ \"role\": \"user\", \"content\": \"Summarise this for a SOC analyst: {{get-a-summary-of-all-behaviour-reports-for-a-file.body}}\" }] }"
 }
 ```
 

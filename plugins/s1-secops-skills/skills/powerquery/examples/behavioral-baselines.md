@@ -1,6 +1,6 @@
-# Behavioral baselining — statistical anomaly detection in PowerQuery
+# Behavioural baselining — statistical anomaly detection in PowerQuery
 
-Recipes for building per-(principal, action) behavioral baselines and
+Recipes for building per-(principal, action) behavioural baselines and
 detecting deviations from them. Source-agnostic — works on EDR, identity,
 network, cloud, email, or any custom log source ingested into SDL.
 
@@ -17,7 +17,7 @@ in a live window (e.g. last 24h). Compute `z = (live - avg) / stddev`.
 Flag any pair where `|z|` exceeds a threshold (typically 2.0). Three
 extensions improve precision: stratify the baseline by day-of-week,
 detect pairs that went *silent* in the live window, and flag pairs
-seen in live but never in the baseline window (new behavior).
+seen in live but never in the baseline window (new behaviour).
 
 ## Picking principal and action fields by source category
 
@@ -116,7 +116,7 @@ anomalies = []
 for r in live_rows:
     key = (r["action"], r["principal"])
     if key not in baseline:
-        continue   # see new-behavior detector below
+        continue   # see new-behaviour detector below
     b = baseline[key]
     z = (r["live_count"] - b["avg"]) / b["sd"]
     if abs(z) >= Z_THRESHOLD:
@@ -149,19 +149,19 @@ but has zero events today — that's exactly the kind of insider-threat
 or account-takeover signal Method 1 should surface, and the bare
 two-side join misses it.
 
-## Building block 5 — new-behavior detector
+## Building block 5 — new-behaviour detector
 
 A pair seen in live but with no baseline is "first observed in 7d/30d"
 — could be a brand-new user, a fresh role being audited, a recon scan,
 or a real attacker. Surface separately from z-score anomalies.
 
 ```python
-new_behavior = []
+new_behaviour = []
 baseline_keys = set(baseline.keys())
 for r in live_rows:
     key = (r["action"], r["principal"])
     if key not in baseline_keys:
-        new_behavior.append(r)
+        new_behaviour.append(r)
 ```
 
 ## Day-of-week stratification (production tier)
@@ -208,7 +208,7 @@ live_dow = parse_iso_date(live_window_start).weekday()
 for r in live_rows:
     key = (r["action"], r["principal"], live_dow)
     if key not in baseline_dow:
-        # No DoW-specific baseline — emerging behavior on this DoW
+        # No DoW-specific baseline — emerging behaviour on this DoW
         continue
     b = baseline_dow[key]
     z = (r["live_count"] - b["avg"]) / b["sd"]
@@ -228,7 +228,7 @@ representation. Without padding, the 2-of-4 case would look as
 |---|---|---|---|
 | 7 days | 7 samples | Quick to compute, freshest signal | Stddev is noisy; bimodal weekday/weekend distributions look like normal variance |
 | 30 days | 30 samples | Stable stddev; surfaces weekend false-positives clearly enough to motivate DoW stratification | Slower to compute (30 LRQ slices); slow-moving drift may be missed |
-| 30 days + DoW stratification | up to 30 / 7 ≈ 4-5 per DoW cell | Right tool — eliminates the weekday/weekend false-positive cleanly | Cells with `n_sampled <= 1` per DoW have no usable baseline; those pairs need to fall through to the new-behavior detector |
+| 30 days + DoW stratification | up to 30 / 7 ≈ 4-5 per DoW cell | Right tool — eliminates the weekday/weekend false-positive cleanly | Cells with `n_sampled <= 1` per DoW have no usable baseline; those pairs need to fall through to the new-behaviour detector |
 | 90 days | ~90 samples per DoW cell when stratified | Captures monthly seasonality and quarter-end spikes | More LRQ cost; baseline-write cadence becomes a job; consider `savelookup` and an incremental update path instead of full re-compute |
 
 For most SOC use cases, 30 days + DoW stratification is the production
@@ -247,7 +247,7 @@ deserve different routing:
 | Soft alert / triage | `|z| >= 2.0` (DoW-stratified) | DoW-stratified preferred so weekend silences don't ping the queue | Tag for analyst review |
 | Trend tuning | `|z| >= 1.0` | Pooled baseline | Analyst dashboard only — don't make this a rule |
 | Silent-pair detector | `|z| >= 2.5` and `baseline_avg > <floor>` | DoW-stratified silent path | Separate rule; tune `<floor>` per source so noise pairs don't dominate |
-| New-behavior detector | n/a | New-behavior detector | Separate rule; route to baseline-curation queue rather than alerting outright |
+| New-behaviour detector | n/a | New-behaviour detector | Separate rule; route to baseline-curation queue rather than alerting outright |
 
 ## Productionising as a STAR / PowerQuery Alert rule
 

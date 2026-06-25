@@ -1,0 +1,24 @@
+{
+  "_comment": "RBA incident rule, cumulative score (tenant-validated 2026-06-25; fired a real HIGH UAM alert). STAR scheduled PowerQuery rule over the risk index. Render once per risk-object type: RISK_OBJECT_TYPE='user' (THRESHOLD ~50) and ='host' (THRESHOLD ~40). Fires one high-fidelity alert per object whose 24h cumulative risk_score crosses THRESHOLD, carrying tactic/technique/contributor counts, first/last seen, and the top-scoring message. entityMappings binds risk_object. queryType scheduled / queryLang 2.0; treatAsThreat UNDEFINED + networkQuarantine false (no inline mitigation; drive response from an HA flow off the alert). number(risk_score) is mandatory. Run hourly over a 24h lookback with dedup on; new rules land Disabled, enable with PUT /cloud-detection/rules/enable {filter:{ids:[...]}}; rules go Active within ~1h.",
+  "data": {
+    "name": "{{PREFIX}} - RBA {{RISK_OBJECT_TYPE}} cumulative risk 24h",
+    "description": "RBA incident rule: {{RISK_OBJECT_TYPE}} objects whose cumulative risk score over 24h >= {{THRESHOLD}} in the risk index (dataSource.name='risk'). Correlated across MITRE tactics; risk events published by RBA contributors.",
+    "queryType": "scheduled",
+    "queryLang": "2.0",
+    "severity": "{{SEVERITY}}",
+    "status": "Disabled",
+    "expirationMode": "Permanent",
+    "treatAsThreat": "UNDEFINED",
+    "networkQuarantine": false,
+    "entityMappings": [ { "columnName": "risk_object" } ],
+    "scheduledParams": {
+      "query": "dataSource.name='risk' risk_object_type='{{RISK_OBJECT_TYPE}}' risk_object=* | group risk_score_total=sum(number(risk_score)), tactics=estimate_distinct(mitre_tactic), techniques=estimate_distinct(mitre_technique), contributors=estimate_distinct(contributor), events=count(), first_seen=oldest(timestamp), last_seen=newest(timestamp), top_message=max_by(risk_message, number(risk_score)) by risk_object | filter risk_score_total >= {{THRESHOLD}} | columns risk_object, risk_score_total, tactics, techniques, contributors, events, first_seen, last_seen, top_message | sort -risk_score_total | limit 100",
+      "runIntervalMinutes": 60,
+      "lookbackWindowMinutes": 1440,
+      "alertPerRow": true,
+      "disableStreaksLogic": false,
+      "threshold": { "value": 0, "operator": "Greater" }
+    }
+  },
+  "filter": { "{{SCOPE_KEY}}": [ "{{SCOPE_ID}}" ] }
+}

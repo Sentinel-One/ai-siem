@@ -462,7 +462,7 @@
           "bcc": [],
           "reply_to": [],
           "mime_type": "text/html",
-          "body": "<h2>Per-device ingest loss</h2><p>A continuously-active device produced ZERO events in the last hour.</p><pre>{{poll-silent-devices.body.data.values}}</pre>",
+          "body": "<h2>Per-device ingest loss</h2><p>{{local_var.rowcount}} continuously-active device(s) produced ZERO events in the last hour. Each row is a silent device. Columns: devkey, source, device, mean_ev, active_hours, last_seen, total_gib.</p><pre>{{poll-silent-devices.body.data.values}}</pre>",
           "attachments": [],
           "continue_on_fail": false
         },

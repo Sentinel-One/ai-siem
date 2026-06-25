@@ -45,11 +45,16 @@ targets real, continuously-present devices.
    scope siteIds/accountIds. Spike/drop/lag are per device and restrict to baselined devices via a
    per-event lookup before the group. Land Disabled; enable via `PUT /cloud-detection/rules/enable`.
    Lookback 60 (= 1h). Parser drift is per parser.
-3. Ingest loss: per device via `flows/ha_flow_3_ingest_loss_watchdog.json` (anti-join; the
-   scheduled engine rejects `left join`).
-4. Notifier: `flows/ha_flow_2_alert_notifier.json` (trigger `name contains 'Ingest Health'` ->
-   send_email). Core actions only; activate directly.
-5. Dashboard: put_file `dashboard/*` -> `/dashboards/Ingest Health Monitoring` (Devices tab included).
+3. Ingest loss: per device via `assets/ingesthealth_watchdog.workflow.template.json` (anti-join LRQ in a
+   POLL LOOP; the scheduled engine rejects `left join`, so this runs as an HA LRQ, not a STAR rule).
+4. Notifier: `assets/ingesthealth_alert_notifier.workflow.template.json` (trigger `name contains 'Ingest
+   Health'` -> send_email). Core actions only; activate directly.
+5. Dashboard: put_file `assets/ingesthealth_dashboard.template.json` -> `/dashboards/Ingest Health Monitoring`.
+6. Test E2E with run-now + prompt the user: bind "SentinelOne SDL" (Bearer), activate the flows, then
+   `POST .../workflow-execution/manual/{id}/{version}?accountIds=<acct>` each flow and poll
+   `GET .../workflow-execution/{exec_id}` to `Completed` with `error_actions:[]`. Confirm the tables wrote
+   (`| dataset 'config://datatables/ingestHealthBaseline' | group count()`), the dashboard renders, and a
+   detection alert is present. Always prompt the user to run this E2E check after a deploy.
 
 ## Gotchas (tenant-validated)
 
@@ -67,6 +72,17 @@ targets real, continuously-present devices.
   the intermediate stays bounded on high-cardinality sources (e.g. thousands of syslog hosts).
 - HA interval trigger: each `schedule_value` entry needs `schedule_method:"interval"` + unit/value.
 - `sca:ingestTime` epoch sec, `timestamp` ns; lag = `(sca:ingestTime - timestamp/1e9)/60`.
+- HA LRQ is async AND the query id is ephemeral. Every flow LRQ (`POST /sdl/v2/api/queries`, both
+  savelookups and the watchdog anti-join) must launch -> capture `body.id` + `X-Dataset-Query-Forward-Tag`
+  -> POLL LOOP {poll(GET) -> `stepsCompleted = totalSteps`? break : delay ~5s, cap ~60}. The field is
+  `totalSteps` (NOT `stepsTotal`). A long fixed wait 404s (id expired); reading `body.data` off the launch
+  is always null. Actions that consume a poll result must live INSIDE the loop (loop-scoped outputs are
+  not visible after the loop). See the hyperautomation skill's "Running an SDL LRQ from an HA flow".
+- Scoping to "third-party only": exclude the platform's own internal streams by NAME, not just by vendor.
+  `dataSource.vendor='SentinelOne'` tags the native EDR plus internal streams (asset, ActivityFeed,
+  Windows Event Logs, alert, indicator), and `dataSource.vendor != 'SentinelOne'` KEEPS null-vendor rows
+  so internal streams leak back. Use an explicit name guard, e.g. keep Windows Event Logs but drop the
+  rest: `(dataSource.name='Windows Event Logs' or (dataSource.vendor!='SentinelOne' and dataSource.name!='alert' and dataSource.name!='indicator' and dataSource.name!='asset' and dataSource.name!='ActivityFeed'))`.
 
 ## Register in skill
 
@@ -88,8 +104,9 @@ Tested live (LRQ) before deploy:
 Not fully tested (needs the console or a live cycle):
 
 - End-to-end HA flow execution and email delivery: the Baseline Builder and Watchdog flows need the
-  "SentinelOne SDL" (Bearer) connection bound and activation in the console; confirm the Watchdog's
-  `totalRows` response path on one real run.
+  "SentinelOne SDL" (Bearer) connection bound and activation in the console; the Watchdog counts poll
+  result rows via `Function.JQ(poll-slug.body.data.values, "length", true)` (the raw LRQ response has no
+  `totalRows` field). Validated 2026-06-25 end to end via run-now: both flows Completed, `error_actions:[]`.
 - Detection alerts firing on the next evaluation (rules go Active within ~1 hour, then run on the
   interval) and the Alert Notifier emailing.
 - Dashboard rendering at very wide time windows: heavy full-scan volume/parser panels can hit
@@ -106,7 +123,11 @@ Not fully tested (needs the console or a live cycle):
 - Use a 14-30 day baseline window in production for a stronger seasonal profile
   (`DELTA_NOW(336|720)`); 7 days is the floor.
 - Tune the device floor (`exp_ev` / `active_hours` / `mean_ev`) to the fleet: raise it on noisy,
-  high-cardinality syslog estates; lower it to monitor smaller devices.
+  high-cardinality syslog estates; lower it to monitor smaller devices. The defaults (`active_hours>=24`,
+  watchdog continuity `>=151`) assume a mature, continuously-present fleet; when the monitored scope is
+  new or low-volume (e.g. a freshly onboarded third-party source) `ingestHealthSourceStats` can come back
+  EMPTY until the source accumulates history, and the z-score/lag detections won't fire until it fills.
+  The daily Baseline Builder fills it over time; lower the floors to start monitoring sooner.
 - Keep the dashboard default window short (4h-24h) and widen with the time picker for
   investigation; for always-on wide views consider the pre-aggregated logVolume metric stream
   instead of per-event byte sums.

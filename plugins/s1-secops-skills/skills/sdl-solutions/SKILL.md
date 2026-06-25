@@ -37,7 +37,8 @@ More solutions are added under `references/<solution>.md` plus templates under `
 4. **Render and preview.** Fill the templates in `assets/` with the parameters and show the user the final config (queries, parser, workflow) and the projected enriched record BEFORE deploying. This is a dry run.
 5. **Deploy in dependency order** through the primitive skills (see each playbook for the exact order). Typical order: build lookup tables, then parser or lookup guidance, then refresh flow.
 6. **Validate** with a real ingest and query, and report what populated. Use `metadata.version` as the propagation canary for parser changes.
-7. **Summarize** the deployed artifacts (paths, IDs, site) and hand off the rendered config files.
+7. **Test end to end with run-now, then prompt the user.** For any solution with HA flows, trigger each flow immediately with `POST /web/api/v2.1/hyper-automate/api/public/workflow-execution/manual/{id}/{version}?accountIds=<acct>` (works on scheduled-trigger flows once active), poll `GET .../workflow-execution/{exec_id}` until `state` is `Completed` with `error_actions: []` and `executed_actions` == the action count, and confirm the downstream effect (tables written, dashboard renders, a detection alert present). Imported flows land as private drafts needing their connections bound + activation first, so always end a deployment by prompting the user to bind/activate and run this E2E check (offer to run it for them once active).
+8. **Summarize** the deployed artifacts (paths, IDs, site) and hand off the rendered config files.
 
 Keep prompts simple and few. Prefer defaults the user can accept with one word over long forms.
 

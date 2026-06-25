@@ -1,6 +1,6 @@
 {
   "name": "Ingest Health - Baseline Builder",
-  "description": "Daily per-device baseline rebuild over 168h. Device = OCSF/host identity coalesce, falling back to source. Hour-of-day seasonal profile. Writes ingestHealthBaseline (per source+device+hour-of-day) and ingestHealthSourceStats (per source+device sigma + liveness). Datatable storage limit is 150MB (extensible via S1). Bind 'SentinelOne SDL' (Bearer).",
+  "description": "Daily per-device baseline rebuild over 168h. Each savelookup LRQ uses a POLL LOOP: launch -> capture id+forward-tag -> loop {poll(GET) -> if stepsCompleted = totalSteps break, else delay 5s and retry (cap 60)} -> next. Writes ingestHealthBaseline and ingestHealthSourceStats. Bind 'SentinelOne SDL' (Bearer) on all http_request actions.",
   "actions": [
     {
       "action": {
@@ -10,21 +10,6 @@
         "connection_name": null,
         "use_connection_name": false,
         "integration_id": null,
-        "state": "active",
-        "description": "Daily 02:00 UTC",
-        "client_data": {
-          "position": {
-            "x": 0,
-            "y": 0
-          },
-          "dimensions": {
-            "width": 256,
-            "height": 100
-          },
-          "collapsed": false
-        },
-        "snippet_workflow_id": null,
-        "snippet_version_id": null,
         "data": {
           "name": "Scheduled Trigger",
           "action_type": "scheduled_trigger",
@@ -42,16 +27,31 @@
           "start_at_method": "immediately",
           "start_at": null,
           "ends_on": "never"
-        }
+        },
+        "state": "active",
+        "description": "Daily 02:00 UTC",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
       },
-      "export_id": 2,
+      "export_id": 0,
+      "parent_action": null,
       "connected_to": [
         {
           "target": 1,
           "custom_handle": null
         }
-      ],
-      "parent_action": null
+      ]
     },
     {
       "action": {
@@ -61,21 +61,6 @@
         "connection_name": "",
         "use_connection_name": false,
         "integration_id": null,
-        "state": "active",
-        "description": "Rebuild per-device baseline.",
-        "client_data": {
-          "position": {
-            "x": 0,
-            "y": 177
-          },
-          "dimensions": {
-            "width": 256,
-            "height": 76
-          },
-          "collapsed": false
-        },
-        "snippet_workflow_id": null,
-        "snippet_version_id": null,
         "data": {
           "name": "Build Ingest Baseline",
           "action_type": "http_request",
@@ -86,7 +71,6 @@
           "url_prefix": null,
           "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(168)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group h_gib = sum(gib), h_events = count() by source = dataSource.name, device, hourbucket = timebucket('1 hour') | let hod = simpledateformat(hourbucket, 'HH', 'GMT') | group exp_gib = avg(h_gib), exp_ev = avg(h_events), samples = count() by source, device, hod | filter exp_ev >= 5 | let srckey = format('%s||%s||%s', source, device, hod) | columns srckey, source, device, hod, samples, exp_gib, exp_ev | limit 500000 | savelookup 'ingestHealthBaseline'\",\n    \"resultType\": \"TABLE\"\n  }\n}",
           "parameters": [],
-          "retry_on_status_code": null,
           "retry_on_status_codes": [
             500
           ],
@@ -100,17 +84,129 @@
           "use_proxy": false,
           "redirect_follow": true,
           "continue_on_fail": true,
-          "body_type": null
-        }
+          "body_type": "json"
+        },
+        "state": "active",
+        "description": "Launch async baseline savelookup.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 200
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
       },
       "export_id": 1,
+      "parent_action": null,
       "connected_to": [
         {
-          "target": 0,
+          "target": 2,
           "custom_handle": null
         }
-      ],
-      "parent_action": null
+      ]
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set Baseline Refs",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "qid_base",
+              "value": "{{build-ingest-baseline.body.id}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "tag_base",
+              "value": "{{Function.JQ(build-ingest-baseline.headers, \"to_entries | map(select(.key|ascii_downcase==\\\"x-dataset-query-forward-tag\\\")) | .[0].value\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Capture baseline LRQ id + forward tag.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 377
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 3,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Baseline Until Done",
+          "action_type": "loop",
+          "loop_type": "while",
+          "number_of_iterations": "60",
+          "object_to_iterate": "",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "Poll until stepsCompleted = totalSteps.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 560
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 3,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 4,
+          "custom_handle": "inner"
+        },
+        {
+          "target": 8,
+          "custom_handle": null
+        }
+      ]
     },
     {
       "action": {
@@ -120,12 +216,37 @@
         "connection_name": "",
         "use_connection_name": false,
         "integration_id": null,
+        "data": {
+          "name": "Poll Ingest Baseline",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries/{{local_var.qid_base}}?lastStepSeen=0",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 90,
+          "headers": {
+            "Accept": "application/json",
+            "X-Dataset-Query-Forward-Tag": "{{local_var.tag_base}}"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": "json"
+        },
         "state": "active",
-        "description": "Rebuild per-device stats.",
+        "description": "Poll baseline LRQ (first inner action).",
         "client_data": {
           "position": {
             "x": 0,
-            "y": 354
+            "y": 740
           },
           "dimensions": {
             "width": 256,
@@ -134,7 +255,142 @@
           "collapsed": false
         },
         "snippet_workflow_id": null,
-        "snippet_version_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "parent_action": 3,
+      "connected_to": [
+        {
+          "target": 5,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Baseline Done",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{poll-ingest-baseline.body.stepsCompleted}}",
+              "compared_value": "{{poll-ingest-baseline.body.totalSteps}}",
+              "comparison_operator": "equals"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "Done when stepsCompleted = totalSteps.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 920
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "parent_action": 3,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": "true"
+        },
+        {
+          "target": 7,
+          "custom_handle": "false"
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "break_loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Break Baseline",
+          "action_type": "break_loop"
+        },
+        "state": "active",
+        "description": "Exit loop, savelookup complete.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1100
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "parent_action": 3,
+      "connected_to": []
+    },
+    {
+      "action": {
+        "type": "delay",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Retry Delay Baseline",
+          "action_type": "delay",
+          "time_unit": "seconds",
+          "value": 5
+        },
+        "state": "active",
+        "description": "Wait, then re-poll.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1100
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 7,
+      "parent_action": 3,
+      "connected_to": []
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
         "data": {
           "name": "Build Source Stats",
           "action_type": "http_request",
@@ -145,7 +401,6 @@
           "url_prefix": null,
           "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(168)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group h_gib = sum(gib), h_events = count() by source = dataSource.name, device, hourbucket = timebucket('1 hour') | group mean_gib = avg(h_gib), sig_gib = stddev(h_gib), mean_ev = avg(h_events), sig_ev = stddev(h_events), active_hours = count(), total_gib = sum(h_gib), total_events = sum(h_events), last_seen = max(hourbucket), first_seen = min(hourbucket) by source, device | filter active_hours >= 24 and mean_ev >= 5 | let devkey = format('%s||%s', source, device) | columns devkey, source, device, mean_gib, sig_gib, mean_ev, sig_ev, active_hours, total_gib, total_events, first_seen, last_seen | limit 500000 | savelookup 'ingestHealthSourceStats'\",\n    \"resultType\": \"TABLE\"\n  }\n}",
           "parameters": [],
-          "retry_on_status_code": null,
           "retry_on_status_codes": [
             500
           ],
@@ -159,12 +414,300 @@
           "use_proxy": false,
           "redirect_follow": true,
           "continue_on_fail": true,
-          "body_type": null
-        }
+          "body_type": "json"
+        },
+        "state": "active",
+        "description": "Launch async stats savelookup.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1300
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
       },
-      "export_id": 0,
-      "connected_to": [],
-      "parent_action": null
+      "export_id": 8,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 9,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set Stats Refs",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "qid_stats",
+              "value": "{{build-source-stats.body.id}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "tag_stats",
+              "value": "{{Function.JQ(build-source-stats.headers, \"to_entries | map(select(.key|ascii_downcase==\\\"x-dataset-query-forward-tag\\\")) | .[0].value\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Capture stats LRQ id + forward tag.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1477
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 9,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 10,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Stats Until Done",
+          "action_type": "loop",
+          "loop_type": "while",
+          "number_of_iterations": "60",
+          "object_to_iterate": "",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "Poll until stepsCompleted = totalSteps.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1660
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": "inner"
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Source Stats",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries/{{local_var.qid_stats}}?lastStepSeen=0",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 90,
+          "headers": {
+            "Accept": "application/json",
+            "X-Dataset-Query-Forward-Tag": "{{local_var.tag_stats}}"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": "json"
+        },
+        "state": "active",
+        "description": "Poll stats LRQ (first inner action).",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1840
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 11,
+      "parent_action": 10,
+      "connected_to": [
+        {
+          "target": 12,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Stats Done",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{poll-source-stats.body.stepsCompleted}}",
+              "compared_value": "{{poll-source-stats.body.totalSteps}}",
+              "comparison_operator": "equals"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "Done when stepsCompleted = totalSteps.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 2020
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 12,
+      "parent_action": 10,
+      "connected_to": [
+        {
+          "target": 13,
+          "custom_handle": "true"
+        },
+        {
+          "target": 14,
+          "custom_handle": "false"
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "break_loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Break Stats",
+          "action_type": "break_loop"
+        },
+        "state": "active",
+        "description": "Exit loop, savelookup complete.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 2200
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 13,
+      "parent_action": 10,
+      "connected_to": []
+    },
+    {
+      "action": {
+        "type": "delay",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Retry Delay Stats",
+          "action_type": "delay",
+          "time_unit": "seconds",
+          "value": 5
+        },
+        "state": "active",
+        "description": "Wait, then re-poll.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 2200
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 14,
+      "parent_action": 10,
+      "connected_to": []
     }
   ]
 }

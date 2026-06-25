@@ -132,3 +132,11 @@ Parameters:
 - `body` [body, v2_1.rules.schemas_PostRuleSchema] — 
 
 Responses: 404 Custom Detection rule not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
+
+> **In-place update of a scheduled PowerQuery rule preserves activation (tenant-validated 2026-06).**
+> `PUT /cloud-detection/rules/{rule_id}` with the FULL `data` block (same shape as create, including
+> `status: "Active"`, `queryType: "scheduled"`, `queryLang: "2.0"`, `scheduledParams`, `entityMappings`)
+> updates the query body in place and returns `status: "Activating"` (becomes Active within ~1h). No
+> need to delete + recreate to change a rule's PowerQuery. Pair with the scope envelope
+> `filter: {accountIds:[...]}` (or `siteIds`). To remove a rule, `DELETE /cloud-detection/rules` with
+> body `{"filter": {"ids": ["<rule_id>"]}}` (returns `{data:{affected:N}}`).

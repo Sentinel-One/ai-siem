@@ -229,8 +229,35 @@ Use this when the workflow contains integration-backed actions:
 - ❌ Importing with a Service User token: workflows become invisible to humans in the UI.
   ✅ Always use a personal Console User API token for `S1_CONSOLE_API_TOKEN`.
 - ❌ Running an SDL PowerQuery (LRQ / `datasource` / `savelookup`) from an HTTP action bound to the **"SentinelOne"** mgmt connection. That connection signs as `Authorization: ApiToken`, but the SDL query endpoints (`POST /sdl/v2/api/queries` and `POST {sdl-host}/api/powerQuery`) require `Bearer`, so the action returns `HTTP 500 "Header must start with Bearer"`.
-  ✅ Bind the **"SentinelOne SDL"** connection (Bearer by default) on the HTTP action. Notes: the ApiToken-only `/web/api/v2.1/dv/events/pq` cannot run the `datasource` command (returns 400) and is just an async wrapper over LRQ, so it is not usable for asset/inventory refresh; `/api/powerQuery` on the SDL host is synchronous (one call completes a `savelookup`) while `/sdl/v2/api/queries` is async. Tenant-validated 2026-06-13.
+  ✅ Bind the **"SentinelOne SDL"** connection (Bearer by default) on the HTTP action. Notes: the ApiToken-only `/web/api/v2.1/dv/events/pq` cannot run the `datasource` command (returns 400) and is just an async wrapper over LRQ, so it is not usable for asset/inventory refresh; ## Running an SDL LRQ from an HA flow (async launch + POLL LOOP) — tenant-validated 2026-06-25
 
+`POST /sdl/v2/api/queries` is ASYNC. The launch response is NOT the results: it returns `body.id`
+plus `body.stepsCompleted` / `body.totalSteps`, and `body.data` is `null` while the query is still
+running. The query id is also EPHEMERAL: it expires shortly after the query finishes. So a fixed
+wait fails BOTH ways: too short returns `data: null` (still running); too long returns HTTP 404
+"query id not found" (the id expired, and the downstream reference then resolves to
+`UnresolvedLanguageReference`). Do NOT use one long delay. Use a tight POLL LOOP that reads the moment
+the query is done. Required pattern:
+
+1. **Launch** — `POST {{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries` with body
+   `{"queryType":"PQ","tenant":true,"startTime":...,"endTime":...,"queryPriority":"HIGH","pq":{"query":...,"resultType":"TABLE"}}`.
+   Capture `body.id` AND the `X-Dataset-Query-Forward-Tag` response header (mandatory, session-scoped,
+   echoed on every GET/DELETE) into local vars. Extract the header case-insensitively with JQ:
+   `{{Function.JQ(launch-slug.headers, "to_entries | map(select(.key|ascii_downcase==\"x-dataset-query-forward-tag\")) | .[0].value", true)}}`.
+2. **Poll loop** — a `loop` (while, capped, e.g. 60 iterations) whose FIRST inner action is the GET
+   `GET {{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries/{{local_var.query_id}}?lastStepSeen=0`,
+   echoing header `X-Dataset-Query-Forward-Tag: {{local_var.forward_tag}}`. Then a condition on the
+   POLL body (NOT the launch body, which is captured once and never updates inside the loop):
+   done when `{{poll-slug.body.stepsCompleted}} = {{poll-slug.body.totalSteps}}` (operator `equals`;
+   the field is **`totalSteps`**, not `stepsTotal`). TRUE goes to consume results + `break_loop`.
+   FALSE goes to a short `delay` (~5s) as the leaf of the false branch; the loop then re-iterates.
+3. **Loop-scoped outputs are NOT visible outside the loop.** Every action that reads a poll result
+   (`{{poll-slug.body...}}`), extract/read, branch, notify, break, MUST live INSIDE the loop
+   (`parent_action` = the loop's export_id). An action placed after the loop that references a
+   loop-internal output fails to resolve. Read from the POLL response: `poll-slug.body.data.columns`
+   (array of `{name}`), `poll-slug.body.data.values` (2D array); count rows with
+   `{{Function.JQ(poll-slug.body.data.values, "length", true)}}`. For a `savelookup` (no results
+   consumed) the loop body is just poll, done-check, break/delay.
 
 ## Workflow import via s1-secops-mcp
 

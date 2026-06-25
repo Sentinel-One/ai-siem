@@ -1,6 +1,6 @@
 {
   "name": "dnsExcl - {{SOURCE}} Asset-CIDR Excluded Detection + UAM Alert",
-  "description": "Scheduled CIDR+domain-excluded failed-DNS detection that posts a self-contained OCSF S1 SecurityAlert (class_uid 99602001) to UAM with the client IP mapped as device/asset. ASYNC LRQ: 'Launch Detection' POST returns id + X-Dataset-Query-Forward-Tag header; 'Poll Results' GET returns data.values. Bind 'SentinelOne SDL' (Bearer) on the 3 HTTP actions; hec_url={{HEC_INGEST_URL}}.",
+  "description": "Scheduled CIDR+domain-excluded failed-DNS detection that posts a self-contained OCSF S1 SecurityAlert (class_uid 99602001) to UAM with the client IP mapped as device/asset. ASYNC LRQ in a POLL LOOP: launch -> capture id + X-Dataset-Query-Forward-Tag -> loop {poll(GET) -> if stepsCompleted = totalSteps: extract + post alert + break, else delay 5s and re-poll (cap 60)}. All result-consuming actions live INSIDE the loop. Bind 'SentinelOne SDL' (Bearer) on the HTTP actions; hec_url={{HEC_INGEST_URL}}.",
   "actions": [
     {
       "action": {
@@ -45,13 +45,13 @@
         }
       },
       "export_id": 0,
+      "parent_action": null,
       "connected_to": [
         {
           "target": 1,
           "custom_handle": null
         }
-      ],
-      "parent_action": null
+      ]
     },
     {
       "action": {
@@ -100,17 +100,17 @@
           "use_proxy": false,
           "redirect_follow": true,
           "continue_on_fail": true,
-          "body_type": null
+          "body_type": "json"
         }
       },
       "export_id": 1,
+      "parent_action": null,
       "connected_to": [
         {
           "target": 2,
           "custom_handle": null
         }
-      ],
-      "parent_action": null
+      ]
     },
     {
       "action": {
@@ -160,24 +160,32 @@
         }
       },
       "export_id": 2,
+      "parent_action": null,
       "connected_to": [
         {
           "target": 3,
           "custom_handle": null
         }
-      ],
-      "parent_action": null
+      ]
     },
     {
       "action": {
-        "type": "delay",
+        "type": "loop",
         "tag": "core_action",
         "connection_id": null,
         "connection_name": null,
         "use_connection_name": false,
         "integration_id": null,
+        "data": {
+          "name": "Poll Until Done",
+          "action_type": "loop",
+          "loop_type": "while",
+          "number_of_iterations": "60",
+          "object_to_iterate": "",
+          "is_parallel": false
+        },
         "state": "active",
-        "description": "Wait for the LRQ to finish before polling. 60s is the validated minimum for a small top-1 query (a single fixed wait is unreliable, the query was still 13/16 at 20s). For larger queries replace this Delay + single Poll with a poll loop: GET until body.stepsCompleted >= body.stepsTotal.",
+        "description": "Poll until stepsCompleted = totalSteps.",
         "client_data": {
           "position": {
             "x": 0,
@@ -185,27 +193,21 @@
           },
           "dimensions": {
             "width": 256,
-            "height": 76
+            "height": 100
           },
           "collapsed": false
         },
         "snippet_workflow_id": null,
-        "snippet_version_id": null,
-        "data": {
-          "name": "Wait for LRQ",
-          "action_type": "delay",
-          "time_unit": "seconds",
-          "value": 60
-        }
+        "snippet_version_id": null
       },
       "export_id": 3,
+      "parent_action": null,
       "connected_to": [
         {
           "target": 4,
-          "custom_handle": null
+          "custom_handle": "inner"
         }
-      ],
-      "parent_action": null
+      ]
     },
     {
       "action": {
@@ -254,17 +256,68 @@
           "use_proxy": false,
           "redirect_follow": true,
           "continue_on_fail": true,
-          "body_type": null
+          "body_type": "json"
         }
       },
       "export_id": 4,
+      "parent_action": 3,
       "connected_to": [
         {
           "target": 5,
           "custom_handle": null
         }
-      ],
-      "parent_action": null
+      ]
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Query Done",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{poll-results.body.stepsCompleted}}",
+              "compared_value": "{{poll-results.body.totalSteps}}",
+              "comparison_operator": "equals"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "Done when stepsCompleted = totalSteps (poll body).",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 690
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "parent_action": 3,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": "true"
+        },
+        {
+          "target": 10,
+          "custom_handle": "false"
+        }
+      ]
     },
     {
       "action": {
@@ -337,14 +390,14 @@
           "workflows_acl": null
         }
       },
-      "export_id": 5,
+      "export_id": 6,
+      "parent_action": 3,
       "connected_to": [
         {
-          "target": 6,
+          "target": 7,
           "custom_handle": null
         }
-      ],
-      "parent_action": null
+      ]
     },
     {
       "action": {
@@ -393,14 +446,14 @@
           "workflows_acl": null
         }
       },
-      "export_id": 6,
+      "export_id": 7,
+      "parent_action": 3,
       "connected_to": [
         {
-          "target": 7,
+          "target": 8,
           "custom_handle": null
         }
-      ],
-      "parent_action": null
+      ]
     },
     {
       "action": {
@@ -450,12 +503,83 @@
           "use_proxy": false,
           "redirect_follow": true,
           "continue_on_fail": true,
-          "body_type": null
+          "body_type": "json"
         }
       },
-      "export_id": 7,
-      "connected_to": [],
-      "parent_action": null
+      "export_id": 8,
+      "parent_action": 3,
+      "connected_to": [
+        {
+          "target": 9,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "break_loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Break When Done",
+          "action_type": "break_loop"
+        },
+        "state": "active",
+        "description": "Exit loop, alert posted.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1480
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 9,
+      "parent_action": 3,
+      "connected_to": []
+    },
+    {
+      "action": {
+        "type": "delay",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Retry Delay",
+          "action_type": "delay",
+          "time_unit": "seconds",
+          "value": 5
+        },
+        "state": "active",
+        "description": "Wait, then re-poll.",
+        "client_data": {
+          "position": {
+            "x": 320,
+            "y": 690
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "parent_action": 3,
+      "connected_to": []
     }
   ]
 }

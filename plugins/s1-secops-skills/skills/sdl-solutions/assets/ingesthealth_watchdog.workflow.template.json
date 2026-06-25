@@ -1,6 +1,6 @@
 {
   "name": "Ingest Health - Ingest Loss Watchdog",
-  "description": "Hourly per-device ingest-loss detector. Anti-joins ingestHealthSourceStats (devices active in >= 151 of the last 168h) against live activity to find a specific device (firewall, endpoint, server) that went silent, and emails {{NOTIFY_EMAIL}}. Bind 'SentinelOne SDL' (Bearer). Confirm the row-count path ({{find-silent-devices.body.data.totalRows}}) on one real run.",
+  "description": "Hourly per-device ingest-loss detector. Async LRQ in a POLL LOOP (all result-consuming actions INSIDE the loop). Loop: poll(GET) -> if stepsCompleted = totalSteps read/branch/break, else delay 5s and re-poll (cap 60). Anti-joins ingestHealthSourceStats (active_hours>=151) vs live activity, emails {{NOTIFY_EMAIL}}. Bind 'SentinelOne SDL' (Bearer) on both http_request actions before activating.",
   "actions": [
     {
       "action": {
@@ -10,21 +10,6 @@
         "connection_name": null,
         "use_connection_name": false,
         "integration_id": null,
-        "state": "active",
-        "description": "Hourly.",
-        "client_data": {
-          "position": {
-            "x": 0,
-            "y": 0
-          },
-          "dimensions": {
-            "width": 256,
-            "height": 100
-          },
-          "collapsed": false
-        },
-        "snippet_workflow_id": null,
-        "snippet_version_id": null,
         "data": {
           "name": "Scheduled Trigger",
           "action_type": "scheduled_trigger",
@@ -41,16 +26,31 @@
           "start_at_method": "date",
           "start_at": "{{START_AT}}",
           "ends_on": "never"
-        }
+        },
+        "state": "active",
+        "description": "Hourly.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
       },
-      "export_id": 2,
+      "export_id": 8,
+      "parent_action": null,
       "connected_to": [
         {
-          "target": 1,
+          "target": 4,
           "custom_handle": null
         }
-      ],
-      "parent_action": null
+      ]
     },
     {
       "action": {
@@ -60,21 +60,6 @@
         "connection_name": "",
         "use_connection_name": false,
         "integration_id": null,
-        "state": "active",
-        "description": "Anti-join baseline devices vs live.",
-        "client_data": {
-          "position": {
-            "x": 0,
-            "y": 177
-          },
-          "dimensions": {
-            "width": 256,
-            "height": 76
-          },
-          "collapsed": false
-        },
-        "snippet_workflow_id": null,
-        "snippet_version_id": null,
         "data": {
           "name": "Find Silent Devices",
           "action_type": "http_request",
@@ -85,7 +70,6 @@
           "url_prefix": null,
           "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(1)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"| left join base = (| dataset 'config://datatables/ingestHealthSourceStats' | filter active_hours >= 151 | columns devkey, source, device, mean_ev, last_seen, active_hours, total_gib), live = (sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group cur_events = count() by source = dataSource.name, device | let devkey = format('%s||%s', source, device) | columns devkey, cur_events) on devkey | filter !(cur_events = *) | columns devkey, source, device, mean_ev, active_hours, last_seen, total_gib | sort -mean_ev | limit 100\",\n    \"resultType\": \"TABLE\"\n  }\n}",
           "parameters": [],
-          "retry_on_status_code": null,
           "retry_on_status_codes": [
             500
           ],
@@ -99,17 +83,183 @@
           "use_proxy": false,
           "redirect_follow": true,
           "continue_on_fail": true,
-          "body_type": null
-        }
+          "body_type": "json"
+        },
+        "state": "active",
+        "description": "Launch async anti-join LRQ.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 200
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
       },
-      "export_id": 1,
+      "export_id": 4,
+      "parent_action": null,
       "connected_to": [
         {
-          "target": 0,
+          "target": 9,
           "custom_handle": null
         }
-      ],
-      "parent_action": null
+      ]
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set LRQ Refs",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "query_id",
+              "value": "{{find-silent-devices.body.id}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "forward_tag",
+              "value": "{{Function.JQ(find-silent-devices.headers, \"to_entries | map(select(.key|ascii_downcase==\\\"x-dataset-query-forward-tag\\\")) | .[0].value\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Capture LRQ id + forward tag.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 377
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 9,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Until Done",
+          "action_type": "loop",
+          "loop_type": "while",
+          "number_of_iterations": "60",
+          "object_to_iterate": "",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "Poll until stepsCompleted = totalSteps.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 560
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 5,
+          "custom_handle": "inner"
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Silent Devices",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries/{{local_var.query_id}}?lastStepSeen=0",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 90,
+          "headers": {
+            "Accept": "application/json",
+            "X-Dataset-Query-Forward-Tag": "{{local_var.forward_tag}}"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": "json"
+        },
+        "state": "active",
+        "description": "Poll LRQ (first inner action).",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 740
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "parent_action": 6,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": null
+        }
+      ]
     },
     {
       "action": {
@@ -119,12 +269,26 @@
         "connection_name": null,
         "use_connection_name": false,
         "integration_id": null,
+        "data": {
+          "name": "Query Done",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{poll-silent-devices.body.stepsCompleted}}",
+              "compared_value": "{{poll-silent-devices.body.totalSteps}}",
+              "comparison_operator": "equals"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
         "state": "active",
-        "description": "Email if any silent.",
+        "description": "Done when stepsCompleted = totalSteps (poll body).",
         "client_data": {
           "position": {
             "x": 0,
-            "y": 354
+            "y": 920
           },
           "dimensions": {
             "width": 256,
@@ -133,7 +297,109 @@
           "collapsed": false
         },
         "snippet_workflow_id": null,
-        "snippet_version_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "parent_action": 6,
+      "connected_to": [
+        {
+          "target": 10,
+          "custom_handle": "true"
+        },
+        {
+          "target": 7,
+          "custom_handle": "false"
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "delay",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Retry Delay",
+          "action_type": "delay",
+          "time_unit": "seconds",
+          "value": 5
+        },
+        "state": "active",
+        "description": "Wait, then re-poll.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1100
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 7,
+      "parent_action": 6,
+      "connected_to": []
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set Row Count",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "rowcount",
+              "value": "{{Function.JQ(poll-silent-devices.body.data.values, \"length\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Count result rows from poll.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1280
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "parent_action": 6,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
         "data": {
           "name": "Any Silent Devices",
           "action_type": "condition",
@@ -141,22 +407,41 @@
           "condition": null,
           "conditions": [
             {
-              "input_value": "{{find-silent-devices.body.data.totalRows}}",
+              "input_value": "{{local_var.rowcount}}",
               "compared_value": "0",
               "comparison_operator": "greater_than"
             }
           ],
           "conditions_relationship": "and"
-        }
+        },
+        "state": "active",
+        "description": "Email if any silent.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1460
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
       },
       "export_id": 0,
+      "parent_action": 6,
       "connected_to": [
         {
           "target": 3,
           "custom_handle": "true"
+        },
+        {
+          "target": 1,
+          "custom_handle": "false"
         }
-      ],
-      "parent_action": null
+      ]
     },
     {
       "action": {
@@ -166,21 +451,6 @@
         "connection_name": null,
         "use_connection_name": false,
         "integration_id": null,
-        "state": "active",
-        "description": "Notify.",
-        "client_data": {
-          "position": {
-            "x": 0,
-            "y": 531
-          },
-          "dimensions": {
-            "width": 256,
-            "height": 120
-          },
-          "collapsed": false
-        },
-        "snippet_workflow_id": null,
-        "snippet_version_id": null,
         "data": {
           "name": "Email Silent Devices",
           "action_type": "send_email",
@@ -192,14 +462,66 @@
           "bcc": [],
           "reply_to": [],
           "mime_type": "text/html",
-          "body": "<h2>Per-device ingest loss</h2><p>A continuously-active device produced ZERO events in the last hour.</p><pre>{{find-silent-devices.body.data}}</pre>",
+          "body": "<h2>Per-device ingest loss</h2><p>A continuously-active device produced ZERO events in the last hour.</p><pre>{{poll-silent-devices.body.data.values}}</pre>",
           "attachments": [],
           "continue_on_fail": false
-        }
+        },
+        "state": "active",
+        "description": "Notify.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1640
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 120
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
       },
       "export_id": 3,
-      "connected_to": [],
-      "parent_action": null
+      "parent_action": 6,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "break_loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Break When Done",
+          "action_type": "break_loop"
+        },
+        "state": "active",
+        "description": "Exit loop, query complete.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1820
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "parent_action": 6,
+      "connected_to": []
     }
   ]
 }

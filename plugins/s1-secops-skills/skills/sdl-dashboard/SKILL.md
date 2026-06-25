@@ -435,6 +435,8 @@ Query must reduce to a single number (use `group count()`, `estimate_distinct()`
 }
 ```
 
+> **No "millions" (or thousands) number format.** SDL number panels scale only via `format: "auto"` (which may render K/M/B); there is no explicit millions option. To force a specific unit, divide in the query and label the title: `... | group ev = count() | let Events_M = ev / 1000000 | columns Events_M | limit 1` with title `"Total Events (M)"`. Always carry the unit (GiB, events, min, count, ratio) in the title or `suffix`; a number panel renders only a bare value.
+
 > **Options — stick to the minimal set.** Production reference dashboards only set `{format, precision, suffix}`. Fields like `backgroundColor` and `color` are documented in some places but are not consistently honoured by the renderer — at best silently ignored, at worst the panel renders blank or hangs. Do not add them until tested against the specific tenant.
 
 With trend indicator (S-25.1.5+):

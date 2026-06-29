@@ -1,0 +1,8 @@
+value,match_type,reason
+alert,name,S1 internal alert stream (control-plane not device ingest)
+indicator,name,S1 internal threat-intel indicator stream
+asset,name,S1 internal asset inventory stream
+ActivityFeed,name,S1 internal activity feed
+misconfiguration,name,S1 internal posture/misconfig stream
+finding,name,S1 internal finding stream
+risk,name,S1 RBA risk index

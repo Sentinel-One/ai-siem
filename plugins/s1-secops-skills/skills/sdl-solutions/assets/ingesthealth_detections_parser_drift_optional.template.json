@@ -1,0 +1,42 @@
+{
+  "_comment": "OPTIONAL. Parser drift is environment-specific (always-raw infra parsers create false positives). Do NOT deploy by default. Tune the drift_ratio threshold (>=0.05) and confirm which parsers are legitimately raw before enabling. Deploy only after tuning; create Disabled and enable when validated.",
+  "rules": [
+    {
+      "data": {
+        "name": "Ingest Health - Parser Drift (optional, tune first)",
+        "description": "A parser normally normalising is now emitting events without dataSource.name/category at a rate >= 5%. OPTIONAL: needs per-environment tuning (raw-by-design parsers cause false positives). Deploy Disabled, tune drift_ratio, then enable.",
+        "queryType": "scheduled",
+        "queryLang": "2.0",
+        "severity": "High",
+        "status": "Disabled",
+        "expirationMode": "Permanent",
+        "treatAsThreat": "UNDEFINED",
+        "networkQuarantine": false,
+        "coolOffSettings": {
+          "renotifyMinutes": 240
+        },
+        "entityMappings": [
+          {
+            "columnName": "parser"
+          }
+        ],
+        "scheduledParams": {
+          "query": "parser=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let is_unparsed = ((dataSource.name && dataSource.category) ? 0 : 1) | group total = count(), unparsed = sum(is_unparsed), first_seen = oldest(timestamp), last_seen = newest(timestamp) by parser | let normalised = total - unparsed | filter normalised > 0 | filter unparsed > 0 | let drift_ratio = unparsed / total | filter drift_ratio >= 0.05 | columns parser, total, unparsed, normalised, drift_ratio, first_seen, last_seen | sort -unparsed | limit 100",
+          "runIntervalMinutes": 60,
+          "lookbackWindowMinutes": 60,
+          "alertPerRow": false,
+          "disableStreaksLogic": false,
+          "threshold": {
+            "value": 0,
+            "operator": "Greater"
+          }
+        }
+      },
+      "filter": {
+        "siteIds": [
+          "{{SITE_ID}}"
+        ]
+      }
+    }
+  ]
+}

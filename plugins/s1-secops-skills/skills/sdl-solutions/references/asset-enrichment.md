@@ -219,7 +219,7 @@ the two savelookup queries against the LRQ API, so the tables stay current and k
 suppression. Deploy scoped to the site:
 
 - Import: `POST /web/api/v2.1/hyper-automate/api/public/workflow-import-export/import?siteIds={{SITE_ID}}` with body `{ "data": <workflow> }`.
-- To make it visible to the team without running it: `POST /hyper-automate/api/v1/workflows/{id}/publish` (bodyless, `?siteIds={{SITE_ID}}`, returns `204`); it lands as an inactive Shared Draft.
+- Publish in the SAME step as the import (an import is not complete until it is a Shared Draft): `POST /hyper-automate/api/v1/workflows/{id}/publish` (bodyless, `?siteIds={{SITE_ID}}`, returns `204`); it lands as an inactive Shared Draft.
 - **Bind the "SentinelOne SDL" connection (Bearer), NOT the "SentinelOne" mgmt connection.** The SDL query endpoint `/sdl/v2/api/queries` requires `Authorization: Bearer`. The mgmt connection signs as `ApiToken` and the action returns HTTP 500 "Header must start with Bearer". The "SentinelOne SDL" connection uses Bearer by default. Tenant-validated 2026-06-13.
 
 ## Gotchas

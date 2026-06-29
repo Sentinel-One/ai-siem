@@ -155,7 +155,10 @@ them, route differently per `behavioral-baselines.md`:
   hyperautomation primitive, scoped `?siteIds={{SITE_ID}}`. It rebuilds `{{BASELINE_TABLE}}` nightly
   over the trailing window. Bind the "SentinelOne SDL" connection (Bearer), not the "SentinelOne"
   mgmt connection (ApiToken signing returns 500 "Header must start with Bearer" on the SDL query
-  endpoint). Imported flows land as a private draft; publish or activate to run.
+  endpoint). Imported flows land as a PRIVATE DRAFT owned by the API user (invisible in the console);
+  publish in the SAME step as the import, an import is not complete until it is a Shared Draft:
+  `POST /web/api/v2.1/hyper-automate/api/v1/workflows/{id}/publish?siteIds={{SITE_ID}}` (bodyless `{}`,
+  returns 204), then bind/activate to run.
 - **Dashboard.** Render `assets/ueba_dashboard.template.json` and `sdl_put_file` to
   `/dashboards/{{PREFIX}} {{SOURCE}} Anomalies`. Panels join the same lookup and show anomaly count,
   new-behaviour count, active principals, volume over time, the top SPIKE/DROP table, and the

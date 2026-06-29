@@ -9,7 +9,7 @@
         {
           "graphStyle": "number",
           "title": "Total Ingest",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib) | limit 1",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib) | limit 1",
           "options": {
             "format": "auto",
             "precision": "0"
@@ -24,7 +24,7 @@
         {
           "graphStyle": "number",
           "title": "Total Events",
-          "query": "sca:bytesToCharge=* dataSource.name=* | group n = count() | limit 1",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | group n = count() | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -42,7 +42,7 @@
         {
           "graphStyle": "number",
           "title": "Active Sources",
-          "query": "sca:bytesToCharge=* dataSource.name=* | group n = estimate_distinct(dataSource.name) | limit 1",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | group n = estimate_distinct(dataSource.name) | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -57,7 +57,7 @@
         {
           "graphStyle": "number",
           "title": "Active Devices",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group ev = count() by device | filter ev >= 5 | group n = count() | limit 1",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group ev = count() by device | filter ev >= 5 | group n = count() | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -72,7 +72,7 @@
         {
           "graphStyle": "number",
           "title": "Devices over Lag SLA",
-          "query": "sca:ingestTime=* dataSource.name=* | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group p95_lag = p95(lag_min) by device | filter p95_lag > 15 | group n = count() | limit 1",
+          "query": "sca:ingestTime=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group p95_lag = p95(lag_min) by device | filter p95_lag > 15 | group n = count() | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -89,7 +89,7 @@
           "title": "Total Ingest Volume (GiB) over time",
           "xAxis": "time",
           "yScale": "linear",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib) by timestamp = timebucket('10 minutes') | sort timestamp",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib) by timestamp = timebucket('10 minutes') | sort timestamp",
           "layout": {
             "w": 40,
             "h": 12,
@@ -102,7 +102,7 @@
           "title": "Event rate over time",
           "xAxis": "time",
           "yScale": "linear",
-          "query": "sca:bytesToCharge=* dataSource.name=* | group events = count() by timestamp = timebucket('10 minutes') | sort timestamp",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | group events = count() by timestamp = timebucket('10 minutes') | sort timestamp",
           "layout": {
             "w": 20,
             "h": 12,
@@ -113,7 +113,7 @@
         {
           "graphStyle": "table",
           "title": "Top sources by volume",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib), events = count() by source = dataSource.name | sort -GiB | limit 25",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib), events = count() by source = dataSource.name | sort -GiB | limit 25",
           "layout": {
             "w": 30,
             "h": 12,
@@ -124,7 +124,7 @@
         {
           "graphStyle": "honeycomb",
           "title": "Ingest volume heat by source",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group total = sum(gib) by source = dataSource.name | let mx = overall_max(total), mn = overall_min(total) | let normalized = ((total - mn) / (mx - mn)) * 100 | columns Source = source, Normalized = normalized",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group total = sum(gib) by source = dataSource.name | let mx = overall_max(total), mn = overall_min(total) | let normalized = ((total - mn) / (mx - mn)) * 100 | columns Source = source, Normalized = normalized",
           "honeyCombColor": {
             "hover": "#8ED4FB",
             "label": "Blue",
@@ -152,7 +152,7 @@
         {
           "graphStyle": "number",
           "title": "Active Devices",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group ev = count() by device | filter ev >= 5 | group n = count() | limit 1",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group ev = count() by device | filter ev >= 5 | group n = count() | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -167,7 +167,7 @@
         {
           "graphStyle": "number",
           "title": "Devices spiking (z>=3)",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | let hod = simpledateformat(timestamp, 'HH', 'GMT') | let mykey = format('%s||%s||%s', dataSource.name, device, hod) | lookup exp_gib, exp_ev from ingestHealthBaseline by srckey = mykey | filter exp_gib > 0 | group cur_gib = sum(gib), cur_events = count(), exp_gib = any(exp_gib) by source = dataSource.name, device, hod | let dk = format('%s||%s', source, device) | lookup sig_gib from ingestHealthSourceStats by devkey = dk | let z_gib = (sig_gib > 0 ? (cur_gib - exp_gib) / sig_gib : 0) | filter z_gib >= 3 | group n = count() | limit 1",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | let hod = simpledateformat(timestamp, 'HH', 'GMT') | let mykey = format('%s||%s||%s', dataSource.name, device, hod) | lookup exp_gib, exp_ev from ingestHealthBaseline by srckey = mykey | filter exp_gib > 0 | group cur_gib = sum(gib), cur_events = count(), exp_gib = any(exp_gib) by source = dataSource.name, device, hod | let dk = format('%s||%s', source, device) | lookup sig_gib from ingestHealthSourceStats by devkey = dk | let z_gib = (sig_gib > 0 ? (cur_gib - exp_gib) / sig_gib : 0) | filter z_gib >= 3 | group n = count() | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -182,7 +182,7 @@
         {
           "graphStyle": "number",
           "title": "Devices dropping (z<=-3)",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | let hod = simpledateformat(timestamp, 'HH', 'GMT') | let mykey = format('%s||%s||%s', dataSource.name, device, hod) | lookup exp_gib, exp_ev from ingestHealthBaseline by srckey = mykey | filter exp_gib > 0 | group cur_gib = sum(gib), cur_events = count(), exp_gib = any(exp_gib) by source = dataSource.name, device, hod | let dk = format('%s||%s', source, device) | lookup sig_gib from ingestHealthSourceStats by devkey = dk | let z_gib = (sig_gib > 0 ? (cur_gib - exp_gib) / sig_gib : 0) | filter z_gib <= -3 | group n = count() | limit 1",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | let hod = simpledateformat(timestamp, 'HH', 'GMT') | let mykey = format('%s||%s||%s', dataSource.name, device, hod) | lookup exp_gib, exp_ev from ingestHealthBaseline by srckey = mykey | filter exp_gib > 0 | group cur_gib = sum(gib), cur_events = count(), exp_gib = any(exp_gib) by source = dataSource.name, device, hod | let dk = format('%s||%s', source, device) | lookup sig_gib from ingestHealthSourceStats by devkey = dk | let z_gib = (sig_gib > 0 ? (cur_gib - exp_gib) / sig_gib : 0) | filter z_gib <= -3 | group n = count() | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -197,7 +197,7 @@
         {
           "graphStyle": "number",
           "title": "Devices over Lag SLA",
-          "query": "sca:ingestTime=* dataSource.name=* | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group p95_lag = p95(lag_min) by device | filter p95_lag > 15 | group n = count() | limit 1",
+          "query": "sca:ingestTime=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group p95_lag = p95(lag_min) by device | filter p95_lag > 15 | group n = count() | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -212,7 +212,7 @@
         {
           "graphStyle": "table",
           "title": "Top devices by volume",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib), events = count() by source = dataSource.name, device | sort -GiB | limit 40",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib), events = count() by source = dataSource.name, device | sort -GiB | limit 40",
           "layout": {
             "w": 30,
             "h": 14,
@@ -223,7 +223,7 @@
         {
           "graphStyle": "honeycomb",
           "title": "Device volume heat",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group total = sum(gib) by source = dataSource.name, device | sort -total | limit 40 | let mx = overall_max(total), mn = overall_min(total) | let normalized = ((total - mn) / (mx - mn)) * 100 | columns Source = source, Device = device, Normalized = normalized",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group total = sum(gib) by source = dataSource.name, device | sort -total | limit 40 | let mx = overall_max(total), mn = overall_min(total) | let normalized = ((total - mn) / (mx - mn)) * 100 | columns Source = source, Device = device, Normalized = normalized",
           "honeyCombColor": {
             "hover": "#8ED4FB",
             "label": "Blue",
@@ -246,7 +246,7 @@
         {
           "graphStyle": "table",
           "title": "Per-device live volume vs baseline (z-score)",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | let hod = simpledateformat(timestamp, 'HH', 'GMT') | let mykey = format('%s||%s||%s', dataSource.name, device, hod) | lookup exp_gib, exp_ev from ingestHealthBaseline by srckey = mykey | filter exp_gib > 0 | group cur_gib = sum(gib), cur_events = count(), exp_gib = any(exp_gib) by source = dataSource.name, device, hod | let dk = format('%s||%s', source, device) | lookup sig_gib from ingestHealthSourceStats by devkey = dk | let z_gib = (sig_gib > 0 ? (cur_gib - exp_gib) / sig_gib : 0) | columns source, device, hod, cur_gib, exp_gib, sig_gib, z_gib | sort -z_gib | limit 60",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | let hod = simpledateformat(timestamp, 'HH', 'GMT') | let mykey = format('%s||%s||%s', dataSource.name, device, hod) | lookup exp_gib, exp_ev from ingestHealthBaseline by srckey = mykey | filter exp_gib > 0 | group cur_gib = sum(gib), cur_events = count(), exp_gib = any(exp_gib) by source = dataSource.name, device, hod | let dk = format('%s||%s', source, device) | lookup sig_gib from ingestHealthSourceStats by devkey = dk | let z_gib = (sig_gib > 0 ? (cur_gib - exp_gib) / sig_gib : 0) | columns source, device, hod, cur_gib, exp_gib, sig_gib, z_gib | sort -z_gib | limit 60",
           "layout": {
             "w": 60,
             "h": 16,
@@ -262,7 +262,7 @@
         {
           "graphStyle": "table",
           "title": "Volume by source (GiB, events, avg bytes/event)",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group totalGiB = sum(gib), events = count(), AvgBytesPerEvent = sum(number(sca:bytesToCharge)) / count() by source = dataSource.name | sort -totalGiB | limit 50",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group totalGiB = sum(gib), events = count(), AvgBytesPerEvent = sum(number(sca:bytesToCharge)) / count() by source = dataSource.name | sort -totalGiB | limit 50",
           "layout": {
             "w": 34,
             "h": 14,
@@ -275,7 +275,7 @@
           "title": "Share of total GiB by source",
           "maxPieSlices": 10,
           "dataLabelType": "PERCENTAGE",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib) by source = dataSource.name | sort -GiB | limit 10",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib) by source = dataSource.name | sort -GiB | limit 10",
           "layout": {
             "w": 26,
             "h": 14,
@@ -287,7 +287,7 @@
           "graphStyle": "stacked_bar",
           "title": "GiB by source",
           "xAxis": "grouped_data",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib) by source = dataSource.name | sort -GiB | limit 20",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib) by source = dataSource.name | sort -GiB | limit 20",
           "layout": {
             "w": 30,
             "h": 13,
@@ -298,7 +298,7 @@
         {
           "graphStyle": "table",
           "title": "Top devices by volume",
-          "query": "sca:bytesToCharge=* dataSource.name=* | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib), events = count() by source = dataSource.name, device | sort -GiB | limit 30",
+          "query": "sca:bytesToCharge=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib), events = count() by source = dataSource.name, device | sort -GiB | limit 30",
           "layout": {
             "w": 30,
             "h": 13,
@@ -309,7 +309,7 @@
         {
           "graphStyle": "table",
           "title": "Specific log types by volume (non-SentinelOne)",
-          "query": "dataSource.name!='SentinelOne' sca:bytesToCharge=* event.type=* | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib), events = count() by event.type | sort -GiB | limit 30",
+          "query": "dataSource.name!='SentinelOne' sca:bytesToCharge=* event.type=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024 | group GiB = sum(gib), events = count() by event.type | sort -GiB | limit 30",
           "layout": {
             "w": 60,
             "h": 12,
@@ -325,7 +325,7 @@
         {
           "graphStyle": "number",
           "title": "Max p95 lag (min)",
-          "query": "sca:ingestTime=* dataSource.name=* | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group p95_lag = p95(lag_min) by device | group m = max(p95_lag) | limit 1",
+          "query": "sca:ingestTime=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group p95_lag = p95(lag_min) by device | group m = max(p95_lag) | limit 1",
           "options": {
             "format": "auto",
             "precision": "0"
@@ -340,7 +340,7 @@
         {
           "graphStyle": "number",
           "title": "Overall median lag (min)",
-          "query": "sca:ingestTime=* dataSource.name=* | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | group m = median(lag_min) | limit 1",
+          "query": "sca:ingestTime=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | group m = median(lag_min) | limit 1",
           "options": {
             "format": "auto",
             "precision": "0"
@@ -355,7 +355,7 @@
         {
           "graphStyle": "number",
           "title": "Devices over SLA",
-          "query": "sca:ingestTime=* dataSource.name=* | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group p95_lag = p95(lag_min) by device | filter p95_lag > 15 | group n = count() | limit 1",
+          "query": "sca:ingestTime=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group p95_lag = p95(lag_min) by device | filter p95_lag > 15 | group n = count() | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -370,7 +370,7 @@
         {
           "graphStyle": "number",
           "title": "Events sampled",
-          "query": "sca:ingestTime=* dataSource.name=* | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | group n = count() | limit 1",
+          "query": "sca:ingestTime=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | group n = count() | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -387,7 +387,7 @@
           "title": "Ingest lag over time (p95 & median, min)",
           "xAxis": "time",
           "yScale": "linear",
-          "query": "sca:ingestTime=* dataSource.name=* | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | group p95_lag = p95(lag_min), median_lag = median(lag_min) by timestamp = timebucket('10 minutes') | sort timestamp",
+          "query": "sca:ingestTime=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | group p95_lag = p95(lag_min), median_lag = median(lag_min) by timestamp = timebucket('10 minutes') | sort timestamp",
           "layout": {
             "w": 60,
             "h": 13,
@@ -398,7 +398,7 @@
         {
           "graphStyle": "table",
           "title": "Lag percentiles by device",
-          "query": "sca:ingestTime=* dataSource.name=* | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group p95_lag = p95(lag_min), p99_lag = p99(lag_min), median_lag = median(lag_min), events = count() by source = dataSource.name, device | filter events >= 20 | sort -p95_lag | limit 50",
+          "query": "sca:ingestTime=* dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let ingest_ts = number(sca:ingestTime) | let evt_ts = number(timestamp) / 1000000000 | let lag_min = (ingest_ts - evt_ts) / 60 | filter lag_min > 0 | let device = (device.name ? device.name : (endpoint.name ? endpoint.name : (agent.uuid ? agent.uuid : (src_endpoint.hostname ? src_endpoint.hostname : (hostname ? hostname : dataSource.name))))) | group p95_lag = p95(lag_min), p99_lag = p99(lag_min), median_lag = median(lag_min), events = count() by source = dataSource.name, device | filter events >= 20 | sort -p95_lag | limit 50",
           "layout": {
             "w": 60,
             "h": 14,
@@ -414,7 +414,7 @@
         {
           "graphStyle": "number",
           "title": "Drifting parsers",
-          "query": "parser=* | let is_unparsed = ((dataSource.name && dataSource.category) ? 0 : 1) | group total = count(), unparsed = sum(is_unparsed) by parser | let normalised = total - unparsed | filter normalised > 0 | filter unparsed > 0 | let drift_ratio = unparsed / total | filter drift_ratio >= 0.05 | group n = count() | limit 1",
+          "query": "parser=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let is_unparsed = ((dataSource.name && dataSource.category) ? 0 : 1) | group total = count(), unparsed = sum(is_unparsed) by parser | let normalised = total - unparsed | filter normalised > 0 | filter unparsed > 0 | let drift_ratio = unparsed / total | filter drift_ratio >= 0.05 | group n = count() | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -429,7 +429,7 @@
         {
           "graphStyle": "number",
           "title": "Sources missing category",
-          "query": "dataSource.name=* | let nocat = ((dataSource.category) ? 0 : 1) | group total = count(), missing = sum(nocat) by source = dataSource.name | filter missing > 0 | group n = count() | limit 1",
+          "query": "dataSource.name=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let nocat = ((dataSource.category) ? 0 : 1) | group total = count(), missing = sum(nocat) by source = dataSource.name | filter missing > 0 | group n = count() | limit 1",
           "options": {
             "format": "commas",
             "precision": "0"
@@ -444,7 +444,7 @@
         {
           "graphStyle": "number",
           "title": "Worst drift ratio",
-          "query": "parser=* | let is_unparsed = ((dataSource.name && dataSource.category) ? 0 : 1) | group total = count(), unparsed = sum(is_unparsed) by parser | let normalised = total - unparsed | filter normalised > 0 | filter unparsed > 0 | let drift_ratio = unparsed / total | group m = max(drift_ratio) | limit 1",
+          "query": "parser=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let is_unparsed = ((dataSource.name && dataSource.category) ? 0 : 1) | group total = count(), unparsed = sum(is_unparsed) by parser | let normalised = total - unparsed | filter normalised > 0 | filter unparsed > 0 | let drift_ratio = unparsed / total | group m = max(drift_ratio) | limit 1",
           "options": {
             "format": "auto",
             "precision": "0"
@@ -459,7 +459,7 @@
         {
           "graphStyle": "table",
           "title": "Parser drift (regressions)",
-          "query": "parser=* | let is_unparsed = ((dataSource.name && dataSource.category) ? 0 : 1) | group total = count(), unparsed = sum(is_unparsed) by parser | let normalised = total - unparsed | filter normalised > 0 | filter unparsed > 0 | let drift_ratio = unparsed / total | filter drift_ratio >= 0.05 | columns parser, total, unparsed, normalised, drift_ratio | sort -unparsed | limit 50",
+          "query": "parser=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let is_unparsed = ((dataSource.name && dataSource.category) ? 0 : 1) | group total = count(), unparsed = sum(is_unparsed) by parser | let normalised = total - unparsed | filter normalised > 0 | filter unparsed > 0 | let drift_ratio = unparsed / total | filter drift_ratio >= 0.05 | columns parser, total, unparsed, normalised, drift_ratio | sort -unparsed | limit 50",
           "layout": {
             "w": 34,
             "h": 14,
@@ -471,7 +471,7 @@
           "graphStyle": "stacked_bar",
           "title": "Top parsers by drift ratio",
           "xAxis": "grouped_data",
-          "query": "parser=* | let is_unparsed = ((dataSource.name && dataSource.category) ? 0 : 1) | group total = count(), unparsed = sum(is_unparsed) by parser | let normalised = total - unparsed | filter normalised > 0 | filter unparsed > 0 | let drift_ratio = unparsed / total | filter drift_ratio >= 0.05 | columns parser, drift_ratio | sort -drift_ratio | limit 15",
+          "query": "parser=* | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor | filter (ih_excl_n = null and ih_excl_v = null) | let is_unparsed = ((dataSource.name && dataSource.category) ? 0 : 1) | group total = count(), unparsed = sum(is_unparsed) by parser | let normalised = total - unparsed | filter normalised > 0 | filter unparsed > 0 | let drift_ratio = unparsed / total | filter drift_ratio >= 0.05 | columns parser, drift_ratio | sort -drift_ratio | limit 15",
           "layout": {
             "w": 26,
             "h": 14,

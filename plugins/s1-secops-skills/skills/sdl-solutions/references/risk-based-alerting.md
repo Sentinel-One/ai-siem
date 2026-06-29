@@ -6,7 +6,7 @@ Every mechanic in this playbook is tenant-validated end to end (2026-06-24/25): 
 
 ## Concept mapping: RBA concepts to SentinelOne
 
-| RBA concept | SentinelOne (primitive) |
+| RBA concept | SentinelOne |
 |---|---|
 | Risk index | Custom SDL data source `dataSource.name='risk'`, populated via SDL HTTP ingest (`POST /services/collector/event?isParsed=true`) |
 | Risk Analysis adaptive response (write a risk event, do not alert) | Risk collector: a scheduled Hyperautomation flow that runs contributor PowerQueries and publishes the resulting risk events |
@@ -70,6 +70,26 @@ Write `{{PREFIX}}RiskFactors.csv` to `/datatables/`. Header `factor_key,factor_t
 
 `mult ? number(mult) : 1` is the bare-field coalesce (no `coalesce()` in PQ); unmatched objects keep multiplier 1. `=:anycase` matches case-insensitively. Validated: a privileged user (x2) amplified base 15 to risk_score 30.
 
+### Risk factors from AD objects (ISPM)
+
+This is the SentinelOne equivalent of Splunk RBA "importing customer assets via AD objects." If the customer has **ISPM (Identity Security Posture Management / Ranger AD)**, Active Directory objects sync into the Asset Inventory **identity surface**, so the factor table is built directly from AD, no manual CSV. Confirmed live (2026-06-25): identity assets carry `activeCoverage: ["ISPM"]`, `assetEnvironment: "Active Directory"`, and per-object AD attributes `privileged` (bool), `adminCount` (number), `serviceAccount` (bool), `memberOf` (group DNs), `distinguishedName` (OU), `objectSid`, `principalName` / `samAccountName`, and `riskFactors` (e.g. `["Unresolved Alerts"]`). Real examples seen: `IMPERIUM\adm.webb` (`privileged=true`, `adminCount=1`), `MOHIT\admin.one` (`riskFactors=["Unresolved Alerts"]`).
+
+Build the factor table from AD with a `savelookup`:
+
+```
+| datasource assets from 'surface/identity'
+| filter resourceType='AD User' principalName=*
+| let mult = privileged=true ? 2.0 : (number(adminCount) > 0 ? 1.5 : (serviceAccount=true ? 0.5 : 1.0))
+| let reason = privileged=true ? 'Privileged (ISPM)' : (number(adminCount) > 0 ? 'adminCount>0 (ISPM)' : (serviceAccount=true ? 'Service account' : 'Standard AD user'))
+| columns factor_key = principalName, factor_type = 'user', risk_multiplier = mult, reason
+| limit 100000
+| savelookup '{{PREFIX}}RiskFactors'
+```
+
+`principalName` (e.g. `IMPERIUM\adm.webb`) is the join key against the `risk_object` a user contributor emits. Layer extra weight from `riskFactors` (an account flagged `"Unresolved Alerts"`), Tier-0 OU membership (`distinguishedName` contains the privileged OU), or `memberOf` (Domain Admins) as the environment warrants. Refresh nightly (the collector or a refresh flow) so multipliers track AD changes. `privileged`/`serviceAccount` are booleans, compare with `=true` (not `'true'`). For hosts, the same pattern on `'surface/endpoint'` gives criticality/tags.
+
+**No ISPM?** Fall back to the endpoint surface (`'surface/endpoint'`) for host context plus a hand-maintained static CSV (`assets/rba_risk_factors.csv.template`) for the rest.
+
 ## Step 3: contributors
 
 Render the contributor PowerQueries from `rba_contributors.json`. Each ends in:
@@ -81,6 +101,8 @@ Render the contributor PowerQueries from `rba_contributors.json`. Each ends in:
 The collector unions/sequences these per run. Use `contains:anycase ('-enc', ...)` style predicates in collector queries rather than regex with `\s` escapes, to avoid multi-level escaping inside the workflow JSON.
 
 ## Step 4: collector (deploy as Shared Draft, then prompt, then activate)
+
+> Import is not complete until published: treat `ha_import_workflow` and publish as ONE atomic step (publish in the SAME step as the import, never a follow-up). The collector must be a Shared Draft before you prompt the user to bind and activate.
 
 Render `assets/rba_collector.workflow.template.json` (scheduled trigger, sync PowerQuery, MAP_TABLE, JQ-to-NDJSON, publish). Deploy in this order, this is mandatory because the SDL connection cannot be bound via API:
 
@@ -111,6 +133,24 @@ Multi-tactic body swaps the filter to `| filter tactics >= {{TACTIC_THRESHOLD}}`
 ## Step 6: dashboard
 
 Render `assets/rba_dashboard.template.json` and `sdl_put_file` to `/dashboards/{{PREFIX}}-RBA`. Panels: risk-events / risk-objects / contributors number tiles, risk leaderboard (cumulative score per object, `showBarsColumn`), risk by MITRE tactic (donut), risk by contributor (donut), risk score over time by object type (stacked_bar, `transpose risk_object_type on timestamp`, safe single-token values), top threat objects (table), and the contributing-events timeline (table). Format timestamps with `simpledateformat(timestamp,'yyyy-MM-dd HH:mm:ss','UTC')` and put `sort` before `columns`.
+
+## Scoring example (worked)
+
+A privileged AD user, `IMPERIUM\adm.webb` (ISPM: `privileged=true`, `adminCount=1`), so the factor table gives a x2.0 multiplier. Over a 24h window the collector publishes these risk events:
+
+| Time (UTC) | Contributor | MITRE tactic / technique | base_score | x factor | risk_score |
+|---|---|---|---|---|---|
+| 09:02 | suspicious_powershell_flags | Execution / T1059.001 | 15 | 2.0 | 30 |
+| 09:14 | ad_recon_burst | Discovery / T1087 | 15 | 2.0 | 30 |
+| 09:31 | lolbin_download | Command and Control / T1105 | 20 | 2.0 | 40 |
+| 10:05 | eventlog_clear | Defense Evasion / T1070.001 | 25 | 2.0 | 50 |
+
+Cumulative 24h `risk_score_total` = **150** across **4 distinct MITRE tactics**.
+
+- The **user 24h cumulative-score** rule (threshold >= 50) fires: 150 >= 50. One HIGH alert, entity-bound to `IMPERIUM\adm.webb`, carrying the four contributing events as its timeline.
+- The **user 7d multi-tactic** rule (threshold >= 4 tactics) also fires if the same four spread over days rather than one burst.
+
+The amplification is the point. The same four observations on a standard, non-privileged user (`IMPERIUM\adm.kowalski`, x1.0) total **75**, over threshold but ranked far below the privileged user. On a service account factored down to x0.5 they total **37.5**, *below* the 50 threshold, so it stays quiet, which is the intended noise suppression. Identical behaviour, different outcome, driven entirely by the AD-derived risk factor.
 
 ## Validation
 

@@ -50,6 +50,38 @@ as a risk event. The incident rules read the risk index and fire one alert per o
 - **24h cumulative score** crosses a threshold (default user >= 50, host >= 40), catching fast, high-intensity attacks; or
 - **7d distinct MITRE tactics** crosses a threshold (default user >= 4, host >= 3), catching low-and-slow campaigns.
 
+## Risk factors from AD objects (ISPM)
+
+The Splunk RBA pattern of "importing customer assets via AD objects" maps directly onto SentinelOne. If
+the customer has **ISPM (Identity Security Posture Management / Ranger AD)**, Active Directory objects
+are synced into the Asset Inventory **identity surface**, so the risk-factor table is built straight from
+AD instead of a hand-maintained CSV. Confirmed live (2026-06-25): identity assets carry
+`activeCoverage: ["ISPM"]`, `assetEnvironment: "Active Directory"`, and per-object AD attributes
+`privileged`, `adminCount`, `serviceAccount`, `memberOf`, `distinguishedName` (OU), `objectSid`,
+`principalName` / `samAccountName`, and `riskFactors` (for example `["Unresolved Alerts"]`). A privileged
+account such as `IMPERIUM\adm.webb` (`privileged=true`, `adminCount=1`) therefore gets a higher multiplier
+automatically, while a service account is factored down. Without ISPM, fall back to the endpoint surface
+for host context plus a static CSV for the rest. The factor table is refreshed nightly so the multipliers
+track AD changes.
+
+## Scoring example
+
+A privileged AD user, `IMPERIUM\adm.webb`, picks up a x2.0 multiplier from the AD-sourced factor table.
+Over one 24h window four contributors fire:
+
+| Contributor | MITRE tactic | base_score | x factor | risk_score |
+|---|---|---|---|---|
+| suspicious_powershell_flags | Execution | 15 | 2.0 | 30 |
+| ad_recon_burst | Discovery | 15 | 2.0 | 30 |
+| lolbin_download | Command and Control | 20 | 2.0 | 40 |
+| eventlog_clear | Defense Evasion | 25 | 2.0 | 50 |
+
+Cumulative 24h risk score = **150** across **4 MITRE tactics**, so the user 24h cumulative-score rule
+(threshold 50) fires one HIGH alert bound to `IMPERIUM\adm.webb`, with those four events as the timeline.
+The same four observations on a standard user (x1.0) total 75, over the line but ranked lower; on a service
+account (x0.5) they total 37.5, *below* threshold and intentionally silent. Identical behaviour, different
+outcome, driven by the AD-derived risk factor, which is the core idea of RBA.
+
 ## Run it with one prompt
 
 - *"Deploy risk-based alerting on the Acme site"*

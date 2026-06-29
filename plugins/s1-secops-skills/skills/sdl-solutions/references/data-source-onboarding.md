@@ -255,7 +255,7 @@ site, or account scope) and import scoped:
 
 - Import (account): `POST /web/api/v2.1/hyper-automate/api/public/workflow-import-export/import?accountIds=<acct>`
   with body `{ "data": <workflow> }`. For a site, use `?siteIds=<site>` instead.
-- Make it visible to the team without running it: `POST /hyper-automate/api/v1/workflows/{id}/publish`
+- Publish in the SAME step as the import (an import is not complete until it is a Shared Draft): `POST /hyper-automate/api/v1/workflows/{id}/publish`
   (bodyless, `?accountIds=`/`?siteIds=`, returns `204`). The flow lands as an `inactive` Shared Draft.
 - This response playbook calls the S1 mgmt API (IOC create, agent disconnect, alert note), so bind
   the **"SentinelOne"** mgmt connection on the integration actions, and set the VirusTotal API key

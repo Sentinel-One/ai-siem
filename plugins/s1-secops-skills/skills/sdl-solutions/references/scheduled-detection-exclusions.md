@@ -289,7 +289,11 @@ Only needed for the savelookup / source-of-truth path. Render
 `assets/exclusion_refresh_workflow.template.json` and import with the hyperautomation primitive,
 scoped `?siteIds={{SITE_ID}}`. It re-runs the `savelookup` builder nightly so the exclusion table
 tracks live state. Bind the "SentinelOne SDL" connection (Bearer), not the "SentinelOne" mgmt
-connection. An analyst-supplied static CSV needs no refresh; re-`put` it when it changes.
+connection. Imported flows land as a PRIVATE DRAFT owned by the API user (invisible in the console), so
+publish it in the SAME step as the import, an import is not complete until it is a Shared Draft:
+`POST /web/api/v2.1/hyper-automate/api/v1/workflows/{id}/publish?siteIds={{SITE_ID}}` (bodyless `{}`,
+returns 204; stays inactive until bound + activated). An analyst-supplied static CSV needs no refresh;
+re-`put` it when it changes.
 
 ## Step 5: deploy the exclusion-effectiveness dashboard
 

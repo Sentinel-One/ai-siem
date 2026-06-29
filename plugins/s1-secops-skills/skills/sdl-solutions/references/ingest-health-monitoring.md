@@ -23,6 +23,16 @@ Hour-of-day (24 buckets) keeps the per-device lookup tables small. A device floo
 `exp_ev >= 5`; stats `active_hours >= 24 and mean_ev >= 5`) drops transient hosts so monitoring
 targets real, continuously-present devices.
 
+## Granularity: source vs device
+
+Monitoring is **source level by default** (one logical device = the source name, which suits sources with no real
+device identity). A source is monitored **per device only if it is listed in the `ingestHealthDeviceLevel` lookup**
+(`source, device_field, reason`). `device_field` names the field that identifies the device for that source
+(`device.name`, `endpoint.name`, `agent.uuid`, `src_endpoint.hostname`, `hostname`, or `auto` to use the generic
+coalesce). Device for a device-level source = the configured field (falling back to the coalesce, then the source);
+for every other source `device = dataSource.name`. The same conditional logic runs in the builder, the detections,
+and the watchdog, so one set of baseline tables serves both levels and every alert carries a `level` column.
+
 ## Parameters (ask few; default rest)
 
 | Param | Default |
@@ -37,20 +47,62 @@ targets real, continuously-present devices.
 | notify email | ask (required) |
 | site/scope | ask at deploy |
 
+## Source exclusions (maintainable lookup, no hardcoding)
+
+Which sources are monitored is controlled by ONE editable CSV lookup, not by hardcoded
+`dataSource.name != '...'` clauses scattered across queries. Every query body (both savelookups, all
+detection rules, the watchdog live subquery, and every dashboard panel) carries the same anti-join
+right after its opener:
+
+```
+<opener> | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name
+         | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor
+         | filter (ih_excl_n = null and ih_excl_v = null)
+```
+
+The table `/datatables/ingestHealthExclusions.csv` (template `assets/ingesthealth_exclusions.csv.template`)
+has three columns: `value` (the `dataSource.name` OR `dataSource.vendor` string to stop monitoring),
+`match_type` (`name` or `vendor`, advisory only), and `reason` (free text). To exclude a source add one
+row (`Zscaler,vendor,decommissioned`); to resume, delete the row. No query edits, no redeploy. An empty
+table (header only) excludes nothing.
+
+Mechanics:
+- The anti-join tests `value` against BOTH `dataSource.name` and `dataSource.vendor`, so `match_type` is
+  documentation only: a row matches if its value equals either field (case-insensitive via `=:anycase`).
+- This is the right place to drop the platform's own internal streams, which a vendor filter misses.
+  `dataSource.vendor != 'SentinelOne'` KEEPS null-vendor rows, so `alert, indicator, asset, ActivityFeed,
+  misconfiguration, finding, risk` and the native `SentinelOne` EDR leak back in; list them by NAME in the
+  CSV. The shipped template pre-populates those internal streams; keep or trim per tenant.
+- Scheduled detection rules accept the anti-join (`lookup ... by value =:anycase ... | filter excl = null`);
+  `=` and `=:anycase` are the supported operators.
+- CSV gotcha: a value containing a comma needs double-quotes; spaces do not (`Microsoft O365` is one value).
+  `sdl_get_file` reflows the CSV for display, that is cosmetic; the stored table parses correctly.
+- Create the CSV BEFORE deploying anything that references it, or `lookup ... from ingestHealthExclusions.csv`
+  errors "file not found".
+
 ## Deploy order
 
-1. Baseline: `flows/ha_flow_1_baseline_builder.json` (2 per-device savelookups/7d, daily). Bind
+1. Config lookups (FIRST, every query references them): put_file `assets/ingesthealth_exclusions.csv.template`
+   -> `/datatables/ingestHealthExclusions.csv` (sources to stop monitoring) AND
+   `assets/ingesthealth_devicelevel.csv.template` -> `/datatables/ingestHealthDeviceLevel.csv` (sources to
+   monitor per device; absent = source level). Edit either later to change scope/granularity without
+   touching any query.
+2. Baseline: `flows/ha_flow_1_baseline_builder.json` (2 per-device savelookups/7d, daily). Bind
    "SentinelOne SDL" (Bearer). Seed once before anything reads the tables.
-2. Detections: POST `detections/*` to `/cloud-detection/rules` (`scheduled`, `queryLang 2.0`),
-   scope siteIds/accountIds. Spike/drop/lag are per device and restrict to baselined devices via a
-   per-event lookup before the group. Land Disabled; enable via `PUT /cloud-detection/rules/enable`.
-   Lookback 60 (= 1h). Parser drift is per parser.
-3. Ingest loss: per device via `assets/ingesthealth_watchdog.workflow.template.json` (anti-join LRQ in a
+3. Detections: POST the unified rules in `assets/ingesthealth_detections.template.json` to
+   `/cloud-detection/rules` (`scheduled`, `queryLang 2.0`), scope siteIds/accountIds. One Spike, one Drop,
+   one Lag, each handles both levels via the conditional device logic and tags every alert with a `level`
+   column. Land Disabled; enable via `PUT /cloud-detection/rules/enable`. Lookback 60 (= 1h). Parser Drift
+   ships separately in `assets/ingesthealth_detections_parser_drift_optional.template.json` and is OPTIONAL:
+   it is environment-specific, do NOT deploy by default, tune the drift_ratio threshold first.
+4. Ingest loss: per device via `assets/ingesthealth_watchdog.workflow.template.json` (anti-join LRQ in a
    POLL LOOP; the scheduled engine rejects `left join`, so this runs as an HA LRQ, not a STAR rule).
-4. Notifier: `assets/ingesthealth_alert_notifier.workflow.template.json` (trigger `name contains 'Ingest
+5. Notifier: `assets/ingesthealth_alert_notifier.workflow.template.json` (trigger `name contains 'Ingest
    Health'` -> send_email). Core actions only; activate directly.
-5. Dashboard: put_file `assets/ingesthealth_dashboard.template.json` -> `/dashboards/Ingest Health Monitoring`.
-6. Test E2E with run-now + prompt the user: bind "SentinelOne SDL" (Bearer), activate the flows, then
+6. Dashboard: put_file `assets/ingesthealth_dashboard.template.json` -> `/dashboards/Ingest Health Monitoring`.
+7. Publish + test E2E with run-now + prompt the user: publish each imported flow to a Shared Draft so it
+   is visible (`POST .../workflows/{id}/publish?siteIds=<id>`, see Gotchas), bind "SentinelOne SDL"
+   (Bearer), activate the flows, then
    `POST .../workflow-execution/manual/{id}/{version}?accountIds=<acct>` each flow and poll
    `GET .../workflow-execution/{exec_id}` to `Completed` with `error_actions:[]`. Confirm the tables wrote
    (`| dataset 'config://datatables/ingestHealthBaseline' | group count()`), the dashboard renders, and a
@@ -70,6 +122,12 @@ targets real, continuously-present devices.
   use `by source`.
 - Per-device detections: restrict to baselined devices with a per-event lookup BEFORE the group so
   the intermediate stays bounded on high-cardinality sources (e.g. thousands of syslog hosts).
+- Import is not complete until published: treat `ha_import_workflow` and publish as ONE atomic step (publish in the SAME step as the import, never a follow-up). ALWAYS publish every imported HA flow immediately, or the user cannot see it. `ha_import_workflow`
+  lands the flow as a PRIVATE DRAFT owned by the API token's user (invisible in the console to the human
+  who asked). Right after each import: `POST /web/api/v2.1/hyper-automate/api/v1/workflows/{id}/publish?siteIds=<id>`
+  (bodyless `{}`, returns 204) -> Shared Draft, visible. Use `accountIds=<acct>` for account-scoped flows.
+  The flow stays inactive (shared but not running) until the connection is bound and it is activated;
+  activation auto-publishes, so this explicit publish is only skippable when you activate in the same pass.
 - HA interval trigger: each `schedule_value` entry needs `schedule_method:"interval"` + unit/value.
 - `sca:ingestTime` epoch sec, `timestamp` ns; lag = `(sca:ingestTime - timestamp/1e9)/60`.
 - HA LRQ is async AND the query id is ephemeral. Every flow LRQ (`POST /sdl/v2/api/queries`, both
@@ -78,11 +136,10 @@ targets real, continuously-present devices.
   `totalSteps` (NOT `stepsTotal`). A long fixed wait 404s (id expired); reading `body.data` off the launch
   is always null. Actions that consume a poll result must live INSIDE the loop (loop-scoped outputs are
   not visible after the loop). See the hyperautomation skill's "Running an SDL LRQ from an HA flow".
-- Scoping to "third-party only": exclude the platform's own internal streams by NAME, not just by vendor.
-  `dataSource.vendor='SentinelOne'` tags the native EDR plus internal streams (asset, ActivityFeed,
-  Windows Event Logs, alert, indicator), and `dataSource.vendor != 'SentinelOne'` KEEPS null-vendor rows
-  so internal streams leak back. Use an explicit name guard, e.g. keep Windows Event Logs but drop the
-  rest: `(dataSource.name='Windows Event Logs' or (dataSource.vendor!='SentinelOne' and dataSource.name!='alert' and dataSource.name!='indicator' and dataSource.name!='asset' and dataSource.name!='ActivityFeed'))`.
+- Source scoping is via the `ingestHealthExclusions.csv` lookup (see "Source exclusions" above), not
+  hardcoded filters. For that list, remember `dataSource.vendor != 'SentinelOne'` KEEPS null-vendor rows,
+  so the platform's own internal streams (`alert, indicator, asset, ActivityFeed, misconfiguration,
+  finding, risk`) and the native `SentinelOne` EDR leak past a vendor filter; exclude them by NAME in the CSV.
 
 ## Register in skill
 
@@ -140,8 +197,11 @@ A full deployment produces the artifacts below. Each renders from a template in 
 
 | Artifact | Template | Deployed to | Purpose |
 |---|---|---|---|
+| Source exclusions lookup | `assets/ingesthealth_exclusions.csv.template` | `sdl_put_file /datatables/ingestHealthExclusions.csv` | Editable allowlist of sources to STOP monitoring (by `dataSource.name` or `dataSource.vendor`); every query anti-joins it. Deploy FIRST. |
+| Device-level config lookup | `assets/ingesthealth_devicelevel.csv.template` | `sdl_put_file /datatables/ingestHealthDeviceLevel.csv` | Opt-in list of sources to monitor per device (`source, device_field, reason`); absent = source level. Deploy FIRST. |
 | Baseline Builder workflow | `assets/ingesthealth_baseline_builder.workflow.template.json` | Hyperautomation workflow import | Rebuild the `ingestHealthBaseline` and `ingestHealthSourceStats` datatables daily from a 7-day hour-of-day window (Bearer SDL connection) |
-| Ingest health detections | `assets/ingesthealth_detections.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | Per-device Volume Spike, Volume Drop, Ingest Lag and per-parser Parser Drift scheduled rules vs the seasonal baseline |
+| Ingest health detections (unified) | `assets/ingesthealth_detections.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | Unified Volume Spike, Volume Drop, Ingest Lag scheduled rules vs the seasonal baseline; each handles both levels and tags alerts with a `level` column |
+| Parser Drift (OPTIONAL) | `assets/ingesthealth_detections_parser_drift_optional.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | Per-parser drift detector. Environment-specific, ships Disabled, do NOT deploy by default; tune `drift_ratio` first |
 | Ingest Loss Watchdog workflow | `assets/ingesthealth_watchdog.workflow.template.json` | Hyperautomation workflow import | Hourly per-device anti-join that emails when a baselined device stops sending logs |
 | Ingest health dashboard | `assets/ingesthealth_dashboard.template.json` | `sdl_put_file /dashboards/Ingest Health Monitoring` | Five-tab view: Overview, Devices, Volume & Sources, Latency & Lag, Parser Health |
 | Alert Notifier workflow | `assets/ingesthealth_alert_notifier.workflow.template.json` | Hyperautomation workflow import | Alert-triggered email on any "Ingest Health" detection |

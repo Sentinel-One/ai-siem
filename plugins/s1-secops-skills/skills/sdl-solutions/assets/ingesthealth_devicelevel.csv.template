@@ -1,0 +1,2 @@
+source,device_field,reason
+FortiGate,device.name,example: per-firewall monitoring (device.name holds the firewall name). Edit or remove per environment.

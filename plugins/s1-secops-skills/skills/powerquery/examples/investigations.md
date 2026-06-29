@@ -414,9 +414,9 @@ event.type in ('File Modification', 'File Rename')
 
 ## Indicator-driven hunts
 
-### Today's behavioral indicators by category
+### Today's behavioural indicators by category
 
-**Use it when** wanting a high-level summary of what S1's behavioral engine has flagged.
+**Use it when** wanting a high-level summary of what S1's behavioural engine has flagged.
 
 ```
 indicator.category = *

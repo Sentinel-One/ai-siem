@@ -1,0 +1,61 @@
+{
+  "_comment": "RBA RISK COLLECTOR (tenant-validated 2026-06-25). Scheduled HA flow: runs RBA contributor(s) via the SYNCHRONOUS SDL PowerQuery endpoint (/sdl/api/powerQuery returns body.columns + body.values in one call, no async poll), maps rows to named objects (MAP_TABLE), shapes them to NDJSON risk events (JQ tojson, which safely escapes command-line quotes/backslashes), and publishes them into dataSource.name='risk'. DEPLOY ORDER (mandatory, the SDL connection CANNOT be bound via API): (1) import via POST /web/api/v2.1/hyper-automate/api/public/workflow-import-export/import?accountIds={{ACCOUNT_ID}} body {data:<this>}; (2) publish to Shared Draft: POST /web/api/v2.1/hyper-automate/api/v1/workflows/{id}/publish?accountIds={{ACCOUNT_ID}} (bodyless, 204); (3) PROMPT the user to bind the 'SentinelOne SDL' (Bearer) connection on BOTH http_request actions in the console; (4) after confirmation, activate: POST /web/api/v2.1/hyper-automate/api/v1/workflows/{id}/{version_id}/activation?accountIds={{ACCOUNT_ID}} (204); (5) run-now to test: POST /web/api/v2.1/hyper-automate/api/public/workflow-execution/manual/{id}/{version_id}?accountIds={{ACCOUNT_ID}}, then poll GET .../workflow-execution/{execution_id} until state=Completed (validated: 6/6 actions, ~2.9s, no error_actions). The example query below is the suspicious_powershell_flags contributor; production unions all contributors from rba_contributors.json. Schedule is daily 02:00 UTC for safe import; set hourly in the console for production RBA and match the query startTime to the interval. Both HTTP actions: use_authentication_data=true, bound to 'SentinelOne SDL'.",
+  "name": "{{PREFIX}} - RBA Risk Collector",
+  "description": "RBA collector: runs contributors via sync SDL PowerQuery, applies risk-factor multipliers, and publishes risk events into dataSource.name='risk'. Bind 'SentinelOne SDL' (Bearer) on both HTTP actions, then activate.",
+  "actions": [
+    {
+      "action": {
+        "type": "scheduled_trigger", "tag": "core_action", "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null, "state": "active", "description": "Collector schedule (set hourly in console for production)",
+        "client_data": { "position": { "x": 0, "y": 0 }, "dimensions": { "width": 256, "height": 100 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": { "name": "Scheduled Trigger", "action_type": "scheduled_trigger", "schedule_method": "daily", "until": null, "max_runs": 1, "schedule_value": [ { "schedule_method": "daily", "minute": 0, "hour": 2, "tz": "UTC" } ], "start_at_method": "immediately", "start_at": null, "ends_on": "never" }
+      },
+      "export_id": 5, "connected_to": [ { "target": 4, "custom_handle": null } ], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request", "tag": "integration", "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null, "state": "active", "description": "Run RBA contributors (synchronous SDL PowerQuery). Bind 'SentinelOne SDL'.",
+        "client_data": { "position": { "x": 0, "y": 177 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": { "name": "Run Contributors", "action_type": "http_request", "public_action_id": null, "method": "post", "url": "{{Connection.protocol}}{{Connection.url}}/sdl/api/powerQuery", "url_path": null, "url_prefix": null, "payload": "{\"query\": \"dataSource.name='SentinelOne' event.type='Process Creation' src.process.user=* src.process.name in:anycase ('powershell.exe','pwsh.exe') src.process.cmdline contains:anycase ('-nop','-enc','-encodedcommand','-w hidden','-windowstyle','frombase64string') | group threat_object=any(src.process.cmdline), hits=count() by risk_object=src.process.user, endpoint=endpoint.name | let base_score=15 | lookup mult=risk_multiplier from {{FACTOR_TABLE}} by factor_key =:anycase risk_object | let risk_score = base_score * (mult ? number(mult) : 1) | let risk_object_type='user', mitre_tactic='Execution', mitre_technique='T1059.001', contributor='suspicious_powershell_flags', threat_object_type='command_line', risk_message='Suspicious PowerShell flags' | columns risk_object, risk_object_type, risk_score, base_score, mitre_tactic, mitre_technique, contributor, threat_object, threat_object_type, endpoint, risk_message | limit 1000\", \"startTime\": \"{{LOOKBACK}}\"}", "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [ 500 ], "ssl_verification": true, "timeout": 90, "headers": { "Content-Type": "application/json", "Accept": "application/json" }, "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": false, "body_type": null }
+      },
+      "export_id": 4, "connected_to": [ { "target": 3, "custom_handle": null } ], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable", "tag": "core_action", "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null, "state": "active", "description": "Column names + NDJSON shaper expression.",
+        "client_data": { "position": { "x": 0, "y": 354 }, "dimensions": { "width": 256, "height": 100 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": { "name": "Prep", "action_type": "variable", "variables": [ { "name": "cols", "value": "{{Function.JQ(run-contributors.body.columns, \".[].name\")}}", "should_use_as_output": false, "is_secret": false }, { "name": "jqFilter", "value": "[.[] | (. + {\"dataSource.name\":\"risk\",\"dataSource.vendor\":\"S1-RBA\",\"dataSource.category\":\"security\"})] | map(tojson) | join(\"\\n\")", "should_use_as_output": false, "is_secret": false } ], "variables_scope": "local", "expire_in_unit": null, "expire_in_value": null, "expire_method": null, "workflows_acl": null }
+      },
+      "export_id": 3, "connected_to": [ { "target": 2, "custom_handle": null } ], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable", "tag": "core_action", "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null, "state": "active", "description": "Map PQ rows (columns + values) to named risk-event objects.",
+        "client_data": { "position": { "x": 0, "y": 531 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": { "name": "Map Rows", "action_type": "variable", "variables": [ { "name": "mapped", "value": "{{Function.MAP_TABLE(local_var.cols, run-contributors.body.values)}}", "should_use_as_output": false, "is_secret": false } ], "variables_scope": "local", "expire_in_unit": null, "expire_in_value": null, "expire_method": null, "workflows_acl": null }
+      },
+      "export_id": 2, "connected_to": [ { "target": 1, "custom_handle": null } ], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable", "tag": "core_action", "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null, "state": "active", "description": "Build NDJSON risk events (one JSON object per line).",
+        "client_data": { "position": { "x": 0, "y": 708 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": { "name": "Build NDJSON", "action_type": "variable", "variables": [ { "name": "ndjson", "value": "{{Function.JQ(local_var.mapped, local_var.jqFilter, true)}}", "should_use_as_output": false, "is_secret": false } ], "variables_scope": "local", "expire_in_unit": null, "expire_in_value": null, "expire_method": null, "workflows_acl": null }
+      },
+      "export_id": 1, "connected_to": [ { "target": 0, "custom_handle": null } ], "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request", "tag": "integration", "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null, "state": "active", "description": "Publish risk events to the risk index via the HEC (HTTP Event Collector) ingest endpoint. Bind 'SentinelOne SDL'.",
+        "client_data": { "position": { "x": 0, "y": 885 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
+        "snippet_workflow_id": null, "snippet_version_id": null,
+        "data": { "name": "Publish Risk Events", "action_type": "http_request", "public_action_id": null, "method": "post", "url": "{{HEC_INGEST_URL}}/services/collector/event?isParsed=true", "url_path": null, "url_prefix": null, "payload": "{{local_var.ndjson}}", "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [ 500 ], "ssl_verification": true, "timeout": 60, "headers": { "Content-Type": "application/json", "S1-Scope": "{{ACCOUNT_ID}}" }, "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": false, "body_type": null }
+      },
+      "export_id": 0, "connected_to": [], "parent_action": null
+    }
+  ]
+}

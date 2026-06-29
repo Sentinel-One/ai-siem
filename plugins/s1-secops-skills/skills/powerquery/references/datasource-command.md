@@ -142,6 +142,22 @@ Use the aggregated-snapshot datasources, which carry a `snapshotDate`:
 | transpose severity
 ```
 
+## Usage Metering specifics
+
+The `metering` datasource exposes Usage Metering reports for cost, usage, and (for MSSPs) chargeback analytics. It behaves like the other datasources but has its own access rules. Source: SentinelOne Community article 000010750, supported from S-24.2.6.
+
+- **Permission:** `Metering Reports - View` is required. C-Level and Admin roles have it by default; it can be added to custom roles. Without it the call returns no data.
+- **Rate limit:** metering datasource calls (`tenants` / `reports` / `report_name`) are capped at **50 requests/second with a 100-request burst**, separate from normal PQ CPU budgets.
+- **Datasets:** `tenants` (tenants you can see), `reports` (available report names with metadata), and `<report_name>` for the raw rows of one report (e.g. `server_endpoints`). Always list report names via `from 'reports'` first; the set is tenant- and permission-dependent.
+- **Drilldown filter:** append normal PQ after the generator to post-process the rows the metering backend returns, exactly as the UI drilldowns do:
+
+```
+| datasource 'metering' from 'server_endpoints'
+| filter endpoint_bundle in ('Core', 'Complete')
+```
+
+- **Common response columns** (per `report_name` row): `calculation_time`, `date`, `timestamp`, `Console_id`, `Console_hostname`, `Account_scope_id/name`, `Site_scope_id/name`, `tenant_scope_id/level/name`, `tenant_id`, `tenant_name`, the `organization_level_{0,1,2}_{id,name,type,salesforce_id,scope_id,scope_level}` hierarchy, `environment`, `cloud_region`, `cloud_provider`, plus report-specific fields (e.g. `endpoint_bundle` on `server_endpoints`).
+
 ## Example queries
 
 ```
@@ -169,6 +185,10 @@ Use the aggregated-snapshot datasources, which carry a `snapshotDate`:
 // Available metering reports
 | datasource 'metering' from 'reports'
 | columns report_name, product_category, product_name, unit, description
+
+// Raw usage rows for one report, filtered (drilldown)
+| datasource 'metering' from 'server_endpoints'
+| filter endpoint_bundle in ('Core', 'Complete')
 ```
 
 ## Gotchas (quick list)
@@ -180,3 +200,4 @@ Use the aggregated-snapshot datasources, which carry a `snapshotDate`:
 - The assets snapshot ignores the time range.
 - No `compare`/`timebucket` on raw datasource queries; use the `*_aggregated_snapshots` variants.
 - Subject to memory limits: project narrow columns and add `| limit N`.
+- `metering` needs the `Metering Reports - View` permission and is rate-limited to 50 rps / 100 burst; list report names via `from 'reports'` before querying `from '<report_name>'`.

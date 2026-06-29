@@ -6,80 +6,710 @@
       "action": {
         "type": "scheduled_trigger",
         "tag": "core_action",
-        "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null,
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
         "state": "active",
         "description": "Run daily at {{SCHEDULE_HOUR}}:00 UTC",
-        "client_data": { "position": { "x": 0, "y": 0 }, "dimensions": { "width": 256, "height": 100 }, "collapsed": false },
-        "snippet_workflow_id": null, "snippet_version_id": null,
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
         "data": {
           "name": "Scheduled Trigger",
           "action_type": "scheduled_trigger",
           "schedule_method": "daily",
           "until": null,
           "max_runs": 1,
-          "schedule_value": [ { "schedule_method": "daily", "minute": 0, "hour": {{SCHEDULE_HOUR}}, "tz": "UTC" } ],
+          "schedule_value": [
+            {
+              "schedule_method": "daily",
+              "minute": 0,
+              "hour": {{SCHEDULE_HOUR}},
+              "tz": "UTC"
+            }
+          ],
           "start_at_method": "immediately",
           "start_at": null,
           "ends_on": "never"
         }
       },
       "export_id": 2,
-      "connected_to": [ { "target": 1, "custom_handle": null } ],
+      "connected_to": [
+        {
+          "target": 1008,
+          "custom_handle": null
+        }
+      ],
       "parent_action": null
     },
     {
       "action": {
         "type": "http_request",
         "tag": "integration",
-        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
         "state": "active",
         "description": "Refresh {{IDENTITY_TABLE}} via savelookup.",
-        "client_data": { "position": { "x": 0, "y": 177 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
-        "snippet_workflow_id": null, "snippet_version_id": null,
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 177
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
         "data": {
           "name": "Refresh Identity Lookup",
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
           "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries",
-          "url_path": null, "url_prefix": null,
+          "url_path": null,
+          "url_prefix": null,
           "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(24)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"| datasource assets from 'surface/identity' | filter resourceType = 'AD User' | filter objectSid = * | columns username={{USERNAME_KEY}}, user_principal=principalName, user_sid=objectSid, user_domain=domain, user_dn=distinguishedName, user_groups=memberOf, user_privileged=privileged, user_criticality=assetCriticality, _rf=riskFactors | let user_riskfactors = (_rf == '[]' ? null : _rf) | columns username, user_principal, user_sid, user_domain, user_dn, user_groups, user_privileged, user_criticality, user_riskfactors | limit 1000 | savelookup '{{IDENTITY_TABLE}}'\",\n    \"resultType\": \"TABLE\"\n  }\n}",
-          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
-          "ssl_verification": true, "timeout": 60,
-          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
-          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 60,
+          "headers": {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": "json"
         }
       },
-      "export_id": 1,
-      "connected_to": [ { "target": 0, "custom_handle": null } ],
-      "parent_action": null
+      "export_id": 1008,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 1009,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set Refresh Identity Lookup Refs",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "qid_1008",
+              "value": "{{refresh-identity-lookup.body.id}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "tag_1008",
+              "value": "{{Function.JQ(refresh-identity-lookup.headers, \"to_entries | map(select(.key|ascii_downcase==\\\"x-dataset-query-forward-tag\\\")) | .[0].value\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Capture LRQ id + forward tag.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1009,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 1010,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Refresh Identity Lookup Until Done",
+          "action_type": "loop",
+          "loop_type": "while",
+          "number_of_iterations": "60",
+          "object_to_iterate": "",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "Poll until stepsCompleted = totalSteps.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1010,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 1011,
+          "custom_handle": "inner"
+        },
+        {
+          "target": 1001,
+          "custom_handle": null
+        }
+      ]
     },
     {
       "action": {
         "type": "http_request",
         "tag": "integration",
-        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Refresh Identity Lookup",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries/{{local_var.qid_1008}}?lastStepSeen=0",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 60,
+          "headers": {
+            "Accept": "application/json",
+            "X-Dataset-Query-Forward-Tag": "{{local_var.tag_1008}}"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": "json"
+        },
+        "state": "active",
+        "description": "Poll LRQ (first inner action).",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1011,
+      "parent_action": 1010,
+      "connected_to": [
+        {
+          "target": 1012,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Refresh Identity Lookup Done",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{poll-refresh-identity-lookup.body.stepsCompleted}}",
+              "compared_value": "{{poll-refresh-identity-lookup.body.totalSteps}}",
+              "comparison_operator": "equals"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "Done when stepsCompleted = totalSteps (poll body).",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1012,
+      "parent_action": 1010,
+      "connected_to": [
+        {
+          "target": 1013,
+          "custom_handle": "true"
+        },
+        {
+          "target": 1014,
+          "custom_handle": "false"
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "break_loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Break Refresh Identity Lookup",
+          "action_type": "break_loop"
+        },
+        "state": "active",
+        "description": "Exit loop, query complete.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1013,
+      "parent_action": 1010,
+      "connected_to": []
+    },
+    {
+      "action": {
+        "type": "delay",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Retry Refresh Identity Lookup",
+          "action_type": "delay",
+          "time_unit": "seconds",
+          "value": 5
+        },
+        "state": "active",
+        "description": "Wait, then re-poll.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1014,
+      "parent_action": 1010,
+      "connected_to": []
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
         "state": "active",
         "description": "Refresh {{ENDPOINT_TABLE}} via savelookup.",
-        "client_data": { "position": { "x": 0, "y": 354 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
-        "snippet_workflow_id": null, "snippet_version_id": null,
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 354
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
         "data": {
           "name": "Refresh Endpoint Lookup",
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
           "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries",
-          "url_path": null, "url_prefix": null,
+          "url_path": null,
+          "url_prefix": null,
           "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(24)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"| datasource assets from 'surface/endpoint' | filter name = * | filter agentUuid = * | columns hostname=name, device_os=os, device_ip=agentLastReportedIp, device_agentuuid=agentUuid, device_lastuser=agentLastLoggedInUser, device_site=s1SiteName, device_criticality=assetCriticality, _rf=riskFactors | let device_riskfactors = (_rf == '[]' ? null : _rf) | columns hostname, device_os, device_ip, device_agentuuid, device_lastuser, device_site, device_criticality, device_riskfactors | limit 2000 | savelookup '{{ENDPOINT_TABLE}}'\",\n    \"resultType\": \"TABLE\"\n  }\n}",
-          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
-          "ssl_verification": true, "timeout": 60,
-          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
-          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 60,
+          "headers": {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": "json"
         }
       },
-      "export_id": 0,
-      "connected_to": [],
-      "parent_action": null
+      "export_id": 1001,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 1002,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set Refresh Endpoint Lookup Refs",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "qid_1001",
+              "value": "{{refresh-endpoint-lookup.body.id}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "tag_1001",
+              "value": "{{Function.JQ(refresh-endpoint-lookup.headers, \"to_entries | map(select(.key|ascii_downcase==\\\"x-dataset-query-forward-tag\\\")) | .[0].value\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Capture LRQ id + forward tag.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1002,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 1003,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Refresh Endpoint Lookup Until Done",
+          "action_type": "loop",
+          "loop_type": "while",
+          "number_of_iterations": "60",
+          "object_to_iterate": "",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "Poll until stepsCompleted = totalSteps.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1003,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 1004,
+          "custom_handle": "inner"
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Refresh Endpoint Lookup",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries/{{local_var.qid_1001}}?lastStepSeen=0",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 60,
+          "headers": {
+            "Accept": "application/json",
+            "X-Dataset-Query-Forward-Tag": "{{local_var.tag_1001}}"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": "json"
+        },
+        "state": "active",
+        "description": "Poll LRQ (first inner action).",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1004,
+      "parent_action": 1003,
+      "connected_to": [
+        {
+          "target": 1005,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Refresh Endpoint Lookup Done",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{poll-refresh-endpoint-lookup.body.stepsCompleted}}",
+              "compared_value": "{{poll-refresh-endpoint-lookup.body.totalSteps}}",
+              "comparison_operator": "equals"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "Done when stepsCompleted = totalSteps (poll body).",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1005,
+      "parent_action": 1003,
+      "connected_to": [
+        {
+          "target": 1006,
+          "custom_handle": "true"
+        },
+        {
+          "target": 1007,
+          "custom_handle": "false"
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "break_loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Break Refresh Endpoint Lookup",
+          "action_type": "break_loop"
+        },
+        "state": "active",
+        "description": "Exit loop, query complete.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1006,
+      "parent_action": 1003,
+      "connected_to": []
+    },
+    {
+      "action": {
+        "type": "delay",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Retry Refresh Endpoint Lookup",
+          "action_type": "delay",
+          "time_unit": "seconds",
+          "value": 5
+        },
+        "state": "active",
+        "description": "Wait, then re-poll.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1007,
+      "parent_action": 1003,
+      "connected_to": []
     }
   ]
 }

@@ -15,7 +15,7 @@ Each skill is a folder containing a `SKILL.md` that Claude reads when a relevant
 - Purple AI: natural-language query interface over SDL telemetry (NLQ → PowerQuery → results)
 - Hyperautomation: workflow list/get/import/export/delete
 - UAM Alert Interface: OCSF-format alert and indicator ingest via HEC
-- Behavioral baselining + anomaly detection pipeline (`baseline_anomaly.py`): source-agnostic, auto-discovers principal/action fields, day-of-week stratification, three anomaly classes (spike, drop, silent pair, new behavior)
+- Behavioural baselining + anomaly detection pipeline (`baseline_anomaly.py`): source-agnostic, auto-discovers principal/action fields, day-of-week stratification, three anomaly classes (spike, drop, silent pair, new behaviour)
 
 **Key scripts:**
 
@@ -26,7 +26,7 @@ Each skill is a folder containing a `SKILL.md` that Claude reads when a relevant
 | `scripts/search_endpoints.py` | Ranked keyword search over endpoint index (`--only-works` filter) |
 | `scripts/unified_alerts.py` | UAM GraphQL wrapper (queries, mutations, triage helpers) |
 | `scripts/purple_ai.py` | Purple AI GraphQL wrapper |
-| `scripts/baseline_anomaly.py` | Behavioral baselining + anomaly detection |
+| `scripts/baseline_anomaly.py` | Behavioural baselining + anomaly detection |
 
 **Test coverage:** 15 lifecycle test scripts covering IOCs, UAM alerts, exclusions, detection rules (scheduled + events / STAR), Hyperautomation import, XDR graph queries, and more. See [testing.md](./testing.md).
 
@@ -42,7 +42,7 @@ Full field reference: `mgmt-console-api/SKILL.md`
 
 ## powerquery
 
-**Triggers on:** PowerQuery authoring, debugging, optimization, STAR/Custom Detection rule bodies, SDL dashboard panels, behavioral baseline building, threat hunting queries.
+**Triggers on:** PowerQuery authoring, debugging, optimization, STAR/Custom Detection rule bodies, SDL dashboard panels, behavioural baseline building, threat hunting queries.
 
 **What it provides:**
 
@@ -50,7 +50,7 @@ Full field reference: `mgmt-console-api/SKILL.md`
 - STAR rule body authoring (streaming detection, `queryType=events`)
 - PowerQuery Alert rule bodies (scheduled detection, `queryType=scheduled`)
 - SDL dashboard panel query authoring
-- Behavioral baseline building blocks using `| savelookup` + `| lookup` pattern
+- Behavioural baseline building blocks using `| savelookup` + `| lookup` pattern
 - Schema-safe patterns: `number()` cast for type-locked columns, `array_agg_distinct` for enumeration
 
 **Key examples:** `powerquery/examples/behavioral-baselines.md`: full PQ building blocks for the baseline + anomaly detection rule body pattern.
@@ -123,7 +123,7 @@ c.keys["config_read_key"] = ""
 
 ## sdl-solutions
 
-**Triggers on:** deploying a packaged, repeatable SDL solution into a specific customer environment from one short prompt, rather than authoring a single query, parser, or workflow. Onboarding: "onboard cisco_meraki logs", "bring our FortiGate source into AI SIEM and build detections", "set up detections and a dashboard for <source>". Asset enrichment: "deploy the asset enrichment solution", "enrich logs with device/user info for <customer>", "set up SDL asset enrichment on <site>". UEBA: "run a behavioral baseline on <source>", "deploy UEBA anomaly detection for <source>", "flag users whose activity is off their 30-day normal". Ingest health: "deploy ingest health monitoring", "monitor ingest per device/firewall/endpoint", "alert me when a source or device stops sending logs", "detect ingest spikes/drops/lag", "find parser drift". Detection exclusions: "add a detection exclusion for <source> logs", "exclude these assets/domains from a detection", "stop my detection alerting on our scanner subnets/corporate domains, here's the list", "allowlist these hosts".
+**Triggers on:** deploying a packaged, repeatable SDL solution into a specific customer environment from one short prompt, rather than authoring a single query, parser, or workflow. Onboarding: "onboard cisco_meraki logs", "bring our FortiGate source into AI SIEM and build detections", "set up detections and a dashboard for <source>". Asset enrichment: "deploy the asset enrichment solution", "enrich logs with device/user info for <customer>", "set up SDL asset enrichment on <site>". UEBA: "run a behavioural baseline on <source>", "deploy UEBA anomaly detection for <source>", "flag users whose activity is off their 30-day normal". Ingest health: "deploy ingest health monitoring", "monitor ingest per device/firewall/endpoint", "alert me when a source or device stops sending logs", "detect ingest spikes/drops/lag", "find parser drift". Detection exclusions: "add a detection exclusion for <source> logs", "exclude these assets/domains from a detection", "stop my detection alerting on our scanner subnets/corporate domains, here's the list", "allowlist these hosts".
 
 **What it provides:**
 
@@ -131,7 +131,7 @@ c.keys["config_read_key"] = ""
 - **Solution catalog:**
   - **Data source onboarding**: take a raw log stream already reaching the tenant and operationalise it end to end: locate the source by its `parser` attribute, normalise it to OCSF, enrich with device/user asset context, then build a dashboard, MITRE-mapped STAR detections (with entity/asset mapping and severity-tuned cool-offs), and a SOC threat-response Hyperautomation playbook (alert to VirusTotal-gated containment).
   - **Asset enrichment of raw logs**: enrich ingested events with device and user context (OS, IP, agent UUID, AD groups, SID, criticality, risk factors) from the Asset Inventory via `savelookup` tables, in parser (ingest-time), query-time, and automatic-lookup modes, plus a Hyperautomation refresh flow.
-  - **UEBA behavioral anomaly detection**: baseline ANY signal (security or not) per (action, principal), score the live 24h window with a z-score, and surface SPIKE/DROP/SILENT/NEW deviations; deploy as a persisted baseline lookup, a scheduled PowerQuery detection rule, a nightly refresh, and a dashboard.
+  - **UEBA behavioural anomaly detection**: baseline ANY signal (security or not) per (action, principal), score the live 24h window with a z-score, and surface SPIKE/DROP/SILENT/NEW deviations; deploy as a persisted baseline lookup, a scheduled PowerQuery detection rule, a nightly refresh, and a dashboard.
   - **Ingest health monitoring (per device)**: per-firewall/endpoint/server anomaly detection on a 7-day hour-of-day seasonal baseline rebuilt daily: volume spike/drop (z-score), ingest lag (p95 over SLA), ingest loss (a device went silent), and parser drift; deploys per-device baseline lookups, scheduled PowerQuery detections, an ingest-loss watchdog flow, a dashboard, and an email-notification flow for every failure.
   - **Scheduled detection exclusions**: suppress known-good noise in a scheduled detection over a third-party source by keying it against a CSV exclusion list (assets by IP/CIDR/host, or custom domains/users/values) loaded as an SDL lookup and applied with a lookup anti-join (`| lookup ... | filter excl = null`); deploys the lookup table, a scheduled STAR rule, an exclusion-effectiveness dashboard, and (for `=:cidr`/`=:wildcard`, which the STAR validator rejects) a Hyperautomation detection flow that posts a UAM alert, plus an optional source-of-truth refresh.
 - Parameterized templates under `assets/` (savelookup queries, enrichment parser, dashboard skeleton, STAR detection envelope, threat-response and refresh workflows) driven by tokens such as `{{PREFIX}}`, `{{DATASOURCE_NAME}}`, `{{PARSER_NAME}}`, `{{SITE_ID}}`, `{{ACCOUNT_ID}}`.
@@ -157,4 +157,4 @@ It defines:
 - **Confidence language:** "confirmed" / "consistent with" / "suggests" / "possible", calibrated to evidence weight
 - **Investigation workflow:** triage → enrichment → infrastructure pivot → cross-source correlation → MITRE mapping → composite risk score → report
 
-`s1-secops-mcp` exposes it as an MCP resource (`sentinelone://soc-context`) and prompt (`soc_analyst`). Edit `claude-skills/CLAUDE.md` and restart the MCP server to change Claude's operating behavior.
+`s1-secops-mcp` exposes it as an MCP resource (`sentinelone://soc-context`) and prompt (`soc_analyst`). Edit `claude-skills/CLAUDE.md` and restart the MCP server to change Claude's operating behaviour.

@@ -326,6 +326,6 @@ docker/build.sh
 PUSH=true docker/build.sh
 ```
 
-All version pins live in [`docker/build.sh`](../docker/build.sh) and the matching CI workflow [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml). They are checked for sync at CI build time.
+All version pins live in [`docker/build.sh`](../../../mcp/docker/build.sh) and the matching CI workflow [`.github/workflows/main.yml`](../../../.github/workflows/main.yml). They are checked for sync at CI build time.
 
-Maintainer reference: [`docker/README.md`](../docker/README.md).
+Maintainer reference: [`docker/README.md`](../../../mcp/docker/README.md).

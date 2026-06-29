@@ -90,7 +90,7 @@ Apply without restart (full restart needed for credentials):
 sudo systemctl restart s1-secops-mcp
 ```
 
-`S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN` are enough for most tools. `S1_HEC_INGEST_URL` is required only for `uam_ingest_alert`, `uam_post_indicators`, `uam_post_alert`. `SDL_*` keys gate the SDL tools per the table in [the MCP README](../s1-secops-mcp/README.md#credentials).
+`S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN` are enough for most tools. `S1_HEC_INGEST_URL` is required only for `uam_ingest_alert`, `uam_post_indicators`, `uam_post_alert`. `SDL_*` keys gate the SDL tools per the table in [the MCP README](../../../mcp/s1-secops-mcp/README.md#credentials).
 
 ## TLS in front (Caddy)
 
@@ -185,7 +185,7 @@ Restart the client. Done.
 
 ### Path B — Claude Desktop (stdio bridge required)
 
-Claude Desktop's stable build rejects `type: "http"` with "not valid MCP server configuration", so you have to run a small stdio↔HTTPS shim locally. The bridge is a 40-line zero-dep Node script shipped at [`s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs`](../s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs).
+Claude Desktop's stable build rejects `type: "http"` with "not valid MCP server configuration", so you have to run a small stdio↔HTTPS shim locally. The bridge is a 40-line zero-dep Node script shipped at [`s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs`](../../../mcp/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs).
 
 **Step 1 — Install the bridge (one-time, per Mac):**
 
@@ -259,7 +259,7 @@ MCP_BEARER='<your token>' \
   bash s1-secops-mcp/scripts/smoke-test-http.sh
 ```
 
-All six checks should print PASS. Any FAIL points at the specific layer that's broken (TLS, bearer, backend, tool count). Full troubleshooting reference: [`s1-secops-mcp/deploy/bridge/README.md`](../s1-secops-mcp/deploy/bridge/README.md).
+All six checks should print PASS. Any FAIL points at the specific layer that's broken (TLS, bearer, backend, tool count). Full troubleshooting reference: [`s1-secops-mcp/deploy/bridge/README.md`](../../../mcp/s1-secops-mcp/deploy/bridge/README.md).
 
 ## Verifying end-to-end
 
@@ -342,6 +342,6 @@ sudo journalctl -u s1-secops-mcp -f | grep 'tools/call'
 
 The canonical deploy guide lives alongside the MCP source so it stays in lock-step with the code:
 
-**[`s1-secops-mcp/deploy/README.md`](../s1-secops-mcp/deploy/README.md)** — all three topologies (single-user local stdio, single-user HTTP, team VM-hosted), full alternative-deployment notes (Docker, supergateway), and the underlying systemd / Caddy templates.
+**[`s1-secops-mcp/deploy/README.md`](../../../mcp/s1-secops-mcp/deploy/README.md)** — all three topologies (single-user local stdio, single-user HTTP, team VM-hosted), full alternative-deployment notes (Docker, supergateway), and the underlying systemd / Caddy templates.
 
 This page (`docs/vm-deployment.md`) is the on-ramp; the deploy README is the manual.

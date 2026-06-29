@@ -401,7 +401,7 @@ If you want "count of rows where `login_success = false`", write `count(login_su
 
 ### `if x = y and z = w` short-circuits — but so does `or`
 
-`||` returns the first truthy *value*, not a boolean. `a || b` with `a = "0"` returns `"0"` (non-empty string, truthy), not a boolean `true`. If you want boolean behavior, wrap with `bool(…)`.
+`||` returns the first truthy *value*, not a boolean. `a || b` with `a = "0"` returns `"0"` (non-empty string, truthy), not a boolean `true`. If you want boolean behaviour, wrap with `bool(…)`.
 
 ### `newest()` / `oldest()` after `sort` fails silently
 

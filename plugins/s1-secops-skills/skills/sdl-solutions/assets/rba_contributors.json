@@ -1,0 +1,71 @@
+{
+  "_comment": "RBA risk model: the contributor definitions. Each is a noisy-but-interesting observation that is NOT alerted on individually; the collector runs each query, applies the risk-factor multiplier, and publishes the resulting rows as risk events into dataSource.name='risk'. Each query ends in the standard risk-event columns projection. Use contains:anycase predicates (NOT regex with \\s escapes) so the query survives JSON embedding in the collector workflow. base_score and MITRE tags are starter values; tune per environment. risk_object_type is 'user' or 'host'. The collector appends: | lookup mult=risk_multiplier from {{FACTOR_TABLE}} by factor_key =:anycase risk_object | let risk_score = base_score * (mult ? number(mult) : 1) | let <constant fields> | columns risk_object, risk_object_type, risk_score, base_score, mitre_tactic, mitre_technique, contributor, threat_object, threat_object_type, endpoint, risk_message | limit 1000",
+  "contributors": [
+    {
+      "name": "suspicious_powershell_flags",
+      "risk_object_type": "user",
+      "base_score": 15,
+      "mitre_tactic": "Execution",
+      "mitre_technique": "T1059.001",
+      "threat_object_type": "command_line",
+      "risk_message": "Suspicious PowerShell flags",
+      "filter": "dataSource.name='SentinelOne' event.type='Process Creation' src.process.user=* src.process.name in:anycase ('powershell.exe','pwsh.exe') src.process.cmdline contains:anycase ('-nop','-enc','-encodedcommand','-w hidden','-windowstyle','frombase64string')",
+      "group": "| group threat_object=any(src.process.cmdline), hits=count() by risk_object=src.process.user, endpoint=endpoint.name"
+    },
+    {
+      "name": "ad_recon_burst",
+      "risk_object_type": "user",
+      "base_score": 15,
+      "mitre_tactic": "Discovery",
+      "mitre_technique": "T1087",
+      "threat_object_type": "command_line",
+      "risk_message": "AD / host reconnaissance commands",
+      "filter": "dataSource.name='SentinelOne' event.type='Process Creation' src.process.user=* src.process.name in:anycase ('whoami.exe','net.exe','net1.exe','nltest.exe','systeminfo.exe','tasklist.exe','quser.exe','arp.exe')",
+      "group": "| group threat_object=any(src.process.cmdline), distinct_bins=estimate_distinct(src.process.name), hits=count() by risk_object=src.process.user, endpoint=endpoint.name | filter distinct_bins >= 3"
+    },
+    {
+      "name": "lolbin_download",
+      "risk_object_type": "user",
+      "base_score": 20,
+      "mitre_tactic": "Command and Control",
+      "mitre_technique": "T1105",
+      "threat_object_type": "command_line",
+      "risk_message": "LOLBin with download-like arguments",
+      "filter": "dataSource.name='SentinelOne' event.type='Process Creation' src.process.user=* src.process.name in:anycase ('certutil.exe','bitsadmin.exe','mshta.exe','regsvr32.exe','rundll32.exe') src.process.cmdline contains:anycase ('http://','https://','frombase64string')",
+      "group": "| group threat_object=any(src.process.cmdline), hits=count() by risk_object=src.process.user, endpoint=endpoint.name"
+    },
+    {
+      "name": "eventlog_clear",
+      "risk_object_type": "user",
+      "base_score": 25,
+      "mitre_tactic": "Defense Evasion",
+      "mitre_technique": "T1070.001",
+      "threat_object_type": "command_line",
+      "risk_message": "Windows event log cleared",
+      "filter": "dataSource.name='SentinelOne' event.type='Process Creation' src.process.user=* src.process.cmdline contains:anycase ('wevtutil cl','clear-eventlog','clear-winevent')",
+      "group": "| group threat_object=any(src.process.cmdline), hits=count() by risk_object=src.process.user, endpoint=endpoint.name"
+    },
+    {
+      "name": "shadowcopy_delete",
+      "risk_object_type": "host",
+      "base_score": 20,
+      "mitre_tactic": "Impact",
+      "mitre_technique": "T1490",
+      "threat_object_type": "command_line",
+      "risk_message": "Shadow copy deletion (pre-ransomware)",
+      "filter": "dataSource.name='SentinelOne' event.type='Process Creation' endpoint.name=* src.process.cmdline contains:anycase ('vssadmin delete shadows','wmic shadowcopy delete','-volumeshadowcopy')",
+      "group": "| group threat_object=any(src.process.cmdline), hits=count() by risk_object=endpoint.name, endpoint=endpoint.name"
+    },
+    {
+      "name": "credential_access_indicator",
+      "risk_object_type": "user",
+      "base_score": 25,
+      "mitre_tactic": "Credential Access",
+      "mitre_technique": "T1003",
+      "threat_object_type": "command_line",
+      "risk_message": "Credential dumping indicators",
+      "filter": "dataSource.name='SentinelOne' event.type='Process Creation' src.process.user=* src.process.cmdline contains:anycase ('mimikatz','sekurlsa','secretsdump','comsvcs.dll','lsass')",
+      "group": "| group threat_object=any(src.process.cmdline), hits=count() by risk_object=src.process.user, endpoint=endpoint.name"
+    }
+  ]
+}

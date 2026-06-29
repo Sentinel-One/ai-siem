@@ -1,6 +1,6 @@
 # Built-in SDL Parsers
 
-Before writing a parser by hand, check this catalog. If one of these matches the input, just reference it by name at HEC ingest (`parser: <name>` header) — no authoring required. If you need the same behavior plus a couple of extra tags, write a trivial alias parser:
+Before writing a parser by hand, check this catalog. If one of these matches the input, just reference it by name at HEC ingest (`parser: <name>` header) — no authoring required. If you need the same behaviour plus a couple of extra tags, write a trivial alias parser:
 
 ```js
 {

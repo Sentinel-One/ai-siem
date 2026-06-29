@@ -1,0 +1,5 @@
+factor_key,factor_type,risk_multiplier,reason
+{{DOMAIN}}\administrator,user,2,Privileged user
+svc-{{PREFIX}},user,1,Service-context baseline
+{{CRITICAL_HOST}},host,3,Critical asset
+{{DC_HOST}},host,3,Domain controller

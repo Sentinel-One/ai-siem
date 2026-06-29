@@ -79,9 +79,25 @@ Response:
 
 Cells may be `null`, `true`, `false`, number, string, or `{"special": "+infinity"|"-infinity"|"NaN"}`.
 
-PQ extends with `datasource` (from S-24.2.6) to read outside Singularity — e.g. `| datasource "metering" from "reports"` for Usage Metering tables (`tenants`, `reports`, `report_name`).
+PQ extends with `datasource` (from S-24.2.6) to read outside Singularity, e.g. `| datasource "metering" from "reports"` for Usage Metering tables (`tenants`, `reports`, `report_name`).
 
-For query authoring, use the `powerquery` skill — it knows the
+#### Usage Metering reports
+
+Usage Metering (cost / usage / MSSP chargeback) is reached through the `datasource "metering"` generator, not a dedicated REST endpoint. Source: Community article 000010750, supported from S-24.2.6.
+
+- **Permission:** `Metering Reports - View` is required (default on C-Level and Admin roles; can be added to custom roles). Without it the query returns no data.
+- **Datasets:** `tenants` (visible tenants), `reports` (available report names + metadata), and `<report_name>` for raw rows of one report (e.g. `server_endpoints`). List names via `from "reports"` before querying a specific report.
+- **Run it through LRQ, not the deprecated path.** The Community doc shows `POST /sdl/api/powerQuery`, which is the V1 endpoint that sunsets 2027-02-15. The `datasource` generator works in any PQ runner, so route metering queries through the Long Running Query API (`POST /sdl/v2/api/queries`, `queryType: "PQ"`, query in `pq.query`) like every other PowerQuery in this skill.
+- **Rate limit:** metering datasource calls are capped at **50 rps with a 100-request burst** (see `auth_and_limits.md`).
+- **Drilldown filter:** append normal PQ to post-process the returned rows:
+
+```
+| datasource "metering" from "server_endpoints" | filter endpoint_bundle in ('Core', 'Complete')
+```
+
+Key response columns include `calculation_time`, `date`, `timestamp`, `Console_id/hostname`, `Account_scope_*`, `Site_scope_*`, `tenant_scope_*`, `tenant_id/name`, the `organization_level_{0,1,2}_*` hierarchy, `environment`, `cloud_region`, `cloud_provider`, plus report-specific fields. Full column reference and authoring help: the `powerquery` skill, `references/datasource-command.md`.
+
+For query authoring, use the `powerquery` skill, it knows the
 field taxonomy and pipe grammar.
 
 ---

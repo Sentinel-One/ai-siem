@@ -10,7 +10,7 @@ Full reference for PowerQuery expression syntax. Read when the query needs anyth
 4. Identifier rules and escaping
 5. Regex dialect and escaping levels
 6. Date / time expressions
-7. Short-circuit OR behavior
+7. Short-circuit OR behaviour
 8. Type coercion rules
 
 ---

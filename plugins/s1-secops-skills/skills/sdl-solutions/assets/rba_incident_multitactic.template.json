@@ -1,0 +1,24 @@
+{
+  "_comment": "RBA incident rule, multi-tactic 'low and slow' (companion to rba_incident_cumulative_score). STAR scheduled PowerQuery rule over the risk index. Render once per risk-object type: RISK_OBJECT_TYPE='user' (TACTIC_THRESHOLD ~4) and ='host' (TACTIC_THRESHOLD ~3). Fires when an object touches >= TACTIC_THRESHOLD distinct MITRE tactics over 7d, catching extended campaigns that never spike the 24h score. Runs daily over a 7d lookback (runIntervalMinutes 1440, lookbackWindowMinutes 10080). Same rule conventions as the cumulative-score template (scheduled/2.0, entityMappings risk_object, treatAsThreat UNDEFINED, number() cast, deploy Disabled then enable).",
+  "data": {
+    "name": "{{PREFIX}} - RBA {{RISK_OBJECT_TYPE}} multi-tactic 7d",
+    "description": "RBA incident rule (low and slow): {{RISK_OBJECT_TYPE}} objects with >= {{TACTIC_THRESHOLD}} distinct MITRE tactics in the risk index over 7d (dataSource.name='risk').",
+    "queryType": "scheduled",
+    "queryLang": "2.0",
+    "severity": "{{SEVERITY}}",
+    "status": "Disabled",
+    "expirationMode": "Permanent",
+    "treatAsThreat": "UNDEFINED",
+    "networkQuarantine": false,
+    "entityMappings": [ { "columnName": "risk_object" } ],
+    "scheduledParams": {
+      "query": "dataSource.name='risk' risk_object_type='{{RISK_OBJECT_TYPE}}' risk_object=* | group tactics=estimate_distinct(mitre_tactic), risk_score_total=sum(number(risk_score)), techniques=estimate_distinct(mitre_technique), contributors=estimate_distinct(contributor), events=count(), first_seen=oldest(timestamp), last_seen=newest(timestamp), top_message=max_by(risk_message, number(risk_score)) by risk_object | filter tactics >= {{TACTIC_THRESHOLD}} | columns risk_object, tactics, risk_score_total, techniques, contributors, events, first_seen, last_seen, top_message | sort -tactics | limit 100",
+      "runIntervalMinutes": 1440,
+      "lookbackWindowMinutes": 10080,
+      "alertPerRow": true,
+      "disableStreaksLogic": false,
+      "threshold": { "value": 0, "operator": "Greater" }
+    }
+  },
+  "filter": { "{{SCOPE_KEY}}": [ "{{SCOPE_ID}}" ] }
+}

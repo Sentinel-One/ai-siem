@@ -6,53 +6,379 @@
       "action": {
         "type": "scheduled_trigger",
         "tag": "core_action",
-        "connection_id": null, "connection_name": null, "use_connection_name": false, "integration_id": null,
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
         "state": "active",
         "description": "Run daily at {{SCHEDULE_HOUR}}:00 UTC",
-        "client_data": { "position": { "x": 0, "y": 0 }, "dimensions": { "width": 256, "height": 100 }, "collapsed": false },
-        "snippet_workflow_id": null, "snippet_version_id": null,
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
         "data": {
           "name": "Scheduled Trigger",
           "action_type": "scheduled_trigger",
           "schedule_method": "daily",
           "until": null,
           "max_runs": 1,
-          "schedule_value": [ { "schedule_method": "daily", "minute": 0, "hour": {{SCHEDULE_HOUR}}, "tz": "UTC" } ],
+          "schedule_value": [
+            {
+              "schedule_method": "daily",
+              "minute": 0,
+              "hour": {{SCHEDULE_HOUR}},
+              "tz": "UTC"
+            }
+          ],
           "start_at_method": "immediately",
           "start_at": null,
           "ends_on": "never"
         }
       },
       "export_id": 1,
-      "connected_to": [ { "target": 0, "custom_handle": null } ],
+      "connected_to": [
+        {
+          "target": 1022,
+          "custom_handle": null
+        }
+      ],
       "parent_action": null
     },
     {
       "action": {
         "type": "http_request",
         "tag": "integration",
-        "connection_id": null, "connection_name": "", "use_connection_name": false, "integration_id": null,
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
         "state": "active",
         "description": "Rebuild {{EXCL_TABLE_BARE}} via savelookup from the source-of-truth query.",
-        "client_data": { "position": { "x": 0, "y": 177 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
-        "snippet_workflow_id": null, "snippet_version_id": null,
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 177
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
         "data": {
           "name": "Rebuild Exclusion List",
           "action_type": "http_request",
           "public_action_id": null,
           "method": "post",
           "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries",
-          "url_path": null, "url_prefix": null,
+          "url_path": null,
+          "url_prefix": null,
           "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(24)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"{{SAVELOOKUP_BUILDER_QUERY}}\",\n    \"resultType\": \"TABLE\"\n  }\n}",
-          "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
-          "ssl_verification": true, "timeout": 60,
-          "headers": { "Content-Type": "application/json", "Accept": "application/json" },
-          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+          "parameters": [],
+          "retry_on_status_code": null,
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 60,
+          "headers": {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": "json"
         }
       },
-      "export_id": 0,
-      "connected_to": [],
-      "parent_action": null
+      "export_id": 1022,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 1023,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set Rebuild Exclusion List Refs",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "qid_1022",
+              "value": "{{rebuild-exclusion-list.body.id}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "tag_1022",
+              "value": "{{Function.JQ(rebuild-exclusion-list.headers, \"to_entries | map(select(.key|ascii_downcase==\\\"x-dataset-query-forward-tag\\\")) | .[0].value\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Capture LRQ id + forward tag.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1023,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 1024,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Rebuild Exclusion List Until Done",
+          "action_type": "loop",
+          "loop_type": "while",
+          "number_of_iterations": "60",
+          "object_to_iterate": "",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "Poll until stepsCompleted = totalSteps.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1024,
+      "parent_action": null,
+      "connected_to": [
+        {
+          "target": 1025,
+          "custom_handle": "inner"
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Rebuild Exclusion List",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries/{{local_var.qid_1022}}?lastStepSeen=0",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_codes": [
+            500
+          ],
+          "ssl_verification": true,
+          "timeout": 60,
+          "headers": {
+            "Accept": "application/json",
+            "X-Dataset-Query-Forward-Tag": "{{local_var.tag_1022}}"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": "json"
+        },
+        "state": "active",
+        "description": "Poll LRQ (first inner action).",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1025,
+      "parent_action": 1024,
+      "connected_to": [
+        {
+          "target": 1026,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Rebuild Exclusion List Done",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{poll-rebuild-exclusion-list.body.stepsCompleted}}",
+              "compared_value": "{{poll-rebuild-exclusion-list.body.totalSteps}}",
+              "comparison_operator": "equals"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "Done when stepsCompleted = totalSteps (poll body).",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1026,
+      "parent_action": 1024,
+      "connected_to": [
+        {
+          "target": 1027,
+          "custom_handle": "true"
+        },
+        {
+          "target": 1028,
+          "custom_handle": "false"
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "break_loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Break Rebuild Exclusion List",
+          "action_type": "break_loop"
+        },
+        "state": "active",
+        "description": "Exit loop, query complete.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1027,
+      "parent_action": 1024,
+      "connected_to": []
+    },
+    {
+      "action": {
+        "type": "delay",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Retry Rebuild Exclusion List",
+          "action_type": "delay",
+          "time_unit": "seconds",
+          "value": 5
+        },
+        "state": "active",
+        "description": "Wait, then re-poll.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1028,
+      "parent_action": 1024,
+      "connected_to": []
     }
   ]
 }

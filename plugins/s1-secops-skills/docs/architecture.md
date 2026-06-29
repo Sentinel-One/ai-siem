@@ -52,7 +52,7 @@ MCP Servers                     Live API access, outside the Cowork sandbox prox
 - Alert classification rules (no CRITICAL verdict without independent threat intel confirmation)
 - Anomaly detection checklist (frequency, timing, geolocation, privilege, chain anomalies)
 
-`s1-secops-mcp` exposes `CLAUDE.md` as an MCP resource (`sentinelone://soc-context`) and prompt (`soc_analyst`). Claude reads it at session start. The file lives in `claude-skills/CLAUDE.md`; editing it and restarting the MCP server immediately changes Claude's operating behavior.
+`s1-secops-mcp` exposes `CLAUDE.md` as an MCP resource (`sentinelone://soc-context`) and prompt (`soc_analyst`). Claude reads it at session start. The file lives in `claude-skills/CLAUDE.md`; editing it and restarting the MCP server immediately changes Claude's operating behaviour.
 
 ### s1-secops-mcp
 

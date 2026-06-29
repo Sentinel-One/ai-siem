@@ -1,7 +1,7 @@
 ---
 name: powerquery
 author: Prithvi Moses <prithvi.moses@sentinelone.com>
-description: Use any time the user wants to author, debug, optimize, explain, or run a SentinelOne PowerQuery (PQ) — Deep Visibility / Event Search queries, XDR/EDR threat hunting, investigations, STAR / Custom Detection rule bodies, PowerQuery Alerts, or Singularity Data Lake dashboard panels. Trigger on PowerQuery, PQ, pq, query, Event Search, Deep Visibility, S1QL, SDL, STAR rule, Custom Detection rule, PowerQuery Alert; on queries using fields like `event.type`, `src.process.*`, `tgt.file.*`, `indicator.*`, `agent.uuid`; on pipes like `| group`, `| filter`, `| let`, `| join`, `| parse`, `| columns`, `| compare`, `| top`, `| union`, `| lookup`, `| savelookup`, `| dataset`. Also trigger when asked to hunt a TTP, IOC, behavior, or alert pattern on a SentinelOne tenant — even casually ("find powershell reaching out to the internet", "write a detection for lsass access"). Explicitly NOT Microsoft Power Query / M / Excel and NOT Splunk SPL — this is SentinelOne's pipeline query language for security telemetry.
+description: Use any time the user wants to author, debug, optimize, explain, or run a SentinelOne PowerQuery (PQ) — Deep Visibility / Event Search queries, XDR/EDR threat hunting, investigations, STAR / Custom Detection rule bodies, PowerQuery Alerts, or Singularity Data Lake dashboard panels. Trigger on PowerQuery, PQ, pq, query, Event Search, Deep Visibility, S1QL, SDL, STAR rule, Custom Detection rule, PowerQuery Alert; on queries using fields like `event.type`, `src.process.*`, `tgt.file.*`, `indicator.*`, `agent.uuid`; on pipes like `| group`, `| filter`, `| let`, `| join`, `| parse`, `| columns`, `| compare`, `| top`, `| union`, `| lookup`, `| savelookup`, `| dataset`. Also trigger when asked to hunt a TTP, IOC, behaviour, or alert pattern on a SentinelOne tenant — even casually ("find powershell reaching out to the internet", "write a detection for lsass access"). Explicitly NOT Microsoft Power Query / M / Excel and NOT Splunk SPL — this is SentinelOne's pipeline query language for security telemetry.
 ---
 
 # SentinelOne PowerQuery
@@ -140,7 +140,7 @@ These are where queries go wrong. Internalize them before writing.
 
 If the user asks for any of the following, you need MORE than this skill — load `s1-secops-skills:mgmt-console-api` alongside, because the runner, the schema discovery, and the source-agnostic key picker live there:
 
-- "Baseline behavior on `<source>`" / "establish a baseline" / "build a 7d / 30d baseline"
+- "Baseline behaviour on `<source>`" / "establish a baseline" / "build a 7d / 30d baseline"
 - "Detect anomalies" / "find users / hosts / IPs behaving differently than usual"
 - "Spot statistical outliers" / "find spikes vs typical" / "find pairs that went silent"
 - Porting any moving-average + stddev / z-score / Prophet / Isolation Forest pattern
@@ -236,7 +236,7 @@ Don't read these upfront. Read the one you need.
 
 - `examples/investigations.md` — ready-to-run investigation queries (PowerShell outbound, suspicious cmdline patterns, lateral movement, LOLBins, credential access, defense evasion, user-activity baselines, endpoint heartbeat, indicator prevalence). Each example includes a brief "what this finds" note and the full PQ.
 - `examples/detection-library.md` — PQ bodies ready to paste into a STAR / Custom Detection / PowerQuery Alert, sized to stay within the 1,000-row/1 MB alert budget. Each entry names the MITRE technique and gives a `threshold` suggestion.
-- `examples/behavioral-baselines.md` — statistical baselining recipes for any data source: per-day count slices, moving-average + stddev, z-score detection, silent-pair detection, day-of-week stratification. Read when the user asks to "baseline X behavior", "detect anomalies in Y", "find users / hosts / IPs behaving differently than usual", or any equivalent. Source-agnostic, works on EDR, identity, network, cloud, email, or any custom log source.
+- `examples/behavioral-baselines.md` — statistical baselining recipes for any data source: per-day count slices, moving-average + stddev, z-score detection, silent-pair detection, day-of-week stratification. Read when the user asks to "baseline X behaviour", "detect anomalies in Y", "find users / hosts / IPs behaving differently than usual", or any equivalent. Source-agnostic, works on EDR, identity, network, cloud, email, or any custom log source.
 - `examples/o365-email-hunting.md`: workflow recipes for the most common M365 audit hunts, covering discovery-first patterns, "did user X send mail" questions, per-day cadence, outbound external mail with recipient extraction, top recipient domains, DLP correlation, "user appears but never as actor" attribution gap, and identity-investigation-noise separation. Use whenever the hunt is against an M365 audit source.
 
 ## When to reach for join vs union vs subquery
@@ -251,7 +251,15 @@ Prefer subqueries for exclusion/inclusion; reach for `join` when a row must "kno
 
 ## Writing detection rules vs ad-hoc hunts
 
-A PowerQuery used as a detection rule body (STAR / Custom Detection / PowerQuery Alert) is more constrained than a hunt query:
+SentinelOne Custom Detection (STAR) rules come in three `queryType` flavors, all created at `POST /web/api/v2.1/cloud-detection/rules` with `queryLang: "2.0"`:
+
+- **STAR single-event** (`queryType: "events"`): body is one boolean S1QL filter with NO pipes in `data.s1ql`, fires per matching event. Use for deterministic single-event signatures.
+- **STAR multi-event / correlation** (`queryType: "correlation"`): `s1ql` empty, logic in `data.correlationParams` (entity + `subQueries[]` with per-query `matchesRequired` over a `timeWindow`). Use for thresholds (N of X) and A-then-B sequences.
+- **Scheduled** (`queryType: "scheduled"`): a PowerQuery body (pipes allowed) in `data.scheduledParams.query`, runs on a schedule. Use for aggregation, baselines, and lookup/anti-join exclusions.
+
+Only the **scheduled** type uses a PowerQuery body, and only it is bound by the constraints below. Single-event and correlation bodies are boolean S1QL (the same grammar as a PQ initial filter, no pipes).
+
+A PowerQuery scheduled-rule body is more constrained than a hunt query:
 
 - Intermediate and output tables must stay under 1,000 rows and 1 MB of RAM.
 - No `nolimit`.
@@ -259,7 +267,7 @@ A PowerQuery used as a detection rule body (STAR / Custom Detection / PowerQuery
 - The rule should produce one row per finding, with stable columns the detection engine can map to alert fields (e.g., `agent.uuid`, `endpoint.name`, `src.process.storyline.id`, `timestamp`).
 - Keep the initial filter as specific as possible — this is what's evaluated in the summary service and is what gates cost.
 
-For detection rule patterns and a checklist, see `references/detection-rules.md` and `examples/detection-library.md`.
+For all three rule types (API shapes, the correlation `correlationParams` block, the events/correlation S1QL escaping rule), detection patterns, and a checklist, see `references/detection-rules.md` and `examples/detection-library.md`.
 
 ## A minimal but realistic example
 

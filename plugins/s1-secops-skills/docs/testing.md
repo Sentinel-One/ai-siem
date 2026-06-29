@@ -119,7 +119,7 @@ Field schemas and usage patterns confirmed through live testing that are essenti
 - Import response uses `id` (not `workflowId`) and `version_id` (not `versionId`)
 - List response shape: `{id, workflow: {id, name, state, version_id, ...}, actions: []}`; `workflow.id` == top-level `id`
 
-#### Full lifecycle — validated end to end (2026-06-13, usea1-purple, account scope)
+#### Full lifecycle — validated end to end (2026-06-13, account scope)
 
 | Step | Call | Result |
 |---|---|---|
@@ -129,7 +129,7 @@ Field schemas and usage patterns confirmed through live testing that are essenti
 | DELETE | `DELETE /api/v1/workflows/{id}?accountIds=<acct>` | `204` — soft, recoverable |
 | VERIFY | `GET /api/public/workflows` | workflow absent from active list |
 
-Tested with throwaway workflow id `3085c7ef-4157-4a82-8a93-1ac0dc2c7484` (account `2046190533732727925`); account workflow count moved 7 → 8 (after import) → 7 (after delete).
+Tested with throwaway workflow id `3085c7ef-4157-4a82-8a93-1ac0dc2c7484` (account `<accountId>`); account workflow count moved 7 → 8 (after import) → 7 (after delete).
 
 - **Scope:** account import/publish/delete use `?accountIds=<acct>`; site-level use `?siteIds=<site>`. The v1 import path with `?_scopeId=<acct>&_scopeLevel=account` returns `403`, and a bare import with no scope returns a misleading `403` on a scoped tenant — always pass the scope query param.
 - **Delete** is the REST `DELETE` above. The older `POST /workflows/archive` (and the legacy archive wrapper) return `500` on this tenant and are superseded.

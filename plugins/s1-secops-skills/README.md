@@ -71,7 +71,7 @@ The plugin bundles every skill; installing it is sufficient. No individual skill
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. See [docs/sdl-dashboard.md](./docs/sdl-dashboard.md) for all supported panel types |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), and per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications). Orchestrates the skills above |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications), detection exclusions, Risk-Based Alerting, and Detection as Code (author rules as TOML in Git and sync them to the Custom Detection API via CI). Orchestrates the skills above |
 
 ---
 
@@ -342,6 +342,12 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 - *"Set up RBA: score encoded PowerShell, recon, LOLBins, and log clearing, and alert when a user accumulates enough risk across tactics"*
 - *"Roll out RBA with asset-criticality risk factors and a risk leaderboard dashboard"*
 
+**Detection as Code (DaC)** (scaffold a Git + CI pipeline where detection engineers author rules as TOML, a pull request triggers validation and four-eyes review, and a merge syncs the changed rules to the Custom Detection Rule API; covers single-event, correlation, and scheduled rule types, with a zero-dependency TOML-to-API sync engine and CI for GitHub, GitLab, and Azure). Full guide: [docs/solutions/detection-as-code.md](./docs/solutions/detection-as-code.md).
+
+- *"Set up detection as code for the Acme site"*
+- *"Scaffold a DaC repo with GitHub Actions and sync the example rules"*
+- *"Automate our detections as code: author in TOML, validate on PR, deploy on merge"*
+
 For the full per-solution breakdown, outcomes, and more example prompts, see the solution skill's own README: [skills/sdl-solutions/README.md](./skills/sdl-solutions/README.md).
 
 ---
@@ -409,6 +415,7 @@ This repo includes Windsurf workflow files in `.windsurf/workflows/`. Each workf
 | [docs/solutions/ingest-health-monitoring.md](./docs/solutions/ingest-health-monitoring.md) | SDL Solutions: per-device ingest health (per firewall/endpoint/server) on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, parser drift, with a dashboard and email notifications |
 | [docs/solutions/scheduled-detection-exclusions.md](./docs/solutions/scheduled-detection-exclusions.md) | SDL Solutions: suppress known-good noise in a STAR Custom Detection rule, built as a single-event rule (inline hardcoded exclusion) or a scheduled rule (CSV lookup anti-join + effectiveness dashboard); asks the rule type first |
 | [docs/solutions/risk-based-alerting.md](./docs/solutions/risk-based-alerting.md) | SDL Solutions: Risk-Based Alerting in SDL, publish noisy observations as risk events into a `risk` index, accumulate risk per user/host object amplified by asset risk factors, and fire one high-fidelity alert on a 24h cumulative-score or 7d multi-MITRE-tactic threshold; deploys contributors, factor table, collector flow, four incident rules, and a dashboard |
+| [docs/solutions/detection-as-code.md](./docs/solutions/detection-as-code.md) | SDL Solutions: Detection as Code, scaffold a Git + CI pipeline where detection rules are authored as TOML, validated on pull request, and synced to the Custom Detection Rule API on merge; covers single-event, correlation, and scheduled rule types, with a zero-dependency TOML-to-API sync engine and CI for GitHub, GitLab, and Azure |
 | [docs/detection-rule-types.md](./docs/detection-rule-types.md) | The three STAR / Custom Detection rule types (single-event, multi-event correlation, scheduled PowerQuery): API shapes, when to use each, S1QL backslash escaping, and why asset enrichment is the prerequisite for asset-mapped alerts |
 | [docs/detection-asset-binding.md](./docs/detection-asset-binding.md) | Which event attributes make STAR detection alerts auto-populate the Target Asset (device, identity, cloud), the tested per-type binding matrix, and how the asset enrichment solution supplies them |
 | [mgmt-console-api/SKILL.md](./skills/mgmt-console-api/SKILL.md) | Deep reference: confirmed field schemas and required API parameters per endpoint |

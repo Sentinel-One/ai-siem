@@ -1,0 +1,45 @@
+name: Detection Sync
+
+# Runs on every merge to main. Syncs only the rule files that changed in the
+# merged PR to the SentinelOne Custom Detection API (idempotent create-or-update).
+# Store the API token as a repository secret named S1_CONSOLE_API_TOKEN and the
+# console URL as S1_CONSOLE_URL (a secret or a variable).
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'detections/**'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest        # use a self-hosted runner if the console is not reachable from GitHub-hosted runners
+    steps:
+      - name: Checkout (full history so the diff range resolves)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # No install needed (stdlib tomllib on 3.11+). Uncomment for YAML rules.
+      # - run: pip install pyyaml
+
+      - name: Sync changed detection rules
+        env:
+          S1_CONSOLE_URL: ${{ secrets.S1_CONSOLE_URL }}
+          S1_CONSOLE_API_TOKEN: ${{ secrets.S1_CONSOLE_API_TOKEN }}
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: python3 scripts/dac_sync.py --sync --changed-only
+
+      - name: Upload deploy manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployed_rules
+          path: deployed_rules.json
+          if-no-files-found: ignore

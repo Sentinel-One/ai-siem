@@ -122,9 +122,10 @@ The list endpoint hides `queryType: "scheduled"` rules by default. **Without `is
 | **PowerQuery (pipe syntax `\|`)** | **`scheduled`** | **`"2.0"`** | `data.scheduledParams.query` |
 | S1QL log-search / event search | `events` | `"1.0"` (default, omit) | `data.s1ql` |
 | EUEBA first-seen | `uebafirstseen` | n/a | per swagger schema |
-| Correlation | `correlation` | n/a | per swagger schema |
+| Correlation | `correlation` | **`"2.0"`** | `data.correlationParams` (`entity`, `matchInOrder`, `subQueries[]`) |
 
 **Any time the rule body has the pipe character `\|` (i.e. PowerQuery), the only working path is `queryType: "scheduled"` + `queryLang: "2.0"`.** `queryType: "events"` rejects pipe syntax (HTTP 400 `Don't understand [|]`), and `queryLang: "2.1"` is not in the enum (HTTP 400 `queryLang: "2.1" is not a valid choice`). Confirmed against the live API, 2026-05.
+**Correlation rules also require `queryLang: "2.0"`.** Confirmed against the live API, 2026-06: a `queryType: "correlation"` POST without `queryLang` (or with `"1.0"`) returns HTTP 400 `query lang must be 2.0`, even though the subquery bodies themselves can be boolean S1QL (e.g. `EventType = "Logon" AND LogonResult = "Fail"`). So only single-event `events` rules use 1.0; both `scheduled` and `correlation` require 2.0. `correlationParams` requires `entity` (`user`/`process`/`ip`/`endpoint`/`storyline`/`custom`/`none`) and `matchInOrder`, with 1 to 10 `subQueries[]` (each `{subQuery, matchesRequired}`); `timeWindow.windowMinutes` is one of {1,5,10,30,60,240,480,720}.
 
 See the **PowerQuery Scheduled Detections** subsection below for the full scheduled-rule body, gotchas, and the feature-flag fallback path if the tenant has not enabled Scheduled Detections.
 

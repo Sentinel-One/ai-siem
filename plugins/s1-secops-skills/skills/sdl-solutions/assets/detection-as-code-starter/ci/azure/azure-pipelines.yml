@@ -1,0 +1,59 @@
+# Azure DevOps Pipelines equivalent of the GitHub Actions workflows.
+# Copy this to the repository root as azure-pipelines.yml.
+#
+# Add a secret pipeline variable S1_CONSOLE_API_TOKEN (lock icon) and a plain
+# variable S1_CONSOLE_URL. Secret variables are not auto-exposed to scripts, so
+# they are mapped explicitly via env: below.
+#
+# Branch policy on main should require the Lint job (build validation) to pass
+# before a PR completes. Sync runs only on the merge commit to main.
+
+trigger:
+  branches:
+    include: [ main ]
+  paths:
+    include: [ detections ]
+
+pr:
+  branches:
+    include: [ '*' ]
+  paths:
+    include: [ detections, scripts ]
+
+pool:
+  vmImage: ubuntu-latest        # use a self-hosted pool if the console is private
+
+stages:
+  - stage: Lint
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    jobs:
+      - job: lint
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.12'
+          - script: python3 scripts/dac_sync.py --lint detections
+            displayName: Lint detection rules
+
+  - stage: Sync
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - job: sync
+        steps:
+          - checkout: self
+            fetchDepth: 0
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.12'
+          - script: |
+              # On a merge commit, the first parent..HEAD is the merged range.
+              export BASE_SHA="$(git rev-parse HEAD~1)"
+              export HEAD_SHA="$(git rev-parse HEAD)"
+              python3 scripts/dac_sync.py --sync --changed-only
+            displayName: Sync changed detection rules
+            env:
+              S1_CONSOLE_URL: $(S1_CONSOLE_URL)
+              S1_CONSOLE_API_TOKEN: $(S1_CONSOLE_API_TOKEN)
+          - publish: deployed_rules.json
+            artifact: deployed_rules
+            condition: always()

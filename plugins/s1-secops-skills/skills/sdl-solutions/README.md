@@ -20,6 +20,7 @@ primitive skill directly.
 | Ingest health monitoring (per device) | Per-device ingest health (per firewall, endpoint, server) on a 7-day hour-of-day seasonal baseline rebuilt daily: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications | [guide](../../docs/solutions/ingest-health-monitoring.md) | [`references/ingest-health-monitoring.md`](references/ingest-health-monitoring.md) |
 | Scheduled detection exclusions | Suppress known-good noise in a scheduled detection over a third-party source by keying it against a CSV exclusion list (assets by IP/CIDR/host, or custom domains/users/values) via a lookup anti-join, with an exclusion-effectiveness dashboard | [guide](../../docs/solutions/scheduled-detection-exclusions.md) | [`references/scheduled-detection-exclusions.md`](references/scheduled-detection-exclusions.md) |
 | Risk-Based Alerting (RBA) | Publish noisy-but-interesting observations as low-noise risk events into a `risk` index, accumulate risk per user/host object amplified by asset risk factors, and fire one high-fidelity alert on a 24h cumulative-score or 7d multi-MITRE-tactic threshold. Deploys contributors, a risk-factor table, a scheduled collector flow, four incident rules, and a dashboard | [guide](../../docs/solutions/risk-based-alerting.md) | [`references/risk-based-alerting.md`](references/risk-based-alerting.md) |
+| Detection as Code (DaC) | Scaffold a Git + CI pipeline where detection engineers author rules as TOML, a pull request triggers validation and four-eyes review, and a merge syncs the changed rules to the Custom Detection Rule API. Covers single-event, correlation, and scheduled rule types, ships a zero-dependency TOML-to-API sync engine with idempotent create-or-update, and CI for GitHub Actions, GitLab CI, and Azure Pipelines | [guide](../../docs/solutions/detection-as-code.md) | [`references/detection-as-code.md`](references/detection-as-code.md) |
 
 ## Outcomes
 
@@ -34,6 +35,7 @@ What the solutions deliver, framed as the result rather than the mechanism:
 | Know the moment a device stops sending or misbehaves | Ingest health monitoring baselines every firewall, endpoint, and server and detects per-device volume spikes, drops, ingest lag, silence, and parser drift, emailing on every failure so a broken collector or a drifting parser is caught in minutes, not at the next investigation. |
 | Tune out known-good noise without losing real signal | Scheduled detection exclusions let an analyst suppress an allowlisted set of assets or values from a detection with one CSV, applied at detection time via a lookup anti-join, plus a dashboard that shows exactly what each list is suppressing so an over-broad exclusion that hides a real threat is caught. |
 | Alert on connected behaviour, not disconnected events | Risk-Based Alerting publishes noisy observations as risk events into a `risk` index, accumulates risk per user/host (amplified by asset criticality / privilege), and fires one high-fidelity alert only when an object crosses a cumulative-score or multi-MITRE-tactic threshold, so analysts get a contextualised story with far less alert fatigue and a proprietary internal intelligence library of interesting behaviour. |
+| Treat detections like software, with review and version control | Detection as Code moves rule authoring into Git: engineers write rules as TOML, every change goes through a pull request with automated validation and four-eyes review, and a merge syncs to the Custom Detection API. You get version history, audit, easy rollback, and detections that are readable and reusable across environments. |
 
 ## Run it with one prompt
 
@@ -46,6 +48,7 @@ What the solutions deliver, framed as the result rather than the mechanism:
 - *"Deploy ingest health monitoring per device and email the SOC on any failure"*
 - *"Stop my Akamai DNS detection from alerting on our scanner subnets and corporate domains, here's the list"*
 - *"Deploy risk-based alerting for users and hosts with asset-criticality risk factors"*
+- *"Set up detection as code for the Acme site and sync the example rules"*
 
 Adding an enrichment is a single multi-select question (Device, User/AD, Vulnerabilities,
 Misconfigurations, Open alerts, Cloud). Everything else is auto-derived and shown in the preview.

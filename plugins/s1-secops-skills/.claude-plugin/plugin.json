@@ -1,7 +1,7 @@
 {
   "name": "s1-secops-skills",
-  "version": "1.2.4",
-  "description": "SentinelOne SecOps skills for Claude: PowerQuery threat hunting, Management Console API, Singularity Data Lake API, SDL dashboard authoring, SDL log parsing, Hyperautomation workflow generation, source-agnostic behavioral baselining with z-score anomaly detection, and packaged SDL solution deployment (data source onboarding to OCSF with device/user enrichment, dashboard, MITRE-mapped detections and a threat-response flow; plus asset enrichment of raw logs).",
+  "version": "1.2.5",
+  "description": "SentinelOne SecOps skills for Claude: PowerQuery threat hunting, Management Console API, Singularity Data Lake API, SDL dashboard authoring, SDL log parsing, Hyperautomation workflow generation, source-agnostic behavioral baselining with z-score anomaly detection, and packaged SDL solution deployment (data source onboarding to OCSF with device/user enrichment, dashboard, MITRE-mapped detections and a threat-response flow; asset enrichment of raw logs; and Detection as Code: author detection rules as TOML in Git and sync them to the Custom Detection API via CI).",
   "author": {
     "name": "Prithvi Moses",
     "email": "prithvi.moses@sentinelone.com"
@@ -22,7 +22,9 @@
     "asset-enrichment",
     "onboarding",
     "ocsf",
-    "solutions"
+    "solutions",
+    "detection-as-code",
+    "dac"
   ],
   "hooks": {
     "SessionStart": [

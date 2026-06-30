@@ -1,0 +1,34 @@
+# Scheduled PowerQuery detection (queryType = "scheduled").
+# Runs on an interval over a lookback window and alerts when the row count
+# crosses the threshold. queryLang is forced to 2.0 and mitigation is disabled
+# automatically (the verdict surfaces via severity, not auto-response).
+
+name = "DaC Example - Repeated Firewall C2 Category Hits"
+description = "A scheduled PowerQuery detection that surfaces hosts repeatedly hitting a firewall command-and-control category in the lookback window. MITRE T1071."
+query_type = "scheduled"
+severity = "Medium"
+status = "Draft"
+expiration_mode = "Permanent"
+
+[scheduled]
+# Piped PowerQuery. Keep to simple aggregates inside group(); no count_distinct, compare, or subqueries.
+query = """
+dataSource.category = 'security' event.category = 'firewall' threat.category contains:anycase('command-and-control')
+| group hits = count(), first_seen = oldest(timestamp), last_seen = newest(timestamp) by src.ip.address, dst.ip.address
+| filter hits >= 5
+| sort -hits
+| limit 100
+"""
+run_interval_minutes = 60        # how often it evaluates
+lookback_window_minutes = 60     # window each run looks back over
+
+[scheduled.threshold]
+value = 0                        # alert when result rows > 0
+operator = "Greater"             # Greater | Less | Equal
+
+[scope]
+site = "your-site"
+
+[metadata]
+mitre = ["T1071"]
+author = "detection-engineering"

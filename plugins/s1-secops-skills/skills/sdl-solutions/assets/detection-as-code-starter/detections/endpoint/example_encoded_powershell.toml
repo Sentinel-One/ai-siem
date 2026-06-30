@@ -1,0 +1,26 @@
+# Single-event STAR rule (queryType = "events").
+# Fires in real time on every matching event. Supports mitigation.
+# Body is boolean S1QL, NOT piped PowerQuery. A pipe '|' here is rejected by the
+# API; put piped PowerQuery in a scheduled rule instead.
+
+name = "DaC Example - Encoded PowerShell Command Line"
+description = "Detects powershell.exe launched with an encoded command argument, a common defense-evasion and execution technique. MITRE T1059.001."
+query_type = "events"
+severity = "High"
+status = "Draft"            # Draft never fires; flip to Active after review/DTAP
+expiration_mode = "Permanent"
+
+# Boolean S1QL. Escape any embedded double quotes.
+s1ql = 'EventType = "Process Creation" AND TgtProcName = "powershell.exe" AND (TgtProcCmdLine ContainsCIS "-enc" OR TgtProcCmdLine ContainsCIS "-EncodedCommand")'
+
+treat_as_threat = "UNDEFINED"   # UNDEFINED | Suspicious | Malicious
+network_quarantine = false
+
+[scope]
+site = "your-site"             # the target site name (resolved to a siteId at sync time); or site_ids = ["..."] / account_ids = ["..."]
+
+# Bookkeeping only. Not sent to the API; kept in-repo for review and reporting.
+[metadata]
+mitre = ["T1059.001"]
+author = "detection-engineering"
+references = ["https://attack.mitre.org/techniques/T1059/001/"]

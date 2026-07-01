@@ -184,7 +184,7 @@ The blog leaves monitoring and tuning as environment-dependent. Close the loop w
 this skill and the Mgmt Console API:
 
 - Triage the alerts the rules generate (UAM: `uam_list_alerts`, or `GET /cloud-detection/alerts`).
-- For noisy rules, open a PR that adds an exclusion (see the `scheduled-detection-exclusions`
+- For noisy rules, open a PR that adds an exclusion (see the `custom-detection-exclusions`
   playbook) or tightens the query, review, merge, and the sync updates the live rule.
 - Track effectiveness over time with an SDL dashboard (the `sdl-dashboard` skill).
 - Optionally schedule a recurring drift check that lists live rules (`isLegacy=false`) and diffs

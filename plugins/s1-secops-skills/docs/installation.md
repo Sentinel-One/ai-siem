@@ -177,8 +177,8 @@ uvx cache clean purple-mcp
 **Backwards-compatible fallback** (for direct skill usage without `s1-secops-mcp`): place a `credentials.json` in your Cowork project folder. The plugin's SessionStart hook auto-discovers it.
 
 ```bash
-# macOS / Linux — create credentials.json with the keys you need.
-# Full key list + resolution order: mcp/s1-secops-mcp/README.md (Credentials section).
+# macOS / Linux ,  create credentials.json with the keys you need.
+# Full key list + resolution order: docs/credentials.md
 cat > ~/Documents/Claude/Projects/PrincipalSOCAnalyst/credentials.json <<'JSON'
 {
   "S1_CONSOLE_URL": "https://<your-tenant>.sentinelone.net",
@@ -193,16 +193,7 @@ Resolution order (highest priority wins):
 2. `<project folder>/credentials.json` (backwards-compatible fallback)
 3. `~/.config/sentinelone/credentials.json` (terminal fallback)
 
-| Credential key | Required for | How to get it |
-|---|---|---|
-| `S1_CONSOLE_URL` | All management console skills | Your console URL, e.g. `https://usea1-acme.sentinelone.net` |
-| `S1_CONSOLE_API_TOKEN` | `mgmt-console-api`, `powerquery`, SDL query and config methods, plus HEC log ingest (`hec_ingest`) | Settings → Users → Service Users → Create New Service User → copy the API token. The same JWT works for the SDL API from Management version Z SP5+. See [Creating service users](https://community.sentinelone.com/s/article/000005291) and [SDL API Keys](https://community.sentinelone.com/s/article/000006763) |
-| `S1_HEC_INGEST_URL` | UAM alert/indicator ingest and log ingest via HEC | The SentinelOne HEC ingest host for your region, e.g. `https://ingest.us1.sentinelone.net`. See [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) |
-| `SDL_XDR_URL` | `sdl-api`, `sdl-dashboard`, `sdl-log-parser` | Your SDL tenant URL, e.g. `https://xdr.us1.sentinelone.net`. See [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) |
-| `SDL_CONFIG_WRITE_KEY` | Deploying parsers/dashboards via `putFile` | Singularity Data Lake → menu next to username → API Keys → Configuration Access Keys → New Key (Configuration Write Access). See [SDL API Keys](https://community.sentinelone.com/s/article/000006763) |
-| `S1_CLAUDE_MD_PATH` (optional) | Override CLAUDE.md location | Absolute path to the CLAUDE.md you want exposed as the SOC analyst context. If unset, the MCP looks in the Cowork project folder. |
-
-Full credential reference including all SDL keys: [credentials.md](./credentials.md)
+Every credential key, where to get it, the two token types, and the resolution order are documented in one canonical place: **[credentials.md](./credentials.md)**. The two keys you always need are `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN`; add the `SDL_*` keys for log ingest and parser/dashboard deployment, and `S1_CLAUDE_MD_PATH` to point at a custom CLAUDE.md.
 
 ---
 

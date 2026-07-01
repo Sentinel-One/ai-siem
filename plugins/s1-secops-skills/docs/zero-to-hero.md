@@ -107,146 +107,27 @@ Continue to [Section 3: Install](#3-install-in-30-minutes) to set this up.
 
 ## 3. Install in 30 minutes
 
-This section uses the Docker install path: a single image bundles all three MCPs, so the only host dependency is Docker. The full Docker reference is [`docs/docker.md`](./docker.md), and the npx/uvx reference is [`docs/installation.md`](./installation.md).
+The recommended install is the Docker quick start: one image bundles all three MCPs, so the only host dependency is Docker (no Node, Python, or `uv`). Rather than repeat it here, follow the three steps in the **[README Quick start (Docker)](../README.md#1-quick-start-docker)**:
 
-### Prerequisites
+1. **Pull the image** (all three MCPs in one).
+2. **Configure credentials** in `claude_desktop_config.json`. The README has the copy-paste config block and a table of where to get each token/key; the full key reference is [`docs/credentials.md`](./credentials.md).
+3. **Install the plugin** (`s1-secops-skills-v1.2.5.plugin`) via Cowork → Customize → Browse plugins.
 
-| Requirement | Check | Install |
-|---|---|---|
-| Claude desktop app | App is open | Download from [claude.com](https://claude.com) |
-| Docker (Desktop on macOS/Windows, Engine on Linux) | `docker --version` | [docker.com/get-started](https://www.docker.com/get-started/) |
-| SentinelOne API token | Settings, Users, Service Users | [Community guide](https://community.sentinelone.com/s/article/000005291) |
-| SDL API keys | Singularity Data Lake, API Keys | [Community guide](https://community.sentinelone.com/s/article/000006763) |
-| Regional endpoint URLs | n/a | [Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) |
-| Threat intel API key | e.g. [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) | Free tier is sufficient |
+Then create a Cowork project named `PrincipalSOCAnalyst`, select a folder for it, and (optionally) drop your own [`CLAUDE.md`](https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/plugins/s1-secops-skills/CLAUDE.md) into the folder to customise the persona; the Docker image ships a default, so this is optional (to override it, mount the folder read-only and set `S1_CLAUDE_MD_PATH`, see [`docs/docker.md`](./docker.md#claudemd-customization)).
 
-One image, multi-arch (`linux/amd64` + `linux/arm64`), so Apple Silicon and Intel both run native with no emulation. No host-level Node, Python, or `uv` to install.
+Prefer to run the MCPs on the host without Docker? Use the npx/uvx path in [`docs/installation.md`](./installation.md). Either way the credential keys are identical and are documented in [`docs/credentials.md`](./credentials.md).
 
-### Step 1: Pull the image
+### Verify
 
-```bash
-docker pull ghcr.io/pmoses-s1/s1-mcps:1.2.2
-```
-
-What you got: one image (`ghcr.io/pmoses-s1/s1-mcps`) bundling all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`), version-locked together at a known good combo. About 250 MB compressed, ~600 MB unpacked. Pin to a tag like `:1.2.2`; pulling `:latest` works but silently inherits upgrades on each re-pull. Confirm the dispatcher works:
-
-```bash
-docker run --rm ghcr.io/pmoses-s1/s1-mcps:1.2.2 help
-```
-
-### Step 2: Wire up the MCP servers in Claude Desktop
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows). Three entries, one per MCP, all referencing the same image:
-
-```json
-{
-  "mcpServers": {
-    "s1-secops-mcp": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm", "--pull=missing",
-        "-e", "S1_CONSOLE_URL",
-        "-e", "S1_CONSOLE_API_TOKEN",
-        "-e", "S1_HEC_INGEST_URL",
-        "-e", "SDL_XDR_URL",
-        "-e", "SDL_LOG_READ_KEY",
-        "-e", "SDL_CONFIG_WRITE_KEY",
-        "-e", "SDL_CONFIG_READ_KEY",
-        "ghcr.io/pmoses-s1/s1-mcps:1.2.2",
-        "s1-secops-mcp"
-      ],
-      "env": {
-        "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
-        "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
-        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
-        "SDL_XDR_URL":          "https://xdr.us1.sentinelone.net",
-        "SDL_LOG_READ_KEY":     "your-log-read-key",
-        "SDL_CONFIG_WRITE_KEY": "your-config-write-key",
-        "SDL_CONFIG_READ_KEY":  "your-config-read-key"
-      }
-    },
-    "purple-mcp": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm", "--pull=missing",
-        "-e", "PURPLEMCP_CONSOLE_TOKEN",
-        "-e", "PURPLEMCP_CONSOLE_BASE_URL",
-        "ghcr.io/pmoses-s1/s1-mcps:1.2.2",
-        "purple-mcp"
-      ],
-      "env": {
-        "PURPLEMCP_CONSOLE_TOKEN":    "eyJ...your-api-token...",
-        "PURPLEMCP_CONSOLE_BASE_URL": "https://usea1-yourorg.sentinelone.net"
-      }
-    },
-    "virustotal": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm", "--pull=missing",
-        "-e", "VIRUSTOTAL_API_KEY",
-        "ghcr.io/pmoses-s1/s1-mcps:1.2.2",
-        "virustotal-mcp"
-      ],
-      "env": {
-        "VIRUSTOTAL_API_KEY": "your-virustotal-api-key"
-      }
-    }
-  },
-  "preferences": {
-    "coworkScheduledTasksEnabled": true,
-    "coworkWebSearchEnabled": true
-  }
-}
-```
-
-Things people get wrong here:
-
-- `S1_CONSOLE_API_TOKEN` and `PURPLEMCP_CONSOLE_TOKEN` are the **same** token. One service user with read scope is enough for hunting and triage; IR Team scope or higher is needed for response actions like isolate.
-- Region URLs vary. Check the [Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) article for `S1_HEC_INGEST_URL` and `SDL_XDR_URL`.
-- Replace VirusTotal with your organisation's approved threat intel MCP if different.
-- `-i` is required so Claude Desktop can speak JSON-RPC over stdin; `--rm` cleans up the container when the session ends; `--pull=missing` pulls on first launch and skips the registry thereafter.
-- The `-e VAR` form (no value) tells Docker to inherit each variable from the `env` block below it.
-
-**Restart Claude Desktop after saving the file.**
-
-### Step 3: Install the plugin
-
-The plugin bundles all seven skills in a single file, so there's no per-skill install to manage.
-
-1. In Claude Desktop, open the **Cowork** tab.
-2. Click **Customize** in the left sidebar.
-3. Click the '+' sign under **Personal plugins**.
-4. Upload `s1-secops-skills-vX.Y.Z.plugin` from [`s1-secops-skills/dist/`](../s1-secops-skills/dist/).
-
-If plugin upload fails, the same `dist/` folder has individual `.skill` files you can install one at a time by double-clicking them or by uploading via Browse plugins.
-
-### Step 4: Create the Cowork project
-
-Cowork projects are durable workspaces with their own folder, plugins, and CLAUDE.md. You'll do all your real work inside one.
-
-1. In Claude Desktop, open **Cowork** and click **New Project**.
-2. Name it `PrincipalSOCAnalyst`.
-3. Click **Select Folder** and pick any folder on your machine. This becomes the project workspace.
-4. Optionally drop a copy of [`CLAUDE.md`](https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/plugins/s1-secops-skills/CLAUDE.md) into the project folder. The Docker image ships a default CLAUDE.md, so this step is optional; provide your own only to override it. To use a project-folder copy, mount the folder read-only and point `S1_CLAUDE_MD_PATH` at it in the `s1-secops-mcp` args (see [`docs/docker.md`](./docker.md#claudemd-customization)). The `s1-secops-mcp` server reads it at session start and exposes it as the `sentinelone://soc-context` resource.
-5. Confirm `s1-secops-skills` appears under **Personal plugins**, and that `s1-secops-mcp`, `purple-mcp`, and your threat intel MCP appear under **MCP Servers**.
-
-### Step 5: Verify the install
-
-Open the **PrincipalSOCAnalyst** project and start a new session. Claude will automatically run data source enumeration and triage open alerts. Then ask:
+Open the **PrincipalSOCAnalyst** project, start a new session, and run:
 
 ```
 smoke test s1 skills
 ```
 
-Claude verifies connectivity to every MCP, confirms each skill is loaded, and reports missing credentials or unreachable endpoints. To check the version:
-
-```
-which version of s1-secops-skills is installed?
-```
+Claude verifies connectivity to every MCP, confirms each skill is loaded, and reports missing credentials or unreachable endpoints. To check the version, ask: `which version of s1-secops-skills is installed?`
 
 If anything fails, jump to [Section 6: When things don't work](#6-when-things-dont-work).
-
----
 
 ## 4. Your first session
 
@@ -403,13 +284,7 @@ If a skill should have triggered and didn't, ask Claude `which skills are loaded
 
 ### MCP server not connecting (red dot in Cowork)
 
-Check, in order:
-
-1. **Docker Desktop is actually running.** Run `docker info | head -3`; you should see `Server Version: ...`. If you see `Cannot connect to the Docker daemon`, start Docker Desktop, wait for the whale icon to stop animating, and restart Claude Desktop.
-2. **The image is present.** Run `docker run --rm ghcr.io/pmoses-s1/s1-mcps:1.2.2 help`. If it can't pull, you may be behind a proxy or VPN that blocks ghcr.io; run `docker login ghcr.io` if you have a token.
-3. **First-launch pull took too long and timed out.** The first `docker run` downloads the image (30–90 s). Run `docker pull ghcr.io/pmoses-s1/s1-mcps:1.2.2` once manually to warm the cache, then restart Claude Desktop.
-4. **Restart Claude Desktop** after any config change.
-5. **Force a fresh pull** if you suspect a corrupted local image: `docker rmi ghcr.io/pmoses-s1/s1-mcps:1.2.2 && docker pull ghcr.io/pmoses-s1/s1-mcps:1.2.2`.
+Most first-run failures are Docker not running or a token that didn't propagate. Work through the troubleshooting table in the [README Quick start (Docker)](../README.md#1-quick-start-docker) first (Docker running, ghcr.io reachable, env values propagated, restart Claude Desktop). For the full flowchart, per-MCP log tailing, and hand-testing the container with credentials, see [`docs/docker.md`](./docker.md#troubleshooting). On the npx/uvx path the same checks apply minus Docker: confirm `node --version` and `uvx --version`, then restart Claude Desktop.
 
 ### 401 / 403 errors
 
@@ -419,7 +294,7 @@ Check, in order:
 
 ### Plugin upload failed
 
-Fall back to per-skill `.skill` files in [`s1-secops-skills/dist/`](../s1-secops-skills/dist/). Double-click each `.skill` file to install, or upload one at a time via Browse plugins. The six files are: `mgmt-console-api.skill`, `powerquery.skill`, `sdl-api.skill`, `sdl-dashboard.skill`, `sdl-log-parser.skill`, `hyperautomation.skill`.
+Fall back to per-skill `.skill` files in [`dist/`](../dist/). Double-click each `.skill` file to install, or upload one at a time via Browse plugins. The seven files are: `mgmt-console-api.skill`, `powerquery.skill`, `sdl-api.skill`, `sdl-dashboard.skill`, `sdl-log-parser.skill`, `hyperautomation.skill`, `sdl-solutions.skill`.
 
 ### "I imported a workflow but I can't see it in the console UI"
 

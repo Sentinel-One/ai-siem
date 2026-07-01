@@ -104,7 +104,7 @@ Each skill folder contains a `SKILL.md` that Claude reads when a relevant reques
 
 The skills are read-only procedural knowledge. They do not execute API calls directly when loaded: they instruct Claude on *how* to use the MCP tools and scripts to execute operations correctly.
 
-`sdl-solutions` is the umbrella skill in this layer: for a whole-solution request (onboard a source, asset enrichment, UEBA, ingest health monitoring, or scheduled detection exclusions) it runs first, collects parameters, previews, and orchestrates the primitive skills in dependency order, instead of each skill being invoked independently.
+`sdl-solutions` is the umbrella skill in this layer: for a whole-solution request (onboard a source, asset enrichment, UEBA, ingest health monitoring, or custom detection exclusions) it runs first, collects parameters, previews, and orchestrates the primitive skills in dependency order, instead of each skill being invoked independently.
 
 ---
 

@@ -96,7 +96,7 @@ Full credential reference: [credentials.md](./credentials.md)
 
 ## Step 2: Install the plugin
 
-The plugin bundles all seven skills in a single file. Download `s1-secops-skills-vX.Y.Z.plugin` from [`s1-secops-skills/dist/`](../s1-secops-skills/dist/).
+The plugin bundles all seven skills in a single file. Download `s1-secops-skills-vX.Y.Z.plugin` from [`s1-secops-skills/dist/`](../dist/).
 
 In the Claude desktop app:
 
@@ -105,7 +105,7 @@ In the Claude desktop app:
 3. Click **Browse plugins**
 4. Upload the `.plugin` file
 
-All seven skills install in one step. No individual skill configuration needed.
+All eight skills install in one step. No individual skill configuration needed.
 
 If the plugin upload fails, install individual `.skill` files from the same `dist/` folder. The seven are: `mgmt-console-api.skill`, `powerquery.skill`, `sdl-api.skill`, `sdl-dashboard.skill`, `sdl-log-parser.skill`, `hyperautomation.skill`, `sdl-solutions.skill`.
 
@@ -164,7 +164,7 @@ npx clear-npx-cache
 uvx cache clean purple-mcp
 ```
 
-**Plugin**: download the new `.plugin` from [`s1-secops-skills/dist/`](../s1-secops-skills/dist/), open Cowork → Customize → Browse plugins, upload, click **Replace** when prompted.
+**Plugin**: download the new `.plugin` from [`s1-secops-skills/dist/`](../dist/), open Cowork → Customize → Browse plugins, upload, click **Replace** when prompted.
 
 **CLAUDE.md**: if you customised it, your project-folder copy stays as-is. To pick up upstream improvements, diff against the latest [`CLAUDE.md`](../CLAUDE.md) in this repo.
 

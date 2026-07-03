@@ -25,6 +25,7 @@ SOURCE_SKILLS=(
     sdl-log-parser
     sdl-solutions
     hyperautomation
+    soc-investigator
 )
 
 PLUGIN_JSON="$PLUGIN_DIR/.claude-plugin/plugin.json"

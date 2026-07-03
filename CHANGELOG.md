@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - soc-investigator skill + sdl-solutions: Alert noise reduction (s1-secops-skills v1.2.6)
+
+- New **soc-investigator** skill: autonomous, staged DFIR investigation of SentinelOne alerts (SHORT/MEDIUM/LONG modes) with tool discovery, interactive intake, IOC enrichment, per-endpoint PowerQuery forensics, and optional third-party correlation and anomaly detection. Carries the evidence-discipline and verdict gates from the SOC Analyst standard and the SDL threat-hunt-and-correlation method (`references/evidence-and-verdict-discipline.md`, `references/correlation-and-hunt-methodology.md`). Authored by Joel Mora.
+- New `sdl-solutions` solution **Alert noise reduction**: find the sources and signatures flooding the alert queue, separate ingested and already-actioned noise from real detections, recommend an ingestion-severity filter, auto-resolve already-mitigated alerts with a note, and ship a noise-vs-signal dashboard. Adds `references/alert-noise-reduction.md`, `assets/alertnoise_dashboard.template.json`, `assets/alertnoise_autoresolve_ha.template.json`, and `docs/solutions/alert-noise-reduction.md`.
+- Plugin version bumped to **1.2.6** (`.claude-plugin/plugin.json`, marketplace entry) and rebuilt bundles in `dist/`.
+
 ### Added - sdl-solutions: Detection as Code (s1-secops-skills v1.2.5)
 
 - New `sdl-solutions` solution **Detection as Code (DaC)**: stand up a Git + CI pipeline where detection engineers author rules as TOML, a pull request triggers validation and four-eyes review, and a merge syncs the changed rules to the SentinelOne Custom Detection Rule API. Supports all three rule types (single-event `events`, multi-event `correlation`, and scheduled PowerQuery). Adds `references/detection-as-code.md`, the `assets/detection-as-code-starter/` repo scaffold (a zero-dependency `dac_sync.py` TOML-to-API validate/convert/idempotent-sync engine, `dac_lint.py`, `rule.schema.json`, working TOML examples per rule type, `.github/workflows/{lint,sync}.yml`, `CODEOWNERS`, and GitLab/Azure CI equivalents), and `docs/solutions/detection-as-code.md`.

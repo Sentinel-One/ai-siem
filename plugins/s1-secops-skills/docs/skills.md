@@ -1,6 +1,6 @@
 # Skills Reference
 
-Each skill is a folder containing a `SKILL.md` that Claude reads when a relevant request triggers it. The SKILL.md encodes confirmed API schemas, field requirements, and procedural knowledge. All seven skills are bundled in the `skills` plugin.
+Each skill is a folder containing a `SKILL.md` that Claude reads when a relevant request triggers it. The SKILL.md encodes confirmed API schemas, field requirements, and procedural knowledge. All eight skills are bundled in the `skills` plugin.
 
 ---
 
@@ -140,9 +140,25 @@ c.keys["config_read_key"] = ""
 
 **Depends on:** `sdl-log-parser` (parser/OCSF), `powerquery` (datasource + savelookup), `sdl-dashboard` (dashboard), `mgmt-console-api` (STAR rules, site/scope), `sdl-api` (deploy config, ingest), `hyperautomation` (response/refresh flows).
 
-**Playbooks:** `references/data-source-onboarding.md`, `references/asset-enrichment.md`, `references/ueba-anomaly-detection.md`, `references/ingest-health-monitoring.md`, `references/custom-detection-exclusions.md`, `references/risk-based-alerting.md`, `references/detection-as-code.md`. Add new solutions as `references/<solution>.md` plus templates, and name them in the skill description so they trigger.
+**Playbooks:** `references/data-source-onboarding.md`, `references/asset-enrichment.md`, `references/ueba-anomaly-detection.md`, `references/ingest-health-monitoring.md`, `references/custom-detection-exclusions.md`, `references/risk-based-alerting.md`, `references/detection-as-code.md`, `references/alert-noise-reduction.md`. Add new solutions as `references/<solution>.md` plus templates, and name them in the skill description so they trigger.
 
 Full reference: `sdl-solutions/SKILL.md`
+
+---
+
+## soc-investigator
+
+**Triggers on:** running an autonomous, staged DFIR investigation of SentinelOne alerts, rather than a one-off query or hunt. "investigate these alerts", "run a SOC investigation", "triage alert <id>", "short/medium/long investigation", "dig into third-party sources for this incident", "correlate this alert across M365/Entra/SharePoint".
+
+**What it provides:**
+
+- An investigation orchestrator with tool discovery, an interactive intake, and a previewed plan, then three depth modes: SHORT (alert data + entity extraction), MEDIUM (adds IOC enrichment and one PowerQuery per endpoint), and LONG (adds four deep forensic PowerQueries per endpoint plus SDL threat-intel correlation); with an optional opt-in expansion into third-party data sources (M365, Entra, SharePoint, etc.) for entity correlation and anomaly detection.
+- Non-negotiable evidence discipline and verdict gates inherited from the Purple SOC Analyst standard and the SDL threat-hunt-and-correlation method: reconcile to ground truth, enrich every external IOC before a verdict, no CRITICAL / TRUE POSITIVE without threat-intel or MDR confirmation, calibrated confidence, and MITRE mapping. Detail in `references/evidence-and-verdict-discipline.md` and `references/correlation-and-hunt-methodology.md`.
+- Structured, file-based outputs per investigation (entities, timelines, threat intel, enriched and forensic timelines, and reports).
+
+**Depends on:** `mgmt-console-api`, `powerquery`, `sdl-api`, `sdl-log-parser`, `sdl-dashboard`, `hyperautomation`, and the purple / VirusTotal threat-intel MCP. Authored by Joel Mora (joelm@sentinelone.com).
+
+Full reference: `skills/soc-investigator/SKILL.md`
 
 ---
 

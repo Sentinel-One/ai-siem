@@ -199,7 +199,8 @@ claude-skills/
   sdl-log-parser/   Skill: SDL log parser authoring and validation
   hyperautomation/  Skill: Hyperautomation workflow authoring and import
   sdl-solutions/    Skill: repeatable SDL solution deployment (onboarding, enrichment)
+  soc-investigator/ Skill: autonomous DFIR alert investigation and correlation
   s1-secops-mcp/              MCP server (Node.js): 26 tools, stdio or HTTP
-  skills-plugin/    Distributable plugin bundle (all 7 skills)
+  skills-plugin/    Distributable plugin bundle (all 8 skills)
   assets/                       Screenshots and images for documentation
 ```

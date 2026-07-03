@@ -73,7 +73,8 @@ The plugin bundles every skill; installing it is sufficient. No individual skill
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. See [docs/sdl-dashboard.md](./docs/sdl-dashboard.md) for all supported panel types |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications), detection exclusions, Risk-Based Alerting, and Detection as Code (author rules as TOML in Git and sync them to the Custom Detection API via CI). Orchestrates the skills above |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications), detection exclusions, Risk-Based Alerting, and Detection as Code (author rules as TOML in Git and sync them to the Custom Detection API via CI), and alert noise reduction (find and quiet the sources flooding the alert queue: an ingestion-filter recommendation, an auto-resolve flow, and a noise-vs-signal dashboard). Orchestrates the skills above |
+| soc-investigator | Autonomous, staged DFIR investigation of SentinelOne alerts (SHORT / MEDIUM / LONG modes) with tool discovery, intake, IOC enrichment, per-endpoint PowerQuery forensics, optional third-party correlation and anomaly detection, and the SOC Analyst evidence-discipline and verdict gates. Authored by Joel Mora |
 
 ---
 
@@ -452,7 +453,7 @@ Where to get each value:
 
 Full key reference, token types, and resolution order: **[docs/credentials.md](./docs/credentials.md)**. **Restart Claude Desktop** after saving.
 
-**Step 3: Install the plugin (all seven skills)**
+**Step 3: Install the plugin (all eight skills)**
 
 Download the latest plugin, [`s1-secops-skills-v1.2.5.plugin`](./dist/), from the `dist/` folder. In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All seven skills install in one step.
 

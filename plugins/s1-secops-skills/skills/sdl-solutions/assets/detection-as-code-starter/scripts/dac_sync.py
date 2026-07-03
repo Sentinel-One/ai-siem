@@ -11,7 +11,7 @@ What it does
    JSON and YAML rule files are also accepted so mixed repos keep working.
 2. Converts each rule into the SentinelOne Custom Detection Rule API envelope
    ({"data": {...}, "filter": {...}}), applying every confirmed API rule:
-     - events        -> s1ql, queryLang 1.0 (omitted), supports mitigation
+     - events        -> s1ql, queryLang 2.0, supports mitigation
      - scheduled      -> scheduledParams, queryLang 2.0, no mitigation
      - correlation    -> correlationParams (entity, matchInOrder, subQueries)
 3. Validates locally before any network call (enum checks, required fields,
@@ -385,24 +385,19 @@ def _build_events(rule: dict, path: Path, data: dict) -> None:
     if not s1ql or not str(s1ql).strip():
         raise RuleError(path, "events rule requires 's1ql'")
     s1ql = str(s1ql)
-    query_lang = str(_get(rule, "query_lang", "queryLang", default="1.0"))
-    # The single most common DaC mistake: pipe-syntax PowerQuery in an events
-    # rule. The API rejects it with HTTP 400 "Don't understand [|]". A piped
-    # body belongs in a scheduled rule.
-    if "|" in s1ql and query_lang != "2.0":
+    # Events rules take boolean S1QL only. A pipe '|' is PowerQuery syntax and
+    # belongs in a scheduled rule; the API rejects a piped events body with
+    # HTTP 400 "Don't understand [|]".
+    if "|" in s1ql:
         raise RuleError(
             path,
             "events rule body contains a pipe '|' (PowerQuery). Events rules take "
             "boolean S1QL only. Use query_type = 'scheduled' for piped PowerQuery.",
         )
-    if query_lang == "2.0":
-        raise RuleError(
-            path,
-            "queryLang 2.0 is only valid for query_type = 'scheduled'. For an events "
-            "rule omit query_lang (defaults to 1.0).",
-        )
     data["s1ql"] = s1ql
-    # queryLang defaults to 1.0 for events; do not set it explicitly.
+    # All Custom Detection (STAR) rules use queryLang 2.0 (verified live: an events
+    # rule creates and is stored with queryLang 2.0).
+    data["queryLang"] = "2.0"
     tat = _get(rule, "treat_as_threat", "treatAsThreat", default="UNDEFINED")
     if tat not in TREAT_AS_THREAT:
         raise RuleError(path, f"treat_as_threat must be one of {sorted(TREAT_AS_THREAT)}")

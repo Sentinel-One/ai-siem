@@ -174,7 +174,7 @@ dataSource.name='Windows Event Logs' winEventLog.data.event.eventData.subjectUse
 
 - **`from <table>` uses the literal filename.** If the file is `sid_username.csv`, write `from sid_username.csv` (keep the extension). A bare name without the extension can miss the file.
 - **`by` direction is `lookupColumn = eventField`.** Left of the `=` is the lookup-table key column, right is the event field or expression.
-- **`dataset 'config://datatables/<name>'` returned 0 rows** for a freshly written CSV on the tested tenant, both with and without the `.csv` suffix. Prefer `| lookup` to read or enrich a table. If you must use `dataset` to dump a table, confirm it returns rows before relying on it.
+- **`| dataset 'config://datatables/<name>'` requires a leading `|`.** Without it the text is parsed as an initial filter and returns 0 rows.
 - **Defer `lookup` until after `group`** so the join runs once per group row instead of once per raw event. Do not use a dynamic `lookup` inside an alert body.
 
 ---

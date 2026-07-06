@@ -42,7 +42,7 @@ initial-filter-expression
 - `limit N` — truncate (default shows 10 without it; output is capped at 1,000 rows if no `limit`/`group`)
 - `parse "…$field$…" from srcField` — extract fields from unstructured text
 - `lookup col, … from tableName by key=expr` — join against a CSV/JSON config data table
-- `dataset 'config://datatables/<name>'` — read a lookup table as the source of the pipeline
+- `| dataset 'config://datatables/<name>'` — read a lookup table as the source of the pipeline (leading `|` required)
 - `datasource <name> [from <dataset>]` — read SentinelOne-managed inventory outside the event store (assets, alerts, vulnerabilities, misconfigurations, metering); the only PQ path to the Asset Inventory / AD identity attributes. See `references/datasource-command.md`
 - `savelookup 'tableName'[, 'merge']` — persist current result as a reusable lookup table
 - `| [inner|left|outer|sql inner|sql left|sql outer] join (q1), (q2), … on k1, a.x = b.y` — correlate subqueries (must start `| join`, not just `join`)

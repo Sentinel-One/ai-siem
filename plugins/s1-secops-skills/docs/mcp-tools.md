@@ -83,7 +83,7 @@ Delete a configuration file from SDL by path.
 **`hec_ingest`**
 Ingest raw logs/events into SDL via the HEC (HTTP Event Collector) endpoint. Applies a named parser via `?sourcetype` and lands the data for Event Search, PowerQuery, and detection rules. Posts to `S1_HEC_INGEST_URL` with `Authorization: Bearer <S1_CONSOLE_API_TOKEN>`; the `S1-Scope` header (accountId or accountId:siteId) is required. Replaces the removed `sdl_upload_logs`. Used for ingesting custom telemetry or test events during parser development.
 
-When ingesting pre-structured / OCSF JSON with `?isParsed=true` (no parser), every event MUST also include the SentinelOne source-attribution fields `dataSource.name`, `dataSource.vendor`, `dataSource.category`, and `event.type`. OCSF does not define these; without them events land with a null source (no source attribution, degraded console rendering, and any `dataSource.name`-based filter or detection will not match).
+When ingesting pre-structured / OCSF JSON with `?isParsed=true` (no parser), every event MUST also include the SentinelOne source-attribution fields `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security` — other categories ingest but do not process correctly for custom OCSF sources), `event.type`, and `site_id`. OCSF does not define these; without them events land with a null source (no attribution, degraded console rendering, and any `dataSource.name`-based filter or detection will not match). Emit `event.type` as a FLAT dotted key (e.g. `"event.type": "DNS Activity"`); a nested `event:{...}` object is silently dropped because `event` is a HEC-reserved key.
 
 ### Hyperautomation tools
 

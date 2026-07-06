@@ -84,7 +84,7 @@ Ask (or infer from context):
 
 ### Step 2 — Warn about integrations
 **CRITICAL**: Before generating JSON, identify any integration-backed actions (tag = "integration").
-These require pre-configured connections in the console that CANNOT be created via API.
+These require pre-configured connections in the console that CANNOT be *created* via API. (An EXISTING connection CAN be pre-bound programmatically: set `integration_id` = the connection's id on each `http_request` action in the import JSON with `use_authentication_data: true`, then activate via `POST .../workflows/{id}/{version_id}/activation` — no manual UI binding needed. One connection also serves actions that hit different hosts, e.g. the LRQ console host and the HEC ingest host, since auth is header-injected regardless of the URL.)
 Always tell the user: *"This workflow uses the [X, Y, Z] integrations. Before importing, you must
 configure connections for these in your Hyperautomation → Integrations section."*
 

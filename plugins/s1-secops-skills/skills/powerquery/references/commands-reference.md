@@ -205,7 +205,7 @@ Best practices: defer the `lookup` until after a `group`, so the lookup is perfo
 
 - `from <table>` takes the **literal filename**. If the data table file is `sid_username.csv`, write `from sid_username.csv` (keep the extension). A bare name without the extension can miss the file. Both `/datatables/foo` and `/datatables/foo.csv` can coexist, so the name must be exact.
 - `by` direction is `lookupColumn = eventField`. Left of the `=` is the lookup-table key column, right is the event field or expression. Example: `by sid = winEventLog.data.event.eventData.subjectUserSid`.
-- `dataset 'config://datatables/<name>'` returned **0 rows** for a freshly written CSV on this tenant, both with and without the `.csv` suffix. Prefer `| lookup` to read or enrich a table. If you must dump a whole table via `dataset`, confirm it returns rows before relying on it.
+- `| dataset 'config://datatables/<name>'` reads a saved lookup table as the pipeline source. The leading `|` is required; without it the text is parsed as an initial filter and returns 0 rows.
 
 **Tenant-wide enrichment without a command:** to apply a lookup automatically to every search and PowerQuery (no `| lookup` typed), use the `/automaticLookups` config file instead. See `references/automatic-lookups.md` for the schema, the "output value fields must be unique across all specs" rule, the 100-row / 5 MB / 50-column limits, and a full Windows Event Logs SID-to-username worked example.
 

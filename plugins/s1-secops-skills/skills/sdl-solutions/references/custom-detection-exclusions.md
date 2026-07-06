@@ -1,10 +1,20 @@
-# Playbook: detection exclusions (single-event or scheduled)
+# Playbook: custom detection exclusions (single-event, correlation, or scheduled)
 
-This solution suppresses known-good noise in a SentinelOne Custom Detection (STAR) rule. It builds
-the exclusion as either a **STAR single-event rule** (inline hardcoded negative list in a boolean
-S1QL body) or a **scheduled PowerQuery detection** (CSV lookup table + anti-join + effectiveness
-dashboard). **Always ask the user which rule type first** (see Step 0). The scheduled path is
-described in full below; the single-event path is in "Single-event rule path".
+This solution suppresses known-good noise in a SentinelOne Custom Detection (STAR) rule. It works
+for all three rule types; the exclusion mechanic differs by type, so **always ask the user which
+rule type first** (see Step 0):
+
+- **Single-event** (`queryType: "events"`) and **correlation** (`queryType: "correlation"`) bodies
+  are boolean S1QL with NO pipes, so the exclusion is an **inline hardcoded negative list**
+  (`AND NOT (<field> in:anycase (...))`) written into the rule body itself. Correlation appends that
+  negative list to the relevant sub-query in `data.correlationParams`.
+- **Scheduled** (`queryType: "scheduled"`) uses a PowerQuery body, so beyond the inline option it
+  also supports a **CSV lookup anti-join** (`| lookup ... | filter excl = null`) that keeps the
+  exclusion list in an editable SDL lookup table managed independently of the rule, plus an
+  effectiveness dashboard. This lookup-managed path is the key advantage of the scheduled type.
+
+The single-event and correlation paths are described in "Single-event rule path" and "Correlation
+rule path"; the scheduled path is "How the exclusion works" plus Steps 1 to 6.
 
 Scheduled path overview: suppress known-good noise in a scheduled PowerQuery detection rule by keying the rule
 against a CSV exclusion list. The analyst supplies a CSV of assets (hosts, IPs, CIDRs) or a
@@ -34,24 +44,24 @@ Whatever the prompt leaves out, confirm it with the questions below before deplo
 
 ## Step 0: choose the rule type (ask the user first)
 
-This solution can build the exclusion as either of two STAR Custom Detection rule types. **Always ask which one before configuring anything else**, because the parameters and the exclusion mechanic differ by type:
+This solution can build the exclusion into any of three STAR Custom Detection rule types. **Always ask which one before configuring anything else**, because the parameters and the exclusion mechanic differ by type:
 
-| | STAR single-event (`queryType: "events"`) | Scheduled detection (`queryType: "scheduled"`) |
-|---|---|---|
-| Detection body | one boolean S1QL filter, NO pipes, in `data.s1ql` | PowerQuery (pipes) in `data.scheduledParams.query` |
-| Exclusion mechanic | **inline hardcoded** negative list in the filter: `... AND NOT (<field> in:anycase ('a','b',...))` | **CSV lookup anti-join**: `\| lookup excl = reason from <table> by <key> <op> <field> \| filter excl = null` |
-| Exclusion list lives | hardcoded in the rule body | an SDL datatable CSV (edit without touching the rule) |
-| Fires | per matching event, streaming at ingest | on a schedule over a lookback window |
-| Aggregation / thresholds | no (single event) | yes (`group`, counts, `estimate_distinct`) |
-| Effectiveness dashboard | not applicable (no anti-join inverse to count) | yes (excluded vs kept, by list / reason / value) |
-| Mitigation | inline Active Response on the rule (`treatAsThreat`, `networkQuarantine`) or an HA flow off the alert | no inline Active Response (`treatAsThreat` must be `UNDEFINED`); mitigate via an HA flow off the alert |
-| Best when | the base detection is a deterministic single-event signature and the exclusion list is small and stable | the detection aggregates, or the list is large / dynamic / shared and needs an audit trail |
+| | Single-event (`queryType: "events"`) | Correlation (`queryType: "correlation"`) | Scheduled (`queryType: "scheduled"`) |
+|---|---|---|---|
+| Detection body | one boolean S1QL filter, NO pipes, in `data.s1ql` | boolean S1QL sub-queries (NO pipes) in `data.correlationParams.subQueries[]`; `s1ql` stays `""` | PowerQuery (pipes) in `data.scheduledParams.query` |
+| Exclusion mechanic | **inline hardcoded** negative list: `... AND NOT (<field> in:anycase ('a','b',...))` | **inline hardcoded** negative list appended to the relevant sub-query's S1QL | **CSV lookup anti-join** (`\| lookup excl = reason from <table> by <key> <op> <field> \| filter excl = null`), or inline in the PQ |
+| Exclusion list lives | hardcoded in the rule body | hardcoded in the sub-query | an SDL datatable CSV (edit without touching the rule) |
+| Fires | per matching event, streaming at ingest | when sub-query thresholds are met in a time window, grouped by an entity | on a schedule over a lookback window |
+| Aggregation / thresholds | no (single event) | yes (N-of-X thresholds, A-then-B sequences via `matchInOrder`) | yes (`group`, counts, `estimate_distinct`) |
+| Effectiveness dashboard | not applicable (no anti-join inverse to count) | not applicable | yes (excluded vs kept, by list / reason / value) |
+| Mitigation | inline Active Response (`treatAsThreat`, `networkQuarantine`) or an HA flow off the alert | inline Active Response or an HA flow off the alert | no inline Active Response (`treatAsThreat` must be `UNDEFINED`); mitigate via an HA flow off the alert |
+| Best when | the base detection is a deterministic single-event signature and the list is small and stable | the base detection correlates multiple events (thresholds / sequences) and the list is small and stable | the detection aggregates, or the list is large / dynamic / shared and needs an audit trail |
 
 Prompt to ask:
 
-> "Should this exclusion be a **STAR single-event rule** (inline hardcoded exclusion list, fires per event, supports mitigation) or a **scheduled detection** (CSV exclusion list + anti-join + effectiveness dashboard)?"
+> "Should this exclusion go in a **single-event rule** (inline list, fires per event), a **correlation rule** (inline list inside the correlation sub-queries, fires on multi-event thresholds/sequences), or a **scheduled detection** (CSV exclusion list + lookup anti-join + effectiveness dashboard)?"
 
-If single-event, follow "Single-event rule path" directly below and stop there. If scheduled, skip that section and follow "How the exclusion works" plus Steps 1 to 6 (the lookup / anti-join playbook).
+If single-event, follow "Single-event rule path" and stop there. If correlation, follow "Correlation rule path" and stop there. If scheduled, follow "How the exclusion works" plus Steps 1 to 6 (the lookup / anti-join playbook).
 
 ## Single-event rule path
 
@@ -101,7 +111,50 @@ Single-event rule rules:
 - **Inline mitigation is available** on single-event rules: set `treatAsThreat` to `Suspicious`/`Malicious` and `networkQuarantine` deliberately for active response. (Scheduled rules cannot act inline, but any alert, including a scheduled-rule alert, can trigger a Hyperautomation flow that mitigates.)
 - Deploy with `POST /web/api/v2.1/cloud-detection/rules`, enable with `PUT /web/api/v2.1/cloud-detection/rules/enable`, list with `isLegacy=false`.
 
-If the analyst chose single-event, you are done after deploying and validating the body. Everything below (lookup table, anti-join, refresh flow, effectiveness dashboard) is the **scheduled** path.
+If the analyst chose single-event, you are done after deploying and validating the body. The next section is the **correlation** path; the lookup table, anti-join, refresh flow, and effectiveness dashboard further below are the **scheduled** path.
+
+## Correlation rule path
+
+A correlation rule matches multiple events across a time window: `s1ql` stays empty and the logic lives in `data.correlationParams` (`entity`, `matchInOrder`, `timeWindow.windowMinutes`, and `subQueries[]`, each `{matchesRequired, subQuery}` where `subQuery` is boolean S1QL with NO pipes). Because the sub-queries are boolean S1QL, the exclusion works exactly like the single-event path: append an inline negative list to the sub-query whose events you want to allowlist, so an allowlisted entity never contributes matches toward the threshold.
+
+Sub-query body shape (each entry in `subQueries[]`):
+
+```
+<base sub-query filter> AND NOT (<EXCL_FIELD> in:anycase ('<val1>','<val2>',...))
+```
+
+Worked example (encoded-PowerShell spike per user, excluding engineering accounts). The base body is tenant-validated 2026-06-24; the full rule below (base + inline exclusion) was created and deleted on the pmoses demo site 2026-07-01 to confirm it validates:
+
+```json
+{
+  "data": {
+    "name": "{{PREFIX}} - {{DETECTION_NAME}}",
+    "queryType": "correlation", "queryLang": "2.0",
+    "severity": "{{SEVERITY}}", "status": "Disabled", "expirationMode": "Permanent", "s1ql": "",
+    "correlationParams": {
+      "entity": "user", "matchInOrder": false, "timeWindow": {"windowMinutes": 60},
+      "subQueries": [
+        {"matchesRequired": 2,
+         "subQuery": "event.type = 'Process Creation' and src.process.name in ('powershell.exe','pwsh.exe') and src.process.cmdline matches '(?i)\\s-enc' and NOT (src.process.user in:anycase ('corp\\jdoe','corp\\asmith'))"}
+      ]
+    }
+  },
+  "filter": {"{{SCOPE_KEY}}": ["{{SCOPE_ID}}"]}
+}
+```
+
+Render `assets/exclusion_detection_correlation.template.json`. Correlation rule rules:
+
+- **`queryLang` MUST be `"2.0"`.** A correlation POST without it (or with `"1.0"`) returns HTTP 400 `query lang must be 2.0`. `s1ql` stays an empty string; the logic is in `correlationParams`.
+- **`correlationParams` shape:** `entity` is one of `user`/`process`/`ip`/`endpoint`/`storyline`/`custom`/`none`; `matchInOrder` (`true` = ordered A-then-B sequence); 1 to 10 `subQueries[]` each `{subQuery, matchesRequired}`; `timeWindow.windowMinutes` is one of {1,5,10,30,60,240,480,720}.
+- **Same backslash escaping as single-event** (one backslash in the UI, double each backslash in the JSON POST body so JSON decoding restores one).
+- **Append the negative list to every sub-query keyed to the excluded entity**, or the allowlisted entity can still satisfy the threshold through an un-filtered sub-query.
+- **No lookup, no dashboard** (no pipes): the list is hardcoded in the sub-query; to change it, edit the rule (`PUT /web/api/v2.1/cloud-detection/rules/{id}`). For a large or dynamic list, use the scheduled path.
+- **Inline mitigation is available** (like single-event): set `treatAsThreat`/`networkQuarantine` deliberately for active response.
+- **Auto-binds the entity/asset** from the matched events; `entityMappings` optional.
+- Deploy / enable / list exactly like single-event (`POST`, then `PUT .../enable`, list with `isLegacy=false`). New rules land Draft.
+
+If the analyst chose correlation, you are done after deploying and validating the rule. Everything below (lookup table, anti-join, refresh flow, effectiveness dashboard) is the **scheduled** path.
 
 ## How the exclusion works
 
@@ -188,6 +241,13 @@ Single-event-path tokens (used only when the rule type is `events`): `{{DETECTIO
 `{{DETECTION_DESCRIPTION}}`, `{{MITRE_TECHNIQUE}}`, `{{BASE_FILTER}}` (the boolean single-event
 filter, no pipes), `{{EXCL_FIELD}}` (the field the inline list matches, e.g. `src.process.user`),
 and `{{EXCL_LIST}}` (the quoted, comma-separated hardcoded values, e.g. `'corp\jdoe'`).
+
+Correlation-path tokens (used only when the rule type is `correlation`): `{{DETECTION_NAME}}`,
+`{{DETECTION_DESCRIPTION}}`, `{{ENTITY}}` (the correlation entity, e.g. `user`), `{{MATCH_IN_ORDER}}`
+(`true`/`false`), `{{WINDOW_MINUTES}}` (one of {1,5,10,30,60,240,480,720}), `{{MATCHES_REQUIRED}}`
+(threshold per sub-query), `{{BASE_SUBQUERY}}` (the boolean sub-query, no pipes), plus the same
+`{{EXCL_FIELD}}` and `{{EXCL_LIST}}` as the single-event path. Add one `subQueries[]` entry (each
+with its own `{{BASE_SUBQUERY}} AND NOT (...)`) per stage of a multi-event or sequence detection.
 
 | Token | Meaning | Default |
 |---|---|---|
@@ -368,7 +428,8 @@ deployed through the matching primitive skill. The `<prefix>` is the solution/cu
 | Asset exclusion list | `assets/exclusion_list_assets.csv.template` | SDL datatable `/datatables/<prefix>ExclAssets.csv` | CSV of IP / CIDR / host values to suppress; keyed `cidr =:cidr <ip field>` (subnets) or `=:anycase <host field>` |
 | Custom exclusion list | `assets/exclusion_list_custom.csv.template` | SDL datatable `/datatables/<prefix>ExclValues.csv` | CSV of arbitrary values (domain / user / URL / id); keyed `value =:anycase`, `=`, or `=:wildcard <field>` |
 | Single-event detection rule | `assets/exclusion_detection_single_event.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` (`queryType: events`) | Single-event base signature with the exclusion as an inline hardcoded `AND NOT (<field> in:anycase (...))` negative list in `data.s1ql`. No lookup table, no dashboard. Supports mitigation |
-| Scheduled detection rule | `assets/exclusion_detection.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | Base detection wrapped with the lookup anti-join (`\| lookup ... \| filter excl = null`). Supports `=` and `=:anycase` only |
+| Correlation detection rule | `assets/exclusion_detection_correlation.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` (`queryType: correlation`) | Multi-event correlation (thresholds / sequences) with the exclusion as an inline hardcoded `AND NOT (<field> in:anycase (...))` negative list appended to each sub-query in `data.correlationParams`. `s1ql` empty, `queryLang: 2.0`. No lookup table, no dashboard. Supports mitigation. Tenant-validated 2026-07-01 |
+| Scheduled detection rule | `assets/exclusion_detection.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` (`queryType: scheduled`) | Base detection wrapped with the lookup anti-join (`\| lookup ... \| filter excl = null`). Supports `=` and `=:anycase` only |
 | CIDR/wildcard detection + UAM alert | `assets/exclusion_detection_ha_workflow.template.json` | Hyperautomation workflow (account/site scope) | Runs the `=:cidr` / `=:wildcard` exclusion the STAR validator rejects, via the SDL LRQ (launch + poll), then posts a self-contained OCSF S1 SecurityAlert (`class_uid 99602001`) to UAM with the offender mapped as indicator + asset |
 | Exclusion-effectiveness dashboard | `assets/exclusion_dashboard.template.json` | `sdl_put_file /dashboards/<prefix> Exclusions` | Total vs excluded vs net, exclusion rate, excluded over time, by list / reason / value, plus the post-exclusion threat view |
 | List-refresh workflow (optional) | `assets/exclusion_refresh_workflow.template.json` | Hyperautomation workflow (account/site scope) | Nightly rebuild of a source-of-truth (savelookup) exclusion list; not needed for static analyst-supplied CSVs |

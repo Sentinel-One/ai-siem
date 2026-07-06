@@ -1,0 +1,38 @@
+# Multi-event correlation rule (queryType = "correlation").
+# Correlates two or more subqueries under one rule, grouped by a common entity,
+# within a time window. Use it for sequences like "many failures then a success".
+
+name = "DaC Example - Brute Force Followed by Successful Logon (same user)"
+description = "Correlates a burst of failed logons followed by a successful logon for the same user within the window, a classic password-guessing success pattern. MITRE T1110."
+query_type = "correlation"
+severity = "High"
+status = "Draft"
+expiration_mode = "Permanent"
+
+# Optional mitigation on correlation rules:
+treat_as_threat = "UNDEFINED"
+network_quarantine = false
+
+[correlation]
+entity = "user"            # user | process | ip | endpoint | storyline | custom | none
+match_in_order = true      # require the subqueries to match in sequence
+
+[correlation.time_window]
+window_minutes = 30        # allowed: 1, 5, 10, 30, 60, 240, 480, 720
+
+# Step 1: at least 10 failed logons for the user.
+[[correlation.subqueries]]
+sub_query = 'EventType = "Logon" AND LogonResult = "Fail"'
+matches_required = 10
+
+# Step 2: a successful logon for the same user.
+[[correlation.subqueries]]
+sub_query = 'EventType = "Logon" AND LogonResult = "Success"'
+matches_required = 1
+
+[scope]
+site = "your-site"
+
+[metadata]
+mitre = ["T1110"]
+author = "detection-engineering"

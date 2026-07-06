@@ -485,7 +485,7 @@ Two ways this silently returns nothing:
 
 ### `dataset 'config://datatables/...'` returns 0 rows
 
-Reading a CSV as a pipeline source via `dataset 'config://datatables/<name>'` returned **0 rows** on a tested tenant, both with and without the `.csv` suffix, even though the table existed and `| lookup` against it worked. Prefer `| lookup` to read or enrich a data table. If you specifically need `dataset`, verify it returns rows before building on it.
+`dataset` is a pipeline source command and MUST start with a leading `|`: `| dataset 'config://datatables/<name>'`. Without the leading `|`, `dataset '...'` is parsed as an initial text filter and returns **0 rows**.
 
 ### Automatic lookup deploy fails: "Output value fields are not unique"
 

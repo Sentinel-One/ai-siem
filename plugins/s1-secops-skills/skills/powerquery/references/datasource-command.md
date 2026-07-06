@@ -3,7 +3,7 @@
 The `datasource` command queries SentinelOne-managed data that lives **outside** the data
 lake event store: Alerts, Asset Inventory, Misconfigurations, Vulnerabilities, usage Metering,
 and SDL retention entitlements. It is the only PowerQuery path to the asset/identity/vuln
-inventory, and it is distinct from `dataset 'config://datatables/<name>'` (which reads a saved
+inventory, and it is distinct from `| dataset 'config://datatables/<name>'` (which reads a saved
 lookup table).
 
 Source: SentinelOne Community article 000012487, plus behaviours validated on `usea1-purple` (2026-06-13).
@@ -127,7 +127,7 @@ Reading a saved table back with `| lookup` confirmed the round trip (e.g. hostna
 returned `device_os` "Windows 11 Pro", `device_criticality` "high"; `adm.webb` returned SID
 `S-1-5-21-1068759508-3553314729-511895651-1136`, group `Domain Admins`).
 
-> Note: a saved lookup table read via `dataset 'config://datatables/<name>'` worked for
+> Note: a saved lookup table read via `| dataset 'config://datatables/<name>'` (leading pipe required) worked for
 > savelookup-created tables in testing, but `dataset` returned 0 rows for a freshly written raw
 > CSV. Prefer `| lookup` to enrich. See `automatic-lookups.md`.
 

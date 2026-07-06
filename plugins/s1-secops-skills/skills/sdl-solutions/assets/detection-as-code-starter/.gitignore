@@ -1,0 +1,10 @@
+# Deploy manifests are run artifacts, not source. CI uploads them as build
+# artifacts instead. Remove this line if you want them version-controlled.
+deployed_rules.json
+
+# Never commit credentials. The sync script reads them from the environment.
+credentials.json
+.env
+
+__pycache__/
+*.pyc

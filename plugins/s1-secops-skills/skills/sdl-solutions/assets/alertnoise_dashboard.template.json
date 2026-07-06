@@ -1,0 +1,320 @@
+{
+  "configType": "TABBED",
+  "duration": "30 days",
+  "description": "<<PREFIX>> Alert Noise Reduction: volume, noise sources, and SOC-actionable signal. Rendered from template; values discovered live.",
+  "options": {
+    "layout": {
+      "fixed": 1
+    }
+  },
+  "tabs": [
+    {
+      "tabName": "Overview",
+      "graphs": [
+        {
+          "title": "Alert Noise Reduction: Overview",
+          "graphStyle": "markdown",
+          "markdown": "Parameterized template. All product/source/action values are placeholders the solution fills from live discovery; nothing is hardcoded. Scope: all SentinelOne Security Alerts (default `class_uid=99602001`) for the dashboard window.\n\nSeverity (OCSF `severity_id`): 1 Informational, 2 Low, 3 Medium, 4 High, 5 Critical.",
+          "layout": {
+            "w": 60,
+            "h": 7,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "title": "Total alerts",
+          "graphStyle": "number",
+          "query": "<<ALERT_FILTER>> | group c=count() | limit 1",
+          "options": {
+            "format": "auto",
+            "precision": "0"
+          },
+          "layout": {
+            "w": 15,
+            "h": 8,
+            "x": 0,
+            "y": 7
+          }
+        },
+        {
+          "title": "Noisy-source alerts",
+          "graphStyle": "number",
+          "query": "<<ALERT_FILTER>> metadata.product.name='<<NOISY_PRODUCT>>' | group c=count() | limit 1",
+          "options": {
+            "format": "auto",
+            "precision": "0"
+          },
+          "layout": {
+            "w": 15,
+            "h": 8,
+            "x": 15,
+            "y": 7
+          }
+        },
+        {
+          "title": "Other alerts",
+          "graphStyle": "number",
+          "query": "<<ALERT_FILTER>> metadata.product.name!='<<NOISY_PRODUCT>>' | group c=count() | limit 1",
+          "options": {
+            "format": "auto",
+            "precision": "0"
+          },
+          "layout": {
+            "w": 15,
+            "h": 8,
+            "x": 30,
+            "y": 7
+          }
+        },
+        {
+          "title": "Critical-severity alerts",
+          "graphStyle": "number",
+          "query": "<<ALERT_FILTER>> severity_id=5 | group c=count() | limit 1",
+          "options": {
+            "format": "auto",
+            "precision": "0"
+          },
+          "layout": {
+            "w": 15,
+            "h": 8,
+            "x": 45,
+            "y": 7
+          }
+        },
+        {
+          "title": "Daily alert volume: all products",
+          "graphStyle": "stacked_bar",
+          "xAxis": "time",
+          "yScale": "linear",
+          "query": "<<ALERT_FILTER>> | group Alerts=count() by timestamp=timebucket('1 day') | sort timestamp",
+          "layout": {
+            "w": 60,
+            "h": 16,
+            "x": 0,
+            "y": 15
+          }
+        },
+        {
+          "title": "Alerts by product",
+          "graphStyle": "donut",
+          "maxPieSlices": 10,
+          "dataLabelType": "PERCENTAGE",
+          "query": "<<ALERT_FILTER>> | group count=count() by metadata.product.name | sort -count | limit 10",
+          "layout": {
+            "w": 30,
+            "h": 16,
+            "x": 0,
+            "y": 31
+          }
+        },
+        {
+          "title": "Alerts by severity",
+          "graphStyle": "donut",
+          "maxPieSlices": 10,
+          "dataLabelType": "PERCENTAGE",
+          "query": "<<ALERT_FILTER>> severity_id=* | group count=count() by severity_id | sort -count",
+          "layout": {
+            "w": 30,
+            "h": 16,
+            "x": 30,
+            "y": 31
+          }
+        }
+      ]
+    },
+    {
+      "tabName": "Noise Analysis",
+      "filters": [
+        {
+          "facet": "metadata.product.name",
+          "name": "Product"
+        },
+        {
+          "facet": "s1_detection_metadata.site_name",
+          "name": "Site"
+        }
+      ],
+      "graphs": [
+        {
+          "title": "Noise Analysis",
+          "graphStyle": "markdown",
+          "markdown": "Top (source, signature) pairs and the source's own action per signature. Already-actioned rows (block/drop/sinkhole/reset) carry no residual risk. `<<NOISY_SOURCE>>` and `<<ACTION_FIELD>>` are filled from discovery.",
+          "layout": {
+            "w": 60,
+            "h": 7,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "title": "Top 25 noisiest alert detections",
+          "graphStyle": "table",
+          "query": "<<ALERT_FILTER>> finding_info.title=* | group Alerts=count() by Detection=finding_info.title, Product=metadata.product.name, Category=finding_info.analytic.category | sort -Alerts | limit 25",
+          "showBarsColumn": "true",
+          "layout": {
+            "w": 60,
+            "h": 22,
+            "x": 0,
+            "y": 7
+          }
+        },
+        {
+          "title": "Alerts by threat category",
+          "graphStyle": "stacked_bar",
+          "xAxis": "grouped_data",
+          "yScale": "linear",
+          "query": "<<ALERT_FILTER>> finding_info.analytic.category=* | group count=count() by Category=finding_info.analytic.category | sort -count | limit 20",
+          "layout": {
+            "w": 30,
+            "h": 18,
+            "x": 0,
+            "y": 29
+          }
+        },
+        {
+          "title": "Alerts by product and severity",
+          "graphStyle": "heatmap",
+          "query": "<<ALERT_FILTER>> | group count=count() by Product=metadata.product.name, severity_id | transpose severity_id on Product",
+          "xAxis": "grouped_data",
+          "showDataLabels": "true",
+          "colorScheme": "red",
+          "colorSchemeOrder": "standard",
+          "numberOfRanges": 5,
+          "rangesCreation": "automatic",
+          "heatmapRangeConfig": [
+            "-∞",
+            "",
+            "",
+            "",
+            "",
+            "∞"
+          ],
+          "layout": {
+            "w": 30,
+            "h": 18,
+            "x": 30,
+            "y": 29
+          }
+        },
+        {
+          "title": "Noisy source drill-down: signature x action x severity",
+          "graphStyle": "table",
+          "query": "dataSource.name='<<NOISY_SOURCE>>' finding_info.title=* | group Alerts=count() by Signature=finding_info.title, Action=<<ACTION_FIELD>>, Severity=severity_id | sort -Alerts | limit 25",
+          "showBarsColumn": "true",
+          "layout": {
+            "w": 60,
+            "h": 22,
+            "x": 0,
+            "y": 47
+          }
+        }
+      ]
+    },
+    {
+      "tabName": "Signal (Real Detections)",
+      "filters": [
+        {
+          "facet": "metadata.product.name",
+          "name": "Product"
+        }
+      ],
+      "graphs": [
+        {
+          "title": "Signal (Real Detections)",
+          "graphStyle": "markdown",
+          "markdown": "Noisy source removed. Triage effort belongs here: endpoint, automation/platform rules, identity, email. A panel reading 0 is a good posture, not a broken panel.",
+          "layout": {
+            "w": 60,
+            "h": 7,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "title": "Other alerts (non-noisy)",
+          "graphStyle": "number",
+          "query": "<<ALERT_FILTER>> metadata.product.name!='<<NOISY_PRODUCT>>' | group c=count() | limit 1",
+          "options": {
+            "format": "auto",
+            "precision": "0"
+          },
+          "layout": {
+            "w": 20,
+            "h": 8,
+            "x": 0,
+            "y": 7
+          }
+        },
+        {
+          "title": "Critical (non-noisy)",
+          "graphStyle": "number",
+          "query": "<<ALERT_FILTER>> metadata.product.name!='<<NOISY_PRODUCT>>' severity_id=5 | group c=count() | limit 1",
+          "options": {
+            "format": "auto",
+            "precision": "0"
+          },
+          "layout": {
+            "w": 20,
+            "h": 8,
+            "x": 20,
+            "y": 7
+          }
+        },
+        {
+          "title": "High (non-noisy)",
+          "graphStyle": "number",
+          "query": "<<ALERT_FILTER>> metadata.product.name!='<<NOISY_PRODUCT>>' severity_id=4 | group c=count() | limit 1",
+          "options": {
+            "format": "auto",
+            "precision": "0"
+          },
+          "layout": {
+            "w": 20,
+            "h": 8,
+            "x": 40,
+            "y": 7
+          }
+        },
+        {
+          "title": "Daily non-noisy alert volume",
+          "graphStyle": "stacked_bar",
+          "xAxis": "time",
+          "yScale": "linear",
+          "query": "<<ALERT_FILTER>> metadata.product.name!='<<NOISY_PRODUCT>>' | group Alerts=count() by timestamp=timebucket('1 day') | sort timestamp",
+          "layout": {
+            "w": 60,
+            "h": 16,
+            "x": 0,
+            "y": 15
+          }
+        },
+        {
+          "title": "Non-noisy alerts by product",
+          "graphStyle": "donut",
+          "maxPieSlices": 10,
+          "dataLabelType": "PERCENTAGE",
+          "query": "<<ALERT_FILTER>> metadata.product.name!='<<NOISY_PRODUCT>>' | group count=count() by metadata.product.name | sort -count | limit 10",
+          "layout": {
+            "w": 30,
+            "h": 16,
+            "x": 0,
+            "y": 31
+          }
+        },
+        {
+          "title": "Top non-noisy detections",
+          "graphStyle": "table",
+          "query": "<<ALERT_FILTER>> metadata.product.name!='<<NOISY_PRODUCT>>' finding_info.title=* | group Alerts=count() by Detection=finding_info.title, Product=metadata.product.name, Category=finding_info.analytic.category | sort -Alerts | limit 25",
+          "showBarsColumn": "true",
+          "layout": {
+            "w": 30,
+            "h": 16,
+            "x": 30,
+            "y": 31
+          }
+        }
+      ]
+    }
+  ]
+}

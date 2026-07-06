@@ -18,13 +18,15 @@ set -euo pipefail
 # The version of THIS image. Independent of the underlying MCP versions
 # below, bump this when the image content (Dockerfile, dispatcher, bundled
 # CLAUDE.md) changes, even if all three MCP pins stay the same.
-IMAGE_VERSION="${IMAGE_VERSION:-1.2.2}"
+IMAGE_VERSION="${IMAGE_VERSION:-1.2.3}"
 
 # ── Pinned MCP versions ──────────────────────────────────────────────────────
 S1_MCP_VERSION="${S1_MCP_VERSION:-1.2.2}"
 VT_MCP_PACKAGE="${VT_MCP_PACKAGE:-@burtthecoder/mcp-virustotal}"
 VT_MCP_VERSION="${VT_MCP_VERSION:-1.0.21}"
-PURPLE_MCP_REF="${PURPLE_MCP_REF:-1582c0945101d0da2a158e66d8c329f66f251f27}"
+# purple-mcp v0.7.0 (2026-06-26). Pinned to the release commit, not a floating
+# branch, per upstream security guidance. Keep in sync with mcp/docker/README.md.
+PURPLE_MCP_REF="${PURPLE_MCP_REF:-07d4992089b10affff6163f296b1f6cb5734539f}"
 
 # ── Image identity ───────────────────────────────────────────────────────────
 REGISTRY="${REGISTRY:-ghcr.io/pmoses-s1}"

@@ -5,7 +5,7 @@
 set -e
 
 case "${1:-help}" in
-  sentinelone-mcp|s1)
+  s1-secops-mcp|sentinelone-mcp|s1)
     exec sentinelone-mcp
     ;;
   purple-mcp|purple)
@@ -19,13 +19,13 @@ case "${1:-help}" in
 SentinelOne Claude Skills MCP Stack
 
 Bundled servers (select one per `docker run`):
-  sentinelone-mcp   PowerQuery, SDL, Mgmt Console REST, UAM, Hyperautomation
+  s1-secops-mcp    PowerQuery, SDL, Mgmt Console REST, UAM, Hyperautomation
   purple-mcp        Alert triage, Purple AI NLQ, Deep Visibility, assets, vulnerabilities
   virustotal-mcp    External IOC enrichment
 
 Usage:
   docker run -i --rm -e S1_CONSOLE_URL -e S1_CONSOLE_API_TOKEN ... \
-    ghcr.io/pmoses-s1/s1-mcps:latest sentinelone-mcp
+    ghcr.io/pmoses-s1/s1-mcps:latest s1-secops-mcp
 
 Reference:
   https://github.com/Sentinel-One/ai-siem/blob/main/plugins/s1-secops-skills/docs/docker.md
@@ -33,7 +33,7 @@ EOF
     ;;
   *)
     echo "entrypoint: unknown command '$1'" >&2
-    echo "valid: sentinelone-mcp, purple-mcp, virustotal-mcp, help" >&2
+    echo "valid: s1-secops-mcp, purple-mcp, virustotal-mcp, help" >&2
     exit 64
     ;;
 esac

@@ -231,6 +231,11 @@ Use this when the workflow contains integration-backed actions:
 - ❌ Running an SDL PowerQuery (LRQ / `datasource` / `savelookup`) from an HTTP action bound to the **"SentinelOne"** mgmt connection. That connection signs as `Authorization: ApiToken`, but the SDL query endpoints (`POST /sdl/v2/api/queries` and `POST {sdl-host}/api/powerQuery`) require `Bearer`, so the action returns `HTTP 500 "Header must start with Bearer"`.
   ✅ Bind the **"SentinelOne SDL"** connection (Bearer by default) on the HTTP action. Notes: the ApiToken-only `/web/api/v2.1/dv/events/pq` cannot run the `datasource` command (returns 400) and is just an async wrapper over LRQ, so it is not usable for asset/inventory refresh; ## Running an SDL LRQ from an HA flow (async launch + POLL LOOP) — tenant-validated 2026-06-25
 
+**Rule: always read SDL data from an HA flow via LRQ, never the synchronous `/api/powerQuery`.** The sync endpoint returns truncated / incomplete responses for large result sets (measured ~1/5 success on a ~1 MB `dataset` read; LRQ was 5/5) and is deprecated. Use LRQ for every SDL read from a workflow, including `dataset` / lookup-table reads, regardless of size. Reference `{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries` so the host comes from the bound "SentinelOne SDL" connection, not a hardcoded tenant.
+
+**Datatables are scope-specific.** A table saved with `savelookup` at site scope is not visible to a read at account scope (or an LRQ scoped by `accountIds`), and vice versa. Create the lookup in the same scope the flow reads.
+
+
 `POST /sdl/v2/api/queries` is ASYNC. The launch response is NOT the results: it returns `body.id`
 plus `body.stepsCompleted` / `body.totalSteps`, and `body.data` is `null` while the query is still
 running. The query id is also EPHEMERAL: it expires shortly after the query finishes. So a fixed

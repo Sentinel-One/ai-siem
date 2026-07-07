@@ -1,0 +1,43 @@
+# GitLab CI equivalent of the GitHub Actions workflows.
+# Copy this to the repository root as .gitlab-ci.yml.
+#
+# Set CI/CD variables (Settings -> CI/CD -> Variables), masked:
+#   S1_CONSOLE_URL        e.g. https://your-tenant.sentinelone.net
+#   S1_CONSOLE_API_TOKEN  the API/service-user token
+#
+# Lint runs on merge requests; sync runs on the default branch after merge.
+
+stages:
+  - lint
+  - sync
+
+default:
+  image: python:3.12-slim
+  # No before_script needed: 3.12 reads TOML via stdlib tomllib.
+  # Add `before_script: [pip install pyyaml]` only if you author rules in YAML.
+
+lint:
+  stage: lint
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - detections/**/*
+        - scripts/dac_*.py
+  script:
+    - python3 scripts/dac_sync.py --lint detections
+
+sync:
+  stage: sync
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      changes:
+        - detections/**/*
+  script:
+    # CI_COMMIT_BEFORE_SHA..CI_COMMIT_SHA is the range merged into the default branch.
+    - export BASE_SHA="$CI_COMMIT_BEFORE_SHA"
+    - export HEAD_SHA="$CI_COMMIT_SHA"
+    - python3 scripts/dac_sync.py --sync --changed-only
+  artifacts:
+    when: always
+    paths:
+      - deployed_rules.json

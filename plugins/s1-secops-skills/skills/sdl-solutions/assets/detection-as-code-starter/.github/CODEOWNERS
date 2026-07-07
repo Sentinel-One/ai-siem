@@ -1,0 +1,19 @@
+# CODEOWNERS enforces review accountability: a PR touching these paths
+# auto-requests review from the listed owners. Pair it with a branch
+# protection rule on main that requires a pull request and at least one
+# approval (the four-eyes principle).
+#
+# Replace the placeholder teams/users with your real GitHub handles.
+
+# Global owner for everything in the repo.
+* @your-org/detection-engineering
+
+# Detection content by domain (optional, more granular ownership).
+/detections/endpoint/  @your-org/endpoint-detection
+/detections/identity/  @your-org/identity-detection
+/detections/cloud/     @your-org/cloud-detection
+
+# Protect the automation and CI config from unreviewed changes.
+/scripts/              @your-org/detection-eng-leads
+/.github/              @your-org/detection-eng-leads
+/.github/CODEOWNERS    @your-org/detection-eng-leads

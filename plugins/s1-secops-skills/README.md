@@ -2,7 +2,7 @@
 
 A full-stack AI analyst for SentinelOne, built as a set of Claude skills, three MCP servers, and an operating persona (CLAUDE.md). Install once and Claude can hunt threats, triage alerts, write detections, deploy dashboards, author parsers, and build automation workflows, entirely from natural language.
 
-> **Fastest way to get started: [Docker install](./docs/docker.md).** One image bundles all three MCPs, no host-level Node, Python, or `uv` required. Pull, paste a config block, install the plugin, done.
+> **Fastest way to get started: [Quick start (Docker)](#1-quick-start-docker).** One image bundles all three MCPs, no host-level Node, Python, or `uv` required. Pull, paste a config block, install the plugin, done. See [Installation](#installation) for all three install paths.
 >
 > **New here?** Start with the [Zero to Hero guide](./docs/zero-to-hero.md): a 20-minute onboarding walkthrough for customers and partners new to Claude Skills.
 
@@ -16,8 +16,10 @@ A full-stack AI analyst for SentinelOne, built as a set of Claude skills, three 
 - [What you can do](#what-you-can-do)
 - [Behavioural baselining + anomaly detection](#behavioural-baselining--anomaly-detection)
 - [Example questions](#example-questions)
-- [Installing, upgrading, and configuration](#installing-and-upgrading)
-- [Team VM deployment (s1-secops-mcp)](#team-vm-deployment-s1-secops-mcp)
+- [Installation](#installation)
+  - [1. Quick start (Docker)](#1-quick-start-docker)
+  - [2. Individual MCP / plugin / skill install](#2-individual-mcp--plugin--skill-install)
+  - [3. Team VM install](#3-team-vm-install-shared-s1-secops-mcp)
 - [Windsurf](#windsurf)
 - [Documentation](#documentation)
 
@@ -71,7 +73,8 @@ The plugin bundles every skill; installing it is sufficient. No individual skill
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. See [docs/sdl-dashboard.md](./docs/sdl-dashboard.md) for all supported panel types |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), and per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications). Orchestrates the skills above |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications), detection exclusions, Risk-Based Alerting, and Detection as Code (author rules as TOML in Git and sync them to the Custom Detection API via CI), and alert noise reduction (find and quiet the sources flooding the alert queue: an ingestion-filter recommendation, an auto-resolve flow, and a noise-vs-signal dashboard). Orchestrates the skills above |
+| soc-investigator | Autonomous, staged DFIR investigation of SentinelOne alerts (SHORT / MEDIUM / LONG modes) with tool discovery, intake, IOC enrichment, per-endpoint PowerQuery forensics, optional third-party correlation and anomaly detection, and the SOC Analyst evidence-discipline and verdict gates. Authored by Joel Mora |
 
 ---
 
@@ -104,18 +107,11 @@ The plugin bundles every skill; installing it is sufficient. No individual skill
 
 ### Setting up the PrincipalSOCAnalyst project
 
-**Easiest path: [Docker install](./docs/docker.md).** One image at `ghcr.io/pmoses-s1/s1-mcps` bundles all three MCPs (s1-secops-mcp, purple-mcp, virustotal-mcp), version-locked at a known good combo. No host-level Node, Python, or `uv` required. Works the same on macOS, Windows, and Linux, and on locked-down machines where IT policy blocks `npm install -g` or `pip install`.
+Install the stack using any of the three paths in [Installation](#installation) (the Docker quick start is the fastest). Then set up the project:
 
-Four steps:
-
-1. `docker pull ghcr.io/pmoses-s1/s1-mcps:1.2.2`
-2. Paste the [Docker MCP config](./docs/docker.md#step-2-configure-mcp-servers) into `claude_desktop_config.json` and replace the placeholders with your tokens and region URLs.
-3. Install the [`.plugin` file](./dist/) via Cowork → Customize → Browse plugins.
-4. Create a Cowork project named `PrincipalSOCAnalyst`, open it, and run `smoke test s1 skills` to verify.
-
-Full Docker reference (prerequisites, credential keys, troubleshooting, upgrades): [docs/docker.md](./docs/docker.md)
-
-**Prefer not to use Docker?** The MCPs also run directly via `npx` (s1-secops-mcp, virustotal) and `uvx` (purple-mcp). See [docs/installation.md](./docs/installation.md) for the host-runtime path.
+1. In Cowork, create a new project named `PrincipalSOCAnalyst` and select a folder for it.
+2. Drop a copy of [`CLAUDE.md`](./CLAUDE.md) into the folder. On the Docker path this is optional (the image ships a default persona); do it when you want to customise.
+3. Confirm `s1-secops-skills` appears under Personal plugins and that `s1-secops-mcp`, `purple-mcp`, and your threat-intel MCP are green under MCP Servers.
 
 **Start a session**
 
@@ -330,7 +326,7 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 - *"Monitor ingest per firewall and endpoint and email soc@acme.com on any failure"*
 - *"Alert me when a specific firewall or endpoint stops sending logs"*
 
-**Detection exclusions** (suppress known-good noise in a STAR rule: a single-event rule with an inline hardcoded exclusion list, or a scheduled rule with a CSV lookup anti-join plus an effectiveness dashboard; the skill asks which rule type first). Full guide: [docs/solutions/scheduled-detection-exclusions.md](./docs/solutions/scheduled-detection-exclusions.md).
+**Custom detection exclusions** (suppress known-good noise in a STAR rule, all three rule types: single-event and correlation rules with an inline hardcoded exclusion list, or a scheduled rule with a CSV lookup anti-join plus an effectiveness dashboard; the skill asks which rule type first). Full guide: [docs/solutions/custom-detection-exclusions.md](./docs/solutions/custom-detection-exclusions.md).
 
 - *"Exclude my engineering team from the encoded-PowerShell detection"*
 - *"Stop my Akamai DNS detection from alerting on our scanner subnets and corporate domains, here's the list"*
@@ -342,39 +338,183 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 - *"Set up RBA: score encoded PowerShell, recon, LOLBins, and log clearing, and alert when a user accumulates enough risk across tactics"*
 - *"Roll out RBA with asset-criticality risk factors and a risk leaderboard dashboard"*
 
+**Detection as Code (DaC)** (scaffold a Git + CI pipeline where detection engineers author rules as TOML, a pull request triggers validation and four-eyes review, and a merge syncs the changed rules to the Custom Detection Rule API; covers single-event, correlation, and scheduled rule types, with a zero-dependency TOML-to-API sync engine and CI for GitHub, GitLab, and Azure). Full guide: [docs/solutions/detection-as-code.md](./docs/solutions/detection-as-code.md).
+
+- *"Set up detection as code for the Acme site"*
+- *"Scaffold a DaC repo with GitHub Actions and sync the example rules"*
+- *"Automate our detections as code: author in TOML, validate on PR, deploy on merge"*
+
 For the full per-solution breakdown, outcomes, and more example prompts, see the solution skill's own README: [skills/sdl-solutions/README.md](./skills/sdl-solutions/README.md).
 
 ---
 
-## Installing and upgrading
+## Installation
 
-Two install paths, both four steps from zero to a working session:
+Three ways to install. Pick one. All three end in the same place: the three MCP servers connected and the seven-skill plugin loaded in Claude Desktop.
 
-- **[Docker (recommended, easiest)](./docs/docker.md)**: one image bundles all three MCPs, no host-level Node, Python, or `uv` required. Pinned semver tags for reproducible installs. Works on locked-down machines where IT policy blocks `npm install -g` or `pip install`.
-- **[npx/uvx (host runtime)](./docs/installation.md)**: MCP servers run directly on the host via `npx` and `uvx`. Lighter on disk, slightly faster per-session startup, but requires Node 18+ and `uv` to be installable.
+| Path | Best for | Time |
+|---|---|---|
+| **[1. Quick start (Docker)](#1-quick-start-docker)** | Most users, including locked-down machines. One image, all three MCPs, no host Node/Python/uv. | ~10 min |
+| **[2. Individual MCP / plugin / skill install](#2-individual-mcp--plugin--skill-install)** | You already run Node 18+ and want the MCPs on the host via `npx`/`uvx`, or you only want one skill. | ~10 min |
+| **[3. Team VM install](#3-team-vm-install-shared-s1-secops-mcp)** | One shared `s1-secops-mcp` server for a whole team, with per-user tokens. | ~30 min |
 
-For a team that wants one shared `s1-secops-mcp` instance instead of an install per laptop, see **[Team VM deployment](./docs/vm-deployment.md)** (v1.1.0+).
-
-Upgrades:
-
-- **Docker**: bump the tag in `claude_desktop_config.json` (e.g. `:1.2.1` to `:1.2.2`) and restart Claude Desktop. The new image pulls on first launch.
-- **npx/uvx**: effectively free; `npx -y` and `uvx` re-resolve the MCP servers to the latest published version on each Claude Desktop launch.
-- **Plugin**: Plugin: download the new .plugin from s1-secops-skills/dist/, open Cowork → Customize → Browse plugins, upload, click Replace when prompted.
-
+Credentials are identical across all three paths. What each key is and where to get it: **[docs/credentials.md](./docs/credentials.md)**.
 
 ---
 
-## Configuration
+### 1. Quick start (Docker)
 
-See [docs/installation.md#configuration](./docs/installation.md#configuration) for credential setup, the full key reference, and resolution order.
+One image (`ghcr.io/pmoses-s1/s1-mcps`) bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`), version-locked together. You only need Docker installed: no host-level Node, Python, or `uv`. It works the same on macOS, Windows, and Linux, including machines where IT policy blocks `npm install -g` or `pip install`.
+
+Prerequisite: Docker Desktop (macOS/Windows) or Docker Engine (Linux), running. Everything else is a credential (see the table in Step 2).
+
+**Step 1: Pull the image (all three MCPs)**
+
+```bash
+docker pull ghcr.io/pmoses-s1/s1-mcps:1.2.3
+```
+
+`:1.2.3` is the current pinned release (bundles s1-secops-mcp 1.2.2, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
+
+**Step 2: Configure credentials**
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows). Paste the block below and replace every placeholder. All three MCPs reference the same image.
+
+```json
+{
+  "mcpServers": {
+    "s1-secops-mcp": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm", "--pull=missing",
+        "-e", "S1_CONSOLE_URL",
+        "-e", "S1_CONSOLE_API_TOKEN",
+        "-e", "S1_HEC_INGEST_URL",
+        "-e", "SDL_XDR_URL",
+        "-e", "SDL_LOG_READ_KEY",
+        "-e", "SDL_CONFIG_WRITE_KEY",
+        "-e", "SDL_CONFIG_READ_KEY",
+        "ghcr.io/pmoses-s1/s1-mcps:1.2.3",
+        "s1-secops-mcp"
+      ],
+      "env": {
+        "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
+        "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
+        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
+        "SDL_XDR_URL":          "https://xdr.us1.sentinelone.net",
+        "SDL_LOG_READ_KEY":     "your-log-read-key",
+        "SDL_CONFIG_WRITE_KEY": "your-config-write-key",
+        "SDL_CONFIG_READ_KEY":  "your-config-read-key"
+      }
+    },
+    "purple-mcp": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm", "--pull=missing",
+        "-e", "PURPLEMCP_CONSOLE_TOKEN",
+        "-e", "PURPLEMCP_CONSOLE_BASE_URL",
+        "ghcr.io/pmoses-s1/s1-mcps:1.2.3",
+        "purple-mcp"
+      ],
+      "env": {
+        "PURPLEMCP_CONSOLE_TOKEN":    "eyJ...your-api-token...",
+        "PURPLEMCP_CONSOLE_BASE_URL": "https://usea1-yourorg.sentinelone.net"
+      }
+    },
+    "virustotal": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm", "--pull=missing",
+        "-e", "VIRUSTOTAL_API_KEY",
+        "ghcr.io/pmoses-s1/s1-mcps:1.2.3",
+        "virustotal-mcp"
+      ],
+      "env": {
+        "VIRUSTOTAL_API_KEY": "your-virustotal-api-key"
+      }
+    }
+  },
+  "preferences": {
+    "coworkScheduledTasksEnabled": true,
+    "coworkWebSearchEnabled": true
+  }
+}
+```
+
+Where to get each value:
+
+| Placeholder | What it is | Where to get it |
+|---|---|---|
+| `S1_CONSOLE_URL`, `PURPLEMCP_CONSOLE_BASE_URL` | Your console URL | e.g. `https://usea1-yourorg.sentinelone.net` |
+| `S1_CONSOLE_API_TOKEN`, `PURPLEMCP_CONSOLE_TOKEN` | Mgmt Console API token (the **same** token for both) | Settings → Users → Service Users → Create New Service User ([guide](https://community.sentinelone.com/s/article/000005291)) |
+| `SDL_XDR_URL`, `SDL_LOG_READ_KEY`, `SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY` | Singularity Data Lake URL + API keys | Singularity Data Lake → API Keys ([guide](https://community.sentinelone.com/s/article/000006763)) |
+| `S1_HEC_INGEST_URL` | HEC ingest host for your region | [Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) |
+| `VIRUSTOTAL_API_KEY` | VirusTotal API key (free tier is fine) | [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) |
+
+Full key reference, token types, and resolution order: **[docs/credentials.md](./docs/credentials.md)**. **Restart Claude Desktop** after saving.
+
+**Step 3: Install the plugin (all eight skills)**
+
+Download the latest plugin, [`s1-secops-skills-v1.2.5.plugin`](./dist/), from the `dist/` folder. In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All seven skills install in one step.
+
+Then create a Cowork project named `PrincipalSOCAnalyst` and select a folder for it. The Docker image ships a default CLAUDE.md, so dropping your own [`CLAUDE.md`](./CLAUDE.md) into the folder is only needed if you want to customise the persona.
+
+**Verify (tested)**
+
+In the `PrincipalSOCAnalyst` project, start a session and run:
+
+```
+smoke test s1 skills
+```
+
+Claude checks all three MCPs, confirms each skill is loaded, and reports any missing credential or unreachable endpoint. You can also test the image straight from a terminal, no Claude Desktop required:
+
+```bash
+docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.2.3 help    # lists the three bundled servers
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
+  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.2.3 s1-secops-mcp
+```
+
+The second command returns one JSON line with `serverInfo.name = "sentinelone-mcp-server"`, and stderr shows `Tools: 26 registered`.
+
+**Troubleshooting**
+
+| Symptom | Fix |
+|---|---|
+| MCP shows red in Cowork → MCP Servers | Confirm Docker is running: `docker info \| head -3`. Start Docker Desktop, then restart Claude Desktop. |
+| `Cannot connect to the Docker daemon` in the logs | Docker Desktop is not running. |
+| `denied: permission_denied` from ghcr.io | Image is private or your network blocks ghcr.io: `docker login ghcr.io`, or check VPN/proxy. |
+| `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The env value did not propagate; re-check the `env` block and that each `-e VAR` name matches a key. |
+| `S1 Mgmt API: NOT configured` | No console token reached the container; check `S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN`. |
+
+Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log`. Full troubleshooting flowchart, hand-testing with credentials, and rollback: **[docs/docker.md](./docs/docker.md)**.
 
 ---
 
-## Team VM deployment (s1-secops-mcp)
+### 2. Individual MCP / plugin / skill install
 
-Want one shared `s1-secops-mcp` instance for the whole team instead of an install per laptop? `s1-secops-mcp` v1.1.0+ supports it natively. See the dedicated guide:
+Run the MCP servers directly on the host via `npx` (`s1-secops-mcp`, `virustotal`) and `uvx` (`purple-mcp`), with no Docker. Lighter on disk and slightly faster per session, but it needs Node 18+ and `uv`. Same steps, same credentials as above.
 
-**[docs/vm-deployment.md](./docs/vm-deployment.md)**: one-line install, per-user bearer tokens, Caddy TLS, SIGHUP-reloadable rotation, audit logs.
+Full walkthrough (config block, prerequisites, project setup, upgrading): **[docs/installation.md](./docs/installation.md)**.
+
+Only want one skill instead of the whole plugin? Each skill ships as a standalone `.skill` file in [`dist/`](./dist/); upload the individual file via Cowork → Customize → Browse plugins. The seven files are listed in [docs/installation.md](./docs/installation.md#step-2-install-the-plugin).
+
+---
+
+### 3. Team VM install (shared s1-secops-mcp)
+
+Run one `s1-secops-mcp` instance on a shared VM for the whole team instead of installing per laptop. `s1-secops-mcp` v1.1.0+ supports this natively: a one-line installer, per-user bearer tokens (SIGHUP-reloadable), Caddy TLS, and an audit log of every user's tool calls.
+
+Full walkthrough (install script, tokens, TLS, client config for Cowork/Claude Code and the Claude Desktop bridge, day-2 operations): **[docs/vm-deployment.md](./docs/vm-deployment.md)**.
+
+---
+
+### Upgrading
+
+- **Docker**: bump the tag in `claude_desktop_config.json` (e.g. `:1.2.2` to `:1.2.3`) and restart Claude Desktop; the new image pulls on first launch.
+- **npx/uvx**: automatic. `npx -y` and `uvx` re-resolve to the latest published version on each launch.
+- **Plugin**: download the newer `.plugin` from [`dist/`](./dist/), then Cowork → Customize → Browse plugins, upload, and click **Replace**.
+- **Team VM**: `git pull` on the VM and re-run the installer, or `npm i -g @pmoses-s1/s1-secops-mcp@latest`; see [docs/vm-deployment.md](./docs/vm-deployment.md).
 
 ---
 
@@ -407,8 +547,9 @@ This repo includes Windsurf workflow files in `.windsurf/workflows/`. Each workf
 | [docs/solutions/asset-enrichment.md](./docs/solutions/asset-enrichment.md) | SDL Solutions: enrich raw logs with device/user/vuln/alert context from the Asset Inventory, with prompt examples |
 | [docs/solutions/ueba-anomaly-detection.md](./docs/solutions/ueba-anomaly-detection.md) | SDL Solutions: baseline ANY signal per (action, principal) and detect z-score anomalies (SPIKE/DROP/SILENT/NEW), deployed as a baseline lookup, scheduled rule, nightly refresh, and dashboard |
 | [docs/solutions/ingest-health-monitoring.md](./docs/solutions/ingest-health-monitoring.md) | SDL Solutions: per-device ingest health (per firewall/endpoint/server) on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, parser drift, with a dashboard and email notifications |
-| [docs/solutions/scheduled-detection-exclusions.md](./docs/solutions/scheduled-detection-exclusions.md) | SDL Solutions: suppress known-good noise in a STAR Custom Detection rule, built as a single-event rule (inline hardcoded exclusion) or a scheduled rule (CSV lookup anti-join + effectiveness dashboard); asks the rule type first |
+| [docs/solutions/custom-detection-exclusions.md](./docs/solutions/custom-detection-exclusions.md) | SDL Solutions: suppress known-good noise in a STAR Custom Detection rule, built as a single-event or correlation rule (inline hardcoded exclusion) or a scheduled rule (CSV lookup anti-join + effectiveness dashboard); asks the rule type first |
 | [docs/solutions/risk-based-alerting.md](./docs/solutions/risk-based-alerting.md) | SDL Solutions: Risk-Based Alerting in SDL, publish noisy observations as risk events into a `risk` index, accumulate risk per user/host object amplified by asset risk factors, and fire one high-fidelity alert on a 24h cumulative-score or 7d multi-MITRE-tactic threshold; deploys contributors, factor table, collector flow, four incident rules, and a dashboard |
+| [docs/solutions/detection-as-code.md](./docs/solutions/detection-as-code.md) | SDL Solutions: Detection as Code, scaffold a Git + CI pipeline where detection rules are authored as TOML, validated on pull request, and synced to the Custom Detection Rule API on merge; covers single-event, correlation, and scheduled rule types, with a zero-dependency TOML-to-API sync engine and CI for GitHub, GitLab, and Azure |
 | [docs/detection-rule-types.md](./docs/detection-rule-types.md) | The three STAR / Custom Detection rule types (single-event, multi-event correlation, scheduled PowerQuery): API shapes, when to use each, S1QL backslash escaping, and why asset enrichment is the prerequisite for asset-mapped alerts |
 | [docs/detection-asset-binding.md](./docs/detection-asset-binding.md) | Which event attributes make STAR detection alerts auto-populate the Target Asset (device, identity, cloud), the tested per-type binding matrix, and how the asset enrichment solution supplies them |
 | [mgmt-console-api/SKILL.md](./skills/mgmt-console-api/SKILL.md) | Deep reference: confirmed field schemas and required API parameters per endpoint |

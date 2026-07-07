@@ -1,6 +1,6 @@
 # Skills Reference
 
-Each skill is a folder containing a `SKILL.md` that Claude reads when a relevant request triggers it. The SKILL.md encodes confirmed API schemas, field requirements, and procedural knowledge. All seven skills are bundled in the `skills` plugin.
+Each skill is a folder containing a `SKILL.md` that Claude reads when a relevant request triggers it. The SKILL.md encodes confirmed API schemas, field requirements, and procedural knowledge. All eight skills are bundled in the `skills` plugin.
 
 ---
 
@@ -123,7 +123,7 @@ c.keys["config_read_key"] = ""
 
 ## sdl-solutions
 
-**Triggers on:** deploying a packaged, repeatable SDL solution into a specific customer environment from one short prompt, rather than authoring a single query, parser, or workflow. Onboarding: "onboard cisco_meraki logs", "bring our FortiGate source into AI SIEM and build detections", "set up detections and a dashboard for <source>". Asset enrichment: "deploy the asset enrichment solution", "enrich logs with device/user info for <customer>", "set up SDL asset enrichment on <site>". UEBA: "run a behavioural baseline on <source>", "deploy UEBA anomaly detection for <source>", "flag users whose activity is off their 30-day normal". Ingest health: "deploy ingest health monitoring", "monitor ingest per device/firewall/endpoint", "alert me when a source or device stops sending logs", "detect ingest spikes/drops/lag", "find parser drift". Detection exclusions: "add a detection exclusion for <source> logs", "exclude these assets/domains from a detection", "stop my detection alerting on our scanner subnets/corporate domains, here's the list", "allowlist these hosts".
+**Triggers on:** deploying a packaged, repeatable SDL solution into a specific customer environment from one short prompt, rather than authoring a single query, parser, or workflow. Onboarding: "onboard cisco_meraki logs", "bring our FortiGate source into AI SIEM and build detections", "set up detections and a dashboard for <source>". Asset enrichment: "deploy the asset enrichment solution", "enrich logs with device/user info for <customer>", "set up SDL asset enrichment on <site>". UEBA: "run a behavioural baseline on <source>", "deploy UEBA anomaly detection for <source>", "flag users whose activity is off their 30-day normal". Ingest health: "deploy ingest health monitoring", "monitor ingest per device/firewall/endpoint", "alert me when a source or device stops sending logs", "detect ingest spikes/drops/lag", "find parser drift". Detection exclusions: "add a detection exclusion for <source> logs", "exclude these assets/domains from a detection", "stop my detection alerting on our scanner subnets/corporate domains, here's the list", "allowlist these hosts". Risk-Based Alerting: "deploy RBA", "score noisy observations and alert when a user crosses a risk threshold". Detection as Code: "set up detection as code", "scaffold a DaC repo", "automate our detections as code".
 
 **What it provides:**
 
@@ -133,14 +133,32 @@ c.keys["config_read_key"] = ""
   - **Asset enrichment of raw logs**: enrich ingested events with device and user context (OS, IP, agent UUID, AD groups, SID, criticality, risk factors) from the Asset Inventory via `savelookup` tables, in parser (ingest-time), query-time, and automatic-lookup modes, plus a Hyperautomation refresh flow.
   - **UEBA behavioural anomaly detection**: baseline ANY signal (security or not) per (action, principal), score the live 24h window with a z-score, and surface SPIKE/DROP/SILENT/NEW deviations; deploy as a persisted baseline lookup, a scheduled PowerQuery detection rule, a nightly refresh, and a dashboard.
   - **Ingest health monitoring (per device)**: per-firewall/endpoint/server anomaly detection on a 7-day hour-of-day seasonal baseline rebuilt daily: volume spike/drop (z-score), ingest lag (p95 over SLA), ingest loss (a device went silent), and parser drift; deploys per-device baseline lookups, scheduled PowerQuery detections, an ingest-loss watchdog flow, a dashboard, and an email-notification flow for every failure.
-  - **Scheduled detection exclusions**: suppress known-good noise in a scheduled detection over a third-party source by keying it against a CSV exclusion list (assets by IP/CIDR/host, or custom domains/users/values) loaded as an SDL lookup and applied with a lookup anti-join (`| lookup ... | filter excl = null`); deploys the lookup table, a scheduled STAR rule, an exclusion-effectiveness dashboard, and (for `=:cidr`/`=:wildcard`, which the STAR validator rejects) a Hyperautomation detection flow that posts a UAM alert, plus an optional source-of-truth refresh.
+  - **Custom detection exclusions**: suppress known-good noise in a STAR Custom Detection rule for all three rule types. Single-event (`events`) and correlation (`correlation`) rules carry the exclusion as an inline `AND NOT (<field> in:anycase (...))` negative list in the boolean S1QL body (correlation appends it to each sub-query in `correlationParams`). Scheduled (`scheduled`) rules key against a CSV exclusion list (assets by IP/CIDR/host, or custom domains/users/values) loaded as an SDL lookup and applied with a lookup anti-join (`| lookup ... | filter excl = null`); the scheduled path deploys the lookup table, the rule, an exclusion-effectiveness dashboard, and (for `=:cidr`/`=:wildcard`, which the STAR validator rejects) a Hyperautomation detection flow that posts a UAM alert, plus an optional source-of-truth refresh.
+  - **Risk-Based Alerting (RBA)**: publish noisy-but-interesting observations as low-noise risk events into a `risk` index, accumulate risk per user/host object (amplified by asset risk factors), and fire one high-fidelity alert only when a 24h cumulative-score or 7d multi-MITRE-tactic threshold is crossed; deploys contributors, a risk-factor table, a scheduled collector flow, four incident rules, and a dashboard.
+  - **Detection as Code (DaC)**: stand up a Git + CI pipeline where detection engineers author rules as TOML, a pull request triggers validation and four-eyes review, and a merge syncs the changed rules to the Custom Detection Rule API; covers single-event, correlation, and scheduled rule types, with a zero-dependency TOML-to-API sync engine and lint-on-PR / sync-on-merge CI for GitHub, GitLab, and Azure.
 - Parameterized templates under `assets/` (savelookup queries, enrichment parser, dashboard skeleton, STAR detection envelope, threat-response and refresh workflows) driven by tokens such as `{{PREFIX}}`, `{{DATASOURCE_NAME}}`, `{{PARSER_NAME}}`, `{{SITE_ID}}`, `{{ACCOUNT_ID}}`.
 
 **Depends on:** `sdl-log-parser` (parser/OCSF), `powerquery` (datasource + savelookup), `sdl-dashboard` (dashboard), `mgmt-console-api` (STAR rules, site/scope), `sdl-api` (deploy config, ingest), `hyperautomation` (response/refresh flows).
 
-**Playbooks:** `references/data-source-onboarding.md`, `references/asset-enrichment.md`, `references/ueba-anomaly-detection.md`, `references/ingest-health-monitoring.md`, `references/scheduled-detection-exclusions.md`. Add new solutions as `references/<solution>.md` plus templates, and name them in the skill description so they trigger.
+**Playbooks:** `references/data-source-onboarding.md`, `references/asset-enrichment.md`, `references/ueba-anomaly-detection.md`, `references/ingest-health-monitoring.md`, `references/custom-detection-exclusions.md`, `references/risk-based-alerting.md`, `references/detection-as-code.md`, `references/alert-noise-reduction.md`. Add new solutions as `references/<solution>.md` plus templates, and name them in the skill description so they trigger.
 
 Full reference: `sdl-solutions/SKILL.md`
+
+---
+
+## soc-investigator
+
+**Triggers on:** running an autonomous, staged DFIR investigation of SentinelOne alerts, rather than a one-off query or hunt. "investigate these alerts", "run a SOC investigation", "triage alert <id>", "short/medium/long investigation", "dig into third-party sources for this incident", "correlate this alert across M365/Entra/SharePoint".
+
+**What it provides:**
+
+- An investigation orchestrator with tool discovery, an interactive intake, and a previewed plan, then three depth modes: SHORT (alert data + entity extraction), MEDIUM (adds IOC enrichment and one PowerQuery per endpoint), and LONG (adds four deep forensic PowerQueries per endpoint plus SDL threat-intel correlation); with an optional opt-in expansion into third-party data sources (M365, Entra, SharePoint, etc.) for entity correlation and anomaly detection.
+- Non-negotiable evidence discipline and verdict gates inherited from the Purple SOC Analyst standard and the SDL threat-hunt-and-correlation method: reconcile to ground truth, enrich every external IOC before a verdict, no CRITICAL / TRUE POSITIVE without threat-intel or MDR confirmation, calibrated confidence, and MITRE mapping. Detail in `references/evidence-and-verdict-discipline.md` and `references/correlation-and-hunt-methodology.md`.
+- Structured, file-based outputs per investigation (entities, timelines, threat intel, enriched and forensic timelines, and reports).
+
+**Depends on:** `mgmt-console-api`, `powerquery`, `sdl-api`, `sdl-log-parser`, `sdl-dashboard`, `hyperautomation`, and the purple / VirusTotal threat-intel MCP. Authored by Joel Mora (joelm@sentinelone.com).
+
+Full reference: `skills/soc-investigator/SKILL.md`
 
 ---
 

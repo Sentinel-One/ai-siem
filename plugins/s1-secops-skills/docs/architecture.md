@@ -104,7 +104,7 @@ Each skill folder contains a `SKILL.md` that Claude reads when a relevant reques
 
 The skills are read-only procedural knowledge. They do not execute API calls directly when loaded: they instruct Claude on *how* to use the MCP tools and scripts to execute operations correctly.
 
-`sdl-solutions` is the umbrella skill in this layer: for a whole-solution request (onboard a source, asset enrichment, UEBA, ingest health monitoring, or scheduled detection exclusions) it runs first, collects parameters, previews, and orchestrates the primitive skills in dependency order, instead of each skill being invoked independently.
+`sdl-solutions` is the umbrella skill in this layer: for a whole-solution request (onboard a source, asset enrichment, UEBA, ingest health monitoring, or custom detection exclusions) it runs first, collects parameters, previews, and orchestrates the primitive skills in dependency order, instead of each skill being invoked independently.
 
 ---
 
@@ -199,7 +199,8 @@ claude-skills/
   sdl-log-parser/   Skill: SDL log parser authoring and validation
   hyperautomation/  Skill: Hyperautomation workflow authoring and import
   sdl-solutions/    Skill: repeatable SDL solution deployment (onboarding, enrichment)
+  soc-investigator/ Skill: autonomous DFIR alert investigation and correlation
   s1-secops-mcp/              MCP server (Node.js): 26 tools, stdio or HTTP
-  skills-plugin/    Distributable plugin bundle (all 7 skills)
+  skills-plugin/    Distributable plugin bundle (all 8 skills)
   assets/                       Screenshots and images for documentation
 ```

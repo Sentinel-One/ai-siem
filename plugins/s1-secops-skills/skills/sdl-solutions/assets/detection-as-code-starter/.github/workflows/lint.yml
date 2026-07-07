@@ -1,0 +1,30 @@
+name: Detection Lint
+
+# Runs on every pull request that touches a rule file. Validates TOML/JSON/YAML
+# rules and the TOML-to-API conversion without calling SentinelOne. Branch
+# protection should require this check before a PR can merge.
+
+on:
+  pull_request:
+    paths:
+      - 'detections/**'
+      - 'scripts/dac_*.py'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest        # change to a self-hosted runner if your console is private
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # No install needed: Python 3.11+ reads TOML via stdlib tomllib, and the
+      # script has a built-in fallback. Uncomment only if you author rules in YAML.
+      # - run: pip install pyyaml
+
+      - name: Lint detection rules
+        run: python3 scripts/dac_sync.py --lint detections

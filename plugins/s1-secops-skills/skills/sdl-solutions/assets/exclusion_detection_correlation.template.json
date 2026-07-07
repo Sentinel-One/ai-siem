@@ -1,0 +1,27 @@
+{
+  "_comment": "STAR CORRELATION (multi-event) Custom Detection rule with an INLINE hardcoded exclusion list. POST to /web/api/v2.1/cloud-detection/rules. queryType MUST be 'correlation' and queryLang '2.0' (a correlation POST without queryLang '2.0' returns HTTP 400 'query lang must be 2.0'). s1ql stays an empty string; the logic lives in data.correlationParams. Each entry in subQueries[] is ONE boolean S1QL expression with NO pipes, so there is no lookup table and no dashboard, exactly like the single-event type. The exclusion is a hardcoded negative list appended to the sub-query: '{{BASE_SUBQUERY}} AND NOT ({{EXCL_FIELD}} in:anycase ({{EXCL_LIST}}))'. Append that negative list to EVERY sub-query keyed to the excluded entity, otherwise the allowlisted entity can still satisfy the threshold through an un-filtered sub-query. Use this type when the base detection correlates multiple events (N-of-X thresholds, or A-then-B sequences via matchInOrder true) and the allowlist is small and stable; use the scheduled template (exclusion_detection.template.json) when you need aggregation beyond thresholds or a large/dynamic CSV exclusion list managed outside the rule. correlationParams requires entity (user|process|ip|endpoint|storyline|custom|none) and matchInOrder, 1 to 10 subQueries[] (each {subQuery, matchesRequired}), and timeWindow.windowMinutes in {1,5,10,30,60,240,480,720}. BACKSLASH ESCAPING (validated 2026-06-24): the engine matches a SINGLE backslash, so write one backslash in the console UI but DOUBLE each backslash in this JSON ({{EXCL_LIST}} like 'corp\\jdoe', regex like '\\s'...'\\b') so JSON decoding restores one. Correlation rules auto-bind the entity/asset from the matched events (entityMappings optional). Mitigation IS supported: set treatAsThreat to Suspicious/Malicious and networkQuarantine deliberately if active response is wanted (default UNDEFINED/false = alert-only). New rules land Draft; enable with PUT /cloud-detection/rules/enable. List with isLegacy=false. Tenant-validated 2026-07-01 (reversible create/delete on the pmoses demo site).",
+  "data": {
+    "name": "{{PREFIX}} - {{DETECTION_NAME}}",
+    "description": "{{DETECTION_DESCRIPTION}} Known-good activity is suppressed inline via a hardcoded exclusion list on {{EXCL_FIELD}} inside the correlation sub-queries. MITRE ATT&CK: {{MITRE_TACTIC}} / {{MITRE_TECHNIQUE}}.",
+    "queryType": "correlation",
+    "queryLang": "2.0",
+    "severity": "{{SEVERITY}}",
+    "status": "Disabled",
+    "expirationMode": "Permanent",
+    "treatAsThreat": "UNDEFINED",
+    "networkQuarantine": false,
+    "s1ql": "",
+    "correlationParams": {
+      "entity": "{{ENTITY}}",
+      "matchInOrder": {{MATCH_IN_ORDER}},
+      "timeWindow": { "windowMinutes": {{WINDOW_MINUTES}} },
+      "subQueries": [
+        {
+          "matchesRequired": {{MATCHES_REQUIRED}},
+          "subQuery": "{{BASE_SUBQUERY}} AND NOT ({{EXCL_FIELD}} in:anycase ({{EXCL_LIST}}))"
+        }
+      ]
+    }
+  },
+  "filter": { "{{SCOPE_KEY}}": ["{{SCOPE_ID}}"] }
+}

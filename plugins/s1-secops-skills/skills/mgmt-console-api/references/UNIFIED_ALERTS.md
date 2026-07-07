@@ -282,5 +282,5 @@ Findings from a live events-vs-scheduled reproduction (2026-06).
 ## Ingestion paths (HEC vs UAM)
 
 Two distinct ingest APIs share the ingest host URL but are not connected:
-- **HEC ingest** (HTTP Event Collector): raw logs/events + a named `parser`; feeds Event Search, PowerQuery, and detection rules. This is the log-ingestion path (replaces the removed SDL `uploadLogs`).
+- **HEC ingest** (HTTP Event Collector): raw logs/events + a named `parser`; feeds Event Search, PowerQuery, and detection rules. This is the log-ingestion path (replaces the removed SDL `uploadLogs`). For pre-structured / OCSF JSON ingested with `?isParsed=true` (no parser), each event MUST include `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security` for custom OCSF sources), `event.type` (as a FLAT dotted key — a nested `event:{...}` object is dropped since `event` is HEC-reserved), and `site_id`. OCSF omits these, and without them events land with a null source (no attribution; `dataSource.name`-based filters/detections miss).
 - **UAM ingest** (`uam_post_indicators` / `uam_ingest_alert`, `/v1/*`): creates UAM alerts/indicators directly and builds the alert asset from the event `device` object. Site routing via `scope = accountId:siteId`.

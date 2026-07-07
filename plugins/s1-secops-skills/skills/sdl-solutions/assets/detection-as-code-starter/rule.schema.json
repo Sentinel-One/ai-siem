@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/pmoses-s1/detection-as-code/rule.schema.json",
+  "title": "SentinelOne Detection-as-Code rule",
+  "description": "Schema for a single detection rule authored in TOML. Editors with TOML schema support (Taplo, VS Code Even Better TOML) validate as you type. The dac_sync.py converter enforces the same rules at lint and sync time.",
+  "type": "object",
+  "required": ["name", "query_type", "severity", "status", "expiration_mode"],
+  "properties": {
+    "name": {"type": "string", "minLength": 1, "description": "Unique rule name shown on the Alerts page."},
+    "description": {"type": "string", "maxLength": 2000},
+    "query_type": {"enum": ["events", "scheduled", "correlation"]},
+    "severity": {"enum": ["Low", "Medium", "High", "Critical", "Info"]},
+    "status": {"enum": ["Draft", "Active", "Disabled"], "description": "Draft never fires. Author as Draft, activate after review/DTAP."},
+    "expiration_mode": {"enum": ["Permanent", "Temporary"]},
+    "expiration": {"type": "string", "format": "date-time", "description": "Required only when expiration_mode = Temporary."},
+    "query_lang": {"enum": ["1.0", "2.0"], "description": "Events use 1.0 (omit). Scheduled rules are forced to 2.0 by the converter."},
+    "s1ql": {"type": "string", "description": "events only: boolean S1QL. No pipe '|' (that is PowerQuery, use a scheduled rule)."},
+    "treat_as_threat": {"enum": ["UNDEFINED", "Suspicious", "Malicious"], "description": "events/correlation only. Scheduled rules cannot mitigate."},
+    "network_quarantine": {"type": "boolean"},
+    "scheduled": {
+      "type": "object",
+      "required": ["query", "run_interval_minutes", "lookback_window_minutes"],
+      "properties": {
+        "query": {"type": "string", "description": "Piped PowerQuery. Simple aggregates only inside group()."},
+        "run_interval_minutes": {"type": "integer", "minimum": 1, "maximum": 43200},
+        "lookback_window_minutes": {"type": "integer", "minimum": 1, "maximum": 43200},
+        "threshold": {
+          "type": "object",
+          "properties": {
+            "value": {"type": "integer", "minimum": 0},
+            "operator": {"enum": ["Greater", "Less", "Equal"]}
+          }
+        }
+      }
+    },
+    "correlation": {
+      "type": "object",
+      "required": ["entity", "match_in_order", "subqueries"],
+      "properties": {
+        "entity": {"enum": ["user", "process", "ip", "endpoint", "storyline", "custom", "none"]},
+        "match_in_order": {"type": "boolean"},
+        "time_window": {
+          "type": "object",
+          "properties": {"window_minutes": {"enum": [1, 5, 10, 30, 60, 240, 480, 720]}}
+        },
+        "subqueries": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": ["sub_query", "matches_required"],
+            "properties": {
+              "sub_query": {"type": "string", "minLength": 1},
+              "matches_required": {"type": "integer", "minimum": 1, "maximum": 1000}
+            }
+          }
+        }
+      }
+    },
+    "cool_off": {
+      "type": "object",
+      "properties": {"renotify_minutes": {"type": "integer", "minimum": 1, "maximum": 1440}}
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "site": {"type": "string"},
+        "site_ids": {"type": "array", "items": {"type": "string"}},
+        "account_ids": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "metadata": {"type": "object", "description": "Repo bookkeeping only. Not sent to the API."}
+  },
+  "allOf": [
+    {"if": {"properties": {"query_type": {"const": "events"}}}, "then": {"required": ["s1ql"]}},
+    {"if": {"properties": {"query_type": {"const": "scheduled"}}}, "then": {"required": ["scheduled"]}},
+    {"if": {"properties": {"query_type": {"const": "correlation"}}}, "then": {"required": ["correlation"]}},
+    {"if": {"properties": {"expiration_mode": {"const": "Temporary"}}}, "then": {"required": ["expiration"]}}
+  ]
+}

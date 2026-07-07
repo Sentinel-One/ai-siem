@@ -1,0 +1,27 @@
+# Pinned dependencies for the Scalyr agent monitor plugins (maxmind.py,
+# powerquerymonitor.py, log_gen.py).
+#
+# WHY THIS FILE EXISTS
+# The monitors used to run `pip install <pkg>` at startup, inside the
+# root / LocalSystem Scalyr agent, with no version pin and no integrity check.
+# A compromise of any of these packages — or of any transitive dependency — on
+# PyPI would have executed arbitrary code as root on every agent restart
+# (CWE-494 / CWE-829). The runtime install has been removed. Install these
+# dependencies ONCE, out of band, before enabling any monitor.
+#
+# RECOMMENDED (hash-verified) install:
+#   pip install --require-hashes -r monitors/requirements.txt
+#
+# The version pins below are a baseline. Before deploying, regenerate a fully
+# hash-locked file on a trusted build host so --require-hashes has hashes to
+# check against, e.g.:
+#   pip install pip-tools
+#   pip-compile --generate-hashes --output-file monitors/requirements.txt monitors/requirements.in
+# (put the unpinned package names in monitors/requirements.in), or add hashes
+# manually with `pip hash <downloaded-wheel>`. Do NOT install without pins.
+
+requests==2.32.4
+pandas==2.2.3
+numpy==1.26.4
+geoip2==4.8.1
+tabulate==0.9.0

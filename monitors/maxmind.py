@@ -95,11 +95,16 @@ class RandomMonitor(ScalyrMonitor):
             convert_to=str,
             default="/data/GeoLite2-ASN.mmdb"
         )
-        #subprocess.check_call([sys.executable, "-m", "pip", "install", "pandas"])
-    #    subprocess.check_call([sys.executable, "-m", "pip", "install", "tabulate maxmind pandas"])
-        packages = ["pandas", "geoip2", "tabulate"]
-        for package in packages:
-          subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        # SECURITY: this monitor must NOT install packages at runtime. It runs
+        # inside the root / LocalSystem Scalyr agent, so a runtime `pip install`
+        # from public PyPI (unpinned, unverified) would execute arbitrary
+        # upstream code as root on every agent restart (CWE-494 / CWE-829).
+        # Dependencies are declared once, out of band, in monitors/requirements.txt
+        # and installed by the operator before the monitor is enabled:
+        #   pip install --require-hashes -r monitors/requirements.txt
+        # The packages (pandas, geoip2, tabulate) are imported lazily in
+        # gather_sample(); a clear ImportError there tells the operator to run
+        # the install step above if it was skipped.
     def gather_sample(self):
         import pandas as pd
         import numpy as np

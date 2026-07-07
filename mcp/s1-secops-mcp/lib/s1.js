@@ -24,6 +24,31 @@ function jwt() {
   return tok;
 }
 
+/**
+ * Build a validated absolute URL for an S1 Mgmt API call.
+ *
+ * SECURITY: `path` frequently originates from an LLM tool call
+ * (s1_api_get/post/put/delete/patch) and must never be able to change the
+ * request authority. Bare string concatenation (`${base()}${path}`) let a
+ * path like "@evil.example/x", ".evil.example/x", or "//evil.example/x"
+ * rewrite the host and send the tenant ApiToken to an attacker-chosen origin.
+ * We therefore (1) require a leading single "/" and (2) pin the resolved
+ * origin to the configured console. Any deviation throws before doFetch runs.
+ */
+function safeUrl(path) {
+  if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) {
+    throw new Error(
+      `S1 API path must be a string starting with a single "/" (got: ${JSON.stringify(path)?.slice(0, 80)})`
+    );
+  }
+  const origin = new URL(base()).origin;
+  const u = new URL(path, origin);
+  if (u.origin !== origin) {
+    throw new Error(`S1 API path may not change the request origin (resolved to ${u.origin})`);
+  }
+  return u;
+}
+
 async function doFetch(url, opts, retries = 3) {
   let delay = 500;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -66,12 +91,11 @@ function sleep(ms) {
 
 /** GET /web/api/v2.1/<path> */
 export async function apiGet(path, params = {}) {
-  let url = `${base()}${path}`;
-  const qs = new URLSearchParams(
-    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null))
-  ).toString();
-  if (qs) url += '?' + qs;
-  return doFetch(url, {
+  const u = safeUrl(path);
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null) u.searchParams.set(k, String(v));
+  }
+  return doFetch(u.toString(), {
     method: 'GET',
     headers: {
       Authorization: `ApiToken ${jwt()}`,
@@ -82,7 +106,7 @@ export async function apiGet(path, params = {}) {
 
 /** POST /web/api/v2.1/<path> */
 export async function apiPost(path, body = {}) {
-  return doFetch(`${base()}${path}`, {
+  return doFetch(safeUrl(path).toString(), {
     method: 'POST',
     headers: {
       Authorization: `ApiToken ${jwt()}`,
@@ -94,7 +118,7 @@ export async function apiPost(path, body = {}) {
 
 /** PUT /web/api/v2.1/<path> */
 export async function apiPut(path, body = {}) {
-  return doFetch(`${base()}${path}`, {
+  return doFetch(safeUrl(path).toString(), {
     method: 'PUT',
     headers: {
       Authorization: `ApiToken ${jwt()}`,
@@ -106,7 +130,7 @@ export async function apiPut(path, body = {}) {
 
 /** DELETE /web/api/v2.1/<path> */
 export async function apiDelete(path, body = {}) {
-  return doFetch(`${base()}${path}`, {
+  return doFetch(safeUrl(path).toString(), {
     method: 'DELETE',
     headers: {
       Authorization: `ApiToken ${jwt()}`,
@@ -118,7 +142,7 @@ export async function apiDelete(path, body = {}) {
 
 /** PATCH /web/api/v2.1/<path> */
 export async function apiPatch(path, body = {}) {
-  return doFetch(`${base()}${path}`, {
+  return doFetch(safeUrl(path).toString(), {
     method: 'PATCH',
     headers: {
       Authorization: `ApiToken ${jwt()}`,

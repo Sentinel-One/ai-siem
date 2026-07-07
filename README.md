@@ -37,7 +37,7 @@ ai-siem/                # AI SIEM core structure (260+ components)
   │   └── sentinelone/ # 17 official marketplace parsers (*.conf + metadata)
   ├── workflows/       # Automated playbooks and responses (3 workflows with metadata)
   ├── plugins/         # Claude plugins (skills bundled for Cowork / Claude Code)
-  │   └── s1-secops-skills/  # 7 SentinelOne SecOps skills + built .plugin/.skill bundles
+  │   └── s1-secops-skills/  # 8 SentinelOne SecOps skills + built .plugin/.skill bundles
   └── mcp/             # SentinelOne MCP server (Node.js) + container build
 ```
 
@@ -176,6 +176,21 @@ We have introduced a standardized documentation approach:
 See [`workflows/community/README.md`](workflows/community/README.md) for the full documentation standard and examples.
 
 ---
+
+## SentinelOne SecOps skills
+
+Eight Claude skills for SentinelOne SecOps, bundled in `plugins/s1-secops-skills/` for Cowork and Claude Code:
+
+- **powerquery**: author, debug, and run PowerQuery (Deep Visibility / SDL hunts, STAR rule bodies).
+- **mgmt-console-api**: query and act on the S1 Management Console API (threats, alerts, agents, IOCs, RemoteOps, UAM).
+- **sdl-api**: read data and manage SDL configuration files (parsers, dashboards, lookups) via the SDL API.
+- **sdl-dashboard**: create, edit, and deploy SDL dashboard JSON.
+- **sdl-log-parser**: author and validate SDL log parsers.
+- **sdl-solutions**: deploy packaged SDL solutions (source onboarding, UEBA, RBA, detection-as-code, alert-noise reduction).
+- **hyperautomation**: build and export Hyperautomation (SOAR) workflow JSON.
+- **soc-investigator**: autonomous DFIR investigation over S1 alerts and third-party sources.
+
+See `plugins/s1-secops-skills/docs/skills.md` for details.
 
 ## Getting help
 Open an issue. Office hours TBD based on requests.

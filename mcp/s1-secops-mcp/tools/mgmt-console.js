@@ -55,6 +55,7 @@ export const tools = [
       properties: {
         path: {
           type: 'string',
+          pattern: '^/web/api/v2\\.1/',
           description: 'API path starting with /web/api/v2.1/, e.g. "/web/api/v2.1/agents".',
         },
         params: {
@@ -83,6 +84,7 @@ export const tools = [
       properties: {
         path: {
           type: 'string',
+          pattern: '^/web/api/v2\\.1/',
           description: 'API path starting with /web/api/v2.1/, e.g. "/web/api/v2.1/threats/mark-as-threats".',
         },
         body: {
@@ -108,6 +110,7 @@ export const tools = [
       properties: {
         path: {
           type: 'string',
+          pattern: '^/web/api/v2\\.1/',
           description: 'API path starting with /web/api/v2.1/, e.g. "/web/api/v2.1/accounts/123/policy".',
         },
         body: {
@@ -133,6 +136,7 @@ export const tools = [
       properties: {
         path: {
           type: 'string',
+          pattern: '^/web/api/v2\\.1/',
           description: 'API path starting with /web/api/v2.1/, e.g. "/web/api/v2.1/threat-intelligence/iocs".',
         },
         body: {
@@ -158,6 +162,7 @@ export const tools = [
       properties: {
         path: {
           type: 'string',
+          pattern: '^/web/api/v2\\.1/',
           description: 'API path starting with /web/api/v2.1/.',
         },
         body: {

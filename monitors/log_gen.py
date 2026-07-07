@@ -89,26 +89,12 @@ class LogGenerator(ScalyrMonitor):
 
 
 
-    def install_dependencies(self, libs_to_install):
-        try:
-            # check if pip is up-to-date
-            subprocess.check_call(["pip", "install", "--upgrade", "pip"])
-        except subprocess.CalledProcessError as e:
-            print("Error: ", e)
+    # SECURITY: the former install_dependencies() helper (runtime `pip install`
+    # from PyPI, plus a `pip install --upgrade pip` as root) has been removed.
+    # It had no callers and constituted a latent root supply-chain footgun
+    # (CWE-494 / CWE-829). Declare and install dependencies out of band via
+    # monitors/requirements.txt: pip install --require-hashes -r monitors/requirements.txt
 
-        # libraries to install
-        #libs_to_install = ["glob2", "requests"]
-
-        # loop through each library and check if it is installed
-        for lib in libs_to_install:
-            try:
-                # check if library is already installed
-                subprocess.check_call(["pip", "show", lib], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            except subprocess.CalledProcessError as e:
-                # library not found, install it
-                print(f"{lib} not found, installing...")
-                subprocess.check_call(["pip", "install", "--quiet", lib])
-        # create test file if it does not exist
     def generate_log(self):
         file_path = self.__openai_file_output
         if os.path.exists(file_path):

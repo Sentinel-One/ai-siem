@@ -97,12 +97,22 @@ The monitors directory contains Python scripts for use with the Dataset Agent:
 - **powerquerymonitor.py** - PowerQuery monitoring capabilities
 
 ### Installation Steps
-1. Copy monitor files to Dataset Agent directory:
+1. Install the monitor Python dependencies once, before enabling any monitor.
+   The monitors no longer install packages at runtime (that would run `pip
+   install` as root on every agent restart), so the operator must install them
+   out of band into the agent's Python environment:
+   ```bash
+   pip install --require-hashes -r monitors/requirements.txt
+   ```
+   See `monitors/requirements.txt` for the pinned versions and for how to
+   regenerate a fully hash-locked file on a trusted build host.
+
+2. Copy monitor files to Dataset Agent directory:
    ```bash
    cp monitors/*.py /usr/share/scalyr-agent-2/py/scalyr_agent/builtin_monitors/
    ```
 
-2. Configure the agent by editing `/etc/scalyr-agent-2/agent.log`:
+3. Configure the agent by editing `/etc/scalyr-agent-2/agent.log`:
    ```json
    monitors: [
      {
@@ -116,7 +126,7 @@ The monitors directory contains Python scripts for use with the Dataset Agent:
    ]
    ```
 
-3. Start the Dataset Agent:
+4. Start the Dataset Agent:
    ```bash
    scalyr-agent-2 start
    ```

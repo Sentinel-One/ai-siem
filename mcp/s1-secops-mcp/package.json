@@ -20,7 +20,7 @@
     "start": "node index.js",
     "start:http": "node index.js --transport http",
     "dev": "node --watch index.js",
-    "test": "node --test tests/smoke.test.mjs tests/stdio-transport.test.mjs tests/http-transport.test.mjs",
+    "test": "node --test tests/smoke.test.mjs tests/stdio-transport.test.mjs tests/http-transport.test.mjs tests/ssrf-path.test.mjs tests/http-origin-guard.test.mjs",
     "regen:readme": "node scripts/regen-readme-tools-table.mjs"
   },
   "engines": {

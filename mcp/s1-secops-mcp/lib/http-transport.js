@@ -42,6 +42,32 @@ function summarizeParams(params) {
   return '';
 }
 
+/**
+ * DNS-rebinding guard for the no-auth HTTP mode.
+ *
+ * The Host header must match the address the server is bound to (or a loopback
+ * literal when bound to loopback). A DNS-rebinding attack arrives with the
+ * attacker's Host (e.g. "rebind.attacker.example:8765"), which will not match
+ * the loopback bind. When bound to a wildcard address we cannot know the
+ * intended FQDN, so we accept any Host and rely on the Origin check to block
+ * browsers. HTTP/1.1 mandates a Host header, so a missing one is rejected.
+ */
+function isAllowedHost(hostHeader, bindHost, bindPort) {
+  if (!hostHeader) return false;
+  const wildcard = ['0.0.0.0', '::', ''].includes(String(bindHost));
+  // Parse "hostname" or "hostname:port" (including IPv6 "[::1]:port").
+  const m = /^(\[[^\]]+\]|[^:]+)(?::(\d+))?$/.exec(hostHeader.trim());
+  if (!m) return false;
+  const name = m[1].toLowerCase().replace(/^\[|\]$/g, '');
+  const port = m[2];
+  if (port !== undefined && Number(port) !== Number(bindPort)) return false;
+  if (wildcard) return true;
+  const loopback = ['127.0.0.1', '::1', 'localhost'];
+  const bind = String(bindHost).toLowerCase();
+  const allowed = new Set([bind, ...(loopback.includes(bind) ? loopback : [])]);
+  return allowed.has(name);
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let size = 0;
@@ -84,7 +110,7 @@ function sendText(res, status, text) {
   res.end(text);
 }
 
-async function handleMcp(req, res, dispatch, clientIp) {
+async function handleMcp(req, res, dispatch, clientIp, bindHost, bindPort) {
   // Auth check (only if any tokens are configured)
   let clientName = '-';
   if (isAuthConfigured()) {
@@ -95,6 +121,26 @@ async function handleMcp(req, res, dispatch, clientIp) {
       return;
     }
   } else {
+    // SECURITY (no-auth mode): a configured bearer token normally blocks
+    // browser-driven requests, because a web page cannot forge an Authorization
+    // header. The documented no-auth loopback mode has no such gate, so a
+    // malicious page — or a DNS-rebinding attack — on the operator's own
+    // workstation could otherwise drive this server via cross-origin fetch()
+    // and invoke every state-changing tool with the tenant API token. Per the
+    // MCP Streamable HTTP spec we reject any browser Origin and validate the
+    // Host header to defeat DNS rebinding. Non-browser MCP clients (stdio
+    // bridge, curl, Claude Desktop) omit Origin and send a matching Host.
+    const origin = req.headers['origin'];
+    if (origin) {
+      audit(`${new Date().toISOString()} | ${clientIp} | - | - | 403 cross-origin (${origin})`);
+      sendJson(res, 403, makeErr(null, -32001, 'Cross-origin requests are not allowed'));
+      return;
+    }
+    if (!isAllowedHost(req.headers['host'], bindHost, bindPort)) {
+      audit(`${new Date().toISOString()} | ${clientIp} | - | - | 403 bad-host (${req.headers['host'] || '-'})`);
+      sendJson(res, 403, makeErr(null, -32001, 'Invalid Host header'));
+      return;
+    }
     clientName = `anon@${clientIp}`;
   }
 
@@ -178,7 +224,7 @@ export async function startHttp(dispatch, { port, host, path }) {
     // MCP endpoint
     if (req.url === path) {
       if (req.method === 'POST') {
-        await handleMcp(req, res, dispatch, clientIp);
+        await handleMcp(req, res, dispatch, clientIp, host, port);
         return;
       }
       if (req.method === 'GET' || req.method === 'DELETE') {

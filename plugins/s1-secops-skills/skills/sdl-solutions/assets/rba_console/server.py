@@ -14,6 +14,10 @@ import json, os, urllib.request, urllib.error, http.server, socketserver, pathli
 HERE = pathlib.Path(__file__).resolve().parent
 CONFIG = os.path.expanduser("~/Library/Application Support/Claude/claude_desktop_config.json")
 PORT = int(os.environ.get("RBA_PORT", "8787"))
+# CSRF guard: only requests from this server's own UI origin may hit the proxy.
+# The proxy injects a credentialed SDL Bearer, so a wildcard CORS policy would let any
+# site open in the browser drive SDL writes. Same-origin only; no cross-origin exposure.
+ALLOWED_ORIGINS = {f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}"}
 
 try:
     env = json.load(open(CONFIG))["mcpServers"]["sentinelone-mcp"]["env"]
@@ -48,7 +52,6 @@ class H(http.server.BaseHTTPRequestHandler):
             body = body.encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
-        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -64,6 +67,10 @@ class H(http.server.BaseHTTPRequestHandler):
             self._send(404, b"not found", "text/plain")
 
     def do_POST(self):
+        origin = self.headers.get("Origin")
+        if origin and origin not in ALLOWED_ORIGINS:
+            self._send(403, json.dumps({"error": "cross-origin request rejected"}))
+            return
         n = int(self.headers.get("Content-Length", 0) or 0)
         raw = self.rfile.read(n) if n else b"{}"
         try:

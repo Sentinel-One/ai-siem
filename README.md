@@ -104,8 +104,9 @@ The monitors directory contains Python scripts for use with the Dataset Agent:
    ```bash
    pip install --require-hashes -r monitors/requirements.txt
    ```
-   See `monitors/requirements.txt` for the pinned versions and for how to
-   regenerate a fully hash-locked file on a trusted build host.
+   `monitors/requirements.txt` is a fully hash-locked resolution (`--require-hashes`
+   compatible); regenerate it from `monitors/requirements.in` with
+   `pip-compile --generate-hashes` if the pins change.
 
 2. Copy monitor files to Dataset Agent directory:
    ```bash

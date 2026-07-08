@@ -11,7 +11,9 @@ status = "Draft"            # Draft never fires; flip to Active after review/DTA
 expiration_mode = "Permanent"
 
 # Boolean S1QL. Escape any embedded double quotes.
-s1ql = 'EventType = "Process Creation" AND TgtProcName = "powershell.exe" AND (TgtProcCmdLine ContainsCIS "-enc" OR TgtProcCmdLine ContainsCIS "-EncodedCommand")'
+# Use queryLang-2.0 operators (contains:anycase), NOT S1QL-1.0 forms (ContainsCIS):
+# all custom rules run at 2.0, and a 1.0 operator is accepted at create but never fires.
+s1ql = 'EventType = "Process Creation" AND TgtProcName = "powershell.exe" AND (TgtProcCmdLine contains:anycase("-enc") OR TgtProcCmdLine contains:anycase("-EncodedCommand"))'
 
 treat_as_threat = "UNDEFINED"   # UNDEFINED | Suspicious | Malicious
 network_quarantine = false
@@ -19,8 +21,13 @@ network_quarantine = false
 [scope]
 site = "your-site"             # the target site name (resolved to a siteId at sync time); or site_ids = ["..."] / account_ids = ["..."]
 
-# Bookkeeping only. Not sent to the API; kept in-repo for review and reporting.
+# Governance source of truth. The API has no MITRE/tag/custom-attribute field on
+# custom rules, so the sync engine folds mitre / mitre_tactics / tags / owner into
+# a compact "[DaC]" footer on the rule description (visible in the console and on
+# alerts). Other keys such as references stay repo-only for review and reporting.
 [metadata]
-mitre = ["T1059.001"]
-author = "detection-engineering"
-references = ["https://attack.mitre.org/techniques/T1059/001/"]
+mitre = ["T1059.001", "T1204.002"]     # technique IDs, appended to the description
+mitre_tactics = ["TA0002", "TA0005"]   # tactic IDs
+tags = ["powershell", "execution", "defense-evasion"]
+owner = "detection-engineering"
+references = ["https://attack.mitre.org/techniques/T1059/001/"]  # repo-only

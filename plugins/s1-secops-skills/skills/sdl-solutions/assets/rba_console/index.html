@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RBA Console — SentinelOne</title>
+<style>
+  :root{
+    --bg:#0b0b12; --panel:#14141f; --panel2:#1b1b2a; --line:#2a2a3d;
+    --txt:#e8e8f0; --mut:#9a9ab0; --pur:#8b5cf6; --pur2:#6d3fe0; --mag:#ff4f9a;
+    --grn:#37d39a; --amb:#f5b544; --red:#ff5d6c; color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header{display:flex;align-items:center;gap:14px;padding:16px 22px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#160f2b,#0b0b12)}
+  header .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--pur),var(--mag));display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+  header h1{font-size:17px;margin:0;font-weight:600}
+  header .sub{color:var(--mut);font-size:12.5px}
+  header .badge{margin-left:auto;font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:5px 12px}
+  nav{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid var(--line);background:var(--panel)}
+  nav button{background:none;border:none;color:var(--mut);padding:11px 16px;font-size:14px;cursor:pointer;border-bottom:2px solid transparent;border-radius:6px 6px 0 0}
+  nav button:hover{color:var(--txt);background:var(--panel2)}
+  nav button.on{color:#fff;border-bottom-color:var(--pur);background:var(--panel2)}
+  main{padding:22px;max-width:1180px;margin:0 auto}
+  .tab{display:none} .tab.on{display:block}
+  h2{font-size:16px;font-weight:600;margin:4px 0 14px}
+  h3{font-size:13.5px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin:22px 0 10px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .beat{border-left:3px solid var(--pur);border-radius:0 8px 8px 0}
+  .beat .t{font-weight:600;color:#fff;margin-bottom:4px}
+  .beat .t span{color:var(--mut);font-weight:400;font-size:12.5px;margin-left:8px}
+  .beat p{margin:6px 0 0;color:#d3d3e2}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .tile .n{font-size:30px;font-weight:700;color:#fff}
+  .tile .l{color:var(--mut);font-size:12.5px;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--mut);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:hover td{background:#181826}
+  .pill{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:20px;border:1px solid var(--line);color:var(--mut)}
+  .pill.user{color:#c9b7ff;border-color:#4a3a86} .pill.host{color:#9fe0c6;border-color:#2f6b53}
+  .bar{height:6px;border-radius:4px;background:linear-gradient(90deg,var(--pur),var(--mag));display:inline-block;vertical-align:middle}
+  button.act{background:var(--pur2);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:14px;cursor:pointer}
+  button.act:hover{background:var(--pur)}
+  button.ghost{background:none;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 14px;cursor:pointer}
+  button.ghost:hover{border-color:var(--pur)}
+  button.del{background:none;border:1px solid #52323a;color:var(--red);border-radius:6px;padding:4px 9px;font-size:12px;cursor:pointer}
+  input,select{background:#0e0e18;border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:6px 8px;font-size:13.5px;width:100%}
+  input:focus,select:focus{outline:none;border-color:var(--pur)}
+  .row-actions{display:flex;gap:10px;align-items:center;margin:14px 0}
+  .status{font-size:13px;color:var(--mut);margin-left:6px}
+  .status.ok{color:var(--grn)} .status.err{color:var(--red)}
+  .muted{color:var(--mut)} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  .fires{color:var(--red);font-weight:600} .quiet{color:var(--grn)}
+  .note{font-size:12.5px;color:var(--mut);margin-top:6px}
+  a{color:var(--pur)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">S1</div>
+  <div>
+    <h1>Risk-Based Alerting Console</h1>
+    <div class="sub">Account: {{ACCOUNT_NAME}} &middot; {{ACCOUNT_ID}} &middot; prefix {{PREFIX}}</div>
+  </div>
+  <div class="badge" id="conn">connecting…</div>
+</header>
+<nav>
+  <button class="on" data-tab="talk">Talk track</button>
+  <button data-tab="artifacts">Deployed artifacts</button>
+  <button data-tab="live">Live risk</button>
+  <button data-tab="editor">Risk factor editor</button>
+</nav>
+<main>
+
+  <section class="tab on" id="talk">
+    <h2>Demo talk track</h2>
+    <div class="card beat"><div class="t">1. The problem <span>30s</span></div><p>Our SOC drowns in low-severity, individually-uninteresting signals: encoded PowerShell, a recon command, a LOLBin download. Alert on each and you get fatigue; ignore them and you miss the slow-burn attack. RBA fixes this: we don't alert on the observation, we <b>accumulate risk on the entity</b> behind it.</p></div>
+    <div class="card beat"><div class="t">2. Contributors &rarr; risk index <span>45s &middot; open Live risk tab</span></div><p>Each noisy-but-interesting behaviour is a <b>contributor</b>. Instead of an alert it publishes a low-noise <b>risk event</b> into a dedicated risk index, tagged with a base score and a MITRE tactic. None of these fire an alert on their own.</p></div>
+    <div class="card beat"><div class="t">3. Risk factors from AD / ISPM <span>45s &middot; open Editor tab</span></div><p>Risk isn't flat, it's amplified by <b>who</b> the entity is. The factor table is sourced from Active Directory via ISPM / Ranger AD: a privileged account is weighted &times;2 automatically, a service account &times;0.5. This is the SentinelOne equivalent of Splunk RBA importing assets from AD, sourced natively.</p></div>
+    <div class="card beat"><div class="t">4. The money slide — amplification <span>60s &middot; Live risk leaderboard</span></div><p>Watch <b>adm.webb</b> vs <b>adm.kowalski</b>: same four behaviours, but adm.webb is privileged, so &times;2 puts them at <b>150 across 4 tactics</b>; adm.kowalski is standard, &times;1, at <b>55</b>. <b>svc-backup</b> does similar things but &times;0.5 keeps it at <b>17.5</b>, below threshold and deliberately silent. Identical behaviour, different outcome, driven by AD context.</p></div>
+    <div class="card beat"><div class="t">5. One high-fidelity alert <span>45s</span></div><p>When cumulative risk crosses a threshold, <b>one</b> alert fires, entity-bound, with the whole story attached. adm.webb and the host FIN-WKS-018 already generated HIGH alerts, each carrying its contributing timeline. The 7-day multi-tactic rule catches the low-and-slow campaign the 24h score misses.</p></div>
+    <div class="card beat"><div class="t">6. Self-running and tunable <span>30s &middot; Editor tab</span></div><p>The collector is a scheduled Hyperautomation flow: it runs the contributors, applies the AD multipliers, and publishes on a cadence, no analyst in the loop. And SYSTEM sitting near the top? That's the honest part: RBA is a system you <b>cultivate</b>. Real attacker behaviour rises; benign noise gets factored down. In the Editor tab I can drop SYSTEM to &times;0.2 live.</p></div>
+    <div class="card"><div class="t" style="font-weight:600;color:#fff">Close <span class="muted">15s</span></div><p style="margin-top:6px">Net: fewer, richer alerts; prioritised by business context from your own AD; and a reusable internal library of what "interesting" looks like in this environment.</p></div>
+  </section>
+
+  <section class="tab" id="artifacts">
+    <h2>Deployed artefacts &mdash; what each does</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Artefact</th><th>Location / ID</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><b>Risk index</b></td><td class="mono">dataSource.name='risk'</td><td>Append-only store of low-noise risk events published by contributors. The whole model reads and writes here.</td></tr>
+          <tr><td><b>Risk-factor table</b></td><td class="mono">/datatables/{{PREFIX}}RiskFactors.csv</td><td>Per-object multipliers (the Risk Factor Editor). Sourced from AD/ISPM; joined by the collector on every run. Editable in the Editor tab.</td></tr>
+          <tr><td><b>Risk collector</b></td><td class="mono">HA flow &middot; {{PREFIX}} - RBA Risk Collector</td><td>Scheduled Hyperautomation flow: runs contributor PowerQueries, applies the factor multipliers, publishes risk events into the index.</td></tr>
+          <tr><td><b>Incident rule</b> &middot; user cumulative 24h</td><td class="mono">{{RULE_USER_CUM_ID}} &middot; &ge;50</td><td>Fires one HIGH alert when a user's 24h cumulative risk crosses 50. Entity-bound to the risk object.</td></tr>
+          <tr><td><b>Incident rule</b> &middot; host cumulative 24h</td><td class="mono">{{RULE_HOST_CUM_ID}} &middot; &ge;40</td><td>Same for hosts at threshold 40.</td></tr>
+          <tr><td><b>Incident rule</b> &middot; user multi-tactic 7d</td><td class="mono">{{RULE_USER_TAC_ID}} &middot; &ge;4</td><td>Catches low-and-slow: a user touching 4+ distinct MITRE tactics over 7 days.</td></tr>
+          <tr><td><b>Incident rule</b> &middot; host multi-tactic 7d</td><td class="mono">{{RULE_HOST_TAC_ID}} &middot; &ge;3</td><td>Same for hosts at 3+ tactics.</td></tr>
+          <tr><td><b>Dashboard</b></td><td class="mono">/dashboards/{{PREFIX}}-RBA</td><td>Leaderboard, score-over-time, MITRE / contributor / threat-object breakdowns, contributing-events timeline.</td></tr>
+        </tbody>
+      </table>
+      <div class="note">All account-scoped ({{ACCOUNT_ID}}). Contributors: suspicious_powershell_flags, ad_recon_burst, lolbin_download, eventlog_clear, shadowcopy_delete, credential_access_indicator.</div>
+    </div>
+  </section>
+
+  <section class="tab" id="live">
+    <h2>Live risk <span class="muted" style="font-size:13px">&mdash; 24h, from the risk index</span></h2>
+    <div class="row-actions"><button class="act" onclick="loadLive()">Reload</button><span class="status" id="liveStatus"></span></div>
+    <div class="grid" id="tiles"></div>
+    <div class="card"><h3 style="margin-top:0">Risk leaderboard (cumulative score per object)</h3><div id="leader">Loading…</div></div>
+  </section>
+
+  <section class="tab" id="editor">
+    <h2>Risk factor editor</h2>
+    <div class="card">
+      <div class="muted" style="font-size:13px">Edit the multiplier or reason, add or remove rows, then <b>Save</b>. This writes <span class="mono">/datatables/{{PREFIX}}RiskFactors.csv</span> in the Data Lake, the same table the collector joins on every run.</div>
+      <div class="row-actions">
+        <button class="act" onclick="saveFactors()">Save to Data Lake</button>
+        <button class="ghost" onclick="addRow()">+ Add row</button>
+        <button class="ghost" onclick="loadFactors()">Reload</button>
+        <span class="status" id="edStatus"></span>
+      </div>
+      <div id="factorTable">Loading…</div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Projected impact <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">&mdash; &Sigma; base_score &times; current multiplier (what the next collector run would score)</span></h3>
+      <div id="projected"></div>
+      <div class="note">Thresholds: user cumulative &ge; 50 fires &middot; host cumulative &ge; 40 fires.</div>
+    </div>
+  </section>
+
+</main>
+<script>
+const $=s=>document.querySelector(s);
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); $('#'+b.dataset.tab).classList.add('on');
+  if(b.dataset.tab==='live') loadLive();
+  if(b.dataset.tab==='editor') loadFactors();
+});
+
+async function api(path,body){
+  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+  const t=await r.text(); let j; try{j=JSON.parse(t)}catch(e){throw new Error('Bad response: '+t.slice(0,200))}
+  if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status)); return j;
+}
+function pqRows(res){const cols=(res.columns||[]).map(c=>c.name);return (res.values||[]).map(v=>{const o={};cols.forEach((c,i)=>o[c]=v[i]);return o});}
+
+// ---------- Live risk ----------
+const FACTOR_PATH="/datatables/{{PREFIX}}RiskFactors.csv";
+async function loadLive(){
+  const st=$('#liveStatus'); st.textContent='querying…'; st.className='status';
+  try{
+    const lead=await api('/api/powerQuery',{query:"dataSource.name='risk' risk_object=* | group score=sum(number(risk_score)), events=count(), tactics=estimate_distinct(mitre_tactic) by risk_object, risk_object_type | sort -score | limit 20",startTime:'24h'});
+    const rows=pqRows(lead);
+    const sum=await api('/api/powerQuery',{query:"dataSource.name='risk' risk_object=* | group total_events=count(), objects=estimate_distinct(risk_object), contributors=estimate_distinct(contributor), tactics=estimate_distinct(mitre_tactic) | limit 1",startTime:'24h'});
+    const s=pqRows(sum)[0]||{};
+    $('#tiles').innerHTML=[['Risk events',s.total_events],['Risk objects',s.objects],['Contributors',s.contributors],['MITRE tactics',s.tactics]]
+      .map(([l,n])=>`<div class="tile"><div class="n">${n??'—'}</div><div class="l">${l} (24h)</div></div>`).join('');
+    const max=Math.max(...rows.map(r=>+r.score||0),1);
+    $('#leader').innerHTML=`<table><thead><tr><th>Risk object</th><th>Type</th><th class="num">Score</th><th></th><th class="num">Events</th><th class="num">Tactics</th></tr></thead><tbody>`+
+      rows.map(r=>{const t=(r.risk_object_type||'').toLowerCase();const fires=(t==='host'&&+r.score>=40)||(t==='user'&&+r.score>=50);
+        return `<tr><td>${esc(r.risk_object)} ${fires?'<span class="fires">● fires</span>':''}</td><td><span class="pill ${t}">${t}</span></td><td class="num">${(+r.score).toFixed(1)}</td><td style="width:120px"><span class="bar" style="width:${Math.round(120*(+r.score)/max)}px"></span></td><td class="num">${r.events}</td><td class="num">${r.tactics}</td></tr>`}).join('')+`</tbody></table>`;
+    st.textContent='updated '+new Date().toLocaleTimeString(); st.className='status ok';
+    $('#conn').textContent='connected';
+  }catch(e){ st.textContent=e.message; st.className='status err'; $('#conn').textContent='error'; }
+}
+
+// ---------- Factor editor ----------
+let factorVersion=null, factorRows=[];
+const BASE={ 'adm.webb':[75,'user'],'adm.kowalski':[55,'user'],'svc-backup':[35,'user'],'FIN-WKS-018':[65,'host'] };
+function parseCSV(t){const lines=t.replace(/\r/g,'').split('\n').filter(l=>l.length);const rows=[];for(let i=1;i<lines.length;i++){rows.push(splitCSV(lines[i]))}return rows;}
+function splitCSV(line){const out=[];let cur='',q=false;for(let i=0;i<line.length;i++){const c=line[i];if(q){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}else{if(c===','){out.push(cur);cur=''}else if(c==='"')q=true;else cur+=c}}out.push(cur);return out;}
+function csvField(v){v=(v==null?'':String(v));return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+async function loadFactors(){
+  const st=$('#edStatus'); st.textContent='loading…'; st.className='status';
+  try{
+    const r=await api('/api/getFile',{path:FACTOR_PATH});
+    factorVersion=r.version; factorRows=parseCSV(r.content||'');
+    renderFactors(); st.textContent='loaded '+factorRows.length+' rows'; st.className='status ok'; $('#conn').textContent='connected';
+  }catch(e){ st.textContent=e.message; st.className='status err'; }
+}
+function renderFactors(){
+  $('#factorTable').innerHTML=`<table><thead><tr><th>Factor key</th><th>Type</th><th class="num">Multiplier</th><th>Reason</th><th></th></tr></thead><tbody>`+
+    factorRows.map((r,i)=>`<tr>
+      <td><input value="${esc(r[0]||'')}" onchange="upd(${i},0,this.value)"></td>
+      <td><select onchange="upd(${i},1,this.value)"><option ${r[1]==='user'?'selected':''}>user</option><option ${r[1]==='host'?'selected':''}>host</option></select></td>
+      <td class="num" style="max-width:110px"><input type="number" step="0.1" value="${esc(r[2]||'')}" onchange="upd(${i},2,this.value)"></td>
+      <td><input value="${esc(r[3]||'')}" onchange="upd(${i},3,this.value)"></td>
+      <td><button class="del" onclick="delRow(${i})">✕</button></td></tr>`).join('')+`</tbody></table>`;
+  renderProjected();
+}
+function upd(i,c,v){factorRows[i][c]=v;renderProjected();}
+function addRow(){factorRows.push(['new.user','user','1.0','']);renderFactors();}
+function delRow(i){factorRows.splice(i,1);renderFactors();}
+function multFor(key){const row=factorRows.find(r=>(r[0]||'').toLowerCase()===key.toLowerCase());return row?parseFloat(row[2])||0:1;}
+function renderProjected(){
+  $('#projected').innerHTML=`<table><thead><tr><th>Object</th><th>Type</th><th class="num">Σ base</th><th class="num">Multiplier</th><th class="num">Projected</th><th>Verdict</th></tr></thead><tbody>`+
+    Object.entries(BASE).map(([k,[base,type]])=>{const m=multFor(k);const proj=base*m;const thr=type==='host'?40:50;const fires=proj>=thr;
+      return `<tr><td>${k}</td><td><span class="pill ${type}">${type}</span></td><td class="num">${base}</td><td class="num">×${m}</td><td class="num"><b>${proj.toFixed(1)}</b></td><td>${fires?'<span class="fires">fires ≥'+thr+'</span>':'<span class="quiet">silent < '+thr+'</span>'}</td></tr>`}).join('')+`</tbody></table>`;
+}
+async function saveFactors(){
+  const st=$('#edStatus'); st.textContent='saving…'; st.className='status';
+  try{
+    const csv='factor_key,factor_type,risk_multiplier,reason\n'+factorRows.map(r=>[0,1,2,3].map(c=>csvField(r[c])).join(',')).join('\n')+'\n';
+    await api('/api/putFile',{path:FACTOR_PATH,content:csv});
+    st.textContent='saved to Data Lake ✓ '+new Date().toLocaleTimeString(); st.className='status ok';
+    loadFactors();
+  }catch(e){ st.textContent=e.message; st.className='status err'; }
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+loadLive();
+</script>
+</body>
+</html>

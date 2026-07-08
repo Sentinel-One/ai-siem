@@ -13,7 +13,7 @@
     "status": {"enum": ["Draft", "Active", "Disabled"], "description": "Draft never fires. Author as Draft, activate after review/DTAP."},
     "expiration_mode": {"enum": ["Permanent", "Temporary"]},
     "expiration": {"type": "string", "format": "date-time", "description": "Required only when expiration_mode = Temporary."},
-    "query_lang": {"enum": ["1.0", "2.0"], "description": "Events use 1.0 (omit). Scheduled rules are forced to 2.0 by the converter."},
+    "query_lang": {"enum": ["1.0", "2.0"], "description": "All Custom Detection rules use 2.0 (the converter sets it); 1.0 retained for backward compatibility."},
     "s1ql": {"type": "string", "description": "events only: boolean S1QL. No pipe '|' (that is PowerQuery, use a scheduled rule)."},
     "treat_as_threat": {"enum": ["UNDEFINED", "Suspicious", "Malicious"], "description": "events/correlation only. Scheduled rules cannot mitigate."},
     "network_quarantine": {"type": "boolean"},
@@ -70,7 +70,7 @@
         "account_ids": {"type": "array", "items": {"type": "string"}}
       }
     },
-    "metadata": {"type": "object", "description": "Repo bookkeeping only. Not sent to the API."}
+    "metadata": {"type": "object", "description": "Governance metadata kept in the repo. The custom-detection API has no native MITRE/tag/custom-attribute field, so the recognized keys mitre (technique IDs), mitre_tactics (tactic IDs), tags, and owner are folded into a compact [DaC] footer appended to the rule description (visible in the console). Other keys such as references stay repo-only.", "properties": {"mitre": {"type": "array", "items": {"type": "string"}}, "mitre_tactics": {"type": "array", "items": {"type": "string"}}, "tags": {"type": "array", "items": {"type": "string"}}, "owner": {"type": "string"}, "references": {"type": "array", "items": {"type": "string"}}}}
   },
   "allOf": [
     {"if": {"properties": {"query_type": {"const": "events"}}}, "then": {"required": ["s1ql"]}},

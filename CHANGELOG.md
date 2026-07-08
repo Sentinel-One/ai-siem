@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - detection-as-code learnings across skills (s1-secops-skills v1.2.8)
+
+- `mgmt-console-api`: operational learnings for custom detection rules and alerts, 1.0 operators (`ContainsCIS`) do not evaluate under `queryLang 2.0` and silently never fire (use `contains:anycase`); alerts inherit the rule `description`; events/correlation alerts are in `/cloud-detection/alerts` while scheduled alerts surface only in UAM; scheduled-rule activation latency and PUT re-activation.
+- `sdl-api`: HEC ingestion notes for detection testing, use flat dotted keys (nested OCSF drops reserved namespaces), and HEC data drives all three custom-rule types on an AI-SIEM tenant.
+- `powerquery`: 1.0-vs-2.0 operator note in the operator reference.
+- `sdl-solutions`: Detection-as-Code playbook gains the metadata-into-`description` footer pattern and an end-to-end HEC validation recipe; the scaffold engine folds `[metadata]` (mitre/tactics/tags/owner) into a `[DaC]` footer, and the events example uses `contains:anycase`.
+- Plugin version bumped to **1.2.8** and rebuilt bundles in `dist/`.
+
 ### Added - soc-investigator skill + sdl-solutions: Alert noise reduction (s1-secops-skills v1.2.6)
 
 - New **soc-investigator** skill: autonomous, staged DFIR investigation of SentinelOne alerts (SHORT/MEDIUM/LONG modes) with tool discovery, interactive intake, IOC enrichment, per-endpoint PowerQuery forensics, and optional third-party correlation and anomaly detection. Carries the evidence-discipline and verdict gates from the SOC Analyst standard and the SDL threat-hunt-and-correlation method (`references/evidence-and-verdict-discipline.md`, `references/correlation-and-hunt-methodology.md`). Authored by Joel Mora.

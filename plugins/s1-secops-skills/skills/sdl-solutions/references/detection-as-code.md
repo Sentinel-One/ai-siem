@@ -148,7 +148,7 @@ lint, not in the console.
 
 | Type | `query_type` | Body field | Fires | Mitigation | API specifics the converter enforces |
 |---|---|---|---|---|---|
-| Single event (STAR) | `events` | `s1ql` (boolean S1QL) | per event, real time | yes | rejects a pipe `|` (that is PowerQuery); `queryLang` left at 1.0 |
+| Single event (STAR) | `events` | `s1ql` (boolean S1QL) | per event, real time | yes | rejects a pipe `|` (that is PowerQuery); converter sets `queryLang` 2.0, so bodies must use 2.0 operators (`contains:anycase`, `in:anycase`), not 1.0 forms (`ContainsCIS`, `In`), which are accepted at create but never fire |
 | Correlation | `correlation` | `[correlation]` + `[[correlation.subqueries]]` | when subqueries match in window | yes | requires `entity`, `match_in_order`, 1 to 10 subqueries; `window_minutes` in {1,5,10,30,60,240,480,720}; converter sets `queryLang` 2.0 (the API requires it) |
 | Scheduled | `scheduled` | `[scheduled].query` (PowerQuery) | on interval over lookback | no | forces `queryLang` 2.0, `treatAsThreat` UNDEFINED, `networkQuarantine` false; checks run-interval vs lookback |
 
@@ -158,6 +158,9 @@ Every example seeds with `status = "Draft"` so it never fires until reviewed. Mi
 
 The full field reference is `rule.schema.json` (editors with TOML schema support validate as you
 type). The three seed files under `detections/` are working examples of each type.
+
+**Tagging, MITRE, and custom attributes.** The Custom Detection API has NO field for MITRE, tags, attack surfaces, or arbitrary custom attributes on a user-authored rule (all rejected as "Unknown field"; confirmed live, and `templateRuleId` is accepted but ignored). Those are first-class only on SentinelOne's managed Platform rules (`/detection-library/platform-rules`, enable/disable content). The only writable free-text on a custom rule is `name` and `description`. So the converter folds a rule's `[metadata]` (`mitre`, `mitre_tactics`, `tags`, `owner`) into a compact, idempotent `[DaC]` footer appended to the `description`, which surfaces MITRE/tags/owner in the console and on the alert (alerts inherit the rule description). The raw `[metadata]` stays in the repo as the governance source of truth; `references` and other keys stay repo-only. Rendered footer example:
+`[DaC] MITRE: T1059.001, T1204.002 | Tactics: TA0002, TA0005 | Tags: powershell, execution | Owner: detection-engineering`
 
 ## Step 6: validate and deploy (dry run first)
 
@@ -174,6 +177,17 @@ Always preview before deploying:
    not silently omitted: `GET /web/api/v2.1/cloud-detection/rules?isLegacy=false&name__contains=<name>`.
 5. **Re-run** the sync to prove idempotency: the second run updates in place (PUT), it does not
    create duplicates.
+6. **Validate end to end (optional, on a test / AI-SIEM site).** Enable the rule, simulate matching
+   events via HEC, and confirm the alert. Ingest with `/event?isParsed=true` using **flat dotted
+   keys** (nested OCSF drops reserved namespaces, e.g. `event.category` reads back null; the flat
+   key `{"event.category":"firewall"}` lands). Flat keys populate any OCSF field and even EDR-style
+   columns (`EventType`, `TgtProcName`, `LogonResult`). Verify the data by running the rule's exact
+   query, then find the alert: events/correlation alerts appear in `GET /cloud-detection/alerts`,
+   but **scheduled-rule alerts surface only in UAM** (`uam_list_alerts`). The alert's
+   `ruleInfo.description` (REST) / `description` (UAM) carries the `[DaC]` footer. Confirmed live:
+   all three rule types fire from HEC-ingested data on an AI-SIEM tenant. Note scheduled rules sit
+   in `Activating` (up to ~1h) before the first run and every PUT resets activation, so enable once
+   and avoid re-sync churn while waiting.
 
 To roll back, `python3 scripts/dac_sync.py --rollback deployed_rules.json` deletes exactly the
 rules in the manifest.

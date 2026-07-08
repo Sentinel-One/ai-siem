@@ -42,6 +42,8 @@ src.process.cmdline contains:matchcase 'PowerShell'            // case-sensitive
 
 Case-insensitive by default. Cannot be used on numeric values. The OR form is much faster than chaining `contains … OR contains …`.
 
+> **queryLang 2.0 vs 1.0 operators in Custom Detection rule bodies.** These are the `queryLang 2.0` operators. The S1QL-1.0 forms are different tokens: `contains:anycase` is the 2.0 spelling of 1.0 `ContainsCIS`, and `in:anycase` replaces 1.0 `In`. Custom Detection rules (events / correlation / scheduled) all run at `queryLang 2.0`, so their bodies must use the 2.0 operators. Confirmed live (2026-07): an events rule authored with the 1.0 operator `ContainsCIS` was accepted at create time but never fired; rewritten with `contains:anycase` it fired immediately. The API does not warn, it stores the 1.0 operator and the rule silently matches nothing. Lint rule bodies for 1.0 operators (`ContainsCIS`, `In`, etc.) before deploy.
+
 ### `matches` — regex
 
 ```

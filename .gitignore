@@ -58,3 +58,6 @@ LOCAL_*.txt
 .env.*
 *.pem
 *.key
+__pycache__/
+*.pyc
+*.pyo

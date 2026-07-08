@@ -134,6 +134,14 @@ Multi-tactic body swaps the filter to `| filter tactics >= {{TACTIC_THRESHOLD}}`
 
 Render `assets/rba_dashboard.template.json` and `sdl_put_file` to `/dashboards/{{PREFIX}}-RBA`. Panels: risk-events / risk-objects / contributors number tiles, risk leaderboard (cumulative score per object, `showBarsColumn`), risk by MITRE tactic (donut), risk by contributor (donut), risk score over time by object type (stacked_bar, `transpose risk_object_type on timestamp`, safe single-token values), top threat objects (table), and the contributing-events timeline (table). Format timestamps with `simpledateformat(timestamp,'yyyy-MM-dd HH:mm:ss','UTC')` and put `sort` before `columns`.
 
+## Optional: local demo console (UI)
+
+`assets/rba_console/` is a self-contained, browser-based RBA console, optional, and great for demoing the model live. It runs on the presenter's laptop, not in the tenant. `server.py` is a zero-dependency Python proxy (macOS stdlib) that reads the SDL creds from the Claude Desktop config at runtime and proxies `/api/powerQuery`, `/api/getFile`, `/api/putFile` to the SDL xdr host, with the Bearer injected server-side so the browser holds no token and CORS is a non-issue. `index.html` is a 4-tab UI: Talk track, Deployed artefacts, Live risk (24h leaderboard from `dataSource.name='risk'`), and a Risk factor editor that reads / edits / saves `{{PREFIX}}RiskFactors.csv` with a live "projected impact" panel (Sigma base_score x current multiplier vs the fire threshold). Run: `cd rba_console && python3 server.py`, then open `http://localhost:8787` (the localhost URL, not `file://`, which has no proxy). Render `{{ACCOUNT_NAME}}`, `{{ACCOUNT_ID}}`, `{{PREFIX}}`, and the four `{{RULE_*_ID}}` tokens before a customer demo. See `assets/rba_console/README.md`.
+
+## Optional: persisted decayed risk register
+
+Dynamic windowed scoring (the incident rules over 24h / 7d) is the recommended default: self-cleaning, drift-free, and time-decayed for free. Add a persisted register ONLY when you need memory beyond the window or long-horizon entity trending (an object quietly accumulating over weeks, or a risk curve over months). `assets/rba_risk_register.savelookup.pq` maintains a running per-object score with time decay (`new = old * {{DECAY}} + today`, `{{DECAY}}` ~= 0.9 for a one-week half-life), deployed as a DAILY scheduled flow (reuse the collector shape). It complements, it does not replace, the dynamic incident rules: keep alerting on the windowed score and use the register for trend / executive views. The decay term is what keeps a persisted score from growing unbounded.
+
 ## Scoring example (worked)
 
 A privileged AD user, `IMPERIUM\adm.webb` (ISPM: `privileged=true`, `adminCount=1`), so the factor table gives a x2.0 multiplier. Over a 24h window the collector publishes these risk events:
@@ -185,5 +193,7 @@ The amplification is the point. The same four observations on a standard, non-pr
 | Incident rule, multi-tactic (user + host) | `assets/rba_incident_multitactic.template.json` | STAR scheduled rule via `/cloud-detection/rules` | Fire when 7d distinct MITRE tactics per object >= threshold |
 | RBA dashboard | `assets/rba_dashboard.template.json` | `sdl_put_file /dashboards/{{PREFIX}}-RBA` | Leaderboard, score over time, MITRE / contributor / threat-object breakdowns, timeline |
 | Response flow (optional) | reuse `assets/threat_response_workflow.template.json` | Hyperautomation (alert-triggered) | VT-gated containment off an RBA incident alert |
+| Demo console (optional) | `assets/rba_console/` | presenter laptop (`python3 server.py`) | Browser UI: talk track, artefacts, live leaderboard, and a read/write risk-factor editor |
+| Risk register (optional) | `assets/rba_risk_register.savelookup.pq` | daily scheduled flow to `{{PREFIX}}RiskRegister` | Persisted decayed running risk per object for long-horizon trending |
 
 Common tokens: `{{PREFIX}}`, `{{ACCOUNT_ID}}`, `{{SCOPE_KEY}}`, `{{SCOPE_ID}}`, `{{SDL_XDR_URL}}` (the SDL/xdr host base for the sync PowerQuery call, e.g. `https://xdr.us1.sentinelone.net`; endpoint is `{{SDL_XDR_URL}}/api/powerQuery`), `{{HEC_INGEST_URL}}`, `{{FACTOR_TABLE}}`, `{{RISK_OBJECT_TYPE}}`, `{{THRESHOLD}}`, `{{TACTIC_THRESHOLD}}`, `{{RUN_INTERVAL_MINUTES}}`, `{{LOOKBACK_MINUTES}}`, `{{SEVERITY}}`.

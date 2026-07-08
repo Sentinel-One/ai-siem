@@ -1,0 +1,18 @@
+function processEvent(event)
+    local msg = event["message"] -- we are targeting the message field in this example, change as needed
+
+    if msg and type(msg) == "string" then
+        -- 1. Normalize Whitespace
+        -- This finds any chunk of whitespace (%s+) and replaces it with a single space (" ")
+        msg = string.gsub(msg, "%s+", " ")
+
+        -- 2. Trim leading/trailing whitespace
+        -- This removes any spaces at the very start or very end of the message
+        msg = msg:match("^%s*(.-)%s*$")
+
+        -- Update the event with the cleaned string
+        event["message"] = msg
+    end
+
+    return event
+end

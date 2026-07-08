@@ -1,0 +1,143 @@
+function processEvent(event)
+    --------------------------------------------------------------------------------
+    -- 1. CONFIGURATION: Field Selection: Uncomment only ONE target_field setting
+    --------------------------------------------------------------------------------
+    local source_field = "time"        -- Input Field (e.g., "_time", "time", "GenerateTime")
+    local target_field = "timestamp"   -- Output Field (Creates a new timestamp field)
+    -- local target_field = source_field -- TARGET = SOURCE (This overwrites the original field)
+
+    --------------------------------------------------------------------------------
+    -- 2. TIMEZONE SELECTOR: Uncomment the ONE offset you need
+    --------------------------------------------------------------------------------
+    -- local offset_sec = 0            -- UTC (Standard for Cloud/OCSF)
+    -- local offset_sec = -12600       -- NST (Newfoundland)
+    -- local offset_sec = -14400       -- AST / EDT (Atlantic / Eastern Daylight)
+    local offset_sec = -18000          -- EST (Eastern Standard / Central Daylight)
+    -- local offset_sec = -21600       -- CST (Central Standard / Mountain Daylight)
+    -- local offset_sec = -25200       -- MST (Mountain Standard / Pacific Daylight)
+    -- local offset_sec = -28800       -- PST (Pacific Standard)
+    -- local offset_sec = -32400       -- AKST (Alaska Standard)
+    -- local offset_sec = -36000       -- HST (Hawaii-Aleutian Standard)
+
+    --------------------------------------------------------------------------------
+    -- 3. MODE SELECTOR: Output Formats : Uncomment the ONE format you need
+    --------------------------------------------------------------------------------
+    local mode = "RFC3339"             -- OCSF / Elastic (2026-01-12T12:28:52.651Z)
+    -- local mode = "ISO8601_SPACE"    -- ISO variant (2026-01-12 12:28:52.651)
+    -- local mode = "UNIX_EPOCH"       -- Pure Numeric (1736684932.651)
+    -- local mode = "SPLUNK_US"        -- Splunk Standard (01/12/2026 12:28:52.651)
+    -- local mode = "CLF"              -- Common Log Format (12/Jan/2026:12:28:52 -0500)
+    -- local mode = "SYSLOG_BSD"       -- Legacy Syslog (Jan 12 12:28:52)
+    -- local mode = "CEF"              -- Common Event Format (Jan 12 2026 12:28:52.651)
+    -- local mode = "W3C_IIS"          -- IIS/W3C (2026-01-12 12:28:52)
+    -- local mode = "DB2"              -- IBM DB2 (2026-01-12-12.28.52.651000)
+
+    local include_ms = true            -- Toggle sub-second precision (.000)
+
+    --------------------------------------------------------------------------------
+    -- 4. TRANSFORMATION LOGIC
+    --------------------------------------------------------------------------------
+    local function execute_transform(e)
+        local raw_val = e[source_field]
+        if not raw_val then error("Source field '"..source_field.."' is missing") end
+
+        local epoch = 0
+        local ms_part = 0
+
+        -- A. HANDLE STRING INPUT (EntraID / ISO 8601)
+        if type(raw_val) == "string" then
+            -- Matches: 2026-01-12T17:28:52.651... or 2026-01-12 17:28:52
+            local y, m, d, h, min, sec, ms = raw_val:match("(%d+)-(%d+)-(%d+)[T ](%d+):(%d+):(%d+)%.?(%d*)")
+            
+            if y and m and d and h and min and sec then
+                -- Convert to UTC Epoch first
+                epoch = os.time({year=y, month=m, day=d, hour=h, min=min, sec=sec})
+                
+                -- Capture Milliseconds (Truncate if >3 digits)
+                if ms and #ms > 0 then
+                    ms_part = tonumber(ms:sub(1,3))
+                end
+            else
+                -- Fallback: Try to parse as a stringified number
+                local num_try = tonumber(raw_val)
+                if num_try then
+                    epoch = num_try
+                else
+                    error("Could not parse date string: " .. raw_val)
+                end
+            end
+
+        -- B. HANDLE NUMERIC INPUT (Epoch)
+        elseif type(raw_val) == "number" then
+            epoch = raw_val
+        else
+            error("Unsupported data type: " .. type(raw_val))
+        end
+
+        -- C. NORMALIZE MAGNITUDE (Micro/Milli to Seconds)
+        if epoch > 9999999999999 then     -- Microseconds (16+ digits)
+            ms_part = math.floor((epoch / 1000) % 1000)
+            epoch = epoch / 1000000
+        elseif epoch > 9999999999 then    -- Milliseconds (13 digits)
+            ms_part = math.floor(epoch % 1000)
+            epoch = epoch / 1000
+        end
+
+        -- D. APPLY TIMEZONE OFFSET
+        local adjusted_time = math.floor(epoch + offset_sec)
+        local ms_str = string.format(".%03d", ms_part)
+
+        -- E. FORMAT OUTPUT
+        local final_ts = ""
+
+        if mode == "RFC3339" then
+            local base = os.date("!%Y-%m-%dT%H:%M:%S", adjusted_time)
+            final_ts = base .. (include_ms and ms_str or "") .. "Z"
+
+        elseif mode == "ISO8601_SPACE" then
+            local base = os.date("%Y-%m-%d %H:%M:%S", adjusted_time)
+            final_ts = base .. (include_ms and ms_str or "")
+
+        elseif mode == "UNIX_EPOCH" then
+            final_ts = tostring(adjusted_time) .. (include_ms and ms_str or "")
+
+        elseif mode == "SPLUNK_US" then
+            local base = os.date("%m/%d/%Y %H:%M:%S", adjusted_time)
+            final_ts = base .. (include_ms and ms_str or "")
+
+        elseif mode == "CLF" then
+            -- CLF: [12/Jan/2026:12:28:52 -0500]
+            local tz_label = (offset_sec >= 0 and "+" or "-") .. string.format("%02d00", math.abs(offset_sec/3600))
+            final_ts = os.date("%d/%b/%Y:%H:%M:%S", adjusted_time) .. " " .. tz_label
+
+        elseif mode == "SYSLOG_BSD" then
+            final_ts = os.date("%b %d %H:%M:%S", adjusted_time)
+
+        elseif mode == "CEF" then
+            final_ts = os.date("%b %d %Y %H:%M:%S", adjusted_time) .. (include_ms and ms_str or "")
+
+        elseif mode == "W3C_IIS" then
+            final_ts = os.date("%Y-%m-%d %H:%M:%S", adjusted_time)
+
+        elseif mode == "DB2" then
+            final_ts = os.date("%Y-%m-%d-%H.%M.%S", adjusted_time) .. (include_ms and ms_str or "000")
+        end
+
+        e[target_field] = final_ts
+        return e
+    end
+
+    --------------------------------------------------------------------------------
+    -- 5. SAFETY WRAPPER & ERROR REPORTING
+    --------------------------------------------------------------------------------
+    local status, result = pcall(execute_transform, event)
+    if status then
+        event["_parsing_failed"] = nil 
+        event["_error_msg"] = nil
+        return result
+    else 
+        event["_parsing_failed"] = "true" 
+        event["_error_msg"] = "TS_TRANSFORM_ERR: " .. tostring(result)
+        return event 
+    end
+end

@@ -1,0 +1,61 @@
+function processEvent(event) 
+    --------------------------------------------------------------------------------
+    -- 1. CONFIGURATION
+    --------------------------------------------------------------------------------
+    -- Fields to EXCLUDE from cleaning (Preserve original formatting)
+    local ignored_fields = {
+        ["_raw"] = true,
+        ["raw_message"] = true
+    }
+
+    --------------------------------------------------------------------------------
+    -- 2. HELPER: String Cleaner
+    --------------------------------------------------------------------------------
+    local function clean_string(str)
+        if not str or str == "" then return str end
+        
+        -- gsub returns (string, count). We wrap it in parentheses to 
+        -- forcibly discard the second return value (count).
+        local cleaned = (string.gsub(str, "%s+", " "))
+        
+        -- Trim leading/trailing whitespace
+        return cleaned:match("^%s*(.-)%s*$")
+    end
+
+    --------------------------------------------------------------------------------
+    -- 3. HELPER: Recursive Iterator
+    --------------------------------------------------------------------------------
+    local function recurse_and_clean(t)
+        for k, v in pairs(t) do
+            -- Skip ignored fields
+            if not ignored_fields[k] then
+                if type(v) == "string" then
+                    t[k] = clean_string(v)
+                elseif type(v) == "table" then
+                    recurse_and_clean(v)
+                end
+            end
+        end
+    end
+
+    --------------------------------------------------------------------------------
+    -- 4. MAIN LOGIC
+    --------------------------------------------------------------------------------
+    local function execute_transform(e)
+        recurse_and_clean(e)
+        return e
+    end
+
+    --------------------------------------------------------------------------------
+    -- 5. SAFETY WRAPPER
+    --------------------------------------------------------------------------------
+    local status, result = pcall(execute_transform, event)
+    if status then
+        event["_parsing_failed"] = nil 
+        return result
+    else 
+        event["_parsing_failed"] = "true" 
+        event["_error_msg"] = "WHITESPACE_CLEAN_ERR: " .. tostring(result)
+        return event 
+    end
+end

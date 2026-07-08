@@ -1,0 +1,48 @@
+function processEvent(event)
+    ----------------------------------------------------------------------------
+    -- 1. CONFIGURATION: List the Nested Fields to Flatten
+    ----------------------------------------------------------------------------
+    -- Add any field name here that contains data you want to move to the root.
+    local targets_to_hoist = {
+        "Parsed",    -- Will move event.Parsed -> parsed
+      --  "query",    -- example Will move query.clientIp -> clientIp
+      --  "result"    -- example Will move result.someField -> someField
+    }
+
+    ----------------------------------------------------------------------------
+    -- 2. HOISTING LOGIC
+    ----------------------------------------------------------------------------
+    local function execute_hoist()
+        -- Loop through your configuration list
+        for _, parent_key in ipairs(targets_to_hoist) do
+            
+            -- Grab the nested object (e.g., event["event"])
+            local nested_obj = event[parent_key]
+
+            -- Check if it exists and is actually a table (JSON Object)
+            if nested_obj and type(nested_obj) == "table" then
+                
+                -- Loop through every key/value inside that nested object
+                for child_key, child_value in pairs(nested_obj) do
+                    -- Move it to the Root Level
+                    -- Note: This will overwrite root fields if they share the same name
+                    event[child_key] = child_value
+                end
+
+                -- CLEANUP: Delete the original container
+                -- Remove this line if you want to keep the nested copy as well
+                event[parent_key] = nil
+            end
+        end
+    end
+
+    ----------------------------------------------------------------------------
+    -- 3. SAFETY WRAPPER
+    ----------------------------------------------------------------------------
+    local status, res = pcall(execute_hoist)
+    if not status then 
+        event["_hoisting_error"] = tostring(res) 
+    end
+
+    return event
+end

@@ -165,6 +165,13 @@ Prefer numeric OCSF for filters; the string `severity_` is case-mixed
 (`Critical` and `CRITICAL` co-exist) and will produce split columns in
 `transpose`.
 
+## HEC ingestion, simulating events for detection testing
+
+Raw-log ingestion runs through HEC (the `hec_ingest` tool; `POST {S1_HEC_INGEST_URL}/services/collector`, client documented with `mgmt-console-api`). When injecting events into the data lake to validate a detection, these behaviours are confirmed live (2026-07):
+
+- **Use flat dotted keys, not nested JSON.** With `/event?isParsed=true`, nested OCSF such as `{"event":{"category":"firewall"}}` dropped `event.category` (read back null, since `event.*` is a reserved namespace). The flat key `{"event.category":"firewall"}` landed correctly. Flat dotted keys reliably populate arbitrary OCSF fields (`src.ip.address`, `dst.ip.address`, `threat.category`, ...) and even EDR-style S1QL column names (`EventType`, `TgtProcName`, `LogonResult`) as literal, queryable attributes. `dataSource.name` / `.category` / `.vendor` set via flat keys stick (e.g. `dataSource.category` stays `security`).
+- **HEC data can drive all three custom-rule types.** On an AI-SIEM tenant, `events` and `correlation` STAR rules evaluate HEC-ingested data (both fired from HEC events in testing), not only EDR-agent telemetry, and `scheduled` PowerQuery rules run over the same data lake. So HEC ingest of flat-key events is a working way to end-to-end test any of the three custom detection rule types. See the Detection-as-Code playbook in `sdl-solutions`.
+
 ## Files in this skill
 
 - `<project folder>/credentials.json` — credentials (set `SDL_XDR_URL` and the keys you need; see Setup above). Auto-discovered by the plugin's SessionStart hook.

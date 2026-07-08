@@ -320,6 +320,38 @@ def _get(d: dict, *keys, default=None):
     return default
 
 
+# The custom-detection API exposes NO field for MITRE, tags, attack surfaces, or
+# arbitrary custom attributes (all rejected as "Unknown field"; confirmed live).
+# Those are first-class only on SentinelOne's managed Platform rules. The only
+# writable free-text carriers on a custom rule are name and description, so we
+# fold the repo's [metadata] into a compact, idempotent footer on the description
+# (MITRE / tactics / tags / owner become visible in the console and on alerts).
+# The raw [metadata] stays in the repo as the governance source of truth. The
+# footer is rebuilt from the clean TOML every sync, so re-syncs never stack it.
+_META_MARKER = "\n\n[DaC]"
+
+
+def _render_metadata_footer(rule: dict) -> str:
+    md = _get(rule, "metadata", default={}) or {}
+    if not isinstance(md, dict):
+        return ""
+    parts = []
+    mitre = md.get("mitre")
+    if mitre:
+        parts.append("MITRE: " + ", ".join(str(x) for x in mitre))
+    tactics = md.get("mitre_tactics") or md.get("tactics")
+    if tactics:
+        parts.append("Tactics: " + ", ".join(str(x) for x in tactics))
+    tags = md.get("tags")
+    if tags:
+        parts.append("Tags: " + ", ".join(str(x) for x in tags))
+    owner = md.get("owner") or md.get("author")
+    if owner:
+        parts.append("Owner: " + str(owner))
+    # references stay repo-only (governance); not folded into the console footer.
+    return (_META_MARKER + " " + " | ".join(parts)) if parts else ""
+
+
 def build_envelope(rule: dict, path: Path, scope_override: dict | None) -> dict:
     """Render one rule dict into the {"data":..., "filter":...} API body."""
     name = _get(rule, "name")
@@ -349,11 +381,12 @@ def build_envelope(rule: dict, path: Path, scope_override: dict | None) -> dict:
         "status": status,
         "expirationMode": expiration_mode,
     }
-    desc = _get(rule, "description")
-    if desc:
-        if len(str(desc)) > 2000:
-            raise RuleError(path, "description exceeds the 2000-character API limit")
-        data["description"] = str(desc)
+    base_desc = str(_get(rule, "description") or "").rstrip()
+    full_desc = base_desc + _render_metadata_footer(rule)
+    if full_desc:
+        if len(full_desc) > 2000:
+            raise RuleError(path, "description (with the [DaC] metadata footer) exceeds the 2000-char API limit; trim description, tags, or owner")
+        data["description"] = full_desc
 
     if expiration_mode == "Temporary":
         exp = _get(rule, "expiration")

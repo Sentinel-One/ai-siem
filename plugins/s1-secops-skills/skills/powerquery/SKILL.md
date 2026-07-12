@@ -294,3 +294,8 @@ PowerQuery execution uses the `s1-secops-mcp` MCP tools, which bypass the Cowork
 proxy entirely. Use `powerquery_run` and `powerquery_schema_discover` directly instead of
 falling back to the `mgmt-console-api` skill scripts. The MCP tools run locally
 on your machine and make direct HTTPS calls to `*.sentinelone.net` without proxy interference.
+
+## Timestamp fields on HEC-ingested (isParsed) events (learnings)
+
+- `event.time` is NOT populated on HEC `isParsed` events; the real event timestamp is `timestamp` (epoch NANOSECONDS). `newest(event.time)` returns null, `newest(timestamp)` works. `strftime(event.time,'%H')` silently returns "00" for every row (so an off-hours filter `hod < '05'` matched everything, a false-positive trap), while `strftime(timestamp,'%H')` returns the real hour.
+- `timebucket()` reads the implicit event time and is unaffected. When mixing a table-stored ns timestamp with an HA-injected epoch-ms "now", convert: `number(last_ms)/1000000`.

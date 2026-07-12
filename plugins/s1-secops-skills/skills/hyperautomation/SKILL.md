@@ -63,6 +63,7 @@ before iterating on real action graphs.
 ```
 
 Notes:
+
 - `dynamic_properties: {}` is valid — the manual-trigger node renders with no input fields.
 - **Import is not complete until published: treat create/import and publish as ONE atomic step, publish in the SAME step, never as a follow-up. ALWAYS publish a newly created or imported workflow to a Shared Draft.** A workflow created or imported via the API lands as a **Private Draft owned by the API token's user** (for example, the service user), so it is invisible in the console to the human who requested it. Immediately after a successful import, publish it: `POST /hyper-automate/api/v1/workflows/{workflow_id}/publish?accountIds=<acct>` (bodyless `{}`, returns 204; state stays `inactive`, meaning shared but not running). Use `siteIds=<id>` for a site-scoped workflow. See `references/api-integration.md` section 8a. Skip this only when you are activating the workflow, since activation auto-publishes. You can only publish a draft owned by the token's user; publishing another user's private draft returns 403 "Workflow can't be published".
 - Activate the imported workflow with
@@ -76,13 +77,16 @@ Notes:
 When a user asks to build a workflow, follow this process:
 
 ### Step 1 — Understand the intent
+
 Ask (or infer from context):
+
 - What should trigger the workflow? (alert, schedule, webhook, manual, email)
 - What integrations are needed? (SentinelOne, M365, Slack, VirusTotal, etc.)
 - What is the desired outcome? (enrich alert, disable user, send notification, etc.)
 - Should the workflow run automatically or on-demand?
 
 ### Step 2 — Warn about integrations
+
 **CRITICAL**: Before generating JSON, identify any integration-backed actions (tag = "integration").
 These require pre-configured connections in the console that CANNOT be *created* via API. (An EXISTING connection CAN be pre-bound programmatically: set `integration_id` = the connection's id on each `http_request` action in the import JSON with `use_authentication_data: true`, then activate via `POST .../workflows/{id}/{version_id}/activation` — no manual UI binding needed. One connection also serves actions that hit different hosts, e.g. the LRQ console host and the HEC ingest host, since auth is header-injected regardless of the URL.)
 Always tell the user: *"This workflow uses the [X, Y, Z] integrations. Before importing, you must
@@ -93,14 +97,17 @@ Core actions (Variable, Loop, Condition, Delay, Send Email, HTTP Request without
 Break Loop, Snippet, Wait for Slack, Create Interaction) have `"tag": "core_action"`.
 
 ### Step 3 — Generate the JSON
+
 Read `references/workflow-schema.md` to produce a valid workflow JSON.
 Read `references/building-blocks.md` for the correct action type structures.
 Read `references/functions-reference.md` for available functions and their syntax.
 
 ### Step 4 — Validate before outputting
+
 Self-check against `references/validation-rules.md` before presenting the workflow.
 
 ### Step 5 — API submission (optional)
+
 If the user wants to submit to a live console, read `references/api-integration.md`.
 
 **Credentials**: The plugin's SessionStart hook auto-discovers a `credentials.json`
@@ -114,6 +121,7 @@ Resolution priority (highest wins):
 3. Ask the user to provide their console URL and personal Console User API token
 
 To read credentials in Python:
+
 ```python
 import json, os
 from pathlib import Path
@@ -139,8 +147,11 @@ after both checks pass. Always use a personal Console User API token, not a Serv
 token — see `references/api-integration.md` for the reason.
 
 ### Step 6: Publish so the requester can see it (REQUIRED after any API import)
+
 A workflow imported or created via the API is a **Private Draft owned by the token's user** and is not visible to anyone else in the console, including the person who asked for it. Treat import and publish as ONE atomic step (an import is not complete until it is a Shared Draft; publish in the same step, never a follow-up). After a successful import, ALWAYS publish it to a **Shared Draft**:
 `POST /hyper-automate/api/v1/workflows/{workflow_id}/publish?accountIds=<acct>` (bodyless `{}`, returns 204). The workflow stays `inactive` (shared but not running). Use `siteIds=<id>` for a site-scoped workflow. Skip this step only when you are activating the workflow, since activation publishes automatically. See `references/api-integration.md` section 8a.
+
+- **Deactivate + delete (removal lifecycle).** To remove a workflow: if it is active, deactivate it first with `POST /hyper-automate/api/public/workflows/{workflow_id}/deactivate?siteIds=<id>` (bodyless, returns 204; no `version_id` needed), then `DELETE /hyper-automate/api/v1/workflows/{workflow_id}?siteIds=<id>` (returns 204, soft/recoverable). Deleting a still-active workflow returns `400 "Active workflows cannot be archived"`, so deactivate-then-delete is the required order. See `references/api-integration.md` sections 8 and 8b.
 
 ---
 
@@ -180,7 +191,9 @@ When in doubt, the load-bearing 17 atoms are:
 `email_trigger`. Anything outside this set is exotic; confirm it exists before generating.
 
 ## Example workflows (in references/examples/)
+
 Annotated real examples to use as structural references:
+
 - `simple-linear.md` — simple trigger → action → note pattern
 - `branching.md` — condition with true/false branches + success/fail notes
 - `loop-pattern.md` — loop with APPEND and BREAK logic
@@ -192,12 +205,21 @@ Annotated real examples to use as structural references:
 
 When referencing a previous action in `{{...}}` syntax, use the kebab-case version of the
 action's `name` field. Examples:
+
 - Action named "Get Agents with Active Threat" → `{{get-agents-with-active-threat.body.data}}`
 - Action named "SDL Query" → `{{sdl-query.body.matches[0].attributes.actor_user_email_addr}}`
 - Action named "Singularity Response Trigger" → `{{singularity-response-trigger.data.id}}`
 - Action named "Loop the list of IPv4" → `{{loop-the-list-of-ipv4.item}}`
 
 The rule: lowercase, spaces become hyphens, special characters dropped.
+
+> ⚠️ **Hyphens and other punctuation in a name are DROPPED, not converted to hyphens.** Only spaces
+> become hyphens. So an action named "Launch CIDR-Excluded Detection" slugifies to
+> `launch-cidrexcluded-detection` (the `CIDR-Excluded` hyphen is removed, merging the words), NOT
+> `launch-cidr-excluded-detection`. Referencing the wrong slug fails with "Action contains invalid
+> references". **Avoid hyphens/punctuation in the name of any action you reference**, use plain
+> space-separated words (e.g. "Launch Detection" → `launch-detection`), or copy the exact slug the
+> UI shows.
 
 ---
 
@@ -206,6 +228,7 @@ The rule: lowercase, spaces become hyphens, special characters dropped.
 Use this when the workflow contains integration-backed actions:
 
 > ⚠️ **Pre-requisite integrations to configure before importing:**
+>
 > - **[Integration Name]** — used for [action name(s)]. Configure at Hyperautomation → Integrations → [Integration Name] → Add Connection.
 > - *(repeat for each)*
 >
@@ -229,20 +252,23 @@ Use this when the workflow contains integration-backed actions:
 - ❌ Importing with a Service User token: workflows become invisible to humans in the UI.
   ✅ Always use a personal Console User API token for `S1_CONSOLE_API_TOKEN`.
 - ❌ Running an SDL PowerQuery (LRQ / `datasource` / `savelookup`) from an HTTP action bound to the **"SentinelOne"** mgmt connection. That connection signs as `Authorization: ApiToken`, but the SDL query endpoints (`POST /sdl/v2/api/queries` and `POST {sdl-host}/api/powerQuery`) require `Bearer`, so the action returns `HTTP 500 "Header must start with Bearer"`.
-  ✅ Bind the **"SentinelOne SDL"** connection (Bearer by default) on the HTTP action. Notes: the ApiToken-only `/web/api/v2.1/dv/events/pq` cannot run the `datasource` command (returns 400) and is just an async wrapper over LRQ, so it is not usable for asset/inventory refresh; ## Running an SDL LRQ from an HA flow (async launch + POLL LOOP) — tenant-validated 2026-06-25
+  ✅ Bind the **"SentinelOne SDL"** connection (Bearer by default) on the HTTP action. Notes: the ApiToken-only `/web/api/v2.1/dv/events/pq` cannot run the `datasource` command (returns 400) and is just an async wrapper over LRQ, so it is not usable for asset/inventory refresh; `/api/powerQuery` on the SDL host is synchronous (one call completes a `savelookup`) while `/sdl/v2/api/queries` is async. Tenant-validated 2026-06-13.
+- ❌ Ingesting OCSF / structured events into AI SIEM via HEC (`/services/collector/event?isParsed=true`) without SentinelOne source-attribution fields. OCSF omits them, so events land with a null source (no attribution, degraded console rendering, and `dataSource.name`-based filters/detections miss).
+  ✅ Include `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security` — required for AI SIEM to process custom OCSF sources), `event.type`, and `site_id`. Emit `event.type` as a FLAT dotted key (`"event.type": "..."`); a nested `event:{...}` object is dropped on ingest because `event` is a HEC-reserved key.
+
+## Running an SDL LRQ from an HA flow (async launch + poll) — tenant-validated 2026-06-22
 
 **Rule: always read SDL data from an HA flow via LRQ, never the synchronous `/api/powerQuery`.** The sync endpoint returns truncated / incomplete responses for large result sets (measured ~1/5 success on a ~1 MB `dataset` read; LRQ was 5/5) and is deprecated. Use LRQ for every SDL read from a workflow, including `dataset` / lookup-table reads, regardless of size. Reference `{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries` so the host comes from the bound "SentinelOne SDL" connection, not a hardcoded tenant.
 
 **Datatables are scope-specific.** A table saved with `savelookup` at site scope is not visible to a read at account scope (or an LRQ scoped by `accountIds`), and vice versa. Create the lookup in the same scope the flow reads.
 
-
 `POST /sdl/v2/api/queries` is ASYNC. The launch response is NOT the results: it returns `body.id`
 plus `body.stepsCompleted` / `body.totalSteps`, and `body.data` is `null` while the query is still
-running. The query id is also EPHEMERAL: it expires shortly after the query finishes. So a fixed
+running. The query id is also EPHEMERAL — it expires shortly after the query finishes. So a fixed
 wait fails BOTH ways: too short returns `data: null` (still running); too long returns HTTP 404
 "query id not found" (the id expired, and the downstream reference then resolves to
 `UnresolvedLanguageReference`). Do NOT use one long delay. Use a tight POLL LOOP that reads the moment
-the query is done. Required pattern:
+the query is done. Required pattern (tenant-validated 2026-06-25):
 
 1. **Launch** — `POST {{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries` with body
    `{"queryType":"PQ","tenant":true,"startTime":...,"endTime":...,"queryPriority":"HIGH","pq":{"query":...,"resultType":"TABLE"}}`.
@@ -252,17 +278,52 @@ the query is done. Required pattern:
 2. **Poll loop** — a `loop` (while, capped, e.g. 60 iterations) whose FIRST inner action is the GET
    `GET {{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries/{{local_var.query_id}}?lastStepSeen=0`,
    echoing header `X-Dataset-Query-Forward-Tag: {{local_var.forward_tag}}`. Then a condition on the
-   POLL body (NOT the launch body, which is captured once and never updates inside the loop):
+   POLL body (NOT the launch body — the launch body is captured once and never updates inside the loop):
    done when `{{poll-slug.body.stepsCompleted}} = {{poll-slug.body.totalSteps}}` (operator `equals`;
-   the field is **`totalSteps`**, not `stepsTotal`). TRUE goes to consume results + `break_loop`.
-   FALSE goes to a short `delay` (~5s) as the leaf of the false branch; the loop then re-iterates.
+   the field is **`totalSteps`**, not `stepsTotal`). TRUE → consume results + `break_loop`. FALSE → a
+   short `delay` (~5s) as the leaf of the false branch; the loop then re-iterates and re-polls.
 3. **Loop-scoped outputs are NOT visible outside the loop.** Every action that reads a poll result
-   (`{{poll-slug.body...}}`), extract/read, branch, notify, break, MUST live INSIDE the loop
+   (`{{poll-slug.body...}}`) — extract/read, branch, notify, break — MUST live INSIDE the loop
    (`parent_action` = the loop's export_id). An action placed after the loop that references a
    loop-internal output fails to resolve. Read from the POLL response: `poll-slug.body.data.columns`
    (array of `{name}`), `poll-slug.body.data.values` (2D array); count rows with
-   `{{Function.JQ(poll-slug.body.data.values, "length", true)}}`. For a `savelookup` (no results
-   consumed) the loop body is just poll, done-check, break/delay.
+   `{{Function.JQ(poll-slug.body.data.values, "length", true)}}`, index with
+   `{{Function.ACCESS_LIST_ITEM(Function.ACCESS_LIST_ITEM(poll-slug.body.data.values, 0), 0)}}`.
+   For a `savelookup` (no results consumed) the loop body is just poll → done-check → break/delay.
+
+**Connection requirement (do not skip):** every SDL HTTP action (launch + poll) and the HEC ingest
+calls must set `use_authentication_data: true` and be bound to the **"SentinelOne SDL"** connection,
+which signs `Authorization: Bearer <jwt>`, the auth LRQ requires. The "SentinelOne" mgmt connection
+signs `ApiToken` and the SDL endpoints reject it with `HTTP 500 "Header must start with Bearer"`.
+Create/verify this connection at Hyperautomation → Integrations → SentinelOne SDL → Add Connection
+(Bearer token) BEFORE activating the workflow; activation otherwise fails 400 "requires configuration".
+
+## Posting a UAM SecurityAlert from an HA flow that actually SURFACES — tenant-validated 2026-06-22
+
+Post ONE self-contained alert to `{HEC_INGEST_URL}/v1/alerts` (Bearer + `S1-Scope` headers). A
+separate `/v1/indicators` call is NOT needed, embed the indicator inline in
+`finding_info.related_events[]` (one round trip, no indicator-registration timing to get wrong). The
+two-call indicator-then-alert flow is fragile (the alert silently drops if the indicator uid hasn't
+registered). Fields the stitcher REQUIRES, or you get HTTP 202 but a SILENT DROP (no alert appears):
+
+- **`class_uid` = `99602001`** ("S1 Security Alert") + `class_name:"S1 Security Alert"`,
+  `type_uid:9960200101`, `type_name:"S1 Security Alert: Create"`. **Generic OCSF `class_uid` 2002 is
+  silently dropped, this was the actual bug.**
+- Top-level **`resources`: [{uid, name, type_id:1, type:"host"}]** (the mapped asset).
+- `category_uid:2`, `category_name:"Findings"`, `activity_id:1`, `severity_id`, `state_id:1`,
+  `s1_classification_id:1`, `attack_surface_ids:[1]`, top-level `time` (epoch ms).
+- `metadata.version:"1.6.0-dev"`, `metadata.extension:{name:"s1",uid:"998",version:"0.1.0"}`,
+  `metadata.product:{name,vendor_name}`, `logged_time`, `modified_time`.
+- `finding_info:{uid,title,desc,related_events:[...]}`. Each related_event needs `uid, class_uid,
+  type_uid, category_uid, activity_id, severity_id, time, message`, `observables[]` (each with BOTH
+  `type` AND `typeName`), and inline `device` + `actor.user`.
+
+Reference builder: `s1-secops-mcp/lib/uam-ingest.js` `buildSecurityAlert({inline:true})`. The alert
+surfaces in UAM ~30-60s after the POST; poll `uam_list_alerts`.
+
+- **Attribution:** for alerts a flow itself raises (e.g. the UEBA SILENT / DORMANT watchdogs), set
+  `metadata.product` = `{"name":"Hyperautomation","vendor_name":"SentinelOne"}` so the alert is
+  attributed to Hyperautomation in the console rather than to a generic/blank product.
 
 ## Workflow import via s1-secops-mcp
 
@@ -284,7 +345,7 @@ skill scripts. The MCP server runs locally on your machine and makes direct HTTP
   scope rule applies to `activation`, `deactivate`, `publish`, and `DELETE` — append
   `?siteIds=<id>` or `?accountIds=<acct>` to match where the workflow lives.
 - **There is no in-place update.** Import always creates a NEW workflow. Re-importing a name that
-  already exists succeeds but the console auto-appends ` (1)`, ` (2)`, … to the name. To "edit" a
+  already exists succeeds but the console auto-appends `(1)`, `(2)`, … to the name. To "edit" a
   deployed workflow you must delete the old one (REST `DELETE`, see below) and re-import (or edit it
   in the UI).
 - **Delete a workflow with a REST `DELETE`.** `DELETE /hyper-automate/api/v1/workflows/{id}?accountIds=<acct>`

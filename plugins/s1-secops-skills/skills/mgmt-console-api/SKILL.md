@@ -1208,3 +1208,9 @@ entirely. Use `s1_api_get`, `s1_api_post`, `uam_list_alerts`, `uam_get_alert`, `
 and other MCP tools directly instead of falling back to the `mgmt-console-api`
 skill scripts. The MCP tools run locally on your machine and make direct HTTPS calls to
 `*.sentinelone.net` without proxy interference.
+
+## STAR / Custom Detection rule lifecycle (learnings)
+
+- **Update in place:** `PUT /web/api/v2.1/cloud-detection/rules/{id}` requires the FULL body `{data, filter}`; omitting `filter` returns HTTP 400 "filter: Missing data for required field". PUT resets the rule to the body's `status` (typically Disabled), so re-enable afterward.
+- **Delete:** `DELETE /web/api/v2.1/cloud-detection/rules/{id}`, or bulk with `{"filter": {"ids": [...], "siteIds" | "accountIds": [...]}}`.
+- **List:** always pass `isLegacy=false` or scheduled / PowerQuery rules are silently omitted.

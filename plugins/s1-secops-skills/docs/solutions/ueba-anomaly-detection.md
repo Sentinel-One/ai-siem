@@ -76,9 +76,12 @@ how it decides.
 | PEER-GROUP | One account does far more of an action than everyone else doing it, invisible to a self-baseline (e.g. a service account always high) | per-action population cohort of per-principal daily volume; fire when 24h count exceeds the cohort p95 by a multiple (default 3x). No identity/HR attributes needed | T1078 / T1021 | scheduled detection |
 | DORMANT | An account idle 60 days suddenly authenticates | last-seen per pair, anti-join vs live-active with age over N days | T1078 | Hyperautomation watchdog |
 
-SILENT and DORMANT run as Hyperautomation watchdogs, not scheduled rules, because the scheduled-rule
-engine cannot enumerate zero-event pairs and rejects `left join` / `dataset`. Each watchdog runs the
-anti-join as an LRQ and posts one uniform OCSF alert per run.
+SILENT and DORMANT run as Hyperautomation watchdogs, not scheduled rules, because scheduled rules run on
+a pre-aggregated data layer where the operators needed to enumerate absent / zero-event pairs, a
+`left join` + `dataset` anti-join against the baseline, are not available (the `sentinelone-powerquery`
+skill lists every function that scheduled rules cannot use). Each watchdog runs the anti-join as a full
+LRQ on raw events and posts one uniform OCSF alert per run (see the detection-watchdog pattern in the
+`sentinelone-hyperautomation` skill).
 
 ## Optional: ISPM-sourced peer groups
 
@@ -334,7 +337,7 @@ Failure modes a basic moving-average baseline misses, and this solution catches:
 
 - Scheduled rules run PowerQuery 2.0 and support `estimate_distinct(x)`, `count(<predicate>)` as a conditional count, `max(x)`, `median(x)`, `p95(x)`, `pct(N, x)`, `newest(ts)`, and `strftime(event.time, '%H')` as an hour-of-day group key. `percentile(x, N)` returns HTTP 500, use `p95` / `p10` / etc.
 - Cast the standard deviation with `number()` before dividing in the z computation. SDL columns can be type-locked to string, and `number()` returns 0 for null and avoids NaN.
-- SILENT and DORMANT cannot be scheduled rules (the engine rejects `left join` / `dataset`); they run as Hyperautomation anti-join watchdogs that post one stitched OCSF alert.
+- SILENT and DORMANT cannot be scheduled rules (scheduled rules run on a pre-aggregated data layer, without `left join` / `dataset`); they run as Hyperautomation anti-join watchdogs that post one stitched OCSF alert.
 - The scoring method is a config knob, not a detection: the baseline stores `median`, `p95`, and `pct(5, x)` alongside `avg` and `stddev` in one pass, so switching method needs no rebuild.
 - Each advanced detection uses its own suffixed baseline table, and that savelookup must finish before the rule deploys (poll up to 300s).
 

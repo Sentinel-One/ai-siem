@@ -325,6 +325,32 @@ surfaces in UAM ~30-60s after the POST; poll `uam_list_alerts`.
   `metadata.product` = `{"name":"Hyperautomation","vendor_name":"SentinelOne"}` so the alert is
   attributed to Hyperautomation in the console rather than to a generic/blank product.
 
+## Detection watchdog pattern (the alternate to a scheduled rule)
+
+Some detection logic cannot run as a PowerQuery **scheduled** Custom Detection rule, because scheduled
+rules run on a pre-aggregated data layer where functions like `dataset`, `datasource`, `now`,
+`querystart` / `queryend` / `queryspan`, `topK`, `savelookup`, CIDR/wildcard `lookup`, `lookup` over a
+>10,000-row table, time-shifted `timebucket`, and `timebucket` < 30s are unavailable (full list in the
+`powerquery` skill). The classic case is enumerating **absent** rows, a pair present in a
+baseline but with zero events in the live window, which needs a `left join` + `dataset` anti-join.
+
+The **alternate is an HA watchdog**: a scheduled (or manual / run-now) workflow that
+
+1. launches the full PowerQuery as an SDL LRQ (the LRQ runs on raw events, so `left join`, `dataset`,
+   `savelookup`, wide/`timebucket`, large `lookup`, etc. all work) — see "Running an SDL LRQ from an HA
+   flow" above;
+2. polls the LRQ to completion and reads back the result rows;
+3. posts ONE OCSF SecurityAlert to UAM for the offending rows (or a summary) — see "Posting a UAM
+   SecurityAlert from an HA flow that actually SURFACES" above; set
+   `metadata.product = {"name":"Hyperautomation","vendor_name":"SentinelOne"}` for attribution.
+
+Deploy it active (bind the "SentinelOne SDL" Bearer connection) so the schedule runs it, and/or trigger
+it immediately with run-now (`POST .../workflow-execution/manual/{workflow_id}/{version_id}`). The UEBA
+**SILENT** (a reliably-active pair goes quiet) and **DORMANT** (a long-idle pair reactivates) detections
+are the canonical examples. When several LRQ queries must run and they use `| nolimit`, chain them
+**sequentially** (launch, poll to done, then launch the next): only one nolimit query runs per account
+at a time.
+
 ## Workflow import via s1-secops-mcp
 
 Workflow import, export, and listing use the `s1-secops-mcp` MCP server, which bypasses the

@@ -274,3 +274,9 @@ tools instead. They run on your local machine and bypass the sandbox proxy entir
 No Desktop Commander workaround is necessary when you use these tools.
 
 This is not a credential issue. Do not widen time windows or change query logic to debug this.
+
+## HEC ingest (learnings)
+
+- **Three mandatory attributes for the XDR / OCSF view:** `dataSource.name`, `dataSource.vendor`, `dataSource.category`. Set all three as query params on `POST {HEC}/services/collector/event?isParsed=true&dataSource.name=...&dataSource.vendor=...&dataSource.category=...`. With only `dataSource.name` the events land under **All Data** but are invisible under the **XDR** view (XDR-scoped dashboards and rules show nothing, while all-data API queries still return them).
+- **Backdating:** a top-level `time` field in **epoch SECONDS** backdates the event; a nested `event.time` (ms) does NOT. `isParsed=true` indexes the JSON keys directly as top-level attributes, so the field names you ingest are the field names you query (source-agnostic, no OCSF mapping needed).
+- **Query-time timestamp:** on HEC `isParsed` events `event.time` is NOT populated; the queryable event time is `timestamp` (epoch NANOSECONDS). Use `timestamp` for `newest()/oldest()`, `strftime()` hour-of-day, and time math; convert to ms with `number(ts)/1000000`.

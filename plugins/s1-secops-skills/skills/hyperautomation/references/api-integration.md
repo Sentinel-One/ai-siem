@@ -340,11 +340,13 @@ Returns all versions (draft, active, inactive) for a given workflow.
 
 **Permission**: `Hyper Automate.workflowsActivateDeactivate`
 
-**Query params**: `version_id` (optional), `accountIds`, `siteIds`, `groupIds`.
+**Query params**: `version_id` (optional), `accountIds`, `siteIds`, `groupIds`. Omit `version_id`
+to deactivate the currently active version (you do not need to look the version up first).
 
 **Body**: `{ "data": null }` or empty `{}`
 
-**Responses**: `204` success (no body), `422` validation error.
+**Responses**: `204` success (no body), `422` validation error. Validated 2026-07-11: a bodyless
+`POST .../workflows/{id}/deactivate?siteIds=<id>` with no `version_id` returned `204`.
 
 ---
 
@@ -368,6 +370,13 @@ importing user until it is published or activated.
 
 Soft, recoverable delete (the UI offers a "Restore workflow" action). This is the correct delete
 mechanism. Validated end to end 2026-06-13 (import → publish → delete → gone from list).
+
+**Deactivate an ACTIVE workflow before deleting it.** Deleting a running workflow returns
+`400 {"detail": "Active workflows cannot be archived"}`. The correct sequence for an active
+workflow is two calls: (1) deactivate it (section 8: `POST .../workflows/{id}/deactivate?siteIds=<id>`,
+returns `204`), then (2) `DELETE .../workflows/{id}?siteIds=<id>` (returns `204`). Validated
+2026-07-11 on two active watchdog flows: deactivate `204` then delete `204`; a direct delete of the
+still-active flow first returned the 400 above.
 
 **Query params**: `accountIds` or `siteIds` — match where the workflow lives. A `404 "Object not
 found"` means the id is not under that scope (or already deleted).
@@ -396,7 +405,16 @@ found"` means the id is not under that scope (or already deleted).
 }
 ```
 
-**Responses**: `201` success, `422` validation error.
+**Responses**: `201` success (returns the execution object with `id` and `state: "Running"`), `422` validation error.
+
+> **Run-now also works on a SCHEDULED-trigger workflow (validated 2026-06-22).** Despite the name
+> "manual", `POST .../workflow-execution/manual/{id}/{version_id}?accountIds=<acct>` triggers an
+> active scheduled-trigger workflow immediately, no need to wait for its cron. The workflow must be
+> `state: "active"` (bind connections + activate first). Verify the run via the executions endpoints
+> below: poll `GET .../workflow-execution/{execution_id}` until `state` is `"Completed"`, then check
+> `executed_actions` (should equal the action count) and `error_actions` (empty = clean run).
+> Tenant-validated end to end: a CIDR-excluded LRQ + UAM alert flow ran via this endpoint in ~34s,
+> 10/10 actions, `error_actions: []`.
 
 ---
 

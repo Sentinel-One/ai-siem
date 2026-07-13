@@ -41,7 +41,7 @@ Inherited from the Purple SOC Analyst operating standard and the SDL threat-hunt
 
 **Before anything else**, verify that the required skills and tools are available in this session. Check the `available_skills` list in your context for each of the following:
 
-```
+```text
 Required skills for full investigation capability:
 
   Core (SentinelOne telemetry & console)
@@ -60,7 +60,7 @@ For each skill, mark it as **✓ available** or **✗ missing**.
 
 Display the result to the user before proceeding:
 
-```
+```text
 === Tool Discovery ===
 
 Core skills:
@@ -89,7 +89,7 @@ If all required skills for the chosen mode are present, proceed automatically (n
 
 After tool discovery, ask the user:
 
-```
+```text
 === SOC Investigator Intake ===
 
 1. ALERT SOURCE
@@ -143,7 +143,7 @@ Once intake is complete, **generate and display the full investigation plan befo
 
 The plan is derived from their intake answers (mode, alert source, approval gates). Show it as a numbered checklist. Example for MEDIUM mode with approval gates ON:
 
-```
+```text
 === Investigation Plan ===
 Mode: MEDIUM | Alerts: last 48h HIGH | Approval gates: ON
 Output: ./investigation_2025-06-16T10-00-00/
@@ -198,14 +198,14 @@ After the user confirms, begin Phase 1 immediately.
 
 ### Phase 1: Alert Ingest & Entity Extraction (5 min)
 
-**1.1 Fetch alerts**
-```
+#### 1.1 Fetch alerts
+```text
 Use: mgmt-console-api
 Query: GET /threats (filtered by user input)
 Output: alerts.jsonl
 ```
 
-**1.2 Single-pass entity extraction**
+#### 1.2 Single-pass entity extraction
 ```json
 {
   "alerts_processed": 42,
@@ -218,14 +218,14 @@ Output: alerts.jsonl
 }
 ```
 
-**1.3 Draft timeline (alert order, not forensic)**
-```
+#### 1.3 Draft timeline (alert order, not forensic)
+```text
 - 2025-06-16 10:00 | HIGH   | DESKTOP-ABC123 | john.doe   | Suspicious Process Execution (powershell)
 - 2025-06-16 10:05 | MEDIUM | DESKTOP-ABC123 | john.doe   | Registry Modification (persistence)
 - 2025-06-16 10:10 | HIGH   | DESKTOP-XYZ789 | jane.smith | File Download (executable)
 ```
 
-**1.4 Draft MITRE (simple inference from alert type)**
+#### 1.4 Draft MITRE (simple inference from alert type)
 ```json
 {
   "tactics": ["Execution", "Persistence"],
@@ -243,7 +243,7 @@ Output: alerts.jsonl
 - `summary.md` - 1-page overview for quick review
 
 **Approval gate** (if enabled):
-```
+```text
 ✓ SHORT investigation complete.
   - 42 alerts processed
   - 7 unique users, 5 endpoints, 12 IPs, 8 IOCs extracted
@@ -261,8 +261,8 @@ Includes SHORT, plus:
 
 ### Phase 2: IOC Enrichment (5 min)
 
-**2.1 Batch IOC lookups**
-```
+#### 2.1 Batch IOC lookups
+```text
 Use: Purple MCP (VirusTotal) + mgmt-console-api (S1 IOC API)
 
 For each IOC in entities.json:
@@ -272,8 +272,8 @@ For each IOC in entities.json:
     Extract: verdict, threat_type, confidence
 ```
 
-**2.2 Sample if >20 IOCs**
-```
+#### 2.2 Sample if >20 IOCs
+```text
 If IOC count > 20:
   Sort by alert_count (descending)
   Lookup only top 20 IOCs
@@ -284,8 +284,8 @@ If IOC count > 20:
 
 ### Phase 3: Endpoint Process Context (5 min)
 
-**3.1 One PowerQuery per unique endpoint**
-```
+#### 3.1 One PowerQuery per unique endpoint
+```text
 Use: powerquery skill
 
 Query A: Process tree for user during alert window
@@ -324,7 +324,7 @@ Query B: Network behavior for same user
 - `timeline.csv` - timeline for import to Excel/Splunk
 
 **Approval gate + Third-Party Option** (if enabled):
-```
+```text
 ✓ MEDIUM investigation complete.
   - 8 IOCs looked up (3 malicious, 2 suspicious, 3 clean)
   - 5 endpoints queried (process trees + network behavior)
@@ -348,8 +348,8 @@ Includes MEDIUM, plus:
 
 ### Phase 5: Deep Forensic Queries (25 min, PARALLEL)
 
-**5.1 For each endpoint in alerts, run 4 deep PowerQueries**
-```
+#### 5.1 For each endpoint in alerts, run 4 deep PowerQueries
+```text
 Per endpoint:
 
 Query A: Full process execution tree (parent, siblings, children)
@@ -384,8 +384,8 @@ Query D: Full network behavior
 
 ### Phase 6: Threat Intelligence Deep-Dive (10 min, PARALLEL)
 
-**6.1 SDL threat intelligence correlation**
-```
+#### 6.1 SDL threat intelligence correlation
+```text
 Use: powerquery skill
 
 For each IOC in entities.json:
@@ -398,7 +398,7 @@ For each IOC in entities.json:
 
 **Goal**: Find other endpoints/users that encountered same IOCs (lateral spread, supply chain).
 
-**6.2 Expand IOC lookups (all IOCs, not sampled)**
+#### 6.2 Expand IOC lookups (all IOCs, not sampled)
 VirusTotal: Full report for all hashes, domains, IPs + S1 IOC API: All IOCs
 
 **Store results**: `threat_intel_complete.json`
@@ -415,7 +415,7 @@ VirusTotal: Full report for all hashes, domains, IPs + S1 IOC API: All IOCs
 - All JSON outputs from earlier phases
 
 **Approval gate + Third-Party Option** (if enabled):
-```
+```text
 ✓ LONG investigation complete.
   - 42 alerts processed
   - 12 endpoints deep-queried (4 queries each = 48 queries)
@@ -441,8 +441,8 @@ Choose: [1 | 2 | 3]
 
 ### Phase 1: Discover Available Data Sources (2 min)
 
-**1.1 Query all available data sources**
-```
+#### 1.1 Query all available data sources
+```text
 Use: powerquery skill
 
 dataSource.name = *
@@ -451,8 +451,8 @@ dataSource.name = *
 | limit 50
 ```
 
-**1.2 Ask user which sources to investigate**
-```
+#### 1.2 Ask user which sources to investigate
+```text
 Available data sources detected:
   ✓ Microsoft 365 (1.2M events)
   ✓ Entra ID (567K events)
@@ -481,7 +481,7 @@ For each user, IP, and domain in `entities.json`, run targeted queries against t
 ### Phase 4: Anomaly Detection (5 min per source)
 
 For each user + activity combination, run timeseries analysis:
-```
+```text
 | let hour = timebucket('1h')
 | group ct=count() by hour
 | sort +hour
@@ -529,7 +529,7 @@ Synthesize all findings into `third_party_report.md`.
 
 ## Output Structure
 
-```
+```text
 investigation_<timestamp>/
 ├── INTAKE.txt                      # User intake responses
 ├── entities.json                   # Extracted entities

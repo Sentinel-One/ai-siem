@@ -294,3 +294,32 @@ PowerQuery execution uses the `s1-secops-mcp` MCP tools, which bypass the Cowork
 proxy entirely. Use `powerquery_run` and `powerquery_schema_discover` directly instead of
 falling back to the `mgmt-console-api` skill scripts. The MCP tools run locally
 on your machine and make direct HTTPS calls to `*.sentinelone.net` without proxy interference.
+
+## Timestamp fields on HEC-ingested (isParsed) events (learnings)
+
+- `event.time` is NOT populated on HEC `isParsed` events; the real event timestamp is `timestamp` (epoch NANOSECONDS). `newest(event.time)` returns null, `newest(timestamp)` works. `strftime(event.time,'%H')` silently returns "00" for every row (so an off-hours filter `hod < '05'` matched everything, a false-positive trap), while `strftime(timestamp,'%H')` returns the real hour.
+- `timebucket()` reads the implicit event time and is unaffected. When mixing a table-stored ns timestamp with an HA-injected epoch-ms "now", convert: `number(last_ms)/1000000`.
+
+## Scheduled (Custom Detection / STAR) rules run on a pre-aggregated data layer (learnings)
+
+A PowerQuery **scheduled** rule runs on top of a pre-aggregated data layer, not the raw event stream, so
+several traditional PowerQuery functions are not relevant as part of scheduled-rule detection logic and
+must not be used in a scheduled-rule body:
+
+- `dataset`
+- `datasource`
+- `now`
+- `querystart`, `queryend`, `queryspan`
+- `topK`
+- `savelookup`
+- `lookup` by CIDR or wildcard (`=:cidr`, `=:wildcard`)
+- `lookup` against a table with more than 10,000 rows
+- time-shifted queries using `timebucket`
+- `timebucket` with a bucket size smaller than 30 seconds
+
+These all work in interactive PowerQuery (Event Search / Deep Visibility / dashboards / savelookup
+builders), which runs on raw events. **The alternate for a use case whose detection logic needs any of
+them is a Hyperautomation watchdog** (a scheduled or manual/run-now flow that runs the full PowerQuery as
+an LRQ, then posts an OCSF alert to UAM); see the `hyperautomation` skill. This is why the
+UEBA SILENT / DORMANT detections, which anti-join live counts against the baseline with `left join` +
+`dataset` to find absent / zero-event pairs, run as HA watchdogs rather than scheduled rules.

@@ -1,0 +1,19 @@
+metadata_details:
+  purpose: Parser for QNAP QuLog Center logs (RFC 5424 structured-data syslog), normalising
+    QuLog@Access events into OCSF Authentication (3002) and preserving QuLog@Event NAS
+    system events as faithful, lightly-mapped administrative events.
+  datasource_vendor: qnap
+  datasource_name: QNAP QuLog Center
+  dataSource: ocsf
+  format: OCSF
+  ingestion_method: syslog
+  dependency_summary: Requires QuLog Center to forward logs via syslog (RFC 5424) with
+    the QuLog@Access and QuLog@Event structured-data elements intact.
+  performance_impact: Minimal - one syslog frame match plus a repeating key=value extractor
+    over the structured-data block.
+  tags: qnap, qulog, nas, syslog, rfc5424, ocsf, authentication, parser
+  version: 1.2.1
+  author: Mario Ciccarelli (mario.ciccarelli@sentinelone.com)
+  ocsf_classes:
+    - QuLog@Access -> Authentication (3002)
+    - QuLog@Event  -> unclassified administrative event (no class_uid)

@@ -255,6 +255,28 @@ Use this when the workflow contains integration-backed actions:
   ✅ Bind the **"SentinelOne SDL"** connection (Bearer by default) on the HTTP action. Notes: the ApiToken-only `/web/api/v2.1/dv/events/pq` cannot run the `datasource` command (returns 400) and is just an async wrapper over LRQ, so it is not usable for asset/inventory refresh; `/api/powerQuery` on the SDL host is synchronous (one call completes a `savelookup`) while `/sdl/v2/api/queries` is async. Tenant-validated 2026-06-13.
 - ❌ Ingesting OCSF / structured events into AI SIEM via HEC (`/services/collector/event?isParsed=true`) without SentinelOne source-attribution fields. OCSF omits them, so events land with a null source (no attribution, degraded console rendering, and `dataSource.name`-based filters/detections miss).
   ✅ Include `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security` — required for AI SIEM to process custom OCSF sources), `event.type`, and `site_id`. Emit `event.type` as a FLAT dotted key (`"event.type": "..."`); a nested `event:{...}` object is dropped on ingest because `event` is a HEC-reserved key.
+- ❌ **Leaving every action's `client_data.position` at `{x:0,y:0}`.** The flow runs fine but the console renders every node stacked on top of itself — unreadable. ALWAYS lay out the graph (tenant-validated 2026-07-18).
+  ✅ Assign real coordinates: top-level nodes (`parent_action: null`) step DOWN the y-axis (~180px apart, x=0); a loop's child nodes (`parent_action` = the loop's `export_id`) sit INSIDE the loop container at an x offset (~210) stepping down (~180px). Give the `loop` a large `client_data.dimensions` (e.g. `{width:620,height:720}`) so it encloses its children. A one-pass layout after you build the action list is enough — see the reference `_layout(actions)` pattern:
+  ```python
+  def _layout(actions):
+      top_y, child_y = 0, {}
+      for a in actions:
+          cd = a["action"].setdefault("client_data", {})
+          if a.get("parent_action") is None:
+              cd["position"] = {"x": 0, "y": top_y}
+              if a["action"]["type"] == "loop":
+                  cd["dimensions"] = {"width": 620, "height": 720}; top_y += 190 + 720
+              else: top_y += 190
+          else:
+              y = child_y.get(a["parent_action"], 60)
+              cd["position"] = {"x": 210, "y": y}; child_y[a["parent_action"]] = y + 180
+  ```
+- ❌ **Binding an http_request action to a CONNECTION id.** Setting `action.integration_id` to a specific connection instance's id imports + activates fine (204) but FAILS AT RUNTIME with `"Must provide connection in order..."` (activation does not validate the binding — see below). Tenant-validated 2026-07-18.
+  ✅ Bind the built-in **integration (action-pack) id** — the value `discover`/list returns as the workflow action's `integration_id` (e.g. the SentinelOne SDL action-pack id). A connection created via `POST /web/api/v2.1/hyper-automate/api/v1/connections` returns a *connection* id; do NOT bind that — bind the integration id it was created under, and rely on a connection existing under that integration.
+- ❌ **Trusting activation (204) as proof a flow works.** Activation validates neither connection binding nor `{{Function.JQ}}` references.
+  ✅ Always run-now (or the per-action **Test Action**) after activating and confirm state `Completed` with empty `error_actions`.
+- ❌ **`select((ARR | index(.field)) != null)` in `Function.JQ`.** The `| index(...)` pipe rebinds `.` to `ARR`, so `.field` then indexes the array → `Cannot index array with string "field"`.
+  ✅ Bind first: `select(.field as $n | (ARR | index($n)) != null)`. And when building HTML inside a `Function.JQ` string, use SINGLE-quoted HTML attributes so the only double quotes are jq string delimiters (pre-escaping `\"` inside collides with the wrapper's single quote-escape and the platform reports "Invalid References").
 
 ## Running an SDL LRQ from an HA flow (async launch + poll) — tenant-validated 2026-06-22
 

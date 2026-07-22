@@ -40,8 +40,19 @@ All three servers run from public package registries: `s1-secops-mcp` and `@burt
 {
   "mcpServers": {
     "s1-secops-mcp": {
-      "command": "npx",
-      "args": ["-y", "@pmoses-s1/s1-secops-mcp"],
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm", "--pull=missing",
+        "-e", "S1_CONSOLE_URL",
+        "-e", "S1_CONSOLE_API_TOKEN",
+        "-e", "S1_HEC_INGEST_URL",
+        "-e", "SDL_XDR_URL",
+        "-e", "SDL_LOG_READ_KEY",
+        "-e", "SDL_CONFIG_WRITE_KEY",
+        "-e", "SDL_CONFIG_READ_KEY",
+        "ghcr.io/pmoses-s1/s1-mcps:1.2.3",
+        "sentinelone-mcp"
+      ],
       "env": {
         "S1_CONSOLE_URL": "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",

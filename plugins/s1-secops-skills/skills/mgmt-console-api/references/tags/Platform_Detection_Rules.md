@@ -2,6 +2,26 @@
 
 12 endpoints.
 
+## Working notes: enabling platform (managed / OOTB) rules (tenant-validated, S-26.2.2)
+
+Platform rules are SentinelOne-managed out-of-the-box detections (`createdBy: "SentinelOne"`, ~2,000+ in the catalog), separate from custom STAR rules. Custom rules live at `/web/api/v2.1/cloud-detection/rules`; platform rules live ONLY under `/detection-library/*`. Listing `cloud-detection/rules` will NOT return platform rules.
+
+Reading:
+- List with `GET /detection-library/platform-rules`, scoped via `scopeId` + `scopeLevel` (`global|group|account|site`). For `global`, OMIT `scopeId` (otherwise 400 "a tenant scope request should not include scope id").
+- The facet endpoints (`data-sources`, `surfaces`, `severities`, `statuses`) scope via `siteIds=`, not `scopeId`/`scopeLevel`.
+- `hideQuery=Shown` includes the `s1ql` body in each rule (enum is `Shown`/`Hidden`, not `true`/`false`).
+- `skip` is capped at 1000 ("Cannot display more than 1000 results, please refine your search"). To reach the full catalog, filter by `sources` (array). Source names are vendor-specific, e.g. `Mimecast`, `Palo Alto Networks Firewall`, `Zscaler Internet Access`, `Okta`. Not every ingested source has platform rules (Cisco Umbrella and Tenable had none on this tenant).
+
+Enabling / disabling:
+- `PUT /detection-library/platform-rules/enable`, FLAT body `{ "platformRuleIds": [<ids>], "scopeId": "<id>", "scopeLevel": "site" }`. `platformRuleIds` MUST be integers. String IDs return a misleading HTTP 500 "Server could not process the request". Response carries `data.affected`. Enable "creates a new rule and activates it" (a scoped active copy). `disable` uses the same body shape.
+- The enable/disable/settings body is FLAT, NOT wrapped in `{"data": ...}` (wrapping returns 400 "scopeLevel: Missing data for required field").
+- An account-scoped API user cannot enable at `global`/tenant scope (400 "can not create rule with higher scope ... tenant"). Enable at `account` or `site`.
+
+Site-scope enable requires disabling inheritance FIRST (otherwise enable returns HTTP 500):
+- `PUT /detection-library/platform-rules/settings`, FLAT body `{ "scopeId": "<site>", "scopeLevel": "site", "disableInheritance": true }`. Send ONLY `disableInheritance` plus scope. Including `core`/`autoDefault` in the same call returns 400 "cannot enable auto default when inheritance is enabled".
+- Settings category toggles are `core`, `autoDefault`, `emergingThreat`, `smartDefault` (each `On`/`Off`); at least one of `core`/`autoDefault` is required when setting those, but omit them when only flipping inheritance.
+
+Permissions: reads need `Custom Rules.view`; enable/disable/settings need `Custom Rules.manage`.
 ## `GET /web/api/v2.1/detection-library/data-sources`
 **Get Data Sources**
 `operationId`: `_web_api_detection-library_data-sources_get`

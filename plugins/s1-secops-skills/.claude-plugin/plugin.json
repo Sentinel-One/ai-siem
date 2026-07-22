@@ -1,6 +1,6 @@
 {
   "name": "s1-secops-skills",
-  "version": "1.2.10",
+  "version": "1.2.11",
   "description": "SentinelOne SecOps skills for Claude: PowerQuery threat hunting and STAR/Custom Detection rules; Management Console API; Singularity Data Lake API; SDL dashboards; log parsing (OCSF); Hyperautomation SOAR; z-score anomaly baselining; autonomous DFIR alert investigation (soc-investigator); and one-prompt SDL solutions: source onboarding, asset enrichment, UEBA, ingest health, detection exclusions, Risk-Based Alerting, alert noise reduction, and Detection as Code.",
   "author": {
     "name": "Prithvi Moses",

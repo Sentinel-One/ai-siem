@@ -34,6 +34,29 @@ Inherited from the Purple SOC Analyst operating standard and the SDL threat-hunt
 - Session init first. Enumerate `dataSource.name` live and discover each source's schema before querying it; never assume a field namespace. Reuse the project schema cache if present.
 - Apply the anomaly checklist to every log result: frequency, timing, geolocation, baseline deviation, volume, new entity, privilege, chain.
 - Hold findings until the end and do not over-correlate: a shared time window is not causation; assert a link only when an entity or artifact bridges the clusters. Map every finding to MITRE ATT&CK and lead each conclusion with verdict, confidence, and evidence count.
+- Hold findings until the end and do not over-correlate: a shared time window is not causation; assert a link only when an entity or artifact bridges the clusters. Map every finding to MITRE ATT&CK and lead each conclusion with verdict, confidence, and evidence count.
+- Query appendix, mandatory in every report. Always append an appendix listing every PowerQuery run during the investigation, each with its evidence (see the "Query appendix" section below). Never present a query result without also showing the query and a raw-telemetry excerpt.
+
+---
+
+## Query appendix (mandatory in every report)
+
+Every report this skill produces (summary.md, report.md, full_report.md, third_party_report.md, and any exported .docx / .pdf) MUST end with an appendix that documents all PowerQueries used, with evidence. This is non-negotiable and applies to all modes (SHORT / MEDIUM / LONG) and to the third-party phase.
+
+For each PowerQuery run during the investigation, in execution order, record:
+
+- Purpose: one line on what the query was checking.
+- Query: the exact PowerQuery text, verbatim, as executed.
+- Scope: the data source(s), the time window (start to end, UTC), and the tenant.
+- Result: the match / row count returned.
+- Evidence: a short raw-telemetry excerpt (a few representative rows) that supports the finding. For negative results, state "0 rows / empty" explicitly, an empty result is a finding, not an omission.
+
+Rules:
+
+- Include every query actually executed, including ones that returned nothing or errored. Do not curate down to only the "interesting" ones.
+- Never write a count, IOC total, affected-asset number, or named entity in the body without a corresponding query and evidence in the appendix that produces it. A peer must be able to copy each query into their console and reproduce the result.
+- Keep evidence excerpts trimmed to the probative columns; do not paste hundreds of rows. A handful of representative rows plus the total count is sufficient.
+- The appendix documents PowerQueries. Alert-API, console-API, and threat-intel-MCP calls are cited inline in the body per the evidence-discipline rules above.
 
 ---
 

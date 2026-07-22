@@ -395,7 +395,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
         "-e", "SDL_CONFIG_WRITE_KEY",
         "-e", "SDL_CONFIG_READ_KEY",
         "ghcr.io/pmoses-s1/s1-mcps:1.2.3",
-        "s1-secops-mcp"
+        "sentinelone-mcp"
       ],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
@@ -472,7 +472,7 @@ Claude checks all three MCPs, confirms each skill is loaded, and reports any mis
 ```bash
 docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.2.3 help    # lists the three bundled servers
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.2.3 s1-secops-mcp
+  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.2.3 sentinelone-mcp
 ```
 
 The second command returns one JSON line with `serverInfo.name = "sentinelone-mcp-server"`, and stderr shows `Tools: 26 registered`.

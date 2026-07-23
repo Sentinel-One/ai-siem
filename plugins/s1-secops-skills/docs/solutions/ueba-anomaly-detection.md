@@ -2,8 +2,8 @@
 
 Take ANY signal already reaching the tenant, security or not, and detect behavioural anomalies
 against a baseline the source builds from its own history. The solution baselines per
-`(action, principal)` pair and surfaces nine classes of deviation across a core set (SPIKE, DROP,
-SILENT, NEW-BEHAVIOR) and an advanced set (OFF-HOURS, FAN-OUT, RATIO, VELOCITY, DORMANT). It is
+`(action, principal)` pair and surfaces ten classes of deviation across a core set (SPIKE, DROP,
+SILENT, NEW-BEHAVIOR) and an advanced set (OFF-HOURS, FAN-OUT, RATIO, VELOCITY, PEER-GROUP, DORMANT). It is
 source-agnostic: the principal and action fields are picked from whatever the source carries, so
 EDR, identity, firewall, cloud audit, SaaS, email, healthcare, and custom apps all work without
 per-source code.
@@ -12,19 +12,22 @@ You do not pick detections from a flat list of statistics. You start from a secu
 the solution maps that intent to the right detections, the data those detections need, and the right
 scoring formula. Everything stays editable.
 
-This is part of the `sentinelone-sdl-solutions` skill. It orchestrates the primitive skills
-(`sentinelone-mgmt-console-api` for the engine and detection rules, `sentinelone-powerquery` for the
-baseline queries, `sentinelone-hyperautomation` for the watchdog and nightly refresh flows,
-`sentinelone-sdl-dashboard` for the dashboard); it does not reimplement them.
+**No AI is involved, and there is nothing to bring your own of.** This deploys native SentinelOne
+capabilities only: Singularity Data Lake baseline lookup tables, scheduled detection rules, Hyperautomation watchdog and refresh flows, and an SDL dashboard. The deployer (the interactive
+Docker UI) is a thin configuration layer that builds those
+artifacts and creates them through the documented SentinelOne management and SDL APIs. There is no
+model, no LLM, and no bring-your-own-AI to wire up. If you can reach your console with an API token,
+you can deploy.
 
 ## Features
 
-- **Source-agnostic**: baselines ANY security or non-security signal; the principal and action fields are auto-picked from the source schema, so EDR, identity, firewall, cloud, SaaS, email, and custom apps work with no per-source code.
-- **Ten detections**: four core (SPIKE, DROP, SILENT, NEW-BEHAVIOR) plus six advanced analytics (OFF-HOURS, FAN-OUT, RATIO, VELOCITY, PEER-GROUP, DORMANT).
+- **Source-agnostic**: baselines ANY security or non-security signal; the source is identified by `dataSource.name` or `serverHost` (some sources are only findable by one), and the principal and action fields are auto-picked from the source schema, so EDR, identity, firewall, cloud, SaaS, email, and custom apps work with no per-source code. The action can be a **composite key** (2-3 fields combined) for higher-fidelity pairs.
+- **Ten detections**: four core (SPIKE, DROP, SILENT, NEW-BEHAVIOR) plus six advanced analytics (OFF-HOURS, FAN-OUT, RATIO, VELOCITY, PEER-GROUP, DORMANT), plus two optional location-based (geo) detections (GEO-NEW, IMPOSSIBLE-TRAVEL) when a location field is set.
+- **Risk-Based Alerting (RBA)**: consolidates alerts into one cumulative risk score per entity (user or host) over the alert stream, scored by an editable, MITRE-tagged RiskWeights table with an optional critical-asset multiplier watchlist; fires one alert per entity over a threshold. The biggest lever on alert fatigue.
 - **Use-case driven**: choose what you are defending against; the solution pre-selects the detections, the data they need, and the scoring method.
 - **Two scoring methods**: Robust (percentile p95/p05, the default, resists bursty and skewed volume) and Standard (z-score on mean and standard deviation). The method is a config knob, not a separate detection.
 - **Per (action, principal) baseline**: mean, standard deviation, median, p95, and p05 over a 7/30/90-day window, computed in one pass. Optional day-of-week stratification removes weekday/weekend false positives.
-- **Two ways to run**: an interactive on-demand report for hunts and tuning, or a production deploy (baseline lookups + scheduled rules + watchdog flows + nightly refresh + dashboard).
+- **How you deploy**: an interactive Docker UI drives one deploy engine (no AI); a full deploy is baseline lookups + scheduled rules + watchdog flows + nightly refresh + dashboard.
 - **Asset-bound alerts**: scheduled rules map the principal entity so every anomaly is attributable to a real user or host.
 
 ## Start from the security use case
@@ -42,13 +45,13 @@ field the chosen source does not carry, so the chain is verified at deploy time 
 | Use case | Defends against | Data sources needed | Detections | Method |
 |---|---|---|---|---|
 | Account takeover | Compromised credentials | Identity / auth (Okta, Entra ID, Active Directory, Duo, Ping): user principal, sign-in / action field, event timestamp | OFF-HOURS, DORMANT, VELOCITY, SPIKE | Robust |
+| Account takeover (geo) | Compromised credentials with a location signal | Identity / auth as above, plus a location field (IP, ISO country, or `lat,lon`) | GEO-NEW, IMPOSSIBLE-TRAVEL, OFF-HOURS, SPIKE | Robust |
 | Brute force | Password spray / stuffing | Auth source with a success / failure outcome field (IdP, VPN, RADIUS, OS security logs) | RATIO, VELOCITY, SPIKE | Robust |
 | Insider threat / data exfiltration | Staging and theft | Activity with an object / target field to count breadth (file path, bucket, host, repo): DLP, cloud storage, file / SaaS audit | FAN-OUT, PEER-GROUP, SPIKE, OFF-HOURS | Robust |
 | Lateral movement | East-west spread | Telemetry with a destination host / IP field (EDR network events, firewall, multi-host auth) | FAN-OUT, PEER-GROUP, NEW-BEHAVIOR, SPIKE | Robust |
 | Privilege abuse | Misuse of granted rights | Admin / audit events with an action field (cloud control plane, IAM audit, directory admin actions) | NEW-BEHAVIOR, OFF-HOURS, SPIKE | Robust |
 | Service / feed health | Broken pipeline / disabled integration | Any high-volume machine or service source (log feed, service account, integration) | SILENT, DROP | Standard (stable, roughly-normal volume) |
-| All | Everything | Any source | All ten | Robust |
-| Custom | Anything | Any source | Manual (all ten) | Your choice |
+| Custom | Anything | Any source | Manual, the full matrix (all ten behavioural detections, the two geo detections, and RBA) | Your choice |
 
 Keep all ten detections available rather than trimming to a shortlist. Coverage across the use
 cases above needs them all: a brute-force use case needs RATIO, an insider-threat use case needs
@@ -56,6 +59,11 @@ FAN-OUT. The use case, not a reduced catalog, is what keeps the choice simple, i
 statistics behind intent. Robust is the default method for every human-behaviour use case because
 security volume is skewed; Standard fits the service / feed-health case where a machine source emits
 stable, roughly-normal volume.
+
+The two geo detections layer onto any use case once a location field is set (the "Account takeover
+(geo)" preset selects them directly). RBA is cross-cutting rather than tied to one threat: it
+consolidates whatever detections you deploy into a per-entity risk score, and is included in the All
+preset and selectable under Custom.
 
 ## Detection catalog
 
@@ -73,51 +81,24 @@ how it decides.
 | FAN-OUT | A user who normally hits 5 hosts a day suddenly hits 500 | daily `estimate_distinct(target)` per principal vs baseline | T1021 / T1046 / T1039 | scheduled detection |
 | RATIO | Failed attempts spike inside otherwise-normal volume | daily `fails/total` per pair vs baseline | T1110 | scheduled detection |
 | VELOCITY | A burst that a daily average hides (stuffing, mass export in minutes) | peak hourly count per pair vs baseline | T1110.003 / T1048 | scheduled detection |
-| PEER-GROUP | One account does far more of an action than everyone else doing it, invisible to a self-baseline (e.g. a service account always high) | per-action population cohort of per-principal daily volume; fire when 24h count exceeds the cohort p95 by a multiple (default 3x). No identity/HR attributes needed | T1078 / T1021 | scheduled detection |
+| PEER-GROUP | One account does far more of an action than everyone else doing it, invisible to a self-baseline (e.g. a service account always high) | per-action population cohort of per-principal daily volume; fire when 24h count exceeds the cohort p95 by a multiple (default 3x). By default no identity or HR attributes are used; if ISPM is configured, the peer group can optionally be sourced from the SentinelOne Asset Inventory Member Of (directory group membership) | T1078 / T1021 | scheduled detection |
 | DORMANT | An account idle 60 days suddenly authenticates | last-seen per pair, anti-join vs live-active with age over N days | T1078 | Hyperautomation watchdog |
+| GEO-NEW | A user who only ever signs in from the US authenticates from a brand-new country | per-principal usual-location baseline (ISO country via `geo_ip_country_iso`, or the location field directly); fire when a live location has no baseline row (first-seen geography) | T1078 | scheduled detection |
+| IMPOSSIBLE-TRAVEL | The same credential appears in two distant places too close together in time | self-join per principal over the window; `geo_distance(geo_ip_location(ipA), geo_ip_location(ipB)) / hours` exceeds a km/h threshold (default 900), above a minimum hop distance (default 100 km) | T1078 / T1021 | Hyperautomation watchdog |
+| RBA | Alert fatigue: many independent alerts, no single view of which entity is actually risky | scores the alert stream against an editable RiskWeights table (title-substring match to a base score, single-scan nested ternary), sums per entity as `weighted risk = sum(distinct alert-type scores) x max asset multiplier`, fires over a threshold | n/a (consolidation) | Hyperautomation watchdog |
 
-SILENT and DORMANT run as Hyperautomation watchdogs, not scheduled rules, because scheduled rules run on
-a pre-aggregated data layer where the operators needed to enumerate absent / zero-event pairs, a
-`left join` + `dataset` anti-join against the baseline, are not available (the `sentinelone-powerquery`
-skill lists every function that scheduled rules cannot use). Each watchdog runs the anti-join as a full
-LRQ on raw events and posts one uniform OCSF alert per run (see the detection-watchdog pattern in the
-`sentinelone-hyperautomation` skill).
+GEO-NEW and IMPOSSIBLE-TRAVEL are optional and appear only when a **location field** is set. GEO-NEW is a
+scheduled detection over its own usual-location baseline. IMPOSSIBLE-TRAVEL, like SILENT and DORMANT, runs
+as a Hyperautomation watchdog because the self-join it needs is unavailable in the scheduled engine; it
+requires coordinates, so it is offered only in IP or coordinate mode. Its guards, `geo_is_point()` on both
+points, a minimum-distance floor (which also discards the `geo_distance` `-1` unresolved sentinel), and
+optional proxy/Tor exclusion, keep private/unknown IPs and VPN egress from producing false hops.
 
-## Optional: ISPM-sourced peer groups
-
-By default PEER-GROUP's cohort is the population that performs an action. Optionally the peer group can
-instead be a real directory group, sourced from the ISPM Asset Inventory `Member Of`, and used to build
-the baseline. Read identity assets with `| datasource assets from 'surface/identity'`: `userPrincipalName`
-is the reliable join key (present on every user; `samAccountName` for AD, `emailAddress` is sparse), and
-`memberOf` is a stringified JSON array of group display names (e.g. `["U.S. Sales","Sales and Marketing",
-"Mark 8 Project Team",...]`).
-
-Use a lookup, not raw-log enrichment: snapshot the inventory to a datatable with `savelookup`, then
-`lookup` it at detection time and refresh it on the nightly baseline job (enrichment needs a pipeline
-stage plus a re-ingest and is only as fresh as the pipeline). Define a named group by substring
-(`memberOf contains:anycase('Sales')`), no JSON parsing required; or explode the array into one
-`(principal, group)` row each to baseline every group automatically.
-
-```
-# 1. members of a named group, snapshot from ISPM assets
-| datasource assets from 'surface/identity'
-| filter userPrincipalName = * AND memberOf contains:anycase('Sales')
-| columns principal_key = userPrincipalName
-| savelookup '<prefix>SalesPeers'
-
-# 2. per-group baseline (cohort = the group's members), keyed by principal
-dataSource.name='<src>' <principal>=* <action>=*
-| group day_count = count() by day=timebucket('1d'), principal_v=<principal>
-| lookup principal_key = principal_key from <prefix>SalesPeers by principal_v = principal_key
-| group pp_avg = avg(day_count) by principal_v
-| group peer_avg=avg(pp_avg), peer_stddev=stddev(pp_avg), peer_p95=p95(pp_avg), n=count()
-| savelookup '<prefix>SalesPeerBaseline'
-```
-
-The detection then looks up the user's group-cohort stats and fires on `live_count > peer_p95 * mult`,
-the same shape as the population cohort. The source's principal must resolve to `userPrincipalName`
-(Okta/Entra emit UPN/email; AD event logs may emit `samAccountName`, key the lookup on that instead).
-
+SILENT and DORMANT run as Hyperautomation watchdogs, not scheduled rules, because the scheduled-detection
+engine runs over an aggregated data layer, where operators like `left join` and `dataset` are not
+available. Those operators are what enumerate the absent / zero-event pairs (a pair present in the
+baseline but with no events in the live window) by anti-joining the live counts against the baseline
+table. So each watchdog runs the anti-join as a full LRQ instead and posts one uniform OCSF alert per run.
 
 ## Choosing the scoring method
 
@@ -135,39 +116,35 @@ baseline stores both sets of statistics in the same pass, so switching method ne
 of-week stratification is a separate, orthogonal option that buckets each pair per weekday to remove
 the weekend false positive; it applies under either method.
 
-## Run it with one prompt
+## How you run it
 
-- *"Deploy UEBA for account takeover on Okta"* (use case drives the detections and method)
-- *"Run a behavioural baseline on Okta and tell me what's anomalous"*
-- *"Set up brute-force detection on our VPN logs"*
-- *"Watch our file audit source for data exfiltration behaviour"*
-- *"Baseline our Google Workspace audit logs and flag spikes"*
-- *"Deploy UEBA for Okta on the Acme site, 30-day baseline, Robust method, with a nightly refresh and dashboard"* (fully specified: skips the questions)
+Two entry points share one deploy engine, and neither uses AI:
 
-**Short or detailed, both work.** You only have to name the source (and, for production, the site).
-Everything else has a default: 30-day baseline, Robust method, top-500 pairs, 02:00 UTC refresh,
-Medium/High severities per detection. The skill collects anything missing in one short question set
-and previews the rendered config before deploying.
+- **Interactive UI**: run the container, open the local page, connect with your console URL and API
+  token, pick a source, pick a security use case (or All), and click Enable. Each artifact deploys
+  with a live progress log. See the user guide in the s1-ueba-deployer repository for a screenshot walkthrough.
+- **Headless CLI / CI**: `deploy_cli.py` (and the bundled GitHub Actions workflow) run the same deploy
+  engine non-interactively from a parameter file or environment variables, for repeatable or
+  pipeline-driven rollouts.
 
-**Two steps are intentionally not zero-touch.** Scheduled rules deploy **Disabled** (enable after a
-quick review), and the watchdog and refresh flows import needing the "SentinelOne SDL" (Bearer)
-connection bound before activation. The skill does both on request; it does not silently enable a
-detection or run a flow without the connection in place.
+You only have to name the source (and, for a site deploy, the site). Everything else has a default:
+30-day baseline, Robust method, top-500 pairs, hourly cadence, Medium/High severities per detection.
+A use case preselects the right detections; `all` deploys the full set at once (the ten behavioural
+detections, plus the two location detections when a location field is set, plus RBA); `custom` lets
+you pick by hand.
 
-## Two ways to run it
-
-| Mode | What you get | Use when |
-|---|---|---|
-| Interactive / on-demand | A report for a source, computed now from a 7 or 30-day baseline | A hunt, an investigation, or tuning thresholds before deploying |
-| Production / always-on | Persisted baseline lookups, scheduled detection rules, watchdog flows, a nightly refresh, and a dashboard | Continuous monitoring of a source |
+**Two steps are intentionally not zero-touch.** Scheduled detections deploy **Disabled** so you can
+review before enabling, and the watchdog and refresh flows import needing the "SentinelOne SDL"
+(Bearer) connection bound before activation. The deployer does both when you provide the connection;
+it does not silently enable a detection or run a flow without the connection in place.
 
 ## What you choose
 
 | Choice | Default | Notes |
 |---|---|---|
-| Source | (required) | any `dataSource.name`, security or not |
+| Source | (required) | any source, matched by `dataSource.name` or `serverHost`, security or not |
 | Use case | (drives the rest) | pre-selects detections + method + the data needed |
-| Detections | per use case | any subset of the ten; Custom exposes the full manual matrix |
+| Detections | per use case | any subset of the ten behavioural detections, the two location detections, and RBA; Custom exposes the full manual matrix |
 | Scoring method | Robust | Robust (percentile) or Standard (z-score) |
 | Baseline window | 30 days | 7 quick/noisy, 30 the sweet spot, 90 for monthly seasonality |
 | Z threshold (Standard) | 3.0 | only used when method is Standard |
@@ -179,29 +156,37 @@ click default, one field to override, never a raw query:
 - RATIO: the failure predicate (e.g. `outcome = 'FAILURE'`).
 - OFF-HOURS: the quiet window (default 00:00 to 05:00 UTC).
 - DORMANT: the dormancy threshold in days (default 30).
+- Location (geo): the field carrying an IP, ISO country, or `lat,lon`; unlocks GEO-NEW and IMPOSSIBLE-TRAVEL.
+- Composite action: optionally combine 2-3 action fields into one higher-fidelity `(principal, action)` key.
+- RBA: the editable risk-score table (per alert-title match), the alert threshold (default 6), and an optional critical-asset multiplier watchlist.
 
 ## What gets deployed (production mode)
 
 | Artifact | Where | Purpose |
 |---|---|---|
 | Core baseline lookup | `<prefix><source>Baseline` (datatable) | mean, stddev, median, p95, p05 per pair; joined by SPIKE, DROP, NEW-BEHAVIOR, and the SILENT watchdog |
-| Advanced baseline lookups | `<prefix><source>Baseline{OffHours,Fanout,Ratio,Velocity,Dormant}` | one per advanced detection selected |
-| Scheduled rules | `/web/api/v2.1/cloud-detection/rules` (scheduled PowerQuery, queryLang 2.0) | SPIKE, DROP, NEW-BEHAVIOR, OFF-HOURS, FAN-OUT, RATIO, VELOCITY; join the lookup, score, bind the principal entity |
-| Watchdog flows | Hyperautomation | SILENT and DORMANT anti-join LRQ, each posting one OCSF alert per run |
+| Advanced baseline lookups | `<prefix><source>Baseline{OffHours,Fanout,Ratio,Velocity,Peer,Dormant}`, plus `<prefix><source>GeoBaseline` when a location field is set | one per advanced detection selected |
+| Scheduled rules | `/web/api/v2.1/cloud-detection/rules` (scheduled PowerQuery/S1QL, queryLang 2.0) | SPIKE, DROP, NEW-BEHAVIOR, OFF-HOURS, FAN-OUT, RATIO, VELOCITY, PEER-GROUP, and GEO-NEW (when geo is set); join the lookup, score, bind the principal entity |
+| Watchdog flows | Hyperautomation | SILENT, DORMANT, IMPOSSIBLE-TRAVEL (when geo is set), and RBA; anti-join / self-join / alert-stream LRQ, each posting one OCSF alert per run |
 | Refresh workflow | Hyperautomation (nightly) | rebuilds every baseline lookup over the trailing window |
-| Dashboard | `/dashboards/<prefix> <source> Anomalies` | anomaly count, volume over time, top SPIKE/DROP, silent pairs, busiest principals |
+| RiskWeights + AssetWatchlist | `<prefix><source>{RiskWeights,AssetWatchlist}` (datatables) | RBA base scores per alert-title match, and the optional critical-asset multiplier watchlist |
+| Dashboard | `/dashboards/<prefix> <source> Anomalies` | tabbed review: Overview, Deployed, one tab per detection, plus a Location tab (when geo is set) and a Risk (RBA) tab |
 
 Each advanced baseline lookup must finish before its rule deploys, the rule validator rejects a rule
 whose lookup table does not yet exist, so the deploy builds the table (polling up to 300s) and then
 creates the rule.
 
+### Dashboard data-source scope (All Data vs XDR)
+
+The review dashboard mixes two kinds of panel. Most detection tabs read source telemetry, which is XDR-attributed, so they render under either scope. The **Risk (RBA)** tab reads the SentinelOne alert stream and the RiskWeights/AssetWatchlist config datatables, and the **SILENT** watchdog tab (plus, for ingest-health, the **Devices** tab) reads a datatable via `| dataset`. Both the alert stream and config datatables live in the native store, not the XDR view, so those tabs return no data under the **XDR** scope. Select the **All Data** source (top-left) to view the full dashboard; each affected tab carries an in-panel reminder, and the dashboard description repeats it.
+
 ## Per-analytic reference (exact deployed queries)
 
-Tokens: `<src>` data source, `<pr>` principal field, `<ac>` action field,
-`<prefix><src>Baseline` the core lookup name, `<fanout_field>` and `<failure_predicate>` the two
-overridable inputs. Robust variants are shown; the Standard variant swaps the final `filter` to the
-z-score form noted under each. `| nolimit` appears only on the baseline savelookup (it raises the
-LRQ scan cap), never in a rule body.
+Tokens: `<src>` data source, `<pr>` principal field, `<ac>` action field, `<ip>` the location field
+(geo detections), `<prefix><src>Baseline` the core lookup name, `<fanout_field>` and
+`<failure_predicate>` the two overridable inputs. Robust variants are shown; the Standard variant
+swaps the final `filter` to the z-score form noted under each. `| nolimit` appears only on the
+baseline savelookup (it raises the LRQ scan cap), never in a rule body.
 
 ### Core baseline (feeds SPIKE, DROP, NEW-BEHAVIOR, SILENT)
 
@@ -281,13 +266,56 @@ dataSource.name = '<src>' | nolimit | filter <pr> = * AND <ac> = * | group last_
 The DORMANT watchdog injects the current epoch-ms as `{{Function.DATETIME_TO_MS(Function.DATETIME_NOW())}}`
 from the Hyperautomation flow, so no PowerQuery `now()` is required.
 
+### PEER-GROUP baseline + rule (Robust: `filter live_count > peer_p95 * 3`; Standard: `filter z >= Z`)
+
+The cohort is per action: the baseline averages each principal's daily volume, then takes the mean, stddev, and p95 across all principals doing that action. The rule flags a principal doing far more of the action than the cohort.
+
+```
+dataSource.name = '<src>' | nolimit | filter <pr> = * AND <ac> = * | group day_count = count() by day = timebucket('1d'), action_v = <ac>, principal_v = <pr> | group pp_avg = avg(day_count) by action_v, principal_v | group peer_avg = avg(pp_avg), peer_stddev = stddev(pp_avg), peer_p95 = p95(pp_avg), n_principals = count() by action_v | filter n_principals >= 3 | sort -peer_p95 | limit 500 | savelookup '<prefix><src>BaselinePeer'
+```
+```
+dataSource.name = '<src>' | filter <pr> = * AND <ac> = * | group live_count = count() by action_v = <ac>, principal_v = <pr> | lookup peer_avg = peer_avg, peer_stddev = peer_stddev, peer_p95 = peer_p95, n_principals = n_principals from <prefix><src>BaselinePeer by action_v = action_v | filter peer_avg = * | let sd = number(peer_stddev) | let z = (live_count - peer_avg) / sd | filter live_count > peer_p95 * 3 | let direction = 'PEER-GROUP' | sort -live_count | columns principal_v, action_v, live_count, peer_avg, peer_p95, n_principals, z, direction | limit 100
+```
+
+### GEO-NEW baseline + rule (first-seen geography; requires a location field)
+
+The baseline records every location a principal has been seen from; the rule flags a principal active now from a location with no baseline entry. In `ip` mode the location is normalised in-query to an ISO country via `geo_ip_country_iso`; `country` / `coord` modes substitute the location expression.
+
+```
+dataSource.name = '<src>' | nolimit | filter <pr> = * AND <ip> = * | let loc_v = geo_ip_country_iso(<ip>) | filter loc_v = * AND loc_v != 'null' AND loc_v != 'null,null' | group loc_count = count() by principal_v = <pr>, loc_v | sort -loc_count | limit 5000 | savelookup '<prefix><src>GeoBaseline'
+```
+```
+dataSource.name = '<src>' | filter <pr> = * AND <ip> = * | let loc_v = geo_ip_country_iso(<ip>) | filter loc_v = * AND loc_v != 'null' AND loc_v != 'null,null' | group live_count = count() by principal_v = <pr>, loc_v | lookup loc_count = loc_count from <prefix><src>GeoBaseline by principal_v = principal_v, loc_v = loc_v | filter !(loc_count = *) | let direction = 'GEO-NEW' | sort -live_count | columns principal_v, loc_v, live_count, direction | limit 100
+```
+
+### IMPOSSIBLE-TRAVEL self-join (Hyperautomation watchdog; requires an IP or coordinate location field)
+
+A self-join per principal over the window: for each pair of events, compute the great-circle distance and the elapsed hours, then flag any hop faster than the km/h threshold (default 900) above a minimum distance (default 100 km).
+
+```
+| join a = ( dataSource.name = '<src>' <pr>=* <ip>=* | let pa = geo_ip_location(<ip>) | filter geo_is_point(pa) | columns principal_a = <pr>, ta = timestamp, pa ), b = ( dataSource.name = '<src>' <pr>=* <ip>=* | let pb = geo_ip_location(<ip>) | filter geo_is_point(pb) | columns principal_b = <pr>, tb = timestamp, pb ) on a.principal_a = b.principal_b | filter tb > ta | let km = geo_distance(pa, pb, 'kilometer') | filter km > 100 | let hours = number(tb - ta) / 3600000000000 | filter hours > 0 | let kmh = km / hours | filter kmh > 900 | group max_kmh = max(kmh), max_km = max(km), hops = count() by principal_v = principal_a | sort -max_kmh | columns principal_v, max_kmh, max_km, hops | limit 200
+```
+
+### RBA per-entity scoring (Hyperautomation watchdog over the alert stream)
+
+RBA scores the SentinelOne alert stream against the editable `<prefix><src>RiskWeights` table in a single scan: one nested-ternary branch per RiskWeights row maps an alert-title substring to a base score (the branches below are the pre-seeded UEBA detections). Scores accumulate per entity (`resources[*].name`, a user or host); the watchdog fires one alert per entity at or above the threshold (default 6). With an asset watchlist, `asset_mult` becomes `max(multiplier)` over matching `<prefix><src>AssetWatchlist` branches and `weighted_risk = base_risk * asset_mult`.
+
+```
+dataSource.name='alert' class_uid=99602001 | let mt = (finding_info.title contains:anycase("anomaly SPIKE") ? 'anomaly SPIKE' : (finding_info.title contains:anycase("anomaly DROP") ? 'anomaly DROP' : (finding_info.title contains:anycase("NEW-BEHAVIOR") ? 'NEW-BEHAVIOR' : (finding_info.title contains:anycase("OFF-HOURS") ? 'OFF-HOURS' : (finding_info.title contains:anycase("FAN-OUT") ? 'FAN-OUT' : (finding_info.title contains:anycase("failure-RATIO") ? 'failure-RATIO' : (finding_info.title contains:anycase("VELOCITY burst") ? 'VELOCITY burst' : (finding_info.title contains:anycase("PEER-GROUP") ? 'PEER-GROUP' : (finding_info.title contains:anycase("GEO-NEW") ? 'GEO-NEW' : (finding_info.title contains:anycase("anomaly SILENT") ? 'anomaly SILENT' : (finding_info.title contains:anycase("anomaly DORMANT") ? 'anomaly DORMANT' : (finding_info.title contains:anycase("IMPOSSIBLE-TRAVEL") ? 'IMPOSSIBLE-TRAVEL' : '')))))))))))) | let sc = (finding_info.title contains:anycase("anomaly SPIKE") ? number(4) : (finding_info.title contains:anycase("anomaly DROP") ? number(2) : (finding_info.title contains:anycase("NEW-BEHAVIOR") ? number(1) : (finding_info.title contains:anycase("OFF-HOURS") ? number(2) : (finding_info.title contains:anycase("FAN-OUT") ? number(4) : (finding_info.title contains:anycase("failure-RATIO") ? number(4) : (finding_info.title contains:anycase("VELOCITY burst") ? number(4) : (finding_info.title contains:anycase("PEER-GROUP") ? number(2) : (finding_info.title contains:anycase("GEO-NEW") ? number(3) : (finding_info.title contains:anycase("anomaly SILENT") ? number(2) : (finding_info.title contains:anycase("anomaly DORMANT") ? number(2) : (finding_info.title contains:anycase("IMPOSSIBLE-TRAVEL") ? number(5) : number(0))))))))))))) | filter sc > 0 | group th = count() by entity = resources[*].name, mt, sc | group base_risk = sum(sc), types = count(), alerts = sum(th) by entity | let asset_mult = number(1) | let weighted_risk = base_risk * asset_mult | filter weighted_risk >= 6 | sort -weighted_risk | columns entity, weighted_risk, base_risk, asset_mult, types, alerts | limit 200
+```
+
+### RBA per-alert scoring (dashboard "Calculated risk per alert")
+
+```
+dataSource.name='alert' class_uid=99602001 | let sc = (finding_info.title contains:anycase("anomaly SPIKE") ? number(4) : (finding_info.title contains:anycase("anomaly DROP") ? number(2) : (finding_info.title contains:anycase("NEW-BEHAVIOR") ? number(1) : (finding_info.title contains:anycase("OFF-HOURS") ? number(2) : (finding_info.title contains:anycase("FAN-OUT") ? number(4) : (finding_info.title contains:anycase("failure-RATIO") ? number(4) : (finding_info.title contains:anycase("VELOCITY burst") ? number(4) : (finding_info.title contains:anycase("PEER-GROUP") ? number(2) : (finding_info.title contains:anycase("GEO-NEW") ? number(3) : (finding_info.title contains:anycase("anomaly SILENT") ? number(2) : (finding_info.title contains:anycase("anomaly DORMANT") ? number(2) : (finding_info.title contains:anycase("IMPOSSIBLE-TRAVEL") ? number(5) : number(0))))))))))))) | filter sc > 0 | group hits = count() by title = finding_info.title, base_score = sc | let alert_risk = hits * base_score | sort -alert_risk | columns title, base_score, hits, alert_risk | limit 100
+```
+
 ## Beyond volume: what needs more data (Tier 2 / Tier 3)
 
 These detections are valuable but need signals a single source does not always carry. The path is
 clear once the data is present:
 
-- **Peer-group baselining**: shipped as the PEER-GROUP detection (population cohort per action). An optional identity-attribute mode, the group taken from the ISPM Asset Inventory `Member Of`, is documented above under "Optional: ISPM-sourced peer groups".
-- **Geo-velocity / impossible travel**: two authentications from distant geographies inside a short window. Needs geo-IP (country or lat/long) on the auth event; runs as a Hyperautomation LRQ join, like the SILENT watchdog.
+- **Peer-group baselining**: compare a user to their department, role, or site peers, not just their own history. Needs a peer/role attribute per principal (identity or asset-inventory enrichment joined onto the event), then the same test keyed on the cohort mean.
 - **Privilege / scope-change detection**: first-time admin action, new group or role membership. Needs IAM / audit events (role assignment, group add) in the lake.
 - **Sequence / risk-combo detection**: high-risk action chains (MFA disable, then password change, then mass download) by one principal in a window. Needs sessionization or ordered-event correlation, best expressed as a Hyperautomation flow.
 - **Risk-based alerting**: instead of each detection firing independently, publish a per-signal risk score, accumulate per entity over a rolling window with decay, and raise one high-confidence alert when the cumulative score crosses a threshold. Needs a risk-event stream and the accumulation layer. This is the natural consolidation step and the biggest lever on alert fatigue.
@@ -335,13 +363,8 @@ Failure modes a basic moving-average baseline misses, and this solution catches:
 
 ## Implementation notes
 
-- Scheduled rules run PowerQuery 2.0 and support `estimate_distinct(x)`, `count(<predicate>)` as a conditional count, `max(x)`, `median(x)`, `p95(x)`, `pct(N, x)`, `newest(ts)`, and `strftime(event.time, '%H')` as an hour-of-day group key. `percentile(x, N)` returns HTTP 500, use `p95` / `p10` / etc.
+- Scheduled rules run PowerQuery/S1QL 2.0 and support `estimate_distinct(x)`, `count(<predicate>)` as a conditional count, `max(x)`, `median(x)`, `p95(x)`, `pct(N, x)`, `newest(ts)`, and `strftime(event.time, '%H')` as an hour-of-day group key. `percentile(x, N)` returns HTTP 500, use `p95` / `p10` / etc.
 - Cast the standard deviation with `number()` before dividing in the z computation. SDL columns can be type-locked to string, and `number()` returns 0 for null and avoids NaN.
-- SILENT and DORMANT cannot be scheduled rules (scheduled rules run on a pre-aggregated data layer, without `left join` / `dataset`); they run as Hyperautomation anti-join watchdogs that post one stitched OCSF alert.
+- SILENT and DORMANT cannot be scheduled rules (the scheduled engine runs on an aggregated data layer, without `left join` / `dataset`); they run as Hyperautomation anti-join watchdogs that post one stitched OCSF alert.
 - The scoring method is a config knob, not a detection: the baseline stores `median`, `p95`, and `pct(5, x)` alongside `avg` and `stddev` in one pass, so switching method needs no rebuild.
 - Each advanced detection uses its own suffixed baseline table, and that savelookup must finish before the rule deploys (poll up to 300s).
-
-## Detection gotchas (validated)
-
-- **DROP / SILENT use a rolling 24h window** (`lookbackWindowMinutes=1440`): the low/zero pair's normal history must sit entirely older than 24h, or activity from the last day inside the window masks the drop/silence. A midnight-to-now test window hides this; test over a true rolling 24h.
-- **Constant-count pairs are excluded from the baseline** (`filter baseline_stddev > 0`): a pair whose daily counts never vary gets no baseline row, so SPIKE / DROP / SILENT cannot score it. Real data has day-to-day variance; synthetic test data must add it.

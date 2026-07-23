@@ -248,10 +248,12 @@ Performance: start with the most selective (smallest-cardinality) subquery. PQ e
 ## 10. `union`
 
 ```
-| union (query1), (query2), …                 // up to 10 queries
+| union (query1), (query2), …                 // comma-separated branches in ONE union
 ```
 
 Stacks result sets as rows. Unlike SQL union, the queries can have different columns and different types — missing columns become null. Output has no sort order (add `sort` after).
+
+A `union` takes at most **10 subqueries**; more than 10 returns HTTP 400. Write it as a leading command, `| union (q1),(q2),...`, at the start of the query. A subquery may synthesise rows, e.g. `( | limit 1 | columns a=2, b='bar' )`, which is how you build literal rows for a `savelookup`. Do not precede `union` with a main pipeline ending in `| limit` (e.g. `<filter> | limit 1 | union (...)`); that returns HTTP 400 at any branch count. To combine more than 10 subqueries, nest: `| union ( | union (b1),...,(b10) | columns ... ), ( | union (b11),... | columns ... )`, keeping each inner union at 10 or fewer. When branches differ only by a matched literal, prefer a single scan with a `let` plus a ternary over a wide union.
 
 Use to merge heterogeneous sources (e.g., `api_server` logs with fields `operation`/`elapsed_time` and `frontend` logs with `url`/`http_status`). Rename columns in each sub-query's `columns` to unify them:
 

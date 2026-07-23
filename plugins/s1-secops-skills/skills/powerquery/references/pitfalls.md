@@ -352,6 +352,23 @@ Fix — for first-element access inside a query, use `array_get` in a `let`:
 | let first_resource_name = first_resource.name
 ```
 
+**On the alert / findings stream, group and filter the entity with the WILDCARD accessor.**
+The stream is `dataSource.name='alert' class_uid=99602001` (`finding_info.title` is a flat,
+`contains:anycase(...)`-filterable string = the alert name; `metadata.product.name` is one of STAR /
+EDR / Identity / CWS / EPP). The alert entity (user or host) is only usable as a `group by` / `filter`
+key via the wildcard form `resources[*].name` (and `resources[*].type` for the asset type). The
+first-element forms do NOT work as a grouping key here: `resources[0].name` returns HTTP 400 in
+`group`/`columns`, `resources.name` returns null, and even `array_get(resources,0).name` cannot be a
+group key on this stream. Wildcard values come back JSON-array-wrapped, e.g. `["j.doe@corp.com"]` or
+`["DESKTOP-GDIA5I7"]`, so strip the `[` `]` `"` wrapping when post-processing. The same wildcard form
+reads optional MITRE on custom alerts: `finding_info.attacks[*].tactic.uid` / `.name`.
+
+```
+dataSource.name='alert' class_uid=99602001
+| filter finding_info.title contains:anycase("SPIKE")
+| group hits = count() by entity = resources[*].name, tactic = finding_info.attacks[*].tactic.uid
+```
+
 For analytics over array fields, prefer top-level scalar fields
 (`severity_id`, `finding_info.title`, `metadata.product.name`, `class_name`),
 or step out of PowerQuery to the V1 query API which exposes the full event

@@ -4,6 +4,15 @@ Implement the Risk-Based Alerting (RBA) paradigm in SentinelOne SDL. Instead of 
 
 Every mechanic in this playbook is tenant-validated end to end (2026-06-24/25): risk index, contributors, factor multipliers, collector flow, incident rules, dashboard, and a real fired alert.
 
+> **Two RBA approaches, pick per need.** This playbook is the heavyweight **risk-index** model: a
+> dedicated `risk` index populated by a collector flow from contributor PowerQueries, with
+> asset-derived risk factors and four incident rules. A lightweight alternative ships in the UEBA
+> solution (the s1-ueba-deployer, see `ueba-anomaly-detection.md`): it scores the existing SentinelOne
+> **alert stream** in place against an editable RiskWeights + AssetWatchlist datatable and fires one
+> Hyperautomation watchdog per entity, with no separate index or collector. Use the risk-index model
+> to score arbitrary contributor queries into asset-weighted, multi-tactic risk objects; use the
+> alert-stream model to consolidate the alerts you already have into one cumulative per-entity score.
+
 ## Concept mapping: RBA concepts to SentinelOne
 
 | RBA concept | SentinelOne |

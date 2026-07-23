@@ -274,6 +274,15 @@ Panels are placed by `layout: {w, h, x, y}`. When appending a new section to an 
 
 The SDL dashboard render engine has a longer query budget than the PowerQuery MCP. A query that times out in MCP validation may still render in the UI. Conversely, a query that returns from MCP may render slowly in the UI. The final smoke test for every dashboard is: open it in the UI, watch each tab load, confirm no panel spins indefinitely.
 
+### 8.6 Data-source scope: All Data vs XDR (panels can be empty under the wrong scope)
+
+The top-left data-source selector (All Data vs XDR) applies to every panel on the dashboard. Two panel kinds read data that lives OUTSIDE the XDR view and therefore return no data under XDR, even though the query is correct:
+
+- **`| dataset 'config://datatables/<table>'` reads** (config datatables / lookups). A `| dataset` config-table panel renders empty under the XDR scope.
+- **The SentinelOne alert / findings stream** (`dataSource.name='alert' class_uid=99602001`, category `security`). It sits in the native store, not the XDR log-telemetry view, so alert-stream panels are empty under XDR.
+
+Ingested source telemetry (XDR-attributed) renders under either scope, which is why most detection panels look fine and only the alert-stream / lookup panels appear "broken" under XDR. This is a scope mismatch, not a missing field or a bad query. Guidance: put a one-line reminder in the dashboard `description` (shown on every tab) and on the affected tabs telling the user to select **All Data**; the `description` is the most reliable place because it is visible regardless of which tab is open. There is no dashboard-JSON field to pin the scope, so a reminder is the fix.
+
 ---
 
 ## 9. Discovery → author → validate → deploy workflow

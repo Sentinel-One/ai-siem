@@ -1,6 +1,7 @@
 {
   "name": "dnsExcl - {{SOURCE}} Asset-CIDR Excluded Detection + UAM Alert",
-  "description": "Scheduled CIDR+domain-excluded failed-DNS detection that posts a self-contained OCSF S1 SecurityAlert (class_uid 99602001) to UAM with the client IP mapped as device/asset. ASYNC LRQ in a POLL LOOP: launch -> capture id + X-Dataset-Query-Forward-Tag -> loop {poll(GET) -> if stepsCompleted = totalSteps: extract + post alert + break, else delay 5s and re-poll (cap 60)}. All result-consuming actions live INSIDE the loop. Bind 'SentinelOne SDL' (Bearer) on the HTTP actions; hec_url={{HEC_INGEST_URL}}.",
+  "description": "Scheduled CIDR+domain-excluded failed-DNS detection that posts one self-contained OCSF S1 SecurityAlert (class_uid 99602001) per offender to UAM. ASYNC LRQ POLL LOOP: launch -> capture id + X-Dataset-Query-Forward-Tag -> loop {poll -> if done: count rows, and if any, iterate up to {{TOP_N}} offenders posting one alert each, then break; else delay 5s and re-poll (cap 60)}. All result-consuming actions live INSIDE the loop. Bind 'SentinelOne SDL' (Bearer) on the HTTP actions; hec_url={{HEC_INGEST_URL}}.",
+  "_comment": "2026-07-29 multi-offender restructure: the detection now returns up to {{TOP_N}} threshold-filtered offenders (| filter failed >= {{THRESHOLD}} ... | limit {{TOP_N}}) and a dynamic loop (Loop Offenders, object_to_iterate = poll-results.body.data.values) posts ONE UAM alert per row via Row Vars -> Post Alert. The loop and its post live INSIDE the poll-while-loop's done-branch so the result-consuming actions still reference the completed poll response in the same iteration (the prior single-post invariant is preserved). An 'Any Offenders' guard (rowcount > 0) skips iteration on an empty set. Per-alert UUIDs (ind/dev/user) are generated per row inside the loop; run-level hec_url/scope_id/now_ms stay in Config. {{RUN_WINDOW_HOURS}} must match the trigger cadence (24 for the daily 07:00 UTC trigger). PENDING: nested-loop shape validated on demo tenant by import round-trip; runtime pending. Remove this _comment key before import if the importer rejects unknown keys.",
   "actions": [
     {
       "action": {
@@ -84,7 +85,7 @@
           "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries",
           "url_path": null,
           "url_prefix": null,
-          "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW(168)}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"dataSource.name='{{SOURCE}}' rcode!='NOERROR' src_endpoint.ip=* | lookup excl_asset = reason from dnsExclAssets.csv by cidr =:cidr src_endpoint.ip | filter excl_asset = null | lookup excl_domain = reason from dnsExclDomains.csv by value =:anycase domain | filter excl_domain = null | group failed=count(), domain=any(domain), rcode=any(rcode) by client_ip=src_endpoint.ip | sort -failed | columns client_ip, domain, rcode, failed | limit 1\",\n    \"resultType\": \"TABLE\"\n  }\n}",
+          "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW({{RUN_WINDOW_HOURS}})}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"dataSource.name='{{SOURCE}}' rcode!='NOERROR' src_endpoint.ip=* | lookup excl_asset = reason from dnsExclAssets.csv by cidr =:cidr src_endpoint.ip | filter excl_asset = null | lookup excl_domain = reason from dnsExclDomains.csv by value =:anycase domain | filter excl_domain = null | group failed=count(), domain=any(domain), rcode=any(rcode) by client_ip=src_endpoint.ip | filter failed >= {{THRESHOLD}} | sort -failed | columns client_ip, domain, rcode, failed | limit {{TOP_N}}\",\n    \"resultType\": \"TABLE\"\n  }\n}",
           "parameters": [],
           "retry_on_status_code": null,
           "retry_on_status_codes": [
@@ -321,6 +322,40 @@
     },
     {
       "action": {
+        "type": "delay",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Retry Delay",
+          "action_type": "delay",
+          "time_unit": "seconds",
+          "value": 5
+        },
+        "state": "active",
+        "description": "Wait, then re-poll.",
+        "client_data": {
+          "position": {
+            "x": 320,
+            "y": 690
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "parent_action": 3,
+      "connected_to": []
+    },
+    {
+      "action": {
         "type": "variable",
         "tag": "core_action",
         "connection_id": null,
@@ -328,7 +363,7 @@
         "use_connection_name": false,
         "integration_id": null,
         "state": "active",
-        "description": "Config + run-time UUIDs/timestamp for the alert.",
+        "description": "Run-level config: hec_url, scope_id, now_ms (per-row UUIDs move into the loop).",
         "client_data": {
           "position": {
             "x": 0,
@@ -363,6 +398,208 @@
               "value": "{{Function.DATETIME_TO_MS(Function.DATETIME_NOW())}}",
               "should_use_as_output": false,
               "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
+        }
+      },
+      "export_id": 6,
+      "parent_action": 3,
+      "connected_to": [
+        {
+          "target": 12,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "state": "active",
+        "description": "Count offender rows returned by the completed LRQ (poll-results.body.data.values).",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 950
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
+        "data": {
+          "name": "Set Row Count",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "rowcount",
+              "value": "{{Function.JQ(poll-results.body.data.values, \"length\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "workflows_acl": null
+        }
+      },
+      "export_id": 12,
+      "parent_action": 3,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Any Offenders",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{local_var.rowcount}}",
+              "compared_value": "0",
+              "comparison_operator": "greater_than"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "Only iterate/post when the threshold-filtered result set is non-empty.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1080
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 11,
+      "parent_action": 3,
+      "connected_to": [
+        {
+          "target": 13,
+          "custom_handle": "true"
+        },
+        {
+          "target": 9,
+          "custom_handle": "false"
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Loop Offenders",
+          "action_type": "loop",
+          "loop_type": "dynamic",
+          "number_of_iterations": "{{TOP_N}}",
+          "object_to_iterate": "{{poll-results.body.data.values}}",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "Iterate up to TOP_N offender rows; post one UAM alert per row. Inner subgraph then falls through to Break.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1210
+          },
+          "dimensions": {
+            "width": 760,
+            "height": 520
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 13,
+      "parent_action": 3,
+      "connected_to": [
+        {
+          "target": 14,
+          "custom_handle": "inner"
+        },
+        {
+          "target": 9,
+          "custom_handle": null
+        }
+      ]
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "state": "active",
+        "description": "Current offender row (col0=client_ip, col1=domain) + fresh per-alert UUIDs.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 1340
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null,
+        "data": {
+          "name": "Row Vars",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "row_ip",
+              "value": "{{Function.ACCESS_LIST_ITEM(loop-offenders.item, 0)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "row_domain",
+              "value": "{{Function.ACCESS_LIST_ITEM(loop-offenders.item, 1)}}",
+              "should_use_as_output": false,
+              "is_secret": false
             },
             {
               "name": "ind_uid",
@@ -390,64 +627,8 @@
           "workflows_acl": null
         }
       },
-      "export_id": 6,
-      "parent_action": 3,
-      "connected_to": [
-        {
-          "target": 7,
-          "custom_handle": null
-        }
-      ]
-    },
-    {
-      "action": {
-        "type": "variable",
-        "tag": "core_action",
-        "connection_id": null,
-        "connection_name": null,
-        "use_connection_name": false,
-        "integration_id": null,
-        "state": "active",
-        "description": "Top offender from POLL response (poll-results.body.data.values row 0): col0=client_ip, col1=domain.",
-        "client_data": {
-          "position": {
-            "x": 0,
-            "y": 820
-          },
-          "dimensions": {
-            "width": 256,
-            "height": 76
-          },
-          "collapsed": false
-        },
-        "snippet_workflow_id": null,
-        "snippet_version_id": null,
-        "data": {
-          "name": "Extract Offender",
-          "action_type": "variable",
-          "variables": [
-            {
-              "name": "client_ip",
-              "value": "{{Function.ACCESS_LIST_ITEM(Function.ACCESS_LIST_ITEM(poll-results.body.data.values, 0), 0)}}",
-              "should_use_as_output": false,
-              "is_secret": false
-            },
-            {
-              "name": "domain",
-              "value": "{{Function.ACCESS_LIST_ITEM(Function.ACCESS_LIST_ITEM(poll-results.body.data.values, 0), 1)}}",
-              "should_use_as_output": false,
-              "is_secret": false
-            }
-          ],
-          "variables_scope": "local",
-          "expire_in_unit": null,
-          "expire_in_value": null,
-          "expire_method": null,
-          "workflows_acl": null
-        }
-      },
-      "export_id": 7,
-      "parent_action": 3,
+      "export_id": 14,
+      "parent_action": 13,
       "connected_to": [
         {
           "target": 8,
@@ -464,7 +645,7 @@
         "use_connection_name": false,
         "integration_id": null,
         "state": "active",
-        "description": "POST self-contained OCSF S1 SecurityAlert (class_uid 99602001 - NOT 2002, which is silently dropped) to UAM /v1/alerts. Inline related_events embeds the indicator; client IP mapped as device/asset via resources[].",
+        "description": "Post one self-contained OCSF S1 SecurityAlert (class_uid 99602001) per offender row to UAM /v1/alerts.",
         "client_data": {
           "position": {
             "x": 0,
@@ -486,7 +667,7 @@
           "url": "{{local_var.hec_url}}/v1/alerts",
           "url_path": null,
           "url_prefix": null,
-          "payload": "{\n  \"finding_info\": {\"uid\": \"{{Function.GENERATE_UUID4()}}\", \"title\": \"dnsExcl - {{SOURCE}} Failed-Resolution (allowlist-filtered)\", \"desc\": \"{{SOURCE}} failed-resolution from non-allowlisted client {{local_var.client_ip}} -> {{local_var.domain}} (CIDR + domain allowlist filtered)\",\n    \"related_events\": [{\"message\": \"Failed DNS resolution {{local_var.client_ip}} -> {{local_var.domain}}\", \"time\": {{local_var.now_ms}}, \"uid\": \"{{local_var.ind_uid}}\", \"severity_id\": 3,\n      \"observables\": [{\"type_id\": 2, \"type\": \"IP Address\", \"typeName\": \"IP Address\", \"name\": \"src_endpoint.ip\", \"value\": \"{{local_var.client_ip}}\"}, {\"type_id\": 1, \"type\": \"Hostname\", \"typeName\": \"Hostname\", \"name\": \"query.hostname\", \"value\": \"{{local_var.domain}}\"}],\n      \"class_uid\": 4003, \"type_uid\": 400302, \"category_uid\": 4, \"activity_id\": 2,\n      \"device\": {\"uid\": \"{{local_var.dev_uid}}\", \"name\": \"{{local_var.client_ip}}\", \"hostname\": \"{{local_var.client_ip}}\", \"type_id\": 1},\n      \"actor\": {\"user\": {\"name\": \"akamai-dns-client\", \"type\": \"System\", \"uid\": \"{{local_var.user_uid}}\", \"type_id\": 3}}}]},\n  \"resources\": [{\"uid\": \"{{local_var.dev_uid}}\", \"name\": \"{{local_var.client_ip}}\", \"type_id\": 1, \"type\": \"host\"}],\n  \"category_uid\": 2, \"category_name\": \"Findings\", \"class_uid\": 99602001, \"class_name\": \"S1 Security Alert\", \"type_uid\": 9960200101, \"type_name\": \"S1 Security Alert: Create\", \"activity_id\": 1,\n  \"metadata\": {\"version\": \"1.6.0-dev\", \"extension\": {\"name\": \"s1\", \"uid\": \"998\", \"version\": \"0.1.0\"}, \"product\": {\"name\": \"SDL Custom Detection: scheduled-detection-exclusions\", \"vendor_name\": \"SentinelOne\"}, \"logged_time\": {{local_var.now_ms}}, \"modified_time\": {{local_var.now_ms}}},\n  \"time\": {{local_var.now_ms}}, \"attack_surface_ids\": [1], \"severity_id\": 3, \"state_id\": 1, \"s1_classification_id\": 1\n}",
+          "payload": "{\n  \"finding_info\": {\"uid\": \"{{Function.GENERATE_UUID4()}}\", \"title\": \"dnsExcl - {{SOURCE}} Failed-Resolution (allowlist-filtered)\", \"desc\": \"{{SOURCE}} failed-resolution from non-allowlisted client {{local_var.row_ip}} -> {{local_var.row_domain}} (CIDR + domain allowlist filtered)\",\n    \"related_events\": [{\"message\": \"Failed DNS resolution {{local_var.row_ip}} -> {{local_var.row_domain}}\", \"time\": {{local_var.now_ms}}, \"uid\": \"{{local_var.ind_uid}}\", \"severity_id\": 3,\n      \"observables\": [{\"type_id\": 2, \"type\": \"IP Address\", \"typeName\": \"IP Address\", \"name\": \"src_endpoint.ip\", \"value\": \"{{local_var.row_ip}}\"}, {\"type_id\": 1, \"type\": \"Hostname\", \"typeName\": \"Hostname\", \"name\": \"query.hostname\", \"value\": \"{{local_var.row_domain}}\"}],\n      \"class_uid\": 4003, \"type_uid\": 400302, \"category_uid\": 4, \"activity_id\": 2,\n      \"device\": {\"uid\": \"{{local_var.dev_uid}}\", \"name\": \"{{local_var.row_ip}}\", \"hostname\": \"{{local_var.row_ip}}\", \"type_id\": 1},\n      \"actor\": {\"user\": {\"name\": \"akamai-dns-client\", \"type\": \"System\", \"uid\": \"{{local_var.user_uid}}\", \"type_id\": 3}}}]},\n  \"resources\": [{\"uid\": \"{{local_var.dev_uid}}\", \"name\": \"{{local_var.row_ip}}\", \"type_id\": 1, \"type\": \"host\"}],\n  \"category_uid\": 2, \"category_name\": \"Findings\", \"class_uid\": 99602001, \"class_name\": \"S1 Security Alert\", \"type_uid\": 9960200101, \"type_name\": \"S1 Security Alert: Create\", \"activity_id\": 1,\n  \"metadata\": {\"version\": \"1.6.0-dev\", \"extension\": {\"name\": \"s1\", \"uid\": \"998\", \"version\": \"0.1.0\"}, \"product\": {\"name\": \"SDL Custom Detection: scheduled-detection-exclusions\", \"vendor_name\": \"SentinelOne\"}, \"logged_time\": {{local_var.now_ms}}, \"modified_time\": {{local_var.now_ms}}},\n  \"time\": {{local_var.now_ms}}, \"attack_surface_ids\": [1], \"severity_id\": 3, \"state_id\": 1, \"s1_classification_id\": 1\n}",
           "parameters": [],
           "retry_on_status_code": null,
           "retry_on_status_codes": [
@@ -507,13 +688,8 @@
         }
       },
       "export_id": 8,
-      "parent_action": 3,
-      "connected_to": [
-        {
-          "target": 9,
-          "custom_handle": null
-        }
-      ]
+      "parent_action": 13,
+      "connected_to": []
     },
     {
       "action": {
@@ -544,40 +720,6 @@
         "snippet_version_id": null
       },
       "export_id": 9,
-      "parent_action": 3,
-      "connected_to": []
-    },
-    {
-      "action": {
-        "type": "delay",
-        "tag": "core_action",
-        "connection_id": null,
-        "connection_name": null,
-        "use_connection_name": false,
-        "integration_id": null,
-        "data": {
-          "name": "Retry Delay",
-          "action_type": "delay",
-          "time_unit": "seconds",
-          "value": 5
-        },
-        "state": "active",
-        "description": "Wait, then re-poll.",
-        "client_data": {
-          "position": {
-            "x": 320,
-            "y": 690
-          },
-          "dimensions": {
-            "width": 256,
-            "height": 76
-          },
-          "collapsed": false
-        },
-        "snippet_workflow_id": null,
-        "snippet_version_id": null
-      },
-      "export_id": 10,
       "parent_action": 3,
       "connected_to": []
     }

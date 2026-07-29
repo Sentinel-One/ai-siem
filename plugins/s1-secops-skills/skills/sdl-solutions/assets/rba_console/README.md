@@ -12,7 +12,7 @@ is not an issue.
 
 ## Run
 
-```
+```bash
 cd rba_console
 python3 server.py
 # then open http://localhost:8787  (use the localhost URL, NOT file:// — file:// has no proxy)

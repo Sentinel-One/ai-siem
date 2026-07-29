@@ -22,6 +22,7 @@ Site-scope enable requires disabling inheritance FIRST (otherwise enable returns
 - Settings category toggles are `core`, `autoDefault`, `emergingThreat`, `smartDefault` (each `On`/`Off`); at least one of `core`/`autoDefault` is required when setting those, but omit them when only flipping inheritance.
 
 Permissions: reads need `Custom Rules.view`; enable/disable/settings need `Custom Rules.manage`.
+
 ## `GET /web/api/v2.1/detection-library/data-sources`
 **Get Data Sources**
 `operationId`: `_web_api_detection-library_data-sources_get`

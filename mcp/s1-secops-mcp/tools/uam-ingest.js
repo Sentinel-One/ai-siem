@@ -114,7 +114,7 @@ Both modes return indicator_uid and alert_uid. The alert surfaces in UAM within 
         },
         alert: {
           type: 'object',
-          description: 'Single OCSF SecurityAlert object (class_uid 2002). Must have metadata.uid, finding_info.related_events[] each referencing a previously-posted indicator via uid. Each related_events entry needs class_uid, type_uid, category_uid, activity_id, severity_id, time, message, and observables[] with type+typeName.',
+          description: 'Single OCSF SecurityAlert object. class_uid MUST be 99602001 (S1 Security Alert extension class) with type_uid 9960200101 — the generic OCSF 2002 is silently dropped by the stitcher even though HEC returns HTTP 202. Must have metadata.uid, finding_info.related_events[] each referencing a previously-posted indicator via uid. Each related_events entry needs class_uid, type_uid, category_uid, activity_id, severity_id, time, message, and observables[] with type+typeName.',
           additionalProperties: true,
         },
       },

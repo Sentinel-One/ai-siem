@@ -86,9 +86,13 @@ async function hecPost(path, payloads, scope, retries = 3) {
       continue;
     }
 
+    // Retry is acceptable here despite POST semantics: UAM alert/indicator
+    // payloads carry metadata.uid, which the stitcher dedupes on, so a re-POST
+    // after an ambiguous 5xx does not double-ingest. (2026-07-29 review note.)
     if ((res.status === 429 || res.status >= 500) && attempt < retries) {
-      const retryAfter = res.headers.get('Retry-After');
-      await sleep(retryAfter ? parseInt(retryAfter, 10) * 1000 : delay);
+      // Retry-After may be an HTTP date; Number() of that is NaN -> fall back to delay.
+      const ra = Number(res.headers.get('Retry-After'));
+      await sleep(Number.isFinite(ra) && ra >= 0 ? Math.min(ra * 1000, 30000) : delay);
       delay = Math.min(delay * 2, 8000);
       continue;
     }

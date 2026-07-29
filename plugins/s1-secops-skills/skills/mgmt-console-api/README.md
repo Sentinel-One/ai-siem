@@ -1,4 +1,4 @@
-# mgmt-console-api (Claude skill)
+# sentinelone-mgmt-console-api (Claude skill)
 
 A Claude skill wrapping the SentinelOne Management Console API (Swagger 2.1, 781 operations, 113 tags) plus two GraphQL surfaces: **Unified Alert Management** (modern multi-source alert triage and bulk actions) and **Purple AI** (natural-language SDL queries).
 
@@ -7,13 +7,13 @@ A Claude skill wrapping the SentinelOne Management Console API (Swagger 2.1, 781
 Copy this folder into your user skills directory:
 
 ```bash
-cp -r mgmt-console-api ~/.claude/skills/
+cp -r sentinelone-mgmt-console-api ~/.claude/skills/
 ```
 
 In Cowork/Claude Code, the path is:
 
 ```
-/sessions/<session>/mnt/.claude/skills/mgmt-console-api/
+/sessions/<session>/mnt/.claude/skills/sentinelone-mgmt-console-api/
 ```
 
 ## Configure
@@ -32,7 +32,7 @@ Set credentials as environment variables in `claude_desktop_config.json` inside 
 
 ### Without s1-secops-mcp (direct skill use)
 
-Drop a `credentials.json` file into your Cowork project folder (see the **Credentials** section of `mcp/s1-secops-mcp/README.md` for all available keys). The plugin's SessionStart hook auto-discovers it. To trigger a manual refresh: `bash scripts/bootstrap_creds.sh`.
+Drop a `credentials.json` file into your Cowork project folder (see the **Credentials** section of `s1-secops-mcp/README.md` for all available keys). The plugin's SessionStart hook auto-discovers it. To trigger a manual refresh: `bash scripts/bootstrap_creds.sh`.
 
 ```json
 {
@@ -50,7 +50,7 @@ Create the API token in the S1 console: Settings → Users → Service Users →
 
 ```bash
 pip install requests
-cd ~/.claude/skills/mgmt-console-api
+cd ~/.claude/skills/sentinelone-mgmt-console-api
 python scripts/s1_client.py
 ```
 

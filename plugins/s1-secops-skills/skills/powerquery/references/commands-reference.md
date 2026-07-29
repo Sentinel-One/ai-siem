@@ -197,7 +197,7 @@ Lookup operators:
 | `=:wildcard` | `%` = multi-char, `_` = single-char; in the data-table value |
 | `=:cidr` | IPv4/IPv6 subnet membership; the data-table column is `1.2.3.0/24` style |
 
-Limits: lookup table ≤ 400 KB, savelookup target ≤ 100,000 rows / 1.5 MB. `savelookup` doesn't support array values.
+Limits: lookup / `savelookup` datatables can be up to 150 MB per table (operator-confirmed 2026-07-29; consistent with `detection-rules.md` and `datasource-command.md`). `savelookup` doesn't support array values.
 
 Best practices: defer the `lookup` until after a `group`, so the lookup is performed once per group row instead of once per raw event. Don't join dynamic lookups inside an Alert.
 
@@ -207,7 +207,7 @@ Best practices: defer the `lookup` until after a `group`, so the lookup is perfo
 - `by` direction is `lookupColumn = eventField`. Left of the `=` is the lookup-table key column, right is the event field or expression. Example: `by sid = winEventLog.data.event.eventData.subjectUserSid`.
 - `| dataset 'config://datatables/<name>'` reads a saved lookup table as the pipeline source. The leading `|` is required; without it the text is parsed as an initial filter and returns 0 rows.
 
-**Tenant-wide enrichment without a command:** to apply a lookup automatically to every search and PowerQuery (no `| lookup` typed), use the `/automaticLookups` config file instead. See `references/automatic-lookups.md` for the schema, the "output value fields must be unique across all specs" rule, the 100-row / 5 MB / 50-column limits, and a full Windows Event Logs SID-to-username worked example.
+**Tenant-wide enrichment without a command:** to apply a lookup automatically to every search and PowerQuery (no `| lookup` typed), use the `/automaticLookups` config file instead. See `references/automatic-lookups.md` for the schema, the "output value fields must be unique across all specs" rule, the 100,000-row (unvalidated) / 5 MB / 50-column limits, and a full Windows Event Logs SID-to-username worked example.
 
 ---
 

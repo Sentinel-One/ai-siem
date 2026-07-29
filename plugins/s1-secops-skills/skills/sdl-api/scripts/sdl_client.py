@@ -2,8 +2,16 @@
 SentinelOne Singularity Data Lake (SDL) API client.
 
 The SDL API has four scoped key types plus the management-console user
-API token. Each method below picks the correct key automatically;
-callers do not need to worry about which token to send.
+API token. Each method walks a per-method-class key chain (KEY_CHAINS):
+it starts with the first configured key and, if the server answers
+401/403 (e.g. a config-scoped key does not grant View Logs on the query
+methods), advances to the next key in the chain, ending at the console
+JWT. The last auth error is raised only when the chain is exhausted.
+Note the chain order is "first configured wins", not "most privileged
+wins": a config write key set alongside no log read key is still tried
+first on log-read methods and only the 401/403 fallthrough rescues the
+call, so configure SDL_LOG_READ_KEY (or rely on the console JWT) for
+query-heavy work.
 
 Credential resolution order (highest wins, applied last):
   1. Environment variables
@@ -344,20 +352,24 @@ class SDLClient:
         self.session.headers.update({"Accept": "application/json"})
 
     # ------------------------------------------------------------------ auth
+    def _candidate_keys(self, chain_name: str) -> List[str]:
+        """Return every configured key from the chain for this method,
+        in chain order. Raises when none is configured."""
+        chain = self.KEY_CHAINS[chain_name]
+        candidates = [self.keys[field] for field in chain if self.keys.get(field)]
+        if not candidates:
+            raise RuntimeError(
+                f"No API key configured for chain '{chain_name}'. Tried {chain}. "
+                "Check $COWORK_WORKSPACE/credentials.json (or any "
+                "folder Cowork can access)."
+            )
+        return candidates
+
     def _pick_key(self, chain_name: str) -> str:
         """Return the first configured key from the chain for this method."""
-        chain = self.KEY_CHAINS[chain_name]
-        for field in chain:
-            if self.keys.get(field):
-                return self.keys[field]
-        raise RuntimeError(
-            f"No API key configured for chain '{chain_name}'. Tried {chain}. "
-            "Check $COWORK_WORKSPACE/credentials.json (or any "
-            "folder Cowork can access)."
-        )
+        return self._candidate_keys(chain_name)[0]
 
-    def _auth_headers(self, chain_name: str, content_type: str = "application/json") -> Dict[str, str]:
-        token = self._pick_key(chain_name)
+    def _headers_for_token(self, token: str, content_type: str = "application/json") -> Dict[str, str]:
         h = {"Authorization": f"Bearer {token}", "Content-Type": content_type}
         # Console API tokens need S1-Scope when the user has access to multiple sites/accounts.
         # We look up which field produced the token; only set the header if the token actually
@@ -365,6 +377,9 @@ class SDLClient:
         if self.keys.get("console_api_token") == token and self.s1_scope:
             h["S1-Scope"] = self.s1_scope
         return h
+
+    def _auth_headers(self, chain_name: str, content_type: str = "application/json") -> Dict[str, str]:
+        return self._headers_for_token(self._pick_key(chain_name), content_type)
 
     # --------------------------------------------------------------- request
     def _request(
@@ -382,61 +397,88 @@ class SDLClient:
         if not path.startswith("/"):
             path = "/" + path
         url = self.base_url + path
-        headers = self._auth_headers(chain, content_type=content_type)
-        if extra_headers:
-            headers.update(extra_headers)
 
-        attempt = 0
-        while True:
-            attempt += 1
-            try:
-                resp = self.session.request(
-                    method.upper(),
-                    url,
-                    params=params,
-                    json=json_body if data is None else None,
-                    data=data,
-                    headers=headers,
-                    timeout=self.timeout,
-                    verify=self.verify_tls,
+        # Auth fallthrough: previously only the FIRST configured key in the
+        # chain was tried and a 401/403 was fatal, even when a later key
+        # (e.g. the console JWT) would have worked. Now an auth failure
+        # advances to the next candidate key; the last auth error is raised
+        # only when the chain is exhausted. Mirrors sdlFetch in
+        # s1-secops-mcp/lib/sdl.js.
+        candidates = self._candidate_keys(chain)
+        last_auth_error: Optional[SDLAPIError] = None
+
+        for token in candidates:
+            headers = self._headers_for_token(token, content_type=content_type)
+            if extra_headers:
+                headers.update(extra_headers)
+
+            attempt = 0
+            while True:
+                attempt += 1
+                try:
+                    resp = self.session.request(
+                        method.upper(),
+                        url,
+                        params=params,
+                        json=json_body if data is None else None,
+                        data=data,
+                        headers=headers,
+                        timeout=self.timeout,
+                        verify=self.verify_tls,
+                    )
+                except requests.exceptions.ProxyError as exc:
+                    raise SandboxProxyBlockedError(
+                        f"Sandbox proxy blocked HTTPS to {self.base_url}. "
+                        f"Use s1-secops-mcp MCP tools instead (sdl_get_file, sdl_put_file, "
+                        f"sdl_list_files, powerquery_run), which run locally "
+                        f"and bypass the sandbox proxy entirely. This is not a credential issue."
+                    ) from exc
+                status = resp.status_code
+                # Parse body once
+                try:
+                    body: Any = resp.json() if resp.content else {}
+                except ValueError:
+                    body = {"_raw": resp.text}
+
+                # SDL API treats 200 + status='error/server/backoff' as retryable.
+                sdl_status = body.get("status") if isinstance(body, dict) else None
+                retryable = (
+                    status == 429
+                    or 500 <= status < 600
+                    or (sdl_status and isinstance(sdl_status, str) and sdl_status.startswith("error/server/backoff"))
                 )
-            except requests.exceptions.ProxyError as exc:
-                raise SandboxProxyBlockedError(
-                    f"Sandbox proxy blocked HTTPS to {self.base_url}. "
-                    f"Use s1-secops-mcp MCP tools instead (sdl_get_file, sdl_put_file, "
-                    f"sdl_list_files, powerquery_run), which run locally "
-                    f"and bypass the sandbox proxy entirely. This is not a credential issue."
-                ) from exc
-            status = resp.status_code
-            # Parse body once
-            try:
-                body: Any = resp.json() if resp.content else {}
-            except ValueError:
-                body = {"_raw": resp.text}
+                if status < 400 and not (isinstance(sdl_status, str) and sdl_status.startswith("error/")):
+                    return body
+                if status in (401, 403):
+                    # Wrong-scoped key (e.g. a config key on a log-read
+                    # method returns 403 "does not grant View logs").
+                    # Remember the error and fall through to the next
+                    # candidate key in the chain.
+                    msg = ""
+                    if isinstance(body, dict):
+                        msg = body.get("message") or body.get("status") or ""
+                    if not msg:
+                        msg = resp.text[:500]
+                    last_auth_error = SDLAPIError(status, msg or f"status={sdl_status}", body)
+                    break
+                if retryable and attempt <= retries:
+                    wait = min(2 ** attempt, 30)
+                    ra = resp.headers.get("Retry-After")
+                    if ra and ra.isdigit():
+                        wait = int(ra)
+                    time.sleep(wait)
+                    continue
+                # non-retryable, non-auth failure
+                msg = ""
+                if isinstance(body, dict):
+                    msg = body.get("message") or body.get("status") or ""
+                if not msg:
+                    msg = resp.text[:500]
+                raise SDLAPIError(status, msg or f"status={sdl_status}", body)
 
-            # SDL API treats 200 + status='error/server/backoff' as retryable.
-            sdl_status = body.get("status") if isinstance(body, dict) else None
-            retryable = (
-                status == 429
-                or 500 <= status < 600
-                or (sdl_status and isinstance(sdl_status, str) and sdl_status.startswith("error/server/backoff"))
-            )
-            if status < 400 and not (isinstance(sdl_status, str) and sdl_status.startswith("error/")):
-                return body
-            if retryable and attempt <= retries:
-                wait = min(2 ** attempt, 30)
-                ra = resp.headers.get("Retry-After")
-                if ra and ra.isdigit():
-                    wait = int(ra)
-                time.sleep(wait)
-                continue
-            # non-retryable failure
-            msg = ""
-            if isinstance(body, dict):
-                msg = body.get("message") or body.get("status") or ""
-            if not msg:
-                msg = resp.text[:500]
-            raise SDLAPIError(status, msg or f"status={sdl_status}", body)
+        # Every candidate key was rejected with 401/403.
+        assert last_auth_error is not None
+        raise last_auth_error
 
     # =========================================================================
     # Log read (queries)

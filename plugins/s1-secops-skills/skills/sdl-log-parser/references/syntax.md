@@ -186,7 +186,7 @@ rewrites: [
 
   // PowerQuery-driven enrichment (S-24.4.5+):
   { action: "computeFields",
-    expression: "| lookup city_code from geo_table by src_ip | let risk_score = if(severity >= 5, 10, 1)" }
+    expression: "| lookup city_code from geo_table by src_ip | let risk_score = severity >= 5 ? 10 : 1" }
 ]
 ```
 

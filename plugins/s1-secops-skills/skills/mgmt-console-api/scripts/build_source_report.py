@@ -90,7 +90,7 @@ def pick_strategy(hours: float) -> Dict[str, Any]:
                 "poll_deadline": 420}
     raise SystemExit(
         f"window > 30d ({days:.1f}d) requires the two-JWT runner. "
-        "See `references/lrq-api.md` in the powerquery skill.")
+        "See `references/lrq-api.md` in the sentinelone-powerquery skill.")
 
 
 # --------------------------------------------------------------- discovery
@@ -290,7 +290,16 @@ def summarise(d: Dict[str, Any]) -> Dict[str, Any]:
         if prim_key:
             break
 
-    total = sum(int(r.get("n") or 0) for r in rows)
+    # True denominator: the by_action query's LRQ matchCount counts every
+    # event matched by the initial filter BEFORE the | group / | limit
+    # stages, so it stays correct even when the aggregation carries a
+    # display cap (the event.type variant uses | limit 12). Summing the
+    # (possibly truncated) rows would deflate every percentage below.
+    # The row sum is kept as a fallback for artefacts without matchCount.
+    row_total = sum(int(r.get("n") or 0) for r in rows)
+    mc = d["queries"].get("by_action", {}).get("matchCount")
+    total = int(mc) if isinstance(mc, (int, float)) and int(mc) >= row_total \
+        else row_total
     by: Dict[str, int] = {}
     if prim_key:
         for r in rows:
@@ -343,6 +352,9 @@ def summarise(d: Dict[str, Any]) -> Dict[str, Any]:
                             if total else 0.0,
         "block_pct": (100.0 * block_n / total) if total else 0.0,
         "bypass_pct": (100.0 * bypass_n / total) if total else 0.0,
+        # Capped by the collector's | limit on per_user_mix_top10 (200 /
+        # 25 rows), so this is a SAMPLED count, not a distinct-entity
+        # count. Renderers must label it as sampled.
         "principal_count": len(users_ranked),
         "top_principal_key": p_key,
         "top_user": top_user,
@@ -460,7 +472,7 @@ def collect_all(client: S1Client, source: str, days: float,
     s = out["summary"]
     print(f"  summary: total={s['total']:,}  "
           f"intervention={s['intervention_pct']:.1f}%  "
-          f"principals={s['principal_count']}  "
+          f"principals(sampled)={s['principal_count']}  "
           f"top_share={s['top_share']:.1f}%  rank24h={s['rank_24h']}")
     return out
 

@@ -62,8 +62,8 @@ for mnt in "$HOME"/mnt/*/; do
     case "$base" in
         .claude|.auto-memory|.remote-plugins|outputs|uploads) continue ;;
     esac
-    candidates+=("$mnt.sentinelone/credentials.json")
-    candidates+=("$mnt.claude/sentinelone/credentials.json")
+    candidates+=("${mnt%/}/.sentinelone/credentials.json")
+    candidates+=("${mnt%/}/.claude/sentinelone/credentials.json")
 done
 
 for src in "${candidates[@]}"; do

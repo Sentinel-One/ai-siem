@@ -208,7 +208,7 @@ export const tools = [
       properties: {
         first: {
           type: 'number',
-          description: 'Number of alerts to fetch (default 20, max 100).',
+          description: 'Number of alerts to fetch per page (default 20). Not enforced client-side; the UAM GraphQL backend accepts larger pages (live-verified 2026-07-29: first=500 returned 500 with hasNextPage=true). Use the returned pageInfo.endCursor with `after` to paginate rather than requesting an unbounded page.',
           default: 20,
         },
         after: {

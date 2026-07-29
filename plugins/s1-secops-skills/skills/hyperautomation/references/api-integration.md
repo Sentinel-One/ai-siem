@@ -102,94 +102,117 @@ problem**.
 
 **Permission**: `Hyper Automate.workflowsCreateEdit`
 
+<!-- Section reconstructed 2026-07-29: the original text was committed corrupted (garbled
+     interleaved lines) in every git revision. Rebuilt from the readable fragments,
+     references/workflow-schema.md, and the tenant-validated import client in
+     s1-secops-mcp/tools/hyperautomation.js. Re-validate details against a live tenant
+     before treating any single field name here as authoritative. -->
+
 **Query params** (at least one required to set scope):
-| Param | Type | Description | — **flat object, NOT wrapped in `data`**
+
+| Param | Type | Description |
 |-------|------|-------------|
 | `accountIds` | string | Comma-separated account IDs |
-| `oupIds` | string | Comma-separated group IDs |
+| `siteIds` | string | Comma-separated site IDs |
+| `groupIds` | string | Comma-separated group IDs |
 
-**dscop:_id<site__accunt_id>",
- "scop_level: "site"
-``"mgmt_id":`"<tenant_deployment_id>",
-j soine_nm
-{aoun_nm
-  aparent_ta": {<account_id>
+**Request body**: the workflow JSON wrapped in the standard S1 envelope,
+`{ "data": { <workflow object> } }` (this is what the validated import client sends).
+The workflow object is the same shape `export` produces; authored-from-scratch workflows
+need at minimum `name` (required, max 255 chars), `description`, and `actions`
+(see workflow-schema.md). Export-produced objects also carry scope and tenant metadata:
+
+```json
+{
+  "name": "Workflow Name",              // required, max 255 chars
+  "description": null,
+  "actions": [ /* action objects */ ],
+  "scope_id": "<site_or_account_id>",
+  "scope_level": "site",
+  "mgmt_id": "<tenant_deployment_id>",
+  "site_name": "...",
+  "account_name": "...",
   "site_state": "active",
-  "aacmunt:stat"": "actiWok,
-  "created_at"floISO-8601ame",           // required, max 255 chars
+  "account_state": "active",
+  "created_at": "ISO-8601",
   "updated_at": "ISO-8601",
-  "descriptby_user": { "id": "...", "emiiln": "opti "name": "..." },
-  "updions": [ /* action objects */ ]
-  "tags":}[],
- desriptin": nll,
+  "created_by_user": { "id": "...", "email": "...", "name": "..." },
+  "tags": [],
   "timeout": 86400,
-  "daily_max_executios": 0,
+  "daily_max_executions": 0,
   "max_concurrency": 0,
-  "noify_to[],
-}"is_snippet": false,
-  "dimensions": { "width": null, "height": null 
+  "notify_to": [],
+  "is_snippet": false,
+  "dimensions": { "width": null, "height": null }
+}
 ```
 
 **Responses**:
-⚠️ - Do not** read `response.data.id` — that returns undefined.
-Use `response.id` and `response.version_id` directly at the top level.
 
-**`200` — Successful
-- `422` — Validation error (malformed JSON, wrong field types, etc.)
- 
-**ReTokonntype sndeownership**: both  body**-(key ields onsuccess)a:d
--JWT s(`eyJ…`) autnticatesuccessfull against
-  `/imot` nd `/activation` (both `Ahriz:piToken …` and
-```Aut`orizjtion: Bearer …` schemesoareaccpte). The ractcal
-  differeceis **wnership**:tis d by the token'
-  user, and tere s no ublicendpint to tansferownerip. Use 
-  pesonal toknif human SOC analyst needs to see/edit the imported
-  in the UI. Use a service-user token if the wokflw is
-  puely utoon-manged
--fter import, the must be activated before it runs.
+- `200`: success. The response is a **flat object, NOT wrapped in `data`**.
+  Do not read `response.data.id`, that returns undefined; use `response.id` and
+  `response.version_id` directly at the top level.
+- `422`: validation error (malformed JSON, wrong field types, etc.)
 
-####{Afterrt — retieving he `vrsion_i` reliably
-
-`POST/mport` reurns `id`nd`vsion_id` at the top leel — capture both
-**immedately** from the respons.
-
-If youloe th esponse(r ar activatig aprevisy-importeworkflow),
-thly npointreturn the nam plus thtivati-redy
-`versio_i` togethern oe call is **`GET /workflows/ersions/lt/{workflow_d}`**:
-
-```ash
-cur -s -H"Authorizaion: ApiTken $TOKEN" \
-  "$S1_CONSOLE/web/api/v2.1/"yper-adtoaate/tpi/public/workflows/versioas/list/$WORKFLOW_ID?siteIds=$SITE_ID" \
-  | jq"'.version [0] | {id, v{ion_id,ame,sta,ativated_at}'
+```json
+{
+  "id": "<workflow_id>",
+  "version_id": "<version_id>",
+  "name": "Workflow Name",
+  "state": "...",
+  "lifecycle_state": "...",
+  "scope_id": "...",
+  "scope_level": "...",
+  "created_at": "...",
+  "created_by_user": { "id": "...", "email": "...", "name": "..." },
+  "version_count": 1
+}
 ```
+
+**Token type and ownership**: both `Authorization: ApiToken ...` and
+`Authorization: Bearer ...` (JWT, `eyJ...`) schemes authenticate successfully against
+`/import` and `/activation`. The practical difference is **ownership**: the imported
+workflow is owned by the token's user, and there is no public endpoint to transfer
+ownership. Use a personal token if a human SOC analyst needs to see or edit the imported
+workflow in the UI. Use a service-user token only if the workflow is purely
+automation-managed. After import, the workflow must be activated before it runs.
+
+#### After import: retrieving the `version_id` reliably
+
+`POST /import` returns `id` and `version_id` at the top level. Capture both
+**immediately** from the response.
+
+If you lose the response (or are activating a previously-imported workflow), the only
+endpoint that returns the name plus the activation-ready `version_id` together in one
+call is **`GET /workflows/versions/list/{workflow_id}`**:
+
+```bash
+curl -s -H "Authorization: ApiToken $TOKEN" \
+  "$S1_CONSOLE/web/api/v2.1/hyper-automate/api/public/workflows/versions/list/$WORKFLOW_ID?siteIds=$SITE_ID" \
+  | jq '[.versions[] | select(.state == "active")][0] // .versions[0]
+        | {id, version_id, name, state, activated_at}'
+```
+
+Live-verified 2026-07-29: the response shape is `{"versions": [...]}` and versions are listed
+**newest-first**, so `.versions[0]` can be a NEWER inactive draft rather than the running
+version. Select on `state == "active"` (as above) when you want the activation-ready
+`version_id`; fall back to `[0]` only for never-activated workflows.
 
 Sample response:
 ```json
 {
   "id": "<workflow_id>",
-  "versi_id": "<verion_id>",
-  "name": "My Wrkfow",
-  "state": "active",         // or "draft" before activation
-  "activatd_at":"SO 8601" // null be ore activation
+  "version_id": "<version_id>",
+  "name": "My Workflow",
+  "state": "active",           // or "draft" before activation
+  "activated_at": "ISO-8601"   // null before activation
 }
 ```
 
-On at least some "inants, `GET /workflows/{wodkflow_id}` and
-`GET"/workflow-: port-export/ex"<wo/{workflow_id}`krefurn **HTTP 404** evon
-forw_id>",s thatexit — only he`/workflows/vrsions/list/{id}`ph s
-guarne to workpost-mporretieval
-    "version_id": "<version_id>",
-    "name": "Workflow Name",
-    "state": "...",
-    "lifecycle_state": "...",
-    "scope_id": "...",
-    "scope_level": "...",
-    "created_at": "...",
-    "created_by_user": { "id": "...", "email": "...", "name": "..." },
-    "version_count": 1
-  }
-}
-```
+On at least some tenants, `GET /workflows/{workflow_id}` and
+`GET /workflow-import-export/export/{workflow_id}` return **HTTP 404** even for
+workflows that exist. Only the `/workflows/versions/list/{id}` path is guaranteed
+to work for post-import retrieval.
 
 **Notes**:
 - Imported workflows are created as **Private Draft**, visible only to the owner of the token
@@ -572,6 +595,87 @@ Common import `422` messages:
 - `"export_id conflict"` — duplicate `export_id` values in actions array
 - `"Invalid target"` — `connected_to.target` references non-existent `export_id`
 - `"Missing required field"` — required field absent from data object
+
+---
+
+## SentinelOne alert write-backs — use the Unified Alerts GraphQL API
+
+When a workflow writes back to the alert that triggered it — add a note, set the analyst verdict,
+change status, assign an owner, or set a ticket id — use the **Unified Alerts GraphQL API**, not the
+legacy REST threats endpoints. The old `POST /web/api/v2.0/threats/*` note/verdict/status paths are
+**decommissioned and return HTTP 405.**
+
+**Endpoint**: `POST {console}/web/api/v2.1/unifiedalerts/graphql`
+(in an `http_request` action, target `{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql`).
+**Payload**: a raw JSON body `{"query": "<mutation>", "variables": { ... }}`.
+
+The **note-add** mutation shape (`addAlertNote` / `alertTriggerActions` with `S1/alert/addNote`) is
+already documented in `building-blocks-catalog.md` → B6. The same `alertTriggerActions` envelope drives
+the rest of the write-back actions — pass a different `id` in `actions[]`:
+
+| Action id | Payload |
+|-----------|---------|
+| `S1/alert/addNote` | `{ note: { value: $note } }` — or rich: `{ formattedNote: { text: $text, plainText: $plain, type: MARKDOWN } }` |
+| `S1/alert/analystVerdictUpdate` | `{ analystVerdict: { value: <ENUM> } }` |
+| `S1/alert/statusUpdate` | `{ status: { value: <ENUM> } }` |
+| `S1/alert/assignUser` | assign an owner to the alert |
+| `S1/alert/setTicketId` | set an external ticket id |
+
+**Gotchas (each cost a live debugging cycle):**
+
+- **Enum values are UNQUOTED GraphQL literals**, not strings. `AnalystVerdict`:
+  `FALSE_POSITIVE_BENIGN` / `TRUE_POSITIVE_MALWARE` / `UNDEFINED` / … ; `Status`:
+  `NEW` / `IN_PROGRESS` / `RESOLVED`. Writing `"IN_PROGRESS"` (quoted) fails.
+- **The `$id` GraphQL variable must be typed `String!`, not `ID!`** — `stringEqual.value` expects a
+  `String`, so an `ID!` variable raises `VariableTypeMismatch`.
+- **`ContentType` enum** for `formattedNote.type` is `HTML | MARKDOWN | PLAIN_TEXT`. `MARKDOWN` renders
+  headings, bold, tables, and links in the alert Notes panel — prefer it for rich evidence notes.
+- **Unknown or unavailable action ids come back as FAILURES, not silent no-ops.** The mutation returns
+  HTTP 200 with the bad action under `actions[].failure` (`errorMessage: "No result returned by target
+  service"`), NOT an empty `actions: []` and NOT under `skip`. Always check `actions[].failure` and
+  `actions[].skip`, not just `success`: a wrong or deprecated id (e.g. `setAnalystVerdict` / `setStatus`,
+  which are absent from the live catalog) fails here while the HTTP action still reports 200. Enumerate
+  the valid ids for an alert first via the `alertAvailableActions` query. (Live-validated 2026-07-24.)
+- Writes are **eventually consistent (~5s)** — don't read-after-write immediately and assume failure.
+
+---
+
+## Native integration actions vs generic `http_request`
+
+An action is a **native integration action** when it carries `tag: "integration"` plus a
+`public_action_id` (the catalog identity of a specific action inside an installed integration) and, to
+render as native on the canvas, the vendor's `integration_id`.
+
+- **Live-fetch the action catalog** rather than guessing ids or field names, then **copy the catalog
+  action's `data` verbatim**, substituting only the input placeholders (catalog tokens like `<<ip>>`)
+  with workflow expressions; reconstructing `data` by hand tends to drop required shape (e.g. params
+  must be `{parameter_name, parameter_value}`, not `{key, value}`). NOTE: the exact catalog path is
+  unconfirmed on S-26.x. `GET {base}/public-actions` returns 404 (as do `/actions` and
+  `/integration-actions`); capture the current path from a browser DevTools network trace of the
+  Hyperautomation > Integrations page before relying on it. (Path 404 verified live 2026-07-24.)
+- **`url` / `url_path` / `payload` overrides on an integration action ARE honored** — the action then
+  executes as a generic HTTP request through the bound connection. To make a node *unambiguously* a
+  generic request, set `public_action_id: null`.
+- **Null out `connection_id`s in exported workflow JSON for cross-tenant portability.** A hard-coded
+  `connection_id` from the source tenant imports as `404 "connection not found"` in another tenant;
+  leaving it `null` imports clean (the user binds the connection after import).
+- **Prefer NEW API endpoints over deprecated ones** for every native action, and verify the real
+  endpoint before wiring — deprecated paths can reject functions or return empty rows silently.
+
+---
+
+## Export-all + round-trip template
+
+- **`GET {base}/workflow-import-export/export`** returns every workflow and is the fastest source of
+  known-good templates: round-trip a member and bisect your nodes into it to debug a persistent import
+  `422`. The `ids` param is NOT honored (any value, including `ids=all`, returns ALL workflows because
+  the param is ignored); the real filter is **`workflow_ids=<comma-separated ids>`**, which returns only
+  those workflows. A single-`workflow_ids` response is the raw `{name, description, actions, notes}` JSON
+  envelope. (For the replace-in-place lifecycle, no in-place update: deactivate, delete, import,
+  activate, see sections 8, 8a, and 8b above.) Param behaviour live-validated 2026-07-24.
+- **Per-action execution output is NOT exposed via the API** (the per-action output endpoints 404).
+  Validate a deployed workflow by triggering it and reading the resulting alert notes / downstream side
+  effects — not by inspecting action outputs over the API.
 
 ---
 

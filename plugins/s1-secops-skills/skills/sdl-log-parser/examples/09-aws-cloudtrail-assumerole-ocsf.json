@@ -20,8 +20,10 @@
   //   (see examples/AWS RDS in ai-siem) to branch mappings cleanly.
   //
   // Strategy:
-  //   1. Capture the whole JSON record into `unmapped.*` via gron
-  //      (the same pattern validated in examples/08).
+  //   1. Capture the whole JSON record into `unmapped.*` via
+  //      strictDottedJson (the same capture-into-unmapped pattern as
+  //      examples/08; strict variant so the resources array survives
+  //      as one JSON value, see the format comment below).
   //   2. Rename/copy into OCSF dotted names inside a single v1
   //      mappings block. Dotted source keys (e.g. `user.email`) stay
   //      FLAT under `unmapped.*` — reference them literally, do NOT
@@ -32,7 +34,7 @@
   "attributes": {
     // Four required pipeline defaults
     "metadata.version":    "1.0.0",
-    "dataSource.category": "cloud",
+    "dataSource.category": "security",
     "dataSource.name":     "AWS CloudTrail",
     "dataSource.vendor":   "AWS",
 
@@ -57,15 +59,19 @@
       // stay flat (`unmapped.userIdentity.principalId` is one field
       // name, not a nested object).
       //
-      // WHY dottedJson (not gron) on this tenant:
-      //   `{parse=gron}` DROPS JSON arrays entirely — `unmapped.resources`
-      //   comes back as `null` on ingest, tenant-validated April 2026.
-      //   `{parse=dottedJson}` preserves arrays as a JSON-string-encoded
-      //   scalar at the parent path (e.g. `unmapped.resources` =
-      //   '[{"ARN":"...","type":"..."}]'), which downstream PowerQuery
-      //   can then `parse_json` over. Neither directive flattens array
-      //   elements into indexed subfields like `resources.0.ARN` —
-      //   that's not a feature on this tenant.
+      // WHY strictDottedJson (array handling, per the tenant-validated
+      // section in references/parse-directives.md, 2026-06-22):
+      //   Non-strict `gron` / `dottedJson` DO expand arrays, into
+      //   `[N]`-indexed attributes (`unmapped.resources[0].ARN`,
+      //   `unmapped.resources[0].type`), one attribute per array leaf.
+      //   The `strict*` variants instead preserve the array as ONE
+      //   JSON value at the parent path (`unmapped.resources` =
+      //   '[{"ARN":"...","type":"..."}]') that downstream PowerQuery
+      //   can consume with `array_from_json()` / `array_get()`.
+      //   Scalar and nested-object flattening is identical across all
+      //   variants. This parser copies the WHOLE resources array to
+      //   `resources_raw` below, so it needs the strict capture.
+      //   (Directive switch pending demo-tenant validation.)
       //
       // NOTE: Do NOT add a `rewrites` that pulls `unmapped.eventTime`
       // into the reserved `timestamp` field — combined with the
@@ -74,7 +80,7 @@
       // is sufficient for hunts; the event-time field the ingest
       // pipeline actually stamps is also fine because the payload is
       // ingested close to real-time.
-      "format": "$unmapped.{parse=dottedJson}$"
+      "format": "$unmapped.{parse=strictDottedJson}$"
     }
   ],
 
@@ -144,25 +150,26 @@
                         "to":   "tls.sni" } },
 
           // ---- Target resource -------------------------------------
-          // IMPORTANT: Neither `{parse=gron}` nor `{parse=dottedJson}`
-          // flattens JSON arrays into indexed subfields on this tenant.
-          //   - gron DROPS arrays (null at the parent path).
-          //   - dottedJson PRESERVES arrays as a JSON-string-encoded
-          //     scalar at the parent path.
-          // We use dottedJson above precisely so we can surface the
-          // raw resources array (below), then downstream PowerQuery
-          // consumers can `parse_json` over `resources_raw` to walk
-          // into individual resource entries. The stable singleton
+          // IMPORTANT (array handling, tenant-validated 2026-06-22, see
+          // references/parse-directives.md): non-strict gron/dottedJson
+          // EXPAND arrays into `[N]`-indexed attributes
+          // (`unmapped.resources[0].ARN`); only the `strict*` variants
+          // preserve the array as ONE JSON value at the parent path.
+          // We use strictDottedJson above precisely so the WHOLE
+          // resources array survives as a single JSON value that this
+          // copy can surface as `resources_raw`; downstream PowerQuery
+          // consumers can `array_from_json()` / `parse_json` over it to
+          // walk individual resource entries. The stable singleton
           // identity (the roleArn from requestParameters, which is
           // already scalar) is also mirrored to `resource_uid` for
           // cheap flat filtering.
           //
-          // If you need per-element OCSF `resources[]` structure,
-          // either:
-          //   1. pre-expand the array client-side into one event per
-          //      element before ingest, or
-          //   2. add `reduce_array` / compute-field rewrites in a
-          //      follow-on mapping entry.
+          // If you instead want each element as its own queryable
+          // attribute, switch the capture to plain dottedJson/gron and
+          // read the `[N]`-indexed fields (they cannot be typed in a
+          // raw PowerQuery `columns` clause; validate them via
+          // powerquery_schema_discover), or use `reduce_array` /
+          // `rename_tree` in a follow-on mapping entry.
           { "copy":   { "from": "unmapped.resources",                     "to": "resources_raw" } },
           { "rename": { "from": "unmapped.requestParameters.roleArn",    "to": "resource_uid" } },
           { "rename": { "from": "unmapped.requestParameters.externalId", "to": "actor.authorizations.policy.uid" } },
@@ -179,11 +186,13 @@
           // on failures. The v1 mapper engine does not support
           // `== null` / `!= null` predicates, so we default to success
           // and rely on downstream PowerQuery to detect failures via
-          // `status_detail` being populated. Extend with a second
+          // `status_code` being populated. Extend with a second
           // mapping entry + format-id sentinel if you need the full
-          // success/failure fan-out. Defaults:
-          { "rename":   { "from": "unmapped.errorCode",    "to": "status_detail" } },
-          { "rename":   { "from": "unmapped.errorMessage", "to": "status_code" } },
+          // success/failure fan-out. errorCode is the short machine
+          // code (OCSF `status_code`); errorMessage is the free-text
+          // detail (OCSF `status_detail`). Defaults:
+          { "rename":   { "from": "unmapped.errorCode",    "to": "status_code" } },
+          { "rename":   { "from": "unmapped.errorMessage", "to": "status_detail" } },
           { "constant": { "value": 1,         "field": "status_id", "predicate": "true" } },
           { "constant": { "value": "Success", "field": "status",    "predicate": "true" } },
 

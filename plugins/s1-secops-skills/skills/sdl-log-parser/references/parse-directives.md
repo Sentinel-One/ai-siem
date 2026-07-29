@@ -54,15 +54,24 @@ A `{parse=X}` directive inside a field matcher runs a secondary parser on the ca
 
 ```js
 formats: [
-  { format: "$unmapped.{parse=gron}$",
-    rewrites: [ { input: "unmapped.timestamp", output: "timestamp",
-                  match: ".*", replace: "$0" } ] }
+  // The rewrite key is `replacement` (not `replace`; see syntax.md "Rewrites").
+  // Target `ts_raw`, not the reserved `timestamp` field: a non-epoch string
+  // written into `timestamp` silently drops the event. Convert to epoch in
+  // `mappings` (copy to `time` + iso8601 cast) if you need event time.
+  // UPDATE 2026-07-29 (live re-test, deployed parser A/B): the event is NOT dropped on the current platform; a non-epoch capture into reserved `timestamp` is simply IGNORED and receive time is used. `ts_raw` remains the right practice: it keeps the original stamp queryable instead of relying on undefined behavior.
+  // IMPORTANT (live-verified 2026-07-29): a format-level `rewrite` that READS a
+  // gron/dottedJson-produced `unmapped.*` field writes EMPTY output on this
+  // tenant. The rewrite stage does not see fields the sub-parse produced. To
+  // promote a gron-captured value, use a `mappings` copy (below), NOT a rewrite.
+  { format: "$unmapped.{parse=gron}$" }
 ],
 mappings: {
   version: 1,
   mappings: [{
     predicate: "true",
     transformations: [
+      // Promote the gron-captured stamp here (works; the format rewrite does not):
+      { copy: { from: "unmapped.timestamp", to: "ts_raw" } },
       { rename: { from: "unmapped.source.ip", to: "src_endpoint.ip" } },
       { rename: { from: "unmapped.action",    to: "activity_name" } }
       // ...all renames/copies/casts/constants here

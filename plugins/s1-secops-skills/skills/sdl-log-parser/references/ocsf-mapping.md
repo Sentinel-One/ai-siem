@@ -62,7 +62,7 @@ Tag every event with:
 attributes: {
   // required pipeline defaults
   "metadata.version":    "1.0.0",
-  "dataSource.category": "network",
+  "dataSource.category": "security",
   "dataSource.name":     "Juniper SRX",
   "dataSource.vendor":   "Juniper",
   // product metadata
@@ -79,7 +79,7 @@ attributes: {
 
 `activity_id` belongs on the *format* (per-event-subtype) since SESSION_CREATE vs SESSION_CLOSE map to different activities.
 
-**`dataSource.category` taxonomy:** `security`, `network`, `application`, `identity`, `endpoint`, `cloud`, `iot`, `ot`. Pick the one that best describes the source's primary purpose.
+**`dataSource.category` is a fixed constant, never a taxonomy pick:** always hardcode `"security"`, regardless of the source type. Never substitute `application`, `network`, `identity`, `endpoint`, `cloud`, or any other value (see the hard rule in `SKILL.md`).
 
 ## OCSF class quick-pick
 
@@ -88,13 +88,17 @@ attributes: {
 | Firewall connection allow/deny, NAT, flow start/end | Network Activity | 4001 |
 | HTTP / web access logs | HTTP Activity | 4002 |
 | DNS queries | DNS Activity | 4003 |
-| TLS handshake records | TLS Activity | 4006 |
+| RDP sessions | RDP Activity | 4005 |
+| SMB / file-share traffic | SMB Activity | 4006 |
+| SSH sessions | SSH Activity | 4007 |
 | Authentication / login events | Authentication | 3002 |
 | File create/read/write/delete | File Activity | 1001 |
 | Process create/terminate | Process Activity | 1007 |
 | Account creation / role change | Account Change | 3001 |
 | Group/role membership changes | Group Management | 3006 |
 | API activity (cloud, K8s) | API Activity | 6003 |
+
+There is no TLS class in the bundled catalog; TLS attributes ride on `tls.*` / `connection_info` under 4001/4002. For any class not listed here, check `references/ocsf-schema-documentation.md` rather than guessing a UID.
 
 `class_uid = category_uid * 1000 + N`. The integer UIDs go on `attributes` so STAR rules can filter cheaply (`class_uid = 4001` is much faster than `class_name = 'Network Activity'`).
 

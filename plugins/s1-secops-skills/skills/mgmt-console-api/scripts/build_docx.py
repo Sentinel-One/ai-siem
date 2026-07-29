@@ -388,8 +388,10 @@ def build_stat_row(doc, d, summary, principal_count, window):
                    f"{d.get('strategy', {}).get('n_slices', '?')}",
                    AMBER)
     if p_key and principal_count > 0:
+        # "(sampled)" because the collector caps principal rows upstream
+        # (| limit 200 / 25), so this is not a distinct-entity count.
         _stat_card(t, 0, 3,
-                   f"Distinct {_principal_label(p_key)}",
+                   f"{_principal_label(p_key).capitalize()} (sampled)",
                    f"{principal_count}", TEAL)
     else:
         rank = summary.get("rank_24h")
@@ -415,7 +417,7 @@ def build_exec_summary(doc, d):
                  f"{d['window_end'][:10]} UTC, "
                  f"dataSource.name='{source}' produced "
                  f"{summary['total']:,} events across "
-                 f"{principal_count} distinct "
+                 f"{principal_count} sampled "
                  f"{_principal_label(p_key)}. ")
     else:
         intro = (f"Over the {window} window ending "

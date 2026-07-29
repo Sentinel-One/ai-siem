@@ -136,12 +136,26 @@ Deploy in this order through the primitive skills. Every artifact is prefixed wi
 1. **Noise-vs-signal dashboard.** Render `assets/alertnoise_dashboard.template.json`, filling
    `<<ALERT_FILTER>>`, `<<NOISY_PRODUCT>>`, `<<NOISY_SOURCE>>`, `<<ACTION_FIELD>>`, `<<PREFIX>>`.
    Deploy with `sdl_put_file` to `/dashboards/<<PREFIX>> Alert Noise Reduction`. Validate every panel
-   with the `sdl-dashboard` skill's checks before deploy.
+   with the `sentinelone-sdl-dashboard` skill's checks before deploy.
 2. **Auto-resolve HA flow.** Render `assets/alertnoise_autoresolve_ha.template.json`, filling
-   `<<NOISY_PRODUCT>>`, the trigger match conditions (`<<MATCH_NAME>>`, `<<MATCH_CATEGORY>>`), and
-   `<<NOTE_TEXT>>`. Import scoped, then publish to a Shared Draft in the SAME step (an imported flow is
+   `<<NOISY_PRODUCT>>`, the trigger match conditions (`<<MATCH_NAME>>`, `<<MATCH_CATEGORY>>`),
+   `<<NOTE_TEXT>>`, and the MANDATORY mitigation guard `<<ACTION_FIELD>>` / `<<MITIGATED_VALUE>>`
+   (see below). Import scoped, then publish to a Shared Draft in the SAME step (an imported flow is
    a Private Draft owned by the API user until published). Leave it inactive for the user to review,
    bind the SentinelOne connection, and activate. See the hyperautomation skill for the publish call.
+
+   **Mandatory mitigation guard.** Both trigger filter groups carry a third condition:
+   `<<ACTION_FIELD>> equals <<MITIGATED_VALUE>>`. Discover both at deploy time from the live alert
+   payloads: `<<ACTION_FIELD>>` is the source's action/disposition field on the ingested alert and
+   `<<MITIGATED_VALUE>>` is its blocked/denied value. Without this guard, a later policy change that
+   flips the signature from block to allow would keep silently auto-resolving alerts that are no
+   longer mitigated. Do not deploy the flow with the guard removed.
+
+   **Quarterly re-verification.** Re-run the action-breakdown query for each auto-resolved signature
+   and confirm the mitigated value still accounts for effectively all matches:
+   `dataSource.name='<<NOISY_SOURCE>>' <<ALERT_FILTER>> | group n = count() by <<ACTION_FIELD>> | sort -n | limit 10`.
+   Any non-`<<MITIGATED_VALUE>>` rows mean the source has started passing the signature: re-triage it
+   and update or retire the auto-resolve flow.
 3. **Optional exclusion lookup / correlation rule.** Use the `custom-detection-exclusions` solution
    for a maintainable CSV anti-join, or a scheduled PowerQuery detection for the preserve-as-signal
    correlation.

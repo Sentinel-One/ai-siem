@@ -327,7 +327,10 @@ Shows average time-to-respond per alert severity against SLA targets, with color
       {
         graphStyle: "bullet",
         title: "Semantic Manual Ranges",
-        query: "| union\n( | limit 1 | let time_to_respond = 15, sla = 30, _severity = 'critical'),\n( | limit 1 | let time_to_respond = 45, sla = 60, _severity = 'high'),\n( | limit 1 | let time_to_respond = 180, sla = 120, _severity = 'medium'),\n( | limit 1 | let time_to_respond = 30, sla = 240, _severity = 'low')",
+        // union-FIRST synthetic rows (live-validated 2026-07-29): union must be the query's FIRST
+        // command (mid-pipeline `| union` returns HTTP 400); each subquery anchors on a real initial
+        // predicate, takes one row, and projects explicit columns.
+        query: "| union\n( dataSource.name='alert' | limit 1 | let time_to_respond = 15, sla = 30, _severity = 'critical' | columns time_to_respond, sla, _severity ),\n( dataSource.name='alert' | limit 1 | let time_to_respond = 45, sla = 60, _severity = 'high' | columns time_to_respond, sla, _severity ),\n( dataSource.name='alert' | limit 1 | let time_to_respond = 180, sla = 120, _severity = 'medium' | columns time_to_respond, sla, _severity ),\n( dataSource.name='alert' | limit 1 | let time_to_respond = 30, sla = 240, _severity = 'low' | columns time_to_respond, sla, _severity )",
         bulletColorScheme: "semantic",
         coloringMode: "ranges",
         colorSchemeOrder: "standard",

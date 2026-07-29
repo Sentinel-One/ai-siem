@@ -196,7 +196,10 @@ def purple_query(
     )
     body = {"query": query, "variables": {"input": user_input}}
 
-    resp = client.post("/web/api/v2.1/graphql", json_body=body)
+    # allow_retry=True: the Purple AI launch is a read-only GraphQL query
+    # against tenant data; a duplicate launch has no tenant side effects,
+    # so keeping the client's 429/5xx retry (now GET-only by default) is safe.
+    resp = client.post("/web/api/v2.1/graphql", json_body=body, allow_retry=True)
 
     # Top-level GraphQL errors — malformed query, auth issues that bubbled up
     # as a GraphQL error rather than HTTP 401.

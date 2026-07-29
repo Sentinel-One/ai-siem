@@ -322,7 +322,9 @@ mappings: {
 Given `tags = [{"name":"env","value":"prod"},{"name":"team","value":"sec"}]`:
 
 ```js
-{ reduce_array: { field: "tags", kind: "params", key: "name", to: "labels" } }
+// Deploy-validated v1 shape: `from` and `type`, not `field`/`kind`
+// (see the tenant callout in the reduce_array section above).
+{ reduce_array: { from: "tags", type: "params", key: "name", to: "labels" } }
 ```
 
 Result: `labels = { env: "prod", team: "sec" }`.
@@ -412,9 +414,12 @@ formats: [
     attributes: { class_uid: 3002, class_name: "Authentication",
                   category_uid: 3, category_name: "Identity & Access Management",
                   activity_id: 1, activity_name: "Logon" } },
+  // 4625 is a FAILED logon: Logon activity (1) with Failure status (status_id 2),
+  // not "Logoff" (Logoff is 4634/4647).
   { id: "evt4625", format: "...", halt: true,
     attributes: { class_uid: 3002, class_name: "Authentication",
-                  activity_id: 2, activity_name: "Logoff" } },
+                  activity_id: 1, activity_name: "Logon",
+                  status_id: 2 } },
   { id: "evt4720", format: "...", halt: true,
     attributes: { class_uid: 3001, class_name: "Account Change",
                   activity_id: 1, activity_name: "Create" } }

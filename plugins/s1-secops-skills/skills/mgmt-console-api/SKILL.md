@@ -11,6 +11,7 @@ Wraps the SentinelOne Management Console API (Swagger 2.0, spec version 2.1, 781
 > **Sandbox proxy blocked?** If calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally on your machine via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). The MCP server exposes all the tools in this skill — `s1_api_get`, `s1_api_post`, `purple_ai_alert_summary`, `uam_list_alerts`, `uam_get_alert`, `uam_add_note`, `uam_set_status` — with schemas validated against the live API. For natural-language Purple AI queries and AI investigations, use the Purple MCP (`mcp__purple-mcp__purple_ai`) directly — those operations require a browser-session teamToken that API tokens never obtain.
 
 > **Load this skill BEFORE any console/UAM *write*, not just reads.** Add-note, set-analyst-verdict, set-status, assign, and IOC-create all run through the UAM `alertTriggerActions` mutation with a specific action-id + `OrFilterSelectionInput` shape (see `references/UNIFIED_ALERTS.md`): action ids are `S1/alert/addNote` / `analystVerdictUpdate` / `statusUpdate`, and the alert is targeted by `filter:{or:[{and:[{fieldId:"id",stringEqual:{value:<id>}}]}]}` — the alert id is the FILTER, never the action `id`. Hand-rolling this GraphQL from live schema introspection is the fast path to a wrong action-id/filter and a misleading empty result. Also: `alertTriggerActions` returns a success-shaped `ActionsTriggered` even when nothing changed — always re-query (`uam_get_alert`) to confirm the write landed.
+
 ## Setup — configure credentials first
 
 Drop a `credentials.json` file directly into your Cowork project folder with the required fields:
@@ -126,11 +127,12 @@ The list endpoint hides `queryType: "scheduled"` rules by default. **Without `is
 | Correlation | `correlation` | **`"2.0"`** | `data.correlationParams` (`entity`, `matchInOrder`, `subQueries[]`) |
 
 **Any time the rule body has the pipe character `\|` (i.e. PowerQuery), the only working path is `queryType: "scheduled"` + `queryLang: "2.0"`.** `queryType: "events"` rejects pipe syntax (HTTP 400 `Don't understand [|]`), and `queryLang: "2.1"` is not in the enum (HTTP 400 `queryLang: "2.1" is not a valid choice`). Confirmed against the live API, 2026-05.
+
 **Correlation rules also require `queryLang: "2.0"`.** Confirmed against the live API, 2026-06: a `queryType: "correlation"` POST without `queryLang` (or with `"1.0"`) returns HTTP 400 `query lang must be 2.0`, even though the subquery bodies themselves can be boolean S1QL (e.g. `EventType = "Logon" AND LogonResult = "Fail"`). So only single-event `events` rules use 1.0; both `scheduled` and `correlation` require 2.0. `correlationParams` requires `entity` (`user`/`process`/`ip`/`endpoint`/`storyline`/`custom`/`none`) and `matchInOrder`, with 1 to 10 `subQueries[]` (each `{subQuery, matchesRequired}`); `timeWindow.windowMinutes` is one of {1,5,10,30,60,240,480,720}.
 
 **Operational learnings, validated live (2026-07, custom detection rules + alerts):**
 
-- **1.0 operators do not evaluate under `queryLang 2.0`.** An events rule whose body used the S1QL-1.0 operator `ContainsCIS` was accepted at create time but never fired; rewriting it to the 2.0 operator `contains:anycase` fired immediately. Since every custom rule uses `queryLang 2.0`, rule bodies must use 2.0 operators (`contains:anycase`, `in:anycase`, etc.), not 1.0 forms (`ContainsCIS`, `In`). The API does not warn: it stores the bad operator and the rule silently matches nothing. Lint rule bodies for 1.0 operators before deploy.
+- **1.0 operators do not evaluate under `queryLang 2.0`.** An events rule whose body used the S1QL-1.0 operator `ContainsCIS` was accepted at create time but never fired; rewriting it to the 2.0 operator `contains:anycase` fired immediately. `scheduled` and `correlation` rules are always 2.0, so their bodies must use 2.0 operators (`contains:anycase`, `in:anycase`, etc.), not 1.0 forms (`ContainsCIS`, `In`). For `events` rules the story is more subtle: omitting `queryLang` stores `"1.0"` (live-verified 2026-07-29: a POST without `queryLang` came back `queryLang: "1.0"`), but a fleet audit found 99 of 100 live events rules carry `"2.0"` because creators set it explicitly to get the 2.0 operator set. Decide deliberately: leave it defaulted to 1.0 and write 1.0 operators, OR set `queryLang: "2.0"` explicitly and write 2.0 operators. Mixing (2.0 rule, 1.0 operator, or vice versa) stores fine and silently matches nothing. Lint rule bodies for operator/lang mismatch before deploy.
 - **Alerts inherit the rule's `description`.** The generated alert carries the rule description verbatim (`ruleInfo.description` on `GET /cloud-detection/alerts`, and `description` on UAM alerts). Because the rule schema has no native MITRE/tag/custom-attribute field, embedding metadata in the description (e.g. a `[DaC] MITRE: ... | Tags: ... | Owner: ...` footer) is the way to surface MITRE/tags/owner on a custom-rule alert.
 - **Alert-surface split by rule type.** `events` and `correlation` alerts appear in `GET /cloud-detection/alerts`; **scheduled** (PowerQuery) detection alerts do NOT surface there, they appear only in **UAM** (`unifiedalerts` / `uam_list_alerts`). Look for scheduled-rule alerts in UAM, not the REST alerts path. Also `sortBy=createdAt` on `/cloud-detection/alerts` returns `400 "not a valid choice"`, and a free-text `searchText` on `uam_list_alerts` can throw `Field * does not exist or not supported` (use structured filters / `viewType` instead).
 - **Scheduled-rule activation latency, and PUT resets it.** After enable, a scheduled rule sits in `Activating` ("will become Active within an hour") before its first run, then runs on `runIntervalMinutes`. Every PUT/update re-enters `Activating`, so repeated re-syncs delay firing. Enable once and avoid churn when waiting for a scheduled rule to fire.
@@ -319,7 +321,7 @@ It enumerates every GET plus a curated allow-list of read-only query POSTs, reco
 - `references/endpoint_index.json` — compact machine-readable index (one entry per op). Used by `search_endpoints.py` but can be read directly if you need to filter programmatically.
 - `references/tags/<Tag>.md` — per-tag reference with parameters, descriptions, and required permissions. Load only the files you need.
 - `references/common_params.md` — shared query params (`skip`, `limit`, `cursor`, `sortBy`, etc.) and the pagination pattern.
-- `references/POWERQUERY_RECIPES.md` — PowerQuery / SDL query recipes tested on-tenant: indicator prevalence, PowerShell outbound to public IPs, failed-login triage, storyline activity summary, UAM-indicator SDL crosscheck, endpoint heartbeat. For full PQ language reference use the dedicated `powerquery` skill.
+- `references/POWERQUERY_RECIPES.md` — PowerQuery / SDL query recipes tested on-tenant: indicator prevalence, PowerShell outbound to public IPs, failed-login triage, storyline activity summary, UAM-indicator SDL crosscheck, endpoint heartbeat. For full PQ language reference use the dedicated `sentinelone-powerquery` skill.
 - `spec/swagger_2_1.json` — the original full Swagger spec (14 MB). Use only when the per-tag reference is insufficient — e.g. to resolve a deeply nested request-body schema by `$ref`. Never read this whole file into context.
 - `tests/test_ioc_lifecycle.py` — reversible CREATE → LIST → DELETE → VERIFY round-trip for Threat Intelligence IOCs. Uses a unique run-tag per invocation, scopes to a single account, and cleans up before exit. Covers the one "create content" path against the S1 detection surface.
 - `tests/test_alerts_dual_api.py` — dual-API round-trip for alerts: GraphQL list/detail/addNote/notes/deleteNote plus a parallel REST `/cloud-detection/alerts` read. Demonstrates that UAM GraphQL is the PRIMARY alert surface and REST is SECONDARY, with the note mutation cleaned up before exit (handles the `mgmt_note_id` propagation delay).
@@ -673,7 +675,7 @@ The helper does ALL of this for you, so there is nothing to remember:
 
 ### Step 3 — for large windows / heavy aggregates, slice
 
-For ranges past 2-3 days with `event.type=*`-scale aggregates, slice the window and run slices in parallel. Full reference, measured perf (30d 574M-event aggregate lands in ~29s with two service-user JWTs), and the two-JWT runner recipe are in the `powerquery` skill at `references/lrq-api.md`. `run_pq` is the single-slice primitive underneath.
+For ranges past 2-3 days with `event.type=*`-scale aggregates, slice the window and run slices in parallel. Full reference, measured perf (30d 574M-event aggregate lands in ~29s with two service-user JWTs), and the two-JWT runner recipe are in the `sentinelone-powerquery` skill at `references/lrq-api.md`. `run_pq` is the single-slice primitive underneath.
 
 ### Step 3a — timeseries: prefer client-side day slicing over `timebucket(...)`
 
@@ -703,7 +705,7 @@ with cf.ThreadPoolExecutor(max_workers=3) as ex:   # 3rps user cap
     results = list(ex.map(lambda se: slice_day(c, base, *se), days))
 ```
 
-7 daily slices run in ~20s wall-clock (vs ~2 min for a 7d aggregate) and respect the per-user 3 rps cap. For hourly buckets over a 24h window use 24 slices at the same concurrency; for 30d use hourly slicing with 2 JWTs (see `powerquery` skill).
+7 daily slices run in ~20s wall-clock (vs ~2 min for a 7d aggregate) and respect the per-user 3 rps cap. For hourly buckets over a 24h window use 24 slices at the same concurrency; for 30d use hourly slicing with 2 JWTs (see `sentinelone-powerquery` skill).
 
 ### Step 3b — window-scaling playbook (performance by period)
 
@@ -712,7 +714,7 @@ with cf.ThreadPoolExecutor(max_workers=3) as ex:   # 3rps user cap
 | seconds to 1h | single `run_pq(hours=1)` | server returns in <5s |
 | 1h to 24h | single `run_pq(hours=24)` | 5-30s depending on filter selectivity |
 | 24h to 7d | single call OK for selective filters; for `event.type=*`-scale aggregates, 7 x 1d slices in parallel (max_workers=3) | single-call ~2 min; sliced ~20s |
-| 7d to 30d | mandatory slicing (daily buckets) + 2 JWTs | two-JWT runner in `powerquery` |
+| 7d to 30d | mandatory slicing (daily buckets) + 2 JWTs | two-JWT runner in `sentinelone-powerquery` |
 | 30d+ | hourly slicing + 2-3 JWTs, cache results | 574M-event aggregate at 30d = ~29s with two JWTs |
 
 ### Step 3c — LRQ response-shape gotchas (handled by `run_pq`)
@@ -1062,7 +1064,7 @@ python scripts/baseline_anomaly.py --source "FortiGate" --days 30 --stratify dow
 
 State is checkpointed to disk per source (`baseline_anomaly_<slug>_state.json`) so the script is resumable across runs — use this when working in environments with short shell budgets.
 
-PQ building blocks the script wraps live in the `powerquery` skill at `examples/behavioral-baselines.md`. Read that file when authoring the equivalent as a STAR / PowerQuery Alert detection rule body — the rule-body shape uses `lookup` against a pre-computed baseline table (from `savelookup`) instead of the script's two-window LRQ pattern.
+PQ building blocks the script wraps live in the `sentinelone-powerquery` skill at `examples/behavioral-baselines.md`. Read that file when authoring the equivalent as a STAR / PowerQuery Alert detection rule body — the rule-body shape uses `lookup` against a pre-computed baseline table (from `savelookup`) instead of the script's two-window LRQ pattern.
 
 ### When to re-run discovery
 
@@ -1206,7 +1208,7 @@ Action types observed: `singularity_response_trigger`, `manual_trigger`, `http_t
 
 Console operations use the `s1-secops-mcp` MCP tools, which bypass the Cowork sandbox proxy
 entirely. Use `s1_api_get`, `s1_api_post`, `uam_list_alerts`, `uam_get_alert`, `uam_set_status`,
-and other MCP tools directly instead of falling back to the `mgmt-console-api`
+and other MCP tools directly instead of falling back to the `sentinelone-mgmt-console-api`
 skill scripts. The MCP tools run locally on your machine and make direct HTTPS calls to
 `*.sentinelone.net` without proxy interference.
 
@@ -1215,4 +1217,4 @@ skill scripts. The MCP tools run locally on your machine and make direct HTTPS c
 - **Update in place:** `PUT /web/api/v2.1/cloud-detection/rules/{id}` requires the FULL body `{data, filter}`; omitting `filter` returns HTTP 400 "filter: Missing data for required field". PUT resets the rule to the body's `status` (typically Disabled), so re-enable afterward.
 - **Delete:** `DELETE /web/api/v2.1/cloud-detection/rules/{id}`, or bulk with `{"filter": {"ids": [...], "siteIds" | "accountIds": [...]}}`.
 - **List:** always pass `isLegacy=false` or scheduled / PowerQuery rules are silently omitted.
-- **Scheduled rules run on a pre-aggregated data layer**, so PowerQuery functions like `dataset`, `datasource`, `now`, `querystart`/`queryend`/`queryspan`, `topK`, `savelookup`, CIDR/wildcard `lookup`, `lookup` over a >10,000-row table, time-shifted `timebucket`, and `timebucket` < 30s are NOT available in a scheduled-rule body (full list in the `powerquery` skill). A detection needing any of them, e.g. an absent-pair anti-join (`left join` + `dataset`), runs as a Hyperautomation watchdog instead (see `hyperautomation`).
+- **Scheduled rules run on a pre-aggregated data layer**, so PowerQuery functions like `dataset`, `datasource`, `now`, `querystart`/`queryend`/`queryspan`, `topK`, `savelookup`, CIDR/wildcard `lookup`, `lookup` over a >10,000-row table, time-shifted `timebucket`, and `timebucket` < 30s are NOT available in a scheduled-rule body (full list in the `sentinelone-powerquery` skill). A detection needing any of them, e.g. an absent-pair anti-join (`left join` + `dataset`), runs as a Hyperautomation watchdog instead (see `sentinelone-hyperautomation`).

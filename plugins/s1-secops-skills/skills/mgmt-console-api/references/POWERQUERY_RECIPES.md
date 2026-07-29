@@ -9,7 +9,7 @@ relies on, and the PowerQuery body. Paste into Event Search, the
 PowerQuery Alerts composer, or run through the Purple MCP
 `powerquery` tool.
 
-For the PowerQuery language reference, see the `powerquery`
+For the PowerQuery language reference, see the `sentinelone-powerquery`
 skill. The conventions below (filter early, group narrow, explicit
 field names over shortcuts) match that skill's guidance.
 
@@ -152,7 +152,7 @@ report seconds. A gap > 3600 is worth investigating.
 ## Using these from Python
 
 All four recipes run against the `powerQuery` SDL endpoint. With the
-`sdl-api` skill's client:
+`sentinelone-sdl-api` skill's client:
 
 ```python
 from sdl_client import SDLClient
@@ -176,7 +176,7 @@ NL-to-PQ step and execution.
 
 ## Field reference quick-glance
 
-For the full schema, see the `powerquery` skill's
+For the full schema, see the `sentinelone-powerquery` skill's
 `references/fields-and-schema.md`. The fields used above:
 
 - `event.type` -- OCSF event class (`LoginEvent`, `ProcessEvent`,

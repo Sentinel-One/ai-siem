@@ -10,7 +10,7 @@
         {
           "graphStyle": "markdown",
           "title": "{{SOURCE}}: UEBA Behavioral Anomalies",
-          "markdown": "Live 24h volume per **(action, principal)** scored against the {{BASELINE_DAYS}}-day baseline `{{BASELINE_TABLE}}`. **SPIKE / DROP** = `|z| >= {{Z_HARD}}` standard deviations from normal. **New-behavior** = a pair active now with no baseline. The 24h window matches the baseline unit. principal = `{{PRINCIPAL}}`, action = `{{ACTION}}`.",
+          "markdown": "Live 24h volume per **(action, principal)** scored against the {{BASELINE_DAYS}}-day baseline `{{BASELINE_TABLE}}`. **SPIKE / DROP** = `|z| >= {{Z_HARD}}` standard deviations from normal. **New-behavior** = a pair active now with no baseline row. Caveat: pairs with FLAT history (stddev 0) or under 2 active days are excluded from the baseline build, so they also land in New-behavior even though they are not strictly new (PENDING deeper fix on demo tenant). The 24h window matches the baseline unit. principal = `{{PRINCIPAL}}`, action = `{{ACTION}}`.",
           "layout": { "w": 60, "h": 4, "x": 0, "y": 0 }
         },
         {
@@ -23,6 +23,7 @@
         {
           "graphStyle": "number",
           "title": "New-behavior pairs (no baseline)",
+          "description": "Includes pairs excluded from the baseline build: flat history (stddev 0) or under 2 active days. Not all rows here are strictly new. PENDING deeper fix on demo tenant.",
           "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter !(baseline_avg=*) | group n=count() | limit 1",
           "options": { "format": "commas", "precision": "0" },
           "layout": { "w": 20, "h": 8, "x": 20, "y": 4 }
@@ -59,6 +60,7 @@
         {
           "graphStyle": "table",
           "title": "New-behavior (active now, no baseline)",
+          "description": "Includes pairs excluded from the baseline build: flat history (stddev 0) or under 2 active days. Not all rows here are strictly new. PENDING deeper fix on demo tenant.",
           "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter !(baseline_avg=*) | sort -live_count | columns principal_v, action_v, live_count | limit 50",
           "layout": { "w": 30, "h": 14, "x": 0, "y": 38 }
         },

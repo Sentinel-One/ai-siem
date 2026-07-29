@@ -266,10 +266,12 @@ same `severity_` column.
 Fix — normalise before grouping:
 
 ```
-| let sev = lowercase(severity_)
+| let sev = lower(severity_)
 | group count() by timestamp = timebucket('1h'), sev
 | transpose sev on timestamp                       ← 4 clean columns
 ```
+
+`lower()` is the working function; `lowercase()` does not exist and returns "Unknown function" (live-verified 2026-07-29 via LRQ v2).
 
 Or skip the string field entirely and use the numeric OCSF `severity_id` for
 filters:
@@ -410,6 +412,15 @@ If a query "misses" something you can see in the data, check whether case was th
 - `field = null` — only valid as a boolean test *after* the field has been computed by a preceding command (e.g., a left join or a `let`).
 - `in (…)` cannot match null. If null should count as a match, use `OR !(field = *)`.
 
+### `x not in (...)` parses without error and silently returns 0 rows
+
+`not in` is accepted by the parser and returns no error and no rows. In a matched A/B control (live-verified 2026-07-29 via LRQ v2), `!(x in (...))` returned ~38k rows while the identical predicate written as `x not in (...)` returned 0. Always write the negation as `!(x in (...))`:
+
+```
+event.type = 'Process Creation'
+!(src.process.parent.name in ('explorer.exe', 'svchost.exe', 'services.exe'))
+```
+
 ### `count(x)` doesn't count nulls; does count zero / false
 
 `count()` counts rows. `count(expr)` counts rows where `expr` is truthy. Zero, `false`, and empty string are falsy — they DON'T count. But null is also falsy, so this matches intuition.
@@ -500,7 +511,7 @@ Two ways this silently returns nothing:
 - The table name in `from <table>` is the **literal filename including any extension**. If the file is `/datatables/sid_username.csv`, use `from sid_username.csv`, not `from sid_username`.
 - The `by` clause is `lookupColumn = eventField` (lookup-table key column on the left, event field/expression on the right): `by sid = winEventLog.data.event.eventData.subjectUserSid`.
 
-### `dataset 'config://datatables/...'` returns 0 rows
+### `| dataset 'config://datatables/...'` requires a leading pipe
 
 `dataset` is a pipeline source command and MUST start with a leading `|`: `| dataset 'config://datatables/<name>'`. Without the leading `|`, `dataset '...'` is parsed as an initial text filter and returns **0 rows**.
 
@@ -538,6 +549,11 @@ dataSource.name='MySource'
 ```
 
 Run with `hours=1` so the scan window covers at least one complete 10-minute bucket. This enforces the time window at the query level and is not vulnerable to parameter silencing.
+
+Two annotations on this failsafe (live-verified 2026-07-29 via LRQ v2):
+
+- The unaliased `timebucket(timestamp, "10m")` group key is accepted by LRQ v2; the output column is named literally (`timebucket(timestamp, "10m")`). An alias (`by bucket=timebucket(timestamp, "10m")`) is still recommended for readability and for other runners.
+- `count(some.field)` counts TRUTHY values: rows where the field is 0, `false`, or the empty string are dropped along with nulls. `count(<predicate>)` counts matching rows and is valid, e.g. `count(some.field != null)` for an exact non-null count (`field != null` matches exactly the rows `field=*` matches). `count(field=*)` errors ("Don't understand [*]").
 
 ### `count_distinct(x)` returns HTTP 500 "Unknown function"
 
@@ -653,7 +669,7 @@ Common cause: grouping dropped a field you assumed was still present, or duplica
 ## Ingest-health validated pitfalls
 
 - `replace_all(...)` returns "Unknown function" on this engine; use `replace(...)`.
-- `count(field=*)` returns "Don't understand [*]"; count non-null rows with a flag: `| let f = (field ? 1 : 0) | group n = sum(f)`.
+- `count(field=*)` returns "Don't understand [*]"; count non-null rows with a flag: `| let f = (field ? 1 : 0) | group n = sum(f)`. Note the flag idiom is a TRUTHY count: 0, `false`, and the empty string are dropped along with null. For an exact non-null count use a predicate: `count(field != null)` (live-verified 2026-07-29; `field != null` matches exactly the rows `field=*` matches).
 - A second `group` cannot reference a field renamed in the first group: after `group ... by source = dataSource.name`, key the next group on `by source`, not `by source = dataSource.name` ("undefined field 'dataSource.name'").
 - Do not transpose on `dataSource.name` or a device key (values contain spaces); use honeycomb, single-series time charts, or `grouped_data`.
 - `avg()`, `stddev()`, `pct(N, x)` and `p10/p90/p999` all work in `group` (do not treat them as missing).

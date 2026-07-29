@@ -70,7 +70,7 @@ These were verified live while building the Windows Event Logs SID enrichment (u
 ### Size limits (combined across all lookup tables referenced by automatic lookups)
 
 - Combined size must not exceed **5 MB**.
-- Combined total must not exceed **100 rows**.
+- Combined total must not exceed **100,000 rows** (unvalidated; the earlier "100 rows" figure was internally impossible against the 5 MB limit and the worked example below).
 - Combined total of columns referenced by `values` must not exceed **50 columns**.
 
 ### Automatic lookups do NOT apply to

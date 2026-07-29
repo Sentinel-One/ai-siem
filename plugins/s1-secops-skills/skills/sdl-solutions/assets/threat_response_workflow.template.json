@@ -34,6 +34,7 @@
           "name": "Extract IOCs", "action_type": "variable",
           "variables": [
             { "name": "dst_ip", "value": "{{Function.DEFAULT(singularity-response-trigger.data.dst_ip, \"no-ip\")}}", "should_use_as_output": false, "is_secret": false },
+            {"name": "dst_ip_priv", "value": "{{Function.REGEX_EXTRACT(local_var.dst_ip, \"^(10\\.|127\\.|169\\.254\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|100\\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\\.|0\\.|no-ip)\")}}", "should_use_as_output": false, "is_secret": false},
             { "name": "src_ip", "value": "{{Function.DEFAULT(singularity-response-trigger.data.src_ip, \"no-ip\")}}", "should_use_as_output": false, "is_secret": false },
             { "name": "agent_uuid", "value": "{{Function.DEFAULT(singularity-response-trigger.data.device_agentuuid, \"no-agent\")}}", "should_use_as_output": false, "is_secret": false }
           ],
@@ -51,7 +52,7 @@
         "snippet_workflow_id": null, "snippet_version_id": null,
         "data": {
           "name": "Has External dst_ip", "action_type": "condition", "condition_type": "multi", "condition": null,
-          "conditions": [ { "input_value": "{{local_var.dst_ip}}", "compared_value": "no-ip", "comparison_operator": "not_equals" } ],
+          "conditions": [ { "input_value": "{{local_var.dst_ip}}", "compared_value": "no-ip", "comparison_operator": "not_equals" }, {"input_value": "{{local_var.dst_ip_priv}}", "compared_value": "", "comparison_operator": "is_empty"} ],
           "conditions_relationship": "and"
         }
       },

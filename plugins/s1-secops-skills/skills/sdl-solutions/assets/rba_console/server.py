@@ -21,13 +21,28 @@ ALLOWED_ORIGINS = {f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}"}
 
 try:
     env = json.load(open(CONFIG))["mcpServers"]["sentinelone-mcp"]["env"]
-except Exception as e:
-    sys.exit(f"Could not read sentinelone-mcp creds from {CONFIG}: {e}")
+except Exception:
+    env = {}
+# Exported environment variables override the config file, so operators can
+# retarget the proxy (or run it without the Claude Desktop config) per the docs.
+for _k in ("SDL_XDR_URL", "SDL_LOG_READ_KEY", "SDL_CONFIG_READ_KEY",
+           "SDL_CONFIG_WRITE_KEY", "S1_CONSOLE_API_TOKEN"):
+    if os.environ.get(_k):
+        env[_k] = os.environ[_k]
+
+if not env.get("SDL_XDR_URL"):
+    sys.exit(f"SDL_XDR_URL not set: export it or add it to {CONFIG}")
 
 XDR = env["SDL_XDR_URL"].rstrip("/")
 K_LOG_READ   = env.get("SDL_LOG_READ_KEY")    or env.get("S1_CONSOLE_API_TOKEN")
 K_CFG_READ   = env.get("SDL_CONFIG_READ_KEY") or K_LOG_READ
 K_CFG_WRITE  = env.get("SDL_CONFIG_WRITE_KEY") or K_CFG_READ
+
+# Fail fast with a clear message rather than crashing on `"Bearer " + None` at
+# request time when no auth key is configured.
+if not K_LOG_READ:
+    sys.exit("No SDL auth key found: set SDL_LOG_READ_KEY (or S1_CONSOLE_API_TOKEN) "
+             f"in the environment or {CONFIG}")
 
 
 def sdl(ep, body, key):
@@ -75,8 +90,9 @@ class H(http.server.BaseHTTPRequestHandler):
         raw = self.rfile.read(n) if n else b"{}"
         try:
             data = json.loads(raw or b"{}")
-        except Exception:
-            data = {}
+        except Exception as e:
+            self._send(400, json.dumps({"error": f"invalid JSON body: {e}"}))
+            return
         if self.path == "/api/powerQuery":
             code, out = sdl("/api/powerQuery",
                             {"query": data.get("query", ""), "startTime": data.get("startTime", "24h")},
@@ -85,6 +101,10 @@ class H(http.server.BaseHTTPRequestHandler):
             code, out = sdl("/api/getFile", {"path": data.get("path", "")}, K_CFG_READ)
         elif self.path == "/api/putFile":
             body = {"path": data.get("path", ""), "content": data.get("content", "")}
+            # Optimistic concurrency: forward the version captured at getFile time so a
+            # concurrent editor's save fails loudly instead of being silently overwritten.
+            if data.get("expectedVersion") is not None:
+                body["expectedVersion"] = data["expectedVersion"]
             code, out = sdl("/api/putFile", body, K_CFG_WRITE)
         else:
             code, out = 404, b'{"error":"unknown endpoint"}'

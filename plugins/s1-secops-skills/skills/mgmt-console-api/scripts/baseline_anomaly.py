@@ -35,7 +35,7 @@ Usage:
   python scripts/baseline_anomaly.py --source "<name>" --principal src.ip.address --action unmapped.action
   python scripts/baseline_anomaly.py --source "<name>" reset
 
-PQ building blocks the pipeline wraps live in the ``powerquery``
+PQ building blocks the pipeline wraps live in the ``sentinelone-powerquery``
 skill at ``examples/behavioral-baselines.md``. Read that file when authoring
 the equivalent as a STAR / PowerQuery Alert detection rule body.
 """
@@ -105,6 +105,12 @@ def _save_state(state: Dict[str, Any]) -> None:
 # Query construction
 # ----------------------------------------------------------------------
 
+# Server-side row cap on the per-day count PQ. When a phase returns exactly
+# this many rows the result was truncated by the cap and low-volume
+# (action, principal) pairs may be missing from that slice.
+COUNT_PQ_ROW_LIMIT = 5000
+
+
 def _build_count_pq(source: str, principal: str, action: str, count_alias: str) -> str:
     """Per-day count PQ — produces (action, principal, count_alias) rows over 1 day."""
     return (
@@ -112,7 +118,7 @@ def _build_count_pq(source: str, principal: str, action: str, count_alias: str) 
         f"| filter {principal} = * AND {action} = *\n"
         f"| group {count_alias} = count() by action_v = {action}, principal_v = {principal}\n"
         "| sort -" + count_alias + "\n"
-        "| limit 5000"
+        f"| limit {COUNT_PQ_ROW_LIMIT}"
     )
 
 
@@ -192,26 +198,47 @@ def _run_phase(client: Any, source: str, principal: str, action: str,
 # ----------------------------------------------------------------------
 
 def _merge_pooled(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Pooled baseline: all daily samples in one bucket per (action, principal)."""
+    """Pooled baseline: all daily samples in one bucket per (action, principal).
+
+    Inactive sampled days are zero-padded to the number of baseline phases,
+    mirroring ``_merge_dow``. Without the padding a pair active 2 of 30 days
+    at 100/day baselines at mean=100 instead of ~6.67, so its true daily rate
+    is overstated and a normal active day never registers as a SPIKE.
+    """
     per_pair_counts = defaultdict(list)
+    n_sampled = 0
     for label, res in state["phase_results"].items():
         if not label.startswith("baseline_"):
             continue
+        n_sampled += 1
         for r in res["rows"]:
             key = (r.get("action_v"), r.get("principal_v"))
             per_pair_counts[key].append(r["day_count"])
 
     baseline = {}
     for key, counts in per_pair_counts.items():
-        if len(counts) < 2:
+        n_active = len(counts)
+        full = counts + [0] * max(0, n_sampled - n_active)
+        if len(full) < 2:
             continue
-        sd = statistics.stdev(counts)
-        if sd <= 0:
-            continue
+        sd = statistics.stdev(full)
+        # Flat pairs (identical count on every sampled day, sd == 0 after
+        # padding) are KEPT with an is_constant marker, not dropped. A perfectly
+        # regular pair is the strongest baseline there is: any deviation from
+        # the constant is anomalous. _detect_pooled treats is_constant pairs as
+        # "any change from moving_average = anomaly" instead of dividing by zero.
+        # (2026-07-29: previously these were dropped, so a spike on a service
+        # account or scheduled job was misclassified as new_behavior and a
+        # silence was never flagged.)
         baseline[key] = {
-            "n_days": len(counts),
-            "moving_average": statistics.mean(counts),
+            # n_days kept for compatibility; it now equals n_sampled (the
+            # number of baseline phases), not the number of active days.
+            "n_days": n_sampled,
+            "n_active": n_active,
+            "n_sampled": n_sampled,
+            "moving_average": statistics.mean(full),
             "stddev_val": sd,
+            "is_constant": sd <= 0,
         }
     return baseline
 
@@ -244,14 +271,34 @@ def _merge_dow(state: Dict[str, Any]) -> Tuple[Dict[Tuple[str, str, int], Dict[s
             if len(full) < 2:
                 continue
             sd = statistics.stdev(full)
-            if sd <= 0:
-                continue
+            # Keep flat (sd == 0) pairs with an is_constant marker instead of
+            # dropping them; see _merge_pooled for the rationale.
             baseline_dow[(key[0], key[1], dow)] = {
                 "n_active": n_active, "n_sampled": n_sampled,
                 "moving_average": statistics.mean(full),
                 "stddev_val": sd,
+                "is_constant": sd <= 0,
             }
     return baseline_dow, dict(sampled_dows)
+
+
+# Sentinel z for a deviation from a perfectly constant (sd==0) baseline. A real
+# z is undefined there (divide by zero); this flags "changed from a constant" as
+# a strong anomaly while keeping the value finite and sortable.
+CONSTANT_DEVIATION_Z = 999.0
+
+
+def _score_z(live_c: float, b: Dict[str, Any]) -> float:
+    """z-score that tolerates a constant (sd==0) baseline.
+
+    Constant baseline: 0 if the live value equals the constant, else a signed
+    sentinel. Normal baseline: the usual (live - mean) / sd.
+    """
+    if b.get("is_constant") or b["stddev_val"] <= 0:
+        if live_c == b["moving_average"]:
+            return 0.0
+        return CONSTANT_DEVIATION_Z if live_c > b["moving_average"] else -CONSTANT_DEVIATION_Z
+    return (live_c - b["moving_average"]) / b["stddev_val"]
 
 
 def _detect_pooled(state: Dict[str, Any], baseline: Dict, z_threshold: float) -> Dict[str, Any]:
@@ -266,12 +313,15 @@ def _detect_pooled(state: Dict[str, Any], baseline: Dict, z_threshold: float) ->
             new_b.append({"action": key[0], "principal": key[1], "live_count": c})
             continue
         b = baseline[key]
-        z = (c - b["moving_average"]) / b["stddev_val"]
+        z = _score_z(c, b)
         rec = {
             "action": key[0], "principal": key[1], "live_count": c,
             "baseline_avg": round(b["moving_average"], 2),
             "baseline_stddev": round(b["stddev_val"], 2),
+            "baseline_constant": bool(b.get("is_constant")),
             "n_baseline_days": b["n_days"],
+            "n_active_days": b.get("n_active", b["n_days"]),
+            "n_sampled_days": b.get("n_sampled", b["n_days"]),
             "z_score": round(z, 4),
             "direction": "SPIKE" if z > 0 else "DROP",
         }
@@ -281,13 +331,16 @@ def _detect_pooled(state: Dict[str, Any], baseline: Dict, z_threshold: float) ->
     for key, b in baseline.items():
         if key in live_lookup:
             continue
-        z = (0 - b["moving_average"]) / b["stddev_val"]
+        z = _score_z(0, b)
         if abs(z) >= z_threshold:
             silent.append({
                 "action": key[0], "principal": key[1], "live_count": 0,
                 "baseline_avg": round(b["moving_average"], 2),
                 "baseline_stddev": round(b["stddev_val"], 2),
+                "baseline_constant": bool(b.get("is_constant")),
                 "n_baseline_days": b["n_days"],
+                "n_active_days": b.get("n_active", b["n_days"]),
+                "n_sampled_days": b.get("n_sampled", b["n_days"]),
                 "z_score": round(z, 4),
                 "direction": "SILENT",
             })
@@ -321,11 +374,12 @@ def _detect_dow(state: Dict[str, Any], baseline_dow: Dict, sampled_dows: Dict[in
                 new_b.append({"action": action_v, "principal": principal_v, "live_count": live_c})
             continue
         b = baseline_dow[dow_key]
-        z = (live_c - b["moving_average"]) / b["stddev_val"]
+        z = _score_z(live_c, b)
         rec = {
             "action": action_v, "principal": principal_v, "live_count": live_c,
             "baseline_avg": round(b["moving_average"], 2),
             "baseline_stddev": round(b["stddev_val"], 2),
+            "baseline_constant": bool(b.get("is_constant")),
             "n_active_on_this_dow": b["n_active"],
             "n_sampled_on_this_dow": b["n_sampled"],
             "z_score": round(z, 4),
@@ -442,9 +496,16 @@ def _step_serial(client: Any, state: Dict[str, Any], todo: List[Dict[str, Any]])
             p = futs[fut]
             try:
                 res = fut.result()
-                state["phase_results"][p["label"]] = {"rows": res["rows"], "matchCount": res["matchCount"]}
+                # row_count == COUNT_PQ_ROW_LIMIT means the | limit cap
+                # truncated the result: low-volume pairs may be missing.
+                limit_hit = res["row_count"] >= COUNT_PQ_ROW_LIMIT
+                state["phase_results"][p["label"]] = {"rows": res["rows"], "matchCount": res["matchCount"],
+                                                      "limit_hit": limit_hit}
                 state["completed"].append(p["label"])
                 print(f"  ✓ {p['label']} {p['start']}→{p['end']} matchCount={res['matchCount']} rows={res['row_count']}", flush=True)
+                if limit_hit:
+                    print(f"  ⚠ {p['label']}: row count hit the | limit {COUNT_PQ_ROW_LIMIT} cap; "
+                          "low-volume (action, principal) pairs may be missing from this slice", flush=True)
             except Exception as e:
                 print(f"  ✗ {p['label']}: {e}", flush=True)
     _save_state(state)
@@ -461,7 +522,17 @@ def report(state: Dict[str, Any], z_threshold: float = 2.0) -> Dict[str, Any]:
         detection = _detect_dow(state, baseline_dow, sampled_dows, z_threshold)
         detection["baseline_pair_count"] = len({(k[0], k[1]) for k in baseline_dow.keys()})
         detection["baseline_dow_cells"] = len(baseline_dow)
+    # Surface phases whose per-day count PQ hit the | limit row cap: their
+    # counts are truncated and low-volume pairs may be missing entirely.
+    capped = sorted(label for label, res in state["phase_results"].items()
+                    if res.get("limit_hit"))
+    detection["limit_capped_phases"] = capped
     _print_report(state, detection, z_threshold)
+    if capped:
+        print(f"\nWARNING: {len(capped)} phase(s) hit the | limit {COUNT_PQ_ROW_LIMIT} row cap "
+              f"({', '.join(capped)}). Low-volume (action, principal) pairs may be missing "
+              "from the baseline/live counts, so silent/new-behavior verdicts for rare pairs "
+              "are unreliable in those slices.")
 
     out = {
         "source": state["source"],

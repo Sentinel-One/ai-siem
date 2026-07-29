@@ -159,7 +159,15 @@ Every example seeds with `status = "Draft"` so it never fires until reviewed. Mi
 The full field reference is `rule.schema.json` (editors with TOML schema support validate as you
 type). The three seed files under `detections/` are working examples of each type.
 
-**Tagging, MITRE, and custom attributes.** The Custom Detection API has NO field for MITRE, tags, attack surfaces, or arbitrary custom attributes on a user-authored rule (all rejected as "Unknown field"; confirmed live, and `templateRuleId` is accepted but ignored). Those are first-class only on SentinelOne's managed Platform rules (`/detection-library/platform-rules`, enable/disable content). The only writable free-text on a custom rule is `name` and `description`. So the converter folds a rule's `[metadata]` (`mitre`, `mitre_tactics`, `tags`, `owner`) into a compact, idempotent `[DaC]` footer appended to the `description`, which surfaces MITRE/tags/owner in the console and on the alert (alerts inherit the rule description). The raw `[metadata]` stays in the repo as the governance source of truth; `references` and other keys stay repo-only. Rendered footer example:
+**Tagging, MITRE, and custom attributes.** The Custom Detection API has NO field for MITRE, tags,
+attack surfaces, or arbitrary custom attributes on a user-authored rule (all rejected as "Unknown
+field"; confirmed live, and `templateRuleId` is accepted but ignored). Those are first-class only
+on SentinelOne's managed Platform rules (`/detection-library/platform-rules`, enable/disable
+content). The only writable free-text on a custom rule is `name` and `description`. So the converter
+folds a rule's `[metadata]` (`mitre`, `mitre_tactics`, `tags`, `owner`) into a compact, idempotent
+`[DaC]` footer appended to the `description`, which surfaces MITRE/tags/owner in the console and on
+the alert (alerts inherit the rule description). The raw `[metadata]` stays in the repo as the
+governance source of truth; `references` and other keys stay repo-only. Rendered footer example:
 `[DaC] MITRE: T1059.001, T1204.002 | Tactics: TA0002, TA0005 | Tags: powershell, execution | Owner: detection-engineering`
 
 ## Step 6: validate and deploy (dry run first)
@@ -200,7 +208,7 @@ this skill and the Mgmt Console API:
 - Triage the alerts the rules generate (UAM: `uam_list_alerts`, or `GET /cloud-detection/alerts`).
 - For noisy rules, open a PR that adds an exclusion (see the `custom-detection-exclusions`
   playbook) or tightens the query, review, merge, and the sync updates the live rule.
-- Track effectiveness over time with an SDL dashboard (the `sdl-dashboard` skill).
+- Track effectiveness over time with an SDL dashboard (the `sentinelone-sdl-dashboard` skill).
 - Optionally schedule a recurring drift check that lists live rules (`isLegacy=false`) and diffs
   them against the repo, so a console-side manual edit is caught and reconciled back into Git.
 
@@ -227,12 +235,12 @@ this skill and the Mgmt Console API:
 
 ## Dependencies (load as needed)
 
-- `mgmt-console-api` (or the `s1-secops-mcp` `s1_api_*` tools) for site resolution,
+- `sentinelone-mgmt-console-api` (or the `s1-secops-mcp` `s1_api_*` tools) for site resolution,
   the Custom Detection Rule API, and verification listing. The Custom Detection Rule schema and
   every gotcha above are confirmed there.
-- `powerquery` to author or validate the PowerQuery body of a scheduled rule, and
+- `sentinelone-powerquery` to author or validate the PowerQuery body of a scheduled rule, and
   S1QL for events/correlation rules.
-- `sdl-dashboard` for the optional effectiveness dashboard in Step 7.
+- `sentinelone-sdl-dashboard` for the optional effectiveness dashboard in Step 7.
 
 ## Assets
 

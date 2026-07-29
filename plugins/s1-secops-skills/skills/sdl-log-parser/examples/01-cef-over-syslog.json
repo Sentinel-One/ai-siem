@@ -7,7 +7,7 @@
 //   <pri>         -> syslogPriority  (facility, rawSeverity, severity)
 //   Feb 15 ...    -> timestamp
 //   fw-01...      -> host
-//   CEF:0|...|7|  -> positional CEF header (cefVersion, vendor, product, product_version, signature_id, name, severity_raw)
+//   CEF:0|...|7|  -> positional CEF header (cefVersion, cef_vendor, cef_product, cef_version, signature_id, name, cef_severity)
 //   key=value...  -> repeating key/value catch-all, names become event fields
 //
 // Notes:
@@ -54,6 +54,7 @@
     // run on the same line to populate `src`, `dst`, etc. With halt, format 1
     // still matches and emits the header fields, but the event ends up with a
     // null `src`/`dst`.
+    // UPDATE 2026-07-29 (live re-test, deployed parser A/B): the event is NOT dropped on the current platform; a non-epoch capture into reserved `timestamp` is simply IGNORED and receive time is used. `ts_raw` remains the right practice: it keeps the original stamp queryable instead of relying on undefined behavior.
     {
       id: "cef-header",
       format: "<$pri=digits$>$ts_raw=syslogTs$ $host$ CEF:$cefVersion=notPipe$\\|$cef_vendor=notPipe$\\|$cef_product=notPipe$\\|$cef_version=notPipe$\\|$signature_id=notPipe$\\|$name=notPipe$\\|$cef_severity=notPipe$\\|$extension$"

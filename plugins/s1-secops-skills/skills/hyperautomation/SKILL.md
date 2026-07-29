@@ -257,6 +257,7 @@ Use this when the workflow contains integration-backed actions:
   ✅ Include `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security` — required for AI SIEM to process custom OCSF sources), `event.type`, and `site_id`. Emit `event.type` as a FLAT dotted key (`"event.type": "..."`); a nested `event:{...}` object is dropped on ingest because `event` is a HEC-reserved key.
 - ❌ **Leaving every action's `client_data.position` at `{x:0,y:0}`.** The flow runs fine but the console renders every node stacked on top of itself — unreadable. ALWAYS lay out the graph (tenant-validated 2026-07-18).
   ✅ Assign real coordinates: top-level nodes (`parent_action: null`) step DOWN the y-axis (~180px apart, x=0); a loop's child nodes (`parent_action` = the loop's `export_id`) sit INSIDE the loop container at an x offset (~210) stepping down (~180px). Give the `loop` a large `client_data.dimensions` (e.g. `{width:620,height:720}`) so it encloses its children. A one-pass layout after you build the action list is enough — see the reference `_layout(actions)` pattern:
+
   ```python
   def _layout(actions):
       top_y, child_y = 0, {}
@@ -271,12 +272,19 @@ Use this when the workflow contains integration-backed actions:
               y = child_y.get(a["parent_action"], 60)
               cd["position"] = {"x": 210, "y": y}; child_y[a["parent_action"]] = y + 180
   ```
+
 - ❌ **Binding an http_request action to a CONNECTION id.** Setting `action.integration_id` to a specific connection instance's id imports + activates fine (204) but FAILS AT RUNTIME with `"Must provide connection in order..."` (activation does not validate the binding — see below). Tenant-validated 2026-07-18.
   ✅ Bind the built-in **integration (action-pack) id** — the value `discover`/list returns as the workflow action's `integration_id` (e.g. the SentinelOne SDL action-pack id). A connection created via `POST /web/api/v2.1/hyper-automate/api/v1/connections` returns a *connection* id; do NOT bind that — bind the integration id it was created under, and rely on a connection existing under that integration.
 - ❌ **Trusting activation (204) as proof a flow works.** Activation validates neither connection binding nor `{{Function.JQ}}` references.
   ✅ Always run-now (or the per-action **Test Action**) after activating and confirm state `Completed` with empty `error_actions`.
 - ❌ **`select((ARR | index(.field)) != null)` in `Function.JQ`.** The `| index(...)` pipe rebinds `.` to `ARR`, so `.field` then indexes the array → `Cannot index array with string "field"`.
   ✅ Bind first: `select(.field as $n | (ARR | index($n)) != null)`. And when building HTML inside a `Function.JQ` string, use SINGLE-quoted HTML attributes so the only double quotes are jq string delimiters (pre-escaping `\"` inside collides with the wrapper's single quote-escape and the platform reports "Invalid References").
+- ❌ Guarding a destructive action (block, isolate, disable) with a fail-OPEN approval gate (`... not_equals "dismissed"`). A `wait_for_slack` / `wait_for_interaction` timeout yields an empty value that passes `not_equals`, so the action auto-runs with **no** approval.
+  ✅ Fail CLOSED: test `... equals "approved"` and route the destructive action off the `"true"` branch only (see `references/validation-rules.md` → Condition rules).
+- ❌ Setting `parent_action` to a previous (non-loop) node's `export_id` to express flow order — this returns import `422 "Invalid workflow data"` even when everything else looks correct. `parent_action` is loop-membership ONLY.
+  ✅ `parent_action: null` on every node that is not inside a loop; wire flow order strictly via `connected_to.target` (see `references/validation-rules.md` → Import / `parent_action` rules).
+- ❌ Writing back to an alert (note / analyst verdict / status) via the old `/web/api/v2.0/threats` REST endpoints — they are decommissioned and return HTTP 405.
+  ✅ Use the Unified Alerts GraphQL API (`POST /web/api/v2.1/unifiedalerts/graphql`) for every write-back, not just notes (see `references/api-integration.md` → SentinelOne alert write-backs).
 
 ## Running an SDL LRQ from an HA flow (async launch + poll) — tenant-validated 2026-06-22
 
@@ -285,7 +293,7 @@ Use this when the workflow contains integration-backed actions:
 **Datatables are scope-specific.** A table saved with `savelookup` at site scope is not visible to a read at account scope (or an LRQ scoped by `accountIds`), and vice versa. Create the lookup in the same scope the flow reads.
 
 `POST /sdl/v2/api/queries` is ASYNC. The launch response is NOT the results: it returns `body.id`
-plus `body.stepsCompleted` / `body.totalSteps`, and `body.data` is `null` while the query is still
+plus `body.stepsCompleted` / `body.stepsTotal`, and `body.data` is `null` while the query is still
 running. The query id is also EPHEMERAL — it expires shortly after the query finishes. So a fixed
 wait fails BOTH ways: too short returns `data: null` (still running); too long returns HTTP 404
 "query id not found" (the id expired, and the downstream reference then resolves to
@@ -301,8 +309,11 @@ the query is done. Required pattern (tenant-validated 2026-06-25):
    `GET {{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries/{{local_var.query_id}}?lastStepSeen=0`,
    echoing header `X-Dataset-Query-Forward-Tag: {{local_var.forward_tag}}`. Then a condition on the
    POLL body (NOT the launch body — the launch body is captured once and never updates inside the loop):
-   done when `{{poll-slug.body.stepsCompleted}} = {{poll-slug.body.totalSteps}}` (operator `equals`;
-   the field is **`totalSteps`**, not `stepsTotal`). TRUE → consume results + `break_loop`. FALSE → a
+   done when `{{poll-slug.body.stepsCompleted}} = {{poll-slug.body.stepsTotal}}` (operator `equals`;
+   the done-condition field is **`stepsTotal`**. Live-verified 2026-07-29 by dumping a raw LRQ poll
+   body: it carries BOTH `stepsTotal` and `totalSteps` (both equal, e.g. 2), so either works and
+   neither doc was wrong about the key existing; use `stepsTotal` for consistency with pq.py and the
+   SDL docs). TRUE → consume results + `break_loop`. FALSE → a
    short `delay` (~5s) as the leaf of the false branch; the loop then re-iterates and re-polls.
 3. **Loop-scoped outputs are NOT visible outside the loop.** Every action that reads a poll result
    (`{{poll-slug.body...}}`) — extract/read, branch, notify, break — MUST live INSIDE the loop
@@ -353,7 +364,7 @@ Some detection logic cannot run as a PowerQuery **scheduled** Custom Detection r
 rules run on a pre-aggregated data layer where functions like `dataset`, `datasource`, `now`,
 `querystart` / `queryend` / `queryspan`, `topK`, `savelookup`, CIDR/wildcard `lookup`, `lookup` over a
 >10,000-row table, time-shifted `timebucket`, and `timebucket` < 30s are unavailable (full list in the
-`powerquery` skill). The classic case is enumerating **absent** rows, a pair present in a
+`sentinelone-powerquery` skill). The classic case is enumerating **absent** rows, a pair present in a
 baseline but with zero events in the live window, which needs a `left join` + `dataset` anti-join.
 
 The **alternate is an HA watchdog**: a scheduled (or manual / run-now) workflow that
@@ -377,7 +388,7 @@ at a time.
 
 Workflow import, export, and listing use the `s1-secops-mcp` MCP server, which bypasses the
 Cowork sandbox proxy entirely. Use `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`,
-and `ha_export_workflow` directly instead of falling back to the `mgmt-console-api`
+and `ha_export_workflow` directly instead of falling back to the `sentinelone-mgmt-console-api`
 skill scripts. The MCP server runs locally on your machine and makes direct HTTPS calls to
 `*.sentinelone.net` without proxy interference.
 
@@ -387,7 +398,7 @@ skill scripts. The MCP server runs locally on your machine and makes direct HTTP
   on a site-scoped tenant it returns the misleading `403 "Insufficient permissions"` — not a role
   problem. For a site-scoped deploy, call the REST endpoint directly with the scope param:
   `POST /web/api/v2.1/hyper-automate/api/public/workflow-import-export/import?siteIds=<id>` with
-  body `{"data": <workflow>}` (e.g. via the `mgmt-console-api` POST helper). For an
+  body `{"data": <workflow>}` (e.g. via the `sentinelone-mgmt-console-api` POST helper). For an
   account-level deploy use the same public endpoint with `?accountIds=<acct>`; the v1
   `/workflow-import-export/import?_scopeId=<acct>&_scopeLevel=account` path returns `403`. Same
   scope rule applies to `activation`, `deactivate`, `publish`, and `DELETE` — append

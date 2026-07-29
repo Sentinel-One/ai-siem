@@ -135,7 +135,7 @@ registry.keyPath matches '(?i)(\\\\Run\\\\|\\\\RunOnce\\\\|\\\\RunServices\\\\)'
 ```
 event.type = 'Process Creation'
 src.process.cmdline matches '(?i)(schtasks\\s+/create|new-scheduledtask|register-scheduledtask)'
-src.process.parent.name not in ('msiexec.exe', 'svchost.exe', 'services.exe')
+!(src.process.parent.name in ('msiexec.exe', 'svchost.exe', 'services.exe'))
 | group
     count      = count(),
     first_seen = oldest(timestamp),
@@ -358,7 +358,7 @@ A single storyline running whoami + net user + nltest + systeminfo in quick succ
 event.type = 'Process Creation'
 src.process.parent.name = 'services.exe'
 src.process.name in ('cmd.exe', 'powershell.exe', 'pwsh.exe')
-src.process.cmdline contains '\\\\\\\\'
+src.process.cmdline contains '\\\\'
 | group
     count      = count(),
     first_seen = oldest(timestamp),
@@ -369,6 +369,8 @@ src.process.cmdline contains '\\\\\\\\'
 | sort -count
 | limit 100
 ```
+
+The four backslashes in the `contains` match a literal `\\` (UNC prefix); see `references/pitfalls.md` on escaping. Matching behavior could not be validated live (2026-07-29: no backslash-bearing command lines in the test window); four backslashes is consistent with the sibling example in `examples/investigations.md` and its prose.
 
 ### PSEXESVC.exe execution (T1021.002)
 
@@ -391,9 +393,9 @@ src.process.parent.name in ('PSEXESVC.exe', 'paexec.exe', 'csexec.exe')
 
 ## Command and control
 
-### Rare-destination beaconing
+### Persistent traffic to the same destination
 
-Detects hosts with many regular outbound connections to a narrow set of external destinations — classic C2 shape.
+Detects hosts with outbound connections to the same external destination in a high fraction of the rule's lookback window: persistent traffic to a narrow destination set, a common C2 shape. This tests persistence, not interval regularity.
 
 ```
 event.type = 'IP Connect'
@@ -404,10 +406,13 @@ event.network.direction = 'OUTGOING'
     conns   = count(),
     last    = newest(timestamp)
   by agent.uuid, endpoint.name, dst.ip.address, dst.port.number
-| filter windows >= 6 and conns >= 50
-| sort -windows
+| let active_ratio = windows / (queryspan('minutes') / 10)
+| filter active_ratio >= 0.5 and conns >= 50
+| sort -active_ratio
 | limit 100
 ```
+
+Normalizing by `queryspan` keeps the threshold meaningful whatever lookback the rule runs with; ratios slightly above 1.0 are normal when the window straddles bucket boundaries. A/B-validated read-only 2026-07-29 over 1h of EDR IP Connect data: parses via LRQ v2 and returns plausible ratios.
 
 ### DNS to low-reputation TLD
 
@@ -547,15 +552,18 @@ When a rule is otherwise correct but fires on 1–2 known-good patterns, use a `
     first_seen = oldest(timestamp),
     last_seen  = newest(timestamp),
     host       = any(endpoint.name),
+    path       = any(src.process.image.path),
     cmdline    = any(src.process.cmdline)
   by agent.uuid, src.process.storyline.id
-| lookup is_allowed = allowed from allowlist_processes by src.process.image.path
+| lookup is_allowed = allowed from allowlist_processes by image_path = path
 | filter is_allowed = null
 | sort -count
 | limit 100
 ```
 
-The allowlist datatable needs a column `allowed` (any truthy value) keyed by the process image path. Keep it ≤ 400 KB and prefer opt-in allowlist over opt-out denylist — it's bounded.
+The `group` destroys every non-aggregated field, so the lookup key MUST be carried through as an aggregate (`path = any(src.process.image.path)`) and the lookup keyed on that alias. Keying the lookup on `src.process.image.path` after the group suppresses nothing: A/B-validated read-only 2026-07-29 via LRQ v2, projecting `src.process.image.path` after this group returns 400 "undefined field 'src.process.image.path'", while the `path = any(...)` alias projects populated values. Alternatively, run the `lookup` BEFORE the `group` (see `references/detection-rules.md` pattern 4), at per-event cost.
+
+The allowlist datatable needs a key column `image_path` (the full process image path) and a column `allowed` (any truthy value). Table size is rarely the constraint (lookup datatables can be up to 150 MB per table, operator-confirmed; scheduled rules may enforce a smaller row cap, see `references/detection-rules.md`). Prefer an opt-in allowlist over an opt-out denylist; the allowlist stays bounded.
 
 ---
 

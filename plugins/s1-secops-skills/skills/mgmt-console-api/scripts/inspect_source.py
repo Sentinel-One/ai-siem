@@ -147,9 +147,13 @@ def _run_sdl_query(client: Any, log_filter: str, *,
                    timeout_s: float = 60.0) -> Dict[str, Any]:
     """Sync query against ``/sdl/api/query`` (SDL API).
 
-    Returns ``{matches: [...], estimatedMatchCount: ...}`` where
+    Returns ``{matches: [...], estimatedMatchCount: None}`` where
     ``matches[i].attributes`` is the parsed event dict. Each match:
     ``{session, thread, timestamp, severity, message, attributes:{...}}``.
+    The sync response carries no server-side total-count field (only
+    ``matches``), so ``estimatedMatchCount`` is always ``None`` on this
+    backend; deriving it from ``len(matches)`` would just echo the
+    sample cap.
 
     This endpoint is synchronous (no poll/cancel) and on bench is
     20-50% faster than the equivalent LRQ LOG query. It is the
@@ -197,7 +201,10 @@ def _run_sdl_query(client: Any, log_filter: str, *,
             out.append({"values": attrs,
                         "timestamp": m.get("timestamp"),
                         "severity": m.get("severity")})
-    return {"estimatedMatchCount": len(matches), "matches": out}
+    # The sync SDL response has no total-count field; len(matches) is
+    # capped by maxCount and would fabricate the estimate. Return None
+    # so callers report "estimate unavailable" instead.
+    return {"estimatedMatchCount": None, "matches": out}
 
 
 def _run_lrq_log_query(client: Any, log_filter: str, *,
@@ -380,7 +387,9 @@ def discover_schema(client: Any, source: str, *, hours: float = 24,
     dict with keys:
         source              : str, echo of input
         n_sampled           : int, events returned (0..sample)
-        estimated_match     : int, estimatedMatchCount from the server
+        estimated_match     : int or None, estimatedMatchCount from the
+                              server (None when the backend does not
+                              report one, e.g. the sync SDL backend)
         effective_hours     : float, the window we actually used
         n_present           : int, distinct attribute names observed
         fields              : dict[field_name -> dict]
@@ -426,17 +435,20 @@ def discover_schema(client: Any, source: str, *, hours: float = 24,
             break
 
     if res is None:
-        return {"source": source, "n_sampled": 0, "estimated_match": 0,
+        return {"source": source, "n_sampled": 0, "estimated_match": None,
                 "effective_hours": used_hours, "n_present": 0,
                 "fields": {},
                 "error": last_err or "LOG query failed on every rung"}
 
     matches = res.get("matches") or []
     n = len(matches)
-    est = res.get("estimatedMatchCount") or 0
+    # None means the backend reported no total count (sync SDL backend);
+    # preserve it rather than coercing to 0 so reports can say
+    # "estimate unavailable" instead of a fabricated number.
+    est = res.get("estimatedMatchCount")
     if n == 0:
         return {"source": source, "n_sampled": 0,
-                "estimated_match": int(est),
+                "estimated_match": int(est) if est is not None else None,
                 "effective_hours": used_hours, "n_present": 0,
                 "fields": {},
                 "error": f"no events in {used_hours}h window"}
@@ -487,7 +499,7 @@ def discover_schema(client: Any, source: str, *, hours: float = 24,
     return {
         "source": source,
         "n_sampled": n,
-        "estimated_match": int(est),
+        "estimated_match": int(est) if est is not None else None,
         "effective_hours": used_hours,
         "n_present": len(fields),
         "fields": fields,
@@ -555,9 +567,11 @@ def format_report(schema: Dict[str, Any]) -> str:
         out.append(f"error: {schema['error']}")
         return "\n".join(out)
     n = schema["n_sampled"]
-    est = schema.get("estimated_match", 0)
+    est = schema.get("estimated_match")
     n_pres = schema.get("n_present", 0)
-    out.append(f"sampled {n} events (of ~{est} estimated in window), "
+    est_str = ("estimate unavailable" if est is None
+               else f"of ~{est} estimated in window")
+    out.append(f"sampled {n} events ({est_str}), "
                f"{n_pres} distinct attributes observed")
     out.append("")
 

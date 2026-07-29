@@ -18,7 +18,7 @@
         {
           "graphStyle": "number",
           "title": "Total Alerts [number]",
-          "query": "dataSource.name='alert'\n| group count=count()",
+          "query": "dataSource.name='alert'\n| group count=count()\n| limit 1",
           "options": { "format": "commas", "suffix": " alerts" },
           "sparklineConfig": { "enabled": true },
           "layout": { "h": 10, "w": 15, "x": 0, "y": 5 }
@@ -26,7 +26,7 @@
         {
           "graphStyle": "number",
           "title": "Identity Logon Failures [number]",
-          "query": "dataSource.name='Identity' unmapped.type='Logon Failure' | group count=count()",
+          "query": "dataSource.name='Identity' unmapped.type='Logon Failure' | group count=count() | limit 1",
           "options": { "format": "commas", "suffix": " failures", "color": "#E0483C" },
           "sparklineConfig": { "enabled": true },
           "trendConfig": {
@@ -42,7 +42,7 @@
         {
           "graphStyle": "number",
           "title": "Active EDR Endpoints [number]",
-          "query": "dataSource.name='SentinelOne' | group agents=estimate_distinct(endpoint.name)",
+          "query": "dataSource.name='SentinelOne' | group agents=estimate_distinct(endpoint.name) | limit 1",
           "options": { "format": "commas", "suffix": " endpoints" },
           "layout": { "h": 10, "w": 15, "x": 30, "y": 5 }
         },
@@ -62,7 +62,7 @@
         {
           "graphStyle": "donut",
           "title": "Alert Severity Distribution [donut]",
-          "query": "dataSource.name='alert' severity_id != null\n| group count=count() by severity_id\n| filter severity_id >= 1\n| let label = severity_id == 5 ? 'Critical' : severity_id == 4 ? 'High' : severity_id == 3 ? 'Medium' : severity_id == 2 ? 'Low' : 'Info'\n| group count=sum(count) by label\n| filter label != null",
+          "query": "dataSource.name='alert' severity_id=*\n| group count=count() by severity_id\n| filter severity_id >= 1\n| let label = severity_id == 5 ? 'Critical' : severity_id == 4 ? 'High' : severity_id == 3 ? 'Medium' : severity_id == 2 ? 'Low' : 'Info'\n| group count=sum(count) by label\n| filter label=*",
           "maxPieSlices": 6,
           "dataLabelType": "PERCENTAGE",
           "totalNumberConfig": { "enabled": true },
@@ -72,7 +72,7 @@
           "graphStyle": "stacked_bar",
           "xAxis": "grouped_data",
           "title": "Top Alert Titles [stacked bar]",
-          "query": "dataSource.name='alert' finding_info.title != null\n| group count=count() by title=finding_info.title\n| sort -count | limit 8\n| columns title, count",
+          "query": "dataSource.name='alert' finding_info.title=*\n| group count=count() by title=finding_info.title\n| sort -count | limit 8\n| columns title, count",
           "layout": { "h": 22, "w": 20, "x": 20, "y": 15 }
         },
         {
@@ -86,7 +86,7 @@
         {
           "graphStyle": "honeycomb",
           "title": "Indicator Category Density [honeycomb]",
-          "query": "dataSource.name='SentinelOne' event.category='indicators' indicator.category != null\n| group value=count() by label=indicator.category\n| sort -value | limit 15",
+          "query": "dataSource.name='SentinelOne' event.category='indicators' indicator.category=*\n| group value=count() by label=indicator.category\n| sort -value | limit 15",
           "honeycombColorScheme": "red",
           "honeycombRangeConfig": [0, 1000, 10000, 100000],
           "layout": { "h": 22, "w": 30, "x": 0, "y": 37 }
@@ -94,7 +94,7 @@
         {
           "graphStyle": "funnel",
           "title": "Threat Detection Funnel [funnel]",
-          "query": "| union\n(\n  dataSource.name='SentinelOne' event.type=*\n  | group Count=count() by Step='1 - Collected Events'\n),\n(\n  dataSource.name='SentinelOne' src.process.storyline.id=*\n  | group Count=estimate_distinct(src.process.storyline.id) by Step='2 - Storylines'\n),\n(\n  dataSource.name='SentinelOne' event.category='indicators' indicator.name=*\n  | group Count=estimate_distinct(indicator.name) by Step='3 - Indicators'\n),\n(\n  dataSource.name='alert' finding_info.internal_uid=*\n  | group Count=estimate_distinct(finding_info.internal_uid) by Step='4 - Alerts'\n)\n| columns Step, Count",
+          "query": "| union\n(\n  dataSource.name='SentinelOne' event.type=*\n  | group Count = count() | let Stage = '1. Collected events' | columns Stage, Count\n),\n(\n  dataSource.name='SentinelOne' src.process.storyline.id=*\n  | group Count = estimate_distinct(src.process.storyline.id) | let Stage = '2. Storylines' | columns Stage, Count\n),\n(\n  dataSource.name='SentinelOne' event.category='indicators' indicator.name=*\n  | group Count = estimate_distinct(indicator.name) | let Stage = '3. Indicators' | columns Stage, Count\n),\n(\n  dataSource.name='alert' finding_info.internal_uid=*\n  | group Count = estimate_distinct(finding_info.internal_uid) | let Stage = '4. Alerts' | columns Stage, Count\n)\n| sort Stage",
           "orientation": "horizontal",
           "funnelOptions": {
             "colorScheme": "default",
@@ -109,15 +109,15 @@
           "title": "Multi-Source Event Explorer [tabbed table]",
           "tabbed": "true",
           "tabVariant": "tile",
-          "query": "dataSource.name='alert' finding_info.title != null\n| group count=count() by finding_info.title, metadata.product.name\n| sort -count | limit 20",
+          "query": "dataSource.name='alert' finding_info.title=*\n| group count=count() by finding_info.title, metadata.product.name\n| sort -count | limit 20",
           "tabs": [
             {
               "title": "Top Alerts",
-              "query": "dataSource.name='alert' finding_info.title != null\n| group count=count() by finding_info.title, metadata.product.name\n| sort -count | limit 20"
+              "query": "dataSource.name='alert' finding_info.title=*\n| group count=count() by finding_info.title, metadata.product.name\n| sort -count | limit 20"
             },
             {
               "title": "EDR Indicators",
-              "query": "dataSource.name='SentinelOne' event.category='indicators' indicator.category != null\n| group count=count() by indicator.category, indicator.name\n| sort -count | limit 20"
+              "query": "dataSource.name='SentinelOne' event.category='indicators' indicator.category=*\n| group count=count() by indicator.category, indicator.name\n| sort -count | limit 20"
             },
             {
               "title": "Identity Failures",
@@ -125,7 +125,7 @@
             },
             {
               "title": "FortiGate Top Actions",
-              "query": "dataSource.name='FortiGate' unmapped.action != null\n| group count=count(), bytes_in=sum(number(traffic.bytes_in)), bytes_out=sum(number(traffic.bytes_out)) by src_endpoint.ip, dst_endpoint.ip, unmapped.action\n| filter bytes_in > 0 OR bytes_out > 0\n| sort -count | limit 20"
+              "query": "dataSource.name='FortiGate' unmapped.action=*\n| group count=count(), bytes_in=sum(number(traffic.bytes_in)), bytes_out=sum(number(traffic.bytes_out)) by src_endpoint.ip, dst_endpoint.ip, unmapped.action\n| filter bytes_in > 0 OR bytes_out > 0\n| sort -count | limit 20"
             }
           ],
           "layout": { "h": 25, "w": 60, "x": 0, "y": 59 }
@@ -147,7 +147,7 @@
         {
           "graphStyle": "bullet",
           "title": "Alert Volume vs SLA Threshold [bullet]",
-          "query": "dataSource.name='alert' severity_id != null\n| group value=count() by severity_id\n| filter severity_id >= 1\n| filter severity_id <= 5\n| let target = severity_id == 5 ? 50 : severity_id == 4 ? 100 : severity_id == 3 ? 300 : severity_id == 2 ? 1000 : 3000\n| let label = severity_id == 5 ? 'Critical' : severity_id == 4 ? 'High' : severity_id == 3 ? 'Medium' : severity_id == 2 ? 'Low' : 'Info'\n| sort -severity_id\n| columns value, target, label",
+          "query": "dataSource.name='alert' severity_id=*\n| group value=count() by severity_id\n| filter severity_id >= 1\n| filter severity_id <= 5\n| let target = severity_id == 5 ? 50 : severity_id == 4 ? 100 : severity_id == 3 ? 300 : severity_id == 2 ? 1000 : 3000\n| let label = severity_id == 5 ? 'Critical' : severity_id == 4 ? 'High' : severity_id == 3 ? 'Medium' : severity_id == 2 ? 'Low' : 'Info'\n| sort -severity_id\n| columns value, target, label",
           "bulletColorScheme": "semantic",
           "coloringMode": "ranges",
           "colorSchemeOrder": "standard",
@@ -181,7 +181,7 @@
         {
           "graphStyle": "sankey",
           "title": "Login Flow: Source IP to User Domain [sankey]",
-          "query": "dataSource.name='Identity' unmapped.type='Logon Success' user.domain != null src_endpoint.ip != null\n| group c=count() by source=src_endpoint.ip, target=user.domain\n| filter source != '' AND target != ''\n| sort -c | limit 25\n| columns source, target, c",
+          "query": "dataSource.name='Identity' unmapped.type='Logon Success' user.domain=* src_endpoint.ip=*\n| group c=count() by source=src_endpoint.ip, target=user.domain\n| filter source != '' AND target != ''\n| sort -c | limit 25\n| columns source, target, c",
           "colorMatching": "automatic",
           "sankeyColorScheme": "default",
           "showNodeValues": "true",
@@ -191,7 +191,7 @@
           "graphStyle": "scattered_bubble",
           "title": "Process Network Outliers [scatter bubble]",
           "description": "Upper-right outliers = processes contacting many IPs across many ports. Bubble size = unique destination ports.",
-          "query": "dataSource.name='SentinelOne' event.category='ip' src.process.name != null\n| group connections=count(), dests=estimate_distinct(dst.ip.address), ports=estimate_distinct(dst.port.number) by src.process.name\n| filter connections > 5\n| sort -connections | limit 30\n| columns connections, dests, ports, label=src.process.name",
+          "query": "dataSource.name='SentinelOne' event.category='ip' src.process.name=*\n| group connections=count(), dests=estimate_distinct(dst.ip.address), ports=estimate_distinct(dst.port.number) by src.process.name\n| filter connections > 5\n| sort -connections | limit 30\n| columns connections, dests, ports, label=src.process.name",
           "scatteredBubbleConfig": { "showLabel": true },
           "layout": { "h": 22, "w": 30, "x": 0, "y": 49 }
         },
@@ -225,7 +225,7 @@
         {
           "graphStyle": "number",
           "title": "Critical & High Alerts [number + drillthrough]",
-          "query": "dataSource.name='alert' severity_id=*\n| let sev = number(severity_id)\n| filter sev >= 4\n| group count=count()",
+          "query": "dataSource.name='alert' severity_id=*\n| let sev = number(severity_id)\n| filter sev >= 4\n| group count=count()\n| limit 1",
           "options": { "format": "commas", "suffix": " alerts" },
           "sparklineConfig": { "enabled": true },
           "chartLinkConfig": { "url": "/incidents/unified-alerts" },

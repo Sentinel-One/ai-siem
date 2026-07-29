@@ -274,10 +274,10 @@ export const tools = [
       const buf    = await res.arrayBuffer();
       const base64 = Buffer.from(buf).toString('base64');
       return JSON.stringify({
-        note: 'Export returns all workflows as a binary ZIP. Per-workflow filtering is not supported.',
+        note: 'Export returns all workflows as a binary ZIP. Per-workflow filtering is not supported. METADATA ONLY: this tool does not return or persist the ZIP content — use the console UI or a direct API call with file output if you need the archive itself.',
         contentType: res.headers.get('Content-Type') || 'application/zip',
         sizeBytes: buf.byteLength,
-        base64Preview: base64.slice(0, 200) + '… [truncated; full ZIP in buffer]',
+        base64Preview: base64.slice(0, 200) + '… [truncated]',
       }, null, 2);
     },
   },

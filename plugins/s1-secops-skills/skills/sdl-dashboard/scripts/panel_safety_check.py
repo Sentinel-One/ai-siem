@@ -21,10 +21,11 @@ Rules implemented (each rule has an ID; --ignore lets you suppress one):
     Q01  graphStyle: "area" with a `query:` field (use stacked_bar/line, or use plots:).
     M01  Markdown panel uses `content:` instead of `markdown:`.
     P01  Anything after `| transpose` (transpose must be terminal).
-    P02  Hyphenated arithmetic: `total-min`, `max-min` without spaces.
+    P02  Hyphenated arithmetic: `total-min`, `max-min` without spaces, in `let`,
+         `group`, and `columns` expressions (string literals are ignored).
     P03  Aggregate function `count_if(...)` or `countif(...)`.
     P04  `sum(if(predicate, value, 0))` or other `sum(if(...))` aggregate.
-    P05  `| union (subquery)` to merge pipelines.
+    P05  Mid-pipeline `| union (subquery)`. union-FIRST queries are allowed.
     P06  Named subquery `let totals = (... | group ...)` before main pipeline.
     P07  `\\s` or `\\d` regex escapes inside `matches '...'`.
     P08  Full-text predicate combined with `timebucket` + `transpose` (timeline timeout).
@@ -108,11 +109,22 @@ def rule_P01_transpose_not_terminal(query: str) -> Optional[Tuple[str, str]]:
     return None
 
 
+def _strip_string_literals(expr: str) -> str:
+    """Blank out quoted string literals so hyphenated label TEXT (e.g.
+    'command-and-control', '1. 1-10 KB') is never mistaken for unspaced
+    identifier arithmetic. Only identifiers OUTSIDE quotes can trigger P02."""
+    expr = re.sub(r"'[^']*'", "''", expr)
+    expr = re.sub(r'"[^"]*"', '""', expr)
+    return expr
+
+
 def rule_P02_hyphen_arith(query: str) -> Optional[Tuple[str, str]]:
-    # Detect `let foo = bar-baz` or `... = a-b ...` where both sides are bare identifiers
-    # (not surrounded by spaces). Only flag inside `| let ...` lines to reduce noise.
-    for m in re.finditer(r"\|\s*let\s+\w+\s*=\s*(.+?)(?:\||$)", query, flags=re.IGNORECASE | re.DOTALL):
-        expr = m.group(1)
+    # Detect `foo = bar-baz` style unspaced identifier arithmetic in expression
+    # contexts: `| let`, `| group`, and `| columns` segments (all three accept
+    # computed expressions where the PQ parser reads `a-b` as one identifier).
+    # String literals are stripped first to avoid false-flagging hyphenated labels.
+    for m in re.finditer(r"\|\s*(?:let|group|columns)\s+(.+?)(?:\||$)", query, flags=re.IGNORECASE | re.DOTALL):
+        expr = _strip_string_literals(m.group(1))
         if re.search(r"[A-Za-z_][A-Za-z0-9_.]*-[A-Za-z_][A-Za-z0-9_.]*", expr):
             return ("P02", "Hyphenated arithmetic without spaces (e.g. `total-min`). "
                            "Add spaces: `total - min`. The PQ parser otherwise reads it as one identifier.")
@@ -134,9 +146,15 @@ def rule_P04_sum_if(query: str) -> Optional[Tuple[str, str]]:
 
 
 def rule_P05_union(query: str) -> Optional[Tuple[str, str]]:
-    if re.search(r"\|\s*union\s*\(", query, flags=re.IGNORECASE):
-        return ("P05", "`| union (subquery)` produces HTTP 500. Use two adjacent panels instead.")
-    return None
+    m = re.search(r"\|\s*union\s*\(", query, flags=re.IGNORECASE)
+    if not m:
+        return None
+    if query[:m.start()].strip() == "":
+        # `union` as the FIRST command of the query is valid (live-verified 2026-07-29).
+        return None
+    return ("P05", "Mid-pipeline `| union (subquery)` returns HTTP 400. `union` is only valid as "
+                   "the FIRST command of the query; restructure as union-first (one subquery per "
+                   "row set) or use two adjacent panels.")
 
 
 def rule_P06_named_subquery(query: str) -> Optional[Tuple[str, str]]:

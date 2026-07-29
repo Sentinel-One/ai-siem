@@ -1,6 +1,7 @@
 {
   "name": "<<PREFIX>> Auto-Resolve Mitigated <<NOISY_PRODUCT>> Alerts",
-  "description": "Auto-resolves already-mitigated ingested alerts (match set discovered live) and adds an explanatory note. Import, publish to Shared Draft, review, bind the SentinelOne connection, then activate.",
+  "description": "Auto-resolves already-mitigated ingested alerts (match set discovered live) and adds an explanatory note. Every filter group carries a MANDATORY runtime guard that the alert's action/disposition field equals the mitigated value, so only alerts the source actually blocked are auto-resolved. Import, publish to Shared Draft, review, bind the SentinelOne connection, then activate.",
+  "_comment": "<<ACTION_FIELD>> / <<MITIGATED_VALUE>> guard (added 2026-07-29): set <<ACTION_FIELD>> to the source's action/disposition field on the ingested alert (e.g. the field that carries blocked/denied/quarantined) and <<MITIGATED_VALUE>> to its blocked value, both discovered live at deploy time from the alert payloads. This third condition prevents auto-resolving alerts whose signature the firewall/product later starts PASSING: without it, a policy change that flips the signature from block to allow would keep silently closing now-unmitigated alerts. PENDING: validate on demo tenant. Remove this _comment key before import if the importer rejects unknown keys.",
   "actions": [
     {
       "action": {
@@ -27,6 +28,11 @@
                     "input_value": "name",
                     "compared_value": "<<MATCH_NAME>>",
                     "comparison_operator": "equals"
+                  },
+                  {
+                    "input_value": "<<ACTION_FIELD>>",
+                    "compared_value": "<<MITIGATED_VALUE>>",
+                    "comparison_operator": "equals"
                   }
                 ]
               },
@@ -49,6 +55,11 @@
                   {
                     "input_value": "analytics.category",
                     "compared_value": "<<MATCH_CATEGORY>>",
+                    "comparison_operator": "equals"
+                  },
+                  {
+                    "input_value": "<<ACTION_FIELD>>",
+                    "compared_value": "<<MITIGATED_VALUE>>",
                     "comparison_operator": "equals"
                   }
                 ]

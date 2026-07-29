@@ -2,7 +2,7 @@
 name: soc-investigator
 author: Joel Mora <joelm@sentinelone.com>
 description: Autonomous DFIR investigation for Claude Cowork. Interrogates user for alert context, executes SHORT/MEDIUM/LONG investigation modes on SentinelOne alerts, then optionally expands to third-party data sources (M365, Entra, Sharepoint, etc.) for deep correlation and anomaly detection.
-compatibility: Requires powerquery, mgmt-console-api, sdl-api, sdl-log-parser, hyperautomation, sdl-dashboard, purple MCP (VirusTotal/threat intel). Works with Claude Cowork.
+compatibility: Requires sentinelone-powerquery, sentinelone-mgmt-console-api, sentinelone-sdl-api, sentinelone-sdl-log-parser, sentinelone-hyperautomation, sentinelone-sdl-dashboard, purple MCP (VirusTotal/threat intel). Works with Claude Cowork.
 metadata:
   author: Joel Mora <joelm@sentinelone.com>
   version: "1.1"
@@ -27,13 +27,12 @@ Inherited from the Purple SOC Analyst operating standard and the SDL threat-hunt
 
 - Reconcile to ground truth. An alert, an offence, or a rule "firing" is a lead, not a finding. A claim becomes a finding only when traceable to specific raw log lines or a tool result from this session. If raw evidence is absent, say "unconfirmed"; never upgrade a lead to a conclusion.
 - No fabrication. Every count, IOC total, affected-asset number, hostname, CVE, or actor name must come from a query or tool call run this session. If you do not have it, run the query or say so. Empty, null, zero, and tool-error results are findings; report them, do not smooth over them.
-- Enrich before you decide. Every external IP, domain, URL, or hash is enriched through the threat-intel MCP (VirusTotal by default) before any verdict, then pivoted for related infrastructure and actors. Internal, RFC1918, or no-external-indicator events are enrichment-N/A; state that, never fabricate a lookup.
+- Enrich before you decide, when third-party enrichment is enabled. External IPs, domains, URLs, and hashes are enriched through the configured threat-intel MCP (VirusTotal by default) before any verdict, then pivoted for related infrastructure and actors. Because this sends indicators to a third-party service, it is opt-in: if the user asks for SentinelOne-only / local analysis, or no threat-intel MCP is configured, skip external enrichment, say so, and cap the verdict at SUSPICIOUS - Pending Confirmation (per the verdict gate below). Internal, RFC1918, or no-external-indicator events are enrichment-N/A; state that, never fabricate a lookup.
 - Verdict gate. No finding is CRITICAL or TRUE POSITIVE on a detection-engine severity alone. Require at least one of: a threat-intel malicious verdict; MDR or analyst confirmation (check `get_alert_notes` and `get_alert_history` first, an MDR False Positive or Benign verdict takes precedence); or the same IOC or behaviour corroborated across 2+ independent sources. Otherwise the ceiling is SUSPICIOUS - Pending Confirmation.
 - Mark assumptions. Prefix any inference needed to proceed with "Assumption:" and state what would falsify it.
 - Calibrated confidence. Use confirmed, consistent with, suggests, possible, or no evidence of, matched to evidence weight. "No evidence of" is a real, valuable result; record negatives explicitly.
 - Session init first. Enumerate `dataSource.name` live and discover each source's schema before querying it; never assume a field namespace. Reuse the project schema cache if present.
 - Apply the anomaly checklist to every log result: frequency, timing, geolocation, baseline deviation, volume, new entity, privilege, chain.
-- Hold findings until the end and do not over-correlate: a shared time window is not causation; assert a link only when an entity or artifact bridges the clusters. Map every finding to MITRE ATT&CK and lead each conclusion with verdict, confidence, and evidence count.
 - Hold findings until the end and do not over-correlate: a shared time window is not causation; assert a link only when an entity or artifact bridges the clusters. Map every finding to MITRE ATT&CK and lead each conclusion with verdict, confidence, and evidence count.
 - Query appendix, mandatory in every report. Always append an appendix listing every PowerQuery run during the investigation, each with its evidence (see the "Query appendix" section below). Never present a query result without also showing the query and a raw-telemetry excerpt.
 
@@ -68,12 +67,12 @@ Rules:
 Required skills for full investigation capability:
 
   Core (SentinelOne telemetry & console)
-  ├── mgmt-console-api   - alert fetch, IOC lookup, agent/threat queries
-  ├── powerquery          - Deep Visibility / SDL PowerQuery execution
-  ├── sdl-api             - SDL file and log management
-  │   └── sdl-log-parser  - log parser authoring/validation
-  ├── sdl-dashboard       - SDL dashboard creation
-  └── hyperautomation     - workflow/SOAR automation
+  ├── sentinelone-mgmt-console-api   - alert fetch, IOC lookup, agent/threat queries
+  ├── sentinelone-powerquery          - Deep Visibility / SDL PowerQuery execution
+  ├── sentinelone-sdl-api             - SDL file and log management
+  │   └── sentinelone-sdl-log-parser  - log parser authoring/validation
+  ├── sentinelone-sdl-dashboard       - SDL dashboard creation
+  └── sentinelone-hyperautomation     - workflow/SOAR automation
 
   Threat Intelligence
   └── purple MCP (VirusTotal)         - IOC enrichment
@@ -87,12 +86,12 @@ Display the result to the user before proceeding:
 === Tool Discovery ===
 
 Core skills:
-  ✓ mgmt-console-api
-  ✓ powerquery
-  ✗ sdl-api             [MISSING - SDL correlation unavailable]
-  ✗ sdl-log-parser      [MISSING - depends on sdl-api]
-  ✓ sdl-dashboard
-  ✓ hyperautomation
+  ✓ sentinelone-mgmt-console-api
+  ✓ sentinelone-powerquery
+  ✗ sentinelone-sdl-api             [MISSING - SDL correlation unavailable]
+  ✗ sentinelone-sdl-log-parser      [MISSING - depends on sentinelone-sdl-api]
+  ✓ sentinelone-sdl-dashboard
+  ✓ sentinelone-hyperautomation
 
 Threat intelligence:
   ✓ purple MCP (VirusTotal)
@@ -172,7 +171,7 @@ Mode: MEDIUM | Alerts: last 48h HIGH | Approval gates: ON
 Output: ./investigation_2025-06-16T10-00-00/
 
   PHASE 1 - Alert Ingest & Entity Extraction          [~2 min]
-    1.1  Fetch alerts via mgmt-console-api
+    1.1  Fetch alerts via sentinelone-mgmt-console-api
     1.2  Extract entities (users, endpoints, IPs, hashes)
     1.3  Build draft timeline (chronological alert order)
     1.4  Infer MITRE tactics/techniques from alert types
@@ -223,7 +222,7 @@ After the user confirms, begin Phase 1 immediately.
 
 #### 1.1 Fetch alerts
 ```text
-Use: mgmt-console-api
+Use: sentinelone-mgmt-console-api
 Query: GET /threats (filtered by user input)
 Output: alerts.jsonl
 ```
@@ -286,7 +285,7 @@ Includes SHORT, plus:
 
 #### 2.1 Batch IOC lookups
 ```text
-Use: Purple MCP (VirusTotal) + mgmt-console-api (S1 IOC API)
+Use: Purple MCP (VirusTotal) + sentinelone-mgmt-console-api (S1 IOC API)
 
 For each IOC in entities.json:
   - VirusTotal: GET /files/{hash}, /domains/{domain}, /ip_addresses/{ip}
@@ -309,7 +308,7 @@ If IOC count > 20:
 
 #### 3.1 One PowerQuery per unique endpoint
 ```text
-Use: powerquery skill
+Use: sentinelone-powerquery skill
 
 Query A: Process tree for user during alert window
   src.process.user = '<user_from_alert>'
@@ -409,7 +408,7 @@ Query D: Full network behavior
 
 #### 6.1 SDL threat intelligence correlation
 ```text
-Use: powerquery skill
+Use: sentinelone-powerquery skill
 
 For each IOC in entities.json:
   indicator.hash = '<hash>' OR indicator.domain = '<domain>' OR indicator.ip = '<ip>'
@@ -466,7 +465,7 @@ Choose: [1 | 2 | 3]
 
 #### 1.1 Query all available data sources
 ```text
-Use: powerquery skill
+Use: sentinelone-powerquery skill
 
 dataSource.name = *
 | group ct=count() by dataSource.name

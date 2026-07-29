@@ -309,11 +309,14 @@ Keep the list an opt-in allowlist (bounded), not an open-ended denylist.
 ## Step 2: render and preview the detection
 
 Render `assets/exclusion_detection.template.json`. The body is the base detection wrapped with the
-anti-join. The validated demo body (Akamai DNS, asset list AND domain list chained):
+anti-join. Because the STAR scheduled-rule validator accepts only `=` and `=:anycase` and REJECTS
+`=:cidr` / `=:wildcard` (see "STAR scheduled-rule operator support" above), the rule-body example
+below uses the hostname `=:anycase` asset variant. Demo body (Akamai DNS, asset list AND domain
+list chained):
 
 ```
 dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}} = *
-| lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr src_endpoint.ip
+| lookup excl_asset = reason from {{ASSET_TABLE}} by host =:anycase device.name
 | filter excl_asset = null
 | lookup excl_domain = reason from {{DOMAIN_TABLE}} by value =:anycase domain
 | filter excl_domain = null
@@ -324,6 +327,13 @@ dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}} = *
 | columns src_endpoint.ip, failed, distinct_domains, edges, last_seen
 | limit 500
 ```
+
+For an IP/subnet (`=:cidr`) or prefix/suffix (`=:wildcard`) exclusion, do NOT render it into a STAR
+scheduled rule: route it to the Hyperautomation LRQ path
+(`assets/exclusion_detection_ha_workflow.template.json`), where the CIDR anti-join
+(`| lookup excl_asset = reason from {{ASSET_TABLE}} by cidr =:cidr src_endpoint.ip`) runs fine, or
+pre-expand the subnet to literal member values, or fall back to the hostname `=:anycase` key as
+above.
 
 Preview to the user BEFORE deploying: the rendered body, the projected columns, and the
 before/after counts (run the body once, then run it again with the `filter excl_* = null` lines
@@ -416,7 +426,7 @@ scope), the total / excluded / kept counts, and the top suppressed values.
   observables carrying `typeName`, and `state_id`/`s1_classification_id`. Generic OCSF `class_uid 2002`
   returns HTTP 202 but is silently dropped (this was the real bug). Also remember the async LRQ
   launch+poll pattern (capture `id` + `X-Dataset-Query-Forward-Tag`, then GET for `data.values`). Full
-  field list is in the `hyperautomation` skill (tenant-validated 2026-06-22).
+  field list is in the `sentinelone-hyperautomation` skill (tenant-validated 2026-06-22).
 
 ## Deployed artifacts
 

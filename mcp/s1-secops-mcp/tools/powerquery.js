@@ -62,7 +62,7 @@ export const tools = [
         },
         maxRows: {
           type: 'number',
-          description: 'Maximum rows to return (default 1000, max 5000).',
+          description: 'Client-side cap on rows returned (default 1000). Not a hard backend limit: the LRQ engine returns as many rows as the query\'s own `| limit N` asks for (live-verified 2026-07-29: a `| limit 20000` query returned 20,000 rows in one response). Raise this to match a large `| limit`; the real ceiling is LRQ response size, not a fixed 5000.',
           default: 1000,
         },
       },
@@ -77,7 +77,7 @@ export const tools = [
   // ─── powerquery_schema_discover ────────────────────────────────────────────
   {
     name: 'powerquery_schema_discover',
-    description: `Discover the field schema for a specific SDL data source by fetching raw event JSON via the V1 query endpoint. PowerQuery's default projection only returns timestamp+message; V1 query returns full event attributes so you can see what field names are actually present. Use this before authoring any hunt query or dashboard panel against a non-OCSF source. The V1 endpoint is deprecated (sunset Feb 2027) but is still the only way to get full event JSON per-source. Auth falls through to console JWT automatically.`,
+    description: `Discover the field schema for a specific SDL data source by fetching raw event JSON via the V1 query endpoint. PowerQuery's default projection only returns timestamp+message; V1 query returns full event attributes so you can see what field names are actually present. Use this before authoring any hunt query or dashboard panel against a non-OCSF source. The V1 endpoint is deprecated (sunset Feb 2027) but is still the only way to get full event JSON per-source. Auth tries each configured SDL key in scope order and falls through to the console JWT on 401/403.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -99,7 +99,10 @@ export const tools = [
       required: ['dataSourceName'],
     },
     async handler({ dataSourceName, maxEvents = 5, startTime = '24h' }) {
-      const filter = `dataSource.name=='${dataSourceName}'`;
+      // Escape single quotes to keep tenant-defined source names from breaking
+      // (or altering) the V1 filter expression.
+      const safeName = String(dataSourceName).replace(/'/g, "\\'");
+      const filter = `dataSource.name=='${safeName}'`;
       const result = await v1Query(filter, { maxCount: Math.min(maxEvents, 50), startTime });
 
       const matches = result.matches || [];

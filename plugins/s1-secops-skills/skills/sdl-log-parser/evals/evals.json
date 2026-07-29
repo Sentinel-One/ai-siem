@@ -1,5 +1,5 @@
 {
-  "skill_name": "sdl-log-parser",
+  "skill_name": "sentinelone-sdl-log-parser",
   "evals": [
     {
       "id": 0,
@@ -22,7 +22,7 @@
       "name": "multiline-stack",
       "prompt": "I'm trying to ingest application logs that have multi-line Java exceptions. Each event starts with a `[YYYY-MM-DD HH:MM:SS]` header and the stack trace follows on indented lines. Sample: evals/samples/multiline_stack.log\n\nBuild a parser that uses lineGroupers to fold the stack trace into the same event as its header, then extracts timestamp, severity (ERROR/WARN/INFO), service, and a short summary. Deploy under `claude_test_` prefix, ingest the sample, and prove via powerQuery that I get 3 logical events back (not 8 lines), with severity and summary populated.",
       "files": ["evals/samples/multiline_stack.log"],
-      "expected_output": "Parser has a lineGroupers block with start=`^\\[\\d{4}-\\d{2}-\\d{2} ...` plus a continueThrough/haltBefore. powerQuery returns exactly 3 rows. severity field has values ERROR, WARN, ERROR. summary field is non-null on each.",
+      "expected_output": "Parser has a lineGroupers block with start=`^\\[\\d{4}-\\d{2}-\\d{2} ...` plus a continueThrough/haltBefore. powerQuery returns exactly 3 rows. severity_name field has string values ERROR, WARN, ERROR (reserved `severity` is coerced to a 0-6 integer at ingest, so the parser must capture the raw string into `severity_name`). summary field is non-null on each.",
       "assertions": []
     }
   ]

@@ -1,4 +1,4 @@
-# sdl-dashboard (Claude skill)
+# sentinelone-sdl-dashboard (Claude skill)
 
 A Claude skill for designing, authoring, and deploying SentinelOne **Singularity Data Lake (SDL) dashboards**: from a single panel to a full multi-tab SOC dashboard. Covers all panel types, multi-tab layouts, parameters, and full dashboard JSON authoring with community examples.
 
@@ -7,23 +7,23 @@ A Claude skill for designing, authoring, and deploying SentinelOne **Singularity
 Copy this folder into your user skills directory:
 
 ```bash
-cp -r sdl-dashboard ~/.claude/skills/
+cp -r sentinelone-sdl-dashboard ~/.claude/skills/
 ```
 
 In Cowork/Claude Code, the path is:
 
 ```
-/sessions/<session>/mnt/.claude/skills/sdl-dashboard/
+/sessions/<session>/mnt/.claude/skills/sentinelone-sdl-dashboard/
 ```
 
-Or install the full plugin (recommended): see [`s1-secops-skills/`](../s1-secops-skills/).
+Or install the full plugin (recommended) to get all the SentinelOne SecOps skills together.
 
 ## Usage
 
-This skill has no Python client of its own: dashboards are authored as JSON and deployed via the `sdl-api` skill's `put_file` method. Use alongside:
+This skill has no Python client of its own: dashboards are authored as JSON and deployed via the `sentinelone-sdl-api` skill's `put_file` method. Use alongside:
 
-- **`sdl-api`**: to deploy the dashboard JSON to your SDL tenant (`put_file /dashboards/<name>`)
-- **`powerquery`**: to validate and compose the queries inside panels before embedding them
+- **`sentinelone-sdl-api`**: to deploy the dashboard JSON to your SDL tenant (`put_file /dashboards/<name>`)
+- **`sentinelone-powerquery`**: to validate and compose the queries inside panels before embedding them
 
 ## What this skill does
 
@@ -31,7 +31,7 @@ This skill has no Python client of its own: dashboards are authored as JSON and 
 - Authors correct JSON for all panel types: `line`, `bar`, `pie`, `table`, `number`, `timeline`, `honeycomb`, `markdown`
 - Applies query performance rules: `net_rfc1918()`, `| limit 1` on number panels, explicit limits on tables, `timebucket` granularity matched to duration, early filter placement, `estimate_distinct()` for cardinality
 - Adds markdown descriptor panels to each tab
-- Deploys to SDL via `sdl-api`
+- Deploys to SDL via `sentinelone-sdl-api`
 
 ## Layout
 

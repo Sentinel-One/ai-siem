@@ -17,7 +17,7 @@
   attributes: {
     // Required pipeline defaults.
     "metadata.version":    "1.0.0",
-    "dataSource.category": "application",
+    "dataSource.category": "security",
     "dataSource.name":     "Application Exceptions",
     "dataSource.vendor":   "Internal",
     dataset: "app_exceptions"

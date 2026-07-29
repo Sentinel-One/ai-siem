@@ -1,8 +1,8 @@
 # UEBA behavioural anomaly detection
 
 The **s1-ueba-deployer is the source of truth** for this solution. The full documentation lives at
-[`docs/solutions/ueba-anomaly-detection.md`](../../../docs/solutions/ueba-anomaly-detection.md),
-mirrored from the deployer.
+[`docs/solutions/ueba-anomaly-detection.md`](../../docs/solutions/ueba-anomaly-detection.md), mirrored
+from the deployer.
 
 Read that document for: the security use-case selector (intent to data sources to detections to
 scoring method); the detection set, which is the ten behavioural classes (SPIKE, DROP, SILENT,
@@ -13,6 +13,6 @@ action key; source matching by `dataSource.name` or `serverHost`; the staggered 
 and daily failure-notifier flows; and the dashboard All Data vs XDR scope. GEO-NEW, IMPOSSIBLE-TRAVEL,
 and RBA are shipped, not roadmap.
 
-This solution is part of the `sdl-solutions` skill; it orchestrates the primitive skills
-(`mgmt-console-api`, `powerquery`, `hyperautomation`, `sdl-dashboard`) rather than reimplementing
-them.
+This solution is part of the `sentinelone-sdl-solutions` skill; it orchestrates the primitive skills
+(`sentinelone-mgmt-console-api`, `sentinelone-powerquery`, `sentinelone-hyperautomation`,
+`sentinelone-sdl-dashboard`) rather than reimplementing them.

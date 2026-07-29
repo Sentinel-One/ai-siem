@@ -18,7 +18,7 @@
 | `scattered_bubble` | Bubble scatter chart | PQ | 3D scatter: x, y, bubble-size from 3 numeric columns. Optional `label` column. `scatteredBubbleConfig: {showLabel: true}`. |
 | `table` (graphStyle `""`) | Table | PQ | Default for PQ panels. `showBarsColumn: "true"` adds inline bar chart. |
 | `table` with tabs | Tabbed table | PQ | Add `tabbed: "true"`, `tabVariant: "tile"`, and `tabs: [{query, title}]`. Each tab has its own PQ. |
-| `funnel` | Funnel chart | PQ | Shows volume drop-off across sequential stages. Query returns `stage` (text) + `value` (number) via `| union`. |
+| `funnel` | Funnel chart | PQ | Shows volume drop-off across sequential stages. Query returns `stage` (text) + `value` (number) via a union-FIRST query (one subquery per stage; `union` must be the query's first command). |
 | `distribution` | Distribution histogram | filter+facet | Uses `filter` + `facet` (not `query`). Good for port/packet-size distributions. No PQ. |
 | `markdown` | Text panel | none | GitHub-flavored markdown. Use `markdown:` field (NOT `content:` which renders blank). |
 | `alerts_table` | Built-in alert widget | none | Uses `dataSource: "[[DataSource.ALERTS_DISTRIBUTION]]"` + `fieldId`. Not a PQ panel — pull from console widget library. |
@@ -335,13 +335,32 @@ Use this when each series comes from a different filter rather than a transpose.
 
 Shows volume drop-off across sequential pipeline stages. Ideal for detection coverage, alert lifecycle, and SOC workflow funnel.
 
-**Query pattern**: return a `stage` (text) + `value` (number) column pair using `| union` to build each stage row. Rows must be in order (largest stage first for vertical orientation).
+**Query pattern**: return a `stage` (text) + `value` (number) column pair using a **union-FIRST**
+query: `union` must be the FIRST command of the query, with ONE subquery per stage, each subquery
+ending in `| group Count = count() | let Stage = '...' | columns Stage, Count`. A mid-pipeline
+`| union (subquery)` (union after any other command) returns HTTP 400 (live-verified 2026-07-29);
+union as the first command works, including with commands after it (`| sort Stage`). `| transpose`
+cannot substitute: it only pivots long-to-wide and requires a column name, so it cannot turn a
+single wide aggregate row into stage/value rows (plain `| transpose` returns 400 "Expected a name",
+live-verified 2026-07-29). Keep stage labels free of hyphens (hyphenated labels trip the
+identifier parser); use numbered prefixes like `1.` for ordering. Rows must be in order (largest
+stage first for vertical orientation).
+
+Live-validated stage/value shape (2026-07-29, severity thresholds on `dataSource.name='alert'`):
+```
+| union
+( dataSource.name='alert' severity_id=* | group Count = count() | let Stage = '1. All alerts' | columns Stage, Count ),
+( dataSource.name='alert' severity_id=* | let sev = number(severity_id) | filter sev >= 3 | group Count = count() | let Stage = '2. Medium and above' | columns Stage, Count ),
+( dataSource.name='alert' severity_id=* | let sev = number(severity_id) | filter sev >= 4 | group Count = count() | let Stage = '3. High and above' | columns Stage, Count ),
+( dataSource.name='alert' severity_id=* | let sev = number(severity_id) | filter sev >= 5 | group Count = count() | let Stage = '4. Critical' | columns Stage, Count )
+| sort Stage
+```
 
 ```javascript
 {
   graphStyle: "funnel",
   title: "Threat Detection Funnel: Events → Indicators → Alerts",
-  query: "| union\n(\n  event.type=*\n  | group Count=count() by Step='1 - Collected Events'\n),\n(\n  event.category=* src.process.storyline.id=*\n  | group Count=estimate_distinct(src.process.storyline.id) by Step='2 - Storylines'\n),\n(\n  event.category='indicators' indicator.name=*\n  | group Count=estimate_distinct(indicator.name) by Step='3 - Indicators'\n),\n(\n  dataSource.name='alert' finding_info.internal_uid=*\n  | group Count=estimate_distinct(finding_info.internal_uid) by Step='4 - Alerts'\n)\n| columns Step, Count",
+  query: "| union\n(\n  dataSource.name='SentinelOne' event.type=*\n  | group Count = count() | let Stage = '1. Collected events' | columns Stage, Count\n),\n(\n  dataSource.name='SentinelOne' src.process.storyline.id=*\n  | group Count = estimate_distinct(src.process.storyline.id) | let Stage = '2. Storylines' | columns Stage, Count\n),\n(\n  dataSource.name='SentinelOne' event.category='indicators' indicator.name=*\n  | group Count = estimate_distinct(indicator.name) | let Stage = '3. Indicators' | columns Stage, Count\n),\n(\n  dataSource.name='alert' finding_info.internal_uid=*\n  | group Count = estimate_distinct(finding_info.internal_uid) | let Stage = '4. Alerts' | columns Stage, Count\n)\n| sort Stage",
   // orientation: "vertical" (stages stack top-to-bottom) or "horizontal" (left-to-right)
   orientation: "horizontal",
   funnelOptions: {
@@ -354,9 +373,9 @@ Shows volume drop-off across sequential pipeline stages. Ideal for detection cov
 }
 ```
 
-**Alert lifecycle variant** (using `datasource` UQL):
+**Alert lifecycle variant** (using `datasource` UQL; union-first, live-validated 2026-07-29):
 ```javascript
-query: "| union\n( | datasource alerts count_by severity | group Total=sum(count) | let Step='All Alerts', Count=Total ),\n( | datasource alerts where (status in ('NEW','IN_PROGRESS')) count_by status | group Open=sum(count) | let Step='Unresolved', Count=Open ),\n( | datasource alerts where (status='NEW' AND !(assigneeUserId=*)) count_by assigneeUserId | group Unassigned=sum(count) | let Step='Unassigned', Count=Unassigned )\n| columns Step, Count"
+query: "| union\n( | datasource alerts | group Count = count() | let Stage = '1. All alerts' | columns Stage, Count ),\n( | datasource alerts where (status in ('NEW','IN_PROGRESS')) | group Count = count() | let Stage = '2. Unresolved' | columns Stage, Count ),\n( | datasource alerts where (status = 'NEW' AND !(assigneeUserId=*)) | group Count = count() | let Stage = '3. Unassigned' | columns Stage, Count )\n| sort Stage"
 ```
 
 **When to use funnel:**
@@ -428,8 +447,8 @@ endpoint.os = #OS#
 - **Zero suppression — `| filter count > 0` after group**: After `| group count=count() by ...`, SDL can produce zero-count rows for sparse key combinations (common after `transpose` or wide key spaces). These render as empty heatmap cells and spurious table rows. Always add `| filter EventCount > 0` (or `| filter value > 0`) after any group that feeds a heatmap, donut, or table panel where zero rows are meaningless.
 - **`| sort` must come before `| columns`**: `| columns` removes every field not listed. A `| sort` placed after `| columns` that references a projected-away field silently fails or hangs the panel. Move `| sort` before `| columns`. Most common victim: bullet panels that sort by a severity field but project it away in the final `| columns value, target, label`.
 - **`in` operator restriction**: The `in (...)` set-membership operator only works inside `| filter` commands. It does NOT work in the initial filter predicate (the part before the first `|`). Use `dataSource.name='X'\n| filter field in ('a','b','c')` — not `field in ('a','b','c') | group ...`. Violating this causes a silent parse failure that surfaces as a frontend `TypeError: e.toLowerCase is not a function`.
-- **Funnel**: Query must return exactly one text column (stage label) and one numeric column (count). Use `| union` to build stages. Rows should be in stage order; rows are NOT auto-sorted. `orientation: "vertical"` stacks top-to-bottom; `"horizontal"` is left-to-right.
-- **Filter widget (parameters) — UI only, no query injection**: Parameters (`parameters: []` on a tab) render a dropdown or text input in the tab header. They do NOT modify panel queries at runtime. `#VarName#` and `$name` injection into `query`/`filter` fields is NOT supported — SDL's parser sees the literal `#` or `$` and throws `Don't understand [#]`. Confirmed across `facet`-based and `values`-based parameter types; zero community examples show working query injection. Use parameters as UI chrome (e.g. a visible filter label for demos) and hardcode the actual query filter. Two sub-types: `facet` (dropdown populated from live field values) and `values` (static list of options).
+- **Funnel**: Query must return exactly one text column (stage label) and one numeric column (count). Build stages with a union-FIRST query (`union` as the query's very first command, one subquery per stage; mid-pipeline `| union` returns HTTP 400). Keep stage labels free of hyphens. Rows should be in stage order; rows are NOT auto-sorted. `orientation: "vertical"` stacks top-to-bottom; `"horizontal"` is left-to-right.
+- **Filter widget (parameters) — fully working on TABBED dashboards, including runtime refiltering (visually verified live 2026-07-29)**: Parameters (`parameters: []` on a tab) render a dropdown or text input in the tab header, and a panel query referencing `#VarName#` works on a TABBED dashboard. A live test tab with `dataSource.name=#SrcName#` (facet-populated dropdown, `defaultValue: "*"`) rendered correctly with the default substituted, and selecting a dropdown value then pressing **Search** re-ran the panel filtered to that value only. The one gotcha: changing the dropdown does NOT auto-refresh; the new value applies only after the user hits Search. The earlier claims that the parser sees a literal `#` and throws `Don't understand [#]`, and that parameters are UI-only with no query injection, were both wrong. Two sub-types: `facet` (dropdown populated from live field values) and `values` (static list of options).
 - **Breakdown graphs** (`breakdownFacet` property): Very slow, not cached. Use only for exploratory work.
 - **Stacked bar with time x-axis**: Set `xAxis: "time"` and `yScale: "linear"`.
 - **Stacked bar with category x-axis**: Set `xAxis: "grouped_data"`.
@@ -442,5 +461,5 @@ endpoint.os = #OS#
 - **Markdown**: Use `markdown:` field, NOT `content:` which renders blank. Set a short plain-text `title` (no `##` prefix) and put prose only in `markdown`. In S-26.1 a markdown panel with NO `title` key renders an "Untitled" header (observed live), so always include a `title`. Do not repeat the title as a heading inside the body.
 - **Categorical bar chart**: use `graphStyle: "stacked_bar"` with `xAxis: "grouped_data"` and a `(category, value)` query. Plain `graphStyle: "bar"` (like `line` / `area`) defaults to a TIME x-axis and errors with "first column ... should have numeric value in epoch" when the first column is a category string.
 - **Heatmap with `rangesCreation: "automatic"`**: The `heatmapRangeConfig` array must use empty strings `""` for all middle elements — SDL auto-calculates those boundaries from live data. Providing explicit non-empty values (e.g. `"10"`, `"50"`) conflicts with automatic mode and silently produces a blank panel. Correct form: `["-∞", "", "", "", "", "∞"]`. If data density is very sparse (e.g. a 24h window with few events per cell), SDL may also fail to compute thresholds — extend to `startTime: "7d"` with `timebucket('4h')` if automatic mode remains blank on confirmed-sparse data.
-- **Honeycomb required fields**: `honeycombColorScheme` (e.g. `"red"`) and `honeycombRangeConfig` (numeric threshold array e.g. `[0, 1000, 10000, 100000]`) are both required. SDL calls `.toLowerCase()` on the color scheme value at render time — if either field is absent, the frontend throws `TypeError: e.toLowerCase is not a function`.
+- **Honeycomb option schemas, BOTH valid (visually verified live 2026-07-29)**: two alternative option families render correctly and neither is "required". Variant A (solution-template style): `honeyCombColor` object (`{hover, label, value}` hex colors) + `honeyCombThresholds` (string array, e.g. `["0","25","50","75"]`) + `honeyCombGroupBy` (category column name). Variant B (this file's style): `honeycombColorScheme` (string, e.g. `"red"`) + `honeycombRangeConfig` (numeric array, e.g. `[0, 25, 50, 75]`). A side-by-side test dashboard rendered both variants with correct legends and coloring; the earlier claim that variant B's fields are mandatory and their absence throws `TypeError: e.toLowerCase is not a function` was not reproducible. Pick one family per panel; do not mix keys from both.
 - **Bullet `coloringMode`**: Only confirmed valid value from real examples is `"ranges"`. The value `"kpiReach"` is not confirmed and may cause a render error.

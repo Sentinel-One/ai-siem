@@ -45,7 +45,7 @@ const EXPECTED_TOOLS = [
 ];
 
 test('server version is current', () => {
-  assert.equal(SERVER_INFO.version, '1.2.2');
+  assert.equal(SERVER_INFO.version, '1.2.3');
 });
 
 test('ALL_TOOLS exposes exactly 26 tools', () => {

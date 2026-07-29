@@ -91,6 +91,7 @@ from __future__ import annotations
 import gzip
 import json
 import os
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -160,11 +161,29 @@ def _enrich_observable_for_alert(obs: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+# Workspace creds layouts, mirroring s1_client._WORKSPACE_CREDS_RELS.
+# Reused from s1_client when importable (same scripts dir); the local
+# fallback keeps this module stdlib-only and must stay in sync.
+try:
+    from s1_client import _WORKSPACE_CREDS_RELS, _MNT_SKIP
+except Exception:  # pragma: no cover - stdlib-only fallback
+    _WORKSPACE_CREDS_RELS = (
+        Path("credentials.json"),
+        Path(".sentinelone") / "credentials.json",
+        Path(".claude") / "sentinelone" / "credentials.json",
+    )
+    _MNT_SKIP = frozenset(
+        {".claude", ".auto-memory", ".remote-plugins", "outputs", "uploads"})
+
+
 def _walk_up_for_workspace_creds() -> Optional[Path]:
-    """Find a workspace-scoped .claude/sentinelone/credentials.json.
+    """Find workspace-scoped credentials inside a Cowork-accessible folder.
 
     Two-pass search: cwd walk-up first, then scan $HOME/mnt/ * for
-    Cowork-mounted workspace folders (skips system mounts).
+    Cowork-mounted workspace folders (skips system mounts). Each pass
+    checks every layout in _WORKSPACE_CREDS_RELS (workspace-root
+    credentials.json plus the legacy .sentinelone/ and
+    .claude/sentinelone/ subfolder layouts), matching s1_client.py.
     """
     try:
         cwd = Path.cwd().resolve()
@@ -174,22 +193,23 @@ def _walk_up_for_workspace_creds() -> Optional[Path]:
         for i, parent in enumerate([cwd, *cwd.parents]):
             if i >= 20:
                 break
-            candidate = parent / ".claude" / "sentinelone" / "credentials.json"
-            if candidate.is_file():
-                return candidate
+            for rel in _WORKSPACE_CREDS_RELS:
+                candidate = parent / rel
+                if candidate.is_file():
+                    return candidate
     home_mnt = Path.home() / "mnt"
     if home_mnt.is_dir():
-        skip = {".claude", ".auto-memory", ".remote-plugins", "outputs", "uploads"}
         try:
             entries = sorted(home_mnt.iterdir())
         except OSError:
             entries = []
         for entry in entries:
-            if not entry.is_dir() or entry.name in skip:
+            if not entry.is_dir() or entry.name in _MNT_SKIP:
                 continue
-            candidate = entry / ".claude" / "sentinelone" / "credentials.json"
-            if candidate.is_file():
-                return candidate
+            for rel in _WORKSPACE_CREDS_RELS:
+                candidate = entry / rel
+                if candidate.is_file():
+                    return candidate
     return None
 
 
@@ -256,14 +276,23 @@ class UAMAlertInterfaceClient:
         self.bearer_token = bearer_token
         # Resolution priority: explicit base_url arg > S1_HEC_INGEST_URL env >
         # legacy S1_UAM_ALERT_INTERFACE_URL env > credentials.json > default.
-        self.base_url = (
-            (base_url
-             or os.environ.get("S1_HEC_INGEST_URL")
-             or os.environ.get("S1_UAM_ALERT_INTERFACE_URL")
-             or _load_config_url()
-             or _DEFAULT_PROD_HOST)
-            .rstrip("/")
+        resolved = (
+            base_url
+            or os.environ.get("S1_HEC_INGEST_URL")
+            or os.environ.get("S1_UAM_ALERT_INTERFACE_URL")
+            or _load_config_url()
         )
+        if not resolved:
+            resolved = _DEFAULT_PROD_HOST
+            print(
+                "WARNING: no S1_HEC_INGEST_URL configured (env or "
+                "credentials.json); falling back to the default US1 ingest "
+                f"host {_DEFAULT_PROD_HOST}. If your tenant is not in US1, "
+                "set S1_HEC_INGEST_URL to your region's ingest host "
+                "(see https://community.sentinelone.com/s/article/000004961).",
+                file=sys.stderr,
+            )
+        self.base_url = resolved.rstrip("/")
         self.timeout = timeout
 
     # ------------------------------------------------------------------ core

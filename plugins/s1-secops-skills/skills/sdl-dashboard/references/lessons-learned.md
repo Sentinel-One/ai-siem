@@ -54,7 +54,7 @@ The patterns below produce HTTP 500 errors during dashboard authoring. They appe
 | `count_if(predicate)` and `countif(predicate)` aggregate functions | 500 server error |
 | `sum(if(predicate, value, 0))` inside `\| group ... by ...` | 500 server error |
 | `concat(field_a, ' literal ', field_b)` in `\| let` bindings | 500 server error |
-| `\| union (subquery)` to add synthetic rows or merge two pipelines | 500 server error |
+| `\| union (subquery)` MID-PIPELINE (after any other command) | HTTP 400 (live-verified 2026-07-29). `union` as the FIRST command of the query IS valid and works, including with commands after it |
 | `let totals = (... \| group ...)` named subquery before main pipeline | 500 server error |
 | `\| parse <field> /<regex>/` with named captures and grouping in same query | 500 server error |
 | `\| matches '<regex>'` with `\\s` / `\\d` escapes inside the regex literal | 500 server error |
@@ -78,7 +78,7 @@ The patterns below produce HTTP 500 errors during dashboard authoring. They appe
 
 ### Workaround for "I need totals AND breakdown in one panel"
 
-When `sum(if())`, `count_if()`, and `union` all fail, the cleanest substitute is two adjacent panels: one for the totals, one for the per-action breakdown (long-format). Lay them side-by-side at half-width so they read as a single visual unit. Trying to force a single wide table with both columns generally requires one of the unsupported patterns above.
+When `sum(if())` and `count_if()` fail, first try a union-FIRST query (one subquery per row set; live-verified 2026-07-29). If that does not fit, the cleanest substitute is two adjacent panels: one for the totals, one for the per-action breakdown (long-format). Lay them side-by-side at half-width so they read as a single visual unit. Trying to force a single wide table with both columns generally requires one of the unsupported patterns above.
 
 ---
 
@@ -289,7 +289,7 @@ Ingested source telemetry (XDR-attributed) renders under either scope, which is 
 
 The end-to-end engagement shape that produces clean deliverables:
 
-1. Load every relevant skill upfront (`sdl-dashboard`, `powerquery`, `sdl-api`, plus `pdf` / `docx` for deliverables). Loading mid-task wastes turns.
+1. Load every relevant skill upfront (`sentinelone-sdl-dashboard`, `sentinelone-powerquery`, `sentinelone-sdl-api`, plus `pdf` / `docx` for deliverables). Loading mid-task wastes turns.
 2. Session init in parallel: data-source enumeration query + alert / asset triage queries + `get_timestamp_range` in a single tool-call batch.
 3. Schema discovery for the target source. V1 query, dump fields to JSON, persist for the session.
 4. Identify discriminator fields. Run `group by event.type, <candidate-discriminator>` to confirm cardinality and partition behaviour.

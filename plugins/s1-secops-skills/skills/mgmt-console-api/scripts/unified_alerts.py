@@ -91,7 +91,9 @@ def _gql(
     body: Dict[str, Any] = {"query": query}
     if variables:
         body["variables"] = variables
-    resp = client.post(UAM_PATH, json_body=body)
+    # allow_retry=True: GraphQL reads over POST are idempotent, so the
+    # client's 429/5xx retry (now GET-only by default) stays safe here.
+    resp = client.post(UAM_PATH, json_body=body, allow_retry=True)
     if raise_on_error and resp.get("errors"):
         first = resp["errors"][0].get("message", "UAM GraphQL error")
         raise UAMError(first, resp["errors"])
@@ -101,7 +103,8 @@ def _gql(
 def fetch_schema(client: S1Client) -> Dict[str, Any]:
     """Fetch the full UAM SDL schema. The response includes a `_raw` key
     with the complete SDL text, plus parsed type info in the other keys."""
-    return client.post(SCHEMA_PATH, json_body={})
+    # allow_retry=True: schema introspection is a read-only, idempotent POST.
+    return client.post(SCHEMA_PATH, json_body={}, allow_retry=True)
 
 
 # --------------------------------------------------------------------------- filter helpers

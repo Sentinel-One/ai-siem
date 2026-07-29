@@ -65,7 +65,7 @@ Add this to `claude_desktop_config.json` (or `.mcp.json` for Claude Code):
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "npx",
-      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.2.2"],
+      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.2.3"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...",

@@ -17,8 +17,8 @@ For each type:
 
 The scheduled rule runs on a 1440-minute (24h) window so even if it is
 briefly enabled it cannot fire within the test's lifetime. The events rule
-is never enabled with an alert-generating query. Tested against demo
-(site <site-id>) by default; pass --site-id to override.
+is never enabled with an alert-generating query. The site defaults to the
+first active site visible to the token; pass --site-id to override.
 
 Usage
 -----
@@ -44,9 +44,6 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 from s1_client import S1Client, S1APIError  # noqa: E402
 
 RUN_TAG = f"smoke-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
-
-# demo site — confirmed safe for activation tests
-DEFAULT_SITE_ID = "<site-id>"
 
 RULES_BASE = "/web/api/v2.1/cloud-detection/rules"
 
@@ -75,6 +72,14 @@ def _pick_account_id(client: S1Client) -> str:
     if not data:
         raise RuntimeError("No accounts visible to this token")
     return data[0]["id"]
+
+
+def _pick_site_id(client: S1Client) -> str:
+    resp = client.get("/web/api/v2.1/sites", params={"limit": 1, "state": "active"})
+    sites = (resp.get("data") or {}).get("sites") or []
+    if not sites:
+        raise RuntimeError("No active sites visible to this token")
+    return sites[0]["id"]
 
 
 # ---------------------------------------------------------------------------
@@ -244,13 +249,25 @@ def run_rule_lifecycle(client: S1Client, label: str, rule_id: str,
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--site-id", default=DEFAULT_SITE_ID,
-                    help=f"site to scope rules to (default: demo {DEFAULT_SITE_ID})")
+    ap.add_argument("--site-id", default=None,
+                    help="site to scope rules to (default: first active site "
+                         "visible to the token)")
     ap.add_argument("--keep", action="store_true", help="skip delete after run")
     args = ap.parse_args()
 
     client = S1Client(timeout=30)
-    _log(f"tenant={client.base_url}  run_tag={RUN_TAG}  site_id={args.site_id}")
+
+    # Resolve site ID: explicit flag wins; otherwise pick the first active
+    # site visible to this token (mirrors test_scheduled_report_lifecycle.py).
+    if args.site_id:
+        site_id = args.site_id
+    else:
+        try:
+            site_id = _pick_site_id(client)
+        except Exception as e:
+            _log(f"site resolution failed: {e}")
+            return 1
+    _log(f"tenant={client.base_url}  run_tag={RUN_TAG}  site_id={site_id}")
 
     try:
         account_id = _pick_account_id(client)
@@ -265,7 +282,7 @@ def main() -> int:
     sched_name = f"{RUN_TAG}-sched-act"
     _log(f"=== SCHEDULED RULE: {sched_name} ===")
     try:
-        sched = create_scheduled_rule(client, sched_name, args.site_id, account_id)
+        sched = create_scheduled_rule(client, sched_name, site_id, account_id)
     except S1APIError as e:
         _log(f"CREATE (scheduled) FAILED: HTTP {e.status} {e}")
         overall = max(overall, 2)
@@ -273,7 +290,7 @@ def main() -> int:
     if sched:
         sched_id = sched["id"]
         _log(f"CREATE (scheduled) ok: rule_id={sched_id}")
-        rc = run_rule_lifecycle(client, "scheduled", sched_id, args.site_id,
+        rc = run_rule_lifecycle(client, "scheduled", sched_id, site_id,
                                 account_id, is_scheduled=True, keep=args.keep)
         if rc:
             overall = max(overall, rc)
@@ -290,7 +307,7 @@ def main() -> int:
     if evts:
         evts_id = evts["id"]
         _log(f"CREATE (events) ok: rule_id={evts_id}")
-        rc = run_rule_lifecycle(client, "events", evts_id, args.site_id,
+        rc = run_rule_lifecycle(client, "events", evts_id, site_id,
                                 account_id, is_scheduled=False, keep=args.keep)
         if rc:
             overall = max(overall, rc)

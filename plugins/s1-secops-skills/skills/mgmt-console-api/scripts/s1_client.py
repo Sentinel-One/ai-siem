@@ -77,8 +77,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple
 
-import requests
-from requests.adapters import HTTPAdapter
+try:
+    import requests
+    from requests.adapters import HTTPAdapter
+except ImportError:  # requests is only needed for live HTTP; pure-Python helpers
+    requests = None  # (e.g. _maybe_inject_islegacy) must import without it
+    HTTPAdapter = None
 
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
@@ -145,6 +149,10 @@ def _maybe_inject_islegacy(
     if method.upper() != "GET":
         return out
     if not _CLOUD_DETECTION_RULES_RE.search(path):
+        return out
+    # Respect an explicit inline override in the path query string, e.g.
+    # /cloud-detection/rules?isLegacy=true, do not force it back to false.
+    if re.search(r"[?&]is_?legacy=", path, re.IGNORECASE):
         return out
     if "isLegacy" in out or "is_legacy" in out:
         return out
@@ -513,8 +521,17 @@ class S1Client:
         params: Optional[Dict[str, Any]] = None,
         json_body: Optional[Any] = None,
         retries: int = 3,
+        allow_retry: Optional[bool] = None,
     ) -> Dict[str, Any]:
-        """Raw request. Retries on 429/5xx with exponential backoff."""
+        """Raw request. Retries on 429/5xx with exponential backoff.
+
+        Automatic retry is restricted to idempotent requests (GET/HEAD):
+        retrying a POST/PUT/DELETE whose first attempt actually landed
+        server-side can duplicate rules, notes, IOCs, report tasks, etc.
+        Callers that know their non-GET call is idempotent (e.g. read-only
+        GraphQL queries sent over POST) can opt in with allow_retry=True;
+        allow_retry=False disables retry even for GET.
+        """
         if not path.startswith("/"):
             path = "/" + path
 
@@ -563,9 +580,15 @@ class S1Client:
                     with self._cache_lock:
                         self._cache[key] = (time.time() + self.cache_ttl, body)
                 return body
-            # retryable?
-            retryable = resp.status_code == 429 or 500 <= resp.status_code < 600
-            if retryable and attempt <= retries:
+            # retryable? Status must be transient AND the request must be
+            # idempotent (GET/HEAD) unless the caller opted in/out via
+            # allow_retry. GET behaviour is unchanged from before.
+            retryable_status = resp.status_code == 429 or 500 <= resp.status_code < 600
+            if allow_retry is None:
+                method_retryable = method.upper() in ("GET", "HEAD")
+            else:
+                method_retryable = allow_retry
+            if retryable_status and method_retryable and attempt <= retries:
                 wait = min(2 ** attempt, 30)
                 retry_after = resp.headers.get("Retry-After")
                 if retry_after and retry_after.isdigit():
@@ -589,14 +612,20 @@ class S1Client:
     def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         return self.request("GET", path, params=params)
 
-    def post(self, path: str, json_body: Any = None, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        return self.request("POST", path, params=params, json_body=json_body)
+    def post(self, path: str, json_body: Any = None, params: Optional[Dict[str, Any]] = None,
+             allow_retry: Optional[bool] = None) -> Dict[str, Any]:
+        return self.request("POST", path, params=params, json_body=json_body,
+                            allow_retry=allow_retry)
 
-    def put(self, path: str, json_body: Any = None, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        return self.request("PUT", path, params=params, json_body=json_body)
+    def put(self, path: str, json_body: Any = None, params: Optional[Dict[str, Any]] = None,
+            allow_retry: Optional[bool] = None) -> Dict[str, Any]:
+        return self.request("PUT", path, params=params, json_body=json_body,
+                            allow_retry=allow_retry)
 
-    def delete(self, path: str, params: Optional[Dict[str, Any]] = None, json_body: Any = None) -> Dict[str, Any]:
-        return self.request("DELETE", path, params=params, json_body=json_body)
+    def delete(self, path: str, params: Optional[Dict[str, Any]] = None, json_body: Any = None,
+               allow_retry: Optional[bool] = None) -> Dict[str, Any]:
+        return self.request("DELETE", path, params=params, json_body=json_body,
+                            allow_retry=allow_retry)
 
     # ------------------------------------------------------------ pagination
     def paginate(

@@ -97,11 +97,11 @@
           { copy:   { from: "request",       to: "http_request.url.url_string" } },
           { rename: { from: "request",       to: "http_request.url.text" } },
           { rename: { from: "requestMethod", to: "http_request.http_method" } },
-          // Akamai SIEM puts HTTP version on `app=h2`. Try `ver` first (CEF
-          // convention), then `app` — copy is idempotent so the second only
-          // populates http_request.version if the first didn't.
-          { copy: { from: "ver", to: "http_request.version" } },
-          { copy: { from: "app", to: "http_request.version" } },
+          // Akamai SIEM puts HTTP version on `app=h2`, not the CEF-conventional
+          // `ver`. Use the documented first-of-N list form of `copy`: the first
+          // source field that exists wins. (Two sequential copies are NOT a
+          // substitute: copy is not idempotent, the second overwrites the first.)
+          { copy: { from: ["ver", "app"], to: "http_request.version" } },
           { rename: { from: "app", to: "app_name" } },
 
           // ===== HTTP response =====

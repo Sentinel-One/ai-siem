@@ -40,18 +40,18 @@
   "formats": [
     {
       // One format, captures EVERYTHING into `unmapped.*`.
-      "format": "$unmapped.{parse=gron}$",
-      "rewrites": [
-        // Pull the timestamp out of unmapped so the ingest pipeline
-        // can use it as the event time. `$0` = the whole matched
-        // value (no transformation needed).
-        {
-          "input":   "unmapped.timestamp",
-          "output":  "timestamp",
-          "match":   ".*",
-          "replace": "$0"
-        }
-      ]
+      //
+      // NOTE (live-tested 2026-07-29, deployed parser on the demo
+      // tenant): a format-level `rewrites` entry that reads from a
+      // gron-captured `unmapped.*` field writes an EMPTY string to its
+      // output. This was confirmed for both `unmapped.timestamp` and a
+      // plain-string `unmapped.user.name` control, so it is not a
+      // timestamp-typing issue: format rewrites simply do not see the
+      // `unmapped.*` fields the gron sub-parse produces. The old version
+      // of this template kept the raw stamp with such a rewrite and
+      // silently produced `ts_raw = ""`. Preserve the raw stamp with a
+      // mappings `copy` instead (see the Time-handling block below).
+      "format": "$unmapped.{parse=gron}$"
     }
   ],
 
@@ -62,6 +62,17 @@
         "predicate": "true",
         "transformations": [
           // --- Time handling ------------------------------------------
+          // Keep a copy of the raw stamp as `ts_raw` via a mappings
+          // `copy` (NOT a format rewrite; see the format NOTE above).
+          // Live-verified 2026-07-29: this copy populates `ts_raw` with
+          // the original stamp string, whereas the previous format
+          // rewrite left it empty. Do NOT target the reserved
+          // `timestamp` field with the raw stamp: a non-epoch string
+          // written into reserved `timestamp` is IGNORED (receive time
+          // is used); `ts_raw` keeps the original stamp queryable
+          // without relying on that behavior. Event time is derived by
+          // copying to `time` and casting iso8601 -> epoch seconds.
+          { "copy": { "from": "unmapped.timestamp", "to": "ts_raw" } },
           { "copy": { "from": "unmapped.timestamp", "to": "time" } },
           { "cast": { "field": "time", "type": "iso8601TimestampToEpochSec" } },
 

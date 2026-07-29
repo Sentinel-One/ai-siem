@@ -2,12 +2,12 @@
 name: sdl-dashboard
 author: Prithvi Moses <prithvi.moses@sentinelone.com>
 description: >
-  Use this skill any time the user wants to create, edit, design, generate, deploy, or debug a SentinelOne Singularity Data Lake (SDL) dashboard. Triggers include: "build me a dashboard", "create a dashboard panel", "write dashboard JSON", "add a panel to my dashboard", "deploy a dashboard to SDL", "I want a dashboard that shows...", "can you make a dashboard for...", "threat dashboard", "SOC dashboard", "network dashboard", "audit dashboard", "O365 dashboard", "hunting dashboard", or any request that involves SDL/Scalyr dashboard JSON. Also triggers when the user pastes dashboard JSON and wants help fixing, improving, or extending it. Use alongside sdl-api to deploy dashboards, and alongside powerquery to validate or compose the queries inside panels. Always use this skill when dashboards, dashboard panels, or SDL visualization is involved — even if the user just says "show me [metric] over time" in a security/SDL context.
+  Use this skill any time the user wants to create, edit, design, generate, deploy, or debug a SentinelOne Singularity Data Lake (SDL) dashboard. Triggers include: "build me a dashboard", "create a dashboard panel", "write dashboard JSON", "add a panel to my dashboard", "deploy a dashboard to SDL", "I want a dashboard that shows...", "can you make a dashboard for...", "threat dashboard", "SOC dashboard", "network dashboard", "audit dashboard", "O365 dashboard", "hunting dashboard", or any request that involves SDL/Scalyr dashboard JSON. Also triggers when the user pastes dashboard JSON and wants help fixing, improving, or extending it. Use alongside sentinelone-sdl-api to deploy dashboards, and alongside sentinelone-powerquery to validate or compose the queries inside panels. Always use this skill when dashboards, dashboard panels, or SDL visualization is involved — even if the user just says "show me [metric] over time" in a security/SDL context.
 ---
 
 # SentinelOne SDL Dashboard Skill
 
-This skill helps you design, author, and deploy Singularity Data Lake (SDL) dashboards — from a single panel to a full multi-tab SOC dashboard. Dashboards live as configuration files in SDL and are authored as JSON (or a relaxed JavaScript-literal superset of it). You deploy them via the `sdl-api` skill's `put_file` method.
+This skill helps you design, author, and deploy Singularity Data Lake (SDL) dashboards — from a single panel to a full multi-tab SOC dashboard. Dashboards live as configuration files in SDL and are authored as JSON (or a relaxed JavaScript-literal superset of it). You deploy them via the `sentinelone-sdl-api` skill's `put_file` method.
 
 > **Sandbox proxy blocked?** If `put_file` or SDL API calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). Use the `sdl_put_file` tool to deploy dashboards and `sdl_get_file` / `sdl_list_files` to inspect what's already deployed.
 
@@ -24,8 +24,8 @@ This workflow is mandatory for every new or modified dashboard. Steps 0, 1, and 
 1. **Understand the ask** — What data should the dashboard show? Who is the audience (SOC analyst, manager, customer POC)? What time range makes sense? What posture should each panel reflect (a panel that legitimately returns 0 needs a markdown header explaining the SOC-positive interpretation, see **Empty results are valid evidence**).
 2. **Design the structure** — Choose tabs (if multi-topic), then panels per tab. Match panel type to the data shape using the guide in `references/panel-type-cheatsheet.md`. Key decisions: flows/kill-chains → `sankey`; KPI vs SLA target → `bullet`; SOC queue health → `gauge`; 3D outlier detection → `scattered_bubble`; time-based density → `heatmap`; multiple queries in one panel → tabbed table. Where one `event.type` covers multiple semantic populations (delivery-time vs click-time, scheduled vs on-demand, inbound vs outbound), build separate sections per population, not a mixed section.
 3. **Write the JSON** — Use the panel type reference below and real examples in `references/community-examples.md`. Compute explicit `x`/`y`/`w`/`h` for every panel. Apply the naming-hygiene rule from **Panel naming hygiene** so titles read as SLA-grade claims.
-4. **Validate queries** — Sample 3-5 events per source/event-ID to confirm field semantics. Test each panel query via the `powerquery` skill. Run the parallel load test (see **Pre-deploy validation**), acceptance thresholds: slowest panel ≤ 2s, wall-clock ≤ 5s. Run `scripts/panel_safety_check.py` against the dashboard JSON; resolve every flag before deploy.
-5. **Deploy** — Use the `sdl-api` skill to `put_file` to a path like `/dashboards/my-dashboard` with `expected_version` set from a prior `get_file` (CAS guard). Save a backup of the prior JSON first. Sleep 3s, then `get_file` to verify the version bumped AND grep the returned content for a canary string from your change.
+4. **Validate queries** — Sample 3-5 events per source/event-ID to confirm field semantics. Test each panel query via the `sentinelone-powerquery` skill. Run the parallel load test (see **Pre-deploy validation**), acceptance thresholds: slowest panel ≤ 2s, wall-clock ≤ 5s. Run `scripts/panel_safety_check.py` against the dashboard JSON; resolve every flag before deploy.
+5. **Deploy** — Use the `sentinelone-sdl-api` skill to `put_file` to a path like `/dashboards/my-dashboard` with `expected_version` set from a prior `get_file` (CAS guard). Save a backup of the prior JSON first. Sleep 3s, then `get_file` to verify the version bumped AND grep the returned content for a canary string from your change.
 6. **Iterate** — Show the user what was built, explain each panel, offer to tweak. If the dashboard hangs, follow the escalation ladder in **Pre-deploy validation**.
 7. **Log-evidence report (MANDATORY)** — Run `scripts/validate_dashboard.py` against the deployed dashboard JSON to replay every panel, persist per-panel evidence (sample rows, row count, matchCount, elapsed, errors) to a JSON, and emit a markdown evidence file. Then run `scripts/render_validation_pdf.py` to render the PDF report (cover, per-tab sections, sample-data tables, empty-result appendix with SOC-meaningful interpretations). Deliver both alongside the dashboard. A dashboard delivered without an evidence report is incomplete.
 
@@ -125,7 +125,7 @@ The patterns below produce HTTP 500s or silent renderer failures on current SDL 
 | `count_if(predicate)` / `countif(predicate)` aggregate functions | 500 server error |
 | `sum(if(predicate, value, 0))` inside `\| group ... by ...` | 500 server error |
 | `concat(field_a, ' literal ', field_b)` in `\| let` bindings | 500 server error |
-| `\| union (subquery)` to add synthetic rows or merge two pipelines | 500 server error |
+| `\| union (subquery)` MID-PIPELINE (after any other command) | HTTP 400 (live-verified 2026-07-29). `union` as the FIRST command of the query, one subquery per row set, IS valid and works, including with commands after it (e.g. `\| sort`). Use union-first for funnels/synthetic rows; never mid-pipeline |
 | `let totals = (... \| group ...)` named subquery before main pipeline | 500 server error |
 | `\| parse <field> /<regex>/` with named captures and grouping in same query | 500 server error |
 | `\| matches '<regex>'` with `\\s` / `\\d` escapes inside the regex literal | 500 server error |
@@ -181,11 +181,11 @@ dataSource.name='FortiGate' event.type='app-ctrl'
 
 **Escaping in dashboard JSON:** `\\S+` in the PowerQuery string (what the engine sees) must be written as `\\\\S+` in the JSON source because JSON applies one level of backslash-escaping before PowerQuery sees the string.
 
-**Always invoke the `powerquery` skill before authoring parse expressions.** It references official parse documentation and gets to the correct pattern without trial-and-error.
+**Always invoke the `sentinelone-powerquery` skill before authoring parse expressions.** It references official parse documentation and gets to the correct pattern without trial-and-error.
 
 ### Workaround for "I need totals AND breakdown in one panel"
 
-When `sum(if())`, `count_if()`, and `union` all fail, the cleanest substitute is two adjacent panels: one for totals, one for the per-action breakdown (long-format). Lay them side-by-side at half-width so they read as a single visual unit. Trying to force a single wide table with both columns generally requires one of the unsupported patterns above.
+When `sum(if())` and `count_if()` fail, first try a union-FIRST query (one subquery per row set; live-verified 2026-07-29). If that does not fit, the cleanest substitute is two adjacent panels: one for totals, one for the per-action breakdown (long-format). Lay them side-by-side at half-width so they read as a single visual unit. Trying to force a single wide table with both columns generally requires one of the unsupported patterns above.
 
 ---
 
@@ -435,7 +435,7 @@ Query must reduce to a single number (use `group count()`, `estimate_distinct()`
 }
 ```
 
-> **No "millions" (or thousands) number format.** SDL number panels scale only via `format: "auto"` (which may render K/M/B); there is no explicit millions option. To force a specific unit, divide in the query and label the title: `... | group ev = count() | let Events_M = ev / 1000000 | columns Events_M | limit 1` with title `"Total Events (M)"`. Always carry the unit (GiB, events, min, count, ratio) in the title or `suffix`; a number panel renders only a bare value.
+> **No "millions" (or thousands) number format.** SDL number panels scale only via `format: "auto"` (which may render K/M/B); there is no explicit millions option. To force a specific unit, divide in the query and label the title: `... | group ev = count() | let Events_M = ev / 1000000 | columns Events_M | limit 1` with title `"Total Events (M)"`. Always carry the unit (GiB, events, min, count, ratio) in the title or `suffix` — a number panel renders only a bare value.
 
 > **Options — stick to the minimal set.** Production reference dashboards only set `{format, precision, suffix}`. Fields like `backgroundColor` and `color` are documented in some places but are not consistently honoured by the renderer — at best silently ignored, at worst the panel renders blank or hangs. Do not add them until tested against the specific tenant.
 
@@ -601,7 +601,7 @@ preemptively when authoring panels of these shapes.
 | `Couldn't load content` — `field=[DashboardPlotQuery.plotIndex] error=[Facet for plot at index: 0 is invalid]` | `"facet": "count()"` (with parentheses) is invalid in a `plots` array. Only `"facet": "count"` (no parentheses) is accepted. The community examples in older docs show `count()` — this is wrong. | Use `"facet": "count"` (no parentheses) in every plots entry. |
 | `Couldn't load content` — `"transpose" can only be used as the last command in a query` | `transpose` is the terminal command in the PQ pipeline; nothing can follow it | Remove any `\| limit N` / `\| sort` / `\| filter` placed AFTER `transpose`. If you need a limit, apply it pre-transpose via a subquery or a column-list filter |
 | `Couldn't load content` — `Identifier "x-y" is ambiguous. To subtract, add spaces: "x - y". Otherwise, add backslashes: "x\-y"` | The PQ parser reads hyphenated text as a single identifier, not as subtraction | Add spaces around `-` in arithmetic: `total - min`, `max - min`, `(a - b) / (c - d)`. Same applies to all PQ panels and rule bodies. |
-| `transpose <field> on timestamp` hangs the renderer when field values contain hyphens (e.g. `db-prod-01`, ISO dates, UUIDs, container names) | The renderer must parse the transposed values as column names for the chart legend. The PQ parser reads `db-prod-01` as subtraction and throws `Identifier is ambiguous` — or hangs silently. The V1 API tolerates this; the renderer does not. | **Option A** — pre-process: `\| let host_safe = replace_all(host_raw, '-', '_')` then transpose on `host_safe`. **Option B (preferred for by-host charts)** — avoid transpose: use `"xAxis": "grouped_data"` with a grouping query. Loses time dimension but renders reliably. **Option C** — only use `transpose` on fields whose values are guaranteed free of hyphens (numeric codes, single-token labels like `Success`/`Failure`). |
+| `transpose <field> on timestamp` hangs the renderer when field values contain hyphens (e.g. `db-prod-01`, ISO dates, UUIDs, container names) | The renderer must parse the transposed values as column names for the chart legend. The PQ parser reads `db-prod-01` as subtraction and throws `Identifier is ambiguous`, or hangs silently. The V1 API tolerates this; the renderer does not. | **Option A**, pre-process: `\| let host_safe = replace(host_raw, '-', '_')` then transpose on `host_safe`. `replace_all` does NOT exist in SDL PowerQuery (live-verified 2026-07-29); use `replace`. If the tenant's `replace` substitutes only the first occurrence, values with multiple hyphens (`db-prod-01`) still break, so treat Option A as best-effort. **Option B (preferred for by-host charts)**: avoid transpose on hyphenated values entirely and use `"xAxis": "grouped_data"` with a grouping query. Loses time dimension but renders reliably. **Option C**: only use `transpose` on fields whose values are guaranteed free of hyphens (numeric codes, single-token labels like `Success`/`Failure`). |
 | Number panel, table panel, or whole dashboard slow to load on first open | "All API queries pass" ≠ "dashboard loads fast". The browser fires all panel queries in parallel; total load time ≈ slowest single panel. Serial validation in a script wildly overestimates wall-clock load time. | Run a parallel load test before every `put_file` — see **Pre-deploy validation** section below. Acceptance thresholds: slowest single panel ≤ 2s, wall-clock ≤ 5s, zero failures. |
 | `get_file` returns HTTP 404 immediately after a successful `put_file` | `put_file` is synchronous but the file propagates across replicas with eventual consistency (~2-3s). | Always `time.sleep(3)` between `put_file` and the subsequent `get_file` verification call. |
 | Heatmap panel renders blank, no error, data confirmed in PowerQuery | `rangesCreation: "automatic"` requires empty-string middles in `heatmapRangeConfig`. Providing explicit numeric strings (e.g. `"10"`, `"50"`) conflicts with automatic mode and the renderer silently returns a blank panel. | Restore to `["-∞", "", "", "", "", "∞"]`. SDL auto-calculates the middle thresholds from live data. |
@@ -613,7 +613,7 @@ preemptively when authoring panels of these shapes.
 | Number panel slow on a busy index | Engine keeps scanning after the answer is computed | Always terminate number panels with `\| limit 1` after the `\| group` that reduces to one row |
 | Wide range + fine `timebucket` = thousands of points per series | E.g. `timebucket("10m")` over 7d = 1,008 points × N series | Match bucket to duration: 1d → `10m`, 7d → `1h` (minimum), 30d → `1 day` minimum |
 | Two near-identical dashboards appear in *Configuration files* under `/dashboards/<name>` and `/dashboards/id/<dashboardId>/<name>` | The SDL UI's **Save** button writes to `/dashboards/id/<dashboardId>/<name>`. `put_file("/dashboards/<name>")` writes to the simpler path. Both render in the UI and both are visible to the file API; neither is access-controlled. | Pick one canonical path **before** the first deploy. Recommend the UI-native `/dashboards/id/<id>/<name>` if the dashboard already exists in the UI; otherwise `/dashboards/<name>`. Don't mix the two — each `put_file` to the alternate path creates a silent duplicate alongside the UI-saved copy. |
-| `columns resources[0].name` or `vulnerabilities[0].cve.uid` returns HTTP 500 | PowerQuery does not accept bracket-array indexing in `columns`. The V1 query API exposes nested arrays as flattened keys (`resources[0].name`) for display, but those flattened keys are NOT valid PowerQuery field paths. | Use top-level scalar fields only (`severity_id`, `finding_info.title`, `metadata.product.name`, `class_name`, `time`). For first-element access inside a query, use `array_get(resources, 0).name` only inside `let`. For richer drill-down, switch from PowerQuery to the V1 query API (returns full event JSON) — see `sdl-api` skill. |
+| `columns resources[0].name` or `vulnerabilities[0].cve.uid` returns HTTP 500 | PowerQuery does not accept bracket-array indexing in `columns`. The V1 query API exposes nested arrays as flattened keys (`resources[0].name`) for display, but those flattened keys are NOT valid PowerQuery field paths. | Use top-level scalar fields only (`severity_id`, `finding_info.title`, `metadata.product.name`, `class_name`, `time`). For first-element access inside a query, use `array_get(resources, 0).name` only inside `let`. For richer drill-down, switch from PowerQuery to the V1 query API (returns full event JSON) — see `sentinelone-sdl-api` skill. |
 | `\| parse "app=$val$" from message` fails with "Start quote with no matching end quote" when the raw field value is wrapped in double quotes (e.g. `app="HTTPS.BROWSER"`) | The `\| parse` format string uses `"..."` as its outer delimiter. Any `"` character embedded in the format — to match quote-wrapped KV values common in network device logs — is treated as a string terminator. No escape sequence (backslash, single-quote outer, hex) works around this. | Use a two-pass parse: pass 1 captures the entire non-whitespace token including quotes (`{regex=\\S+}`), pass 2 extracts the clean value from that token. See **Two-pass parse for quoted KV values** below. |
 
 ---
@@ -639,11 +639,11 @@ SDL has two distinct filtering mechanisms that look similar but behave very diff
 
 The dropdown options are populated dynamically from live field values in the current time range. No query changes needed — SDL injects the filter automatically.
 
-### `#VarName#` substitution — only works in FLAT (non-TABBED) dashboards
+### `#VarName#` substitution — works in FLAT and TABBED dashboards; refiltering applies on Search
 
-`#VarName#` query injection works **only** when the dashboard has no `configType` and no `tabs` — i.e. a flat single-view dashboard with top-level `parameters` and `graphs`. Confirmed working in `parameter_examples-v1.0.json`.
+`#VarName#` query injection is confirmed working in flat dashboards (no `configType`, no `tabs`, top-level `parameters` and `graphs`; see `parameter_examples-v1.0.json`).
 
-In a `configType: "TABBED"` dashboard, `#VarName#` is passed literally to the query engine, which throws `Don't understand [#] — try enclosing it in quotes`. Moving `parameters` to the top level of a TABBED dashboard does not fix this.
+On a `configType: "TABBED"` dashboard, live visual verification (2026-07-29): a tab-level `parameters` entry renders its dropdown, a panel query using `#VarName#` renders WITHOUT error with the `defaultValue` substituted, and selecting a dropdown value re-filters the panel to exactly that value once the user presses **Search** (the dropdown does not auto-refresh the view). Test panel: `dataSource.name=#SrcName#` with facet `dataSource.name`, defaultValue `"*"`. The earlier claim that TABBED passes the literal `#` and throws `Don't understand [#]` was wrong; remember the Search-to-apply gotcha when demoing.
 
 Flat dashboard example (the only context where `#VarName#` works):
 
@@ -725,7 +725,7 @@ Hide a parameter from the UI (declared but not displayed):
 
 > ⚠️ **Schemas drift between sessions and tenants.** The patterns below are
 > starting points, not a registry. **Run live schema discovery (V1 query via
-> `sdl-api` skill) on every source you'll query before authoring
+> `sentinelone-sdl-api` skill) on every source you'll query before authoring
 > panels.** PowerQuery's default projection is `timestamp + message` only — it
 > cannot discover schemas. Use the V1 `query` method which returns full event
 > JSON.
@@ -760,7 +760,7 @@ reserved name. The underscored form **IS** the canonical, queryable field —
 not a sparse alternate. The numeric OCSF variants (`severity_id`, `status_id`,
 `class_uid`) live alongside the underscored string fields. The `severity_`
 string can be case-mixed (`Critical` and `CRITICAL` both appear) — see
-`powerquery/references/pitfalls.md` for handling.
+`sentinelone-powerquery/references/pitfalls.md` for handling.
 
 ### EDR / XDR telemetry (endpoint events from `dataSource.name='SentinelOne'`)
 ```
@@ -819,7 +819,7 @@ event.type='process' | group count=count() by timestamp=timebucket('1h'), endpoi
 
 ## Deploying a dashboard via API
 
-Use the `sdl-api` skill to deploy. Dashboard config files live at paths like `/dashboards/my-dashboard-name`.
+Use the `sentinelone-sdl-api` skill to deploy. Dashboard config files live at paths like `/dashboards/my-dashboard-name`.
 
 ### 1. Always read existing version before put_file (CAS guard)
 
@@ -883,13 +883,13 @@ After deploying, open in the SDL UI: **Visibility Enhanced → Dashboards** → 
 - `references/lessons-learned.md`: source-agnostic patterns and gotchas from production engagements (PowerQuery feature gaps, full-text cost, naming hygiene, discriminator handling, validation runner shape).
 - `references/evidence-report-template.md`: required format for the post-deploy log-evidence report (per-panel JSON, markdown, PDF appendix).
 
-Read the community examples before creating a new dashboard, and read `lessons-learned.md` if any of: a panel may legitimately return 0, an `event.type` covers multiple semantic populations, the panel needs a field only present in `raw_data`, or a previous version of this skill produced a 500 error on `count_if`, `sum(if())`, or `| union`.
+Read the community examples before creating a new dashboard, and read `lessons-learned.md` if any of: a panel may legitimately return 0, an `event.type` covers multiple semantic populations, the panel needs a field only present in `raw_data`, or a previous version of this skill produced a 500 error on `count_if`, `sum(if())`, or mid-pipeline `| union`.
 
 ## Skill scripts (in `scripts/`)
 
 These scripts are mandatory parts of the workflow, not optional tooling.
 
-- `scripts/panel_safety_check.py <dashboard.json>`: pre-deploy. Scans dashboard JSON for known-bad patterns (markdown `content` vs `markdown` field, `area` + `query`, transpose-not-terminal, hyphenated arithmetic, `count_if` / `sum(if())` / `| union` / named subqueries, `\\s`/`\\d` regex escapes inside `matches`, full-text combined with timebucket+transpose, missing layout, missing `| limit` on number/table panels). Exits non-zero on any flag. Run before every `put_file`.
+- `scripts/panel_safety_check.py <dashboard.json>`: pre-deploy. Scans dashboard JSON for known-bad patterns (markdown `content` vs `markdown` field, `area` + `query`, transpose-not-terminal, hyphenated arithmetic, `count_if` / `sum(if())` / mid-pipeline `| union` (union-first is allowed) / named subqueries, `\\s`/`\\d` regex escapes inside `matches`, full-text combined with timebucket+transpose, missing layout, missing `| limit` on number/table panels). Exits non-zero on any flag. Run before every `put_file`.
 - `scripts/validate_dashboard.py <dashboard.json> [--start 7d] [--out <dir>]`: post-deploy. Replays every non-markdown panel against the SDL `power_query` API, persists per-panel evidence (style, query, elapsed, rowCount, matchCount, columns, sample rows, error) to a JSON keyed on `tab::title`, and emits a markdown evidence file. Idempotent, resumes cleanly, persists after each panel. Auth falls through to console JWT (force-clears scoped keys). **Always run as a background process** (`... &`) — see step 7 in the Workflow section. Do not wait for it inline.
 - `scripts/render_validation_pdf.py <evidence.json> [--out <pdf>]`: post-deploy. Reads the validation JSON and emits a PDF report with cover page, per-tab sections, sample-data tables (first 3 rows of N), and an Appendix listing every empty-result panel with the operator's prepared SOC-meaningful interpretation. The PDF is the leadership deliverable; the markdown evidence stays in version control.
 
@@ -950,16 +950,16 @@ Unbounded tables force a full scan. Always cap results:
 - Aggregated top-N tables: `| limit 20` or `| limit 25`
 - Donut/pie panels: `| sort -count | limit 10`
 
-### 4. Use `field=*` to drop nulls — never `field != null`
+### 4. Use `field=*` to drop nulls: the canonical presence form
 
-`field=*` is the correct SDL null-check predicate. It matches any event where the field is present and non-null. `field != null` is parsed as a literal comparison to the string `"null"` in the old-style filter syntax and returns wrong results or an error. Apply this anywhere you want to exclude missing values:
+`field=*` is the canonical SDL presence predicate: it matches any event where the field is present and non-null. Accuracy note (live-verified 2026-07-29 via the LRQ API): `field != null` returned results identical to `field=*`; the earlier claim that it hard-errors or compares against the literal string "null" was NOT reproducible on LRQ. The console/dashboard renderer engine remains unverified for `!= null`, so `field=*` stays the REQUIRED form in all dashboard JSON, rule bodies, and examples:
 
 ```
-// Good — presence check
+// Required: canonical presence check
 dataSource.name='alert' severity_id=*
 | group count=count() by severity_id
 
-// Bad — != null does not mean what you think in SDL filter syntax
+// Avoid: behaved identically via LRQ (2026-07-29) but unverified in the dashboard engine
 dataSource.name='alert' severity_id != null
 ```
 
@@ -1068,7 +1068,7 @@ dataSource.name='FortiGate' unmapped.action='close'
 
 `number(x)` returns 0 for null/missing and NaN for unparseable strings. Already-numeric data is unaffected. Cost is one `let` per panel; benefit is the dashboard keeps working when a parser pushes a string-typed write or a tenant column is locked. Apply this to every numeric counter / severity / port / duration field unless this session's schema discovery proved the column type with a successful unwrapped `sum()`.
 
-See `powerquery/references/pitfalls.md` for the full discussion of column-type lock and when the `parse "$x{regex=\\d+}$"` extraction is preferable to `number()`.
+See `sentinelone-powerquery/references/pitfalls.md` for the full discussion of column-type lock and when the `parse "$x{regex=\\d+}$"` extraction is preferable to `number()`.
 
 ---
 
@@ -1153,7 +1153,7 @@ for m in res.get("matches") or []:
             print(f"  {k} = {str(attrs[k])[:80]}")
 ```
 
-This is the same V1-query schema-discovery pattern from the `sdl-api` skill — apply it per-event-ID, not just per-source.
+This is the same V1-query schema-discovery pattern from the `sentinelone-sdl-api` skill — apply it per-event-ID, not just per-source.
 
 ---
 
@@ -1198,7 +1198,7 @@ QUERY HYGIENE (scripted)
 [ ] Any millisecond-typed time field multiplied by 1000000 before simpledateformat
 [ ] Hostname/value-list filters use `field in (...)` not `field matches '(...)'`
 [ ] Numeric fields wrapped with number() before arithmetic / sum / avg
-[ ] No use of count_if / sum(if(predicate, value, 0)) / | union / named subqueries [scripted]
+[ ] No use of count_if / sum(if(predicate, value, 0)) / mid-pipeline | union (union-first is allowed) / named subqueries [scripted]
 [ ] No `\\s` / `\\d` regex escapes inside `matches '...'`                          [scripted]
 [ ] No full-text predicate combined with timebucket+transpose                      [scripted]
 [ ] Number panels use only {format, precision, suffix} in options
@@ -1240,14 +1240,14 @@ POST-DEPLOY (MANDATORY)
 - **Lock layout** with `options: {"layout": {"fixed": 1}}` to prevent accidental repositioning.
 - **Use `showBarsColumn: "true"`** on table panels with a count column to get inline bar charts.
 - **Time range**: set `duration` to match how "fresh" the data needs to be. Use `"24h"` for security operations / alert-triage dashboards (the standard for SOC real-time views), `"7 days"` for trend and capacity dashboards. Never default to `"7 days"` for an operations dashboard — analysts lose the short-window density that makes operational dashboards useful.
-- **Test queries first** with the `powerquery` skill before embedding them in dashboard JSON.
+- **Test queries first** with the `sentinelone-powerquery` skill before embedding them in dashboard JSON.
 - **Use `estimate_distinct()`** for cardinality counts — exact distinct is expensive on large datasets.
 - **Add a markdown panel** to each tab explaining what it covers — this helps both users and future editors understand the dashboard at a glance.
 
 
 ## Sandbox proxy blocked? Use Desktop Commander
 
-Dashboard deployment uses `sdl_client.py` from the `sdl-api` skill, which
+Dashboard deployment uses `sdl_client.py` from the `sentinelone-sdl-api` skill, which
 makes direct HTTPS calls to `*.sentinelone.net`. If you see `SandboxProxyBlockedError`
 or `OSError: Tunnel connection failed: 403 Forbidden`, the Cowork sandbox proxy is
 blocking those calls.

@@ -92,7 +92,7 @@ This is the supported way to turn inventory into an enrichment source that a par
 query-time/automatic-lookup side, and `commands-reference.md` for `lookup`/`savelookup`.
 
 A saved lookup datatable can be up to **150 MB per table**, so a `savelookup` builder can carry a
-high `| limit` for large inventories. The much smaller 100-row / 5 MB / 50-column cap applies only
+high `| limit` for large inventories. The much smaller 100,000-row (unvalidated) / 5 MB / 50-column cap applies only
 to tables registered as automatic lookups, not to explicit `| lookup` or `dataset` reads.
 
 ```
@@ -161,8 +161,10 @@ The `metering` datasource exposes Usage Metering reports for cost, usage, and (f
 ## Example queries
 
 ```
-// Count of unresolved alerts, current vs previous window
-| datasource alerts | group count() | compare timeshift(queryspan())
+// Total alerts in the current inventory snapshot. (`compare timeshift(...)`
+// is not valid on a raw datasource query; for a time series use
+// `alert_aggregated_snapshots`, see "Time series" above.)
+| datasource alerts | group count=count()
 
 // Assets with the most high/critical alerts
 | datasource alerts

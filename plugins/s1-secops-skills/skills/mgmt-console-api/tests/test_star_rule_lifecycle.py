@@ -59,9 +59,6 @@ from s1_client import S1Client, S1APIError  # noqa: E402
 RUN_TAG = f"smoke-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
 RULE_NAME = f"{RUN_TAG}-star"
 
-# demo site — confirmed safe for detection-rule tests
-DEFAULT_SITE_ID = "<site-id>"
-
 RULES_BASE = "/web/api/v2.1/cloud-detection/rules"
 
 # S1QL that matches a process name that will never exist on a real endpoint.
@@ -188,11 +185,16 @@ def main() -> int:
     client = S1Client(timeout=30)
     _log(f"tenant={client.base_url}  run_tag={RUN_TAG}")
 
-    # Resolve site ID
+    # Resolve site ID: explicit flag wins; otherwise pick the first active
+    # site visible to this token (mirrors test_scheduled_report_lifecycle.py).
     if args.site_id:
         site_id = args.site_id
     else:
-        site_id = DEFAULT_SITE_ID
+        try:
+            site_id = _pick_site_id(client)
+        except Exception as e:
+            _log(f"site resolution failed: {e}")
+            return 1
     _log(f"site_id={site_id}  rule_name={RULE_NAME!r}")
 
     # --- 1. CREATE ---

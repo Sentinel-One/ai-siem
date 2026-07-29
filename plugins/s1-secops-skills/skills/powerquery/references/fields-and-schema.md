@@ -200,10 +200,10 @@ Singularity Data Lake stamps every ingested event with a small set of `sca:`-pre
 
 ```
 dataSource.name='Windows Event Logs' endpoint.name='D01-QCDC01'
-| group gb = sum(sca:bytesToCharge) / 1024 / 1024 / 1024
+| group gb = sum(number(sca:bytesToCharge)) / 1024 / 1024 / 1024
 ```
 
-Works for any source / endpoint combination. Divide by `1024 / 1024 / 1024` for GiB (binary) or by `1_000_000_000` for GB (decimal), depending on preference. For a version that is safe against string-typed columns, cast first: `sum(number(sca:bytesToCharge)) / 1024 / 1024 / 1024`.
+Works for any source / endpoint combination. Divide by `1024 / 1024 / 1024` for GiB (binary) or by `1_000_000_000` for GB (decimal), depending on preference. The `number()` cast keeps the sum safe against string-typed columns, per the warning above.
 
 Per-source volume leaderboard:
 
@@ -229,7 +229,7 @@ sca:ingestTime=* dataSource.name=*
 | sort -p95_lag_min
 ```
 
-Source: used throughout the `sdl-solutions` ingest-health-monitoring templates (volume, chargeback, lag, and per-device baseline panels and detections).
+Source: used throughout the `sentinelone-sdl-solutions` ingest-health-monitoring templates (volume, chargeback, lag, and per-device baseline panels and detections).
 
 ---
 

@@ -7,9 +7,11 @@ The SDL API recognises four scoped key types plus the SentinelOne Console user A
 | Key type                | Where to generate (SDL UI: user menu → API Keys) | Methods unlocked |
 |-------------------------|---------------------------------------------------|------------------|
 | Log Read Access         | API Keys → Log Access Keys                        | `query`, `numericQuery`, `facetQuery`, `timeseriesQuery`, `powerQuery` |
-| Configuration Read      | API Keys → Configuration Access Keys              | All Log Read methods + `listFiles`, `getFile` |
-| Configuration Write     | API Keys → Configuration Access Keys              | All of the above + `putFile` |
+| Configuration Read      | API Keys → Configuration Access Keys              | `listFiles`, `getFile`. Does NOT grant View Logs on the query methods (live-confirmed 403 on `/api/query`). |
+| Configuration Write     | API Keys → Configuration Access Keys              | `putFile` + `listFiles`, `getFile`. Does NOT grant View Logs on the query methods (live-confirmed 403). |
 | Console User API token  | S1 Console → Settings → Users → My User → API Token | All query + config methods. |
+
+The query methods require a Log Read Access key (`SDL_LOG_READ_KEY`) or the console JWT; config keys cannot substitute. The `SDLClient` advances to the next key in the chain on a 401/403 and only raises once the chain is exhausted.
 
 Notes:
 
@@ -66,9 +68,9 @@ Non-query operations:
 - Per-operation, per-account: starting budget **200 requests**, refill **100 req/s**.
 - Per IP address: starting budget **1,600 requests**, refill **800 req/s**.
 - Aggregate request bytes per operation: starting budget **30 MB**, refill **4 MB/s**.
-- **12 concurrent requests** max from the same API key.
 
 Usage Metering datasource calls (`| datasource "metering"` for `tenants` / `reports` / `report_name`) have their own cap: **50 requests/sec with a 100-request burst**, and require the `Metering Reports - View` permission. See `methods.md` → Usage Metering reports.
+- **12 concurrent requests** max from the same API key.
 
 ### Ingestion (moved to HEC)
 

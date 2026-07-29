@@ -2,10 +2,13 @@
 // device_ip is FIRST so the parser join works: `| lookup ... from <table> by device_ip = unmapped.<client_ip>`.
 // Keyed on agentLastReportedIp. Empty riskFactors ("[]") is converted to null.
 // Reuse ONE generic table (e.g. assetEndpointByIp) across all network sources; do not rebuild per source.
-// Run through the powerquery LRQ runner. Persists as {{ENDPOINT_TABLE}}.
+// Run through the sentinelone-powerquery LRQ runner. Persists as {{ENDPOINT_TABLE}}.
 // Asset-binding keys for STAR-rule alerts (project these in the detection | columns and entityMappings):
 //   device_assetid  = the unified asset id (the `id` from datasource assets). UNIVERSAL reconciliation key.
 //   device_agentid  = the numeric console agent id (agentId). NOT agentUuid and NOT a uuid.
+// The `| sort device_ip` before the limit makes the kept subset DETERMINISTIC on estates larger
+// than the cap. Raise the `| limit` to cover the full estate; 2000 is a template default, not a
+// platform cap (lookup tables allow up to 150 MB).
 | datasource assets from 'surface/endpoint'
 | filter name = *
 | filter agentLastReportedIp = *
@@ -15,5 +18,6 @@
 | let device_riskfactors = (_rf == '[]' ? null : _rf)
 | columns device_ip, device_host, device_assetid, device_os, device_agentid, device_agentuuid,
           device_lastuser, device_site, device_criticality, device_riskfactors
+| sort device_ip
 | limit 2000
 | savelookup '{{ENDPOINT_TABLE}}'

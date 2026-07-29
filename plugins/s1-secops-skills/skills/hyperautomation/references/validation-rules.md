@@ -48,6 +48,27 @@ Run this checklist before outputting any workflow JSON.
 - [ ] For `"multi"`: `"conditions"` is a non-empty array, `"condition"` is `null`
 - [ ] Condition branches use `"custom_handle": "true"` and `"custom_handle": "false"`
 - [ ] A condition with only one branch (e.g., only `"true"`) is valid — the other is simply absent from `connected_to`
+- [ ] **Approval / human-in-the-loop gates FAIL CLOSED.** A condition that guards a destructive action
+  (block, isolate, disable) must test for the explicit approval value, e.g.
+  `{{wait-for-slack.body.actions[0].value}} equals "approved"` — NEVER `not_equals "dismissed"`. On a
+  Slack (or any `wait_for_interaction`) timeout the value resolves to empty, and empty is
+  `!= "dismissed"`, so a fail-open `not_equals` gate would auto-run the destructive action with no
+  approval. Route the destructive action off the `"true"` branch of an `equals` test only.
+
+## Import / `parent_action` rules
+
+- [ ] **`parent_action` is for LOOP membership ONLY** — it is `null` on every node that is not inside a
+  loop; flow order is expressed **strictly** via `connected_to.target`, never via `parent_action`.
+  Setting `parent_action` to a previous (non-loop) node's `export_id` is the #1 cause of an import
+  `422 "Invalid workflow data"` even when every field otherwise looks correct.
+- [ ] `export_id` values are arbitrary unique integers — they need not be sequential or positional (a
+  real export uses ids like `9, 8, 5, 6`).
+- [ ] `variable` action `data` carries its full field set: `variables_scope`, `expire_*`, `global_var_*`
+  (in addition to the `variables` array).
+- [ ] `manual_trigger` action `data` carries `trigger_type`, `dynamic_properties`, and `static_payload`.
+- [ ] Fastest way to debug a persistent `422`: round-trip a live `export?ids=all` workflow member (which
+  is guaranteed valid), then bisect — swap your nodes into the known-good envelope one at a time until
+  the import breaks.
 
 ## Variable rules
 

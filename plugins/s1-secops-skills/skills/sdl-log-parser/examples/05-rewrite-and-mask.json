@@ -13,7 +13,7 @@
   attributes: {
     // Required pipeline defaults.
     "metadata.version":    "1.0.0",
-    "dataSource.category": "identity",
+    "dataSource.category": "security",
     "dataSource.name":     "Login Service",
     "dataSource.vendor":   "Internal",
     dataset: "login_events"
@@ -24,9 +24,15 @@
   },
 
   formats: [
+    // NOTE: capture the ISO stamp as `ts_raw`, not `timestamp`. The reserved
+    // `timestamp` field silently drops events when it receives a non-epoch
+    // string (tenant-validated April 2026); same pattern as examples 02/03/04.
+    // The ingest pipeline's own receive-time is fine for near-real-time
+    // forwarding, so no promotion rewrite is needed.
+    // UPDATE 2026-07-29 (live re-test, deployed parser A/B): the event is NOT dropped on the current platform; a non-epoch capture into reserved `timestamp` is simply IGNORED and receive time is used. `ts_raw` remains the right practice: it keeps the original stamp queryable instead of relying on undefined behavior.
     {
       id: "login",
-      format: "$timestamp=iso$ $host$ loginServlet email=$email$ password=$password$ result=$result$ sev=$sev$",
+      format: "$ts_raw=iso$ $host$ loginServlet email=$email$ password=$password$ result=$result$ sev=$sev$",
       halt: true,
 
       rewrites: [

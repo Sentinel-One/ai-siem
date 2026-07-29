@@ -48,11 +48,11 @@ Keep prompts simple and few. Prefer defaults the user can accept with one word o
 
 This skill orchestrates the SentinelOne primitive skills. Load the ones a playbook calls for:
 
-- `powerquery` for `datasource` + `savelookup` queries and the LRQ runner. The `references/datasource-command.md` there is the source of truth for the assets datasource.
-- `sdl-api` (or the `s1-secops-mcp` tools `sdl_put_file`, `sdl_get_file`, `hec_ingest`) to deploy config files and ingest test data.
-- `sdl-log-parser` for parser authoring and the computeFields lookup pattern.
-- `hyperautomation` for the scheduled refresh workflow.
-- `mgmt-console-api` (or `s1-secops-mcp` `s1_api_*`) for site lookup and scoped workflow import / activate / deactivate.
+- `sentinelone-powerquery` for `datasource` + `savelookup` queries and the LRQ runner. The `references/datasource-command.md` there is the source of truth for the assets datasource.
+- `sentinelone-sdl-api` (or the `s1-secops-mcp` tools `sdl_put_file`, `sdl_get_file`, `hec_ingest`) to deploy config files and ingest test data.
+- `sentinelone-sdl-log-parser` for parser authoring and the computeFields lookup pattern.
+- `sentinelone-hyperautomation` for the scheduled refresh workflow.
+- `sentinelone-mgmt-console-api` (or `s1-secops-mcp` `s1_api_*`) for site lookup and scoped workflow import / activate / deactivate.
 
 ## Conventions
 
@@ -61,7 +61,7 @@ This skill orchestrates the SentinelOne primitive skills. Load the ones a playbo
 - **Empty suppression.** Inventory empties (for example `riskFactors` as the string `"[]"`) are converted to null in the savelookup so enrichment never writes an empty field.
 - **Preview before deploy.** Always show rendered config and an example enriched record first.
 - **Idempotence.** Read the current version of any SDL config file before overwriting, and pass it as the expected version. Hyperautomation import always creates a new workflow, so to update one, replace it rather than re-import blindly.
-- **Asset mapping is built in.** Any parser or detection a solution creates must carry the minimum attributes that let an alert bind its Target Asset, so alerts are not "Unknown Device". The endpoint lookup captures `device_agentid` (the numeric console agent id); the parser stamps `device.uid` = `device_agentid` plus an endpoint `class_uid`; and scheduled detections set `entityMappings` on the device identity columns (`device_host` / `device_agentid` / `device_agentuuid`). Binding reconciles `device.uid` against the live Asset Inventory, so a real enrolled agent id is required (a fabricated id stays Unknown Device). The tested binding matrix and the minimum set live in `powerquery/references/detection-rules.md`.
+- **Asset mapping is built in.** Any parser or detection a solution creates must carry the minimum attributes that let an alert bind its Target Asset, so alerts are not "Unknown Device". The endpoint lookup captures `device_agentid` (the numeric console agent id); the parser stamps `device.uid` = `device_agentid` plus an endpoint `class_uid`; and scheduled detections set `entityMappings` on the device identity columns (`device_host` / `device_agentid` / `device_agentuuid`). Binding reconciles `device.uid` against the live Asset Inventory, so a real enrolled agent id is required (a fabricated id stays Unknown Device). The tested binding matrix and the minimum set live in `sentinelone-powerquery/references/detection-rules.md`.
 
 ## Reference files
 

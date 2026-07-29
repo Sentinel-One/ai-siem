@@ -138,7 +138,7 @@ These are where queries go wrong. Internalize them before writing.
 
 ## When to delegate baselining + anomaly detection to the mgmt-console-api skill
 
-If the user asks for any of the following, you need MORE than this skill — load `s1-secops-skills:mgmt-console-api` alongside, because the runner, the schema discovery, and the source-agnostic key picker live there:
+If the user asks for any of the following, you need MORE than this skill — load the `sentinelone-mgmt-console-api` skill alongside, because the runner, the schema discovery, and the source-agnostic key picker live there:
 
 - "Baseline behaviour on `<source>`" / "establish a baseline" / "build a 7d / 30d baseline"
 - "Detect anomalies" / "find users / hosts / IPs behaving differently than usual"
@@ -146,7 +146,7 @@ If the user asks for any of the following, you need MORE than this skill — loa
 - Porting any moving-average + stddev / z-score / Prophet / Isolation Forest pattern
 - "Run this for all sources" / source-agnostic anomaly detection
 
-What `mgmt-console-api` adds:
+What `sentinelone-mgmt-console-api` adds:
 
 - `scripts/inspect_source.py` — auto-discovers field schema for any `dataSource.name` and classifies fields into `principal_user` / `principal_host` / `principal_ip` / `action` etc. via `pick_keys(schema)` → returns `(prim_key, action_key)`. This means you don't hand-hardcode `actor.user.email_addr` for every source — the right principal field is picked from whatever the source actually carries (Okta uses email, FortiGate uses IP, SentinelOne uses process user, etc.).
 - `scripts/pq.py` — `run_pq()` LRQ runner that handles auth, forward-tag, polling, slicing.
@@ -205,7 +205,7 @@ Once two tokens are in play the per-user rate cap stops being the bottleneck and
 **Fallback: when the Purple MCP `powerquery` tool times out or returns an error** (common for ranges > 24h, large aggregates, or wide initial filters), do NOT retry with a tighter time range as a first resort. Instead, re-run the same query through the LRQ API. The mgmt console API's `S1Client` already holds a valid JWT (`S1Client().api_token`); swap the prefix from `ApiToken` to `Bearer` and POST to the same tenant's `/sdl/v2/api/queries`. Canonical inline fallback:
 
 ```python
-# Starting from the already-loaded S1Client used by the mgmt-console-api skill:
+# Starting from the already-loaded S1Client used by the sentinelone-mgmt-console-api skill:
 from sentinelone_sdl_lrq import LRQClient, run_lrq_pq, parallel_run_roundrobin, slice_window
 
 s1 = S1Client()                                # same client the mgmt skill uses
@@ -229,7 +229,7 @@ Don't read these upfront. Read the one you need.
 - `references/o365-fields.md`: Microsoft 365 / Exchange / Teams / SharePoint audit field shape, covering OCSF vs `unmapped.*` duality, fields that live only inside the JSON `message` blob, the discover-before-you-filter rule, send-style operations, RecordType, service-tier IP filtering, and investigation-noise separator. Read before writing any PQ against an M365 audit source.
 - `references/detection-rules.md` — how to author PowerQuery Alerts / STAR / Custom Detection rule bodies, including the 1,000-row / 1 MB alert constraints and which PQ features are supported in alert context.
 - `references/pitfalls.md` — curated list of common failures and their fixes (the `*`-as-filter trap, forgetting `|` before `join`, subquery position errors, memory-limit messages, `message contains` vs `* contains` on JSON-blob sources, and more).
-- `references/automatic-lookups.md` — tenant-wide `/automaticLookups` enrichment that applies to every search and PowerQuery with no `| lookup` typed: config schema, the "output value fields must be unique across all specs" rule, the 100-row / 5 MB / 50-column limits, deploy-via-SDL-API flow, verified `lookup`/`dataset` gotchas, and a full Windows Event Logs SID-to-username worked example. Read when the user wants to add a lookup for SID/username (or any key) that everyone should see automatically, or asks about `/automaticLookups`.
+- `references/automatic-lookups.md` — tenant-wide `/automaticLookups` enrichment that applies to every search and PowerQuery with no `| lookup` typed: config schema, the "output value fields must be unique across all specs" rule, the 100,000-row (unvalidated) / 5 MB / 50-column limits, deploy-via-SDL-API flow, verified `lookup`/`dataset` gotchas, and a full Windows Event Logs SID-to-username worked example. Read when the user wants to add a lookup for SID/username (or any key) that everyone should see automatically, or asks about `/automaticLookups`.
 - `references/datasource-command.md` — the `| datasource <name> [from <dataset>]` command for querying SentinelOne-managed inventory (Asset Inventory, Alerts, Vulnerabilities, Misconfigurations, Metering, SDL retention) that lives outside the event store. Covers datasource names, the `assets`/`metering` datasets, column discovery, time-series via `*_aggregated_snapshots`, and the tenant-validated specifics for asset enrichment: `from 'surface/identity'` vs sparse `from identity`, `from 'surface/endpoint'` vs sparse `from device`, single-quoting slash dataset names, empty-`riskFactors` (`"[]"`) suppression, and the `datasource ... | savelookup` pattern for building enrichment lookup tables. Read whenever the user asks about assets, identities, vulnerabilities, alerts inventory, or building an asset-enrichment lookup.
 
 ## Examples library — read when a hunt matches
@@ -292,7 +292,7 @@ Notice: filter early (`dst.ip.address = *` prunes events without a destination I
 
 PowerQuery execution uses the `s1-secops-mcp` MCP tools, which bypass the Cowork sandbox
 proxy entirely. Use `powerquery_run` and `powerquery_schema_discover` directly instead of
-falling back to the `mgmt-console-api` skill scripts. The MCP tools run locally
+falling back to the `sentinelone-mgmt-console-api` skill scripts. The MCP tools run locally
 on your machine and make direct HTTPS calls to `*.sentinelone.net` without proxy interference.
 
 ## Timestamp fields on HEC-ingested (isParsed) events (learnings)
@@ -320,6 +320,6 @@ must not be used in a scheduled-rule body:
 These all work in interactive PowerQuery (Event Search / Deep Visibility / dashboards / savelookup
 builders), which runs on raw events. **The alternate for a use case whose detection logic needs any of
 them is a Hyperautomation watchdog** (a scheduled or manual/run-now flow that runs the full PowerQuery as
-an LRQ, then posts an OCSF alert to UAM); see the `hyperautomation` skill. This is why the
+an LRQ, then posts an OCSF alert to UAM); see the `sentinelone-hyperautomation` skill. This is why the
 UEBA SILENT / DORMANT detections, which anti-join live counts against the baseline with `left join` +
 `dataset` to find absent / zero-event pairs, run as HA watchdogs rather than scheduled rules.

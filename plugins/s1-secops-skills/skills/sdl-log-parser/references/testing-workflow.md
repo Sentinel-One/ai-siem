@@ -1,10 +1,10 @@
-# Validation Workflow — Using `sdl-api` to Test a Parser
+# Validation Workflow — Using `sentinelone-sdl-api` to Test a Parser
 
 There is **no dedicated `testParser` REST endpoint** on the SDL tenant. The in-console `Test Parser` button at `/logImportTester` runs the parser client-side in JavaScript. To validate end-to-end you must deploy the parser, ingest a sample through it, and query the result back. This doc is the recipe.
 
 ## Prerequisites
 
-- `sdl-api` skill is installed.
+- `sentinelone-sdl-api` skill is installed.
 - `credentials.json` is dropped directly into your Cowork project folder and contains at minimum `SDL_CONFIG_WRITE_KEY` and `SDL_LOG_READ_KEY` plus a HEC ingest token, or `S1_CONSOLE_API_TOKEN` (the same management-console JWT; legacy `SDL_CONSOLE_API_TOKEN` is also accepted). The plugin's SessionStart hook auto-discovers it at session start.
 
 - You have a draft parser JSON and a sample log file.
@@ -14,7 +14,7 @@ There is **no dedicated `testParser` REST endpoint** on the SDL tenant. The in-c
 ```python
 import sys, os, time, uuid, json, pathlib
 _sdl_scripts = os.environ.get("SDL_API_SCRIPTS") or os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sdl-api", "scripts")
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sentinelone-sdl-api", "scripts")
 )
 sys.path.insert(0, _sdl_scripts)
 from sdl_client import SDLClient
@@ -40,16 +40,23 @@ if version is not None:
 c.put_file(f"/logParsers/{PARSER_NAME}", **put_kwargs)
 
 # --- 2. Ingest a sample --------------------------------------------------
-#    A unique host tag per run lets you isolate this test's events from
-#    every other thing flowing through the tenant.
-host_tag = f"parser-test-{uuid.uuid4().hex[:8]}"
-nonce    = str(uuid.uuid4())
-# HEC ingest applies the named parser before the data lands (replaces the removed uploadLogs).
+#    The `server-host` upload header is unreliable for isolation (see the
+#    ingest-path gotchas in SKILL.md): SDL sometimes overrides it, and a
+#    `host` field parsed from the log wins over it. Embed a unique nonce
+#    IN the payload and filter on that instead. Append it as a trailing
+#    token per line (or place it wherever the parser tolerates it).
+nonce  = uuid.uuid4().hex[:12]
+sample_with_nonce = "\n".join(
+    f"{line} claude_test={nonce}" for line in sample.splitlines() if line
+)
+# HEC ingest applies the named parser before the data lands (replaces the
+# removed uploadLogs). Real MCP tool argument names: logContent, scope,
+# parser, endpoint.
 hec_ingest(
-    content=sample,
+    logContent=sample_with_nonce,
     parser=PARSER_NAME,
-    server_host=host_tag,
-    logfile="parser_validation.log",
+    scope="<accountId>",
+    endpoint="raw",
 )
 
 # --- 3. Query back -------------------------------------------------------
@@ -57,7 +64,7 @@ hec_ingest(
 time.sleep(8)
 
 EXPECTED = ["timestamp", "src", "dst", "spt", "dpt", "proto", "act"]
-pq = f"host='{host_tag}' | columns " + ", ".join(["message"] + EXPECTED)
+pq = f"* contains '{nonce}' | columns " + ", ".join(["message"] + EXPECTED)
 res = c.power_query(query=pq, start_time="10m")
 print(json.dumps(res, indent=2))
 ```

@@ -80,7 +80,7 @@
     <div class="card beat"><div class="t">1. The problem <span>30s</span></div><p>Our SOC drowns in low-severity, individually-uninteresting signals: encoded PowerShell, a recon command, a LOLBin download. Alert on each and you get fatigue; ignore them and you miss the slow-burn attack. RBA fixes this: we don't alert on the observation, we <b>accumulate risk on the entity</b> behind it.</p></div>
     <div class="card beat"><div class="t">2. Contributors &rarr; risk index <span>45s &middot; open Live risk tab</span></div><p>Each noisy-but-interesting behaviour is a <b>contributor</b>. Instead of an alert it publishes a low-noise <b>risk event</b> into a dedicated risk index, tagged with a base score and a MITRE tactic. None of these fire an alert on their own.</p></div>
     <div class="card beat"><div class="t">3. Risk factors from AD / ISPM <span>45s &middot; open Editor tab</span></div><p>Risk isn't flat, it's amplified by <b>who</b> the entity is. The factor table is sourced from Active Directory via ISPM / Ranger AD: a privileged account is weighted &times;2 automatically, a service account &times;0.5. This is the SentinelOne equivalent of Splunk RBA importing assets from AD, sourced natively.</p></div>
-    <div class="card beat"><div class="t">4. The money slide — amplification <span>60s &middot; Live risk leaderboard</span></div><p>Watch <b>adm.webb</b> vs <b>adm.kowalski</b>: same four behaviours, but adm.webb is privileged, so &times;2 puts them at <b>150 across 4 tactics</b>; adm.kowalski is standard, &times;1, at <b>55</b>. <b>svc-backup</b> does similar things but &times;0.5 keeps it at <b>17.5</b>, below threshold and deliberately silent. Identical behaviour, different outcome, driven by AD context.</p></div>
+    <div class="card beat"><div class="t">4. The money slide, amplification <span>60s &middot; Live risk leaderboard</span></div><p>Watch <b>adm.webb</b> vs <b>adm.kowalski</b>: same four behaviours, but adm.webb is privileged, so &times;2 puts them at <b>150 across 4 tactics</b>; adm.kowalski is standard, &times;1, at <b>75</b>, over the threshold but ranked far below. <b>svc-backup</b> does the same things but &times;0.5 keeps it at <b>37.5</b>, below threshold and deliberately silent. Identical behaviour, different outcome, driven by AD context.</p></div>
     <div class="card beat"><div class="t">5. One high-fidelity alert <span>45s</span></div><p>When cumulative risk crosses a threshold, <b>one</b> alert fires, entity-bound, with the whole story attached. adm.webb and the host FIN-WKS-018 already generated HIGH alerts, each carrying its contributing timeline. The 7-day multi-tactic rule catches the low-and-slow campaign the 24h score misses.</p></div>
     <div class="card beat"><div class="t">6. Self-running and tunable <span>30s &middot; Editor tab</span></div><p>The collector is a scheduled Hyperautomation flow: it runs the contributors, applies the AD multipliers, and publishes on a cadence, no analyst in the loop. And SYSTEM sitting near the top? That's the honest part: RBA is a system you <b>cultivate</b>. Real attacker behaviour rises; benign noise gets factored down. In the Editor tab I can drop SYSTEM to &times;0.2 live.</p></div>
     <div class="card"><div class="t" style="font-weight:600;color:#fff">Close <span class="muted">15s</span></div><p style="margin-top:6px">Net: fewer, richer alerts; prioritised by business context from your own AD; and a reusable internal library of what "interesting" looks like in this environment.</p></div>
@@ -172,7 +172,7 @@ async function loadLive(){
 
 // ---------- Factor editor ----------
 let factorVersion=null, factorRows=[];
-const BASE={ 'adm.webb':[75,'user'],'adm.kowalski':[55,'user'],'svc-backup':[35,'user'],'FIN-WKS-018':[65,'host'] };
+const BASE={ 'adm.webb':[75,'user'],'adm.kowalski':[75,'user'],'svc-backup':[75,'user'],'FIN-WKS-018':[65,'host'] };
 function parseCSV(t){const lines=t.replace(/\r/g,'').split('\n').filter(l=>l.length);const rows=[];for(let i=1;i<lines.length;i++){rows.push(splitCSV(lines[i]))}return rows;}
 function splitCSV(line){const out=[];let cur='',q=false;for(let i=0;i<line.length;i++){const c=line[i];if(q){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}else{if(c===','){out.push(cur);cur=''}else if(c==='"')q=true;else cur+=c}}out.push(cur);return out;}
 function csvField(v){v=(v==null?'':String(v));return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
@@ -197,7 +197,7 @@ function renderFactors(){
 function upd(i,c,v){factorRows[i][c]=v;renderProjected();}
 function addRow(){factorRows.push(['new.user','user','1.0','']);renderFactors();}
 function delRow(i){factorRows.splice(i,1);renderFactors();}
-function multFor(key){const row=factorRows.find(r=>(r[0]||'').toLowerCase()===key.toLowerCase());return row?parseFloat(row[2])||0:1;}
+function multFor(key){const row=factorRows.find(r=>(r[0]||'').toLowerCase()===key.toLowerCase());if(!row)return 1;const v=parseFloat(row[2]);return isNaN(v)?1:v;}
 function renderProjected(){
   $('#projected').innerHTML=`<table><thead><tr><th>Object</th><th>Type</th><th class="num">Σ base</th><th class="num">Multiplier</th><th class="num">Projected</th><th>Verdict</th></tr></thead><tbody>`+
     Object.entries(BASE).map(([k,[base,type]])=>{const m=multFor(k);const proj=base*m;const thr=type==='host'?40:50;const fires=proj>=thr;
@@ -207,7 +207,7 @@ async function saveFactors(){
   const st=$('#edStatus'); st.textContent='saving…'; st.className='status';
   try{
     const csv='factor_key,factor_type,risk_multiplier,reason\n'+factorRows.map(r=>[0,1,2,3].map(c=>csvField(r[c])).join(',')).join('\n')+'\n';
-    await api('/api/putFile',{path:FACTOR_PATH,content:csv});
+    await api('/api/putFile',{path:FACTOR_PATH,content:csv,expectedVersion:factorVersion});
     st.textContent='saved to Data Lake ✓ '+new Date().toLocaleTimeString(); st.className='status ok';
     loadFactors();
   }catch(e){ st.textContent=e.message; st.className='status err'; }

@@ -529,7 +529,9 @@ def run_safe_posts(client: S1Client, workers: int):
         body = fac(ctx)
         t0 = time.time()
         try:
-            resp = client.post(path, json_body=body)
+            # allow_retry=True: SAFE_POSTS are read-only/validate endpoints,
+            # so the client's 429/5xx retry (now GET-only by default) is safe.
+            resp = client.post(path, json_body=body, allow_retry=True)
             rows.append({
                 "method": "POST",
                 "path_template": path,

@@ -65,7 +65,7 @@ Responses: 200 Success, 400 Invalid user input received. See error details for f
 **Create Firewall Rule**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_post`
 
-Create a Firewall Control rule for a scope specified by ID (run "accounts", "sites", "groups", or set "tenant" to "true") and specific OS, to allow or block network traffic to matching endpoints.<br>You can create one clean-up rule, with the Action of Allow or Block and with no other parameters defined explicitly. Make this the default rule at the end of your rule list. Traffic that does not match other rules first will match this rule. If you do not have a clean-up rule to match all traffic, the default Firewall Control behavior is to allow traffic that is not explicitly blocked.<br>Firewall Control requires Control SKU.
+Create a Firewall Control rule for a scope specified by ID (run "accounts", "sites", "groups", or set "tenant" to "true") and specific OS, to allow or block network traffic to matching endpoints.<br>You can create one clean-up rule, with the Action of Allow or Block and with no other parameters defined explicitly. Make this the default rule at the end of your rule list. Traffic that does not match other rules first will match this rule. If you do not have a clean-up rule to match all traffic, the default Firewall Control behaviour is to allow traffic that is not explicitly blocked.<br>Firewall Control requires Control SKU.
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:

@@ -5,7 +5,7 @@ detecting deviations from them. Source-agnostic — works on EDR, identity,
 network, cloud, email, or any custom log source ingested into SDL.
 
 For the runner, the source schema discovery, and the productionised
-end-to-end script, use `mgmt-console-api`'s
+end-to-end script, use `sentinelone-mgmt-console-api`'s
 `scripts/baseline_anomaly.py`. This document is the PQ building blocks.
 
 ## The pattern in one paragraph
@@ -86,10 +86,15 @@ dataSource.name = '<source>'
 ## Building block 3 — pooled baseline merge (Python pseudocode)
 
 After collecting daily slices, compute mean + stddev per pair across
-all observed days. Pairs with fewer than 2 active days are dropped
-(stddev undefined). Pairs with stddev=0 (perfectly stable) are also
-dropped — every deviation is anomalous, but `z = ∞` isn't a useful
-threshold.
+ALL sampled days, zero-padding each pair's counts with 0 for every
+sampled day on which it was absent BEFORE computing mean/stddev. This
+mirrors the day-of-week tier's padding below, and for the same reason:
+without padding, a pair active on 2 of 30 sampled days looks as
+reliably active as one active on all 30, because its inactive days
+never enter the mean or the stddev. Pairs with fewer than 2 sampled
+days are dropped (stddev undefined). Pairs with stddev=0 (perfectly
+stable) are also dropped: every deviation is anomalous, but `z = ∞`
+isn't a useful threshold.
 
 ```python
 from collections import defaultdict
@@ -100,12 +105,17 @@ for daily_slice in baseline_slices:
     for r in daily_slice["rows"]:
         per_day[(r["action"], r["principal"])].append(r["day_count"])
 
+n_sampled = len(baseline_slices)   # total sampled days in the baseline window
+
 baseline = {}
 for key, counts in per_day.items():
-    if len(counts) < 2: continue
-    sd = stdev(counts)
+    # Zero-pad: one 0 for every sampled day the pair was absent.
+    full = counts + [0] * max(0, n_sampled - len(counts))
+    if len(full) < 2: continue
+    sd = stdev(full)
     if sd <= 0: continue
-    baseline[key] = {"avg": mean(counts), "sd": sd, "n_days": len(counts)}
+    baseline[key] = {"avg": mean(full), "sd": sd,
+                     "n_active": len(counts), "n_sampled": n_sampled}
 ```
 
 Then for each live pair:
@@ -229,7 +239,7 @@ representation. Without padding, the 2-of-4 case would look as
 | 7 days | 7 samples | Quick to compute, freshest signal | Stddev is noisy; bimodal weekday/weekend distributions look like normal variance |
 | 30 days | 30 samples | Stable stddev; surfaces weekend false-positives clearly enough to motivate DoW stratification | Slower to compute (30 LRQ slices); slow-moving drift may be missed |
 | 30 days + DoW stratification | up to 30 / 7 ≈ 4-5 per DoW cell | Right tool — eliminates the weekday/weekend false-positive cleanly | Cells with `n_sampled <= 1` per DoW have no usable baseline; those pairs need to fall through to the new-behaviour detector |
-| 90 days | ~90 samples per DoW cell when stratified | Captures monthly seasonality and quarter-end spikes | More LRQ cost; baseline-write cadence becomes a job; consider `savelookup` and an incremental update path instead of full re-compute |
+| 90 days | ~13 samples per DoW cell when stratified | Captures monthly seasonality and quarter-end spikes | More LRQ cost; baseline-write cadence becomes a job; consider `savelookup` and an incremental update path instead of full re-compute |
 
 For most SOC use cases, 30 days + DoW stratification is the production
 sweet spot. Run nightly via a Hyperautomation workflow, write the
@@ -257,7 +267,7 @@ The end-to-end production shape with persisted baselines:
    - Runs the per-day count slices for the previous N days
    - Computes baseline per (pair, DoW) client-side
    - Writes the baseline rows to a lookup table via `| savelookup '<source>_baseline_dow', 'merge'`
-   - Lookup tables are capped at 400 KB — for high-cardinality sources, persist only the top-K pairs by baseline_avg
+   - Lookup tables can be up to 150 MB per table (operator-confirmed 2026-07-29), so table size is rarely the constraint; for very high-cardinality sources, persisting only the top-K pairs by baseline_avg still keeps rule-time lookups fast
 
 2. **Author the detection rule** as a PowerQuery Alert (`queryLang: "2.0"`,
    `queryType: "scheduled"`):
@@ -267,8 +277,9 @@ dataSource.name = '<source>'
 | let action = <action_field> ? <action_field> : <action_fallback>
 | let principal = <principal_field> ? <principal_field> : <principal_fallback>
 | filter action = * AND principal = *
-| group live_count = count() by action, principal
-| lookup avg=baseline_avg, sd=baseline_stddev from <source>_baseline_dow by action, principal
+| let dow = strftime(timestamp, '%a')
+| group live_count = count() by action, principal, dow
+| lookup avg=baseline_avg, sd=baseline_stddev from <source>_baseline_dow by action, principal, dow
 | filter avg = *
 | let z = (live_count - avg) / sd
 | filter z >= 3.0 OR z <= -3.0
@@ -276,9 +287,12 @@ dataSource.name = '<source>'
 | limit 100
 ```
 
-   For DoW stratification, include `dow = day_of_week(timestamp)` in the
-   group-by AND in the lookup join key. The lookup table from step 1 must
-   be keyed on `(action, principal, dow)` not just `(action, principal)`.
+   The rule is DoW-stratified: `dow` is computed with
+   `strftime(timestamp, '%a')` (`day_of_week()` does not exist in
+   PowerQuery: Unknown function, live-verified 2026-07-29) and is
+   included in both the group-by AND the lookup join key. The lookup
+   table from step 1 must be keyed on `(action, principal, dow)` with
+   `dow` stored in the same `%a` format, not just `(action, principal)`.
 
 3. **Set rule constraints** — for `queryType: "scheduled"`,
    `treatAsThreat: "UNDEFINED"` and `networkQuarantine: false` are
@@ -290,7 +304,7 @@ dataSource.name = '<source>'
 | User asks for... | Use |
 |---|---|
 | "Write a baseline detection PQ" | This file (building blocks 1-5) — paste the placeholders into PQ templates |
-| "Run a 30-day baseline for `<source>` end-to-end" | `mgmt-console-api` skill, `scripts/baseline_anomaly.py` |
-| "What field should I baseline on?" | `mgmt-console-api`, `scripts/inspect_source.py --source "<name>"` |
+| "Run a 30-day baseline for `<source>` end-to-end" | `sentinelone-mgmt-console-api` skill, `scripts/baseline_anomaly.py` |
+| "What field should I baseline on?" | `sentinelone-mgmt-console-api`, `scripts/inspect_source.py --source "<name>"` |
 | "Why does my baseline flag every Sunday?" | DoW stratification — section above |
 | "Author this as a STAR rule body" | `references/detection-rules.md` in this skill, plus the lookup pattern in section "Productionising" |

@@ -371,7 +371,7 @@ Prerequisite: Docker Desktop (macOS/Windows) or Docker Engine (Linux), running. 
 **Step 1: Pull the image (all three MCPs)**
 
 ```bash
-docker pull ghcr.io/pmoses-s1/s1-mcps:1.2.3
+docker pull ghcr.io/pmoses-s1/s1-mcps:1.2.4
 ```
 
 `:1.2.3` is the current pinned release (bundles s1-secops-mcp 1.2.2, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
@@ -394,7 +394,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
         "-e", "SDL_LOG_READ_KEY",
         "-e", "SDL_CONFIG_WRITE_KEY",
         "-e", "SDL_CONFIG_READ_KEY",
-        "ghcr.io/pmoses-s1/s1-mcps:1.2.3",
+        "ghcr.io/pmoses-s1/s1-mcps:1.2.4",
         "sentinelone-mcp"
       ],
       "env": {
@@ -413,7 +413,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
         "run", "-i", "--rm", "--pull=missing",
         "-e", "PURPLEMCP_CONSOLE_TOKEN",
         "-e", "PURPLEMCP_CONSOLE_BASE_URL",
-        "ghcr.io/pmoses-s1/s1-mcps:1.2.3",
+        "ghcr.io/pmoses-s1/s1-mcps:1.2.4",
         "purple-mcp"
       ],
       "env": {
@@ -426,7 +426,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "args": [
         "run", "-i", "--rm", "--pull=missing",
         "-e", "VIRUSTOTAL_API_KEY",
-        "ghcr.io/pmoses-s1/s1-mcps:1.2.3",
+        "ghcr.io/pmoses-s1/s1-mcps:1.2.4",
         "virustotal-mcp"
       ],
       "env": {
@@ -470,9 +470,9 @@ smoke test s1 skills
 Claude checks all three MCPs, confirms each skill is loaded, and reports any missing credential or unreachable endpoint. You can also test the image straight from a terminal, no Claude Desktop required:
 
 ```bash
-docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.2.3 help    # lists the three bundled servers
+docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.2.4 help    # lists the three bundled servers
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.2.3 sentinelone-mcp
+  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.2.4 sentinelone-mcp
 ```
 
 The second command returns one JSON line with `serverInfo.name = "sentinelone-mcp-server"`, and stderr shows `Tools: 26 registered`.

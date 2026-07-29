@@ -27,7 +27,7 @@
   "attributes": {
     // Four required pipeline defaults.
     "metadata.version":    "1.0.0",
-    "dataSource.category": "identity",
+    "dataSource.category": "security",
     "dataSource.name":     "Linux PAM",
     "dataSource.vendor":   "Linux",
 

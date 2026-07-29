@@ -1,7 +1,7 @@
 ---
 name: sdl-log-parser
 author: Prithvi Moses <prithvi.moses@sentinelone.com>
-description: Use whenever the user wants to author, edit, debug, validate, or explain a SentinelOne Singularity Data Lake (SDL) log parser — the augmented-JSON files at /logParsers/ that extract fields from raw log text before ingestion. Trigger on "SDL parser", "Skylight parser", "log parser", "parser editor", "write a parser", "test parser", or any pasted raw log the user wants turned into structured fields. Also trigger on parser-DSL keywords like `formats:`, `patterns:`, `lineGroupers:`, `rewrites:`, `discardAttributes:`, `aliasTo:`, `{parse=...}`, `{regex=...}`. Especially trigger when the user pastes a raw log (CEF, syslog, JSON, key=value, multi-line, CSV) and asks to extract fields, normalize timestamps, or drop noise. If the project is SDL/Singularity/Scalyr and the user says "parse this log", use this skill. Always validates end-to-end via putFile → HEC ingest (parser applied) → query. NOT for PowerQuery (use powerquery), NOT for plain ingest without a parser (use sdl-api).
+description: Use whenever the user wants to author, edit, debug, validate, or explain a SentinelOne Singularity Data Lake (SDL) log parser — the augmented-JSON files at /logParsers/ that extract fields from raw log text before ingestion. Trigger on "SDL parser", "Skylight parser", "log parser", "parser editor", "write a parser", "test parser", or any pasted raw log the user wants turned into structured fields. Also trigger on parser-DSL keywords like `formats:`, `patterns:`, `lineGroupers:`, `rewrites:`, `discardAttributes:`, `aliasTo:`, `{parse=...}`, `{regex=...}`. Especially trigger when the user pastes a raw log (CEF, syslog, JSON, key=value, multi-line, CSV) and asks to extract fields, normalize timestamps, or drop noise. If the project is SDL/Singularity/Scalyr and the user says "parse this log", use this skill. Always validates end-to-end via putFile → HEC ingest (parser applied) → query. NOT for PowerQuery (use sentinelone-powerquery), NOT for plain ingest without a parser (use sentinelone-sdl-api).
 ---
 
 # SentinelOne SDL Log Parser Authoring
@@ -71,7 +71,7 @@ Use this skill when the user wants to turn raw log text into structured SDL even
 - Edits to an existing parser ("add a rewrite that masks the password", "tag every event with `dataset=fortinet`").
 - Migration ("alias the new parser to the old one").
 
-Do **not** use this skill for PowerQuery authoring (use `powerquery`) or for plain-text ingestion that does not need a parser (use `sdl-api` directly).
+Do **not** use this skill for PowerQuery authoring (use `sentinelone-powerquery`) or for plain-text ingestion that does not need a parser (use `sentinelone-sdl-api` directly).
 
 ## Workflow
 
@@ -81,8 +81,8 @@ Follow this loop. Skipping steps 1 (catalog check) and 5 (end-to-end validation)
 2. **Inspect the sample.** Read every line the user pasted. Look for: leading priority/timestamp/host (syslog framing), the body shape (CEF | JSON | key=value | positional CSV | freeform), any obvious sub-structures (`uri=...`, embedded JSON, base64), and whether multiple physical lines belong to one logical event (stack traces, MySQL slow queries, Postgres SQL).
 3. **Decide on strategy.** See *Strategy decision tree* below. Most logs are one of: alias an existing built-in, single line format with `$field$` markers, repeating key/value catch-all, JSON parser with `discardAttributes`, line-grouper for multi-line, or a mapper for OCSF-style restructuring.
 4. **Draft the parser.** Use the templates in `examples/` as starting points, or (from step 1) a catalog parser as a base. Always start minimal — extract the *outer* frame first (timestamp + host + body), then add fragment formats or `{parse=...}` directives to crack the body open.
-5. **Validate end-to-end.** Use the `sdl-api` skill to deploy the parser, ingest the sample, and query for the extracted fields. See *Validation* below for the exact recipe. **Do not call this skill done before this step succeeds.**
-6. **Iterate.** If a field is missing or wrong, identify which format/rewrite was responsible, edit, redeploy, re-ingest with a fresh `Nonce`, re-query.
+5. **Deploy in place and validate on the live stream (DEFAULT).** Update the SAME parser name the source already uses (`/logParsers/<name>`) via `sdl_put_file` with the current `expectedVersion` from `sdl_get_file`, bumping `metadata.version` on every deploy. Then validate against events the source is already sending: after ~3-5 min propagation, query `dataSource.name='<Name>' metadata.version='<new>'` and confirm the expected fields are populated and not null. Do NOT stand up a `claude_test_*` parser and do NOT synthetically HEC-ingest samples when the source is live — saved parser edits are non-destructive (they apply only to newly ingested events and never re-parse history), so editing the real parser is safe and the live feed is the authoritative test. The synthetic-ingest recipe in *Validation* is a FALLBACK, only for a source that is not currently ingesting. Before you deploy, commit the current live definition as a baseline, and after you deploy commit the new version — both to git in the **local project folder only** (see *Validation → Version control & rollback*). See *Validation* below. **Do not call this skill done before the live query shows the fields populated.**
+6. **Iterate.** If a field is missing or wrong, identify which format/rewrite/mapping was responsible, edit, bump `metadata.version`, redeploy the same parser, wait for propagation, and re-query the live stream filtering on the new `metadata.version`. (Only for a non-live source: re-ingest the sample with a fresh nonce.)
 7. **Hand off.** Show the user the final parser file (path + version), the sample they gave, and the parsed fields the query returned.
 
 ## Required default attributes on every parser (MANDATORY)
@@ -137,8 +137,10 @@ Quick picker (use this to find the class number, then look up fields in `ocsf-sc
 - HTTP / web / proxy → `4002` HTTP Activity
 - DNS → `4003` DNS Activity
 - DHCP → `4004` DHCP Activity
-- RDP / SSH session → `4005` RDP Activity
-- TLS / SSL handshake → `4006` SSH Activity (TLS uses connection_info under 4001/4002)
+- RDP session → `4005` RDP Activity
+- SMB / file-share traffic → `4006` SMB Activity
+- SSH session → `4007` SSH Activity
+- TLS / SSL handshake → no TLS class exists in the bundled catalog; TLS attributes ride on `tls.*` / `connection_info` under 4001/4002. For anything not listed here, check `references/ocsf-schema-documentation.md`
 - Email → `4009` Email Activity
 - Authentication → `3002` Authentication
 - Account change → `3001` Account Change
@@ -266,7 +268,7 @@ Apply in order — first match wins:
 ## Common gotchas (memorize)
 
 - **Double-escape every regex metacharacter.** `\\d`, `\\s`, `\\.`, `\\\\`. The augmented-JSON layer eats one backslash before the regex engine sees it.
-- **`severity` is a RESERVED field coerced to 0–6 integer.** The ingest pipeline maps `info`/`warn`/`error` strings to 0–6 using its own vocabulary. OCSF labels like `"Informational"` / `"Medium"` collide and get rewritten. For the OCSF string, emit `severity_name` (or any non-colliding name); for the integer, emit `severity_id` directly (int, 0–6). Tenant-validated April 2026.
+- **`severity` is a RESERVED field coerced to 0–6 integer.** The ingest pipeline maps `info`/`warn`/`error` strings to 0–6 using its own vocabulary. OCSF labels like `"Informational"` / `"Medium"` collide and get rewritten. For the OCSF string, emit `severity_name` (or any non-colliding name); for the integer, emit `severity_id` directly (int; the 0-6 range is validated, 99 "Other" is unvalidated). Never emit both `severity` and `severity_id` from the same parser. Tenant-validated April 2026.
 - **gron-captured dotted keys are FLAT, not nested.** A source JSON key like `"user.email": "alice"` becomes `unmapped.user.email` as a single flat field — mappings must reference it with `from: "unmapped.user.email"` (no escaping). `from: "unmapped.user\\.email"` does NOT match on current tenants, contrary to the escape-the-dots pattern in ai-siem's PARSER_TEMPLATE.conf.
 - **Saved parsers apply only to newly ingested events.** Historical logs are not re-parsed. So during iteration you must re-ingest the sample after every parser edit.
 - **A `parser=<name>`-tagged source with NO `/logParsers/<name>` file ingests raw (passthrough).** If events carry `parser='auditd'` but `dataSource.name` / `class_uid` are null, the named parser file does not exist yet: the collector tags the events but SDL has nothing to apply. Deploy `/logParsers/<name>` and NEW events get parsed. After deploy, the parser's root `attributes` (e.g. `dataSource.name`) are the canary that the parser is RUNNING AT ALL — if they are still null on fresh events the parser has not propagated yet (not a format bug); if they are populated but a captured field is null, that IS a format/mapping bug. `metadata.version` is the canary for WHICH version is live: bump it on every deploy so you can tell from the live stream when a specific change has propagated (poll `| group c=count() by metadata.version` until the new version appears). Propagation observed at ~3-5 min on this tenant. Tenant-validated 2026-06-01.
@@ -299,7 +301,7 @@ Apply in order — first match wins:
 - **`skipNumericConversion: true` is required when columns contain numeric strings you want preserved as strings.** Without it, `commaSeparatedvalues` and `pipeSeparatedValues` parse will coerce `"00123"` → `123` (loses leading zeros), `"0xDEADBEEF"` → `3735928559`, and `"1.0"` → `1`. Set `skipNumericConversion: true` on the format whenever any column is an opaque ID or a hex/octal string. Canonical: Palo Alto Firewall.
 - **`intermittentTimestamps: true` is the only fix for sources where only the first record on each second has a timestamp.** Common with MySQL general query log, AWS RDS, sometimes VPC flow logs. Without it, every line that lacks a timestamp gets the ingest timestamp, not the inferred one. Reference: `parsers/sentinelone/marketplace-awsvpcflowlogs-latest/` and `parsers/community/sql_database_logs-latest/`.
 - **`enum` cast in v1 mappings without `enum_default` leaves unmapped values UNCHANGED, not null.** If you want unknowns to map to a known sentinel, set `enum_default: <value>` on the cast. Cloudflare uses `enum_default: 99` ("Unknown") consistently — copy that pattern.
-- **`severity_id` is an integer 0–6 reserved by ingest, just like `severity`.** Setting `severity_id: 999` silently fails. Use `severity` for the normalized integer (preferred), `severity_name` for the OCSF label string. Do not emit BOTH `severity` and `severity_id` from the same parser.
+- **`severity_id` takes the OCSF integer enum; `severity` is RESERVED and coerced by ingest.** Setting `severity_id: 999` silently fails; the 0-6 range is validated, 99 ("Other") is unvalidated. Emit `severity_id` (int) plus optionally `severity_name` (the OCSF label string). Never emit `severity`, and never emit BOTH `severity` and `severity_id` from the same parser.
 - **Rewrites run during format parsing; mappings run after all formats.** A field renamed in `mappings.rename` cannot be referenced by a `rewrites:` block on a later format on the same line because `rewrites:` runs per-format during capture. If you need a derived field from a renamed one, do the derivation inside `mappings` (use `copy` then `cast`, or `replace`).
 - **Mixing `mappings.version: 0` and `mappings.version: 1` syntax in the same block is a hard error.** The engine rejects with "expected list got object" or "unsupported event mapper version -1". Pick one version per parser and stick to it.
 - **Windows Event Log XML payloads ship with double-escaped tabs/newlines.** A parser for Windows EventLog in the catalog (`parsers/community/microsoft_windows_eventlog-latest/`) deals with `\\t` and `\\n` literals embedded inside XML strings; capturing them needs `\\\\t` / `\\\\n` (four backslashes) at the augmented-JSON layer.
@@ -378,7 +380,7 @@ This pattern preserves first-match-wins semantics at the mapping-entry level (wh
 
 **Predicate type-mismatch silently fails on captured numerics.** The KV catch-all auto-types unquoted values as NUMBER (pitfall #5 in *Critical pitfalls*). That means a predicate like `raw_severity == '5'` — quoted string — never matches a `raw_severity` captured as integer 5. Use bare numerics in predicates for numeric fields (`raw_severity >= 4`, `http_response.code < 400`) and quoted strings only for actually-string fields (`raw_action == 'alert'`, format-id sentinels `mySqlErrorLog == 'true'`). When in doubt, run a quick query on a recent parsed event and check `cellType` in the response — STRING vs NUMBER — before writing the predicate. A string predicate against a numeric field silently drops every dependent op; the only symptom is the target field being null on every event, which can take several deploy/iterate cycles to localize. Tenant-validated May 2026.
 
-**OCSF `severity_id` is an enum `{0,1,2,3,4,5,6,99}`, NOT a vendor passthrough.** Many sources (CEF 0-10, syslog 0-7, custom 0-100) ship a wider-range numeric severity. Renaming the raw value directly into `severity_id` produces invalid OCSF (e.g. `severity_id=10` when a vendor uses 0-10) AND semantically false detections (vendor "5 out of 10" means Medium for that vendor, but `severity_id=5` is OCSF "Critical" — every routine event suddenly looks Critical to downstream consumers). Always bucket via per-op predicates and preserve the raw value under a vendor namespace (`vendor.severity_raw`, `cef.severity`) for source fidelity. Reference bucketing for a 0-10 scale: `0-3 → 1 Informational, 4-6 → 3 Medium, 7-8 → 4 High, 9-10 → 5 Critical`. For 0-7 syslog: `0-1 → 5 Critical, 2-3 → 4 High, 4 → 3 Medium, 5-7 → 1 Informational`. Same `severity` (no suffix) is RESERVED and coerced to 0-6 by ingest, so emit `severity_id` (the integer) and optionally `severity_name` (a label string) — never both `severity` and `severity_id` from the same parser. Tenant-validated May 2026: a parser that passed CEF 0-10 directly into `severity_id` emitted invalid OCSF values (`severity_id=10`) AND tagged the bulk of routine traffic as Critical; the bucketed replacement produced semantically correct severity_ids for the same input stream.
+**OCSF `severity_id` is an enum `{0,1,2,3,4,5,6,99}`, NOT a vendor passthrough (0-6 is tenant-validated; 99 is unvalidated).** Many sources (CEF 0-10, syslog 0-7, custom 0-100) ship a wider-range numeric severity. Renaming the raw value directly into `severity_id` produces invalid OCSF (e.g. `severity_id=10` when a vendor uses 0-10) AND semantically false detections (vendor "5 out of 10" means Medium for that vendor, but `severity_id=5` is OCSF "Critical" — every routine event suddenly looks Critical to downstream consumers). Always bucket via per-op predicates and preserve the raw value under a vendor namespace (`vendor.severity_raw`, `cef.severity`) for source fidelity. Reference bucketing for a 0-10 scale: `0-3 → 1 Informational, 4-6 → 3 Medium, 7-8 → 4 High, 9-10 → 5 Critical`. For 0-7 syslog: `0-1 → 5 Critical, 2-3 → 4 High, 4 → 3 Medium, 5-7 → 1 Informational`. Same `severity` (no suffix) is RESERVED and coerced to 0-6 by ingest, so emit `severity_id` (the integer) and optionally `severity_name` (a label string) — never both `severity` and `severity_id` from the same parser. Tenant-validated May 2026: a parser that passed CEF 0-10 directly into `severity_id` emitted invalid OCSF values (`severity_id=10`) AND tagged the bulk of routine traffic as Critical; the bucketed replacement produced semantically correct severity_ids for the same input stream.
 
 **Format-id-as-sentinel predicate**: `format: { id: "mySqlErrorLog", ... }` auto-sets a boolean-string field `mySqlErrorLog='true'` on events that matched that format. Use `predicate: "mySqlErrorLog='true'"` (v0) or `"mySqlErrorLog == 'true'"` (v1) to fan mapping entries out to sub-shapes. Quote the `'true'` — it's a string, not a bare boolean.
 
@@ -402,7 +404,7 @@ This pattern preserves first-match-wins semantics at the mapping-entry level (wh
 - **Use `==` for equality**, not `=`.
 - **Cannot reference dashed field names.** `protocol-id` is parsed as subtraction. Rename via `mappings` first, or do the translation entirely in the mappings block.
 - **Place the rewrite on the format that captures the source field.** If a repeating key/value sub-format is what produces the field, the rewrite belongs on the sub-format — not on the frame format above it.
-- **The `replace` MAPPER op is a runtime no-op on this tenant; use a `computeFields` + PowerQuery `replace()` rewrite instead.** Two traps with `{ replace: {...} }` in a `mappings` block: (1) the regex key is `regexp`, NOT `pattern` — `pattern` returns `400: Missing required key 'regexp'` on `putFile` (the `mappers.md` example showing `pattern` is wrong); (2) even with the correct `regexp` key the op silently does NOT transform the value at ingest (validated on both a dotted target `process.cmd_line` and a flat scratch field, 2026-06-01). The working substitute is a `computeFields` rewrite calling the PowerQuery `replace(field, regex, replacement)` string function. PowerQuery string literals are SINGLE-quoted, so a regex containing double-quotes needs no escaping inside the expression: `expression: "| let _cmdline = replace(_cmdline, 'a[0-9]+=\"([^\"]*)\"', '$1')"`. Capture into a FLAT scratch field (computeFields and `replace` address flat names cleanly; dotted paths are unreliable), then `rename` the scratch field to the dotted OCSF target in `mappings`. This is how the auditd parser turns an EXECVE arg vector `a0="cp" a1="/x" a2="/y"` into a readable `process.cmd_line` = `cp /x /y`.
+- **The `replace` MAPPER op is a runtime no-op on this tenant; use a `computeFields` + PowerQuery `replace()` rewrite instead.** Two traps with `{ replace: {...} }` in a `mappings` block: (1) the regex key is `regexp`, NOT `pattern`: `pattern` returns `400: Missing required key 'regexp'` on `putFile`; (2) even with the correct `regexp` key the op silently does NOT transform the value at ingest (validated on both a dotted target `process.cmd_line` and a flat scratch field, 2026-06-01). The working substitute is a `computeFields` rewrite calling the PowerQuery `replace(field, regex, replacement)` string function. PowerQuery string literals are SINGLE-quoted, so a regex containing double-quotes needs no escaping inside the expression: `expression: "| let _cmdline = replace(_cmdline, 'a[0-9]+=\"([^\"]*)\"', '$1')"`. Capture into a FLAT scratch field (computeFields and `replace` address flat names cleanly; dotted paths are unreliable), then `rename` the scratch field to the dotted OCSF target in `mappings`. This is how the auditd parser turns an EXECVE arg vector `a0="cp" a1="/x" a2="/y"` into a readable `process.cmd_line` = `cp /x /y`.
 - **There is NO hex / base16 decode primitive anywhere in the DSL or in `computeFields`.** The `{parse=...}` directives offer `base64EncodedJson` / `urlEncodedJson` but no hex; the PowerQuery subset available to `computeFields` has no position-aware hex decoder either. auditd `proctitle` (and individual hex-encoded `EXECVE` args) are NUL-separated hex and cannot be turned into ASCII in-parser. Source the readable command line from the EXECVE arg vector instead (auditd stores those as plain ASCII), and leave the hex `proctitle` as-is. Do not burn iterations trying `replace`/regex to hex-decode.
 
 ### Interaction between `halt: true` and repeat formats
@@ -411,50 +413,56 @@ This pattern preserves first-match-wins semantics at the mapping-entry level (wh
 
 ## Validation (mandatory)
 
-Always validate against the live tenant via the `sdl-api` skill. Do not rely solely on the syntactic plausibility of the JSON — the only authoritative test is "did the field actually appear in a query after ingest." This is what the in-console `Test Parser` button approximates client-side; doing it through the API exercises the real ingest pipeline.
+Always validate against the live tenant — the only authoritative test is "did the field actually appear in a query after the parser ran." Syntactic plausibility of the JSON is not validation.
+
+### Default: update the real parser in place, validate on the live stream
+
+When the source is already ingesting (the normal case), **edit the real parser and validate on real traffic.** Do NOT create a `claude_test_*` parser and do NOT synthetically ingest — saved parser edits are non-destructive (they apply only to newly ingested events and never re-parse history), so editing the live parser is safe, and the feed the source is already sending is the authoritative test.
 
 ```python
-import sys, os, time, uuid, json
-_sdl_scripts = os.environ.get("SDL_API_SCRIPTS") or os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sdl-api", "scripts")
-)
-sys.path.insert(0, _sdl_scripts)
-from sdl_client import SDLClient
+# Use the s1-secops-mcp tools (sdl_get_file / sdl_put_file / powerquery_run).
+# 1. Read current version (for optimistic locking + rollback reference).
+cur = sdl_get_file("/logParsers/<name>")           # note cur["version"]
 
-c = SDLClient()
-PARSER_NAME = "claude_test_<descriptive_name>"   # use a claude_test_ prefix so cleanup is easy
-parser_body = open("/path/to/draft.json").read()
-sample = open("/path/to/sample.log").read()
+# 2. Deploy the edit to the SAME path. Bump metadata.version in the file first.
+sdl_put_file("/logParsers/<name>", content=parser_body, expectedVersion=cur["version"])
 
-# 1. Deploy
-c.put_file(f"/logParsers/{PARSER_NAME}", content=parser_body)
+# 3. Wait ~3-5 min for propagation (activation is NOT instant on this tenant).
 
-# 2. Ingest a sample with a unique nonce + host so we can isolate it
-host_tag = f"parser-test-{uuid.uuid4().hex[:8]}"
-hec_ingest(content=sample, parser=PARSER_NAME, server_host=host_tag)  # HEC ingest applies the parser; replaces the removed uploadLogs
-
-# 3. Wait briefly, then query back
-time.sleep(8)  # ingest-to-search latency
-res = c.power_query(
-    query=f"host='{host_tag}' | columns timestamp, message, <expected_fields>",
-    start_time="5m",
-)
-print(json.dumps(res, indent=2))
+# 4. Validate on the live stream, keyed on the NEW metadata.version so you only
+#    see events the new parser touched (SDL never re-parses history):
+#    dataSource.name='<Name>' metadata.version='<new>' | group count=count() by <subtype-field>
+#    then: dataSource.name='<Name>' metadata.version='<new>' | columns <expected_fields> | limit 10
 ```
 
-A successful validation means: (a) `putFile` returned `success`, (b) HEC ingest returned `success`, (c) the `power_query` returned at least as many rows as you ingested, (d) the expected fields are populated and not null.
+A successful validation means: (a) `sdl_put_file` returned `success`, (b) the live query returns rows tagged with the new `metadata.version`, (c) the expected fields are populated and not null. If a subtype is rare and no event has arrived yet, widen the window or wait for one — do NOT fall back to synthetic ingest just to force a row.
 
 If a field is missing, do NOT just retry — diagnose. Common causes: wrong escape level on a regex, a delimiter that didn't match (the format silently fails to apply), `halt: true` on an earlier format catching the line first, or `discardAttributes` dropping the field by mistake.
 
-### Cleanup
+### Version control & rollback (local project folder ONLY)
 
-After validation, decide with the user whether to keep, rename, or delete the parser. For throwaway tests:
+Keep every parser you touch under git in the **local project folder** — the user's Cowork project folder — and nowhere else. Do NOT commit parser definitions into the skill repo, an `ai-siem` checkout, the scratch/outputs dir, or any other location. The local project folder is the single source of truth for rollback.
+
+On every deploy:
+
+1. Mirror the parser to `<project>/parsers/<name>.json` in the local project folder.
+2. On the FIRST touch of an existing live parser, commit the current live definition (from `sdl_get_file`) as the baseline BEFORE your edit — this is the rollback point.
+3. After deploying, `git add` + `git commit` the new version there (commit message = the new `metadata.version` + what changed).
+
+Rollback is then a local operation: `git checkout <prior-commit> -- parsers/<name>.json`, then `sdl_put_file("/logParsers/<name>", content=..., expectedVersion=<current>)` to push the previous content back. Bump `metadata.version` on the rollback too so you can confirm from the live stream which definition is active.
+
+### Fallback: synthetic HEC ingest (ONLY when the source is not live)
+
+Use this only for a brand-new source that is not ingesting yet, or a shape you cannot observe in the live stream. Deploy to the **real** parser name (still bump `metadata.version`), ingest the sample through it, and query back. Do not resurrect the `claude_test_*` throwaway-parser pattern.
 
 ```python
-c.put_file(f"/logParsers/{PARSER_NAME}", delete=True)
+import time, uuid, json
+# Deploy to the real parser path (see Default above), then:
+hec_ingest(logContent=sample, parser="<name>", scope="<accountId>", endpoint="raw")
+time.sleep(8)  # ingest-to-search latency
+# Isolate the test rows with a unique nonce embedded in the sample, or filter on
+# parser='<name>' over a short recent window, then confirm the expected fields.
 ```
-
-For something the user wants to keep, rename to a non-`claude_test_` name (`get_file` → `put_file` new name → delete old).
 
 ## Bundled references
 
@@ -467,7 +475,7 @@ When a question goes deeper than this file, read the relevant reference. Each is
 - `references/parse-directives.md` — Every `{parse=...}` sub-parser (json/dottedJson/escaped/urlEncoded/base64Encoded variants, strict variants for arrays, uri/uriMultivalue/uriAttributes, commaKeyValues, commaSeparated/pipeSeparated, sqlToSignature, syslogPriority, dateTime{Seconds,Ms,Ns}, hoursMinutesSeconds, seconds/milliseconds, bytes/kb/mb/gb, plus per-directive `attrWhitelist`/`attrBlacklist` rules). Read whenever the body of a field is itself structured.
 - `references/builtin-parsers.md` — Catalog of all 16 built-in parsers (`accessLog`, `cloudfront`, `json`, `dottedJson`, `dottedEscapedJson`, `elb-access`, `heroku-logplex`, `keyValue`, `leveldbLog`, `mysqlGeneralQueryLog`, `mysqlSlowQueryLog`, `postgresLog`, `redshift`, `s3_bucket_access`, `spot_instance_data`, `systemLog`) and when to alias vs override. Read first when sizing up a new log source — you may not need to write a parser at all.
 - `references/mappers.md` — `mappings` block (gron-style transformations: `cast`, `copy`, `copy_tree`, `drop`, `drop_tree`, `hash`, `reduce_array`, `rename`, `rename_tree`, `replace`, `zip`), array index syntax, predicate semantics. Read when restructuring events to OCSF or another target schema.
-- `references/testing-workflow.md` — Detailed validation recipe with the `sdl-api` skill, including how to scope queries with a unique host tag, how to interpret common error responses, and how to clean up.
+- `references/testing-workflow.md` — Detailed validation recipe with the `sentinelone-sdl-api` skill, including how to scope queries with a unique host tag, how to interpret common error responses, and how to clean up.
 
 ## Bundled examples
 
@@ -493,7 +501,7 @@ When a user pastes a log and asks you to parse it, you owe them: (1) a parser fi
 
 Parser deployment and validation use the `s1-secops-mcp` MCP tools, which bypass the
 Cowork sandbox proxy entirely. Use `sdl_put_file`, `sdl_get_file`, `sdl_list_files`,
-and `hec_ingest` directly instead of falling back to the `sdl-api`
+and `hec_ingest` directly instead of falling back to the `sentinelone-sdl-api`
 skill scripts. The MCP tools run locally on your machine and make direct HTTPS calls
 to `*.sentinelone.net` without proxy interference.
 
@@ -536,7 +544,7 @@ Any `app_name` with `has_class == 0` and meaningful volume is a candidate for a 
 
 ## Onboarding learnings (tenant-validated 2026-06-13, usea1-purple)
 
-These came out of onboarding Cisco Meraki via the `sdl-solutions` onboarding playbook.
+These came out of onboarding Cisco Meraki via the `sentinelone-sdl-solutions` onboarding playbook.
 
 - **JSON-per-line flatten needs a dotted-prefix capture.** `format: "$unmapped.=json{parse=dottedJson}$"`
   flattens the body into `unmapped.*` queryable fields. A non-prefix capture name like

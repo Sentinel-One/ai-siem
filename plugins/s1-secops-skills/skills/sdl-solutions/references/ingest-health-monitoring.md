@@ -9,15 +9,20 @@ sdl-dashboard, hyperautomation, sdl-api, mgmt-console-api. Full queries + deploy
 ## Model
 
 Per-device z-score vs the device's 7-day hour-of-day seasonal baseline, refreshed daily by an HA
-flow: `z = (current_hour - expected_for_hour_of_day) / device_sigma`. Spike z>=+3, drop z<=-3.
+flow: `z = (current_hour - expected_for_hour_of_day) / sigma_for_hour_of_day`. Spike z>=+3, drop z<=-3.
+(2026-07-29 fix: sigma is computed per (source, device, hour-of-day) over the same 7 hourly samples
+as the expectation and stored in the same baseline row; the earlier pooled per-device sigma mixed all
+24 hours and systematically understated z for diurnal devices. PENDING: validate on demo tenant.)
 
 Device identity coalesce (one key for all source types, falls back to source):
 `device = device.name ? ... : endpoint.name ? ... : agent.uuid ? ... : src_endpoint.hostname ? ... :
 hostname ? ... : dataSource.name`.
 
 Two tenant-level savelookup tables:
-- `ingestHealthBaseline` key `srckey`=`source||device||hour-of-day`: `exp_gib, exp_ev`.
-- `ingestHealthSourceStats` key `devkey`=`source||device`: `sig_gib, sig_ev, mean_*, active_hours, total_*, first/last_seen`.
+- `ingestHealthBaseline` key `srckey`=`source||device||hour-of-day`: `exp_gib, sig_gib, exp_ev, sig_ev`
+  (detections and dashboard read sigma from here).
+- `ingestHealthSourceStats` key `devkey`=`source||device`: `sig_gib, sig_ev` (pooled across all hours;
+  reference and watchdog gating only, NOT used for z-scores), `mean_*, active_hours, total_*, first/last_seen`.
 
 Hour-of-day (24 buckets) keeps the per-device lookup tables small. A device floor (baseline
 `exp_ev >= 5`; stats `active_hours >= 24 and mean_ev >= 5`) drops transient hosts so monitoring
@@ -116,7 +121,8 @@ Mechanics:
   not `by devkey = devkey`) or the rule parser errors "Expected ')'".
 - Work in `group`: `avg, stddev, p10/p90/p95/p99/p999, pct(N,x), median, sum, count, max_by,
   oldest/newest, overall_max/min`; also `format, simpledateformat, number, sqrt`.
-- `replace_all()` absent (use `replace`). `count(field=*)` errors -> `sum((field?1:0))`.
+- `replace_all()` absent (use `replace`). `count(<predicate>)` is valid and counts matching rows
+  (live-verified 2026-07-29); only `count(field=*)` errors -> use `sum((field?1:0))` for presence counts.
 - No transpose on `dataSource.name`/`device` (spaces); use honeycomb / single-series / grouped_data.
 - A second `group` cannot reference a field renamed in the first; after `by source = dataSource.name`
   use `by source`.
@@ -132,8 +138,10 @@ Mechanics:
 - `sca:ingestTime` epoch sec, `timestamp` ns; lag = `(sca:ingestTime - timestamp/1e9)/60`.
 - HA LRQ is async AND the query id is ephemeral. Every flow LRQ (`POST /sdl/v2/api/queries`, both
   savelookups and the watchdog anti-join) must launch -> capture `body.id` + `X-Dataset-Query-Forward-Tag`
-  -> POLL LOOP {poll(GET) -> `stepsCompleted = totalSteps`? break : delay ~5s, cap ~60}. The field is
-  `totalSteps` (NOT `stepsTotal`). A long fixed wait 404s (id expired); reading `body.data` off the launch
+  -> POLL LOOP {poll(GET) -> `stepsCompleted = stepsTotal`? break : delay ~5s, cap ~60}. The done-condition
+  field is `stepsTotal` (live-verified 2026-07-29 by dumping a raw poll body: it carries BOTH `stepsTotal`
+  and `totalSteps`, equal; either works, use `stepsTotal` for consistency with pq.py and the SDL docs).
+  A long fixed wait 404s (id expired); reading `body.data` off the launch
   is always null. Actions that consume a poll result must live INSIDE the loop (loop-scoped outputs are
   not visible after the loop). See the hyperautomation skill's "Running an SDL LRQ from an HA flow".
 - Source scoping is via the `ingestHealthExclusions.csv` lookup (see "Source exclusions" above), not

@@ -14,7 +14,7 @@
   attributes: {
     // Required pipeline defaults — present on every parser.
     "metadata.version":    "1.0.0",
-    "dataSource.category": "network",
+    "dataSource.category": "security",
     "dataSource.name":     "Juniper SRX",
     "dataSource.vendor":   "Juniper",
     // Vendor/product metadata.

@@ -390,9 +390,11 @@ def slide_execsummary(prs, d):
                   f"{n_slices}", "Timeline slices",
                   accent=AMBER)
     if p_key and principal_count > 0:
+        # "(sampled)" because the collector caps principal rows upstream
+        # (| limit 200 / 25), so this is not a distinct-entity count.
         stat_card(s, left0 + 3 * (card_w + gap), top, card_w, card_h,
                   f"{principal_count}",
-                  f"Distinct {_principal_label(p_key)}",
+                  f"{_principal_label(p_key).capitalize()} (sampled)",
                   accent=TEAL)
     else:
         rank = summary.get("rank_24h")

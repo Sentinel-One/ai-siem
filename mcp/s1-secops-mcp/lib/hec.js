@@ -56,6 +56,12 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
  *                              HEC interprets those, they are not stored as custom fields. Use `parser` (not a field) to set sourcetype. (S-26.1 HEC docs, p.4708.)
  * @param {string} opts.scope       REQUIRED. accountId or "accountId:siteId" -> S1-Scope header. HEC returns 400 "Missing S1-Scope header" without it.
  * @param {('raw'|'event')} [opts.endpoint='raw']
+ *                              For 'event', logContent must be newline-separated HEC JSON envelopes:
+ *                              {"time": <epoch seconds>, "event": <string|object>, "fields": {...}}.
+ *                              The body is passed through verbatim and Content-Type is application/json,
+ *                              so per-event "time" BACKDATES the event (live-verified 2026-07-29; with the
+ *                              old text/plain Content-Type the envelope was indexed as opaque text at
+ *                              receive time and "time" was ignored).
  * @param {boolean} [opts.compress=true]  gzip the body (Content-Encoding: gzip)
  * @param {boolean} [opts.isParsed=false] /event only: set ?isParsed=true to index already-structured JSON fields without an SDL parser.
  * @returns {Promise<{status:number, endpoint:string, url:string, body:any}>}
@@ -89,7 +95,10 @@ export async function hecIngest(logContent, { parser, fields = {}, scope, endpoi
 
   const headers = {
     Authorization: `Bearer ${hecToken()}`,
-    'Content-Type': 'text/plain',
+    // /event takes HEC JSON envelopes and must be application/json, or the
+    // envelope (including per-event "time") is treated as opaque text and the
+    // event is indexed at receive time. /raw is plain text. Fixed 2026-07-29.
+    'Content-Type': endpoint === 'event' ? 'application/json' : 'text/plain',
   };
   if (compress) headers['Content-Encoding'] = 'gzip';
   headers['S1-Scope'] = scope;
@@ -108,9 +117,14 @@ export async function hecIngest(logContent, { parser, fields = {}, scope, endpoi
       continue;
     }
 
-    if ((res.status === 429 || res.status >= 500) && attempt < 3) {
-      const retryAfter = res.headers.get('Retry-After');
-      await sleep(retryAfter ? parseInt(retryAfter, 10) * 1000 : delay);
+    // 429 means the request was rejected before processing: safe to retry.
+    // 5xx after a raw-log POST is ambiguous (the events may already be
+    // committed) and HEC has no idempotency key, so retrying risks duplicate
+    // events inflating SDL counts. Fixed 2026-07-29: no automatic 5xx retry.
+    if (res.status === 429 && attempt < 3) {
+      // Retry-After may be an HTTP date; Number() of that is NaN -> fall back to delay.
+      const ra = Number(res.headers.get('Retry-After'));
+      await sleep(Number.isFinite(ra) && ra >= 0 ? Math.min(ra * 1000, 30000) : delay);
       delay = Math.min(delay * 2, 8000);
       continue;
     }

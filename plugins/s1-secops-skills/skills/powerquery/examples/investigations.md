@@ -50,7 +50,7 @@ All queries assume the EDR or XDR data view unless noted. They're written to be 
 ```
 event.type = 'Process Creation'
 src.process.name in ('powershell.exe', 'pwsh.exe')
-src.process.parent.name not in ('explorer.exe', 'svchost.exe', 'services.exe')
+!(src.process.parent.name in ('explorer.exe', 'svchost.exe', 'services.exe'))
 | group
     last_seen = newest(timestamp),
     host      = any(endpoint.name),
@@ -99,7 +99,7 @@ src.process.name in (
   'rundll32.exe', 'wmic.exe', 'cscript.exe', 'wscript.exe',
   'installutil.exe', 'msbuild.exe', 'msiexec.exe'
 )
-src.process.cmdline contains_any ('http://', 'https://', '\\\\', '-encodedcommand', 'frombase64string')
+src.process.cmdline contains ('http://', 'https://', '\\\\', '-encodedcommand', 'frombase64string')
 | group
     last_seen = newest(timestamp),
     host      = any(endpoint.name),
@@ -111,7 +111,7 @@ src.process.cmdline contains_any ('http://', 'https://', '\\\\', '-encodedcomman
 | limit 100
 ```
 
-If `contains_any` isn't available on this tenant, expand to a chain of `or`:
+`contains_any` does not exist in PowerQuery and returns "Unknown function" (live-verified 2026-07-29 via LRQ v2). Multi-value `contains ('a', 'b', ...)` as used above is the correct form. An explicit `or` chain is equivalent if you prefer it spelled out:
 
 ```
 ... and (
@@ -154,7 +154,7 @@ src.process.cmdline matches '(?i)\\s-(e|en|enc|enco|encod|encode|encoded|encoded
 event.type = 'Process Creation'
 src.process.parent.name = 'services.exe'
 src.process.name in ('cmd.exe', 'powershell.exe', 'pwsh.exe')
-src.process.cmdline contains '\\\\\\\\'
+src.process.cmdline contains '\\\\'
 | group
     last_seen = newest(timestamp),
     host      = any(endpoint.name),
@@ -164,7 +164,7 @@ src.process.cmdline contains '\\\\\\\\'
 | limit 50
 ```
 
-The four backslashes match a literal `\\` in the command line (UNC prefix); see pitfalls.md for why this much escaping.
+The four backslashes match a literal `\\` in the command line (UNC prefix); see pitfalls.md for why this much escaping. Matching behavior could not be validated live (2026-07-29: no backslash-bearing command lines in the test window); four backslashes is consistent with the LOLBin fallback above and with this prose.
 
 ### Successful network logons by user (top sources)
 
@@ -349,24 +349,26 @@ endpoint.name = 'EC2AMAZ-4158GRS'
 | limit 100
 ```
 
+**Note**, `net.bytes.tx` is a tenant-specific placeholder: it is not documented in `references/fields-and-schema.md` and silently returns null if the field does not exist on this tenant. Confirm the byte-counter field via schema discovery before trusting the `bytes` column.
 **Tune** — replace `endpoint.name = '…'` with a broader filter for tenant-wide; that may need a longer window or tighter port filter.
 **Pivot**, the heavy-hitter destination IPs go straight into the configured threat-intel MCP for an IP reputation lookup (in the default bundle that's `mcp__virustotal__get_ip_report`; substitute the equivalent tool if you've connected a different provider).
 
-### Beaconing detection (regular intervals)
+### Persistent traffic to the same destination
 
-**Use it when** suspecting a C2 client. Buckets connections per 10-minute window per host+destination, looks for hosts with a high ratio of "active windows."
+**Use it when** suspecting a C2 client. Buckets connections per 10-minute window per host+destination and computes the fraction of the query span in which the pair was active. This measures persistence (traffic in most windows), not interval regularity.
 
 ```
 event.type = 'IP Connect'
 event.network.direction = 'OUTGOING'
 | filter !net_rfc1918(dst.ip.address)
 | group windows = estimate_distinct(timebucket('10m')) by endpoint.name, dst.ip.address, dst.port.number
-| filter windows >= 6
-| sort -windows
+| let active_ratio = windows / (queryspan('minutes') / 10)
+| filter active_ratio >= 0.5
+| sort -active_ratio
 | limit 100
 ```
 
-A high `windows` value over a multi-hour query span suggests periodic / scheduled outbound traffic. Tighten `timebucket` (e.g., `'5m'`) for shorter beacon intervals.
+`active_ratio` near 1.0 means the host talked to the destination in nearly every 10-minute window of the query span, whatever that span is; values slightly above 1.0 are normal when the span straddles bucket boundaries. Tighten `timebucket` (e.g., `'5m'`) for shorter beacon intervals and keep the divisor in sync (`queryspan('minutes') / 5`). A/B-validated read-only 2026-07-29 against EDR IP Connect data over 1h: the query parses via LRQ v2 and returns plausible ratios (always-on pairs showed 7 of 6 nominal buckets = 1.17).
 
 ---
 

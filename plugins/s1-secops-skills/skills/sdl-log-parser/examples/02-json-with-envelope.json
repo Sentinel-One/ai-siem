@@ -23,7 +23,7 @@
   attributes: {
     // Required pipeline defaults.
     "metadata.version":    "1.0.0",
-    "dataSource.category": "application",
+    "dataSource.category": "security",
     "dataSource.name":     "MyService",
     "dataSource.vendor":   "Internal",
     dataset: "my_service"
@@ -37,6 +37,7 @@
     // NOTE: Capturing an ISO8601 string into the reserved `timestamp` field
     // silently drops the event on this tenant. Capture as `ts_raw`; the ingest
     // pipeline's own receive-time is fine for near-real-time forwarding.
+    // UPDATE 2026-07-29 (live re-test, deployed parser A/B): the event is NOT dropped on the current platform; a non-epoch capture into reserved `timestamp` is simply IGNORED and receive time is used. `ts_raw` remains the right practice: it keeps the original stamp queryable instead of relying on undefined behavior.
     {
       id: "json-envelope",
       format: "$ts_raw=iso$ $host$ app:$app$ $unmapped.=json{parse=dottedJson}$",

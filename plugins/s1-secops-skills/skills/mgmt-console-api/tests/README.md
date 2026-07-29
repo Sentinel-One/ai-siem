@@ -1,4 +1,4 @@
-# API test coverage — mgmt-console-api
+# API test coverage — sentinelone-mgmt-console-api
 
 This folder holds the **reversible lifecycle tests** that exercise the
 mutating endpoints exposed by the skill against a live tenant. They

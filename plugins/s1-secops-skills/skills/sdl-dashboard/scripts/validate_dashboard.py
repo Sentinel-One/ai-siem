@@ -39,16 +39,16 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 def _import_sdl_client():
-    """Locate sdl_client.py from the sibling sdl-api skill.
+    """Locate sdl_client.py from the sibling sentinelone-sdl-api skill.
 
-    Walks up from this script's location to find a sdl-api/scripts
+    Walks up from this script's location to find a sentinelone-sdl-api/scripts
     directory. Falls back to PYTHONPATH if the script is run outside the repo.
     """
     here = Path(__file__).resolve()
     candidates: List[Path] = []
     for ancestor in [here.parent, *here.parents]:
-        candidates.append(ancestor / "sdl-api" / "scripts")
-        candidates.append(ancestor.parent / "sdl-api" / "scripts")
+        candidates.append(ancestor / "sentinelone-sdl-api" / "scripts")
+        candidates.append(ancestor.parent / "sentinelone-sdl-api" / "scripts")
     for c in candidates:
         if (c / "sdl_client.py").exists():
             sys.path.insert(0, str(c))
@@ -58,8 +58,8 @@ def _import_sdl_client():
         return SDLClient
     except Exception as e:
         print(
-            "ERROR: could not import sdl_client. Add sdl-api/scripts "
-            "to PYTHONPATH or run this script from inside the ai-siem repo.",
+            "ERROR: could not import sdl_client. Add sentinelone-sdl-api/scripts "
+            "to PYTHONPATH or run this script from inside the claude-skills repo.",
             file=sys.stderr,
         )
         print(f"underlying error: {e}", file=sys.stderr)

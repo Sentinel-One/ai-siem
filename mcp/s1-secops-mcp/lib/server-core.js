@@ -32,8 +32,7 @@ function loadSocContext() {
   const candidates = [
     process.env.S1_CLAUDE_MD_PATH,
     process.cwd() ? join(process.cwd(), 'CLAUDE.md') : null,
-    join(__dir, '..', '..', '..', 'plugins', 's1-secops-skills', 'CLAUDE.md'), // ai-siem layout
-    join(__dir, '..', '..', 'CLAUDE.md'),    // legacy monorepo layout
+    join(__dir, '..', '..', 'CLAUDE.md'),    // claude-skills/CLAUDE.md (git clone)
     join(__dir, '..', '..', '..', 'CLAUDE.md'),
     join(__dir, '..', 'CLAUDE.md'),
   ].filter(Boolean);
@@ -95,7 +94,7 @@ const PROMPTS = [
 
 export const SERVER_INFO = {
   name: 's1-secops-mcp-server',
-  version: '1.2.2',
+  version: '1.2.3',
 };
 
 export const PROTOCOL_VERSION = '2024-11-05';

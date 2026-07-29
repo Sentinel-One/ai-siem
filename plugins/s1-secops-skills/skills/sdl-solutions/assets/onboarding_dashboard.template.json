@@ -9,7 +9,8 @@
       "graphs": [
         {
           "graphStyle": "markdown",
-          "markdown": "## {{DATASOURCE_NAME}} Overview\nNormalised and asset-enriched view of the **{{DATASOURCE_NAME}}** source (`dataSource.name='{{DATASOURCE_NAME}}'`). Default window: last 24h. Use the time picker to widen.",
+          "title": "{{DATASOURCE_NAME}} Overview",
+          "markdown": "Normalised and asset-enriched view of the **{{DATASOURCE_NAME}}** source (`dataSource.name='{{DATASOURCE_NAME}}'`). Default window: last 24h. Use the time picker to widen.",
           "layout": { "w": 60, "h": 4, "x": 0, "y": 0 }
         },
         {

@@ -49,7 +49,13 @@ function safeUrl(path) {
   return u;
 }
 
-async function doFetch(url, opts, retries = 3) {
+async function doFetch(url, opts, retries = 3, { allowRetry = null } = {}) {
+  // Status-based retry is restricted to idempotent methods (GET/HEAD) unless the
+  // caller opts in: a 5xx received after the server committed a write would
+  // otherwise be re-POSTed (duplicate rules/notes/ingestion). Fixed 2026-07-29,
+  // mirroring the same fix in scripts/s1_client.py.
+  const method = (opts.method || 'GET').toUpperCase();
+  const methodRetryable = allowRetry !== null ? allowRetry : (method === 'GET' || method === 'HEAD');
   let delay = 500;
   for (let attempt = 0; attempt <= retries; attempt++) {
     let res;
@@ -62,10 +68,11 @@ async function doFetch(url, opts, retries = 3) {
       continue;
     }
 
-    // Retry on 429 / 5xx
-    if ((res.status === 429 || res.status >= 500) && attempt < retries) {
-      const retryAfter = res.headers.get('Retry-After');
-      const wait = retryAfter ? parseInt(retryAfter, 10) * 1000 : delay;
+    // Retry on 429 / 5xx (idempotent methods, or explicit opt-in, only)
+    if ((res.status === 429 || res.status >= 500) && attempt < retries && methodRetryable) {
+      // Retry-After may be an HTTP date; Number() of that is NaN -> fall back to delay.
+      const ra = Number(res.headers.get('Retry-After'));
+      const wait = Number.isFinite(ra) && ra >= 0 ? Math.min(ra * 1000, 30000) : delay;
       await sleep(wait);
       delay = Math.min(delay * 2, 8000);
       continue;
@@ -104,8 +111,10 @@ export async function apiGet(path, params = {}) {
   });
 }
 
-/** POST /web/api/v2.1/<path> */
-export async function apiPost(path, body = {}) {
+/** POST /web/api/v2.1/<path>.
+ *  Pass { allowRetry: true } ONLY for read-only POSTs (GraphQL queries, Purple AI
+ *  launches, validate endpoints); mutating POSTs must not auto-retry on 5xx. */
+export async function apiPost(path, body = {}, { allowRetry = false } = {}) {
   return doFetch(safeUrl(path).toString(), {
     method: 'POST',
     headers: {
@@ -113,7 +122,7 @@ export async function apiPost(path, body = {}) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
-  });
+  }, 3, { allowRetry });
 }
 
 /** PUT /web/api/v2.1/<path> */
@@ -157,17 +166,33 @@ export async function apiPatch(path, body = {}) {
 // Must echo X-Dataset-Query-Forward-Tag on every subsequent GET/DELETE.
 // Poll every 1s; query expires 30s after last poll. Always cancel after use.
 
+/** Resolve the LRQ time window. Each bound defaults INDEPENDENTLY, per the tool schema.
+ *  Bug fixed 2026-07-29: the old `if (!startTime || !endTime)` overwrote BOTH bounds
+ *  whenever either was missing, so a call with only startTime silently ran over the
+ *  last `hours` instead of the requested window (plausible-but-wrong results).
+ *  Demonstrated live: startTime-only for a 7.4-day window returned 12,880 events
+ *  (== the 24h control, 12,875) vs 73,099 for the true pinned window. */
+export function resolveLrqWindow({ startTime, endTime, hours = 24 } = {}) {
+  const iso = (d) => d.toISOString().replace(/\.\d+Z$/, 'Z');
+  if (!endTime) endTime = iso(new Date());
+  if (!startTime) startTime = iso(new Date(new Date(endTime) - hours * 3600 * 1000));
+  return { startTime, endTime };
+}
+
+/** matchCount lives inside the data block on current engines; top-level is a legacy
+ *  fallback. Fixed 2026-07-29: reading only result.matchCount returned null on every
+ *  live call, breaking the 0-rows-vs-0-matches triage. */
+export function pickMatchCount(result) {
+  const d = (result && result.data) || {};
+  return d.matchCount ?? (result && result.matchCount) ?? null;
+}
+
 /** Run a full LRQ PowerQuery lifecycle. Returns { columns, rows, rowCount, matchCount }. */
 export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 5000 } = {}) {
   const b = base();
   const tok = jwt();
 
-  // Resolve time range
-  if (!startTime || !endTime) {
-    const now = new Date();
-    endTime = now.toISOString().replace(/\.\d+Z$/, 'Z');
-    startTime = new Date(now - hours * 3600 * 1000).toISOString().replace(/\.\d+Z$/, 'Z');
-  }
+  ({ startTime, endTime } = resolveLrqWindow({ startTime, endTime, hours }));
 
   const launchUrl = `${b}/sdl/v2/api/queries`;
   const launchBody = {
@@ -266,7 +291,7 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
     rows,
     rowCount: rows.length,
     totalRows: rawRows.length,
-    matchCount: result.matchCount ?? null,
+    matchCount: pickMatchCount(result),
     queryId,
   };
 }
@@ -382,7 +407,7 @@ export async function purpleAiQuery(userInput, { viewSelector = 'EDR', hours = 2
     `,
   };
 
-  const data = await apiPost('/web/api/v2.1/graphql', gqlBody);
+  const data = await apiPost('/web/api/v2.1/graphql', gqlBody, { allowRetry: true }); // read-only launch
 
   if (data.errors?.length) {
     throw new Error(`Purple AI GraphQL error: ${data.errors[0].message}`);
@@ -465,7 +490,7 @@ export async function purpleAlertSummary(alertOcsfJson, { userDetails = null } =
     `,
   };
 
-  const data = await apiPost('/web/api/v2.1/graphql', gqlBody);
+  const data = await apiPost('/web/api/v2.1/graphql', gqlBody, { allowRetry: true }); // read-only summary
   if (data.errors?.length) throw new Error(`Purple AI AlertSummary error: ${data.errors[0].message}`);
 
   const pas = data?.data?.purpleAlertSummary || {};
@@ -600,10 +625,12 @@ export async function purpleAiInvestigate(alertId, { scopeId, scopeType = 'ACCOU
 // ─── UAM GraphQL ─────────────────────────────────────────────────────────────
 
 /** Execute a raw UAM GraphQL operation. */
-export async function uamGraphql(query, variables = {}, operationName) {
+export async function uamGraphql(query, variables = {}, operationName, { readOnly = false } = {}) {
   const body = { query, variables };
   if (operationName) body.operationName = operationName;
-  const data = await apiPost('/web/api/v2.1/unifiedalerts/graphql', body);
+  // readOnly=true (list/get queries) re-enables 429/5xx retry, which is safe
+  // for GraphQL reads; mutations (addNote, setStatus) must not auto-retry.
+  const data = await apiPost('/web/api/v2.1/unifiedalerts/graphql', body, { allowRetry: readOnly });
   if (data.errors?.length) {
     throw new Error(`UAM GraphQL error: ${data.errors[0].message}`);
   }
@@ -705,7 +732,7 @@ export async function uamListAlerts({
       }
     }
   `;
-  const data = await uamGraphql(query, variables);
+  const data = await uamGraphql(query, variables, undefined, { readOnly: true });
   const edges = data?.alerts?.edges || [];
   return {
     alerts: edges.map(e => e.node),
@@ -762,8 +789,15 @@ export async function uamAddNote(alertId, noteText) {
   `;
   const data = await uamGraphql(query, { alertId, text: noteText });
   const notes = data?.addAlertNote?.data || [];
-  // Return the most recently added note (last in the list)
-  return notes.length > 0 ? notes[notes.length - 1] : null;
+  // Fixed 2026-07-29: do not assume list ordering (newest-last was unverified).
+  // Prefer the note whose text matches what we just posted; tiebreak/fallback on
+  // the newest createdAt.
+  const pool = notes.filter(n => n?.text === noteText);
+  const candidates = pool.length ? pool : notes;
+  return candidates.reduce((best, n) => {
+    if (!best) return n;
+    return new Date(n?.createdAt || 0) >= new Date(best?.createdAt || 0) ? n : best;
+  }, null);
 }
 
 /**

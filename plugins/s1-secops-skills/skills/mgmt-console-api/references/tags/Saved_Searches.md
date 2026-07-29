@@ -19,7 +19,7 @@ Responses: 200 List of saved searches retrieved successfully., 401 Unauthorized.
 **Create or update saved searches**
 `operationId`: `_sdl_v2_api_saved-searches_put`
 
-Create or update multiple saved searches in a single request. This endpoint allows you to save up to 100 searches at once. When a search with the same name already exists in the target scope, the `duplicateStrategy` parameter controls the behavior: NEW_ONLY (default) skips duplicates, REPLACE overwrites existing searches, or APPEND_SUFFIX creates new searches with numeric suffixes (e.g., 'My Search (2)'). You can change the active scope using the `S1-Scope` header to manage SHARED searches in different scopes.
+Create or update multiple saved searches in a single request. This endpoint allows you to save up to 100 searches at once. When a search with the same name already exists in the target scope, the `duplicateStrategy` parameter controls the behaviour: NEW_ONLY (default) skips duplicates, REPLACE overwrites existing searches, or APPEND_SUFFIX creates new searches with numeric suffixes (e.g., 'My Search (2)'). You can change the active scope using the `S1-Scope` header to manage SHARED searches in different scopes.
 
 Note: A `teamToken` query parameter will be automatically added to each search URL if it is not already present. This token ensures the searches are scoped correctly.
 

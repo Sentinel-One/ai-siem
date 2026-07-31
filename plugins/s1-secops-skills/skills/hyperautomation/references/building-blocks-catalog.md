@@ -607,26 +607,36 @@ live import API on 2026-06-11:
 
 ---
 
-## A15. Snippet
+## A15. Snippet (call a reusable sub-workflow)
 
-**Purpose**: invoke a saved sub-workflow as a single action. Drives composability, e.g. one
-"Variables From Column GSheet" snippet is reused across 75+ workflows.
+**Purpose**: invoke a reusable sub-workflow as a single action, so shared logic lives in one place
+instead of being duplicated across flows. Full authoring + calling + lifecycle: `references/snippets.md`.
 
-**Real shape**:
+**Calling node is `snippet_20`** (not `snippet`). Static call, pinned to a version:
 ```json
 {
-  "type": "snippet",
-  "tag": "core_action",
-  "data": { "name": "Variables From Column GSheet", "action_type": "snippet" },
-  "snippet_workflow_id": null,
-  "snippet_version_id": null
+  "type": "snippet_20", "tag": "core_action",
+  "snippet_workflow_id": "<snippet id>", "snippet_version_id": "<version>",
+  "data": {
+    "name": "Isolate Device", "action_type": "snippet_20",
+    "inputs": "{\"Singularity-ID\":\"{{singularity-response-trigger.data.id}}\"}",
+    "use_latest_snippet_version": false, "is_dynamic": false,
+    "dynamic_snippet_name": "Isolate Device"
+  }
 }
 ```
 
-**Important caveat from the corpus**: when a workflow is exported, **`snippet_workflow_id` and
-`snippet_version_id` come back null** (0 of 194 snippets in the corpus carried IDs). On import,
-the user re-binds the snippet by name in the console UI. So when you generate a workflow that
-uses a snippet, make the `name` exactly match the snippet's name on the target tenant.
+- `data.inputs` is a JSON **string** mapping the snippet's input params to parent references.
+- `use_latest_snippet_version: true` auto-tracks the snippet's newest published version.
+- **Dynamic dispatch:** set `is_dynamic: true` and `dynamic_snippet_name` to a mustache expression
+  (e.g. `"{{response-decision.data}}"`) to route to whichever snippet that name resolves to at
+  runtime. All candidate snippets must share one input contract. See `references/snippets.md` and
+  the autonomous-SOC pattern in `references/autonomous-soc-template.md`.
+- Bindings survive export as `snippet_workflow_id` / `snippet_version_id`; resolve them with
+  `GET /workflow-actions/snippets-versions/{workflowId}/{versionId}?query={}`.
+
+**Authoring a snippet** uses `snippet_trigger` (inputs) + `snippet_output` (returns) — see
+`references/snippets.md` for the node shapes and the import rules.
 
 ---
 
@@ -1094,11 +1104,15 @@ single-tenant flows, broken on transfer. Prefer:
 array**, not a raw array. Verified: all 1 in-operator usage in the corpus uses
 `"[\"HIGH\",\"CRITICAL\"]"` style. Don't write `["HIGH","CRITICAL"]` directly.
 
-## E5. Snippet IDs missing on import
+## E5. Snippet authoring/calling traps (import 422 with no field named)
 
-When you import a workflow that uses snippets, the `snippet_workflow_id` and
-`snippet_version_id` are null. The user must re-bind in the console. **Match the snippet's
-`name` to the snippet's name on the target tenant** so re-binding is one click.
+- Call a snippet with a **`snippet_20`** node bound via `snippet_workflow_id` + `snippet_version_id`
+  (these persist through export). Do NOT use type `"snippet"` and do NOT embed the snippet's inner
+  actions into the parent — embedding orphans a node.
+- Authoring a snippet: `export_id 0` must be a real body action, not the `snippet_trigger`;
+  `snippet_output` values must be non-empty (a bare `{{slug.}}` imports but is invalid at runtime,
+  use a literal or a real `{{slug.field}}`); the workflow name must not contain parentheses `()`.
+  Full detail: `references/snippets.md`.
 
 ## E6. Forgetting `parent_action` on inner loop steps
 

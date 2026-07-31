@@ -9,7 +9,7 @@ description: Use whenever the user wants to query, update, create, or act on a S
 Wraps the SentinelOne Management Console API (Swagger 2.0, spec version 2.1, 781 operations) with a pre-built Python client, a compact endpoint index, and per-tag reference files.
 
 > **Sandbox proxy blocked?** If calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally on your machine via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). The MCP server exposes all the tools in this skill — `s1_api_get`, `s1_api_post`, `purple_ai_alert_summary`, `uam_list_alerts`, `uam_get_alert`, `uam_add_note`, `uam_set_status` — with schemas validated against the live API. For natural-language Purple AI queries and AI investigations, use the Purple MCP (`mcp__purple-mcp__purple_ai`) directly — those operations require a browser-session teamToken that API tokens never obtain.
-
+>
 > **Load this skill BEFORE any console/UAM *write*, not just reads.** Add-note, set-analyst-verdict, set-status, assign, and IOC-create all run through the UAM `alertTriggerActions` mutation with a specific action-id + `OrFilterSelectionInput` shape (see `references/UNIFIED_ALERTS.md`): action ids are `S1/alert/addNote` / `analystVerdictUpdate` / `statusUpdate`, and the alert is targeted by `filter:{or:[{and:[{fieldId:"id",stringEqual:{value:<id>}}]}]}` — the alert id is the FILTER, never the action `id`. Hand-rolling this GraphQL from live schema introspection is the fast path to a wrong action-id/filter and a misleading empty result. Also: `alertTriggerActions` returns a success-shaped `ActionsTriggered` even when nothing changed — always re-query (`uam_get_alert`) to confirm the write landed.
 
 ## Setup — configure credentials first
@@ -54,6 +54,7 @@ When the user asks for something involving the S1 API, follow this pattern:
 The S1 API uses **GET for every read operation** — listing, counting, and exporting. POST is only for actions and mutations. Violating this produces HTTP 404, not a permissions error, because the path simply does not exist.
 
 **Read (always GET):**
+
 | Intent | Correct endpoint |
 |---|---|
 | List agents | `GET /web/api/v2.1/agents` |
@@ -65,6 +66,7 @@ The S1 API uses **GET for every read operation** — listing, counting, and expo
 | Get system info | `GET /web/api/v2.1/system/info` |
 
 **Write / action (POST/PUT/DELETE):**
+
 - Agent actions (isolate, reconnect, uninstall, scan): `POST /web/api/v2.1/agents/actions/<action>`
 - Threat actions (mitigate, verdict, fetch-file): `POST /web/api/v2.1/threats/<action>`
 - Mutations (notes, exclusions, IOCs, custom rules): POST/PUT/DELETE on the relevant resource path
@@ -161,6 +163,7 @@ See the **PowerQuery Scheduled Detections** subsection below for the full schedu
 ```
 
 Events rule gotchas confirmed against live API:
+
 - `"activeResponse"` in the body returns HTTP 400 "Unknown field" — omit it.
 - `queryLang` defaults to `"1.0"` for events rules; do not set it explicitly (unlike scheduled rules which require `"2.0"`).
 - `treatAsThreat="UNDEFINED"` is accepted on input but stored as `null` in the response.
@@ -199,7 +202,7 @@ The body field for filter criteria is `filterFields`, not `filters`:
 
 **If the POST fails with a feature-not-enabled / not-licensed / unauthorized response on a tenant where the schema is otherwise correct, stop and tell the user to enable the Scheduled Detections feature on the tenant before retrying.** Do not silently downgrade the rule body to S1QL or re-attempt with `queryType: "events"`. The console path is typically *Settings → Account → Detection / SDL Add-Ons → Scheduled Detections* but varies by platform version, so phrase the ask in terms of capability ("please enable Scheduled Detections on this account") rather than the exact click path.
 
-**CREATE — POST /web/api/v2.1/cloud-detection/rules**
+#### CREATE: POST /web/api/v2.1/cloud-detection/rules
 
 All five `data` fields are required. `queryLang: "2.0"` is mandatory; omitting it returns HTTP 400 "query lang must be 2.0". `filter` accepts `accountIds` or `siteIds` (account-level rules cover all sites under that account):
 
@@ -232,7 +235,7 @@ All five `data` fields are required. `queryLang: "2.0"` is mandatory; omitting i
 
 **GET requires `isLegacy=false`** — without this query parameter, the list endpoint returns 0 results for scheduled rules even though they exist and are visible in the console UI. Always include it. **When listing all rules regardless of type (e.g. searching by name), always pass `isLegacy=false` — without it you will only see events-type rules and silently miss all scheduled rules:**
 
-```
+```text
 GET /web/api/v2.1/cloud-detection/rules?isLegacy=false&limit=100
 GET /web/api/v2.1/cloud-detection/rules?siteIds=<id>&queryType=scheduled&isLegacy=false
 GET /web/api/v2.1/cloud-detection/rules?ids=<ruleId>&siteIds=<id>&isLegacy=false
@@ -260,7 +263,7 @@ Note: `name__contains` filter silently returns 0 for scheduled rules when `isLeg
 
 **ENABLE/DISABLE** — dedicated PUT endpoints. The filter takes `ids` plus an optional scope (`siteIds` or `accountIds`); `ids` alone works because rule IDs are globally unique. Do NOT include `isLegacy` in the body — it returns `400 filter: isLegacy: Unknown field` (`isLegacy` is a GET-listing param only). Tenant-validated 2026-06-16: `{"filter": {"ids": [...]}}` returned `{"affected": N}`.
 
-```
+```text
 PUT /web/api/v2.1/cloud-detection/rules/enable   body: {"filter": {"ids": ["<ruleId>"], "siteIds": ["<siteId>"]}}
 PUT /web/api/v2.1/cloud-detection/rules/disable  body: {"filter": {"ids": ["<ruleId>"], "siteIds": ["<siteId>"]}}
 ```
@@ -295,7 +298,7 @@ If you call this immediately after creating a note you will get "Alert Note with
 
 When starting on an unfamiliar tenant, run the non-destructive smoke test once:
 
-```
+```text
 python scripts/smoke_test_queries.py --workers 12
 ```
 
@@ -459,6 +462,7 @@ query purpleLaunchQuery($request: PurpleLaunchQueryRequest!) {
 ```
 
 Variables (`$request`):
+
 ```jsonc
 {
   "request": {
@@ -492,6 +496,7 @@ Variables (`$request`):
 ```
 
 `PurpleUserDetailsRequest` schema (confirmed via live validation error — does NOT have `siteIds` or `groupIds`):
+
 ```jsonc
 {
   "accountId": "<19-digit ID>",  // ID! required
@@ -505,7 +510,8 @@ Variables (`$request`):
 ```
 
 Full end-to-end flow for one user question (observed in browser session):
-```
+
+```text
 1. purpleLaunchQuery  (NATURAL_LANGUAGE, /web/api/v2.1/graphql)
    → result.powerQuery.query  (the generated PQ string)
 
@@ -534,9 +540,11 @@ Full end-to-end flow for one user question (observed in browser session):
 ```
 
 Starter-prompt flow (e.g. "Find install logs" on the homepage):
-```
+
+```text
 createNotebook → purpleLaunchQuery (NATURAL_LANGUAGE) → addPurpleInputOutputMessage
 ```
+
 Note: starter prompts that return a documentation-style answer skip the `launchQuery`/`pingQuery` stage entirely.
 
 **API-token users: use the Purple MCP.** The `purple_ai_query` MCP tool has been removed — `purpleLaunchQuery NATURAL_LANGUAGE` is confirmed non-functional for service-account API tokens (requires browser-session teamToken; returns AsimovError from LaunchQueryManager). Use `mcp__purple-mcp__purple_ai` for NL queries and `mcp__purple-mcp__powerquery` to execute the returned PQ.
@@ -573,7 +581,7 @@ Verdict enum: `UNKNOWN`, `TRUE_POSITIVE`, `FALSE_POSITIVE`.
 
 > **`purple_query()` and `scripts/call_purple.py` are non-functional for API tokens.** Both call `purpleLaunchQuery NATURAL_LANGUAGE`, which requires a browser-session teamToken that service accounts never have (confirmed SERVICE_ERROR 2026-05-03). Use the Purple MCP instead:
 >
-> ```
+> ```text
 > mcp__purple-mcp__purple_ai   # natural-language query → PQ → result
 > mcp__purple-mcp__powerquery  # run a PQ string directly
 > ```
@@ -681,7 +689,7 @@ For ranges past 2-3 days with `event.type=*`-scale aggregates, slice the window 
 
 `timebucket(...)` works in PQ when used as a NAMED grouping output inside `group ... by`:
 
-```
+```text
 | group n = count() by day = timebucket('1d'), action     ← works
 ```
 
@@ -741,6 +749,7 @@ If you ever have to read a raw LRQ response (e.g. debugging), know:
 ## Unified Alert Management (UAM) — PRIMARY alert API
 
 > **Alert API precedence — important:**
+>
 > 1. **PRIMARY — GraphQL UAM** at `POST /web/api/v2.1/unifiedalerts/graphql`. This is the modern, multi-source alerts inbox (EDR, XDR, Identity, STAR, Cloud, NGFW, and ingested third-party telemetry). IDs are UUIDs (e.g. `019db24c-8b6d-7451-8697-b1b2e1a270f1`). Use this for any alert listing, filtering, triage, note, status, verdict, assignment, group-by, facet, or CSV-export task.
 > 2. **SECONDARY — REST** at `GET /web/api/v2.1/cloud-detection/alerts`. Older surface, scoped to cloud-detection events (STAR rule hits, EDR overflow). IDs are int64 (e.g. `2055164731151448891`). Use only when you specifically need the denormalized REST payload (`agentDetectionInfo`, `sourceProcess`, `targetProcess`, `ruleInfo`) or when UAM is unavailable. These are **parallel surfaces, not redundant** — the same alert will have different IDs in each.
 > 3. **No `createAlert`.** S1 does not expose a mutation for creating alerts directly. Alerts are server-side byproducts of detection engines — create a STAR/Custom Detection rule (`POST /web/api/v2.1/cloud-detection/rules`), upload an IOC that matches live telemetry (`POST /web/api/v2.1/threat-intelligence/iocs`), or generate synthetic endpoint activity. `addAlertNote` is the closest reversible content-creation path against an existing alert.
@@ -780,7 +789,7 @@ uam.set_alert_status(
 
 CLI equivalents:
 
-```
+```text
 python scripts/call_unified_alerts.py list --filter detectionProduct=EDR --first 20
 python scripts/call_unified_alerts.py facets status severity detectionProduct
 python scripts/call_unified_alerts.py notes <alert-id>
@@ -971,6 +980,7 @@ sources = list_data_sources(client, hours=24, limit=200)
 CLI: `python scripts/inspect_source.py --list` prints a ranked table of every source that ingested in the last 24h. If a name the user asked for isn't in the list, fuzzy-match and surface candidates rather than running a query that will return 0.
 
 Rules of thumb:
+
 - There can be multiple rows with the same `dataSource.name` under different `dataSource.category` values (e.g. `SentinelOne / security`, `SentinelOne / None`, `SentinelOne / telemetry`). Treat category as metadata, not part of the name.
 - A source with non-zero `ct` in 24h is live. Anything else is either decommissioned, in a different time window, or scoped out of the current token.
 
@@ -992,6 +1002,7 @@ prim_key, action_key = pick_keys(schema)
 CLI: `python scripts/inspect_source.py --source "<name>" --window 24h`.
 
 Key points:
+
 - Uses the LRQ `LOG` queryType (not PowerQuery). PQ has no wildcard column projection; `| columns *` errors and `| limit N` only returns `timestamp + message`. `LOG` returns every flat attribute the parser emits under `matches[].values`, which is how the Event Search UI populates its "Event properties" panel.
 - Sync SDL `/sdl/api/query` is ~30% faster than async LRQ on your-tenant. The dispatcher prefers it and falls back to LRQ LOG on HTTP 404/401/403. Force a backend with `backend="sdl"` or `backend="lrq"` if benchmarking.
 - Escalating window (1h -> 4h -> 24h -> requested) keeps busy sources ~3s. Only sparse sources (audit, low-volume demos) pay the full widening cost. Override with `escalate=False` for a single-rung run at `hours=`.
@@ -1110,7 +1121,7 @@ Order: `user`, then `src.hostname`, then `src.ip.address`, then none. The collec
 
 ### Running the whole thing
 
-```
+```text
 # From the skill root, with $CLAUDE_CONFIG_DIR/sentinelone/credentials.json configured.
 python scripts/build_source_report.py --source "<vendor>" --window <7d|24h|...>
 python scripts/render_charts.py reports/<slug>_<window>/data.json
@@ -1134,16 +1145,17 @@ The collector creates `reports/<slug>_<window>/` on first run. The `reports/` di
 
 Consult the per-tag reference files for exact parameter names — the above are orientation, not copy-paste ready.
 
-
 ## Hyperautomation (HA) — workflow management
 
 API root (confirmed via live network capture 2026-05-03):
-```
+
+```text
 /web/api/v2.1/hyper-automate/api/v1
 ```
+
 Auth: same `Authorization: ApiToken <token>` header as all other S1 REST calls.
 
-### Endpoints
+### Hyperautomation Endpoints
 
 | Operation | Method | Path |
 |---|---|---|
@@ -1163,6 +1175,7 @@ Export/import were not captured in the v1 network trace. They are confirmed work
 ### List response shape (key fields)
 
 Each item in `data[]`:
+
 ```jsonc
 {
   "id": "<workflowUUID>",                     // top-level workflow ID

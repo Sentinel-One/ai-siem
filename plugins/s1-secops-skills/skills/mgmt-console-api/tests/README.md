@@ -78,7 +78,7 @@ explicit scope selection via a single-account-pinned token.
 a hand-curated allow-list of read-only POSTs, calls them, and records the
 HTTP status + response shape.
 
-```
+```text
 python scripts/smoke_test_queries.py                                # default: skip streaming endpoints
 python scripts/smoke_test_queries.py --include-slow                 # also call exports / downloads
 python scripts/smoke_test_queries.py --tag Threats                  # just one tag
@@ -102,7 +102,7 @@ because some XDR export endpoints stream large payloads.
 
 Proves the full IOC workflow end-to-end, reversibly:
 
-```
+```text
 CREATE  POST   /web/api/v2.1/threat-intelligence/iocs
 LIST    GET    /web/api/v2.1/threat-intelligence/iocs?name__contains=<run_tag>
 DELETE  DELETE /web/api/v2.1/threat-intelligence/iocs   (body filter: {uuids: [...]})
@@ -125,7 +125,7 @@ Demonstrates the alert-API story end-to-end: **GraphQL UAM is PRIMARY**,
 REST `/cloud-detection/alerts` is **SECONDARY**, parallel surfaces with
 different ID formats.
 
-```
+```text
 1. POST /web/api/v2.1/unifiedalerts/graphql  (list alerts, first=5)
 2. POST /web/api/v2.1/unifiedalerts/graphql  (alert(id) detail)
 3. POST /web/api/v2.1/unifiedalerts/graphql  (addAlertNote mutation)
@@ -160,7 +160,7 @@ aborts cleanly with a clear message — expected behaviour, not a bug.
 CREATE → LIST → UPDATE → DELETE → VERIFY on
 `/web/api/v2.1/cloud-detection/rules`.
 
-```
+```text
 CREATE  POST   /web/api/v2.1/cloud-detection/rules
        body.filter: {accountIds: [<id>]}
        body.data:   {name, severity, expirationMode, queryType, status=Disabled, s1ql}
@@ -188,7 +188,7 @@ the first visible account instead.
 Proves the UAM bulk-ops mutation pattern against an existing alert,
 with full restoration:
 
-```
+```text
 1. Pick most-recent alert → record {status, analystVerdict}
 2. set_alert_status  (rotates NEW→IN_PROGRESS or vice versa)  → wait_for_field
 3. restore status to original                                  → wait_for_field
@@ -215,7 +215,7 @@ to target a specific alert.
 CREATE → LIST → UPDATE → DELETE → VERIFY against
 `/web/api/v2.1/report-tasks`.
 
-```
+```text
 CREATE POST  /web/api/v2.1/report-tasks
        body: {data: {name, scheduleType=manually, insightTypes, fromDate, toDate},
               filter: {siteIds}}
@@ -250,7 +250,7 @@ during the test window.
 Exercises the SOC workflow "take an indicator observed on an alert and
 promote it to a tracked TI IOC":
 
-```
+```text
 1. Pick most-recent alert
 2. Read alert.rawIndicators, extract a file-hash observable (MD5/SHA256)
 3. CREATE an IOC for that hash, tagged to the alert:
@@ -277,7 +277,7 @@ verify the indicator is stitched, then close the alert
 (status=RESOLVED + analystVerdict=TRUE_POSITIVE_BENIGN) so it leaves the
 SOC queue.
 
-```
+```text
 1. POST https://ingest.us1.sentinelone.net/v1/indicators   (gzip + Bearer + S1-Scope)
 2. POST https://ingest.us1.sentinelone.net/v1/alerts        (finding_info.related_events[].uid)
 3. Poll UAM GraphQL list_alerts for name~=<run_tag> (up to 90s)
@@ -289,7 +289,7 @@ This is a **different API family** from everything else in the skill. All
 other tests hit `<tenant>.sentinelone.net/web/api/v2.1/...`. The UAM
 Alert Interface (formerly "Ingestion Gateway") lives on a separate host
 family (e.g. `ingest.us1.sentinelone.net`). Find your region endpoint at
-https://community.sentinelone.com/s/article/000004961. The interface uses its own wire contract:
+<https://community.sentinelone.com/s/article/000004961>. The interface uses its own wire contract:
 
 - Auth header is `Bearer <JWT>`, NOT `ApiToken <JWT>`. The mgmt console
   REST scheme is rejected with HTTP 401 `"Unsupported auth type: ApiToken"`.
@@ -328,7 +328,7 @@ test does not: **batching**, **multiple observables per indicator**, and
 **multiple indicators linked to one alert** across all three supported
 OCSF classes.
 
-```
+```text
 1. Build 3 indicators in one batch:
    - file    (OCSF class 1001) with Hostname, File Name, SHA-256, MD5, User Name, IP Address
    - process (OCSF class 1007) with Hostname, Process Name, Resource UID (pid), User Name, IP Address
@@ -396,7 +396,7 @@ delta is the payload shape.
 
 Proves the full lifecycle for `queryType=scheduled` rules (PowerQuery-based detections) on the demo site (`siteId=<site-id>`). No separate test script exists yet — the lifecycle was confirmed via an inline Python session. See the schema gotchas below before writing a script.
 
-```
+```text
 CREATE  POST  /web/api/v2.1/cloud-detection/rules
         data: {name, queryType="scheduled", queryLang="2.0", severity, expirationMode,
                status="Disabled", scheduledParams: {query, runIntervalMinutes, lookbackWindowMinutes, threshold}}
@@ -486,7 +486,7 @@ VERIFY  GET   /web/api/v2.1/cloud-detection/rules?ids=...&siteIds=...&isLegacy=f
 
 ## 12. Unified Exclusion lifecycle (2026-05-03)
 
-```
+```text
 CREATE  POST  /web/api/v2.1/unified-exclusions
         data: {exclusionName, threatType="EDR", osType="linux",
                type="path", value=<path>, pathExclusionType="file",
@@ -500,6 +500,7 @@ VERIFY  GET   (expect 0 hits)
 ```
 
 **Gotchas confirmed vs. live API:**
+
 - `modeType` and `type` are required — swagger marks them optional but API rejects without them.
 - `engines` is required when `modeType=suppression`.
 - `engines` and `interactionLevel` are mutually exclusive — passing both returns HTTP 400.
@@ -510,7 +511,7 @@ VERIFY  GET   (expect 0 hits)
 
 ## 13. Hyperautomation workflow import lifecycle (2026-05-03)
 
-```
+```text
 IMPORT  POST  /web/api/v2.1/hyper-automate/api/public/workflow-import-export/import
         body: {data: {name, description, actions: [...]}, filter: {accountIds: [...]}}
         response: top-level "id" and "version_id" (NOT "workflowId"/"versionId")
@@ -522,6 +523,7 @@ DELETE  DELETE /web/api/v2.1/hyper-automate/api/v1/workflows/{id}?accountIds=<ac
 ```
 
 **Gotchas confirmed vs. live API:**
+
 - Public import response key is `id` not `workflowId`; `version_id` not `versionId`.
 - `/api/public/workflows` and `/api/v1/workflows` return the same nested format: `{id, workflow: {...}, actions: []}`. The `workflow.id` == top-level `id`.
 - Tenant had 1050+ workflows. `nextCursor` returns literal string `"null"` (truthy in Python) — loop by skip/limit, not cursor. Sort by `updated_at desc` and scan first 20 to find a newly imported workflow without paginating 1050 rows.
@@ -529,7 +531,7 @@ DELETE  DELETE /web/api/v2.1/hyper-automate/api/v1/workflows/{id}?accountIds=<ac
 
 ## 14. Detection rule ENABLE/DISABLE lifecycle (2026-05-03)
 
-```
+```text
 CREATE   POST  /web/api/v2.1/cloud-detection/rules  (see Section 11 for scheduled schema)
 ENABLE   PUT   /web/api/v2.1/cloud-detection/rules/enable
          body: {filter: {ids: [<ruleId>], siteIds: [<siteId>]}}
@@ -540,9 +542,10 @@ DELETE   DELETE /web/api/v2.1/cloud-detection/rules
 ```
 
 **Gotchas confirmed vs. live API:**
+
 - After ENABLE, `status` transitions through `"activating"` before settling on `"active"`. Both are valid post-enable states — accept both in assertions.
 - Tested with both `queryType=scheduled` (requires `isLegacy=false` on GET) and `queryType=events`. Both use the same enable/disable endpoints.
-- Tested on demo (site <site-id>). Scheduled rule used `runIntervalMinutes=1440` and `threshold.value=9999` so it cannot fire within the test lifetime even when briefly enabled.
+- Tested on demo (site `<site-id>`). Scheduled rule used `runIntervalMinutes=1440` and `threshold.value=9999` so it cannot fire within the test lifetime even when briefly enabled.
 
 ---
 
@@ -552,7 +555,7 @@ STAR rules ("streaming threat assessment rules") are product marketing terminolo
 real-time event detection rules. The API has no `/star-rules` path — they are
 `cloud-detection/rules` with `queryType=events`. The `/star-rules` path returns 404.
 
-```
+```text
 CREATE  POST   /web/api/v2.1/cloud-detection/rules
         body: {data: {name, description, queryType="events", s1ql, severity,
                       expirationMode, status="Draft", treatAsThreat, networkQuarantine},
@@ -568,6 +571,7 @@ VERIFY  GET    ids=<id> → data=[]
 ```
 
 **Gotchas confirmed vs. live API:**
+
 - No `/star-rules` path — use `cloud-detection/rules` with `queryType=events`.
 - `"activeResponse"` in the CREATE body returns HTTP 400 "Unknown field" — omit it.
 - `queryLang` defaults to `"1.0"` for events rules; do not set it explicitly.
@@ -582,7 +586,7 @@ VERIFY  GET    ids=<id> → data=[]
 
 ## Running the full test suite
 
-```
+```text
 # 1. Read-only sweep — ~60s default, several minutes with --include-slow.
 python scripts/smoke_test_queries.py --workers 16 --timeout 10
 

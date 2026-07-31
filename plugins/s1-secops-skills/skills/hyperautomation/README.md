@@ -47,6 +47,17 @@ Just describe the workflow in plain language:
 
 Claude will ask clarifying questions if needed, warn about any integrations that require pre-configuration, generate the workflow JSON, and optionally push it directly to your console.
 
+### Autonomous SOC (auto-investigate and respond)
+
+Describe an end-to-end auto-response flow and Claude builds the canonical alert to investigate to triage to decide to respond shape, with reusable response snippets and dynamic dispatch:
+
+- "Build an autonomous SOC workflow that investigates and responds to alerts on its own"
+- "Auto-triage every high/critical alert, add a verdict note, open a ticket, and remediate"
+- "On a ransomware alert, isolate the device and notify the SOC; auto-close false positives"
+- "Let an LLM pick isolate vs quarantine vs close-as-false-positive per alert"
+
+Full pattern and the reusable-snippet library: [`references/autonomous-soc-template.md`](references/autonomous-soc-template.md).
+
 ## Layout
 
 - `SKILL.md`: instructions Claude reads when the skill triggers
@@ -55,6 +66,9 @@ Claude will ask clarifying questions if needed, warn about any integrations that
 - `references/functions-reference.md`: `{{Function.X()}}` syntax and PowerQuery patterns
 - `references/validation-rules.md`: pre-output checklist
 - `references/api-integration.md`: Hyperautomation API reference (import, activate, trigger, list)
+- `references/snippets.md`: authoring and calling reusable snippets (`snippet_20` dispatch, lifecycle API)
+- `references/autonomous-soc-template.md`: the autonomous SOC pattern (investigate to decide to respond), response-snippet library, and a branded SOC-email snippet
+- `references/connections.md`: creating an integration connection via API and cloning it across sites
 
 ## Credit
 

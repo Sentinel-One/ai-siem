@@ -8,7 +8,12 @@ description: >
   security task. Also triggers when the user asks to import, export, test, validate, or submit
   a workflow to a SentinelOne console via API. Always use this skill for any task involving
   SentinelOne workflow JSON — even if phrased casually (e.g., "build me a thing that disables
-  a user when an alert fires"). When in doubt about whether this skill applies, use it.
+  a user when an alert fires"). Also triggers for autonomous / auto-response SOC requests:
+  "autonomous SOC", "SOC in a box", "auto-triage", "investigate and respond automatically",
+  "auto-isolate on a critical alert", "auto-close false positives and escalate real threats",
+  or letting an LLM decide isolate vs quarantine vs close per alert (the canonical
+  investigate-decide-respond shape lives in references/autonomous-soc-template.md).
+  When in doubt about whether this skill applies, use it.
 ---
 
 # SentinelOne Hyperautomation Skill
@@ -165,6 +170,9 @@ A workflow imported or created via the API is a **Private Draft owned by the tok
 | `references/functions-reference.md` | Using `{{Function.X()}}` syntax or PowerQuery patterns |
 | `references/validation-rules.md` | Before outputting any workflow — run the checklist |
 | `references/api-integration.md` | User wants to import/export/submit to a live console |
+| `references/snippets.md` | Building or calling a **snippet** (reusable sub-workflow): authoring rules, static vs dynamic `snippet_20` calls, and the snippet lifecycle API |
+| `references/autonomous-soc-template.md` | Building an **autonomous SOC** / auto-response workflow: canonical alert→investigate→triage→decide→respond shape, the reusable response-snippet library, dynamic-snippet dispatch, and a branded SOC-email snippet example |
+| `references/connections.md` | Creating an integration **connection** via API (endpoint + body), cloning a connection across sites, and the integration-vs-connection binding rule |
 
 ## Decision guide: pick the right pattern by use case
 
@@ -183,12 +191,18 @@ table to jump straight to the right starting point:
 | "Summarize this evidence with an LLM" | B12 (OpenAI) | B6 add-note |
 | "Create a Threat Intelligence indicator" | B9 (TI IOC create) | B4 accumulator inside loop |
 | "Add a note on the alert" | B6 (UAM GraphQL addAlertNote) | always wrap text in `Function.HTML_ENCODE` |
+| "Auto-investigate and respond to alerts end to end" | `references/autonomous-soc-template.md` | reusable response snippets + dynamic `snippet_20` dispatch, poll-until-complete loop |
+| "Reuse this step across several flows" / "stop copy-pasting this logic" | `references/snippets.md` (author a snippet, call it with `snippet_20`) | `use_latest_snippet_version` to auto-track edits |
+
+**Reuse via snippets is the default for shared logic.** Whenever the same action graph would appear in more than one workflow (a response action, a notification, a poll loop), build it once as a snippet and call it with a `snippet_20` node instead of duplicating it. See `references/snippets.md`.
 
 When in doubt, the load-bearing 17 atoms are:
 `http_request`, `variable`, `condition`, `loop`, `singularity_response_trigger`,
 `data_formation`, `send_email`, `snippet`, `break_loop`, `manual_trigger`, `wait_for_slack`,
 `delay`, `http_trigger`, `scheduled_trigger`, `create_interaction`, `wait_for_interaction`,
 `email_trigger`. Anything outside this set is exotic; confirm it exists before generating.
+
+> **Snippet node types.** *Calling* a snippet from a workflow uses a `snippet_20` node (not `snippet`). *Authoring* a snippet uses a `snippet_trigger` (inputs) + `snippet_output` (returns) in place of a normal trigger. See `references/snippets.md`.
 
 ## Example workflows (in references/examples/)
 

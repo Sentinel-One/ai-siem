@@ -265,7 +265,6 @@ There is no undo. Configuration files are versioned but accidental deletes still
 
 For complex hunts and detection authoring use the `sentinelone-powerquery` skill for the query body, then call `c.power_query()` from this skill to execute it. For Mgmt Console resources (agents, threats, sites) use `sentinelone-mgmt-console-api`.
 
-
 ## Using s1-secops-mcp tools for direct SDL operations
 
 If a direct bash call to sdl_client.py fails with a proxy error, use the s1-secops-mcp MCP

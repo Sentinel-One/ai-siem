@@ -24,7 +24,7 @@ When the user asks you to write or investigate with a PowerQuery:
 
 ## The grammar in one page
 
-```
+```text
 initial-filter-expression
 | command
 | command
@@ -34,6 +34,7 @@ initial-filter-expression
 **Initial filter** (everything before the first `|`) is the only place where `* contains "x"` and `* matches "regex"` multi-field search works. It can be empty — start the query with `|` and it is treated as "all events" (e.g., `| group ct=count() by event.type`).
 
 **Commands** (each starts with `|`):
+
 - `filter expr` — keep matching rows (initial filter implicit)
 - `columns f1, "Renamed f2"=f2, …` — select, rename, compute output columns (creates a *new* record set — previous fields not accessible after)
 - `let f = expr, …` — add computed fields without discarding existing ones
@@ -99,7 +100,7 @@ These are where queries go wrong. Internalize them before writing.
    - **All-column text search:** `* contains 'evil.com'` or `* matches 'regex'` in the **initial filter** (before the first `|`) searches ALL indexed fields — use when you need to find text anywhere in the event. Dramatically faster than `message contains`. Only works before the first `|`; not valid in `| filter …` after a pipe, and not valid in Alerts.
    - **Empty filter (all events):** start the query with `|`, e.g. `| group ct=count() by event.type`.
 2. **Double-escape regex almost everywhere.** `src.process.cmdline matches "\\d+"`, `tgt.file.path matches '^C:\\\\Windows\\\\Temp\\\\[a-z]{8}\\.tmp$'`. The only place you don't double-escape is the `$"…"` shorthand (searches `message`).
-3. **Regex lazy quantifiers (`?`) are not supported.** The SDL regex engine does not support lazy (non-greedy) quantifiers: `.*?`, `.+?`, `[^x]*?` etc. all return HTTP 500 "Dangling meta character '?'". Use a negated character class instead: `[^"]*` in place of `.*?"`, `[^ ]*` in place of `.*? `, etc.
+3. **Regex lazy quantifiers (`?`) are not supported.** The SDL regex engine does not support lazy (non-greedy) quantifiers: `.*?`, `.+?`, `[^x]*?` etc. all return HTTP 500 "Dangling meta character '?'". Use a negated character class instead: `[^"]*` in place of `.*?"`, `[^ ]*` in place of `.*?`, etc.
 4. **After `columns` or `group`, previous fields are gone.** These commands create an entirely new record set. If you'll need a field later, carry it through: `group ct=count(), host=any(endpoint.name) by src.process.storyline.id` — don't expect `endpoint.name` to still be addressable after that `group` unless you aggregate it.
 5. **Subqueries can't go after `group`, `sort`, or `limit`.** And the subquery must itself produce the column named in the `in (...)` expression (via `columns` or `group`). `user in (action='login' | group 1 by user)` is valid; `user in (action='login')` is not.
 6. **`compare` and `transpose` must be the LAST command.** Put `sort` before `compare` if you want to order the non-shifted side.
@@ -114,7 +115,7 @@ These are where queries go wrong. Internalize them before writing.
 15. **Null-filter at the wrong stage: `filter x = null` before `x` is computed returns 500.** Use `filter !(x =*)` for is-null until after a `let`/`join`/`lookup` has produced `x`.
 16. **Coalesce-style fallback uses bare-field truthy test, NOT `(field = *) ? a : b`.** PQ has no `coalesce()` / `ifnull()` / `nvl()`. To pick the first non-null of several fields inside a `let`, chain bare-field ternaries — they evaluate the field's truthiness directly:
 
-    ```
+    ```text
     | let user_id = actor.user.email_addr
                   ? actor.user.email_addr
                   : (actor.user.name ? actor.user.name : src.process.user)
@@ -124,7 +125,7 @@ These are where queries go wrong. Internalize them before writing.
 17. **`if(...)` is not a function in aggregates.** `sum(if(cond, 1, 0))` returns 500. Use `count(<predicate>)` instead — `count(severity_id == 5)` evaluates the predicate per row and sums the truthy ones. Same for any "count where X" semantic.
 18. **Always filter `field=*` before projecting or inspecting any field.** `| limit N | columns field` returns the first N events regardless of whether the field is populated — most rows will be null. Add `field=*` to the initial filter to scope to events that actually carry the field:
 
-    ```
+    ```text
     // Wrong — returns nulls; message may not be present on most events
     dataSource.name='FortiGate' | limit 3 | columns message
 
@@ -160,7 +161,7 @@ The primary execution path is the Long Running Query API. It is async (launch + 
 
 **Three calls, in order:**
 
-```
+```text
 POST   https://<console>.sentinelone.net/sdl/v2/api/queries          -> launch, returns {id, ...}
 GET    https://<console>.sentinelone.net/sdl/v2/api/queries/{id}?lastStepSeen=N   -> poll every 1-2s
 DELETE https://<console>.sentinelone.net/sdl/v2/api/queries/{id}     -> cancel when done
@@ -273,7 +274,7 @@ For all three rule types (API shapes, the correlation `correlationParams` block,
 
 Hunt: PowerShell that made an outbound connection to a non-RFC1918 IP in the last 24 hours, with command line.
 
-```
+```text
 src.process.name contains 'powershell' dst.ip.address = *
 | let is_private = net_rfc1918(dst.ip.address)
 | filter is_private = false
@@ -286,7 +287,6 @@ src.process.name contains 'powershell' dst.ip.address = *
 ```
 
 Notice: filter early (`dst.ip.address = *` prunes events without a destination IP), `net_rfc1918` is the right way to split internal vs external (don't hand-roll CIDRs), `array_agg_distinct` caps the array so the row stays small, `any(src.process.cmdline)` grabs a representative cmdline since we're collapsing per storyline.
-
 
 ## PowerQuery execution via s1-secops-mcp
 

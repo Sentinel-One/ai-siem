@@ -8,7 +8,12 @@ description: >
   security task. Also triggers when the user asks to import, export, test, validate, or submit
   a workflow to a SentinelOne console via API. Always use this skill for any task involving
   SentinelOne workflow JSON — even if phrased casually (e.g., "build me a thing that disables
-  a user when an alert fires"). When in doubt about whether this skill applies, use it.
+  a user when an alert fires"). Also triggers for autonomous / auto-response SOC requests:
+  "autonomous SOC", "SOC in a box", "auto-triage", "investigate and respond automatically",
+  "auto-isolate on a critical alert", "auto-close false positives and escalate real threats",
+  or letting an LLM decide isolate vs quarantine vs close per alert (the canonical
+  investigate-decide-respond shape lives in references/autonomous-soc-template.md).
+  When in doubt about whether this skill applies, use it.
 ---
 
 # SentinelOne Hyperautomation Skill

@@ -15,7 +15,7 @@ also accepted if you prefer them or are migrating an existing library.
 
 ## Repository layout
 
-```
+```text
 detection-as-code/
 ├── detections/
 │   ├── endpoint/      # one .toml per rule, grouped by target system

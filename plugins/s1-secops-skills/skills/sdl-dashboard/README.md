@@ -12,7 +12,7 @@ cp -r sentinelone-sdl-dashboard ~/.claude/skills/
 
 In Cowork/Claude Code, the path is:
 
-```
+```text
 /sessions/<session>/mnt/.claude/skills/sentinelone-sdl-dashboard/
 ```
 

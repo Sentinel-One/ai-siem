@@ -1,7 +1,7 @@
 # UEBA behavioural anomaly detection
 
 The **s1-ueba-deployer is the source of truth** for this solution. The full documentation lives at
-[`docs/solutions/ueba-anomaly-detection.md`](../../docs/solutions/ueba-anomaly-detection.md), mirrored
+[`docs/solutions/ueba-anomaly-detection.md`](../../../docs/solutions/ueba-anomaly-detection.md), mirrored
 from the deployer.
 
 Read that document for: the security use-case selector (intent to data sources to detections to

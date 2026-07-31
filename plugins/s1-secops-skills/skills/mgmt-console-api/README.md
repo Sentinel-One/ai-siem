@@ -12,7 +12,7 @@ cp -r sentinelone-mgmt-console-api ~/.claude/skills/
 
 In Cowork/Claude Code, the path is:
 
-```
+```text
 /sessions/<session>/mnt/.claude/skills/sentinelone-mgmt-console-api/
 ```
 

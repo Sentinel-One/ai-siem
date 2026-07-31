@@ -221,6 +221,7 @@ After the user confirms, begin Phase 1 immediately.
 ### Phase 1: Alert Ingest & Entity Extraction (5 min)
 
 #### 1.1 Fetch alerts
+
 ```text
 Use: sentinelone-mgmt-console-api
 Query: GET /threats (filtered by user input)
@@ -228,6 +229,7 @@ Output: alerts.jsonl
 ```
 
 #### 1.2 Single-pass entity extraction
+
 ```json
 {
   "alerts_processed": 42,
@@ -241,6 +243,7 @@ Output: alerts.jsonl
 ```
 
 #### 1.3 Draft timeline (alert order, not forensic)
+
 ```text
 - 2025-06-16 10:00 | HIGH   | DESKTOP-ABC123 | john.doe   | Suspicious Process Execution (powershell)
 - 2025-06-16 10:05 | MEDIUM | DESKTOP-ABC123 | john.doe   | Registry Modification (persistence)
@@ -248,6 +251,7 @@ Output: alerts.jsonl
 ```
 
 #### 1.4 Draft MITRE (simple inference from alert type)
+
 ```json
 {
   "tactics": ["Execution", "Persistence"],
@@ -259,12 +263,14 @@ Output: alerts.jsonl
 ```
 
 **Output files**:
+
 - `entities.json` - extracted entities
 - `timeline_draft.csv` - simple chronological alert list
 - `mitre_draft.json` - inferred tactics/techniques
 - `summary.md` - 1-page overview for quick review
 
 **Approval gate** (if enabled):
+
 ```text
 ✓ SHORT investigation complete.
   - 42 alerts processed
@@ -284,6 +290,7 @@ Includes SHORT, plus:
 ### Phase 2: IOC Enrichment (5 min)
 
 #### 2.1 Batch IOC lookups
+
 ```text
 Use: Purple MCP (VirusTotal) + sentinelone-mgmt-console-api (S1 IOC API)
 
@@ -295,6 +302,7 @@ For each IOC in entities.json:
 ```
 
 #### 2.2 Sample if >20 IOCs
+
 ```text
 If IOC count > 20:
   Sort by alert_count (descending)
@@ -307,6 +315,7 @@ If IOC count > 20:
 ### Phase 3: Endpoint Process Context (5 min)
 
 #### 3.1 One PowerQuery per unique endpoint
+
 ```text
 Use: sentinelone-powerquery skill
 
@@ -339,6 +348,7 @@ Query B: Network behavior for same user
 **4.2 Refine MITRE with IOC context** - add evidence chains and confidence scores
 
 **Output files**:
+
 - `threat_intel.json` - IOC lookups
 - `powerquery_results.jsonl` - process/network queries
 - `timeline_enriched.json` - merged context
@@ -346,6 +356,7 @@ Query B: Network behavior for same user
 - `timeline.csv` - timeline for import to Excel/Splunk
 
 **Approval gate + Third-Party Option** (if enabled):
+
 ```text
 ✓ MEDIUM investigation complete.
   - 8 IOCs looked up (3 malicious, 2 suspicious, 3 clean)
@@ -371,6 +382,7 @@ Includes MEDIUM, plus:
 ### Phase 5: Deep Forensic Queries (25 min, PARALLEL)
 
 #### 5.1 For each endpoint in alerts, run 4 deep PowerQueries
+
 ```text
 Per endpoint:
 
@@ -407,6 +419,7 @@ Query D: Full network behavior
 ### Phase 6: Threat Intelligence Deep-Dive (10 min, PARALLEL)
 
 #### 6.1 SDL threat intelligence correlation
+
 ```text
 Use: sentinelone-powerquery skill
 
@@ -421,6 +434,7 @@ For each IOC in entities.json:
 **Goal**: Find other endpoints/users that encountered same IOCs (lateral spread, supply chain).
 
 #### 6.2 Expand IOC lookups (all IOCs, not sampled)
+
 VirusTotal: Full report for all hashes, domains, IPs + S1 IOC API: All IOCs
 
 **Store results**: `threat_intel_complete.json`
@@ -432,11 +446,13 @@ VirusTotal: Full report for all hashes, domains, IPs + S1 IOC API: All IOCs
 **7.2 Refine MITRE with full forensic evidence** - add confidence scores and evidence chains
 
 **Output files**:
+
 - `full_report.md` - comprehensive investigation report
 - `timeline_forensic.csv` - full timeline for SIEM/Excel import
 - All JSON outputs from earlier phases
 
 **Approval gate + Third-Party Option** (if enabled):
+
 ```text
 ✓ LONG investigation complete.
   - 42 alerts processed
@@ -464,6 +480,7 @@ Choose: [1 | 2 | 3]
 ### Phase 1: Discover Available Data Sources (2 min)
 
 #### 1.1 Query all available data sources
+
 ```text
 Use: sentinelone-powerquery skill
 
@@ -474,6 +491,7 @@ dataSource.name = *
 ```
 
 #### 1.2 Ask user which sources to investigate
+
 ```text
 Available data sources detected:
   ✓ Microsoft 365 (1.2M events)
@@ -489,6 +507,7 @@ Which sources are relevant to this incident?
 ### Phase 2: Schema Exploration (3 min per source)
 
 For each selected source:
+
 - Query A: list all activities (`| group ct=count() by activity_name | sort -ct | limit 30`)
 - Query B: sample 10 events to see available fields
 
@@ -503,6 +522,7 @@ For each user, IP, and domain in `entities.json`, run targeted queries against t
 ### Phase 4: Anomaly Detection (5 min per source)
 
 For each user + activity combination, run timeseries analysis:
+
 ```text
 | let hour = timebucket('1h')
 | group ct=count() by hour
@@ -524,6 +544,7 @@ Surface significant findings, let the user choose which to deep-dive with target
 Synthesize all findings into `third_party_report.md`.
 
 **Output files**:
+
 - `third_party_correlation.json` - full correlation matrix
 - `anomalies.json` - timeseries spikes
 - `deep_dive_*.json` - user-selected deep-dives
@@ -541,6 +562,7 @@ Synthesize all findings into `third_party_report.md`.
 | Third-Party (opt-in) | 15 min | ~10k | Source discovery + entity correlation + anomaly detection |
 
 **Key optimizations**:
+
 - Batch operations (all IOCs at once, all endpoints in parallel)
 - Structured outputs (JSON, no prose)
 - IOC sampling in MEDIUM (top 20 by frequency)

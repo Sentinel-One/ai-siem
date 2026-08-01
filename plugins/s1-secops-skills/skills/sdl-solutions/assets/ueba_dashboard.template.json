@@ -1,5 +1,5 @@
 {
-  "_comment": "UEBA anomaly dashboard for the ueba-anomaly-detection solution. Deploy with sdl_put_file to /dashboards/{{PREFIX}} {{SOURCE}} Anomalies. Panels join the live window against the baseline lookup {{BASELINE_TABLE}} (built by ueba_baseline_savelookup.pq) and compute z = (live - baseline_avg) / baseline_stddev, mirroring the detection rule. RENDERING RULES (validated S-26.1, learned the hard way): (1) ARITHMETIC needs spaces around every operator inside `let`: write `(live_count - baseline_avg) / baseline_stddev`, NOT `(live_count-baseline_avg)/baseline_stddev`, the unspaced form fails the whole panel with 'Couldn't load content: Identifier live_count-baseline_avg is ambiguous'. (2) MARKDOWN panel needs a PLAIN-TEXT `title` (no title key renders 'Untitled'); put prose only in `markdown`, do not repeat the title as a `##` heading. (3) NUMBER panels: do NOT set a `suffix` that repeats the unit already in the title (title 'Active principals' + suffix ' principals' reads '34 principals'). (4) Number panels end with `| limit 1`. Replace {{TOKENS}} with the discovered fields and rendered table name.",
+  "_comment": "UEBA anomaly dashboard for the ueba-anomaly-detection solution. Deploy with sdl_put_file to /dashboards/{{PREFIX}} {{SOURCE}} Anomalies. Panels join the live window against the baseline lookup {{BASELINE_TABLE}} (built by ueba_baseline_savelookup.pq) and compute the same FAILSAFE z as the detection rule: pairs with sd > 0 use z = (live_count - baseline_avg) / sd; flat-history pairs (is_constant = 1, stddev 0, kept by the baseline build) score any deviation from their constant as sentinel z = 999 (above) / -999 (below) and an exact match as 0, so the zero stddev is never divided by. number(baseline_stddev) guards string-typed columns. RENDERING RULES (validated S-26.1, learned the hard way): (1) ARITHMETIC needs spaces around every operator inside `let`: write `(live_count - baseline_avg) / baseline_stddev`, NOT `(live_count-baseline_avg)/baseline_stddev`, the unspaced form fails the whole panel with 'Couldn't load content: Identifier live_count-baseline_avg is ambiguous'. (2) MARKDOWN panel needs a PLAIN-TEXT `title` (no title key renders 'Untitled'); put prose only in `markdown`, do not repeat the title as a `##` heading. (3) NUMBER panels: do NOT set a `suffix` that repeats the unit already in the title (title 'Active principals' + suffix ' principals' reads '34 principals'). (4) Number panels end with `| limit 1`. Replace {{TOKENS}} with the discovered fields and rendered table name.",
   "configType": "TABBED",
   "duration": "24h",
   "description": "UEBA behavioral anomaly view for {{SOURCE}}. principal={{PRINCIPAL}} action={{ACTION}} baseline={{BASELINE_TABLE}} (|z| >= {{Z_HARD}}).",
@@ -10,20 +10,20 @@
         {
           "graphStyle": "markdown",
           "title": "{{SOURCE}}: UEBA Behavioral Anomalies",
-          "markdown": "Live 24h volume per **(action, principal)** scored against the {{BASELINE_DAYS}}-day baseline `{{BASELINE_TABLE}}`. **SPIKE / DROP** = `|z| >= {{Z_HARD}}` standard deviations from normal. **New-behavior** = a pair active now with no baseline row. Caveat: pairs with FLAT history (stddev 0) or under 2 active days are excluded from the baseline build, so they also land in New-behavior even though they are not strictly new (PENDING deeper fix on demo tenant). The 24h window matches the baseline unit. principal = `{{PRINCIPAL}}`, action = `{{ACTION}}`.",
+          "markdown": "Live 24h volume per **(action, principal)** scored against the {{BASELINE_DAYS}}-day baseline `{{BASELINE_TABLE}}`. **SPIKE / DROP** = `|z| >= {{Z_HARD}}` standard deviations from normal. Pairs with FLAT history (stddev 0) are baselined with `is_constant = 1`: any live deviation from their constant scores sentinel `z = 999` (SPIKE) or `z = -999` (DROP), an exact match scores 0. **New-behavior** = a pair active now with no baseline row, meaning genuinely new or under 2 active days of history (too little to baseline). The 24h window matches the baseline unit. principal = `{{PRINCIPAL}}`, action = `{{ACTION}}`.",
           "layout": { "w": 60, "h": 4, "x": 0, "y": 0 }
         },
         {
           "graphStyle": "number",
           "title": "Anomalies (|z| >= {{Z_HARD}})",
-          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg, baseline_stddev=baseline_stddev from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter baseline_avg=* | let z = (live_count - baseline_avg) / baseline_stddev | filter z >= {{Z_HARD}} OR z <= -{{Z_HARD}} | group n=count() | limit 1",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg, baseline_stddev=baseline_stddev from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter baseline_avg=* | let sd = number(baseline_stddev) | let z = (sd > 0 ? (live_count - baseline_avg) / sd : (live_count == baseline_avg ? 0 : (live_count > baseline_avg ? 999 : -999))) | filter z >= {{Z_HARD}} OR z <= -{{Z_HARD}} | group n=count() | limit 1",
           "options": { "format": "commas", "precision": "0" },
           "layout": { "w": 20, "h": 8, "x": 0, "y": 4 }
         },
         {
           "graphStyle": "number",
           "title": "New-behavior pairs (no baseline)",
-          "description": "Includes pairs excluded from the baseline build: flat history (stddev 0) or under 2 active days. Not all rows here are strictly new. PENDING deeper fix on demo tenant.",
+          "description": "Pairs active now with no baseline row: genuinely new, or under 2 active days of history (too little to baseline). Flat-history (stddev 0) pairs are baselined with is_constant = 1 and scored by the anomaly panels, not listed here.",
           "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter !(baseline_avg=*) | group n=count() | limit 1",
           "options": { "format": "commas", "precision": "0" },
           "layout": { "w": 20, "h": 8, "x": 20, "y": 4 }
@@ -54,13 +54,13 @@
         {
           "graphStyle": "table",
           "title": "Top SPIKE / DROP anomalies (by |z|)",
-          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg, baseline_stddev=baseline_stddev from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter baseline_avg=* | let z = (live_count - baseline_avg) / baseline_stddev | let az = abs(z) | filter az >= {{Z_HARD}} | let direction = (z >= 0 ? 'SPIKE' : 'DROP') | sort -az | columns principal_v, action_v, live_count, baseline_avg, baseline_stddev, z, direction | limit 50",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg, baseline_stddev=baseline_stddev, is_constant=is_constant from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter baseline_avg=* | let sd = number(baseline_stddev) | let z = (sd > 0 ? (live_count - baseline_avg) / sd : (live_count == baseline_avg ? 0 : (live_count > baseline_avg ? 999 : -999))) | let az = abs(z) | filter az >= {{Z_HARD}} | let direction = (z >= 0 ? 'SPIKE' : 'DROP') | sort -az | columns principal_v, action_v, live_count, baseline_avg, baseline_stddev, is_constant, z, direction | limit 50",
           "layout": { "w": 60, "h": 14, "x": 0, "y": 24 }
         },
         {
           "graphStyle": "table",
           "title": "New-behavior (active now, no baseline)",
-          "description": "Includes pairs excluded from the baseline build: flat history (stddev 0) or under 2 active days. Not all rows here are strictly new. PENDING deeper fix on demo tenant.",
+          "description": "Pairs active now with no baseline row: genuinely new, or under 2 active days of history (too little to baseline). Flat-history (stddev 0) pairs are baselined with is_constant = 1 and scored by the anomaly panels, not listed here.",
           "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter !(baseline_avg=*) | sort -live_count | columns principal_v, action_v, live_count | limit 50",
           "layout": { "w": 30, "h": 14, "x": 0, "y": 38 }
         },

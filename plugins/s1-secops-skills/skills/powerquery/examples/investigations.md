@@ -7,7 +7,7 @@ Ready-to-run PowerQueries for hunts and triage. Each block has:
 - **Tune**: knobs to widen or narrow.
 - **Pivot**: where to go after results.
 
-All queries assume the EDR or XDR data view unless noted. They're written to be safe to run on a busy tenant — `limit` is set, group keys are bounded, and intermediate cardinality stays under 100k.
+All queries assume the EDR or XDR data view unless noted. They're written to be safe to run on a busy tenant, `limit` is set, group keys are bounded, and intermediate cardinality stays under 100k.
 
 ---
 
@@ -23,8 +23,8 @@ All queries assume the EDR or XDR data view unless noted. They're written to be 
 | limit 50
 ```
 
-**Tune** — drop `agent.uuid` from the group keys for a cleaner host list.
-**Pivot** — copy an `agent.uuid` and filter `agent.uuid = '…'` to scope further hunts to a single endpoint.
+**Tune**, drop `agent.uuid` from the group keys for a cleaner host list.
+**Pivot**, copy an `agent.uuid` and filter `agent.uuid = '…'` to scope further hunts to a single endpoint.
 
 ### Event volume by endpoint
 
@@ -37,7 +37,7 @@ All queries assume the EDR or XDR data view unless noted. They're written to be 
 | limit 25
 ```
 
-`percent_of_total` and `running_percent` produce the Pareto view — the first few rows usually account for most of the volume.
+`percent_of_total` and `running_percent` produce the Pareto view, the first few rows usually account for most of the volume.
 
 ---
 
@@ -63,8 +63,8 @@ src.process.name in ('powershell.exe', 'pwsh.exe')
 | limit 100
 ```
 
-**Tune** — drop the parent-not-in filter to also catch interactive shells; raise `net_out > 5` for higher-confidence beaconing.
-**Pivot** — for a hit, query `src.process.storyline.id = '…' and event.type = 'IP Connect'` to see destinations.
+**Tune**, drop the parent-not-in filter to also catch interactive shells; raise `net_out > 5` for higher-confidence beaconing.
+**Pivot**, for a hit, query `src.process.storyline.id = '…' and event.type = 'IP Connect'` to see destinations.
 
 ### Suspicious office-spawned children (Maldoc style)
 
@@ -86,11 +86,11 @@ src.process.name in ('powershell.exe', 'pwsh.exe', 'cmd.exe', 'wscript.exe', 'cs
 | limit 100
 ```
 
-**Pivot** — for a hit, look at file activity in the same storyline: `src.process.storyline.id = '…' and event.category = 'file'`.
+**Pivot**, for a hit, look at file activity in the same storyline: `src.process.storyline.id = '…' and event.category = 'file'`.
 
 ### Suspicious LOLBin invocations
 
-**Use it when** broad LOLBin sweep — useful as a daily review.
+**Use it when** broad LOLBin sweep, useful as a daily review.
 
 ```
 event.type = 'Process Creation'
@@ -140,7 +140,7 @@ src.process.cmdline matches '(?i)\\s-(e|en|enc|enco|encod|encode|encoded|encoded
 | limit 100
 ```
 
-**Pivot** — copy the cmdline value into a base64 decoder. Most hits are admin scripts; the rest are payloads.
+**Pivot**, copy the cmdline value into a base64 decoder. Most hits are admin scripts; the rest are payloads.
 
 ---
 
@@ -183,8 +183,8 @@ event.login.type in ('NETWORK', 'NETWORK_CLEAR_TEXT', 'REMOTE_INTERACTIVE')
 | limit 50
 ```
 
-**Tune** — add `endpoint.name` to `by` to get per-host-per-user.
-**Pivot** — for a high-source-count user, drill down: `event.login.userName = 'svc-foo' | group ct = count() by src.endpoint.ip.address | sort -ct`.
+**Tune**, add `endpoint.name` to `by` to get per-host-per-user.
+**Pivot**, for a high-source-count user, drill down: `event.login.userName = 'svc-foo' | group ct = count() by src.endpoint.ip.address | sort -ct`.
 
 ### Failed logon spike (likely brute-force)
 
@@ -226,7 +226,7 @@ indicator.name in ('CredentialDumping', 'LSASSAccess')
 | limit 100
 ```
 
-**Pivot** — `src.process.storyline.id = '…'` to pull the full storyline. Normal admin tools occasionally trigger this; check `src.process.publisher` for "Microsoft" first.
+**Pivot**, `src.process.storyline.id = '…'` to pull the full storyline. Normal admin tools occasionally trigger this; check `src.process.publisher` for "Microsoft" first.
 
 ### Suspicious credential utility use
 
@@ -350,7 +350,7 @@ endpoint.name = 'EC2AMAZ-4158GRS'
 ```
 
 **Note**, `net.bytes.tx` is a tenant-specific placeholder: it is not documented in `references/fields-and-schema.md` and silently returns null if the field does not exist on this tenant. Confirm the byte-counter field via schema discovery before trusting the `bytes` column.
-**Tune** — replace `endpoint.name = '…'` with a broader filter for tenant-wide; that may need a longer window or tighter port filter.
+**Tune**, replace `endpoint.name = '…'` with a broader filter for tenant-wide; that may need a longer window or tighter port filter.
 **Pivot**, the heavy-hitter destination IPs go straight into the configured threat-intel MCP for an IP reputation lookup (in the default bundle that's `mcp__virustotal__get_ip_report`; substitute the equivalent tool if you've connected a different provider).
 
 ### Persistent traffic to the same destination
@@ -410,7 +410,7 @@ event.type in ('File Modification', 'File Rename')
 | limit 50
 ```
 
-`200` is a starting threshold — tune for your tenant. A backup process can also trip this.
+`200` is a starting threshold, tune for your tenant. A backup process can also trip this.
 
 ---
 

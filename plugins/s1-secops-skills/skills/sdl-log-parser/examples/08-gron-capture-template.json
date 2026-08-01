@@ -12,14 +12,14 @@
   //   - The source emits JSON-per-line or dotted-key lines.
   //   - You want all field-mapping logic in one place (easier to
   //     review, diff, and bump `metadata.version`).
-  //   - You expect to add more target fields over time — extending
+  //   - You expect to add more target fields over time: extending
   //     the `mappings` array is cheaper than adding new formats.
   //
   // When NOT to use this:
   //   - Source is CSV/pipe/positional (use `commaSeparatedvalues`).
   //   - Source has a vendor envelope + embedded body you want to
   //     unwrap (use `{parse=dottedJson}` on the body field instead).
-  //   - Multiple distinct event shapes in one stream — prefer
+  //   - Multiple distinct event shapes in one stream: prefer
   //     format-id-as-sentinel (see examples/07 or the AWS RDS parser).
   // -----------------------------------------------------------
   "attributes": {
@@ -109,8 +109,8 @@
 
           // --- Severity ----------------------------------------------
           // NOTE: do NOT set `severity` to OCSF string labels ("Informational",
-          // "Medium", etc.) — `severity` is a RESERVED SDL field that the
-          // ingest pipeline coerces to an integer 0–6 against its own
+          // "Medium", etc.), `severity` is a RESERVED SDL field that the
+          // ingest pipeline coerces to an integer 0-6 against its own
           // vocabulary (`info`/`warn`/`error`/...). OCSF labels collide.
           // Emit `severity_id` (integer) only, or use a non-colliding field
           // name like `severity_name` if you really need the OCSF string.

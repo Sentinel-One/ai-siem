@@ -7,7 +7,7 @@ the common read and write operations as plain Python functions, so the
 skill can list/filter/mutate alerts without each caller having to
 memorise GraphQL and the UAM schema's sharp edges.
 
-Auth is identical to the REST API — `Authorization: ApiToken <token>` —
+Auth is identical to the REST API, `Authorization: ApiToken <token>`,
 so this reuses S1Client for transport, same as `purple_ai.py`.
 
 Schema quirks this wrapper hides (learned from discovery):
@@ -20,25 +20,25 @@ Schema quirks this wrapper hides (learned from discovery):
   * `alertHistory`, `alertTimeline`, `alertGroups`, `alerts` use a
     connection pattern with `edges { node { ... } }`, `totalCount`,
     `pageInfo { hasNextPage endCursor }`.
-  * `AlertHistoryItem` and `AlertTimelineItem` have no `id` — use
+  * `AlertHistoryItem` and `AlertTimelineItem` have no `id`: use
     `createdAt`, `eventType`, `eventText` instead.
   * `AlertGroup` fields are `value`, `label`, `count` (not `groupValue`).
-  * `AutocompleteOption` has `{value, count}` only — no `label`.
+  * `AutocompleteOption` has `{value, count}` only: no `label`.
     Autocomplete also rejects fields that don't support it (e.g.
     `externalId`) and requires `searchText` length ≥ 3.
   * `alertsViewDataAvailability` needs nested subselection:
     `{ viewDataAvailability { viewType dataAvailable } }`.
   * `CsvResponse` needs `{ data }` subselection.
-  * `aiInvestigations` returns `[AiInvestigation!]` directly — no wrapper.
+  * `aiInvestigations` returns `[AiInvestigation!]` directly: no wrapper.
   * `alertAvailableActions.errors` is `[ActionsError!]` and needs
     `{ errorMessage }` subselection if you ask for it.
 
 Mutation eventual consistency (important):
-  `updateAlertNote` and `deleteAlertNote` fail for roughly 30–90 seconds
+  `updateAlertNote` and `deleteAlertNote` fail for roughly 30-90 seconds
   after a note is freshly created with
     "Alert Note with ID ... does not have mgmt_note_id set, unable to
      [edit|delete], try again later!"
-  This is a backend propagation window — the UAM-facing ID is minted
+  This is a backend propagation window; the UAM-facing ID is minted
   before the management-console-side mgmt_note_id. Callers that chain
   create→edit or create→delete should retry with backoff. The wrapper's
   `update_alert_note` and `delete_alert_note` expose a `wait_for_ready`
@@ -81,19 +81,24 @@ def _gql(
     variables: Optional[Dict[str, Any]] = None,
     *,
     raise_on_error: bool = True,
+    allow_retry: bool = False,
 ) -> Dict[str, Any]:
     """POST a GraphQL query and return the parsed response.
 
     If `raise_on_error` is True (default), non-empty `errors` turn into
     UAMError. Set to False if the caller wants to inspect errors itself
     (e.g. to tolerate the mgmt_note_id eventual-consistency window).
+
+    `allow_retry` defaults to False so mutations are NEVER auto-retried:
+    a 5xx returned after the backend committed would duplicate notes or
+    re-fire bulk actions. Read-only query callers pass allow_retry=True
+    to keep the client's 429/5xx retry, which is safe for idempotent
+    GraphQL reads over POST.
     """
     body: Dict[str, Any] = {"query": query}
     if variables:
         body["variables"] = variables
-    # allow_retry=True: GraphQL reads over POST are idempotent, so the
-    # client's 429/5xx retry (now GET-only by default) stays safe here.
-    resp = client.post(UAM_PATH, json_body=body, allow_retry=True)
+    resp = client.post(UAM_PATH, json_body=body, allow_retry=allow_retry)
     if raise_on_error and resp.get("errors"):
         first = resp["errors"][0].get("message", "UAM GraphQL error")
         raise UAMError(first, resp["errors"])
@@ -223,7 +228,7 @@ def list_alerts(
       }}
     }}
     """
-    r = _gql(client, query, variables)
+    r = _gql(client, query, variables, allow_retry=True)
     return (r.get("data") or {}).get("alerts") or {}
 
 
@@ -284,12 +289,12 @@ def get_alert(
       alert(id: $id) {{ {fields} }}
     }}
     """
-    r = _gql(client, query, {"id": alert_id})
+    r = _gql(client, query, {"id": alert_id}, allow_retry=True)
     return (r.get("data") or {}).get("alert") or {}
 
 
 def get_alert_with_raw_indicators(client: S1Client, alert_id: str) -> Dict[str, Any]:
-    """`alertWithRawIndicators` — alert plus its raw indicator payload."""
+    """`alertWithRawIndicators`: alert plus its raw indicator payload."""
     query = """
     query ri($id: ID!) {
       alertWithRawIndicators(id: $id) {
@@ -298,17 +303,17 @@ def get_alert_with_raw_indicators(client: S1Client, alert_id: str) -> Dict[str, 
       }
     }
     """
-    r = _gql(client, query, {"id": alert_id})
+    r = _gql(client, query, {"id": alert_id}, allow_retry=True)
     return (r.get("data") or {}).get("alertWithRawIndicators") or {}
 
 
 def column_metadata(client: S1Client) -> List[Dict[str, Any]]:
-    """`alertColumnMetadata` — the list of queryable fields, their
+    """`alertColumnMetadata`: the list of queryable fields, their
     filterTypes, sortable/groupable flags, and allowed enum values."""
     query = """
     query { alertColumnMetadata { fieldId filterTypes sortable groupable enumValues } }
     """
-    r = _gql(client, query)
+    r = _gql(client, query, allow_retry=True)
     return (r.get("data") or {}).get("alertColumnMetadata") or []
 
 
@@ -318,7 +323,7 @@ def available_actions(
     scope_input: Dict[str, Any],
     filter_input: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """`alertAvailableActions` — list actions a caller can trigger.
+    """`alertAvailableActions`: list actions a caller can trigger.
 
     `scope_input` is required (use `scope(...)`). `filter_input` is an
     OrFilterSelectionInput (use `or_filter(...)`); pass None for "all
@@ -333,12 +338,12 @@ def available_actions(
     }
     """
     variables = {"scope": scope_input, "filter": filter_input or {"or": []}}
-    r = _gql(client, query, variables)
+    r = _gql(client, query, variables, allow_retry=True)
     return (r.get("data") or {}).get("alertAvailableActions") or {}
 
 
 def alert_notes(client: S1Client, alert_id: str) -> List[Dict[str, Any]]:
-    """`alertNotes` — list notes on an alert. Returns list of note dicts."""
+    """`alertNotes`: list notes on an alert. Returns list of note dicts."""
     query = """
     query n($id: ID!) {
       alertNotes(alertId: $id) {
@@ -346,14 +351,14 @@ def alert_notes(client: S1Client, alert_id: str) -> List[Dict[str, Any]]:
       }
     }
     """
-    r = _gql(client, query, {"id": alert_id})
+    r = _gql(client, query, {"id": alert_id}, allow_retry=True)
     return ((r.get("data") or {}).get("alertNotes") or {}).get("data") or []
 
 
 def alert_history(
     client: S1Client, alert_id: str, *, first: int = 50, after: Optional[str] = None
 ) -> Dict[str, Any]:
-    """`alertHistory` — audit log. Connection shape."""
+    """`alertHistory`: audit log. Connection shape."""
     query = """
     query h($id: ID!, $first: Int, $after: String) {
       alertHistory(alertId: $id, first: $first, after: $after) {
@@ -363,14 +368,14 @@ def alert_history(
       }
     }
     """
-    r = _gql(client, query, {"id": alert_id, "first": first, "after": after})
+    r = _gql(client, query, {"id": alert_id, "first": first, "after": after}, allow_retry=True)
     return (r.get("data") or {}).get("alertHistory") or {}
 
 
 def alert_timeline(
     client: S1Client, alert_id: str, *, first: int = 50, after: Optional[str] = None
 ) -> Dict[str, Any]:
-    """`alertTimeline` — timeline view. Connection shape."""
+    """`alertTimeline`: timeline view. Connection shape."""
     query = """
     query t($id: ID!, $first: Int, $after: String) {
       alertTimeline(alertId: $id, first: $first, after: $after) {
@@ -380,12 +385,12 @@ def alert_timeline(
       }
     }
     """
-    r = _gql(client, query, {"id": alert_id, "first": first, "after": after})
+    r = _gql(client, query, {"id": alert_id, "first": first, "after": after}, allow_retry=True)
     return (r.get("data") or {}).get("alertTimeline") or {}
 
 
 def alert_mitigation_action_results(client: S1Client, alert_id: str) -> List[Dict[str, Any]]:
-    """`alertMitigationActionResults` — per-alert action outcomes."""
+    """`alertMitigationActionResults`: per-alert action outcomes."""
     query = """
     query m($id: ID!) {
       alertMitigationActionResults(alertId: $id) {
@@ -393,7 +398,7 @@ def alert_mitigation_action_results(client: S1Client, alert_id: str) -> List[Dic
       }
     }
     """
-    r = _gql(client, query, {"id": alert_id})
+    r = _gql(client, query, {"id": alert_id}, allow_retry=True)
     return ((r.get("data") or {}).get("alertMitigationActionResults") or {}).get("data") or []
 
 
@@ -404,7 +409,7 @@ def group_by_count(
     filters: Optional[List[Dict[str, Any]]] = None,
     limit: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
-    """`alertGroupByCount` — faceted counts by one or more fields.
+    """`alertGroupByCount`: faceted counts by one or more fields.
 
     Note: the backend marks this as deprecated in favour of `alertGroups`,
     but both are still live. Use `alert_groups()` for paginated output.
@@ -417,7 +422,7 @@ def group_by_count(
     }
     """
     variables = {"fieldIds": field_ids, "filters": filters or [], "limit": limit}
-    r = _gql(client, query, variables)
+    r = _gql(client, query, variables, allow_retry=True)
     return ((r.get("data") or {}).get("alertGroupByCount") or {}).get("data") or []
 
 
@@ -427,7 +432,7 @@ def filters_count(
     *,
     filters: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
-    """`alertFiltersCount` — facet value counts (used by UI sidebars)."""
+    """`alertFiltersCount`: facet value counts (used by UI sidebars)."""
     query = """
     query f($fieldIds: [String!]!, $filters: [FilterInput!]) {
       alertFiltersCount(fieldIds: $fieldIds, filters: $filters) {
@@ -436,7 +441,7 @@ def filters_count(
     }
     """
     variables = {"fieldIds": field_ids, "filters": filters or []}
-    r = _gql(client, query, variables)
+    r = _gql(client, query, variables, allow_retry=True)
     return ((r.get("data") or {}).get("alertFiltersCount") or {}).get("data") or []
 
 
@@ -448,7 +453,7 @@ def alert_groups(
     first: int = 20,
     after: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """`alertGroups` — group-by listing, connection shape."""
+    """`alertGroups`: group-by listing, connection shape."""
     query = """
     query ag($fid: String!, $filters: [FilterInput!], $first: Int, $after: String) {
       alertGroups(groupByFieldId: $fid, filters: $filters, first: $first, after: $after) {
@@ -464,14 +469,14 @@ def alert_groups(
         "first": first,
         "after": after,
     }
-    r = _gql(client, query, variables)
+    r = _gql(client, query, variables, allow_retry=True)
     return (r.get("data") or {}).get("alertGroups") or {}
 
 
 def autocomplete(
     client: S1Client, field_id: str, search_text: str, *, scope_input: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
-    """`autocompleteOptions` — value suggestions for a field.
+    """`autocompleteOptions`: value suggestions for a field.
 
     Not every field supports autocomplete (the backend will refuse with
     "Field doesn't support auto-complete"); `search_text` must be ≥ 3 chars.
@@ -484,23 +489,23 @@ def autocomplete(
     }
     """
     variables = {"fid": field_id, "q": search_text, "scope": scope_input}
-    r = _gql(client, query, variables)
+    r = _gql(client, query, variables, allow_retry=True)
     return (r.get("data") or {}).get("autocompleteOptions") or {}
 
 
 def view_data_availability(client: S1Client) -> List[Dict[str, Any]]:
-    """`alertsViewDataAvailability` — which views have data."""
+    """`alertsViewDataAvailability`: which views have data."""
     query = """
     query { alertsViewDataAvailability { viewDataAvailability { viewType dataAvailable } } }
     """
-    r = _gql(client, query)
+    r = _gql(client, query, allow_retry=True)
     return ((r.get("data") or {}).get("alertsViewDataAvailability") or {}).get(
         "viewDataAvailability"
     ) or []
 
 
 def ai_investigations(client: S1Client, alert_ids: List[str]) -> List[Dict[str, Any]]:
-    """`aiInvestigations` — AI investigation status for the given alerts."""
+    """`aiInvestigations`: AI investigation status for the given alerts."""
     query = """
     query ai($ids: [ID!]!) {
       aiInvestigations(alertIds: $ids) {
@@ -508,7 +513,7 @@ def ai_investigations(client: S1Client, alert_ids: List[str]) -> List[Dict[str, 
       }
     }
     """
-    r = _gql(client, query, {"ids": alert_ids})
+    r = _gql(client, query, {"ids": alert_ids}, allow_retry=True)
     return (r.get("data") or {}).get("aiInvestigations") or []
 
 
@@ -518,21 +523,21 @@ def export_alerts_csv(
     filters: Optional[List[Dict[str, Any]]] = None,
     view_type: str = "ALL",
 ) -> str:
-    """`alertsCsvExport` — returns a CSV string."""
+    """`alertsCsvExport`: returns a CSV string."""
     query = """
     query ($filters: [FilterInput!], $viewType: ViewType!) {
       alertsCsvExport(filters: $filters, viewType: $viewType) { data }
     }
     """
     variables = {"filters": filters or [], "viewType": view_type}
-    r = _gql(client, query, variables)
+    r = _gql(client, query, variables, allow_retry=True)
     return ((r.get("data") or {}).get("alertsCsvExport") or {}).get("data") or ""
 
 
 def export_alert_history_csv(client: S1Client, alert_id: str) -> str:
-    """`alertHistoryCsvExport` — CSV of audit events for one alert."""
+    """`alertHistoryCsvExport`: CSV of audit events for one alert."""
     query = "query ($id: ID!) { alertHistoryCsvExport(alertId: $id) { data } }"
-    r = _gql(client, query, {"id": alert_id})
+    r = _gql(client, query, {"id": alert_id}, allow_retry=True)
     return ((r.get("data") or {}).get("alertHistoryCsvExport") or {}).get("data") or ""
 
 
@@ -646,7 +651,7 @@ def trigger_actions(
     filter_input: Optional[Dict[str, Any]] = None,
     view_type: str = "ALL",
 ) -> Dict[str, Any]:
-    """`alertTriggerActions` — run one or more actions against a filter.
+    """`alertTriggerActions`: run one or more actions against a filter.
 
     `actions` is a list of `TriggerActionInput` dicts. Example:
         [
@@ -657,12 +662,12 @@ def trigger_actions(
         ]
 
     `filter_input` is an OrFilterSelectionInput (use `or_filter(...)`).
-    Passing `None` means "all alerts in scope" — USE WITH CAUTION.
+    Passing `None` means "all alerts in scope"; USE WITH CAUTION.
 
-    Returns the raw union payload — inspect `__typename`:
-      * ActionsTriggered — `actions[]` with success/skip/failure lists.
-      * TriggerActionsScheduled — `bulkActionTriggerId` for long jobs.
-      * TriggerActionsError — `errors[]` with `errorMessage`.
+    Returns the raw union payload, inspect `__typename`:
+      * ActionsTriggered: `actions[]` with success/skip/failure lists.
+      * TriggerActionsScheduled: `bulkActionTriggerId` for long jobs.
+      * TriggerActionsError: `errors[]` with `errorMessage`.
     """
     query = """
     mutation trigger(
@@ -711,7 +716,7 @@ def set_alert_status(
     """Convenience wrapper: status update (+ optional note) on a specific
     set of alerts. Builds the or/and filter for the caller.
 
-    `status` must be a valid enum value for the alert status field — see
+    `status` must be a valid enum value for the alert status field, see
     `column_metadata()` for the enum list. Common: NEW, IN_PROGRESS,
     RESOLVED.
     """

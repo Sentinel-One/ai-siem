@@ -2,8 +2,8 @@
 Source-agnostic behavioral baseline + z-score anomaly detection.
 
 Composes ``inspect_source.discover_schema`` + ``pick_keys`` + ``pq.run_pq``
-to baseline ANY ``dataSource.name`` ingested into SDL — EDR, identity,
-network, cloud, email, SaaS, custom — without hardcoding principal /
+to baseline ANY ``dataSource.name`` ingested into SDL, EDR, identity,
+network, cloud, email, SaaS, custom, without hardcoding principal /
 action fields per source.
 
 Pipeline:
@@ -16,8 +16,8 @@ Pipeline:
      under the LRQ per-call deadline.
   3. One 24h live slice.
   4. Client-side merge with two baseline strategies:
-       - ``pooled`` — all daily samples in one bucket per (action, principal)
-       - ``dow``    — separate bucket per (action, principal, day_of_week)
+       - ``pooled``, all daily samples in one bucket per (action, principal)
+       - ``dow``   , separate bucket per (action, principal, day_of_week)
                       eliminates the weekday/weekend false-positive
   5. Three anomaly classes surfaced:
        - matched z-score deviations (SPIKE / DROP)
@@ -25,7 +25,7 @@ Pipeline:
        - new-behavior pairs (live with no baseline)
 
 State is checkpointed to disk per source so the script is fully
-resumable across short shell budgets — re-invoke until ``all phases
+resumable across short shell budgets, re-invoke until ``all phases
 complete`` is reported.
 
 Usage:
@@ -112,9 +112,13 @@ COUNT_PQ_ROW_LIMIT = 5000
 
 
 def _build_count_pq(source: str, principal: str, action: str, count_alias: str) -> str:
-    """Per-day count PQ — produces (action, principal, count_alias) rows over 1 day."""
+    """Per-day count PQ: produces (action, principal, count_alias) rows over 1 day."""
+    # PQ string literals escape a single quote by doubling it; unescaped
+    # quotes in a source name would break the filter (same pattern as
+    # inspect_source.py).
+    safe = source.replace("'", "''")
     return (
-        f"dataSource.name = '{source}' (tag != 'logVolume' OR !(tag = *))\n"
+        f"dataSource.name = '{safe}' (tag != 'logVolume' OR !(tag = *))\n"
         f"| filter {principal} = * AND {action} = *\n"
         f"| group {count_alias} = count() by action_v = {action}, principal_v = {principal}\n"
         "| sort -" + count_alias + "\n"
@@ -213,7 +217,9 @@ def _merge_pooled(state: Dict[str, Any]) -> Dict[str, Any]:
         n_sampled += 1
         for r in res["rows"]:
             key = (r.get("action_v"), r.get("principal_v"))
-            per_pair_counts[key].append(r["day_count"])
+            # LRQ can return null counts; coerce at ingestion so stats and
+            # sorts never see None.
+            per_pair_counts[key].append(int(r.get("day_count") or 0))
 
     baseline = {}
     for key, counts in per_pair_counts.items():
@@ -258,7 +264,8 @@ def _merge_dow(state: Dict[str, Any]) -> Tuple[Dict[Tuple[str, str, int], Dict[s
         sampled_dows[dow] += 1
         for r in res["rows"]:
             key = (r.get("action_v"), r.get("principal_v"))
-            per_pair_dow[key][dow].append(r["day_count"])
+            # LRQ can return null counts; coerce at ingestion.
+            per_pair_dow[key][dow].append(int(r.get("day_count") or 0))
 
     # Pad inactive sampled days with zeros so the DoW baseline reflects the
     # true rate (active 4-of-4 Sundays vs 2-of-4 are not the same).
@@ -267,6 +274,10 @@ def _merge_dow(state: Dict[str, Any]) -> Tuple[Dict[Tuple[str, str, int], Dict[s
         for dow, counts in by_dow.items():
             n_active = len(counts)
             n_sampled = sampled_dows[dow]
+            # Defensive: a dow with zero sampled phases carries no baseline
+            # signal; skip instead of feeding empty/zero-length stats.
+            if n_sampled <= 0:
+                continue
             full = counts + [0] * max(0, n_sampled - n_active)
             if len(full) < 2:
                 continue
@@ -303,12 +314,14 @@ def _score_z(live_c: float, b: Dict[str, Any]) -> float:
 
 def _detect_pooled(state: Dict[str, Any], baseline: Dict, z_threshold: float) -> Dict[str, Any]:
     live = state["phase_results"].get("live", {"rows": []})["rows"]
-    live_lookup = {(r.get("action_v"), r.get("principal_v")): r["live_count"] for r in live}
+    # LRQ can return null counts; coerce at ingestion.
+    live_lookup = {(r.get("action_v"), r.get("principal_v")): int(r.get("live_count") or 0)
+                   for r in live}
 
     matched, silent, new_b = [], [], []
     for r in live:
         key = (r.get("action_v"), r.get("principal_v"))
-        c = r["live_count"]
+        c = live_lookup[key]
         if key not in baseline:
             new_b.append({"action": key[0], "principal": key[1], "live_count": c})
             continue
@@ -354,8 +367,11 @@ def _detect_dow(state: Dict[str, Any], baseline_dow: Dict, sampled_dows: Dict[in
                 z_threshold: float) -> Dict[str, Any]:
     live_phase = next(p for p in state["phases"] if p["label"] == "live")
     live_dow = live_phase["dow"]
-    live_rows = state["phase_results"]["live"]["rows"]
-    live_lookup = {(r.get("action_v"), r.get("principal_v")): r["live_count"] for r in live_rows}
+    # Guard the missing-live-phase case (mirrors _detect_pooled), and coerce
+    # null counts at ingestion.
+    live_rows = state["phase_results"].get("live", {"rows": []})["rows"]
+    live_lookup = {(r.get("action_v"), r.get("principal_v")): int(r.get("live_count") or 0)
+                   for r in live_rows}
 
     pair_keys = set()
     for k in baseline_dow.keys():
@@ -369,7 +385,7 @@ def _detect_dow(state: Dict[str, Any], baseline_dow: Dict, sampled_dows: Dict[in
         live_c = live_lookup.get((action_v, principal_v), 0)
 
         if dow_key not in baseline_dow:
-            # Pair has no baseline on this DoW — either always silent here, or first-time
+            # Pair has no baseline on this DoW: either always silent here, or first-time
             if live_c > 0:
                 new_b.append({"action": action_v, "principal": principal_v, "live_count": live_c})
             continue
@@ -404,7 +420,7 @@ def _print_report(state: Dict[str, Any], detection: Dict[str, Any], z_threshold:
     src = state["source"]
     bar = "=" * 100
     print(f"\n{bar}")
-    print(f"BASELINE + ANOMALY DETECTION — {src}")
+    print(f"BASELINE + ANOMALY DETECTION: {src}")
     print(f"  principal={state['principal']}  action={state['action']}")
     print(f"  baseline window={state['days']}d  strategy={state['stratify']}  z_threshold={z_threshold}")
     if state["stratify"] == "dow":
@@ -465,7 +481,7 @@ def setup(client: Any, source: str, days: int, principal: Optional[str],
         action = action or auto_action
     if not principal or not action:
         raise RuntimeError(
-            f"could not determine principal/action for {source} — pass --principal and --action"
+            f"could not determine principal/action for {source}, pass --principal and --action"
         )
     print(f"[{source}] principal={principal}  action={action}", flush=True)
     return _init_state(source, days, principal, action, stratify)
@@ -558,7 +574,7 @@ def main() -> int:
                    help="Baseline strategy: pooled (one bucket) or dow (one bucket per day-of-week)")
     p.add_argument("--z", type=float, default=2.0, help="Z-score threshold for anomaly (default 2.0)")
     p.add_argument("--max-workers", type=int, default=3,
-                   help="Parallel LRQ slices per invocation (default 3 — per-user 3 rps cap)")
+                   help="Parallel LRQ slices per invocation (default 3, per-user 3 rps cap)")
     p.add_argument("command", nargs="?", default="run",
                    help="run | reset | report (default run)")
     args = p.parse_args()
@@ -582,7 +598,7 @@ def main() -> int:
     elif args.command == "run":
         # If user changed flags, warn but use saved state
         if state.get("days") != args.days or state.get("stratify") != args.stratify:
-            print(f"[{src}] NOTE: saved state uses days={state['days']} stratify={state['stratify']} (passed flags ignored — use 'reset' to start over)")
+            print(f"[{src}] NOTE: saved state uses days={state['days']} stratify={state['stratify']} (passed flags ignored; use 'reset' to start over)")
 
     if args.command == "report":
         report(state, args.z)

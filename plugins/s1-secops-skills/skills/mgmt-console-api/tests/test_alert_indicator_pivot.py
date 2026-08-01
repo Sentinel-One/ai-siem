@@ -1,12 +1,12 @@
 """
-Alert → Indicator pivot test — REVERSIBLE.
+Alert → Indicator pivot test, REVERSIBLE.
 
 Exercises the SOC workflow "take an indicator observed on an alert and
 promote it to a tracked Threat-Intelligence IOC."
 
     1. Pick most-recent alert.
     2. Read alert.rawIndicators, extract a file-hash observable
-       (MD5/SHA256) — real detection artifact, NOT a safe placeholder.
+       (MD5/SHA256), real detection artifact, NOT a safe placeholder.
     3. Create a TI IOC for that hash, tagged to the alert
          - externalId  = "<run_tag>-<alert_id>"
          - description = "Pinned from alert <alert_id> by API test"
@@ -14,14 +14,14 @@ promote it to a tracked Threat-Intelligence IOC."
          - method      = EQUALS / severity = 1 (low)
        This is the same shape a SOC analyst would use to add a block
        for the hash after confirming the alert is a true positive.
-    4. LIST /iocs?name__contains=<run_tag> — verify the IOC is linked
+    4. LIST /iocs?name__contains=<run_tag>, verify the IOC is linked
        back to its alert via externalId + description fields.
     5. DELETE the IOC by uuid (reversible; the alert itself is
        untouched).
     6. VERIFY re-query returns zero.
 
 If the alert's rawIndicators do not expose a usable hash, the test
-falls back to a safe deterministic hash derived from the run_tag — the
+falls back to a safe deterministic hash derived from the run_tag, the
 workflow (read alert → create IOC → link → delete) is still proven,
 just with a non-real-world hash.
 
@@ -248,8 +248,8 @@ def main() -> int:
         return 6
     _log("VERIFY ok: zero remaining")
 
-    _log("Alert→Indicator pivot: READ → CREATE → LIST+LINK → DELETE → VERIFY "
-         "— ALL OK")
+    _log("Alert→Indicator pivot: READ → CREATE → LIST+LINK → DELETE → VERIFY"
+         ", ALL OK")
     return 0
 
 

@@ -6,7 +6,7 @@ All built-in functions you can use in PowerQuery expressions. Read when you need
 
 1. Numeric
 2. String (and method chaining)
-3. `format()` — printf-style strings
+3. `format()`: printf-style strings
 4. JSON
 5. Network and URL
 6. Aggregate (across groups) vs. running / overall (across rows)
@@ -20,7 +20,7 @@ All built-in functions you can use in PowerQuery expressions. Read when you need
 
 `abs(x)`, `ceiling(x)`, `floor(x)`, `min(x, y)`, `max(x, y)`, `sqrt(x)`, `exp(x)`, `ln(x)`, `log(x)`, `log(x, y)`, `pow(x, y)`.
 
-These are element-wise — don't confuse with the `min()` / `max()` aggregation functions used inside `group`. `min(x, y)` with two args is the function; `min(x)` inside `group` is the aggregate.
+These are element-wise; don't confuse with the `min()` / `max()` aggregation functions used inside `group`. `min(x, y)` with two args is the function; `min(x)` inside `group` is the aggregate.
 
 ---
 
@@ -40,7 +40,7 @@ These are element-wise — don't confuse with the `min()` / `max()` aggregation 
 | `bool(x)` | Coerce to boolean. `0`, `null`, `""` → false |
 | `string(x)` | Stringify (useful for large numbers) |
 | `number(x)` | Parse to number. Null / missing → 0; unparseable → NaN |
-| `pad_version(x)` | Zero-pad each dotted segment to 5 digits — enables lexicographic version sort |
+| `pad_version(x)` | Zero-pad each dotted segment to 5 digits: enables lexicographic version sort |
 | `replace(x, y, z)` | Regex replace in `x`. `y` is a regex (case-insensitive). Use `$1` / `$2` for capture references, `\$` for a literal `$` |
 
 > **String-function gotchas (tenant-validated 2026-06-16):** the substring function is `substr`, not `substring` (`substring(...)` returns `400 Unknown function 'substring'`). Because `replace`'s pattern is a regex, a lone bracket errors: `replace(x, '[', '')` returns `error parsing regexp: missing closing ]`. To strip literal `[` / `]` without escaping, use the character class `[][]` (a `]` placed first in a class is literal), e.g. `replace(x, '[][]', '')`.
@@ -76,13 +76,13 @@ Specifiers:
 
 Flags (between `%` and the letter): `-` left-justify, `+` force sign, ` ` (space) space before positive, `0` zero-pad, `,` thousands separator (digits only), `(` parenthesize negatives.
 
-`format()` is slow — use it after a `group` or `limit` so you're only formatting tens of rows, not millions.
+`format()` is slow; use it after a `group` or `limit` so you're only formatting tens of rows, not millions.
 
 ---
 
 ## 4. JSON
 
-`json_object_value(obj, "field")` — parse a JSON string, return the named field's value. Returns a primitive or an array of strings.
+`json_object_value(obj, "field")`, parse a JSON string, return the named field's value. Returns a primitive or an array of strings.
 
 ```
 | columns obj = '{"users":[{"name":"A"},{"name":"B"}]}'
@@ -123,8 +123,8 @@ See [commands-reference §4](commands-reference.md#4-group) for the full list. T
 `avg(x)` is the group mean and `stddev(x)` is the sample standard deviation; percentiles support `p10/p50/p90/p95/p99/p999` and the general `pct(N, x)`. Tenant-validated.
 
 **Avoid** on general tenants (return 500 error on this deployment even though docs list them):
-- `percentile(x, N)` — use `p50` / `p95` / `p99` instead.
-- `first(x)` / `last(x)` — use `min_by(x, timestamp)` / `max_by(x, timestamp)`. These are more explicit and always work.
+- `percentile(x, N)`: use `p50` / `p95` / `p99` instead.
+- `first(x)` / `last(x)`: use `min_by(x, timestamp)` / `max_by(x, timestamp)`. These are more explicit and always work.
 
 ### Row-level / overall (no `group` needed)
 
@@ -150,7 +150,7 @@ Useful for Pareto-style "top contributors" reports:
 
 ## 7. Array (beta)
 
-Array functions are only in PowerQueries (not alerts). Arrays cap at 8 MB. Create with `array(…)` (up to 50 values), `array_from_json(…)` (JSON capped at 1 MB), or — much more commonly — via `array_agg()` / `array_agg_distinct()` inside `group`.
+Array functions are only in PowerQueries (not alerts). Arrays cap at 8 MB. Create with `array(…)` (up to 50 values), `array_from_json(…)` (JSON capped at 1 MB), or, much more commonly, via `array_agg()` / `array_agg_distinct()` inside `group`.
 
 ### Creation / conversion
 
@@ -163,14 +163,14 @@ Array functions are only in PowerQueries (not alerts). Arrays cap at 8 MB. Creat
 | Function | Meaning |
 |---|---|
 | `concat(arr)` | Append elements |
-| `distinct()` | Unique (numbers and strings are distinct — `5 != "5"`) |
+| `distinct()` | Unique (numbers and strings are distinct: `5 != "5"`) |
 | `expand()` | Explode: one row per element |
 | `filter(func)` | Keep elements where lambda returns truthy |
 | `intersect(arr)` | Elements present in both |
 | `map(func)` | Transform each element |
 | `set(i, v)` | Replace at index (negative from end; out-of-bounds is a no-op) |
 | `slice(from[, to])` | Subrange; negatives count from end |
-| `sort()`, `sort_desc()` | Sort (UTF-8 bytewise — case-sensitive) |
+| `sort()`, `sort_desc()` | Sort (UTF-8 bytewise: case-sensitive) |
 | `zip(arr, func)` | Element-wise function of two arrays |
 
 ### Array-to-primitive

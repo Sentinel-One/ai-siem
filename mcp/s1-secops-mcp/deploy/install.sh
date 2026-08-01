@@ -18,26 +18,39 @@
 
 set -euo pipefail
 
+# Token and credential files must never be world-readable, even for the
+# instant between creation and the explicit chmod 600 below.
+umask 077
+
 # ─── helpers ─────────────────────────────────────────────────────────────────
 
-c_red()    { printf '\033[31m%s\033[0m\n' "$*"; }
-c_green()  { printf '\033[32m%s\033[0m\n' "$*"; }
+c_red() { printf '\033[31m%s\033[0m\n' "$*"; }
+c_green() { printf '\033[32m%s\033[0m\n' "$*"; }
 c_yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
-c_bold()   { printf '\033[1m%s\033[0m\n' "$*"; }
+c_bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 
 step() { c_bold ">> $*"; }
-ok()   { c_green   "   ok: $*"; }
-warn() { c_yellow  "   warn: $*"; }
-die()  { c_red     "   error: $*"; exit 1; }
+ok() { c_green "   ok: $*"; }
+warn() { c_yellow "   warn: $*"; }
+die() {
+  c_red "   error: $*"
+  exit 1
+}
 
 PKG="@pmoses-s1/s1-secops-mcp"
 MODE="user"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --user)   MODE="user"; shift ;;
-    --server) MODE="server"; shift ;;
-    -h|--help)
+    --user)
+      MODE="user"
+      shift
+      ;;
+    --server)
+      MODE="server"
+      shift
+      ;;
+    -h | --help)
       cat <<EOF
 Usage: $0 [--user|--server]
 
@@ -51,7 +64,8 @@ Usage: $0 [--user|--server]
               Requires sudo.
 
 EOF
-      exit 0 ;;
+      exit 0
+      ;;
     *) die "Unknown flag: $1 (try --help)" ;;
   esac
 done
@@ -59,8 +73,11 @@ done
 OS="$(uname -s)"
 case "$OS" in
   Darwin) PLATFORM="mac" ;;
-  Linux)  PLATFORM="linux" ;;
-  *) c_red "Unsupported platform: $OS"; exit 2 ;;
+  Linux) PLATFORM="linux" ;;
+  *)
+    c_red "Unsupported platform: $OS"
+    exit 2
+    ;;
 esac
 
 if [[ "$MODE" == "server" && "$PLATFORM" != "linux" ]]; then
@@ -72,10 +89,10 @@ fi
 step "Checking prerequisites"
 
 if ! command -v node >/dev/null 2>&1; then
-  c_red   "Node.js is required but not found on PATH."
-  c_red   "Install Node 18+:"
-  c_red   "  macOS:  brew install node@20"
-  c_red   "  Linux:  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt install -y nodejs"
+  c_red "Node.js is required but not found on PATH."
+  c_red "Install Node 18+:"
+  c_red "  macOS:  brew install node@20"
+  c_red "  Linux:  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt install -y nodejs"
   exit 3
 fi
 NODE_MAJOR="$(node --version | sed 's/^v\([0-9]*\).*/\1/')"
@@ -134,7 +151,7 @@ fi
 step "Setting up $CONF_DIR"
 mkdir -p "$CONF_DIR"
 if [[ ! -f "$CRED_PATH" ]]; then
-  cat > "$CRED_PATH" <<'EOF'
+  cat >"$CRED_PATH" <<'EOF'
 {
   "S1_CONSOLE_URL":       "https://usea1-acme.sentinelone.net",
   "S1_CONSOLE_API_TOKEN": "REPLACE_WITH_API_TOKEN",
@@ -169,7 +186,7 @@ if [[ "$MODE" == "server" ]]; then
     else
       TOKEN_ADMIN="$(node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))')"
     fi
-    cat > "$TOKEN_PATH" <<EOF
+    cat >"$TOKEN_PATH" <<EOF
 {
   "admin": "$TOKEN_ADMIN"
 }
@@ -185,9 +202,10 @@ EOF
   fi
 
   if [[ ! -f "$ENV_PATH" ]]; then
-    cat > "$ENV_PATH" <<EOF
+    cat >"$ENV_PATH" <<EOF
 # Environment file for s1-secops-mcp.service.
-# Adjust LOG_LEVEL or override anything here; reload with: systemctl reload s1-secops-mcp
+# Adjust LOG_LEVEL or override anything here; apply with: systemctl restart s1-secops-mcp
+# (systemd only re-reads EnvironmentFile on restart; reload/SIGHUP re-reads bearer tokens only.)
 EOF
     chmod 600 "$ENV_PATH"
     chown "$OWNER":"$OWNER" "$ENV_PATH"
@@ -203,7 +221,7 @@ EOF
   # Rewrite the ExecStart path to point at the resolved global install,
   # since the bundled unit uses %h which assumes per-user install.
   sed "s|%h/.npm-global/lib/node_modules/@pmoses-s1/s1-secops-mcp|$SCRIPT_DIR|g" \
-    "$SCRIPT_DIR/deploy/systemd/s1-secops-mcp.service" > "$SVC_PATH"
+    "$SCRIPT_DIR/deploy/systemd/s1-secops-mcp.service" >"$SVC_PATH"
   systemctl daemon-reload
   systemctl enable s1-secops-mcp >/dev/null 2>&1
   ok "wrote $SVC_PATH and enabled the service"
@@ -244,8 +262,10 @@ EOF
 elif [[ "$MODE" == "server" ]]; then
   cat <<EOF
 
-   1. Edit $CRED_PATH with your real SentinelOne values, then reload:
-        sudo systemctl reload s1-secops-mcp
+   1. Edit $CRED_PATH with your real SentinelOne values, then restart:
+        sudo systemctl restart s1-secops-mcp
+      (credentials.json is read once at startup; reload/SIGHUP only re-reads
+       bearer tokens, so credential changes need a full restart.)
    2. Verify the server is up:
         curl -s http://127.0.0.1:8765/healthz
    3. Put TLS in front (Caddy template at $SCRIPT_DIR/deploy/caddy/Caddyfile.example).

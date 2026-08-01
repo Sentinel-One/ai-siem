@@ -1,4 +1,4 @@
-# Validation Workflow — Using `sentinelone-sdl-api` to Test a Parser
+# Validation Workflow: Using `sentinelone-sdl-api` to Test a Parser
 
 There is **no dedicated `testParser` REST endpoint** on the SDL tenant. The in-console `Test Parser` button at `/logImportTester` runs the parser client-side in JavaScript. To validate end-to-end you must deploy the parser, ingest a sample through it, and query the result back. This doc is the recipe.
 
@@ -75,7 +75,7 @@ print(json.dumps(res, indent=2))
 - HEC ingest → `{"status": "success", ...}` (a `bytesCharged` number appearing is normal).
 - `power_query` returns at least one row per line in the sample, and every expected field is present (not null) for at least the lines where it should be.
 
-A duplicate-`Nonce` response (`status: "success", message: "ignoring request, due to duplicate nonce..."`) means the ingest was deduped — advance to a fresh nonce on iteration.
+A duplicate-`Nonce` response (`status: "success", message: "ignoring request, due to duplicate nonce..."`) means the ingest was deduped, advance to a fresh nonce on iteration.
 
 ## Common failure modes
 
@@ -84,7 +84,7 @@ A duplicate-`Nonce` response (`status: "success", message: "ignoring request, du
 | `put_file` → `error/client/badParam` | JSON syntax error. Run the body through a JSON5-tolerant validator; watch for unmatched braces or trailing commas inside format strings. |
 | HEC ingest → `error/client/badParam` with "unknown parser" | Wrong `parser:` header name, or putFile hadn't replicated yet (retry after a few seconds). |
 | `power_query` returns rows but expected fields are null | Line format didn't match. Check: regex escaping (`\\d` not `\d`), delimiter mismatches, `halt: true` on an earlier format eating the line, `message`-as-field-name mistake. |
-| `power_query` returns zero rows | `host_tag` isn't set (upload header `server-host` missing) or too short a `start_time` window. Widen to 30m. **Also check event time:** if the parser sets event time from a field in the log (a `timestamp` rewrite off `createdDateTime`/`activityDateTime`/etc.), events are stamped at the log's own time, not ingest time — so a log a few hours old falls outside a `10m`/`1h` window seconds after you ingest it. Widen `start_time` to `24h`/`7d` (or filter by a `claude_test=<nonce>` field instead of time). |
+| `power_query` returns zero rows | `host_tag` isn't set (upload header `server-host` missing) or too short a `start_time` window. Widen to 30m. **Also check event time:** if the parser sets event time from a field in the log (a `timestamp` rewrite off `createdDateTime`/`activityDateTime`/etc.), events are stamped at the log's own time, not ingest time, so a log a few hours old falls outside a `10m`/`1h` window seconds after you ingest it. Widen `start_time` to `24h`/`7d` (or filter by a `claude_test=<nonce>` field instead of time). |
 | Field X populated sometimes, null others | The format works for some variants and not others. Add a fragment format for the other shape, or widen the regex. |
 | Re-ingested event still shows the OLD shape on a LIVE source | Parser propagation is ~3-5 min; a continuously-ingesting source keeps producing events parsed by the PREVIOUS version during that window, and SDL does not re-parse historical events. A "still broken" event is usually pre-propagation, not a parser bug. Confirm with the version canary below before concluding anything. |
 | `| columns unmapped.x[0].y` → "Unable to parse the entire query" | You can't type a `[N]` array-index field name in a raw PowerQuery `columns`/`filter` clause (backticks and quotes don't help). The field exists; read it via `powerquery_schema_discover` or the Event Search field picker instead. |
@@ -101,7 +101,7 @@ Parser propagation is ~3-5 min on the tenant, and on a live source events keep f
                  start_time="30m")
    ```
 
-3. When validating a specific re-ingested sample, check `metadata.version` on that event — if it still shows the prior version, you're looking at a pre-propagation event; wait and re-ingest, don't "fix" a non-bug.
+3. When validating a specific re-ingested sample, check `metadata.version` on that event, if it still shows the prior version, you're looking at a pre-propagation event; wait and re-ingest, don't "fix" a non-bug.
 
 ## Validating array (`[N]`) and bracketed fields
 
@@ -112,7 +112,7 @@ Parser propagation is ~3-5 min on the tenant, and on a live source events keep f
 discover(dataSourceName="Microsoft Entra ID", maxEvents=30, startTime="24h")
 ```
 
-Caveat: for a source that also emits SDL metering, the sample mixes real events with `logVolume`/`logBytes` rows — read past those. This is the most reliable way to verify array-heavy parsers, since the values are unreachable via a normal `columns` projection.
+Caveat: for a source that also emits SDL metering, the sample mixes real events with `logVolume`/`logBytes` rows, read past those. This is the most reliable way to verify array-heavy parsers, since the values are unreachable via a normal `columns` projection.
 
 ## Isolating which format matched
 
@@ -139,7 +139,7 @@ c.put_file("/logParsers/FortiGate_CEF", content=content)
 c.put_file(f"/logParsers/{PARSER_NAME}", delete=True)
 ```
 
-Ask the user before promoting a `claude_test_` parser to a canonical name — it's their tenant.
+Ask the user before promoting a `claude_test_` parser to a canonical name; it's their tenant.
 
 ## Synthesizing samples when the catalog parser ships without a `samples/` dir
 
@@ -150,7 +150,7 @@ The vast majority of catalog parsers in `Sentinel-One/ai-siem` (none of marketpl
 3. **Generate one sample per format.** If the parser has 5 formats with different `id`s, your sample file should have 5 lines so each format gets exercised.
 4. **Run the validation loop** above. If a format never matches, your synthesized sample for that format is wrong; iterate.
 
-Synthesizing samples is also the right move when the user is preparing a parser for a source they don't yet have flowing in production — validate end-to-end first, then turn it on at the source.
+Synthesizing samples is also the right move when the user is preparing a parser for a source they don't yet have flowing in production, validate end-to-end first, then turn it on at the source.
 
 ## Pre-flight check: 4 mandatory attributes and OCSF field names
 

@@ -1,5 +1,5 @@
 """
-Alerts dual-API round-trip test — REVERSIBLE.
+Alerts dual-API round-trip test, REVERSIBLE.
 
 Demonstrates the SentinelOne alerts story:
 
@@ -8,13 +8,13 @@ Demonstrates the SentinelOne alerts story:
 
 These are PARALLEL surfaces, not redundant ones:
   - UAM is the modern "unified alert management" view across every
-    detection source — STAR/Custom Detection Rules, endpoint (EDR), cloud
+    detection source: STAR/Custom Detection Rules, endpoint (EDR), cloud
     workload, identity, and third-party detections. IDs are UUIDs
     (e.g. `019db24c-8b6d-7451-8697-b1b2e1a270f1`).
   - REST /cloud-detection/alerts is the older surface scoped to cloud-
     detection events (primarily STAR rule hits, EDR overflow). IDs are
     64-bit integers (e.g. `2055164731151448891`). The REST payload is
-    denormalized — each alert embeds `agentDetectionInfo`, `sourceProcess`,
+    denormalized; each alert embeds `agentDetectionInfo`, `sourceProcess`,
     `targetProcess`, `ruleInfo`, etc.
 
 On "create" for alerts
@@ -26,11 +26,11 @@ To "generate an alert" you either:
   1. Create a STAR / Custom Detection rule whose query matches current
      telemetry (POST /web/api/v2.1/cloud-detection/rules)
   2. Upload an IOC that matches something an agent is seeing
-     (POST /web/api/v2.1/threat-intelligence/iocs — see test_ioc_lifecycle.py)
+     (POST /web/api/v2.1/threat-intelligence/iocs; see test_ioc_lifecycle.py)
   3. Trigger synthetic EDR telemetry from an agent
 
 The closest thing to a reversible content-creation path on an existing
-alert is `addAlertNote` — add a free-text note, reversible via
+alert is `addAlertNote`: add a free-text note, reversible via
 `deleteAlertNote`. This test exercises that path.
 
 What this test verifies
@@ -73,7 +73,7 @@ import unified_alerts as ua  # noqa: E402
 
 
 RUN_TAG = f"smoke-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
-NOTE_TEXT = f"smoke-test note {RUN_TAG} — safe to delete"
+NOTE_TEXT = f"smoke-test note {RUN_TAG}, safe to delete"
 
 
 def _log(msg: str) -> None:
@@ -103,7 +103,7 @@ def main() -> int:
     _log("GraphQL: list alerts")
     alert = _pick_alert_graphql(client)
     if not alert:
-        _log("GraphQL: no alerts on this tenant — cannot test mutations")
+        _log("GraphQL: no alerts on this tenant, cannot test mutations")
         return 1
     alert_id = alert["id"]
     _log(f"GraphQL ok: picked alert {alert_id}  "

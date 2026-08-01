@@ -6,7 +6,7 @@ analyst in the loop.
 ## Example prompts that should trigger this template
 
 Use this template when a user asks for end-to-end alert handling, auto-response, or a "SOC in a
-box" — even when phrased casually. Representative prompts:
+box", even when phrased casually. Representative prompts:
 
 - "Build an autonomous SOC workflow that investigates and responds to alerts on its own."
 - "When a critical alert fires, run Purple AI, decide the response, and act, no analyst needed."
@@ -36,28 +36,28 @@ a snippet whenever you notice the same action graph appearing in more than one w
 
 ## Canonical shape (alert-triggered)
 
-1. **Singularity Response Trigger** — fire on the target alert (filter by name / severity).
-2. **Trigger Agentic Investigation** — `http_request` to Unified Alerts GraphQL, mutation
+1. **Singularity Response Trigger**: fire on the target alert (filter by name / severity).
+2. **Trigger Agentic Investigation**: `http_request` to Unified Alerts GraphQL, mutation
    `alertTriggerActions` with action `S1/aiInvestigation/run`
    (`payload.aiInvestigation{tenantId, consoleVersion:"HyperAutomation", userAgent:"SentinelOne-HyperAutomation"}`).
-3. **Pause for Investigation Completion** — a **static** snippet call that polls until the
+3. **Pause for Investigation Completion**: a **static** snippet call that polls until the
    investigation finishes (poll-until-complete loop below). Shared by every alert workflow.
-4. **Get Investigation Summary** — `http_request` GraphQL `aiInvestigations { status verdict result … }`
+4. **Get Investigation Summary**: `http_request` GraphQL `aiInvestigations { status verdict result … }`
    once complete.
-5. *(optional)* **IOC enrichment** — extract hashes into a variable, branch SHA1 / SHA256 / MD5
+5. *(optional)* **IOC enrichment**: extract hashes into a variable, branch SHA1 / SHA256 / MD5
    checks, enrich with an LLM or a threat-intel action.
-6. **Triage & Summary** — an `llm` action turns the investigation + alert into a verdict/summary.
-7. **Summary markdown** — an `llm` action formats a human-readable summary.
-8. **Add Note / Set Status** — `http_request` GraphQL `addAlertNote` + `analystVerdictUpdate` /
+6. **Triage & Summary**: an `llm` action turns the investigation + alert into a verdict/summary.
+7. **Summary markdown**: an `llm` action formats a human-readable summary.
+8. **Add Note / Set Status**: `http_request` GraphQL `addAlertNote` + `analystVerdictUpdate` /
    `statusUpdate` (wrap note text in `Function.HTML_ENCODE`).
-9. *(optional)* **Ticket + collaboration** — create a ticket, open a Slack channel (snippet), invite,
+9. *(optional)* **Ticket + collaboration**: create a ticket, open a Slack channel (snippet), invite,
    notify.
-10. **Response Decision** — an `llm` action returns ONE response action, expressed as the **name of a
+10. **Response Decision**: an `llm` action returns ONE response action, expressed as the **name of a
     response snippet**.
-11. **Response** — a **dynamic** `snippet_20` (`is_dynamic: true`,
+11. **Response**: a **dynamic** `snippet_20` (`is_dynamic: true`,
     `dynamic_snippet_name: "{{response-decision.data}}"`) that dispatches to the chosen response
     snippet, passing the shared input contract.
-12. **Wrap-up** — `llm` action summary → update alert notes → update the collaboration channel.
+12. **Wrap-up**: `llm` action summary → update alert notes → update the collaboration channel.
 
 ## The reusable snippet library
 
@@ -79,7 +79,7 @@ to any of them with one `inputs` map. A workable contract:
 
 The Response Decision LLM returns the name of one snippet in the library; the dynamic node runs it
 with these inputs. Adding a new response is then just: author a new snippet against the same
-contract and teach the LLM its name — no change to the parent workflow.
+contract and teach the LLM its name; no change to the parent workflow.
 
 ## Poll-until-complete loop (used by the Pause snippet)
 
@@ -94,7 +94,7 @@ A while-loop that polls a status and breaks when done:
 - **Inner chain** (each node `parent_action` = the loop's `export_id`):
   `[delay] → Get Status (http) → condition(status == "COMPLETED") ─true→ break_loop`. The
   condition's false path has no edge, so the loop iterates again.
-- Read the full result AFTER the loop (a fresh Get) — a node placed after the loop can read the
+- Read the full result AFTER the loop (a fresh Get): a node placed after the loop can read the
   loop's own outputs but not a loop-internal node's output.
 
 ## Build order

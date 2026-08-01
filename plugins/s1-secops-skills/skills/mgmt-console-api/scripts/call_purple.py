@@ -71,7 +71,7 @@ def main() -> int:
             is_async=args.async_mode,
         )
     except PurpleAIError as e:
-        # Entitlement/permission/GraphQL — 200-response errors.
+        # Entitlement/permission/GraphQL: 200-response errors.
         print(f"Purple AI error: {e}", file=sys.stderr)
         if e.error_type:
             print(f"  errorType: {e.error_type}", file=sys.stderr)

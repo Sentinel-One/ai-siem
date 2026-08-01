@@ -56,7 +56,7 @@ Usage:
     # config files
     c.list_files()
     c.get_file("/alerts")
-    # Parsers: use /logParsers/<name> — /parsers/ is API-accepted but invisible in the UI.
+    # Parsers: use /logParsers/<name>; /parsers/ is API-accepted but invisible in the UI.
     c.put_file("/logParsers/MyParser", content="// parser body")
 
 The client retries 429 and 5xx with exponential backoff and honours
@@ -495,7 +495,7 @@ class SDLClient:
         priority: Optional[str] = None,
         team_emails: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        """POST /api/query — retrieve log events matching `filter`.
+        """POST /api/query: retrieve log events matching `filter`.
 
         `filter` uses the same syntax as the UI search bar. Escape double
         quotes with \\". `start_time`/`end_time` accept UI time strings
@@ -503,7 +503,7 @@ class SDLClient:
         default to the last 24h.
 
         `max_count` range is 1..5000 (default 100). Use `continuation_token`
-        to page beyond max_count — reuse the same query params and pin
+        to page beyond max_count, reuse the same query params and pin
         start/end to absolute times to avoid drift.
         """
         body: Dict[str, Any] = {"queryType": "log", "maxCount": max_count}
@@ -534,7 +534,7 @@ class SDLClient:
         buckets: int = 1,
         priority: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """POST /api/numericQuery — bucketed numeric/graph data.
+        """POST /api/numericQuery: bucketed numeric/graph data.
 
         Effectively superseded by timeseriesQuery, but offers sub-30s
         buckets and is permitted for roles that cannot run
@@ -564,7 +564,7 @@ class SDLClient:
         max_count: int = 100,
         priority: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """POST /api/facetQuery — top-N values of `field` in matching events.
+        """POST /api/facetQuery: top-N values of `field` in matching events.
 
         `max_count` range is 1..1000 (default 100). For very large result
         sets, returned values are sampled from at least 500K matching
@@ -588,7 +588,7 @@ class SDLClient:
         self,
         queries: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        """POST /api/timeseriesQuery — one or more numeric queries.
+        """POST /api/timeseriesQuery: one or more numeric queries.
 
         Each entry in `queries` may include: filter, function, startTime,
         endTime, buckets, createSummaries, onlyUseSummaries, priority,
@@ -610,7 +610,7 @@ class SDLClient:
         priority: Optional[str] = None,
         team_emails: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        """POST /api/powerQuery — full pipeline query language.
+        """POST /api/powerQuery: full pipeline query language.
 
         `query` is limited to 10,000 chars; escape " in strings. Omit
         times for default 24h. Response has matchingEvents, omittedEvents,
@@ -631,7 +631,7 @@ class SDLClient:
     # Configuration files
     # =========================================================================
     def list_files(self) -> Dict[str, Any]:
-        """POST /api/listFiles — list every configuration file path."""
+        """POST /api/listFiles: list every configuration file path."""
         return self._request("POST", "/api/listFiles", chain="config_read", json_body={})
 
     def get_file(
@@ -640,7 +640,7 @@ class SDLClient:
         expected_version: Optional[int] = None,
         prettyprint: bool = False,
     ) -> Dict[str, Any]:
-        """POST /api/getFile — read a configuration file.
+        """POST /api/getFile: read a configuration file.
 
         If `expected_version` matches the stored version, status is
         'success/unchanged' and no content is returned.
@@ -660,7 +660,7 @@ class SDLClient:
         prettyprint: bool = False,
         delete: bool = False,
     ) -> Dict[str, Any]:
-        """POST /api/putFile — create, update, or delete a config file.
+        """POST /api/putFile: create, update, or delete a config file.
 
         Pass `delete=True` to delete. Otherwise `content` is required;
         content is validated per file type (e.g. dashboards expect
@@ -730,6 +730,6 @@ class SDLClient:
 
 
 if __name__ == "__main__":
-    # Smoke test — list configuration files.
+    # Smoke test: list configuration files.
     c = SDLClient()
     print(json.dumps(c.list_files(), indent=2)[:2000])

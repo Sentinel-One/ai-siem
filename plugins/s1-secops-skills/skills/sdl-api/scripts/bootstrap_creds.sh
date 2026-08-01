@@ -9,10 +9,11 @@
 #   4. $COWORK_WORKSPACE/.claude/sentinelone/credentials.json (legacy)
 #   5. $HOME/mnt/<folder>/.sentinelone/credentials.json       (legacy)
 #   6. $HOME/mnt/<folder>/.claude/sentinelone/credentials.json (legacy)
+#   7. $HOME/.config/sentinelone/credentials.json             (host terminal fallback)
 #
 # Destination: $HOME/.claude/sentinelone/credentials.json
 #   In the Cowork bash sandbox this resolves to
-#   /sessions/<id>/.claude/sentinelone/credentials.json — sandbox-local,
+#   /sessions/<id>/.claude/sentinelone/credentials.json, sandbox-local,
 #   ephemeral per session, readable by every script and CLI in the skill.
 #
 # Idempotent. Safe to run before every workflow. Returns the path it used.
@@ -31,8 +32,8 @@ DEST_DIR="$(dirname "$DEST")"
 # If the destination already exists and is non-empty, no-op. This makes
 # repeated calls cheap and avoids overwriting a user-managed file.
 if [ -s "$DEST" ]; then
-    echo "$DEST"
-    exit 0
+  echo "$DEST"
+  exit 0
 fi
 
 mkdir -p "$DEST_DIR"
@@ -41,38 +42,43 @@ chmod 700 "$DEST_DIR" 2>/dev/null || true
 shopt -s nullglob 2>/dev/null || true
 
 candidates=()
-# New (recommended) — credentials.json directly in the project folder.
+# New (recommended): credentials.json directly in the project folder.
 if [ -n "${COWORK_WORKSPACE:-}" ]; then
-    candidates+=("$COWORK_WORKSPACE/credentials.json")
+  candidates+=("$COWORK_WORKSPACE/credentials.json")
 fi
 for mnt in "$HOME"/mnt/*/; do
-    base="$(basename "$mnt")"
-    case "$base" in
-        .claude|.auto-memory|.remote-plugins|outputs|uploads) continue ;;
-    esac
-    candidates+=("${mnt}credentials.json")
+  base="$(basename "$mnt")"
+  case "$base" in
+    .claude | .auto-memory | .remote-plugins | outputs | uploads) continue ;;
+  esac
+  candidates+=("${mnt}credentials.json")
 done
-# Legacy layouts — kept for backwards compatibility.
+# Legacy layouts: kept for backwards compatibility.
 if [ -n "${COWORK_WORKSPACE:-}" ]; then
-    candidates+=("$COWORK_WORKSPACE/.sentinelone/credentials.json")
-    candidates+=("$COWORK_WORKSPACE/.claude/sentinelone/credentials.json")
+  candidates+=("$COWORK_WORKSPACE/.sentinelone/credentials.json")
+  candidates+=("$COWORK_WORKSPACE/.claude/sentinelone/credentials.json")
 fi
 for mnt in "$HOME"/mnt/*/; do
-    base="$(basename "$mnt")"
-    case "$base" in
-        .claude|.auto-memory|.remote-plugins|outputs|uploads) continue ;;
-    esac
-    candidates+=("${mnt%/}/.sentinelone/credentials.json")
-    candidates+=("${mnt%/}/.claude/sentinelone/credentials.json")
+  base="$(basename "$mnt")"
+  case "$base" in
+    .claude | .auto-memory | .remote-plugins | outputs | uploads) continue ;;
+  esac
+  candidates+=("${mnt%/}/.sentinelone/credentials.json")
+  candidates+=("${mnt%/}/.claude/sentinelone/credentials.json")
 done
+# Host terminal fallback (Claude Code CLI without Cowork), mirroring the
+# plugin SessionStart hook's search order.
+candidates+=("$HOME/.config/sentinelone/credentials.json")
 
-for src in "${candidates[@]}"; do
-    if [ -f "$src" ]; then
-        cp "$src" "$DEST"
-        chmod 600 "$DEST" 2>/dev/null || true
-        echo "$DEST"
-        exit 0
-    fi
+# ${candidates[@]+...} guards the bash 3.2 "unbound variable" trap under
+# set -u when the array is empty.
+for src in ${candidates[@]+"${candidates[@]}"}; do
+  if [ -f "$src" ]; then
+    cp "$src" "$DEST"
+    chmod 600 "$DEST" 2>/dev/null || true
+    echo "$DEST"
+    exit 0
+  fi
 done
 
 echo "bootstrap_creds: no credentials.json found." >&2

@@ -38,8 +38,8 @@
     // NOTE:
     //  - `timestamp` is reserved; capturing a non-epoch string there silently
     //    drops the event. Use `ts_raw`.
-    //  - `severity` is ALSO reserved — the ingest pipeline coerces any value
-    //    to an integer 0–6 against its own `info`/`warn`/`error` vocabulary.
+    //  - `severity` is ALSO reserved: the ingest pipeline coerces any value
+    //    to an integer 0-6 against its own `info`/`warn`/`error` vocabulary.
     //    Capture the word ERROR/WARN/INFO as `severity_name` (or any
     //    non-colliding field) so the raw string survives.
     {

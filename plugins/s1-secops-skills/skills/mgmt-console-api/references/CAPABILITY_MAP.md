@@ -2,7 +2,7 @@
 
 Compact per-tag capability summary showing the common verb+resource shapes across all 781 operations. Use this as your first stop when you know *what* you want to do ("list", "count", "isolate") but not the exact path. For a specific endpoint use `search_endpoints.py` instead.
 
-Symbols: L=list (GET collection), G=get-one (GET /{id}), C=count (GET /count or GET list?countOnly=true — always GET, never POST), E=export (GET /export — always GET, never POST), A=action (POST /actions/…), F=filters/facets, S=search (POST free-text or autocomplete), X=create/update/delete (mutating), ✓=confirmed working on this tenant (see tenant_capabilities.md).
+Symbols: L=list (GET collection), G=get-one (GET /{id}), C=count (GET /count or GET list?countOnly=true, always GET, never POST), E=export (GET /export, always GET, never POST), A=action (POST /actions/…), F=filters/facets, S=search (POST free-text or autocomplete), X=create/update/delete (mutating), ✓=confirmed working on this tenant (see tenant_capabilities.md).
 
 | Tag | Resource | Ops | Capabilities | On this tenant |
 |---|---|---:|---|---|
@@ -141,32 +141,32 @@ Symbols: L=list (GET collection), G=get-one (GET /{id}), C=count (GET /count or 
 
 | I want to… | Start here |
 |---|---|
-| list threats | Threats — `GET /web/api/v2.1/threats` |
-| count threats | Threats — `GET /web/api/v2.1/threats?countOnly=true` → `{"data":[],"pagination":{"totalItems":N}}`. Or check `pagination.totalItems` from any list call. No POST equivalent exists. |
-| export all threats to CSV | Threats — `GET /web/api/v2.1/threats/export` (no extra params; returns full CSV stream) |
-| list agents/endpoints | Agents — `GET /web/api/v2.1/agents` |
-| count agents | Agents — `GET /web/api/v2.1/agents/count` → `{"data":{"total":N}}`. No POST equivalent exists. |
-| get agents by IDs | Agents — `GET /web/api/v2.1/agents?ids=<id1>,<id2>` (comma-separated query param, not a POST body) |
-| count anything (generic) | Append `/count` to the list path for resources that have a dedicated count endpoint (agents, groups, sites). For resources without `/count`, pass `countOnly=true` as a query param to the list GET. Do not use POST for counting — there is no read-side POST in this API. |
-| isolate an endpoint | Agent Actions — `POST /web/api/v2.1/agents/actions/disconnect` |
-| reconnect an endpoint | Agent Actions — `POST /web/api/v2.1/agents/actions/connect` |
-| uninstall an agent | Agent Actions — `POST /web/api/v2.1/agents/actions/uninstall` |
-| move agent to group | Agent Actions — `POST /web/api/v2.1/agents/actions/move-to-group` |
-| run a RemoteOps script | RemoteOps Scripts — `POST /web/api/v2.1/remote-scripts/execute` |
-| hunt across Deep Visibility | Long Running Query — `POST /sdl/v2/api/queries` (queryType="LOG" for S1QL or "PQ" for PowerQuery), then `GET /sdl/v2/api/queries/{id}` to poll. The legacy /dv/init-query + /dv/query-status + /dv/events flow is deprecated (sunset 2027-02-15). |
-| run a PowerQuery | Long Running Query — `POST /sdl/v2/api/queries` (queryType="PQ"), then `GET /sdl/v2/api/queries/{id}` to poll. The legacy /dv/events/pq + /dv/events/pq-ping flow is deprecated (sunset 2027-02-15). |
-| see tenant structure | Accounts/Sites/Groups — `GET /web/api/v2.1/{accounts,sites,groups}` |
-| see what the token can do | RBAC — `GET /web/api/v2.1/rbac/role` and `GET /web/api/v2.1/users` |
-| audit who did what | Activities — `GET /web/api/v2.1/activities` |
+| list threats | Threats: `GET /web/api/v2.1/threats` |
+| count threats | Threats: `GET /web/api/v2.1/threats?countOnly=true` → `{"data":[],"pagination":{"totalItems":N}}`. Or check `pagination.totalItems` from any list call. No POST equivalent exists. |
+| export all threats to CSV | Threats: `GET /web/api/v2.1/threats/export` (no extra params; returns full CSV stream) |
+| list agents/endpoints | Agents: `GET /web/api/v2.1/agents` |
+| count agents | Agents: `GET /web/api/v2.1/agents/count` → `{"data":{"total":N}}`. No POST equivalent exists. |
+| get agents by IDs | Agents: `GET /web/api/v2.1/agents?ids=<id1>,<id2>` (comma-separated query param, not a POST body) |
+| count anything (generic) | Append `/count` to the list path for resources that have a dedicated count endpoint (agents, groups, sites). For resources without `/count`, pass `countOnly=true` as a query param to the list GET. Do not use POST for counting; there is no read-side POST in this API. |
+| isolate an endpoint | Agent Actions: `POST /web/api/v2.1/agents/actions/disconnect` |
+| reconnect an endpoint | Agent Actions: `POST /web/api/v2.1/agents/actions/connect` |
+| uninstall an agent | Agent Actions: `POST /web/api/v2.1/agents/actions/uninstall` |
+| move agent to group | Agent Actions: `POST /web/api/v2.1/agents/actions/move-to-group` |
+| run a RemoteOps script | RemoteOps Scripts: `POST /web/api/v2.1/remote-scripts/execute` |
+| hunt across Deep Visibility | Long Running Query: `POST /sdl/v2/api/queries` (queryType="LOG" for S1QL or "PQ" for PowerQuery), then `GET /sdl/v2/api/queries/{id}` to poll. The legacy /dv/init-query + /dv/query-status + /dv/events flow is deprecated (sunset 2027-02-15). |
+| run a PowerQuery | Long Running Query: `POST /sdl/v2/api/queries` (queryType="PQ"), then `GET /sdl/v2/api/queries/{id}` to poll. The legacy /dv/events/pq + /dv/events/pq-ping flow is deprecated (sunset 2027-02-15). |
+| see tenant structure | Accounts/Sites/Groups: `GET /web/api/v2.1/{accounts,sites,groups}` |
+| see what the token can do | RBAC: `GET /web/api/v2.1/rbac/role` and `GET /web/api/v2.1/users` |
+| audit who did what | Activities: `GET /web/api/v2.1/activities` |
 | find an exclusion | Exclusions v2.1 / Exclusions and Blocklist |
-| list firewall rules | Firewall Control — `GET /web/api/v2.1/firewall-control` |
+| list firewall rules | Firewall Control: `GET /web/api/v2.1/firewall-control` |
 | list custom detection rules | Custom Detection Rule / Platform Detection Rules |
-| see Hyperautomation workflows | Hyperautomation — `GET /web/api/v2.1/hyperautomation/workflows` |
-| list installed agent packages | Updates — `GET /web/api/v2.1/update/agent/packages` |
+| see Hyperautomation workflows | Hyperautomation: `GET /web/api/v2.1/hyperautomation/workflows` |
+| list installed agent packages | Updates: `GET /web/api/v2.1/update/agent/packages` |
 
 ## Paths that do not exist
 
-These paths produce HTTP 404 and have never been in the v2.1 spec. They look plausible but are wrong — do not use them:
+These paths produce HTTP 404 and have never been in the v2.1 spec. They look plausible but are wrong; do not use them:
 
 | Wrong path | Correct alternative |
 |---|---|

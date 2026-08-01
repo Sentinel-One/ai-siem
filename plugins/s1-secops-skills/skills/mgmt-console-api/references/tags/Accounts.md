@@ -11,33 +11,33 @@ Get the Accounts, and their data, that match the filter. This command gives the 
 Required permissions: `Accounts.view`
 
 Parameters:
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `countOnly` [query, boolean] — If true, only total number of items will be returned, without any of the actual objects.
-- `skipCount` [query, boolean] — If true, total number of items will not be calculated, which speeds up execution time.
-- `sortBy` [query, string] (enum: id, name, totalLicenses, expiration, accountType, state, createdAt, updatedAt, activeLicenses, activeAgents, numberOfSites, usageType, billingMode) — The column to sort the results by. Example: "id".
-- `sortOrder` [query, string] (enum: asc, desc) — Sort direction. Example: "asc".
-- `ids` [query, array] — A list of Account IDs. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to search for. Example: "225494730938493804,225494730938493915".
-- `query` [query, string] — Full text search for fields: name. (Note: on single-Account Consoles, the Account name will not be matched)
-- `name` [query, string] — Name. Example: "My Account".
-- `isDefault` [query, boolean] — Is default
-- `accountType` [query, string] (enum: Trial, Paid) — Account type. Example: "Trial".
-- `expiration` [query, string] — Expiration. Example: "2018-02-27T04:49:26.257525Z".
-- `totalLicenses` [query, integer] — Total licenses
-- `activeLicenses` [query, integer] — Active licenses
-- `sku` [query, string] — Sku. Example: "core".
-- `module` [query, string] — Module. Example: "star,rso".
-- `createdAt` [query, string] — Timestamp of Account creation. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt` [query, string] — Timestamp of last update. Example: "2018-02-27T04:49:26.257525Z".
-- `state` [query, string] (enum: active, expired, deleted) — Account state. Example: "active".
-- `states` [query, array] — Filter by state, such as active or expired.
-- `statesNin` [query, array] — List of states to not filter
-- `features` [query, array] — Filter the list of Accounts for those that support this feature. Example: "firewall-control".
-- `usageType` [query, string] (enum: customer, mssp, ir) — Usage type. Example: "customer".
-- `billingMode` [query, string] (enum: subscription, consumption) — Billing mode. Example: "subscription".
-- `name__contains` [query, array] — Free-text filter by account name (supports multiple values)
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `countOnly` [query, boolean]: If true, only total number of items will be returned, without any of the actual objects.
+- `skipCount` [query, boolean]: If true, total number of items will not be calculated, which speeds up execution time.
+- `sortBy` [query, string] (enum: id, name, totalLicenses, expiration, accountType, state, createdAt, updatedAt, activeLicenses, activeAgents, numberOfSites, usageType, billingMode): The column to sort the results by. Example: "id".
+- `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
+- `ids` [query, array]: A list of Account IDs. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to search for. Example: "225494730938493804,225494730938493915".
+- `query` [query, string]: Full text search for fields: name. (Note: on single-Account Consoles, the Account name will not be matched)
+- `name` [query, string]: Name. Example: "My Account".
+- `isDefault` [query, boolean]: Is default
+- `accountType` [query, string] (enum: Trial, Paid): Account type. Example: "Trial".
+- `expiration` [query, string]: Expiration. Example: "2018-02-27T04:49:26.257525Z".
+- `totalLicenses` [query, integer]: Total licenses
+- `activeLicenses` [query, integer]: Active licenses
+- `sku` [query, string]: Sku. Example: "core".
+- `module` [query, string]: Module. Example: "star,rso".
+- `createdAt` [query, string]: Timestamp of Account creation. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt` [query, string]: Timestamp of last update. Example: "2018-02-27T04:49:26.257525Z".
+- `state` [query, string] (enum: active, expired, deleted): Account state. Example: "active".
+- `states` [query, array]: Filter by state, such as active or expired.
+- `statesNin` [query, array]: List of states to not filter
+- `features` [query, array]: Filter the list of Accounts for those that support this feature. Example: "firewall-control".
+- `usageType` [query, string] (enum: customer, mssp, ir): Usage type. Example: "customer".
+- `billingMode` [query, string] (enum: subscription, consumption): Billing mode. Example: "subscription".
+- `name__contains` [query, array]: Free-text filter by account name (supports multiple values)
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -50,7 +50,7 @@ Create a new Account. This command requires Global permissions and an MSSP deplo
 Required permissions: `Accounts.create`
 
 Parameters:
-- `body` [body, accounts.schemas_PostAccountSchema] — 
+- `body` [body, accounts.schemas_PostAccountSchema]: 
 
 Responses: 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -63,7 +63,7 @@ Get Account data from a given Account ID. To get an Account ID, run "accounts".
 Required permissions: `Accounts.view`
 
 Parameters:
-- `account_id` [path, string] **required** — Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
+- `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
 
 Responses: 404 Account not found, 200 Success, 401 Unauthorized access - please sign in and retry.
 
@@ -76,8 +76,8 @@ Change the data of an Account. This command requires a Global user or an Account
 Required permissions: `Accounts.edit`
 
 Parameters:
-- `account_id` [path, string] **required** — Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
-- `body` [body, accounts.schemas_AccountPutSchema] — 
+- `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
+- `body` [body, accounts.schemas_AccountPutSchema]: 
 
 Responses: 404 Account not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -90,7 +90,7 @@ Expire an Account immediately. The user must have Global access or Account acces
 Required permissions: `Accounts.edit`
 
 Parameters:
-- `account_id` [path, string] **required** — Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
+- `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
 
 Responses: 404 Account not found, 200 Expire account now, 401 Unauthorized access - please sign in and retry.
 
@@ -103,8 +103,8 @@ Reactivate an expired Account. This command requires a Global user or Support. C
 Required permissions: `Accounts.edit`
 
 Parameters:
-- `account_id` [path, string] **required** — Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
-- `body` [body, accounts.schemas_ReactivateAccountSchema] — 
+- `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
+- `body` [body, accounts.schemas_ReactivateAccountSchema]: 
 
 Responses: 404 Account not found, 200 Account reactivated, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -117,8 +117,8 @@ The policy of the Account is based on the default Global policy and is enforced 
 Required permissions: `Policy.edit`
 
 Parameters:
-- `account_id` [path, string] **required** — Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
-- `body` [body, policies_schemas_RevertPolicySchema] — 
+- `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
+- `body` [body, policies_schemas_RevertPolicySchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -131,8 +131,8 @@ You can uninstall all Agents of one Account with one command that requires a pas
 Required permissions: `Endpoints.modifyUninstallPassword`
 
 Parameters:
-- `account_id` [path, string] **required** — Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
-- `body` [body, accounts.schemas_UninstallPasswordGenerateRequestSchema] — 
+- `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
+- `body` [body, accounts.schemas_UninstallPasswordGenerateRequestSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -145,7 +145,7 @@ Get the uninstall password metadata, such as which user created and revoked it a
 Required permissions: `Accounts.view`
 
 Parameters:
-- `account_id` [path, string] **required** — Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
+- `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
 
 Responses: 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.
 
@@ -158,7 +158,7 @@ Delete the account-level uninstall password. If you do not delete it, you or ano
 Required permissions: `Endpoints.modifyUninstallPassword`
 
 Parameters:
-- `account_id` [path, string] **required** — Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
+- `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
 
 Responses: 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.
 
@@ -171,7 +171,7 @@ Get the uninstall password to uninstall several Agents of one Account with one c
 Required permissions: `Endpoints.viewUninstallPassword`
 
 Parameters:
-- `account_id` [path, string] **required** — Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
+- `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
 
 Responses: 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.
 
@@ -184,25 +184,25 @@ Export Accounts data to a CSV, for Accounts that match the filter.
 Required permissions: `Accounts.view`
 
 Parameters:
-- `ids` [query, array] — A list of Account IDs. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to search for. Example: "225494730938493804,225494730938493915".
-- `query` [query, string] — Full text search for fields: name. (Note: on single-Account Consoles, the Account name will not be matched)
-- `name` [query, string] — Name. Example: "My Account".
-- `isDefault` [query, boolean] — Is default
-- `accountType` [query, string] (enum: Trial, Paid) — Account type. Example: "Trial".
-- `expiration` [query, string] — Expiration. Example: "2018-02-27T04:49:26.257525Z".
-- `totalLicenses` [query, integer] — Total licenses
-- `activeLicenses` [query, integer] — Active licenses
-- `sku` [query, string] — Sku. Example: "core".
-- `module` [query, string] — Module. Example: "star,rso".
-- `createdAt` [query, string] — Timestamp of Account creation. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt` [query, string] — Timestamp of last update. Example: "2018-02-27T04:49:26.257525Z".
-- `state` [query, string] (enum: active, expired, deleted) — Account state. Example: "active".
-- `states` [query, array] — Filter by state, such as active or expired.
-- `statesNin` [query, array] — List of states to not filter
-- `features` [query, array] — Filter the list of Accounts for those that support this feature. Example: "firewall-control".
-- `usageType` [query, string] (enum: customer, mssp, ir) — Usage type. Example: "customer".
-- `billingMode` [query, string] (enum: subscription, consumption) — Billing mode. Example: "subscription".
-- `name__contains` [query, array] — Free-text filter by account name (supports multiple values)
+- `ids` [query, array]: A list of Account IDs. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to search for. Example: "225494730938493804,225494730938493915".
+- `query` [query, string]: Full text search for fields: name. (Note: on single-Account Consoles, the Account name will not be matched)
+- `name` [query, string]: Name. Example: "My Account".
+- `isDefault` [query, boolean]: Is default
+- `accountType` [query, string] (enum: Trial, Paid): Account type. Example: "Trial".
+- `expiration` [query, string]: Expiration. Example: "2018-02-27T04:49:26.257525Z".
+- `totalLicenses` [query, integer]: Total licenses
+- `activeLicenses` [query, integer]: Active licenses
+- `sku` [query, string]: Sku. Example: "core".
+- `module` [query, string]: Module. Example: "star,rso".
+- `createdAt` [query, string]: Timestamp of Account creation. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt` [query, string]: Timestamp of last update. Example: "2018-02-27T04:49:26.257525Z".
+- `state` [query, string] (enum: active, expired, deleted): Account state. Example: "active".
+- `states` [query, array]: Filter by state, such as active or expired.
+- `statesNin` [query, array]: List of states to not filter
+- `features` [query, array]: Filter the list of Accounts for those that support this feature. Example: "firewall-control".
+- `usageType` [query, string] (enum: customer, mssp, ir): Usage type. Example: "customer".
+- `billingMode` [query, string] (enum: subscription, consumption): Billing mode. Example: "subscription".
+- `name__contains` [query, array]: Free-text filter by account name (supports multiple values)
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

@@ -64,7 +64,7 @@ const RESOURCES = [
   {
     uri: 'sentinelone://soc-context',
     name: 'SOC Analyst Operating Instructions',
-    description: 'CLAUDE.md — Principal SOC Analyst operating instructions including investigation workflow, evidence discipline, anomaly detection playbook, MITRE ATT&CK mapping, and tool usage priorities.',
+    description: 'CLAUDE.md: Principal SOC Analyst operating instructions including investigation workflow, evidence discipline, anomaly detection playbook, MITRE ATT&CK mapping, and tool usage priorities.',
     mimeType: 'text/markdown',
   },
   {
@@ -94,7 +94,7 @@ const PROMPTS = [
 
 export const SERVER_INFO = {
   name: 's1-secops-mcp-server',
-  version: '1.2.3',
+  version: '1.2.4',
 };
 
 export const PROTOCOL_VERSION = '2024-11-05';

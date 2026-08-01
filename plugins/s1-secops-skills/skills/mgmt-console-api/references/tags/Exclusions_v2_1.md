@@ -9,7 +9,7 @@
 Required permissions: `Exclusions.delete`
 
 Parameters:
-- `body` [body, exclusions.delete_schema_UnifiedExclusionSchemaDeleteRequest] — 
+- `body` [body, exclusions.delete_schema_UnifiedExclusionSchemaDeleteRequest]: 
 
 Responses: 403 User is not allowed to perform this operation., 200 Exclusions successfully deleted., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -22,66 +22,66 @@ Get a list of all the Exclusions that match the filter. <br>Note: To filter the 
 Required permissions: `Exclusions.view`
 
 Parameters:
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `countOnly` [query, boolean] — If true, only total number of items will be returned, without any of the actual objects.
-- `skipCount` [query, boolean] — If true, total number of items will not be calculated, which speeds up execution time.
-- `sortBy` [query, string] (enum: id, createdAt, updatedAt, source, description, osType, scope, userName, scopePath, notRecommended, interactionLevel, childProcess, reason, user, threatType, engines, exclusionName, modeType, inAppInventory) — The column to sort the results by. Example: "id".
-- `sortOrder` [query, string] (enum: asc, desc) — Sort direction. Example: "asc".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [query, boolean] — Indicates a tenant scope request
-- `ids` [query, array] — List of IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `idsNin` [query, array] — List of IDs to exclude from filter. Example: "225494730938493804,225494730938493915".
-- `createdAt__lt` [query, string] — Created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__lte` [query, string] — Created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gt` [query, string] — Created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gte` [query, string] — Created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__between` [query, string] — Date range for creation time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
-- `updatedAt__lt` [query, string] — Updated before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__lte` [query, string] — Updated before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__gt` [query, string] — Updated after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__gte` [query, string] — Updated after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__between` [query, string] — Date range for update time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
-- `osTypes` [query, array] — List of OS types to filter by. Example: "macos".
-- `source` [query, array] — List sources to filter by. Example: "user".
-- `userIds` [query, array] — List of user IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `modeType` [query, array] — List of Exclusion Type to filter by: suppression, agent_interoperability, or binary_vault . Example: "all".
-- `notRecommended` [query, array] — List of recommendations to filter by. Example: "Not recommended".
-- `warnings` [query, array] — List of warnings to filter by. Example: "Not allowed".
-- `pathExclusionTypes` [query, array] — List of excluded paths in an exclusion to filter by. Applies only to EDR exclusions of type path. Example: "file".
-- `threatType` [query, array] — List of threat types to filter by. Example: "EDR".
-- `engines` [query, array] — List of engines to filter by. Example: "suppress".
-- `interactionLevel` [query, array] — List of interaction levels to filter by. Example: "disable_all_monitors".
-- `includeParents` [query, boolean] — Return filters from parent scope levels (Default: false).
-- `includeChildren` [query, boolean] — Return filters from children scope levels (Default: false).
-- `imported` [query, boolean] — Indicates if the exclusion was imported by a bulk operation or not. You can filter by this.
-- `conditions` [query, array] — List of conditions to filter by. Example: "white_hash".
-- `childProcess` [query, boolean] — Indicates if the exclusion applies to child processes or not. You can filter by this.
-- `inAppInventory` [query, boolean] — Indicates if the exclusion is related to an application found in the scope's Application Inventory or not. You can filter by this.
-- `exclusionName__contains` [query, array] — Free-text filter by exclusion name.
-- `applicationName__contains` [query, array] — Free-text filter by application name.
-- `value__contains` [query, array] — Free-text filter by value.
-- `podName__contains` [query, array] — Free-text filter by pod name.
-- `containerName__contains` [query, array] — Free-text filter by container name.
-- `namespace__contains` [query, array] — Free-text filter by namespace.
-- `sha256Image__contains` [query, array] — Free-text filter by SHA-256 of an image.
-- `fullImageName__contains` [query, array] — Free-text filter by full image URI.
-- `labelsKey__contains` [query, array] — Free-text filter by label key.
-- `labelsValue__contains` [query, array] — Free-text filter by label value.
-- `cmdlineValue__contains` [query, array] — Free-text filter by nested cmdline value.
-- `pathValue__contains` [query, array] — Free-text filter by nested path value.
-- `description__contains` [query, array] — Free-text filter by description.
-- `user__contains` [query, array] — Free-text filter by username.
-- `scopePath__contains` [query, array] — Free-text filter by scope path.
-- `tags` [query, string] — Filter exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. To filter by unassigned tag values, use __nin suffix in the tag key. Example: "{"key1": ["value1_1", "value1_2"], "key2__nin": ["value2"]}".
-- `hasTags` [query, boolean] — Include only Exclusions that have any tags assigned if True, or none if False
-- `tagIds` [query, array] — List of tag IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `countsFor` [query, string] — comma-separated list of fields to be shown. Example: "threatType,interactionLevel".
-- `tagsByGroup` [query, string] — Group exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. . Example: "{"key1": ["value1_1", "value1_2"], "key2": ["value2"]}".
-- `hasTagsByGroup` [query, boolean] — Include Exclusions that have any tags assigned if True, or none if False
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `countOnly` [query, boolean]: If true, only total number of items will be returned, without any of the actual objects.
+- `skipCount` [query, boolean]: If true, total number of items will not be calculated, which speeds up execution time.
+- `sortBy` [query, string] (enum: id, createdAt, updatedAt, source, description, osType, scope, userName, scopePath, notRecommended, interactionLevel, childProcess, reason, user, threatType, engines, exclusionName, modeType, inAppInventory): The column to sort the results by. Example: "id".
+- `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [query, boolean]: Indicates a tenant scope request
+- `ids` [query, array]: List of IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `idsNin` [query, array]: List of IDs to exclude from filter. Example: "225494730938493804,225494730938493915".
+- `createdAt__lt` [query, string]: Created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__lte` [query, string]: Created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gt` [query, string]: Created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gte` [query, string]: Created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__between` [query, string]: Date range for creation time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
+- `updatedAt__lt` [query, string]: Updated before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__lte` [query, string]: Updated before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__gt` [query, string]: Updated after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__gte` [query, string]: Updated after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__between` [query, string]: Date range for update time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
+- `osTypes` [query, array]: List of OS types to filter by. Example: "macos".
+- `source` [query, array]: List sources to filter by. Example: "user".
+- `userIds` [query, array]: List of user IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `modeType` [query, array]: List of Exclusion Type to filter by: suppression, agent_interoperability, or binary_vault . Example: "all".
+- `notRecommended` [query, array]: List of recommendations to filter by. Example: "Not recommended".
+- `warnings` [query, array]: List of warnings to filter by. Example: "Not allowed".
+- `pathExclusionTypes` [query, array]: List of excluded paths in an exclusion to filter by. Applies only to EDR exclusions of type path. Example: "file".
+- `threatType` [query, array]: List of threat types to filter by. Example: "EDR".
+- `engines` [query, array]: List of engines to filter by. Example: "suppress".
+- `interactionLevel` [query, array]: List of interaction levels to filter by. Example: "disable_all_monitors".
+- `includeParents` [query, boolean]: Return filters from parent scope levels (Default: false).
+- `includeChildren` [query, boolean]: Return filters from children scope levels (Default: false).
+- `imported` [query, boolean]: Indicates if the exclusion was imported by a bulk operation or not. You can filter by this.
+- `conditions` [query, array]: List of conditions to filter by. Example: "white_hash".
+- `childProcess` [query, boolean]: Indicates if the exclusion applies to child processes or not. You can filter by this.
+- `inAppInventory` [query, boolean]: Indicates if the exclusion is related to an application found in the scope's Application Inventory or not. You can filter by this.
+- `exclusionName__contains` [query, array]: Free-text filter by exclusion name.
+- `applicationName__contains` [query, array]: Free-text filter by application name.
+- `value__contains` [query, array]: Free-text filter by value.
+- `podName__contains` [query, array]: Free-text filter by pod name.
+- `containerName__contains` [query, array]: Free-text filter by container name.
+- `namespace__contains` [query, array]: Free-text filter by namespace.
+- `sha256Image__contains` [query, array]: Free-text filter by SHA-256 of an image.
+- `fullImageName__contains` [query, array]: Free-text filter by full image URI.
+- `labelsKey__contains` [query, array]: Free-text filter by label key.
+- `labelsValue__contains` [query, array]: Free-text filter by label value.
+- `cmdlineValue__contains` [query, array]: Free-text filter by nested cmdline value.
+- `pathValue__contains` [query, array]: Free-text filter by nested path value.
+- `description__contains` [query, array]: Free-text filter by description.
+- `user__contains` [query, array]: Free-text filter by username.
+- `scopePath__contains` [query, array]: Free-text filter by scope path.
+- `tags` [query, string]: Filter exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. To filter by unassigned tag values, use __nin suffix in the tag key. Example: "{"key1": ["value1_1", "value1_2"], "key2__nin": ["value2"]}".
+- `hasTags` [query, boolean]: Include only Exclusions that have any tags assigned if True, or none if False
+- `tagIds` [query, array]: List of tag IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `countsFor` [query, string]: comma-separated list of fields to be shown. Example: "threatType,interactionLevel".
+- `tagsByGroup` [query, string]: Group exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. . Example: "{"key1": ["value1_1", "value1_2"], "key2": ["value2"]}".
+- `hasTagsByGroup` [query, boolean]: Include Exclusions that have any tags assigned if True, or none if False
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -94,7 +94,7 @@ Create Exclusions to make your Agents suppress alerts and mitigation for items t
 Required permissions: `Exclusions.create`
 
 Parameters:
-- `body` [body, object] — 
+- `body` [body, object]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -107,7 +107,7 @@ Change the properties of an Exclusion through the data fields. To get the origin
 Required permissions: `Exclusions.edit`
 
 Parameters:
-- `body` [body, object] — 
+- `body` [body, object]: 
 
 Responses: 404 Exclusion not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -120,68 +120,68 @@ Get a list of available actions for exclusions that match the filter criteria.
 Required permissions: `Exclusions.view`
 
 Parameters:
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `countOnly` [query, boolean] — If true, only total number of items will be returned, without any of the actual objects.
-- `skipCount` [query, boolean] — If true, total number of items will not be calculated, which speeds up execution time.
-- `sortBy` [query, string] (enum: id, createdAt, updatedAt, source, description, osType, scope, userName, scopePath, notRecommended, interactionLevel, childProcess, reason, user, threatType, engines, exclusionName, modeType, inAppInventory) — The column to sort the results by. Example: "id".
-- `sortOrder` [query, string] (enum: asc, desc) — Sort direction. Example: "asc".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [query, boolean] — Indicates a tenant scope request
-- `ids` [query, array] — List of IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `idsNin` [query, array] — List of IDs to exclude from filter. Example: "225494730938493804,225494730938493915".
-- `createdAt__lt` [query, string] — Created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__lte` [query, string] — Created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gt` [query, string] — Created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gte` [query, string] — Created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__between` [query, string] — Date range for creation time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
-- `updatedAt__lt` [query, string] — Updated before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__lte` [query, string] — Updated before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__gt` [query, string] — Updated after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__gte` [query, string] — Updated after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__between` [query, string] — Date range for update time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
-- `osTypes` [query, array] — List of OS types to filter by. Example: "macos".
-- `source` [query, array] — List sources to filter by. Example: "user".
-- `userIds` [query, array] — List of user IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `modeType` [query, array] — List of Exclusion Type to filter by: suppression, agent_interoperability, or binary_vault . Example: "all".
-- `notRecommended` [query, array] — List of recommendations to filter by. Example: "Not recommended".
-- `warnings` [query, array] — List of warnings to filter by. Example: "Not allowed".
-- `pathExclusionTypes` [query, array] — List of excluded paths in an exclusion to filter by. Applies only to EDR exclusions of type path. Example: "file".
-- `threatType` [query, array] — List of threat types to filter by. Example: "EDR".
-- `engines` [query, array] — List of engines to filter by. Example: "suppress".
-- `interactionLevel` [query, array] — List of interaction levels to filter by. Example: "disable_all_monitors".
-- `includeParents` [query, boolean] — Return filters from parent scope levels (Default: false).
-- `includeChildren` [query, boolean] — Return filters from children scope levels (Default: false).
-- `imported` [query, boolean] — Indicates if the exclusion was imported by a bulk operation or not. You can filter by this.
-- `conditions` [query, array] — List of conditions to filter by. Example: "white_hash".
-- `childProcess` [query, boolean] — Indicates if the exclusion applies to child processes or not. You can filter by this.
-- `inAppInventory` [query, boolean] — Indicates if the exclusion is related to an application found in the scope's Application Inventory or not. You can filter by this.
-- `exclusionName__contains` [query, array] — Free-text filter by exclusion name.
-- `applicationName__contains` [query, array] — Free-text filter by application name.
-- `value__contains` [query, array] — Free-text filter by value.
-- `podName__contains` [query, array] — Free-text filter by pod name.
-- `containerName__contains` [query, array] — Free-text filter by container name.
-- `namespace__contains` [query, array] — Free-text filter by namespace.
-- `sha256Image__contains` [query, array] — Free-text filter by SHA-256 of an image.
-- `fullImageName__contains` [query, array] — Free-text filter by full image URI.
-- `labelsKey__contains` [query, array] — Free-text filter by label key.
-- `labelsValue__contains` [query, array] — Free-text filter by label value.
-- `cmdlineValue__contains` [query, array] — Free-text filter by nested cmdline value.
-- `pathValue__contains` [query, array] — Free-text filter by nested path value.
-- `description__contains` [query, array] — Free-text filter by description.
-- `user__contains` [query, array] — Free-text filter by username.
-- `scopePath__contains` [query, array] — Free-text filter by scope path.
-- `tags` [query, string] — Filter exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. To filter by unassigned tag values, use __nin suffix in the tag key. Example: "{"key1": ["value1_1", "value1_2"], "key2__nin": ["value2"]}".
-- `hasTags` [query, boolean] — Include only Exclusions that have any tags assigned if True, or none if False
-- `tagIds` [query, array] — List of tag IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `countsFor` [query, string] — comma-separated list of fields to be shown. Example: "threatType,interactionLevel".
-- `tagsByGroup` [query, string] — Group exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. . Example: "{"key1": ["value1_1", "value1_2"], "key2": ["value2"]}".
-- `hasTagsByGroup` [query, boolean] — Include Exclusions that have any tags assigned if True, or none if False
-- `create` [query, boolean] **required** — Create
-- `selectAll` [query, boolean] — When true, calculate actions for all exclusions matching filters (not just selected IDs).
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `countOnly` [query, boolean]: If true, only total number of items will be returned, without any of the actual objects.
+- `skipCount` [query, boolean]: If true, total number of items will not be calculated, which speeds up execution time.
+- `sortBy` [query, string] (enum: id, createdAt, updatedAt, source, description, osType, scope, userName, scopePath, notRecommended, interactionLevel, childProcess, reason, user, threatType, engines, exclusionName, modeType, inAppInventory): The column to sort the results by. Example: "id".
+- `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [query, boolean]: Indicates a tenant scope request
+- `ids` [query, array]: List of IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `idsNin` [query, array]: List of IDs to exclude from filter. Example: "225494730938493804,225494730938493915".
+- `createdAt__lt` [query, string]: Created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__lte` [query, string]: Created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gt` [query, string]: Created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gte` [query, string]: Created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__between` [query, string]: Date range for creation time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
+- `updatedAt__lt` [query, string]: Updated before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__lte` [query, string]: Updated before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__gt` [query, string]: Updated after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__gte` [query, string]: Updated after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__between` [query, string]: Date range for update time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
+- `osTypes` [query, array]: List of OS types to filter by. Example: "macos".
+- `source` [query, array]: List sources to filter by. Example: "user".
+- `userIds` [query, array]: List of user IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `modeType` [query, array]: List of Exclusion Type to filter by: suppression, agent_interoperability, or binary_vault . Example: "all".
+- `notRecommended` [query, array]: List of recommendations to filter by. Example: "Not recommended".
+- `warnings` [query, array]: List of warnings to filter by. Example: "Not allowed".
+- `pathExclusionTypes` [query, array]: List of excluded paths in an exclusion to filter by. Applies only to EDR exclusions of type path. Example: "file".
+- `threatType` [query, array]: List of threat types to filter by. Example: "EDR".
+- `engines` [query, array]: List of engines to filter by. Example: "suppress".
+- `interactionLevel` [query, array]: List of interaction levels to filter by. Example: "disable_all_monitors".
+- `includeParents` [query, boolean]: Return filters from parent scope levels (Default: false).
+- `includeChildren` [query, boolean]: Return filters from children scope levels (Default: false).
+- `imported` [query, boolean]: Indicates if the exclusion was imported by a bulk operation or not. You can filter by this.
+- `conditions` [query, array]: List of conditions to filter by. Example: "white_hash".
+- `childProcess` [query, boolean]: Indicates if the exclusion applies to child processes or not. You can filter by this.
+- `inAppInventory` [query, boolean]: Indicates if the exclusion is related to an application found in the scope's Application Inventory or not. You can filter by this.
+- `exclusionName__contains` [query, array]: Free-text filter by exclusion name.
+- `applicationName__contains` [query, array]: Free-text filter by application name.
+- `value__contains` [query, array]: Free-text filter by value.
+- `podName__contains` [query, array]: Free-text filter by pod name.
+- `containerName__contains` [query, array]: Free-text filter by container name.
+- `namespace__contains` [query, array]: Free-text filter by namespace.
+- `sha256Image__contains` [query, array]: Free-text filter by SHA-256 of an image.
+- `fullImageName__contains` [query, array]: Free-text filter by full image URI.
+- `labelsKey__contains` [query, array]: Free-text filter by label key.
+- `labelsValue__contains` [query, array]: Free-text filter by label value.
+- `cmdlineValue__contains` [query, array]: Free-text filter by nested cmdline value.
+- `pathValue__contains` [query, array]: Free-text filter by nested path value.
+- `description__contains` [query, array]: Free-text filter by description.
+- `user__contains` [query, array]: Free-text filter by username.
+- `scopePath__contains` [query, array]: Free-text filter by scope path.
+- `tags` [query, string]: Filter exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. To filter by unassigned tag values, use __nin suffix in the tag key. Example: "{"key1": ["value1_1", "value1_2"], "key2__nin": ["value2"]}".
+- `hasTags` [query, boolean]: Include only Exclusions that have any tags assigned if True, or none if False
+- `tagIds` [query, array]: List of tag IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `countsFor` [query, string]: comma-separated list of fields to be shown. Example: "threatType,interactionLevel".
+- `tagsByGroup` [query, string]: Group exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. . Example: "{"key1": ["value1_1", "value1_2"], "key2": ["value2"]}".
+- `hasTagsByGroup` [query, boolean]: Include Exclusions that have any tags assigned if True, or none if False
+- `create` [query, boolean] **required**: Create
+- `selectAll` [query, boolean]: When true, calculate actions for all exclusions matching filters (not just selected IDs).
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -194,7 +194,7 @@ Create Bulk Exclusions to make your Agents suppress alerts and mitigation for it
 Required permissions: `Exclusions.create`
 
 Parameters:
-- `body` [body, exclusions.post_schema_PostUnifiedExclusionSchema_many] — 
+- `body` [body, exclusions.post_schema_PostUnifiedExclusionSchema_many]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -207,59 +207,59 @@ Export the currently filtered exclusions to a JSON file. You can use the export 
 Required permissions: `Exclusions.view`
 
 Parameters:
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [query, boolean] — Indicates a tenant scope request
-- `ids` [query, array] — List of IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `idsNin` [query, array] — List of IDs to exclude from filter. Example: "225494730938493804,225494730938493915".
-- `createdAt__lt` [query, string] — Created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__lte` [query, string] — Created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gt` [query, string] — Created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gte` [query, string] — Created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__between` [query, string] — Date range for creation time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
-- `updatedAt__lt` [query, string] — Updated before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__lte` [query, string] — Updated before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__gt` [query, string] — Updated after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__gte` [query, string] — Updated after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__between` [query, string] — Date range for update time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
-- `osTypes` [query, array] — List of OS types to filter by. Example: "macos".
-- `source` [query, array] — List sources to filter by. Example: "user".
-- `userIds` [query, array] — List of user IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `modeType` [query, array] — List of Exclusion Type to filter by: suppression, agent_interoperability, or binary_vault . Example: "all".
-- `notRecommended` [query, array] — List of recommendations to filter by. Example: "Not recommended".
-- `warnings` [query, array] — List of warnings to filter by. Example: "Not allowed".
-- `pathExclusionTypes` [query, array] — List of excluded paths in an exclusion to filter by. Applies only to EDR exclusions of type path. Example: "file".
-- `threatType` [query, array] — List of threat types to filter by. Example: "EDR".
-- `engines` [query, array] — List of engines to filter by. Example: "suppress".
-- `interactionLevel` [query, array] — List of interaction levels to filter by. Example: "disable_all_monitors".
-- `includeParents` [query, boolean] — Return filters from parent scope levels (Default: false).
-- `includeChildren` [query, boolean] — Return filters from children scope levels (Default: false).
-- `imported` [query, boolean] — Indicates if the exclusion was imported by a bulk operation or not. You can filter by this.
-- `conditions` [query, array] — List of conditions to filter by. Example: "white_hash".
-- `childProcess` [query, boolean] — Indicates if the exclusion applies to child processes or not. You can filter by this.
-- `inAppInventory` [query, boolean] — Indicates if the exclusion is related to an application found in the scope's Application Inventory or not. You can filter by this.
-- `exclusionName__contains` [query, array] — Free-text filter by exclusion name.
-- `applicationName__contains` [query, array] — Free-text filter by application name.
-- `value__contains` [query, array] — Free-text filter by value.
-- `podName__contains` [query, array] — Free-text filter by pod name.
-- `containerName__contains` [query, array] — Free-text filter by container name.
-- `namespace__contains` [query, array] — Free-text filter by namespace.
-- `sha256Image__contains` [query, array] — Free-text filter by SHA-256 of an image.
-- `fullImageName__contains` [query, array] — Free-text filter by full image URI.
-- `labelsKey__contains` [query, array] — Free-text filter by label key.
-- `labelsValue__contains` [query, array] — Free-text filter by label value.
-- `cmdlineValue__contains` [query, array] — Free-text filter by nested cmdline value.
-- `pathValue__contains` [query, array] — Free-text filter by nested path value.
-- `description__contains` [query, array] — Free-text filter by description.
-- `user__contains` [query, array] — Free-text filter by username.
-- `scopePath__contains` [query, array] — Free-text filter by scope path.
-- `tags` [query, string] — Filter exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. To filter by unassigned tag values, use __nin suffix in the tag key. Example: "{"key1": ["value1_1", "value1_2"], "key2__nin": ["value2"]}".
-- `hasTags` [query, boolean] — Include only Exclusions that have any tags assigned if True, or none if False
-- `tagIds` [query, array] — List of tag IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `countsFor` [query, string] — comma-separated list of fields to be shown. Example: "threatType,interactionLevel".
-- `tagsByGroup` [query, string] — Group exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. . Example: "{"key1": ["value1_1", "value1_2"], "key2": ["value2"]}".
-- `hasTagsByGroup` [query, boolean] — Include Exclusions that have any tags assigned if True, or none if False
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [query, boolean]: Indicates a tenant scope request
+- `ids` [query, array]: List of IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `idsNin` [query, array]: List of IDs to exclude from filter. Example: "225494730938493804,225494730938493915".
+- `createdAt__lt` [query, string]: Created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__lte` [query, string]: Created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gt` [query, string]: Created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gte` [query, string]: Created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__between` [query, string]: Date range for creation time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
+- `updatedAt__lt` [query, string]: Updated before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__lte` [query, string]: Updated before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__gt` [query, string]: Updated after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__gte` [query, string]: Updated after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__between` [query, string]: Date range for update time (format: <from_timestamp>-<to_timestamp>, inclusive). Example: "1514978890136-1514978650130".
+- `osTypes` [query, array]: List of OS types to filter by. Example: "macos".
+- `source` [query, array]: List sources to filter by. Example: "user".
+- `userIds` [query, array]: List of user IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `modeType` [query, array]: List of Exclusion Type to filter by: suppression, agent_interoperability, or binary_vault . Example: "all".
+- `notRecommended` [query, array]: List of recommendations to filter by. Example: "Not recommended".
+- `warnings` [query, array]: List of warnings to filter by. Example: "Not allowed".
+- `pathExclusionTypes` [query, array]: List of excluded paths in an exclusion to filter by. Applies only to EDR exclusions of type path. Example: "file".
+- `threatType` [query, array]: List of threat types to filter by. Example: "EDR".
+- `engines` [query, array]: List of engines to filter by. Example: "suppress".
+- `interactionLevel` [query, array]: List of interaction levels to filter by. Example: "disable_all_monitors".
+- `includeParents` [query, boolean]: Return filters from parent scope levels (Default: false).
+- `includeChildren` [query, boolean]: Return filters from children scope levels (Default: false).
+- `imported` [query, boolean]: Indicates if the exclusion was imported by a bulk operation or not. You can filter by this.
+- `conditions` [query, array]: List of conditions to filter by. Example: "white_hash".
+- `childProcess` [query, boolean]: Indicates if the exclusion applies to child processes or not. You can filter by this.
+- `inAppInventory` [query, boolean]: Indicates if the exclusion is related to an application found in the scope's Application Inventory or not. You can filter by this.
+- `exclusionName__contains` [query, array]: Free-text filter by exclusion name.
+- `applicationName__contains` [query, array]: Free-text filter by application name.
+- `value__contains` [query, array]: Free-text filter by value.
+- `podName__contains` [query, array]: Free-text filter by pod name.
+- `containerName__contains` [query, array]: Free-text filter by container name.
+- `namespace__contains` [query, array]: Free-text filter by namespace.
+- `sha256Image__contains` [query, array]: Free-text filter by SHA-256 of an image.
+- `fullImageName__contains` [query, array]: Free-text filter by full image URI.
+- `labelsKey__contains` [query, array]: Free-text filter by label key.
+- `labelsValue__contains` [query, array]: Free-text filter by label value.
+- `cmdlineValue__contains` [query, array]: Free-text filter by nested cmdline value.
+- `pathValue__contains` [query, array]: Free-text filter by nested path value.
+- `description__contains` [query, array]: Free-text filter by description.
+- `user__contains` [query, array]: Free-text filter by username.
+- `scopePath__contains` [query, array]: Free-text filter by scope path.
+- `tags` [query, string]: Filter exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. To filter by unassigned tag values, use __nin suffix in the tag key. Example: "{"key1": ["value1_1", "value1_2"], "key2__nin": ["value2"]}".
+- `hasTags` [query, boolean]: Include only Exclusions that have any tags assigned if True, or none if False
+- `tagIds` [query, array]: List of tag IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `countsFor` [query, string]: comma-separated list of fields to be shown. Example: "threatType,interactionLevel".
+- `tagsByGroup` [query, string]: Group exclusions by their assigned tags. Given in form of a JSON where each key represents a tag key, and each value represents a list of string values to filter by. . Example: "{"key1": ["value1_1", "value1_2"], "key2": ["value2"]}".
+- `hasTagsByGroup` [query, boolean]: Include Exclusions that have any tags assigned if True, or none if False
 
 Responses: 403 User is not allowed to perform this operation., 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -272,7 +272,7 @@ Import exclusions to a specified scope in the Console. Use an exclusion JSON fil
 Required permissions: `Exclusions.create`
 
 Parameters:
-- `filter` [formData, object] **required** — Filter
-- `file` [formData, file] **required** — The input JSON or CSV file
+- `filter` [formData, object] **required**: Filter
+- `file` [formData, file] **required**: The input JSON or CSV file
 
 Responses: 403 User is not allowed to perform this operation., 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

@@ -11,10 +11,10 @@ Fetch surface ids in case of select all with filters
 Required permissions: `XDR Inventory.view`
 
 Parameters:
-- `accountIds` [query, array] — List of Account IDs to filter by
-- `siteIds` [query, array] — List of Site IDs to filter by
-- `groupIds` [query, array] — List of Group IDs to filter by
-- `body` [body, v2_1.action_controller.schemas_FetchSurfaceIdsRequestSchema] — 
+- `accountIds` [query, array]: List of Account IDs to filter by
+- `siteIds` [query, array]: List of Site IDs to filter by
+- `groupIds` [query, array]: List of Group IDs to filter by
+- `body` [body, v2_1.action_controller.schemas_FetchSurfaceIdsRequestSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -27,10 +27,10 @@ Get Available Actions by Asset/Entity Type
 Required permissions: `XDR Inventory.view`
 
 Parameters:
-- `accountIds` [query, array] — List of Account IDs to filter by
-- `siteIds` [query, array] — List of Site IDs to filter by
-- `groupIds` [query, array] — List of Group IDs to filter by
-- `body` [body, v2_1.action_controller.schemas_AffectedEntitiesSchema] — 
+- `accountIds` [query, array]: List of Account IDs to filter by
+- `siteIds` [query, array]: List of Site IDs to filter by
+- `groupIds` [query, array]: List of Group IDs to filter by
+- `body` [body, v2_1.action_controller.schemas_AffectedEntitiesSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -43,10 +43,10 @@ Perform an Action on selected assets/entities
 Required permissions: `XDR Inventory.create, XDR Inventory.edit`
 
 Parameters:
-- `accountIds` [query, array] — List of Account IDs to filter by
-- `siteIds` [query, array] — List of Site IDs to filter by
-- `groupIds` [query, array] — List of Group IDs to filter by
-- `body` [body, v2_1.action_controller.schemas_PerformActionRequestSchema] — 
+- `accountIds` [query, array]: List of Account IDs to filter by
+- `siteIds` [query, array]: List of Site IDs to filter by
+- `groupIds` [query, array]: List of Group IDs to filter by
+- `body` [body, v2_1.action_controller.schemas_PerformActionRequestSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -59,9 +59,9 @@ Internal api only to notify action was triggered without actually performing it
 Required permissions: `XDR Inventory.create, XDR Inventory.edit`
 
 Parameters:
-- `accountIds` [query, array] — List of Account IDs to filter by
-- `siteIds` [query, array] — List of Site IDs to filter by
-- `groupIds` [query, array] — List of Group IDs to filter by
-- `body` [body, v2_1.action_controller.schemas_PerformActionNotificationSchema] — 
+- `accountIds` [query, array]: List of Account IDs to filter by
+- `siteIds` [query, array]: List of Site IDs to filter by
+- `groupIds` [query, array]: List of Group IDs to filter by
+- `body` [body, v2_1.action_controller.schemas_PerformActionNotificationSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

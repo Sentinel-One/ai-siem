@@ -11,6 +11,6 @@ Remote Shell is a powerful way to respond remotely to events on endpoints. It le
 Required permissions: `Endpoints.clearRemoteShellSession`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema] — 
+- `body` [body, agents.schemas_AgentsActionSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

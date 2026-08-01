@@ -3,7 +3,7 @@
 All functions use the syntax `{{Function.FUNCTION_NAME(args)}}`.
 Functions can be nested: `{{Function.STRING(Function.MUL(42, Function.DATETIME_TO_MS(Function.DATETIME_NOW())))}}`.
 
-Store complex JQ expressions in a Variable first, then reference the variable in the function call —
+Store complex JQ expressions in a Variable first, then reference the variable in the function call;
 this avoids escaping headaches: `{{Function.JQ(input, local_var.myJqExpression)}}`.
 
 ---

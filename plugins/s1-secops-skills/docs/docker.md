@@ -81,7 +81,7 @@ docker run -i --rm --pull=missing \
   -e SDL_XDR_URL='https://xdr.us1.sentinelone.net' \
   -e SDL_LOG_READ_KEY='...' \
   -e SDL_CONFIG_READ_KEY='...' \
-  ghcr.io/pmoses-s1/s1-mcps:1.2.4 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
+  ghcr.io/pmoses-s1/s1-mcps:1.2.5 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
 ```
 
 Expected: a single JSON line back on stdout with `serverInfo.name = "sentinelone-mcp-server"`. Stderr should show `Tools: 26 registered` and one of the `configured`/`NOT configured` summaries per API surface.
@@ -90,7 +90,7 @@ For a less verbose env-source pattern, put the values in a `.env` file and pass 
 
 ```bash
 docker run -i --rm --pull=missing --env-file ~/.config/sentinelone/s1-mcp.env \
-  ghcr.io/pmoses-s1/s1-mcps:1.2.4 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
+  ghcr.io/pmoses-s1/s1-mcps:1.2.5 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
 ```
 
 The `.env` file is plain `KEY=value` per line. Keep its mode 0600 and out of any repo.
@@ -100,8 +100,8 @@ The `.env` file is plain `KEY=value` per line. Keep its mode 0600 and out of any
 If you suspect a corrupted local image:
 
 ```bash
-docker rmi ghcr.io/pmoses-s1/s1-mcps:1.2.4
-docker pull ghcr.io/pmoses-s1/s1-mcps:1.2.4
+docker rmi ghcr.io/pmoses-s1/s1-mcps:1.2.5
+docker pull ghcr.io/pmoses-s1/s1-mcps:1.2.5
 ```
 
 ### 5. Roll back to the npx path
@@ -134,7 +134,7 @@ To use your own copy, mount your Cowork project folder read-only and point the e
     "-e", "S1_HEC_INGEST_URL", "-e", "SDL_XDR_URL",
     "-e", "SDL_LOG_READ_KEY",
     "-e", "SDL_CONFIG_WRITE_KEY", "-e", "SDL_CONFIG_READ_KEY",
-    "ghcr.io/pmoses-s1/s1-mcps:1.2.4",
+    "ghcr.io/pmoses-s1/s1-mcps:1.2.5",
     "s1-secops-mcp"
   ],
   "env": { "...": "..." }

@@ -47,7 +47,10 @@ AUTH="Authorization: Bearer $TOKEN"
 JSON="Content-Type: application/json"
 
 FAILED=0
-fail() { echo "  FAIL: $*" >&2; FAILED=$((FAILED+1)); }
+fail() {
+  echo "  FAIL: $*" >&2
+  FAILED=$((FAILED + 1))
+}
 pass() { echo "  PASS: $*"; }
 
 echo "=== 1. healthz (no auth) ==="
@@ -67,17 +70,17 @@ INIT_BODY=$(curl -s -X POST "$URL" -H "$AUTH" -H "$JSON" -d '{
   }
 }')
 PROTO=$(echo "$INIT_BODY" | jq -r '.result.protocolVersion // "missing"')
-NAME=$( echo "$INIT_BODY" | jq -r '.result.serverInfo.name    // "missing"')
-VER=$(  echo "$INIT_BODY" | jq -r '.result.serverInfo.version // "missing"')
+NAME=$(echo "$INIT_BODY" | jq -r '.result.serverInfo.name    // "missing"')
+VER=$(echo "$INIT_BODY" | jq -r '.result.serverInfo.version // "missing"')
 [[ "$PROTO" == "2024-11-05" ]] && pass "protocolVersion=$PROTO" || fail "protocolVersion=$PROTO"
-[[ "$NAME"  == "s1-secops-mcp-server" ]] && pass "serverInfo.name=$NAME" || fail "serverInfo.name=$NAME"
+[[ "$NAME" == "s1-secops-mcp-server" ]] && pass "serverInfo.name=$NAME" || fail "serverInfo.name=$NAME"
 [[ "$VER" != "missing" ]] && pass "serverInfo.version=$VER" || fail "serverInfo.version missing"
 
 echo
 echo "=== 3. tools/list count ==="
 TOOLS_COUNT=$(curl -s -X POST "$URL" -H "$AUTH" -H "$JSON" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-  | jq '.result.tools | length')
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
+  jq '.result.tools | length')
 [[ "$TOOLS_COUNT" == "26" ]] && pass "tools/list returned 26 tools" || fail "tools/list returned $TOOLS_COUNT"
 
 echo
@@ -107,8 +110,8 @@ BAD_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$URL" \
 echo
 echo "=== 6. method not found (expect -32601) ==="
 ERR_CODE=$(curl -s -X POST "$URL" -H "$AUTH" -H "$JSON" \
-  -d '{"jsonrpc":"2.0","id":4,"method":"does/not/exist"}' \
-  | jq -r '.error.code // "missing"')
+  -d '{"jsonrpc":"2.0","id":4,"method":"does/not/exist"}' |
+  jq -r '.error.code // "missing"')
 [[ "$ERR_CODE" == "-32601" ]] && pass "unknown method returned -32601" || fail "unknown method returned code=$ERR_CODE"
 
 echo

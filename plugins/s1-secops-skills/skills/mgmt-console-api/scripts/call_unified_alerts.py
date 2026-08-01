@@ -16,12 +16,12 @@ Subcommands:
   set-status     Convenience: status update on one or more alert ids.
   set-verdict    Convenience: analyst-verdict update on alert ids.
   assign         Convenience: assign alerts to a user.
-  group-by       alertGroupByCount — faceted counts (deprecated in API).
-  groups         alertGroups — group-by listing, paginated.
-  facets         alertFiltersCount — values + counts for a facet.
-  autocomplete   autocompleteOptions — value suggestions for a field.
-  columns        alertColumnMetadata — queryable field list.
-  availability   alertsViewDataAvailability — which views have data.
+  group-by       alertGroupByCount, faceted counts (deprecated in API).
+  groups         alertGroups, group-by listing, paginated.
+  facets         alertFiltersCount, values + counts for a facet.
+  autocomplete   autocompleteOptions, value suggestions for a field.
+  columns        alertColumnMetadata, queryable field list.
+  availability   alertsViewDataAvailability, which views have data.
   ai             aiInvestigations for one or more alert ids.
   mitigations    alertMitigationActionResults for one alert.
   csv-export     Bulk alerts CSV export.
@@ -504,7 +504,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_groups)
 
     # facets
-    sp = sub.add_parser("facets", help="alertFiltersCount — facet counts")
+    sp = sub.add_parser("facets", help="alertFiltersCount, facet counts")
     sp.add_argument("field_id", nargs="+")
     sp.add_argument("--filter", action="append", default=[])
     sp.add_argument("--json", action="store_true")

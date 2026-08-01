@@ -2,7 +2,7 @@
 
 **Endpoint:** `POST /web/api/v2.1/unifiedalerts/graphql`
 **Schema endpoint:** `POST /web/api/v2.1/unifiedalerts/graphql/schema`
-**Auth:** same `Authorization: ApiToken <token>` header as REST — no extra permission grant required beyond the RBAC entries under "Unified Alerts".
+**Auth:** same `Authorization: ApiToken <token>` header as REST; no extra permission grant required beyond the RBAC entries under "Unified Alerts".
 **Skill entry points:** `scripts/unified_alerts.py` (module) and `scripts/call_unified_alerts.py` (CLI).
 **Upstream docs:** https://community.sentinelone.com/s/article/000010170
 
@@ -10,9 +10,9 @@
 
 ## When to use this vs REST threats / alerts
 
-Use UAM for any work on the Unified Alerts product: multi-source alert triage (EDR, XDR, Identity, STAR, Cloud, NGFW, Mimecast, Proofpoint, etc.), facet-style filtering, bulk actions, and alert notes. The v2.1 REST `/threats` endpoints cover the older "threats" surface only — for everything else that shows in the modern Alerts inbox, start here.
+Use UAM for any work on the Unified Alerts product: multi-source alert triage (EDR, XDR, Identity, STAR, Cloud, NGFW, Mimecast, Proofpoint, etc.), facet-style filtering, bulk actions, and alert notes. The v2.1 REST `/threats` endpoints cover the older "threats" surface only, for everything else that shows in the modern Alerts inbox, start here.
 
-UAM is a single GraphQL surface (17 queries + 4 mutations). Every query and mutation is built around the same `ScopeSelectorInput`, `OrFilterSelectionInput`, and `FilterInput` types — once you have those right, the rest is just picking fields.
+UAM is a single GraphQL surface (17 queries + 4 mutations). Every query and mutation is built around the same `ScopeSelectorInput`, `OrFilterSelectionInput`, and `FilterInput` types, once you have those right, the rest is just picking fields.
 
 ---
 
@@ -101,7 +101,7 @@ Filter syntax: `fieldId=value` (stringEqual), `fieldId=v1,v2` (stringIn), `field
 | `alertGroupByCount` | Facet counts | `group_by_count` | Schema marks deprecated (use alertGroups). `AlertGroupByResponse { data[] }` → `{fieldId, hasNextPage, values[{value,label,count}]}`. |
 | `alertFiltersCount` | Facet counts for UI sidebar | `filters_count` | Similar `data` wrapper; `values[{value,label,count}]`. |
 | `alertGroups` | Paginated group-by | `alert_groups` | Connection; node has `value`/`label`/`count`. |
-| `autocompleteOptions` | Suggest values for a field | `autocomplete` | Needs `searchText` length ≥ 3; not every field supports it (e.g. `externalId` refuses). Option has `{value, count}` — no `label`. |
+| `autocompleteOptions` | Suggest values for a field | `autocomplete` | Needs `searchText` length ≥ 3; not every field supports it (e.g. `externalId` refuses). Option has `{value, count}`; no `label`. |
 | `alertsViewDataAvailability` | Which views have data | `view_data_availability` | Nested: `viewDataAvailability[{viewType, dataAvailable}]`. |
 | `aiInvestigations` | AI investigation status | `ai_investigations` | Returns `[AiInvestigation!]` **directly** (no `data` wrapper). |
 | `alertsCsvExport` | Bulk alerts CSV | `export_alerts_csv` | `CsvResponse { data }`; returns a CSV string. |
@@ -112,7 +112,7 @@ Filter syntax: `fieldId=value` (stringEqual), `fieldId=v1,v2` (stringIn), `field
 | Name | Purpose | Wrapper | Notes |
 |---|---|---|---|
 | `addAlertNote` | Create note | `add_alert_note` | Returns the full note list for the alert (find the new one by matching text or by diffing ids before/after). |
-| `updateAlertNote` | Edit note | `update_alert_note` | Fails for ~30–90s after creation with `mgmt_note_id not set`. Wrapper retries automatically. |
+| `updateAlertNote` | Edit note | `update_alert_note` | Fails for ~30-90s after creation with `mgmt_note_id not set`. Wrapper retries automatically. |
 | `deleteAlertNote` | Remove note | `delete_alert_note` | Same eventual-consistency behaviour; wrapper retries. |
 | `alertTriggerActions` | Bulk actions against a filter | `trigger_actions` + convenience wrappers (`set_alert_status`, `set_analyst_verdict`, `assign_alerts`) | Filter is `OrFilterSelectionInput` (use `or_filter(...)`). Result is a union of `ActionsTriggered | TriggerActionsError | TriggerActionsScheduled`. |
 
@@ -123,13 +123,13 @@ Filter syntax: `fieldId=value` (stringEqual), `fieldId=v1,v2` (stringIn), `field
 These are the traps the wrapper hides, in case you're writing GraphQL by hand.
 
 **`OrFilterSelectionInput` vs flat `[FilterInput!]`.**
-The `alerts` query takes `filters: [FilterInput!]` — a flat AND-joined list. Mutations and `alertAvailableActions` take `filter: OrFilterSelectionInput`, shaped as `{ or: [ { and: [FilterInput,...] }, ... ] }`. Passing a flat list to a mutation is a validation error; passing an or/and wrapper to `alerts` is also an error.
+The `alerts` query takes `filters: [FilterInput!]`, a flat AND-joined list. Mutations and `alertAvailableActions` take `filter: OrFilterSelectionInput`, shaped as `{ or: [ { and: [FilterInput,...] }, ... ] }`. Passing a flat list to a mutation is a validation error; passing an or/and wrapper to `alerts` is also an error.
 
-**`FilterInput` comparators.** One field plus one comparator per filter object. Common: `stringEqual {value}`, `stringIn {values[]}`, `stringStartsWith {value}`, `stringEndsWith {value}`, `fullText {value}`, `boolEqual {value}`, `intEqual {value}`, `intIn {values[]}`, `dateRange {from,to}`. Check `alertColumnMetadata.filterTypes` for a field before picking one — not every comparator is supported on every field.
+**`FilterInput` comparators.** One field plus one comparator per filter object. Common: `stringEqual {value}`, `stringIn {values[]}`, `stringStartsWith {value}`, `stringEndsWith {value}`, `fullText {value}`, `boolEqual {value}`, `intEqual {value}`, `intIn {values[]}`, `dateRange {from,to}`. Check `alertColumnMetadata.filterTypes` for a field before picking one, not every comparator is supported on every field.
 
 **Connection vs `data` wrapper.** Some types use the GraphQL connection pattern (`edges { node } pageInfo totalCount`): `alerts`, `alertHistory`, `alertTimeline`, `alertGroups`. Others wrap their list under `data`: `alertNotes`, `alertMitigationActionResults`, `alertGroupByCount`, `alertFiltersCount`, `alertAvailableActions`, CSV exports. A handful return bare list/scalar: `aiInvestigations`, `alertColumnMetadata`.
 
-**Facet value shapes.** `alertGroupByCount.data[*].values[*]` uses `{value, label, count}`. `alertFiltersCount.data[*].values[*]` uses the same. `alertGroups` nodes use `{value, label, count}` (NOT `groupValue`). `autocompleteOptions.values[*]` uses `{value, count}` — no `label`.
+**Facet value shapes.** `alertGroupByCount.data[*].values[*]` uses `{value, label, count}`. `alertFiltersCount.data[*].values[*]` uses the same. `alertGroups` nodes use `{value, label, count}` (NOT `groupValue`). `autocompleteOptions.values[*]` uses `{value, count}`; no `label`.
 
 **`alertAvailableActions.errors` is `[ActionsError!]`.** You have to subselect at least `{ errorMessage }` on it, even if you don't care about the errors.
 
@@ -155,7 +155,7 @@ The `alerts` query takes `filters: [FilterInput!]` — a flat AND-joined list. M
 
 ## Action catalogue
 
-From live `alertAvailableActions` on a Singularity Platform tenant with EDR, Identity, CWS, STAR, Mimecast, Proofpoint, Vectra, Palo Alto, Netskope, Singularity Mobile, and several marketplace apps enabled. Your tenant's list will differ — always call `available_actions(...)` with a narrow filter to see what's actually live before you trigger anything.
+From live `alertAvailableActions` on a Singularity Platform tenant with EDR, Identity, CWS, STAR, Mimecast, Proofpoint, Vectra, Palo Alto, Netskope, Singularity Mobile, and several marketplace apps enabled. Your tenant's list will differ; always call `available_actions(...)` with a narrow filter to see what's actually live before you trigger anything.
 
 | Action ID | Type | What it does |
 |---|---|---|
@@ -249,9 +249,9 @@ csv = uam.export_alerts_csv(c, filters=[
 | `Subselection required for type 'CsvResponse!'` | Requested CSV export without picking `{ data }`. | Add `{ data }`. |
 | `Field doesn't support auto-complete.` | `autocompleteOptions` on unsupported field (e.g. `externalId`). | Pick a supported field (`alertName`, `assetName`, `processName`, ...) or use `autocomplete` via alert list filter. |
 | `Autocomplete requires minimum 3 characters` | `searchText` too short. | Send ≥ 3 chars. |
-| `Alert Note with ID ... does not have mgmt_note_id set, unable to [edit\|delete], try again later!` | Note freshly created; management-side id hasn't propagated. | Retry after 30–120s. The wrapper does this automatically. |
+| `Alert Note with ID ... does not have mgmt_note_id set, unable to [edit\|delete], try again later!` | Note freshly created; management-side id hasn't propagated. | Retry after 30-120s. The wrapper does this automatically. |
 | No actions returned from `alertAvailableActions` | Called it with no filter or with a filter that matches nothing. | Pass a non-empty `or_filter(...)` (e.g. by alert id). |
-| **0 results with no error** when filtering `status="OPEN"` | `"OPEN"` is not a valid UAM status enum value. Returns 0 results silently — no GraphQL error is raised. Confirmed on live tenant. | Use `"NEW"` instead. Valid status values are `NEW`, `IN_PROGRESS`, `RESOLVED` only. |
+| **0 results with no error** when filtering `status="OPEN"` | `"OPEN"` is not a valid UAM status enum value. Returns 0 results silently; no GraphQL error is raised. Confirmed on live tenant. | Use `"NEW"` instead. Valid status values are `NEW`, `IN_PROGRESS`, `RESOLVED` only. |
 | **0 results with no error** when filtering `status="FALSE_POSITIVE"` | `"FALSE_POSITIVE"` is an `analystVerdict` value, not a `status` value. Silently returns 0 results. | To filter by analyst verdict, use `fieldId="analystVerdict"` with `stringEqual {value: "FALSE_POSITIVE_USER_ERROR"}` (or whichever verdict value). Status and analystVerdict are separate fields. |
 
 ---
@@ -266,7 +266,7 @@ raw = fetch_schema(c)        # dict; the full SDL is under raw["_raw"]
 Path("uam_schema.graphql").write_text(raw["_raw"])
 ```
 
-The SDL is ~225 KB and self-describing — if a field shape ever changes, grep the latest dump before guessing.
+The SDL is ~225 KB and self-describing, if a field shape ever changes, grep the latest dump before guessing.
 
 ---
 
@@ -282,5 +282,5 @@ Findings from a live events-vs-scheduled reproduction (2026-06).
 ## Ingestion paths (HEC vs UAM)
 
 Two distinct ingest APIs share the ingest host URL but are not connected:
-- **HEC ingest** (HTTP Event Collector): raw logs/events + a named `parser`; feeds Event Search, PowerQuery, and detection rules. This is the log-ingestion path (replaces the removed SDL `uploadLogs`). For pre-structured / OCSF JSON ingested with `?isParsed=true` (no parser), each event MUST include `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security` for custom OCSF sources), `event.type` (as a FLAT dotted key — a nested `event:{...}` object is dropped since `event` is HEC-reserved), and `site_id`. OCSF omits these, and without them events land with a null source (no attribution; `dataSource.name`-based filters/detections miss).
+- **HEC ingest** (HTTP Event Collector): raw logs/events + a named `parser`; feeds Event Search, PowerQuery, and detection rules. This is the log-ingestion path (replaces the removed SDL `uploadLogs`). For pre-structured / OCSF JSON ingested with `?isParsed=true` (no parser), each event MUST include `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security` for custom OCSF sources), `event.type` (as a FLAT dotted key, a nested `event:{...}` object is dropped since `event` is HEC-reserved), and `site_id`. OCSF omits these, and without them events land with a null source (no attribution; `dataSource.name`-based filters/detections miss).
 - **UAM ingest** (`uam_post_indicators` / `uam_ingest_alert`, `/v1/*`): creates UAM alerts/indicators directly and builds the alert asset from the event `device` object. Site routing via `scope = accountId:siteId`.

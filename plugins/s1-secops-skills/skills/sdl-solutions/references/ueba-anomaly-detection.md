@@ -13,6 +13,11 @@ action key; source matching by `dataSource.name` or `serverHost`; the staggered 
 and daily failure-notifier flows; and the dashboard All Data vs XDR scope. GEO-NEW, IMPOSSIBLE-TRAVEL,
 and RBA are shipped, not roadmap.
 
+Deployment scope: the STAR detection rule (`assets/ueba_detection.template.json`) reads the persisted
+baseline datatable (`{{BASELINE_TABLE}}`), and lookup tables / datatables are ACCOUNT-level objects,
+so the rule can only be created at account scope (`filter.accountIds`); site-scoped creation of
+lookup-reading rules is invalid.
+
 This solution is part of the `sentinelone-sdl-solutions` skill; it orchestrates the primitive skills
 (`sentinelone-mgmt-console-api`, `sentinelone-powerquery`, `sentinelone-hyperautomation`,
 `sentinelone-sdl-dashboard`) rather than reimplementing them.

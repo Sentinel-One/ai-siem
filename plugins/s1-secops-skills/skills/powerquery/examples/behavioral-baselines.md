@@ -1,7 +1,7 @@
-# Behavioural baselining — statistical anomaly detection in PowerQuery
+# Behavioural baselining: statistical anomaly detection in PowerQuery
 
 Recipes for building per-(principal, action) behavioural baselines and
-detecting deviations from them. Source-agnostic — works on EDR, identity,
+detecting deviations from them. Source-agnostic, works on EDR, identity,
 network, cloud, email, or any custom log source ingested into SDL.
 
 For the runner, the source schema discovery, and the productionised
@@ -21,10 +21,10 @@ seen in live but never in the baseline window (new behaviour).
 
 ## Picking principal and action fields by source category
 
-The "principal" is whoever the events are attributed to — user, host,
-IP, role, account. The "action" is what they did — event type, API
+The "principal" is whoever the events are attributed to, user, host,
+IP, role, account. The "action" is what they did, event type, API
 call, command, status. Both vary per source. Pick from what the source
-actually carries — schema discovery via `inspect_source.discover_schema()`
+actually carries, schema discovery via `inspect_source.discover_schema()`
 in the mgmt-console-api skill picks these for you. Common defaults:
 
 | Source category | Typical principal | Typical action | Coalesce-style fallback |
@@ -42,7 +42,7 @@ When in doubt, run `python scripts/inspect_source.py --source "<name>" --window 
 from the mgmt-console-api skill. It returns `prim_key` and `action_key`
 based on what the source actually populates.
 
-## Building block 1 — per-day count slice
+## Building block 1: per-day count slice
 
 Run this once per baseline day. Each call produces one row per
 `(action, principal)` pair seen on that day, with `day_count`. Replace
@@ -60,7 +60,7 @@ dataSource.name = '<source>'
 
 Set `startTime` / `endTime` on the LRQ call to a single 24h window.
 For a 7-day baseline run this 7 times; for 30-day, 30 times. Run up to
-3 in parallel — per-user 3 req/sec rate cap is the binding constraint.
+3 in parallel, per-user 3 req/sec rate cap is the binding constraint.
 See `references/lrq-api.md` in this skill for the slicing strategy.
 
 **Why slice rather than aggregate inside the query:** a single 7d (let
@@ -69,7 +69,7 @@ busy data sources. Daily slicing keeps every call comfortably under
 the budget AND makes the per-day counts available for the
 client-side merge that follows.
 
-## Building block 2 — live count
+## Building block 2: live count
 
 Same shape, single 24h window ending at the detection moment.
 
@@ -83,7 +83,7 @@ dataSource.name = '<source>'
 | limit 5000
 ```
 
-## Building block 3 — pooled baseline merge (Python pseudocode)
+## Building block 3: pooled baseline merge (Python pseudocode)
 
 After collecting daily slices, compute mean + stddev per pair across
 ALL sampled days, zero-padding each pair's counts with 0 for every
@@ -134,12 +134,12 @@ for r in live_rows:
                           "direction": "SPIKE" if z > 0 else "DROP"})
 ```
 
-## Building block 4 — silent-pair detector
+## Building block 4: silent-pair detector
 
 A pair active in baseline but with zero events in live is a silence
 signal. The basic z-score formula handles this naturally: `(0 - avg) / sd`
 is negative; if `avg/sd >= 2`, the pair is statistically silent. But the
-join in block 3 silently drops missing pairs — so you need an explicit
+join in block 3 silently drops missing pairs, so you need an explicit
 walk over the baseline keys.
 
 ```python
@@ -155,14 +155,14 @@ for key, b in baseline.items():
 ```
 
 In SOC terms: a critical user account that was active every weekday
-but has zero events today — that's exactly the kind of insider-threat
+but has zero events today; that's exactly the kind of insider-threat
 or account-takeover signal Method 1 should surface, and the bare
 two-side join misses it.
 
-## Building block 5 — new-behaviour detector
+## Building block 5: new-behaviour detector
 
-A pair seen in live but with no baseline is "first observed in 7d/30d"
-— could be a brand-new user, a fresh role being audited, a recon scan,
+A pair seen in live but with no baseline is "first observed in 7d/30d":
+could be a brand-new user, a fresh role being audited, a recon scan,
 or a real attacker. Surface separately from z-score anomalies.
 
 ```python
@@ -176,7 +176,7 @@ for r in live_rows:
 
 ## Day-of-week stratification (production tier)
 
-The pooled baseline pools weekday and weekend samples together — its
+The pooled baseline pools weekday and weekend samples together, its
 stddev reflects both, which means a Sunday with reduced activity gets
 flagged as anomalous against a baseline averaged across 5 weekdays + 2
 weekends. To eliminate the weekday/weekend false-positive, compute the
@@ -190,7 +190,7 @@ per_pair_dow = defaultdict(lambda: defaultdict(list))
 sampled_dows = defaultdict(int)   # dow -> number of days of this dow in baseline window
 
 for slice_label, daily_slice in baseline_slices:
-    # slice_label encodes the day's date — extract the dow
+    # slice_label encodes the day's date: extract the dow
     day_start = parse_iso_date(slice_label)
     dow = day_start.weekday()   # 0=Mon..6=Sun
     sampled_dows[dow] += 1
@@ -198,7 +198,7 @@ for slice_label, daily_slice in baseline_slices:
         key = (r["action"], r["principal"])
         per_pair_dow[key][dow].append(r["day_count"])
 
-# Compute baseline per (pair, dow) — pad inactive sampled days with zeros
+# Compute baseline per (pair, dow): pad inactive sampled days with zeros
 baseline_dow = {}
 for key, by_dow in per_pair_dow.items():
     for dow, counts in by_dow.items():
@@ -212,13 +212,13 @@ for key, by_dow in per_pair_dow.items():
                                                "n_active": n_active,
                                                "n_sampled": n_sampled}
 
-# At detection time, the live window has its own day-of-week —
+# At detection time, the live window has its own day-of-week;
 # only compare against the matching DoW baseline cell
 live_dow = parse_iso_date(live_window_start).weekday()
 for r in live_rows:
     key = (r["action"], r["principal"], live_dow)
     if key not in baseline_dow:
-        # No DoW-specific baseline — emerging behaviour on this DoW
+        # No DoW-specific baseline: emerging behaviour on this DoW
         continue
     b = baseline_dow[key]
     z = (r["live_count"] - b["avg"]) / b["sd"]
@@ -228,7 +228,7 @@ for r in live_rows:
 The padding step matters: if a (pair, DoW) cell had counts on 4 of 4
 sampled Sundays and zero on the other 0 sampled Sundays, the avg is
 `mean([c1, c2, c3, c4])`. If it had counts on 2 of 4 Sundays and zero
-on 2, the avg is `mean([c1, c2, 0, 0])` — a tighter, more honest
+on 2, the avg is `mean([c1, c2, 0, 0])`, a tighter, more honest
 representation. Without padding, the 2-of-4 case would look as
 "reliably active" as the 4-of-4 case, which is wrong.
 
@@ -238,7 +238,7 @@ representation. Without padding, the 2-of-4 case would look as
 |---|---|---|---|
 | 7 days | 7 samples | Quick to compute, freshest signal | Stddev is noisy; bimodal weekday/weekend distributions look like normal variance |
 | 30 days | 30 samples | Stable stddev; surfaces weekend false-positives clearly enough to motivate DoW stratification | Slower to compute (30 LRQ slices); slow-moving drift may be missed |
-| 30 days + DoW stratification | up to 30 / 7 ≈ 4-5 per DoW cell | Right tool — eliminates the weekday/weekend false-positive cleanly | Cells with `n_sampled <= 1` per DoW have no usable baseline; those pairs need to fall through to the new-behaviour detector |
+| 30 days + DoW stratification | up to 30 / 7 ≈ 4-5 per DoW cell | Right tool: eliminates the weekday/weekend false-positive cleanly | Cells with `n_sampled <= 1` per DoW have no usable baseline; those pairs need to fall through to the new-behaviour detector |
 | 90 days | ~13 samples per DoW cell when stratified | Captures monthly seasonality and quarter-end spikes | More LRQ cost; baseline-write cadence becomes a job; consider `savelookup` and an incremental update path instead of full re-compute |
 
 For most SOC use cases, 30 days + DoW stratification is the production
@@ -255,7 +255,7 @@ deserve different routing:
 |---|---|---|---|
 | Hard alert | `|z| >= 3.0` | Pooled or DoW-stratified, whichever is in production | Auto-page; high precision, low recall |
 | Soft alert / triage | `|z| >= 2.0` (DoW-stratified) | DoW-stratified preferred so weekend silences don't ping the queue | Tag for analyst review |
-| Trend tuning | `|z| >= 1.0` | Pooled baseline | Analyst dashboard only — don't make this a rule |
+| Trend tuning | `|z| >= 1.0` | Pooled baseline | Analyst dashboard only: don't make this a rule |
 | Silent-pair detector | `|z| >= 2.5` and `baseline_avg > <floor>` | DoW-stratified silent path | Separate rule; tune `<floor>` per source so noise pairs don't dominate |
 | New-behaviour detector | n/a | New-behaviour detector | Separate rule; route to baseline-curation queue rather than alerting outright |
 
@@ -294,7 +294,7 @@ dataSource.name = '<source>'
    table from step 1 must be keyed on `(action, principal, dow)` with
    `dow` stored in the same `%a` format, not just `(action, principal)`.
 
-3. **Set rule constraints** — for `queryType: "scheduled"`,
+3. **Set rule constraints**: for `queryType: "scheduled"`,
    `treatAsThreat: "UNDEFINED"` and `networkQuarantine: false` are
    required. Use the alert severity field, not mitigation actions, to
    surface the verdict.
@@ -303,8 +303,8 @@ dataSource.name = '<source>'
 
 | User asks for... | Use |
 |---|---|
-| "Write a baseline detection PQ" | This file (building blocks 1-5) — paste the placeholders into PQ templates |
+| "Write a baseline detection PQ" | This file (building blocks 1-5): paste the placeholders into PQ templates |
 | "Run a 30-day baseline for `<source>` end-to-end" | `sentinelone-mgmt-console-api` skill, `scripts/baseline_anomaly.py` |
 | "What field should I baseline on?" | `sentinelone-mgmt-console-api`, `scripts/inspect_source.py --source "<name>"` |
-| "Why does my baseline flag every Sunday?" | DoW stratification — section above |
+| "Why does my baseline flag every Sunday?" | DoW stratification: section above |
 | "Author this as a STAR rule body" | `references/detection-rules.md` in this skill, plus the lookup pattern in section "Productionising" |

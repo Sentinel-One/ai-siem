@@ -8,7 +8,7 @@ event.type = 'Process Creation'
 | columns timestamp, endpoint.name, src.process.name, src.process.cmdline
 ```
 
-and look at what comes back. Typos in field names don't raise errors — missing fields become `null`, so the query "works" but returns nulls.
+and look at what comes back. Typos in field names don't raise errors, missing fields become `null`, so the query "works" but returns nulls.
 
 ---
 
@@ -21,7 +21,7 @@ and look at what comes back. Typos in field names don't raise errors — missing
 | `event.id` | Unique event ID |
 | `event.time` | Human-readable event time |
 | `timestamp` | Nanoseconds since epoch; renders as datetime in results |
-| `agent.uuid` | SentinelOne Agent UUID — the stable per-endpoint identifier |
+| `agent.uuid` | SentinelOne Agent UUID: the stable per-endpoint identifier |
 | `agent.version` | Agent version string |
 | `endpoint.name` | Endpoint hostname |
 | `endpoint.os.name` | OS name |
@@ -140,7 +140,7 @@ SentinelOne's built-in behavioural indicators.
 |---|---|
 | `indicator.category` | `InfoStealer`, `Evasion`, `Exploitation`, `General`, `Injection`, `Malware`, `Persistence`, `Privilege Escalation`, `RansomwareProcess`, `Ransomware` … |
 | `indicator.name` | Specific indicator (`EventViewerTampering`, `PreloadInjection`, `RawVolumeAccess`, …) |
-| `indicator.description` | Longer description — use `contains` on this to find MITRE technique references, e.g., `indicator.description contains 'T1082'` |
+| `indicator.description` | Longer description: use `contains` on this to find MITRE technique references, e.g., `indicator.description contains 'T1082'` |
 | `indicator.metadata` | Additional context |
 
 ---
@@ -174,7 +174,7 @@ Repeated from the syntax reference because they save real time:
 
 ## OCSF alignment
 
-SentinelOne fields are increasingly OCSF-aligned. Many queries also work with OCSF categories (`event.category`). When exploring a new data source in **All Data** view, read a couple of raw events first to see which fields are populated — log sources outside EDR/XDR (e.g., SentinelOne Collector logs) don't follow the EDR schema and often put the unparsed text in `message`.
+SentinelOne fields are increasingly OCSF-aligned. Many queries also work with OCSF categories (`event.category`). When exploring a new data source in **All Data** view, read a couple of raw events first to see which fields are populated, log sources outside EDR/XDR (e.g., SentinelOne Collector logs) don't follow the EDR schema and often put the unparsed text in `message`.
 
 For those `message`-style sources, use:
 - `$"regex"` shorthand for `message matches "regex"` (single-escape)
@@ -237,6 +237,6 @@ Source: used throughout the `sentinelone-sdl-solutions` ingest-health-monitoring
 
 If you don't know the field name, either:
 
-1. **Use Purple AI first.** `mcp__purple-mcp__purple_ai(query="show me processes that accessed lsass.exe")` — it knows the schema and returns a working PQ.
-2. **Explore a single event.** `event.type = 'Registry Value Modified' | limit 1` — the Event Search UI will show every parsed field; in the MCP call, follow up with `| columns registry.keyPath, registry.valueName, registry.value, timestamp` to confirm your guesses.
+1. **Use Purple AI first.** `mcp__purple-mcp__purple_ai(query="show me processes that accessed lsass.exe")`; it knows the schema and returns a working PQ.
+2. **Explore a single event.** `event.type = 'Registry Value Modified' | limit 1`, the Event Search UI will show every parsed field; in the MCP call, follow up with `| columns registry.keyPath, registry.valueName, registry.value, timestamp` to confirm your guesses.
 3. **Use `* contains 'value'` as an initial filter** to find which fields mention a known value, then pivot.

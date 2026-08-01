@@ -1,5 +1,5 @@
 """
-Scheduled default-report task lifecycle round-trip — REVERSIBLE.
+Scheduled default-report task lifecycle round-trip, REVERSIBLE.
 
 Exercises /web/api/v2.1/report-tasks CRUD for scheduled reports:
 
@@ -13,14 +13,14 @@ Exercises /web/api/v2.1/report-tasks CRUD for scheduled reports:
     VERIFY GET   /web/api/v2.1/report-tasks?name=<run_tag>  (expect 0)
 
 Quirks worth knowing (baked in):
-  * CREATE response is `{data: {success: true}}` — no id returned.
+  * CREATE response is `{data: {success: true}}`: no id returned.
     The new task is retrieved by NAME in the LIST step.
   * DELETE uses `POST /reports/delete-tasks` (not a true DELETE verb), and
     the body wrapper is `filter.ids`, not `data.ids`.
   * The schema requires `fromDate`/`toDate` even for "manually" scheduled
     reports (they're the report's content window, not the run window).
   * Scope fields (`siteIds`, etc.) belong in the top-level `filter`, NOT
-    inside `data` — the server rejects them as "Unknown field" if placed
+    inside `data`; the server rejects them as "Unknown field" if placed
     inside data.
 
 The report is created with `scheduleType="manually"`, which means the
@@ -93,7 +93,7 @@ def list_by_name(client: S1Client, name: str) -> List[Dict[str, Any]]:
 
 def update_task(client: S1Client, task_id: str, new_name: str,
                 site_id: str) -> Dict[str, Any]:
-    # PUT /report-tasks/{id} uses a different, narrower schema than POST —
+    # PUT /report-tasks/{id} uses a different, narrower schema than POST:
     # `insightTypes`, `fromDate`, `toDate`, `scheduleType` are rejected as
     # "Unknown field" in the UPDATE body. Only the mutable metadata fields
     # (name, frequency, day, recipients, attachmentTypes) are accepted. We
@@ -180,7 +180,7 @@ def main() -> int:
         return 5
     _log("VERIFY ok: task removed")
 
-    _log("Scheduled-report lifecycle: CREATE → LIST → UPDATE → DELETE → VERIFY — ALL OK")
+    _log("Scheduled-report lifecycle: CREATE → LIST → UPDATE → DELETE → VERIFY, ALL OK")
     return 0
 
 

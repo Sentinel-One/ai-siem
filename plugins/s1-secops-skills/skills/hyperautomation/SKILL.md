@@ -1,19 +1,19 @@
 ---
 name: hyperautomation
-description: >
-  Use this skill whenever a user wants to create, design, build, generate, write, or export a
-  SentinelOne Hyperautomation workflow in JSON format. Triggers include: any mention of
-  "Hyperautomation", "workflow", "automation", "SOAR", "playbook", "alert response", "trigger",
-  "scheduled workflow", "webhook workflow", or any request to automate a SentinelOne-related
-  security task. Also triggers when the user asks to import, export, test, validate, or submit
-  a workflow to a SentinelOne console via API. Always use this skill for any task involving
-  SentinelOne workflow JSON — even if phrased casually (e.g., "build me a thing that disables
-  a user when an alert fires"). Also triggers for autonomous / auto-response SOC requests:
-  "autonomous SOC", "SOC in a box", "auto-triage", "investigate and respond automatically",
-  "auto-isolate on a critical alert", "auto-close false positives and escalate real threats",
-  or letting an LLM decide isolate vs quarantine vs close per alert (the canonical
-  investigate-decide-respond shape lives in references/autonomous-soc-template.md).
-  When in doubt about whether this skill applies, use it.
+author: Prithvi Moses <prithvi.moses@sentinelone.com>
+description: >-
+  Use this skill whenever a user wants to create, design, build, generate, write, or export
+  a SentinelOne Hyperautomation workflow in JSON format. Triggers: any mention of
+  "Hyperautomation", "workflow", "automation", "SOAR", "playbook", "alert response",
+  "trigger", "scheduled workflow", "webhook workflow", or any request to automate a
+  SentinelOne-related security task, even phrased casually ("build me a thing that disables
+  a user when an alert fires"). Also triggers when the user asks to import, export, test,
+  validate, or submit a workflow to a SentinelOne console via API, and for autonomous /
+  auto-response SOC requests: "autonomous SOC", "SOC in a box", "auto-triage", "investigate
+  and respond automatically", "auto-isolate on a critical alert", "auto-close false
+  positives and escalate real threats", or letting an LLM decide isolate vs quarantine vs
+  close per alert (the canonical investigate-decide-respond shape lives in
+  references/autonomous-soc-template.md). When in doubt, use it.
 ---
 
 # SentinelOne Hyperautomation Skill
@@ -21,7 +21,7 @@ description: >
 This skill enables Claude to design and generate valid SentinelOne Hyperautomation workflow
 JSON, explain the logic behind workflows, and optionally submit them to a live console via API.
 
-> **Sandbox proxy blocked?** If import/export API calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). The MCP server exposes `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, and `ha_export_workflow` — all running from your machine against the Hyperautomation API.
+> **Sandbox proxy blocked?** If import/export API calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). The MCP server exposes `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, and `ha_export_workflow`, all running from your machine against the Hyperautomation API.
 
 ## Minimum viable workflow JSON (smoke test)
 
@@ -69,7 +69,7 @@ before iterating on real action graphs.
 
 Notes:
 
-- `dynamic_properties: {}` is valid — the manual-trigger node renders with no input fields.
+- `dynamic_properties: {}` is valid: the manual-trigger node renders with no input fields.
 - **Import is not complete until published: treat create/import and publish as ONE atomic step, publish in the SAME step, never as a follow-up. ALWAYS publish a newly created or imported workflow to a Shared Draft.** A workflow created or imported via the API lands as a **Private Draft owned by the API token's user** (for example, the service user), so it is invisible in the console to the human who requested it. Immediately after a successful import, publish it: `POST /hyper-automate/api/v1/workflows/{workflow_id}/publish?accountIds=<acct>` (bodyless `{}`, returns 204; state stays `inactive`, meaning shared but not running). Use `siteIds=<id>` for a site-scoped workflow. See `references/api-integration.md` section 8a. Skip this only when you are activating the workflow, since activation auto-publishes. You can only publish a draft owned by the token's user; publishing another user's private draft returns 403 "Workflow can't be published".
 - Activate the imported workflow with
   `POST /workflows/{workflow_id}/{version_id}/activation?siteIds=<id>` (returns 204).
@@ -81,7 +81,7 @@ Notes:
 
 When a user asks to build a workflow, follow this process:
 
-### Step 1 — Understand the intent
+### Step 1: Understand the intent
 
 Ask (or infer from context):
 
@@ -90,10 +90,10 @@ Ask (or infer from context):
 - What is the desired outcome? (enrich alert, disable user, send notification, etc.)
 - Should the workflow run automatically or on-demand?
 
-### Step 2 — Warn about integrations
+### Step 2: Warn about integrations
 
 **CRITICAL**: Before generating JSON, identify any integration-backed actions (tag = "integration").
-These require pre-configured connections in the console that CANNOT be *created* via API. (An EXISTING connection CAN be pre-bound programmatically: set `integration_id` = the connection's id on each `http_request` action in the import JSON with `use_authentication_data: true`, then activate via `POST .../workflows/{id}/{version_id}/activation` — no manual UI binding needed. One connection also serves actions that hit different hosts, e.g. the LRQ console host and the HEC ingest host, since auth is header-injected regardless of the URL.)
+These require pre-configured connections in the console that CANNOT be *created* via API. (An EXISTING connection CAN be pre-bound programmatically: set `integration_id` = the connection's id on each `http_request` action in the import JSON with `use_authentication_data: true`, then activate via `POST .../workflows/{id}/{version_id}/activation`; no manual UI binding needed. One connection also serves actions that hit different hosts, e.g. the LRQ console host and the HEC ingest host, since auth is header-injected regardless of the URL.)
 Always tell the user: *"This workflow uses the [X, Y, Z] integrations. Before importing, you must
 configure connections for these in your Hyperautomation → Integrations section."*
 
@@ -101,17 +101,17 @@ Integration-backed actions have `"tag": "integration"` and a non-null `integrati
 Core actions (Variable, Loop, Condition, Delay, Send Email, HTTP Request without integration,
 Break Loop, Snippet, Wait for Slack, Create Interaction) have `"tag": "core_action"`.
 
-### Step 3 — Generate the JSON
+### Step 3: Generate the JSON
 
 Read `references/workflow-schema.md` to produce a valid workflow JSON.
 Read `references/building-blocks.md` for the correct action type structures.
 Read `references/functions-reference.md` for available functions and their syntax.
 
-### Step 4 — Validate before outputting
+### Step 4: Validate before outputting
 
 Self-check against `references/validation-rules.md` before presenting the workflow.
 
-### Step 5 — API submission (optional)
+### Step 5: API submission (optional)
 
 If the user wants to submit to a live console, read `references/api-integration.md`.
 
@@ -149,7 +149,7 @@ S1_CONSOLE_API_TOKEN = os.environ.get("S1_CONSOLE_API_TOKEN") or _creds.get("S1_
 Once resolved, validate them using the two-step test in `references/api-integration.md`
 (system health check + token permission check). Only proceed with import/trigger/activate
 after both checks pass. Always use a personal Console User API token, not a Service User
-token — see `references/api-integration.md` for the reason.
+token; see `references/api-integration.md` for the reason.
 
 ### Step 6: Publish so the requester can see it (REQUIRED after any API import)
 
@@ -160,15 +160,15 @@ A workflow imported or created via the API is a **Private Draft owned by the tok
 
 ---
 
-## Reference files — when to read each
+## Reference files: when to read each
 
 | File | Read when... |
 |------|-------------|
-| `references/workflow-schema.md` | Always when generating JSON — defines the envelope and action structure |
+| `references/workflow-schema.md` | Always when generating JSON: defines the envelope and action structure |
 | `references/building-blocks.md` | Need the exact shape of a specific action type (trigger, loop, condition, etc.) |
 | `references/building-blocks-catalog.md` | **Picking what to use** for a given step / composing multi-action idioms / bootstrapping a SOAR recipe. Mined from 643 active production workflows. Read FIRST when designing a new workflow. |
 | `references/functions-reference.md` | Using `{{Function.X()}}` syntax or PowerQuery patterns |
-| `references/validation-rules.md` | Before outputting any workflow — run the checklist |
+| `references/validation-rules.md` | Before outputting any workflow: run the checklist |
 | `references/api-integration.md` | User wants to import/export/submit to a live console |
 | `references/snippets.md` | Building or calling a **snippet** (reusable sub-workflow): authoring rules, static vs dynamic `snippet_20` calls, and the snippet lifecycle API |
 | `references/autonomous-soc-template.md` | Building an **autonomous SOC** / auto-response workflow: canonical alert→investigate→triage→decide→respond shape, the reusable response-snippet library, dynamic-snippet dispatch, and a branded SOC-email snippet example |
@@ -204,18 +204,17 @@ When in doubt, the load-bearing 17 atoms are:
 
 > **Snippet node types.** *Calling* a snippet from a workflow uses a `snippet_20` node (not `snippet`). *Authoring* a snippet uses a `snippet_trigger` (inputs) + `snippet_output` (returns) in place of a normal trigger. See `references/snippets.md`.
 
-## Example workflows (in references/examples/)
+## Example patterns (in references/)
 
 Annotated real examples to use as structural references:
 
-- `simple-linear.md` — simple trigger → action → note pattern
-- `branching.md` — condition with true/false branches + success/fail notes
-- `loop-pattern.md` — loop with APPEND and BREAK logic
-- `integration-pattern.md` — integration-backed HTTP request with connection placeholders
+- `references/building-blocks-catalog.md`: patterns mined from 643 active production workflows. Atomic node shapes (Section A), composite idioms such as condition branches with success/fail notes, loops with APPEND and BREAK logic, and integration-backed HTTP requests with connection placeholders (Section B), plus full use-case recipes (Section C) and anti-patterns (Section E).
+- `references/snippets.md`: authoring and calling reusable snippets, with worked `snippet_trigger`, `snippet_output`, and `snippet_20` node shapes.
+- `references/autonomous-soc-template.md`: the canonical end-to-end investigate-decide-respond workflow template.
 
 ---
 
-## Quick reference — action name → slugified reference
+## Quick reference: action name → slugified reference
 
 When referencing a previous action in `{{...}}` syntax, use the kebab-case version of the
 action's `name` field. Examples:
@@ -243,16 +242,16 @@ Use this when the workflow contains integration-backed actions:
 
 > ⚠️ **Pre-requisite integrations to configure before importing:**
 >
-> - **[Integration Name]** — used for [action name(s)]. Configure at Hyperautomation → Integrations → [Integration Name] → Add Connection.
+> - **[Integration Name]**: used for [action name(s)]. Configure at Hyperautomation → Integrations → [Integration Name] → Add Connection.
 > - *(repeat for each)*
 >
-> Once configured, note the connection name — you may need to update the `connection_name` field in the JSON before importing.
+> Once configured, note the connection name; you may need to update the `connection_name` field in the JSON before importing.
 
 ---
 
 ## Common mistakes to avoid
 
-- ❌ Defining multiple variables in a single Variable action when one references another — they evaluate simultaneously and will fail with "variable not found"
+- ❌ Defining multiple variables in a single Variable action when one references another; they evaluate simultaneously and will fail with "variable not found"
   ✅ Always use one Variable action per variable when chaining references. One var → one action, always.
 - ❌ Forgetting `Function.HTML_ENCODE` on note text passed to UAM GraphQL. Any quote, ampersand, or angle bracket breaks the mutation string.
   ✅ Always wrap: `\\\"{{Function.HTML_ENCODE(local_var.note)}}\\\"`.
@@ -268,9 +267,9 @@ Use this when the workflow contains integration-backed actions:
 - ❌ Running an SDL PowerQuery (LRQ / `datasource` / `savelookup`) from an HTTP action bound to the **"SentinelOne"** mgmt connection. That connection signs as `Authorization: ApiToken`, but the SDL query endpoints (`POST /sdl/v2/api/queries` and `POST {sdl-host}/api/powerQuery`) require `Bearer`, so the action returns `HTTP 500 "Header must start with Bearer"`.
   ✅ Bind the **"SentinelOne SDL"** connection (Bearer by default) on the HTTP action. Notes: the ApiToken-only `/web/api/v2.1/dv/events/pq` cannot run the `datasource` command (returns 400) and is just an async wrapper over LRQ, so it is not usable for asset/inventory refresh; `/api/powerQuery` on the SDL host is synchronous (one call completes a `savelookup`) while `/sdl/v2/api/queries` is async. Tenant-validated 2026-06-13.
 - ❌ Ingesting OCSF / structured events into AI SIEM via HEC (`/services/collector/event?isParsed=true`) without SentinelOne source-attribution fields. OCSF omits them, so events land with a null source (no attribution, degraded console rendering, and `dataSource.name`-based filters/detections miss).
-  ✅ Include `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security` — required for AI SIEM to process custom OCSF sources), `event.type`, and `site_id`. Emit `event.type` as a FLAT dotted key (`"event.type": "..."`); a nested `event:{...}` object is dropped on ingest because `event` is a HEC-reserved key.
-- ❌ **Leaving every action's `client_data.position` at `{x:0,y:0}`.** The flow runs fine but the console renders every node stacked on top of itself — unreadable. ALWAYS lay out the graph (tenant-validated 2026-07-18).
-  ✅ Assign real coordinates: top-level nodes (`parent_action: null`) step DOWN the y-axis (~180px apart, x=0); a loop's child nodes (`parent_action` = the loop's `export_id`) sit INSIDE the loop container at an x offset (~210) stepping down (~180px). Give the `loop` a large `client_data.dimensions` (e.g. `{width:620,height:720}`) so it encloses its children. A one-pass layout after you build the action list is enough — see the reference `_layout(actions)` pattern:
+  ✅ Include `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security`, required for AI SIEM to process custom OCSF sources), `event.type`, and `site_id`. Emit `event.type` as a FLAT dotted key (`"event.type": "..."`); a nested `event:{...}` object is dropped on ingest because `event` is a HEC-reserved key.
+- ❌ **Leaving every action's `client_data.position` at `{x:0,y:0}`.** The flow runs fine but the console renders every node stacked on top of itself, unreadable. ALWAYS lay out the graph (tenant-validated 2026-07-18).
+  ✅ Assign real coordinates: top-level nodes (`parent_action: null`) step DOWN the y-axis (~180px apart, x=0); a loop's child nodes (`parent_action` = the loop's `export_id`) sit INSIDE the loop container at an x offset (~210) stepping down (~180px). Give the `loop` a large `client_data.dimensions` (e.g. `{width:620,height:720}`) so it encloses its children. A one-pass layout after you build the action list is enough; see the reference `_layout(actions)` pattern:
 
   ```python
   def _layout(actions):
@@ -287,20 +286,20 @@ Use this when the workflow contains integration-backed actions:
               cd["position"] = {"x": 210, "y": y}; child_y[a["parent_action"]] = y + 180
   ```
 
-- ❌ **Binding an http_request action to a CONNECTION id.** Setting `action.integration_id` to a specific connection instance's id imports + activates fine (204) but FAILS AT RUNTIME with `"Must provide connection in order..."` (activation does not validate the binding — see below). Tenant-validated 2026-07-18.
-  ✅ Bind the built-in **integration (action-pack) id** — the value `discover`/list returns as the workflow action's `integration_id` (e.g. the SentinelOne SDL action-pack id). A connection created via `POST /web/api/v2.1/hyper-automate/api/v1/connections` returns a *connection* id; do NOT bind that — bind the integration id it was created under, and rely on a connection existing under that integration.
+- ❌ **Binding an http_request action to a CONNECTION id.** Setting `action.integration_id` to a specific connection instance's id imports + activates fine (204) but FAILS AT RUNTIME with `"Must provide connection in order..."` (activation does not validate the binding; see below). Tenant-validated 2026-07-18.
+  ✅ Bind the built-in **integration (action-pack) id**, the value `discover`/list returns as the workflow action's `integration_id` (e.g. the SentinelOne SDL action-pack id). A connection created via `POST /web/api/v2.1/hyper-automate/api/v1/connections` returns a *connection* id; do NOT bind that, bind the integration id it was created under, and rely on a connection existing under that integration.
 - ❌ **Trusting activation (204) as proof a flow works.** Activation validates neither connection binding nor `{{Function.JQ}}` references.
   ✅ Always run-now (or the per-action **Test Action**) after activating and confirm state `Completed` with empty `error_actions`.
 - ❌ **`select((ARR | index(.field)) != null)` in `Function.JQ`.** The `| index(...)` pipe rebinds `.` to `ARR`, so `.field` then indexes the array → `Cannot index array with string "field"`.
   ✅ Bind first: `select(.field as $n | (ARR | index($n)) != null)`. And when building HTML inside a `Function.JQ` string, use SINGLE-quoted HTML attributes so the only double quotes are jq string delimiters (pre-escaping `\"` inside collides with the wrapper's single quote-escape and the platform reports "Invalid References").
 - ❌ Guarding a destructive action (block, isolate, disable) with a fail-OPEN approval gate (`... not_equals "dismissed"`). A `wait_for_slack` / `wait_for_interaction` timeout yields an empty value that passes `not_equals`, so the action auto-runs with **no** approval.
   ✅ Fail CLOSED: test `... equals "approved"` and route the destructive action off the `"true"` branch only (see `references/validation-rules.md` → Condition rules).
-- ❌ Setting `parent_action` to a previous (non-loop) node's `export_id` to express flow order — this returns import `422 "Invalid workflow data"` even when everything else looks correct. `parent_action` is loop-membership ONLY.
+- ❌ Setting `parent_action` to a previous (non-loop) node's `export_id` to express flow order: this returns import `422 "Invalid workflow data"` even when everything else looks correct. `parent_action` is loop-membership ONLY.
   ✅ `parent_action: null` on every node that is not inside a loop; wire flow order strictly via `connected_to.target` (see `references/validation-rules.md` → Import / `parent_action` rules).
-- ❌ Writing back to an alert (note / analyst verdict / status) via the old `/web/api/v2.0/threats` REST endpoints — they are decommissioned and return HTTP 405.
+- ❌ Writing back to an alert (note / analyst verdict / status) via the old `/web/api/v2.0/threats` REST endpoints: they are decommissioned and return HTTP 405.
   ✅ Use the Unified Alerts GraphQL API (`POST /web/api/v2.1/unifiedalerts/graphql`) for every write-back, not just notes (see `references/api-integration.md` → SentinelOne alert write-backs).
 
-## Running an SDL LRQ from an HA flow (async launch + poll) — tenant-validated 2026-06-22
+## Running an SDL LRQ from an HA flow (async launch + poll): tenant-validated 2026-06-22
 
 **Rule: always read SDL data from an HA flow via LRQ, never the synchronous `/api/powerQuery`.** The sync endpoint returns truncated / incomplete responses for large result sets (measured ~1/5 success on a ~1 MB `dataset` read; LRQ was 5/5) and is deprecated. Use LRQ for every SDL read from a workflow, including `dataset` / lookup-table reads, regardless of size. Reference `{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries` so the host comes from the bound "SentinelOne SDL" connection, not a hardcoded tenant.
 
@@ -308,21 +307,21 @@ Use this when the workflow contains integration-backed actions:
 
 `POST /sdl/v2/api/queries` is ASYNC. The launch response is NOT the results: it returns `body.id`
 plus `body.stepsCompleted` / `body.stepsTotal`, and `body.data` is `null` while the query is still
-running. The query id is also EPHEMERAL — it expires shortly after the query finishes. So a fixed
+running. The query id is also EPHEMERAL; it expires shortly after the query finishes. So a fixed
 wait fails BOTH ways: too short returns `data: null` (still running); too long returns HTTP 404
 "query id not found" (the id expired, and the downstream reference then resolves to
 `UnresolvedLanguageReference`). Do NOT use one long delay. Use a tight POLL LOOP that reads the moment
 the query is done. Required pattern (tenant-validated 2026-06-25):
 
-1. **Launch** — `POST {{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries` with body
+1. **Launch**: `POST {{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries` with body
    `{"queryType":"PQ","tenant":true,"startTime":...,"endTime":...,"queryPriority":"HIGH","pq":{"query":...,"resultType":"TABLE"}}`.
    Capture `body.id` AND the `X-Dataset-Query-Forward-Tag` response header (mandatory, session-scoped,
    echoed on every GET/DELETE) into local vars. Extract the header case-insensitively with JQ:
    `{{Function.JQ(launch-slug.headers, "to_entries | map(select(.key|ascii_downcase==\"x-dataset-query-forward-tag\")) | .[0].value", true)}}`.
-2. **Poll loop** — a `loop` (while, capped, e.g. 60 iterations) whose FIRST inner action is the GET
+2. **Poll loop**: a `loop` (while, capped, e.g. 60 iterations) whose FIRST inner action is the GET
    `GET {{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries/{{local_var.query_id}}?lastStepSeen=0`,
    echoing header `X-Dataset-Query-Forward-Tag: {{local_var.forward_tag}}`. Then a condition on the
-   POLL body (NOT the launch body — the launch body is captured once and never updates inside the loop):
+   POLL body (NOT the launch body, the launch body is captured once and never updates inside the loop):
    done when `{{poll-slug.body.stepsCompleted}} = {{poll-slug.body.stepsTotal}}` (operator `equals`;
    the done-condition field is **`stepsTotal`**. Live-verified 2026-07-29 by dumping a raw LRQ poll
    body: it carries BOTH `stepsTotal` and `totalSteps` (both equal, e.g. 2), so either works and
@@ -330,7 +329,7 @@ the query is done. Required pattern (tenant-validated 2026-06-25):
    SDL docs). TRUE → consume results + `break_loop`. FALSE → a
    short `delay` (~5s) as the leaf of the false branch; the loop then re-iterates and re-polls.
 3. **Loop-scoped outputs are NOT visible outside the loop.** Every action that reads a poll result
-   (`{{poll-slug.body...}}`) — extract/read, branch, notify, break — MUST live INSIDE the loop
+   (`{{poll-slug.body...}}`), extract/read, branch, notify, break, MUST live INSIDE the loop
    (`parent_action` = the loop's export_id). An action placed after the loop that references a
    loop-internal output fails to resolve. Read from the POLL response: `poll-slug.body.data.columns`
    (array of `{name}`), `poll-slug.body.data.values` (2D array); count rows with
@@ -345,7 +344,7 @@ signs `ApiToken` and the SDL endpoints reject it with `HTTP 500 "Header must sta
 Create/verify this connection at Hyperautomation → Integrations → SentinelOne SDL → Add Connection
 (Bearer token) BEFORE activating the workflow; activation otherwise fails 400 "requires configuration".
 
-## Posting a UAM SecurityAlert from an HA flow that actually SURFACES — tenant-validated 2026-06-22
+## Posting a UAM SecurityAlert from an HA flow that actually SURFACES, tenant-validated 2026-06-22
 
 Post ONE self-contained alert to `{HEC_INGEST_URL}/v1/alerts` (Bearer + `S1-Scope` headers). A
 separate `/v1/indicators` call is NOT needed, embed the indicator inline in
@@ -384,10 +383,10 @@ baseline but with zero events in the live window, which needs a `left join` + `d
 The **alternate is an HA watchdog**: a scheduled (or manual / run-now) workflow that
 
 1. launches the full PowerQuery as an SDL LRQ (the LRQ runs on raw events, so `left join`, `dataset`,
-   `savelookup`, wide/`timebucket`, large `lookup`, etc. all work) — see "Running an SDL LRQ from an HA
+   `savelookup`, wide/`timebucket`, large `lookup`, etc. all work); see "Running an SDL LRQ from an HA
    flow" above;
 2. polls the LRQ to completion and reads back the result rows;
-3. posts ONE OCSF SecurityAlert to UAM for the offending rows (or a summary) — see "Posting a UAM
+3. posts ONE OCSF SecurityAlert to UAM for the offending rows (or a summary): see "Posting a UAM
    SecurityAlert from an HA flow that actually SURFACES" above; set
    `metadata.product = {"name":"Hyperautomation","vendor_name":"SentinelOne"}` for attribution.
 
@@ -409,13 +408,13 @@ skill scripts. The MCP server runs locally on your machine and makes direct HTTP
 ### Deployment gotchas (confirmed 2026-06-11 on usea1-purple)
 
 - **`ha_import_workflow` does not scope to a site.** It posts to `/import` with no `siteIds`, so
-  on a site-scoped tenant it returns the misleading `403 "Insufficient permissions"` — not a role
+  on a site-scoped tenant it returns the misleading `403 "Insufficient permissions"`, not a role
   problem. For a site-scoped deploy, call the REST endpoint directly with the scope param:
   `POST /web/api/v2.1/hyper-automate/api/public/workflow-import-export/import?siteIds=<id>` with
   body `{"data": <workflow>}` (e.g. via the `sentinelone-mgmt-console-api` POST helper). For an
   account-level deploy use the same public endpoint with `?accountIds=<acct>`; the v1
   `/workflow-import-export/import?_scopeId=<acct>&_scopeLevel=account` path returns `403`. Same
-  scope rule applies to `activation`, `deactivate`, `publish`, and `DELETE` — append
+  scope rule applies to `activation`, `deactivate`, `publish`, and `DELETE`, append
   `?siteIds=<id>` or `?accountIds=<acct>` to match where the workflow lives.
 - **There is no in-place update.** Import always creates a NEW workflow. Re-importing a name that
   already exists succeeds but the console auto-appends `(1)`, `(2)`, … to the name. To "edit" a

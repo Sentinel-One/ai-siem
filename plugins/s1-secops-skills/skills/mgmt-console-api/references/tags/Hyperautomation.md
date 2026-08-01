@@ -7,12 +7,12 @@
 `operationId`: `_web_api_hyper-automate_api_public_workflow-action-expressions_{base_action_id}_evaluate-expression_post`
 
 Parameters:
-- `base_action_id` [path, string] **required** — 
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
-- `body` [body, S1ApiBody_ExpressionEvaluationInput_] **required** — 
+- `base_action_id` [path, string] **required**: 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
+- `body` [body, S1ApiBody_ExpressionEvaluationInput_] **required**: 
 
 Responses: 200 Successful Response, 422 Validation Error
 
@@ -21,12 +21,12 @@ Responses: 200 Successful Response, 422 Validation Error
 `operationId`: `_web_api_hyper-automate_api_public_workflow-action-expressions_{base_action_id}_expression-breakdown_post`
 
 Parameters:
-- `base_action_id` [path, string] **required** — 
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
-- `body` [body, S1ApiBody_ExpressionEvaluationInput_] **required** — 
+- `base_action_id` [path, string] **required**: 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
+- `body` [body, S1ApiBody_ExpressionEvaluationInput_] **required**: 
 
 Responses: 200 Successful Response, 422 Validation Error
 
@@ -37,25 +37,25 @@ Responses: 200 Successful Response, 422 Validation Error
 Required permissions: `Hyper Automate.view`
 
 Parameters:
-- `trigger_types` [query, string] — 
-- `states` [query, string] — 
-- `scope_ids` [query, string] — 
-- `versions_count` [query, string] — 
-- `created_at__gte` [query, object] — 
-- `created_at__lt` [query, object] — 
-- `limit` [query, integer] — 
-- `skip` [query, integer] — 
-- `workflow_name__contains` [query, object] — 
-- `integrations` [query, object] — 
-- `workflow_id` [query, object] — 
-- `is_snippet` [query, boolean] — 
-- `tags` [query, string] — 
-- `sortBy` [query, object] — 
-- `sortOrder` [query, object] — 
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
+- `trigger_types` [query, string]: 
+- `states` [query, string]: 
+- `scope_ids` [query, string]: 
+- `versions_count` [query, string]: 
+- `created_at__gte` [query, object]: 
+- `created_at__lt` [query, object]: 
+- `limit` [query, integer]: 
+- `skip` [query, integer]: 
+- `workflow_name__contains` [query, object]: 
+- `integrations` [query, object]: 
+- `workflow_id` [query, object]: 
+- `is_snippet` [query, boolean]: 
+- `tags` [query, string]: 
+- `sortBy` [query, object]: 
+- `sortOrder` [query, object]: 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
 
 Responses: 200 Successful Response, 422 Validation Error
 
@@ -66,13 +66,13 @@ Responses: 200 Successful Response, 422 Validation Error
 Required permissions: `Hyper Automate.workflowsRun`
 
 Parameters:
-- `workflow_id` [path, string] **required** — 
-- `version_id` [path, string] **required** — 
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
-- `body` [body, S1ApiBody_WorkflowExecutionCreate_] **required** — 
+- `workflow_id` [path, string] **required**: 
+- `version_id` [path, string] **required**: 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
+- `body` [body, S1ApiBody_WorkflowExecutionCreate_] **required**: 
 
 Responses: 201 Successful Response, 422 Validation Error
 
@@ -83,11 +83,11 @@ Responses: 201 Successful Response, 422 Validation Error
 Required permissions: `Hyper Automate.view`
 
 Parameters:
-- `workflow_execution_id` [path, string] **required** — 
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
+- `workflow_execution_id` [path, string] **required**: 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
 
 Responses: 200 Successful Response, 422 Validation Error
 
@@ -98,21 +98,21 @@ Responses: 200 Successful Response, 422 Validation Error
 Required permissions: `Hyper Automate.workflowsExport`
 
 Parameters:
-- `workflow_ids` [query, string] — 
-- `integrations` [query, string] — 
-- `trigger_types` [query, string] — 
-- `core_actions` [query, string] — 
-- `states` [query, string] — 
-- `scope_ids` [query, string] — 
-- `name__contains` [query, object] — 
-- `description__contains` [query, object] — 
-- `name__eq` [query, object] — 
-- `oversight` [query, boolean] — 
-- `tags` [query, string] — 
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
+- `workflow_ids` [query, string]: 
+- `integrations` [query, string]: 
+- `trigger_types` [query, string]: 
+- `core_actions` [query, string]: 
+- `states` [query, string]: 
+- `scope_ids` [query, string]: 
+- `name__contains` [query, object]: 
+- `description__contains` [query, object]: 
+- `name__eq` [query, object]: 
+- `oversight` [query, boolean]: 
+- `tags` [query, string]: 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
 
 Responses: 200 Successful Response, 422 Validation Error
 
@@ -125,12 +125,12 @@ Export a specific workflow version.
 Required permissions: `Hyper Automate.workflowsExport`
 
 Parameters:
-- `workflow_id` [path, string] **required** — 
-- `version_id` [path, string] **required** — 
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
+- `workflow_id` [path, string] **required**: 
+- `version_id` [path, string] **required**: 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
 
 Responses: 200 Successful Response, 422 Validation Error
 
@@ -143,11 +143,11 @@ Import workflows that have been previously exported from Hyperautomation.
 Required permissions: `Hyper Automate.workflowsCreateEdit`
 
 Parameters:
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
-- `body` [body, S1ApiBody_WorkflowImportExport_] **required** — 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
+- `body` [body, S1ApiBody_WorkflowImportExport_] **required**: 
 
 Responses: 200 Successful Response, 422 Validation Error
 
@@ -160,11 +160,11 @@ Import workflows that have been previously exported from Hyperautomation.
 Required permissions: `Hyper Automate.workflowsCreateEdit`
 
 Parameters:
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
-- `body` [body, Body_import_workflow_batch_web_api_v2_1_hyper_automate_api_public_workflow_import_export_import_batch_post] **required** — 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
+- `body` [body, Body_import_workflow_batch_web_api_v2_1_hyper_automate_api_public_workflow_import_export_import_batch_post] **required**: 
 
 Responses: 201 Successful Response, 422 Validation Error
 
@@ -175,26 +175,26 @@ Responses: 201 Successful Response, 422 Validation Error
 Required permissions: `Hyper Automate.view`
 
 Parameters:
-- `integrations` [query, string] — 
-- `trigger_types` [query, string] — 
-- `core_actions` [query, string] — 
-- `states` [query, string] — 
-- `scope_ids` [query, string] — 
-- `limit` [query, integer] — 
-- `skip` [query, integer] — 
-- `is_snippet` [query, boolean] — 
-- `name__contains` [query, object] — 
-- `description__contains` [query, object] — 
-- `name__eq` [query, object] — 
-- `tags` [query, string] — 
-- `sortBy` [query, object] — 
-- `sortOrder` [query, object] — 
-- `oversight` [query, boolean] — 
-- `workflow_ids` [query, object] — 
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
+- `integrations` [query, string]: 
+- `trigger_types` [query, string]: 
+- `core_actions` [query, string]: 
+- `states` [query, string]: 
+- `scope_ids` [query, string]: 
+- `limit` [query, integer]: 
+- `skip` [query, integer]: 
+- `is_snippet` [query, boolean]: 
+- `name__contains` [query, object]: 
+- `description__contains` [query, object]: 
+- `name__eq` [query, object]: 
+- `tags` [query, string]: 
+- `sortBy` [query, object]: 
+- `sortOrder` [query, object]: 
+- `oversight` [query, boolean]: 
+- `workflow_ids` [query, object]: 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
 
 Responses: 200 Successful Response, 422 Validation Error
 
@@ -205,11 +205,11 @@ Responses: 200 Successful Response, 422 Validation Error
 Required permissions: `Hyper Automate.view`
 
 Parameters:
-- `workflow_id` [path, string] **required** — 
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
+- `workflow_id` [path, string] **required**: 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
 
 Responses: 200 Successful Response, 422 Validation Error
 
@@ -220,13 +220,13 @@ Responses: 200 Successful Response, 422 Validation Error
 Required permissions: `Hyper Automate.workflowsActivateDeactivate`
 
 Parameters:
-- `workflow_id` [path, string] **required** — 
-- `version_id` [query, string] — 
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
-- `body` [body, S1ApiBody] — 
+- `workflow_id` [path, string] **required**: 
+- `version_id` [query, string]: 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
+- `body` [body, S1ApiBody]: 
 
 Responses: 204 Successful Response, 422 Validation Error
 
@@ -237,12 +237,12 @@ Responses: 204 Successful Response, 422 Validation Error
 Required permissions: `Hyper Automate.workflowsActivateDeactivate`
 
 Parameters:
-- `workflow_id` [path, string] **required** — 
-- `version_id` [path, string] **required** — 
-- `groupIds` [query, object] — 
-- `siteIds` [query, object] — 
-- `accountIds` [query, object] — 
-- `cicdschema` [header, object] — 
-- `body` [body, S1ApiBody_WorkflowPatch_] — 
+- `workflow_id` [path, string] **required**: 
+- `version_id` [path, string] **required**: 
+- `groupIds` [query, object]: 
+- `siteIds` [query, object]: 
+- `accountIds` [query, object]: 
+- `cicdschema` [header, object]: 
+- `body` [body, S1ApiBody_WorkflowPatch_]: 
 
 Responses: 204 Successful Response, 422 Validation Error

@@ -3,7 +3,7 @@
  *
  * Auth routing (mirrors the Python SDLClient behavior):
  *   putFile             → config_write_key
- *   getFile / listFiles → config_write_key || config_read_key || console_api_token
+ *   getFile / listFiles → config_read_key || config_write_key || console_api_token
  *   V1 query methods    → config_write_key || config_read_key || log_read_key || console_api_token
  *
  * All SDL endpoints live at SDL_XDR_URL (e.g. https://xdr.us1.sentinelone.net).
@@ -25,7 +25,9 @@ export function keyCandidates(chain) {
   const c = getCreds();
   const chains = {
     config_write:      [c.SDL_CONFIG_WRITE_KEY, c.S1_CONSOLE_API_TOKEN],
-    config_read:       [c.SDL_CONFIG_WRITE_KEY, c.SDL_CONFIG_READ_KEY, c.S1_CONSOLE_API_TOKEN],
+    // Least-privilege first, mirroring the Python SDLClient chain
+    // (config_read, config_write, console).
+    config_read:       [c.SDL_CONFIG_READ_KEY, c.SDL_CONFIG_WRITE_KEY, c.S1_CONSOLE_API_TOKEN],
     // Confirmed: SDL_CONFIG_WRITE_KEY does NOT grant "View logs" permission on /api/query.
     // SDL_LOG_READ_KEY must be first in chain for V1 query to succeed.
     log_read:          [c.SDL_LOG_READ_KEY, c.SDL_CONFIG_READ_KEY, c.SDL_CONFIG_WRITE_KEY, c.S1_CONSOLE_API_TOKEN],
@@ -89,7 +91,7 @@ async function sdlFetch(method, path, { body, chain = 'config_read', extraHeader
       try { data = JSON.parse(text); } catch { data = text; }
 
       if (res.status === 401 || res.status === 403) {
-        // Wrong-scoped key — fall through to the next candidate in the chain.
+        // Wrong-scoped key: fall through to the next candidate in the chain.
         const msg = typeof data === 'object' ? JSON.stringify(data) : text;
         lastAuthError = new Error(`SDL API ${method} ${path} → ${res.status}: ${msg}`);
         authFailed = true;
@@ -109,12 +111,12 @@ async function sdlFetch(method, path, { body, chain = 'config_read', extraHeader
 
 // ─── Config file operations ───────────────────────────────────────────────────
 
-/** POST /api/listFiles — list every configuration file path on the SDL tenant. */
+/** POST /api/listFiles: list every configuration file path on the SDL tenant. */
 export async function listFiles() {
   return sdlFetch('POST', '/api/listFiles', { body: {}, chain: 'config_read' });
 }
 
-/** POST /api/getFile — read a configuration file by path.
+/** POST /api/getFile: read a configuration file by path.
  *  Returns { path, content, version, ...status }. */
 export async function getFile(path) {
   return sdlFetch('POST', '/api/getFile', {
@@ -123,7 +125,7 @@ export async function getFile(path) {
   });
 }
 
-/** POST /api/putFile — create or update a configuration file.
+/** POST /api/putFile: create or update a configuration file.
  *  Pass expectedVersion (from a prior getFile) to enable optimistic locking. */
 export async function putFile(path, content, expectedVersion) {
   const body = { path, content };
@@ -133,7 +135,7 @@ export async function putFile(path, content, expectedVersion) {
   return sdlFetch('POST', '/api/putFile', { body, chain: 'config_write' });
 }
 
-/** POST /api/putFile with deleteFile:true — delete a config file. */
+/** POST /api/putFile with deleteFile:true deletes a config file. */
 export async function deleteFile(path, expectedVersion) {
   const body = { path, deleteFile: true };
   if (expectedVersion !== undefined) body.expectedVersion = expectedVersion;
@@ -144,7 +146,7 @@ export async function deleteFile(path, expectedVersion) {
 // Deprecated Feb 15 2027 but still the only way to get full event JSON per-event.
 // Use for schema discovery; use LRQ for hunting.
 
-/** POST /api/query — retrieve raw event JSON for schema discovery.
+/** POST /api/query: retrieve raw event JSON for schema discovery.
  *  Returns { matches: [{ timestamp, message, attributes }] }. */
 export async function v1Query(filter, { maxCount = 5, startTime = '24h', endTime } = {}) {
   const body = {

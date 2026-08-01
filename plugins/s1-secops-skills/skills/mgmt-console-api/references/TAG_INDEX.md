@@ -1,4 +1,4 @@
-# SentinelOne API — Tag Index
+# SentinelOne API: Tag Index
 
 111 tags, 781 operations total.
 

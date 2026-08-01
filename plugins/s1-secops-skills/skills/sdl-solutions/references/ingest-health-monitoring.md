@@ -50,7 +50,7 @@ and the watchdog, so one set of baseline tables serves both levels and every ale
 | silence / continuity | hourly / active_hours >= round(0.9*window_h) |
 | parser drift | ratio >= 0.05 |
 | notify email | ask (required) |
-| site/scope | ask at deploy |
+| site/scope | ask at deploy (detection rules: account scope only, they read the ingestHealth* lookups) |
 
 ## Source exclusions (maintainable lookup, no hardcoding)
 
@@ -95,7 +95,9 @@ Mechanics:
 2. Baseline: `flows/ha_flow_1_baseline_builder.json` (2 per-device savelookups/7d, daily). Bind
    "SentinelOne SDL" (Bearer). Seed once before anything reads the tables.
 3. Detections: POST the unified rules in `assets/ingesthealth_detections.template.json` to
-   `/cloud-detection/rules` (`scheduled`, `queryLang 2.0`), scope siteIds/accountIds. One Spike, one Drop,
+   `/cloud-detection/rules` (`scheduled`, `queryLang 2.0`), scope accountIds ONLY: the rule bodies read
+   the ingestHealth* lookup tables, which are account-level objects, so site-scoped creation of these
+   rules is invalid. One Spike, one Drop,
    one Lag, each handles both levels via the conditional device logic and tags every alert with a `level`
    column. Land Disabled; enable via `PUT /cloud-detection/rules/enable`. Lookback 60 (= 1h). Parser Drift
    ships separately in `assets/ingesthealth_detections_parser_drift_optional.template.json` and is OPTIONAL:
@@ -156,6 +158,27 @@ Add this as `references/ingest-health-monitoring.md`, tokenized templates in `as
 {{FLOOR_HR}} {{STAT_HRS}} {{STAT_EV}} {{CONTINUITY_H}} {{DRIFT}} {{START_AT}}`), a catalog row, and
 trigger terms in the frontmatter.
 
+`{{START_AT}}` format (bisected live 2026-08-01 on two otherwise-identical copies): the
+scheduler requires millisecond-precision ISO-8601, e.g. `2026-08-02T00:00:00.000Z`. With
+`"tz": "UTC"` present in the interval `schedule_value` entry (as shipped), the millisecond
+form activated with HTTP 204 while the plain `2026-08-02T00:00:00Z` form still imported and
+published cleanly but failed activation with HTTP 500. The 500 is therefore caused by the
+missing milliseconds alone; carrying `tz` does not compensate for a millisecond-less
+`start_at`. Keep `"tz": "UTC"` in the template and always render `{{START_AT}}` with
+milliseconds.
+
+
+## Example alert emails
+
+Real Watchdog alert emails from the demo tenant (hourly runs, 2026-07-31 and 2026-08-01).
+Both show the two-table layout: source-level silent sources and device-level silent devices,
+each row carrying the 7-day avg events/hr, active hours out of 168, and 7-day volume that
+justify the alert. Note how device-level granularity isolates a single silent FortiGate
+serial while the rest of the source keeps flowing.
+
+![Watchdog alert email: one silent source (syslogs) and one silent FortiGate device](../assets/ingesthealth-watchdog-email-example-1.png)
+
+![Watchdog alert email: three silent sources and one silent FortiGate device](../assets/ingesthealth-watchdog-email-example-2.png)
 
 ## Tested vs not tested
 
@@ -172,6 +195,8 @@ Not fully tested (needs the console or a live cycle):
   "SentinelOne SDL" (Bearer) connection bound and activation in the console; the Watchdog counts poll
   result rows via `Function.JQ(poll-slug.body.data.values, "length", true)` (the raw LRQ response has no
   `totalRows` field). Validated 2026-06-25 end to end via run-now: both flows Completed, `error_actions:[]`.
+  Email DELIVERY confirmed 2026-08-01: operator received the hourly Watchdog alert mails in the inbox
+  (see Example alert emails above).
 - Detection alerts firing on the next evaluation (rules go Active within ~1 hour, then run on the
   interval) and the Alert Notifier emailing.
 - Dashboard rendering at very wide time windows: heavy full-scan volume/parser panels can hit

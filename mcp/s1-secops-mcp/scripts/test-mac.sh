@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
-# Mac validation script for s1-secops-mcp v1.2.2.
+# Mac validation script for s1-secops-mcp (version read from package.json).
 #
 # Runs the same test matrix as Linux:
 #   - syntax-check every .js/.mjs file
-#   - npm test (smoke + stdio + HTTP suites, 22 assertions)
+#   - npm test (smoke + stdio + HTTP + regression suites)
 #   - regen:readme --check (no doc drift)
 #   - sanity-run the server in stdio and HTTP modes
 #
 # Run this from the s1-secops-mcp/ directory on your Mac:
 #
-#   cd ~/path/to/ai-siem/mcp/s1-secops-mcp
+#   cd ~/path/to/claude-skills/s1-secops-mcp
 #   bash scripts/test-mac.sh
 #
 # All checks should pass with green PASS markers. Any FAIL line should be
@@ -22,11 +22,17 @@ PASS_COUNT=0
 FAIL_COUNT=0
 
 green() { printf '\033[32m%s\033[0m' "$*"; }
-red()   { printf '\033[31m%s\033[0m' "$*"; }
-bold()  { printf '\033[1m%s\033[0m' "$*"; }
+red() { printf '\033[31m%s\033[0m' "$*"; }
+bold() { printf '\033[1m%s\033[0m' "$*"; }
 
-pass() { printf '  %s %s\n' "$(green PASS)" "$1"; PASS_COUNT=$((PASS_COUNT+1)); }
-fail() { printf '  %s %s\n  %s\n' "$(red FAIL)" "$1" "${2:-}"; FAIL_COUNT=$((FAIL_COUNT+1)); }
+pass() {
+  printf '  %s %s\n' "$(green PASS)" "$1"
+  PASS_COUNT=$((PASS_COUNT + 1))
+}
+fail() {
+  printf '  %s %s\n  %s\n' "$(red FAIL)" "$1" "${2:-}"
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+}
 step() { printf '\n%s\n' "$(bold "$1")"; }
 
 # ─── 1. Environment ───────────────────────────────────────────────────────────
@@ -47,7 +53,7 @@ fi
 pass "Node $(node --version) on $(uname -srm)"
 
 if [[ ! -f "index.js" ]]; then
-  fail "Not in the s1-secops-mcp directory" "cd to .../ai-siem/mcp/s1-secops-mcp first"
+  fail "Not in the s1-secops-mcp directory" "cd to .../claude-skills/s1-secops-mcp first"
   exit 1
 fi
 pass "running from s1-secops-mcp directory"
@@ -100,12 +106,14 @@ fi
 # ─── 5. CLI flag sanity ───────────────────────────────────────────────────────
 
 step "5. CLI flag sanity"
-if [[ "$(node index.js --version 2>/dev/null)" == "1.2.2" ]]; then
-  pass "--version returns 1.2.2"
+# Read the expected version from package.json so this check never goes stale.
+PKG_VERSION="$(node -p "require('./package.json').version")"
+if [[ "$(node index.js --version 2>/dev/null)" == "$PKG_VERSION" ]]; then
+  pass "--version returns $PKG_VERSION"
 else
-  fail "--version did not return 1.2.2" "Got: $(node index.js --version 2>&1)"
+  fail "--version did not return $PKG_VERSION" "Got: $(node index.js --version 2>&1)"
 fi
-if node index.js --help 2>&1 | grep -q "s1-secops-mcp 1.2.2"; then
+if node index.js --help 2>&1 | grep -q "s1-secops-mcp $PKG_VERSION"; then
   pass "--help renders"
 else
   fail "--help broken" "$(node index.js --help 2>&1 | head -5)"
@@ -116,8 +124,8 @@ fi
 step "6. stdio round-trip"
 STDIO_REPLY="$(printf '%s\n%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"mac-test","version":"1"}}}' \
-  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
-  | node index.js 2>/dev/null)"
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' |
+  node index.js 2>/dev/null)"
 
 TOOL_COUNT="$(echo "$STDIO_REPLY" | tail -n 1 | node -e 'let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{try{console.log(JSON.parse(s).result.tools.length)}catch(e){console.log("ERR")}})')"
 if [[ "$TOOL_COUNT" == "26" ]]; then
@@ -132,7 +140,7 @@ step "7. HTTP transport round-trip"
 PORT=$((10000 + RANDOM % 1000))
 node index.js --transport http --port "$PORT" --host 127.0.0.1 >/tmp/mcp-test-mac.log 2>&1 &
 SERVER_PID=$!
-trap "kill $SERVER_PID 2>/dev/null || true" EXIT
+trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
 
 # Wait for healthz
 for i in $(seq 1 30); do

@@ -103,7 +103,7 @@ PARAM_RESOLVERS: Dict[str, List[Tuple[str, str, Optional[Dict[str, Any]]]]] = {
     "firewall_rule_category": [("__STATIC__", "endpoint", None)],
 }
 
-# Path params we can't resolve reliably — endpoints using these are skipped
+# Path params we can't resolve reliably: endpoints using these are skipped
 # with "no_id_available" rather than marked failing.
 UNRESOLVABLE = {
     "application_id", "applicationId", "applicationCatalogId",
@@ -117,7 +117,7 @@ PATH_PARAM_RE = re.compile(r"\{([^}]+)\}")
 
 # --------------------------------------------------------------- response hints
 def _shape(body: Any) -> Dict[str, Any]:
-    """Small fingerprint of the response — what keys, how many items."""
+    """Small fingerprint of the response: what keys, how many items."""
     if not isinstance(body, dict):
         return {"type": type(body).__name__}
     out: Dict[str, Any] = {"keys": sorted(list(body.keys()))[:15]}
@@ -204,7 +204,7 @@ _SLOW_SUFFIXES = (
     "/whitening-options",
 )
 _SLOW_SUBSTRINGS = (
-    "/dv/events",                    # DV event fetch — paginated bulk reads
+    "/dv/events",                    # DV event fetch, paginated bulk reads
     "/dv/fetch-file",
     "/remote-ops/forensics/collection-file-url",
 )
@@ -629,7 +629,7 @@ def write_markdown(report: Dict[str, Any], out_path: Path):
     skipped = report["skipped"]
 
     lines: List[str] = []
-    lines.append("# Tenant capabilities — auto-generated")
+    lines.append("# Tenant capabilities: auto-generated")
     lines.append("")
     lines.append(f"- Generated at: {s['generated_at']}")
     lines.append(f"- Tenant: `{s['base_url']}`")
@@ -685,7 +685,7 @@ def write_markdown(report: Dict[str, Any], out_path: Path):
         lines.append("")
 
     if skipped:
-        lines.append("## Skipped — no ID available on this tenant")
+        lines.append("## Skipped: no ID available on this tenant")
         lines.append("")
         lines.append("| Path | Tag | Missing |")
         lines.append("|---|---|---|")
@@ -718,7 +718,7 @@ def main():
 
     index = json.loads(INDEX_PATH.read_text())
 
-    # Short timeout + no retries for the smoke test — we want fast signal,
+    # Short timeout + no retries for the smoke test: we want fast signal,
     # not persistence. A slow endpoint is still signal ("this one's slow
     # on this tenant"), not a reason to block the whole sweep.
     client = S1Client(cache_ttl=120, timeout=args.timeout)
@@ -729,7 +729,7 @@ def main():
                  "threat_id", "service_user_id"):
         resolver.resolve(name)
 
-    # Resolve an application_id (not in PARAM_RESOLVERS — it's an extra
+    # Resolve an application_id (not in PARAM_RESOLVERS: it's an extra
     # needed by /application-management/*). Best-effort.
     app_id: Optional[str] = None
     try:

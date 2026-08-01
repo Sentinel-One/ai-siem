@@ -1,4 +1,4 @@
-# ai-siem Parser Catalog — Always Check First
+# ai-siem Parser Catalog: Always Check First
 
 Before writing a parser from scratch, check the **`Sentinel-One/ai-siem`** GitHub repo. It is the canonical open catalog of community + marketplace SDL parsers maintained by S1 and partners, and a large fraction of the sources a prospect will ask about already have a working parser there.
 
@@ -12,7 +12,7 @@ Before writing a parser from scratch, check the **`Sentinel-One/ai-siem`** GitHu
 
 1. Search ai-siem for the vendor or product name (e.g. "juniper", "okta", "fortigate", "palo alto", "corelight", "abnormal").
 2. If a parser exists, download it. It becomes your starting point.
-3. Diff what the user asked for against what the catalog parser emits. Audit the **4 mandatory attributes** (`dataSource.category` hardcoded to `"security"`, `dataSource.name`, `dataSource.vendor`, `metadata.version`) and add or correct any that are missing or wrong. Shift to OCSF field names if the parser uses vendor-native — every emitted dotted path must come from `references/ocsf-schema-documentation.md`, not from the catalog parser. **Always increment `metadata.version`** to mark this build as different from upstream (patch for fixes, minor for additive changes, major for breaking schema changes).
+3. Diff what the user asked for against what the catalog parser emits. Audit the **4 mandatory attributes** (`dataSource.category` hardcoded to `"security"`, `dataSource.name`, `dataSource.vendor`, `metadata.version`) and add or correct any that are missing or wrong. Shift to OCSF field names if the parser uses vendor-native, every emitted dotted path must come from `references/ocsf-schema-documentation.md`, not from the catalog parser. **Always increment `metadata.version`** to mark this build as different from upstream (patch for fixes, minor for additive changes, major for breaking schema changes).
 4. Validate end-to-end via `sentinelone-sdl-api` (the usual loop).
 
 Only write from scratch when no catalog parser matches.
@@ -21,38 +21,38 @@ Only write from scratch when no catalog parser matches.
 
 Two buckets:
 
-- `parsers/marketplace/<name>-latest/` — supported, version-tagged parsers shipped in the S1 Marketplace (cloudflare, fortinet fortigate, aws rds, corelight-conn, palo alto networks firewall, and ~60 others).
-- `parsers/community/<name>-<version>/` — community-contributed, less polished, more varied in style (abnormal_security_logs, juniper_networks_logs, okta_ocsf_logs, cisco_asa, pfsense_firewall, etc.).
+- `parsers/marketplace/<name>-latest/`: supported, version-tagged parsers shipped in the S1 Marketplace (cloudflare, fortinet fortigate, aws rds, corelight-conn, palo alto networks firewall, and ~60 others).
+- `parsers/community/<name>-<version>/`: community-contributed, less polished, more varied in style (abnormal_security_logs, juniper_networks_logs, okta_ocsf_logs, cisco_asa, pfsense_firewall, etc.).
 
 Each folder typically contains:
 
 - The `.conf` parser file.
-- A `samples/` directory with raw log lines (use these as your validation input — real vendor samples are hard to synthesize correctly).
+- A `samples/` directory with raw log lines (use these as your validation input, real vendor samples are hard to synthesize correctly).
 - Sometimes a `README.md` with field mapping or known-issues.
 
 ## Useful reference parsers by shape
 
 When you need a template for a specific log shape, start from one of these:
 
-- **JSON-per-line, dottedJson envelope** — `community/json_generic/`. Two-line parser, pure `${parse=dottedJson}$ repeat:true`.
-- **JSON with nested KV body** — `community/json_nested_kv/`. Outer JSON then repeating KV sub-format against a nested `message` field.
-- **CEF over syslog** — `community/generic_access/` header + KV extension cascade.
-- **LEEF** — `community/leef_template/`. Timestamp prefix + repeating KV patterns.
-- **Positional CSV with complex mapping** — `marketplace/palo_alto_networks_firewall-latest/`. Uses `{parse=commaSeparatedvalues}` + `skipNumericConversion: true` + `attr[N]` positional indexing in mappings.
-- **Multi-format progressive extraction** — `community/pfsense_firewall/`. Frame → subtype → protocol-specific cascade; uses `discard: true` to drop IPv6 and a final-format rewrite for computed fields.
-- **Multiple per-format OCSF class tagging** — `community/abnormal_security_logs/` and `community/juniper_networks_logs/`. Each format has its own `attributes: { class_uid, ... }` so one parser emits multiple OCSF classes.
-- **Gron-capture + mappings template** — `community/PARSER_TEMPLATE/`. The "capture everything via `$unmapped.{parse=gron}$`, then rename/copy/cast in mappings" idiom. Great scaffold when the source is JSON-ish and you want all rewrites in one block.
-- **Format-id sentinel for mapping fan-out** — `marketplace/awsrdslogs-latest/`. Names each format (`id: "mySqlErrorLog"`, `id: "mySqlGeneralLog"`, `id: "postgresqlLog"`) and then fans mapping predicates out via `predicate: "mySqlErrorLog='true'"` — elegant way to apply different OCSF class rules to different sub-shapes of the same source.
-- **Plural-grouped mapping syntax** — `marketplace/corelight-conn-latest/` and `marketplace/awsrdslogs-latest/`. `renames: [...], copies: [...], constants: [...]` arrays inside a single mapping entry (see `mappers.md` §"Two equivalent syntaxes").
-- **Rewrite-first legacy style (pre-mappings)** — `community/okta_ocsf_logs/`. Pure `rewrites:` on the format (no `mappings` block). Still works — useful when you need a minimal diff from a published parser.
+- **JSON-per-line, dottedJson envelope**: `community/json_generic/`. Two-line parser, pure `${parse=dottedJson}$ repeat:true`.
+- **JSON with nested KV body**: `community/json_nested_kv/`. Outer JSON then repeating KV sub-format against a nested `message` field.
+- **CEF over syslog**: `community/generic_access/` header + KV extension cascade.
+- **LEEF**: `community/leef_template/`. Timestamp prefix + repeating KV patterns.
+- **Positional CSV with complex mapping**: `marketplace/palo_alto_networks_firewall-latest/`. Uses `{parse=commaSeparatedvalues}` + `skipNumericConversion: true` + `attr[N]` positional indexing in mappings.
+- **Multi-format progressive extraction**: `community/pfsense_firewall/`. Frame → subtype → protocol-specific cascade; uses `discard: true` to drop IPv6 and a final-format rewrite for computed fields.
+- **Multiple per-format OCSF class tagging**: `community/abnormal_security_logs/` and `community/juniper_networks_logs/`. Each format has its own `attributes: { class_uid, ... }` so one parser emits multiple OCSF classes.
+- **Gron-capture + mappings template**: `community/PARSER_TEMPLATE/`. The "capture everything via `$unmapped.{parse=gron}$`, then rename/copy/cast in mappings" idiom. Great scaffold when the source is JSON-ish and you want all rewrites in one block.
+- **Format-id sentinel for mapping fan-out**: `marketplace/awsrdslogs-latest/`. Names each format (`id: "mySqlErrorLog"`, `id: "mySqlGeneralLog"`, `id: "postgresqlLog"`) and then fans mapping predicates out via `predicate: "mySqlErrorLog='true'"`, elegant way to apply different OCSF class rules to different sub-shapes of the same source.
+- **Plural-grouped mapping syntax**: `marketplace/corelight-conn-latest/` and `marketplace/awsrdslogs-latest/`. `renames: [...], copies: [...], constants: [...]` arrays inside a single mapping entry (see `mappers.md` §"Two equivalent syntaxes").
+- **Rewrite-first legacy style (pre-mappings)**: `community/okta_ocsf_logs/`. Pure `rewrites:` on the format (no `mappings` block). Still works, useful when you need a minimal diff from a published parser.
 
 ## Style variance to expect (and tolerate)
 
 The repo predates the current mapper engine, and not every author hand-converges on the same style. When copying from the catalog:
 
-- **Two mapping syntaxes coexist.** Older parsers use `version: 0` with plural grouped arrays (`renames`, `copies`, `constants`). Newer tenant-validated parsers use `version: 1` with `transformations: [{<op>: {...}}]`. Both work. Pick one and stick to it within a parser — do not mix.
+- **Two mapping syntaxes coexist.** Older parsers use `version: 0` with plural grouped arrays (`renames`, `copies`, `constants`). Newer tenant-validated parsers use `version: 1` with `transformations: [{<op>: {...}}]`. Both work. Pick one and stick to it within a parser; do not mix.
 - **`class_uid` as string vs integer.** Both appear. String form (`"4001"`) is tolerated by the ingest pipeline, integer (`4001`) is the OCSF spec. Prefer integers in new work.
-- **Predicate equality `=` vs `==`.** Marketplace parsers use `=`. Tenant `computeFields` and the newer `version:1` mappings style use `==`. If one fails validation, try the other — the engine error message will tell you. (See `mappers.md` for the split.)
+- **Predicate equality `=` vs `==`.** Marketplace parsers use `=`. Tenant `computeFields` and the newer `version:1` mappings style use `==`. If one fails validation, try the other, the engine error message will tell you. (See `mappers.md` for the split.)
 - **Required default attributes often missing.** The catalog predates the current four-attribute requirement (`metadata.version`, `dataSource.category/name/vendor`). Add them to the top-level `attributes:` block on every parser you ship, even when copying verbatim from the catalog.
 
 ## Quick recipe for downloading a parser
@@ -83,10 +83,10 @@ Common issues in catalog parsers that you should fix before shipping. Empirical 
 3. **Stray `class_uid` as a string** (`"4001"`). Change to integer (`4001`). Both forms ingest, but downstream consumers and OCSF spec want integer.
 4. **Using deprecated `rewrites:` on the format for what should be `mappings`.** Modern parsers do field renames/casts/copies in `mappings`. Prefer `mappings` for anything that runs after field capture. Leave `rewrites:` for timestamp normalization (the one thing it still does well).
 5. **Hard-coded tenant-specific attributes** like `"site.id": "..."` (seen in pfSense and a few community parsers). Strip these before shipping to a different tenant.
-6. **Predicates that match a vendor-native field after that field has already been renamed to OCSF.** Order matters inside `transformations: [...]` — predicates evaluate against the field NAME at the time the predicate runs, so a predicate referencing `source_ip` after a `rename` to `src_endpoint.ip` always evaluates to false.
+6. **Predicates that match a vendor-native field after that field has already been renamed to OCSF.** Order matters inside `transformations: [...]`, predicates evaluate against the field NAME at the time the predicate runs, so a predicate referencing `source_ip` after a `rename` to `src_endpoint.ip` always evaluates to false.
 7. **Mixed `mappings.version: 0` and `mappings.version: 1` syntaxes inside one parser.** Hard error. Pick one. New parsers prefer v1.
 8. **Indexed positional access (`attr[0]`, `attr[1]`) used inside a `mappings.version: 0` block.** Rejected. Indexed access only works in v1. If the source is positional CSV, the mapping block must be v1.
-9. **No `enum_default` on `cast: { type: "enum" }` in v1 mappings.** Without it, unmapped source values pass through unchanged instead of falling back to a sentinel. Cloudflare uses `enum_default: 99` consistently — copy that pattern.
+9. **No `enum_default` on `cast: { type: "enum" }` in v1 mappings.** Without it, unmapped source values pass through unchanged instead of falling back to a sentinel. Cloudflare uses `enum_default: 99` consistently, copy that pattern.
 
 ## How the corpus splits
 

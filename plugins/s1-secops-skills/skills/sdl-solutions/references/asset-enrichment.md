@@ -22,14 +22,14 @@ or the user volunteers a change.
 - **Required, single-select, the deployment mode:** "How do you want the enrichment applied, ingest
   time with a parser, query-time lookup, or an automatic lookup?" Always ask this; do not assume a
   default. The three modes:
-  - **Ingest time (parser)** — the context is stamped on every event at ingest by an SDL log parser.
+  - **Ingest time (parser)**: the context is stamped on every event at ingest by an SDL log parser.
     This **requires the parser to be deployed in AI SIEM (Singularity Data Lake)**. Once deployed the
     context is always-on and queryable like any native field, and this is the only mode that lets STAR
     detections auto-map the asset, because the parser also stamps `device.uid` / `user.uid` + `class_uid`
     from the enriched ids. Best for always-on context on a source.
-  - **Lookup (query time)** — no parser; the analyst joins the lookup table at query or dashboard time
+  - **Lookup (query time)**: no parser; the analyst joins the lookup table at query or dashboard time
     with `| lookup`. Lean storage, nothing is written on the event, fields are chosen per query.
-  - **Auto lookup (automatic lookup)** — a tenant-wide automatic lookup applied at query time, for small
+  - **Auto lookup (automatic lookup)**: a tenant-wide automatic lookup applied at query time, for small
     shared reference sets only (100-row / 5 MB / 50-col cap). It does NOT cover the full asset tables and
     does not apply inside dashboards, alert triggers, or parser PowerQueries.
 - **Optional toggle (default: daily):** Hyperautomation refresh cadence, or none.

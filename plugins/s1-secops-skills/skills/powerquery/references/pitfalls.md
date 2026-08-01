@@ -7,7 +7,7 @@ Curated failure modes. When a PowerQuery is misbehaving, check this list before 
 ### `*` alone as a filter returns 500
 
 ```
-*                           ← NOT a valid initial filter — HTTP 500 ("Don't understand [*]")
+*                           ← NOT a valid initial filter: HTTP 500 ("Don't understand [*]")
 * | limit 5                 ← same
 ```
 
@@ -22,11 +22,11 @@ dataSource.name=* | group count=count() by dataSource.name | sort -count | limit
 event.type=* | limit 5
 ```
 
-This is NOT an all-column text search — it checks whether a specific attribute is present.
+This is NOT an all-column text search; it checks whether a specific attribute is present.
 
 **2. All-column text search: `* contains 'value'` or `* matches 'regex'`**
 
-Searches ALL indexed fields across the event. Use when you need to find a specific string anywhere in the event — what users describe as "search all logs for X", "all column search", "find this text anywhere". Only valid as the **initial filter** (before the first `|`). Not valid in `| filter …` after a pipe, and not valid in Alerts.
+Searches ALL indexed fields across the event. Use when you need to find a specific string anywhere in the event, what users describe as "search all logs for X", "all column search", "find this text anywhere". Only valid as the **initial filter** (before the first `|`). Not valid in `| filter …` after a pipe, and not valid in Alerts.
 
 ```
 dataSource.name='MySource' * contains 'evil.com'      // string in any field on a source
@@ -50,8 +50,8 @@ Use when you want all events with no initial predicate.
 PowerQuery uses `-`/`+` prefix for sort direction. `desc` and `asc` are not valid keywords and cause the LRQ API to return HTTP 500 "Unable to parse the entire query".
 
 ```
-| sort count desc          ← HTTP 500 — "desc" is not valid PowerQuery syntax
-| sort timestamp asc       ← HTTP 500 — "asc" is not valid PowerQuery syntax
+| sort count desc          ← HTTP 500, "desc" is not valid PowerQuery syntax
+| sort timestamp asc       ← HTTP 500, "asc" is not valid PowerQuery syntax
 ```
 
 Fix: use `-` for descending, `+` for ascending (ascending is also the default when no prefix is given).
@@ -62,7 +62,7 @@ Fix: use `-` for descending, `+` for ascending (ascending is also the default wh
 | sort -hits, +endpoint.name
 ```
 
-**This applies to Purple AI generated queries too.** Purple AI frequently produces `sort field desc` — always correct it to `sort -field` before running via the LRQ API or `powerquery_run`.
+**This applies to Purple AI generated queries too.** Purple AI frequently produces `sort field desc`; always correct it to `sort -field` before running via the LRQ API or `powerquery_run`.
 
 ### `join` without a leading pipe
 
@@ -118,7 +118,7 @@ user in (action='login' | top 10 count() by user)
 #hash = *                                ← 500
 ```
 
-The docs list `#cmdline`, `#name`, `#hash`, `#ip`, `#storylineid`, `#username`, `#dns` as multi-field shortcuts. In practice, they're unreliable across tenants — in this deployment they all return 500 as initial filters. Fix: use the explicit field.
+The docs list `#cmdline`, `#name`, `#hash`, `#ip`, `#storylineid`, `#username`, `#dns` as multi-field shortcuts. In practice, they're unreliable across tenants; in this deployment they all return 500 as initial filters. Fix: use the explicit field.
 
 ```
 src.process.cmdline contains 'python'
@@ -140,7 +140,7 @@ Fix: the source goes at the end with `from`.
 | parse "$bin$ $args$" from src.process.cmdline
 ```
 
-### `timebucket` in `group by` without an alias — "undefined field 'timebucket'"
+### `timebucket` in `group by` without an alias: "undefined field 'timebucket'"
 
 ```
 | group count=count() by timebucket('1h')     ← 500 "undefined field 'timebucket'"
@@ -152,7 +152,7 @@ Without an alias, PQ treats the bare name `timebucket` as a field lookup rather 
 | group count=count() by bucket=timebucket('1h') | sort +bucket
 ```
 
-Same rule applies to any function used as a group key — `lower(field)`, `net_url_path(url)`, `strftime(ts, '%Y-%m-%d')`, etc. If no alias is assigned, the function name is interpreted as a field identifier.
+Same rule applies to any function used as a group key, `lower(field)`, `net_url_path(url)`, `strftime(ts, '%Y-%m-%d')`, etc. If no alias is assigned, the function name is interpreted as a field identifier.
 
 ### Non-existent functions: `formatdate`, `floor_time`, and similar
 
@@ -204,7 +204,7 @@ expression usable in a computed column.
                                             : actor.user.name        ← HTTP 500
 ```
 
-Fix — bare-field truthy test (the field's null-or-truthy value drives the
+Fix, bare-field truthy test (the field's null-or-truthy value drives the
 ternary directly):
 
 ```
@@ -217,7 +217,7 @@ This is the working coalesce idiom. Chain ternaries to fall back across
 N fields. Use the same pattern any time you'd reach for `coalesce` /
 `ifnull` / `nvl` in SQL.
 
-### `sum(if(...))` for conditional counts — use `count(predicate)` instead
+### `sum(if(...))` for conditional counts: use `count(predicate)` instead
 
 ```
 | group critical = sum(if(severity_ in:anycase ('Critical'), 1, 0)) by host    ← invalid
@@ -237,12 +237,12 @@ to pass a predicate directly to `count()`:
 Works for any boolean expression, including `in:anycase`, `contains`,
 `matches`, and arithmetic comparisons.
 
-### `severity_` (and other trailing-underscore fields) — SDL reserved-field rewrite
+### `severity_` (and other trailing-underscore fields): SDL reserved-field rewrite
 
 When a parser ingests source data carrying a field name that collides with an
 SDL reserved name (`severity`, `status`, `classification`, `category`, etc.),
 the field is automatically renamed by appending `_`. The underscored form
-`severity_` IS the canonical, queryable field — not a sparse alternate to
+`severity_` IS the canonical, queryable field, not a sparse alternate to
 `severity`.
 
 There is no non-underscored `severity` field on alert / vulnerability /
@@ -252,9 +252,9 @@ trailing-underscore field name encountered in raw events. The numeric OCSF
 variants (`severity_id` 0-5, `status_id`, `class_uid`) live alongside the
 underscored string fields and are usually the better choice for filters.
 
-### `severity_` carries mixed casing — `transpose` produces 8 columns instead of 4
+### `severity_` carries mixed casing: `transpose` produces 8 columns instead of 4
 
-Same source pipeline, different upstream casing — values like `Critical`,
+Same source pipeline, different upstream casing, values like `Critical`,
 `CRITICAL`, `High`, `HIGH`, `Medium`, `MEDIUM`, `Low`, `LOW` co-exist in the
 same `severity_` column.
 
@@ -263,7 +263,7 @@ same `severity_` column.
 | transpose severity_ on timestamp                 ← produces 8 columns
 ```
 
-Fix — normalise before grouping:
+Fix, normalise before grouping:
 
 ```
 | let sev = lower(severity_)
@@ -282,12 +282,12 @@ severity_id >= 4
 | transpose severity_id on timestamp               ← columns are 4, 5
 ```
 
-### Numeric counters indexed as string — column-type lock — wrap in `number()` as a failsafe
+### Numeric counters indexed as string, column-type lock, wrap in `number()` as a failsafe
 
 SDL/Scalyr indexes columns at first-write and locks the type. Once a numeric
 field has been written as string (because a parser declared `type: "string"` or
 the source data has been ingested untyped), the column stays string forever.
-Subsequent writes — even from a parser declaring `type: "long"` — get coerced
+Subsequent writes, even from a parser declaring `type: "long"`, get coerced
 back to string at index time. Numeric aggregation then breaks silently:
 
 ```
@@ -299,7 +299,7 @@ dataSource.name='FortiGate' unmapped.action='close'
 The values ARE there (you can see them in Event Search), but `sum()` /
 `avg()` / `max()` / `>=` predicates can't operate on a string-typed column.
 
-**Failsafe pattern — cast at query time with `number()`:**
+**Failsafe pattern, cast at query time with `number()`:**
 
 ```
 dataSource.name='FortiGate' unmapped.action='close'
@@ -318,7 +318,7 @@ preemptively to:
 | Field family | Why |
 |---|---|
 | `severity_id`, `status_id`, `class_uid`, `type_uid`, `category_uid` | OCSF numerics, but column-type can drift between tenants |
-| `traffic.bytes_in`, `traffic.bytes_out`, `traffic.packets_in`, `traffic.packets_out`, `unmapped.duration` | FortiGate marketplace parser declared these as `string` for many tenant generations — string column lock is widespread |
+| `traffic.bytes_in`, `traffic.bytes_out`, `traffic.packets_in`, `traffic.packets_out`, `unmapped.duration` | FortiGate marketplace parser declared these as `string` for many tenant generations, string column lock is widespread |
 | Any vendor field carrying counts or sizes | If a parser ever wrote a non-numeric token (`"-"`, `"unknown"`, blank), the column is locked string |
 
 Same trick works for arithmetic comparisons and sorts:
@@ -344,10 +344,10 @@ dataSource.name='alert'
 
 PowerQuery does not accept `[N]` array indexing in `columns`. The V1 `query`
 API (used for schema discovery) flattens nested arrays into display keys like
-`resources[0].name` — those flattened keys are NOT valid PowerQuery field
+`resources[0].name`; those flattened keys are NOT valid PowerQuery field
 paths.
 
-Fix — for first-element access inside a query, use `array_get` in a `let`:
+Fix, for first-element access inside a query, use `array_get` in a `let`:
 
 ```
 | let first_resource = array_get(resources, 0)
@@ -390,7 +390,7 @@ Fix: double-escape everywhere except the `$"…"` shorthand.
 src.process.cmdline matches "\\d+"
 ```
 
-Windows paths — four-ish backslashes for a literal `\`:
+Windows paths, four-ish backslashes for a literal `\`:
 
 ```
 tgt.file.path matches '^C:\\\\Windows\\\\Temp\\\\[a-z]{8}\\.tmp$'
@@ -409,7 +409,7 @@ If a query "misses" something you can see in the data, check whether case was th
 
 - `field = *` → field is present (non-null).
 - `!(field = *)` → field is null / missing.
-- `field = null` — only valid as a boolean test *after* the field has been computed by a preceding command (e.g., a left join or a `let`).
+- `field = null`: only valid as a boolean test *after* the field has been computed by a preceding command (e.g., a left join or a `let`).
 - `in (…)` cannot match null. If null should count as a match, use `OR !(field = *)`.
 
 ### `x not in (...)` parses without error and silently returns 0 rows
@@ -423,17 +423,17 @@ event.type = 'Process Creation'
 
 ### `count(x)` doesn't count nulls; does count zero / false
 
-`count()` counts rows. `count(expr)` counts rows where `expr` is truthy. Zero, `false`, and empty string are falsy — they DON'T count. But null is also falsy, so this matches intuition.
+`count()` counts rows. `count(expr)` counts rows where `expr` is truthy. Zero, `false`, and empty string are falsy; they DON'T count. But null is also falsy, so this matches intuition.
 
 If you want "count of rows where `login_success = false`", write `count(login_success = false)`, not `count(login_success) - count(login_success = true)`.
 
-### `if x = y and z = w` short-circuits — but so does `or`
+### `if x = y and z = w` short-circuits, but so does `or`
 
 `||` returns the first truthy *value*, not a boolean. `a || b` with `a = "0"` returns `"0"` (non-empty string, truthy), not a boolean `true`. If you want boolean behaviour, wrap with `bool(…)`.
 
 ### `newest()` / `oldest()` after `sort` fails silently
 
-These functions require the original timestamp ordering of events. If you `sort` (or `group`, or `limit`) before using them, they produce null or wrong results. Use them in the same `group` as the aggregation — don't aggregate in two stages.
+These functions require the original timestamp ordering of events. If you `sort` (or `group`, or `limit`) before using them, they produce null or wrong results. Use them in the same `group` as the aggregation; don't aggregate in two stages.
 
 ## Performance / memory
 
@@ -450,7 +450,7 @@ Intermediate `group` table hit 100,000 rows. Fixes in order of preference:
 3. Pre-filter with `| filter … | group 1 by key` as a subquery to prune before the heavy group.
 4. Switch to `| top K` (probabilistic).
 
-If all else fails and you need exact numbers over a long range, `| nolimit` — but this is slow and serializes across the tenant.
+If all else fails and you need exact numbers over a long range, `| nolimit`, but this is slow and serializes across the tenant.
 
 ### Long time range timing out
 
@@ -467,10 +467,10 @@ Some data sources (O365 audit, generic webhook ingest, custom HEC sources) keep 
 Fix: use the multi-field shortcut `* contains 'value'` (or `* matches 'regex'`) in the initial filter. It searches across all indexed fields, including parsed scalars from the source, and is dramatically faster than scanning a single concatenated blob.
 
 ```
-// slow — single-column substring scan
+// slow: single-column substring scan
 dataSource.name='<source>' message contains 'value'
 
-// fast — multi-field index search
+// fast: multi-field index search
 dataSource.name='<source>' * contains 'value'
 ```
 
@@ -478,13 +478,13 @@ Same rule applies to value-anywhere lookups regardless of the source: when a use
 
 Three caveats worth remembering:
 
-- `* contains` / `* matches` only work in the **initial** filter — before the first `|`. They cannot be used in `| filter …` after a pipe, in Alerts, or after a `| group` / `| columns` that has reshaped the row.
+- `* contains` / `* matches` only work in the **initial** filter: before the first `|`. They cannot be used in `| filter …` after a pipe, in Alerts, or after a `| group` / `| columns` that has reshaped the row.
 - If the value really only lives inside a JSON blob (e.g., a deeply nested key not exposed as a parsed field), neither `* contains` nor `message contains` will surface it efficiently. Pull rows with a narrower predicate (event type, actor, time slice) and post-process the blob in Python.
 - Negation against a JSON blob (e.g., "recipients NOT in `<owned_domain>`") is not expressible inline. Filter by the positive predicate, then post-process to apply the exclusion.
 
 ### High-cardinality `by`
 
-Grouping by full URL or full command line yields one row per variant — useless for summaries and likely to hit memory limits. Prefer:
+Grouping by full URL or full command line yields one row per variant, useless for summaries and likely to hit memory limits. Prefer:
 
 - URL path instead of full URL (`net_url_path(url.address)`).
 - `src.process.name` instead of `src.process.cmdline`.
@@ -521,7 +521,7 @@ When editing `/automaticLookups`, every output value field name must be unique a
 
 ## LRQ / engine functions
 
-### `powerquery_run` time parameters — silent fallback to full-history scan
+### `powerquery_run` time parameters: silent fallback to full-history scan
 
 The `powerquery_run` MCP tool exposes two time-scoping parameters:
 
@@ -530,13 +530,13 @@ The `powerquery_run` MCP tool exposes two time-scoping parameters:
 | `hours` | Positive number (decimal ok) | `hours=1`, `hours=0.5` |
 | `startTime` / `endTime` | ISO-8601 UTC string | `startTime="2026-05-26T13:00:00Z"` |
 
-**Critical:** an invalid value is silently ignored — the tool does NOT raise an error. It defaults to the last 24 hours or longer. This means:
+**Critical:** an invalid value is silently ignored; the tool does NOT raise an error. It defaults to the last 24 hours or longer. This means:
 
-- `startTime="10 min"` — not ISO-8601, silently ignored → full history scan
-- `start_time="10m"` — wrong parameter name, silently ignored → full history scan
-- `hours=0.17` — valid (≈ 10 minutes), correctly scoped
+- `startTime="10 min"`: not ISO-8601, silently ignored → full history scan
+- `start_time="10m"`: wrong parameter name, silently ignored → full history scan
+- `hours=0.17`: valid (≈ 10 minutes), correctly scoped
 
-When a bare `| group count()` with no `timebucket` dimension runs against a silently-expanded window, it aggregates across ALL SDL history for that source — not just the intended window. The result looks plausible (a single number) but can be off by orders of magnitude.
+When a bare `| group count()` with no `timebucket` dimension runs against a silently-expanded window, it aggregates across ALL SDL history for that source, not just the intended window. The result looks plausible (a single number) but can be off by orders of magnitude.
 
 **Failsafe for time-bounded aggregations:** add `by timebucket(timestamp, "<window>")` to force the engine to partition by time. Then `| sort -total | limit 1` returns only the most recent bucket:
 
@@ -569,11 +569,11 @@ Two annotations on this failsafe (live-verified 2026-07-29 via LRQ v2):
 **Exact (two-stage grouping):** when you need a precise count of distinct values per key, do it in two `group` passes:
 
 ```
-// Stage 1 — one row per (src, port) pair
+// Stage 1: one row per (src, port) pair
 dataSource.name='Palo Alto Networks Firewall' dst_endpoint.port=*
 | group count=count() by src_endpoint.ip, dst_endpoint.port
 
-// Stage 2 — count how many distinct ports each src had
+// Stage 2: count how many distinct ports each src had
 | group distinct_ports=count() by src_endpoint.ip
 | filter distinct_ports > 100
 | sort -distinct_ports
@@ -636,15 +636,15 @@ Alerts don't support these. Move the correlation logic into a `join` (bounded) o
 
 ### Always filter on `field=*` before projecting or inspecting a field
 
-`| limit N | columns field` returns the first N events in the index regardless of whether `field` is populated — most will be null. This makes a field look absent when it isn't.
+`| limit N | columns field` returns the first N events in the index regardless of whether `field` is populated, most will be null. This makes a field look absent when it isn't.
 
 **Always add `field=*` to the initial filter** to scope to events that actually carry the field:
 
 ```
-// Wrong — returns nulls because most events don't have message
+// Wrong: returns nulls because most events don't have message
 dataSource.name='FortiGate' | limit 3 | columns message
 
-// Correct — only events where message is present
+// Correct: only events where message is present
 dataSource.name='FortiGate' message=* | limit 3 | columns message
 ```
 
@@ -659,7 +659,7 @@ Before blaming the query:
 3. Case: are you using `contains` (ci) or `in` / `=` (cs)?
 4. Field name: does the field exist on this schema? Run `dataSource.name='X' field=* | limit 1 | columns field` to confirm it's populated.
 
-Don't keep re-running slightly rephrased versions — the Purple MCP docs warn explicitly against that. If the data isn't there, no rewrite finds it.
+Don't keep re-running slightly rephrased versions, the Purple MCP docs warn explicitly against that. If the data isn't there, no rewrite finds it.
 
 ### Results look plausible but wrong magnitude
 

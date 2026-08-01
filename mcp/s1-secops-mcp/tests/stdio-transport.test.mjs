@@ -12,11 +12,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const SERVER = resolve(__dir, '..', 'index.js');
+// Expected version comes from package.json so release bumps cannot go stale here.
+const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version;
 
 function runOnce(messages, { timeoutMs = 10000 } = {}) {
   return new Promise((resolveP, rejectP) => {
@@ -78,7 +81,7 @@ test('stdio: initialize returns expected envelope', async () => {
   assert.equal(r.id, 1);
   assert.ok(r.result);
   assert.equal(r.result.serverInfo.name, 's1-secops-mcp-server');
-  assert.equal(r.result.serverInfo.version, '1.2.2');
+  assert.equal(r.result.serverInfo.version, PKG_VERSION);
   assert.ok(r.result.capabilities.tools);
 });
 

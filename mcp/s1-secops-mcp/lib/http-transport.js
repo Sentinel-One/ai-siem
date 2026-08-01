@@ -25,7 +25,7 @@ import { createServer } from 'http';
 import { authenticate, isAuthConfigured, warnIfNoAuth, authSourceForLogging } from './auth.js';
 import { err as makeErr } from './server-core.js';
 
-const MAX_BODY_BYTES = 4 * 1024 * 1024; // 4 MB — well above any normal MCP call
+const MAX_BODY_BYTES = 4 * 1024 * 1024; // 4 MB, well above any normal MCP call
 
 function log(...args) {
   process.stderr.write('[s1-secops-mcp] ' + args.join(' ') + '\n');
@@ -75,8 +75,12 @@ function readBody(req) {
     req.on('data', (chunk) => {
       size += chunk.length;
       if (size > MAX_BODY_BYTES) {
+        // Stop reading but do NOT destroy here: the caller must be able to
+        // write the 413 response first. Destroying the request tears down the
+        // socket and the client would see a connection reset with no body.
+        req.pause();
+        req.removeAllListeners('data');
         reject(new Error(`Request body exceeds ${MAX_BODY_BYTES} bytes`));
-        req.destroy();
         return;
       }
       chunks.push(chunk);
@@ -124,7 +128,7 @@ async function handleMcp(req, res, dispatch, clientIp, bindHost, bindPort) {
     // SECURITY (no-auth mode): a configured bearer token normally blocks
     // browser-driven requests, because a web page cannot forge an Authorization
     // header. The documented no-auth loopback mode has no such gate, so a
-    // malicious page — or a DNS-rebinding attack — on the operator's own
+    // malicious page, or a DNS-rebinding attack, on the operator's own
     // workstation could otherwise drive this server via cross-origin fetch()
     // and invoke every state-changing tool with the tenant API token. Per the
     // MCP Streamable HTTP spec we reject any browser Origin and validate the
@@ -150,6 +154,9 @@ async function handleMcp(req, res, dispatch, clientIp, bindHost, bindPort) {
     raw = await readBody(req);
   } catch (e) {
     audit(`${new Date().toISOString()} | ${clientName} | - | - | 413 body-too-large`);
+    // Send the 413 first, then drop the connection once the response has been
+    // flushed. Destroying the request before responding loses the error body.
+    res.on('finish', () => req.destroy());
     sendJson(res, 413, makeErr(null, -32600, e.message));
     return;
   }
@@ -174,6 +181,16 @@ async function handleMcp(req, res, dispatch, clientIp, bindHost, bindPort) {
     return;
   }
 
+  // Validate JSON-RPC request shape before dispatch: reject scalars, null, and
+  // objects without jsonrpc:"2.0" + a string method as -32600 (Invalid Request)
+  // instead of silently treating them as notifications.
+  if (msg === null || typeof msg !== 'object' || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') {
+    const badId = (msg && typeof msg === 'object') ? (msg.id ?? null) : null;
+    audit(`${new Date().toISOString()} | ${clientName} | - | - | 400 invalid-request`);
+    sendJson(res, 400, makeErr(badId, -32600, 'Invalid Request: expected a JSON-RPC 2.0 object with a string "method"'));
+    return;
+  }
+
   const isNotification = msg.id === undefined;
   const ts = new Date().toISOString();
 
@@ -193,7 +210,7 @@ async function handleMcp(req, res, dispatch, clientIp, bindHost, bindPort) {
       return;
     }
 
-    const status = response.error ? 200 : 200; // JSON-RPC errors are 200 with error envelope
+    const status = 200; // JSON-RPC errors still return HTTP 200 with an error envelope
     audit(`${ts} | ${clientName} | ${msg.method} | ${summarizeParams(msg.params)} | ${response.error ? `200 jsonrpc-error (${response.error.code})` : '200 ok'}`);
     sendJson(res, status, response);
 
@@ -245,8 +262,11 @@ export async function startHttp(dispatch, { port, host, path }) {
     log(`HTTP server error: ${e.message}`);
     if (e.code === 'EADDRINUSE') {
       log(`Port ${port} is already in use. Pick a different --port.`);
-      process.exit(1);
     }
+    // Any server error before a successful listen (EACCES, EADDRNOTAVAIL,
+    // invalid host, ...) is fatal: exit nonzero so systemd/Docker restart
+    // policies see the failure instead of a silently dead server.
+    process.exit(1);
   });
 
   await new Promise((resolve) => server.listen(port, host, resolve));

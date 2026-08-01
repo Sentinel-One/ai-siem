@@ -38,12 +38,13 @@
 
 import { createInterface } from 'node:readline';
 
-const URL    = process.env.MCP_URL    || (() => { throw new Error('MCP_URL not set'); })();
-const BEARER = process.env.MCP_BEARER || (() => { throw new Error('MCP_BEARER not set'); })();
+// Named MCP_URL (not URL) so the global URL constructor is not shadowed.
+const MCP_URL = process.env.MCP_URL    || (() => { throw new Error('MCP_URL not set'); })();
+const BEARER  = process.env.MCP_BEARER || (() => { throw new Error('MCP_BEARER not set'); })();
 
 const log = (...a) => process.stderr.write('[bridge] ' + a.join(' ') + '\n');
 
-log('starting; target', URL);
+log('starting; target', MCP_URL);
 
 const rl = createInterface({ input: process.stdin, terminal: false });
 
@@ -68,7 +69,7 @@ rl.on('line', async (line) => {
 
   inFlight++;
   try {
-    const res = await fetch(URL, {
+    const res = await fetch(MCP_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -76,12 +77,29 @@ rl.on('line', async (line) => {
         'Accept': 'application/json',
       },
       body: raw,
+      // A hung upstream must not wedge the bridge forever; 120s covers the
+      // slowest LRQ tool calls with headroom.
+      signal: AbortSignal.timeout(120000),
     });
 
-    if (isNotification) return;
+    if (isNotification) {
+      // Drain the body so the keep-alive socket is released.
+      await res.text().catch(() => {});
+      return;
+    }
 
     const text = await res.text();
-    if (!res.ok) log(`HTTP ${res.status} from upstream: ${text.slice(0, 200)}`);
+    if (!res.ok) {
+      // Non-OK upstream: emit a JSON-RPC error envelope (not raw text/HTML) so the
+      // client always receives valid JSON-RPC and a meaningful diagnostic.
+      log(`HTTP ${res.status} from upstream: ${text.slice(0, 200)}`);
+      process.stdout.write(JSON.stringify({
+        jsonrpc: '2.0',
+        id: msg.id ?? null,
+        error: { code: -32603, message: `upstream HTTP ${res.status}`, data: text.slice(0, 500) },
+      }) + '\n');
+      return;
+    }
     process.stdout.write(text.trimEnd() + '\n');
   } catch (e) {
     const cause = e.cause ? ` cause=${e.cause.code || e.cause.message || JSON.stringify(e.cause)}` : '';

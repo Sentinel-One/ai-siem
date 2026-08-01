@@ -3,7 +3,7 @@
  *
  * The documented no-auth loopback mode (`s1-secops-mcp --transport http`, no
  * bearer tokens) used to dispatch any POST /mcp regardless of Origin or Host,
- * so a browser page — or a DNS-rebinding attack — on the operator's workstation
+ * so a browser page, or a DNS-rebinding attack, on the operator's workstation
  * could invoke every state-changing tool. After the fix, in no-auth mode:
  *   - a request carrying any Origin header is rejected 403
  *   - a request whose Host header is not the loopback bind is rejected 403

@@ -1,16 +1,16 @@
 /**
- * UAM Alert Interface client — pushes OCSF indicators and SecurityAlerts
+ * UAM Alert Interface client: pushes OCSF indicators and SecurityAlerts
  * INTO Unified Alert Management via the SentinelOne HEC ingest host.
  *
  * This is a SEPARATE API surface from the Mgmt Console:
  *   Host  : S1_HEC_INGEST_URL (e.g. https://ingest.us1.sentinelone.net)
- *   Auth  : Authorization: Bearer <jwt>  (NOT "ApiToken" — endpoint rejects ApiToken)
+ *   Auth  : Authorization: Bearer <jwt>  (NOT "ApiToken", endpoint rejects ApiToken)
  *   Body  : concatenated JSON, gzip-compressed, Content-Encoding: gzip
  *   Scope : S1-Scope: <accountId>[:<siteId>[:<groupId>]]  (mandatory)
  *
  * Endpoints:
- *   POST /v1/indicators  — OCSF behavioral indicators (batch: N per call)
- *   POST /v1/alerts      — OCSF SecurityAlert         (ONE per call — see below)
+ *   POST /v1/indicators : OCSF behavioral indicators (batch: N per call)
+ *   POST /v1/alerts     , OCSF SecurityAlert         (ONE per call, see below)
  *
  * Critical constraints (empirically confirmed on your-tenant 2026-04-22):
  *   - ONE alert per POST /v1/alerts. Multi-alert bodies return HTTP 202 but the
@@ -90,9 +90,11 @@ async function hecPost(path, payloads, scope, retries = 3) {
     // payloads carry metadata.uid, which the stitcher dedupes on, so a re-POST
     // after an ambiguous 5xx does not double-ingest. (2026-07-29 review note.)
     if ((res.status === 429 || res.status >= 500) && attempt < retries) {
-      // Retry-After may be an HTTP date; Number() of that is NaN -> fall back to delay.
-      const ra = Number(res.headers.get('Retry-After'));
-      await sleep(Number.isFinite(ra) && ra >= 0 ? Math.min(ra * 1000, 30000) : delay);
+      // Retry-After may be missing or an HTTP date. Number(null) is 0, so a
+      // missing header must fall back to the exponential delay, not sleep 0ms.
+      const raRaw = res.headers.get('Retry-After');
+      const ra = Number(raRaw);
+      await sleep(raRaw && Number.isFinite(ra) && ra >= 0 ? Math.min(ra * 1000, 30000) : delay);
       delay = Math.min(delay * 2, 8000);
       continue;
     }
@@ -181,7 +183,7 @@ export function buildFileIndicator({
     },
     severity_id: 2,
     attack_surface_id: 1,
-    // OCSF Fingerprint array — dict form causes silent stitcher drop even on HTTP 202
+    // OCSF Fingerprint array: dict form causes silent stitcher drop even on HTTP 202
     file: {
       name: filename,
       type_id: 1,
@@ -200,7 +202,7 @@ export function buildFileIndicator({
  *     type_uid, etc.) and observables. The stitcher resolves the full indicator from a
  *     prior /v1/indicators POST via metadata.uid. Use with ingestAlert() (two-call flow).
  *   true: related_events[] embeds the full indicator context (file, device, actor) inline.
- *     No separate /v1/indicators POST is required — everything ships in one /v1/alerts call.
+ *     No separate /v1/indicators POST is required: everything ships in one /v1/alerts call.
  *     Use with ingestAlertInline() (single-call flow).
  */
 export function buildSecurityAlert({
@@ -216,7 +218,7 @@ export function buildSecurityAlert({
   const ts = nowMs || Date.now();
   const uid = indicator.metadata.uid;
 
-  // related_events[] entry — shape matches Python build_alert_referencing().
+  // related_events[] entry: shape matches Python build_alert_referencing().
   // type_uid comes from the indicator's own type_uid field (set by buildFileIndicator).
   // inline=true embeds file/device/actor so the alert is fully self-contained;
   // inline=false is reference-only and relies on the stitcher resolving metadata.uid.
@@ -260,7 +262,7 @@ export function buildSecurityAlert({
     }],
     category_uid:        2,
     category_name:       'Findings',
-    // S1-specific extension class — NOT the generic OCSF 2002.
+    // S1-specific extension class: NOT the generic OCSF 2002.
     // Using 2002 causes silent drop; 99602001 is what the stitcher expects.
     class_uid:           99602001,
     class_name:          'S1 Security Alert',
@@ -356,7 +358,7 @@ export async function ingestAlert({
  *
  * Differs from ingestAlert() in two ways:
  *   - No separate /v1/indicators POST (no HEC indicator call at all).
- *   - No sleep — the indicator data is embedded inline inside the alert's
+ *   - No sleep: the indicator data is embedded inline inside the alert's
  *     finding_info.related_events[] entry (file, device, actor fields included),
  *     so the stitcher does not need to resolve a uid from a prior indicator POST.
  *
@@ -421,7 +423,7 @@ export async function postIndicators({ scope, indicators }) {
 
 /**
  * POST a single raw OCSF SecurityAlert to /v1/alerts.
- * ONE alert per call — the stitcher silently drops all but one in multi-alert POSTs.
+ * ONE alert per call: the stitcher silently drops all but one in multi-alert POSTs.
  */
 export async function postAlert({ scope, alert }) {
   if (!scope) throw new Error('scope is required.');

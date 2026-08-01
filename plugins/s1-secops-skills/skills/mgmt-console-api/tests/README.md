@@ -1,4 +1,4 @@
-# API test coverage — sentinelone-mgmt-console-api
+# API test coverage: sentinelone-mgmt-console-api
 
 This folder holds the **reversible lifecycle tests** that exercise the
 mutating endpoints exposed by the skill against a live tenant. They
@@ -40,8 +40,8 @@ default).
 
 ## Tokens and scopes
 
-Some endpoints reject **multi-scope tokens** — service-user tokens that
-are assigned to more than one account simultaneously — with
+Some endpoints reject **multi-scope tokens**, service-user tokens that
+are assigned to more than one account simultaneously, with
 `HTTP 403 code 4030010 "This page doesn't support multi-scopes users
 yet"`. Confirmed today (2026-04-22) on `/web/api/v2.1/threat-intelligence/iocs`.
 
@@ -54,7 +54,7 @@ Add two optional token fields to your `credentials.json` (in your Cowork project
 }
 ```
 
-Both are optional — supply whichever you have. Tests that need a
+Both are optional, supply whichever you have. Tests that need a
 single-scope token (`test_ioc_lifecycle.py`, `test_alert_indicator_pivot.py`)
 instantiate the client with `S1Client(token_kind="single_scope")`. If only
 one token is configured, the client falls back to it, and the test
@@ -63,7 +63,7 @@ the fallback.
 
 **Which endpoints need single-scope?** The known ones today:
 
-- `/web/api/v2.1/threat-intelligence/iocs` — all CRUD methods
+- `/web/api/v2.1/threat-intelligence/iocs`: all CRUD methods
 - (document further here as discovered)
 
 Per SentinelOne engineering: multi-scope support for Threat Intelligence
@@ -72,7 +72,7 @@ explicit scope selection via a single-account-pinned token.
 
 ---
 
-## 1. Full API surface — read-only smoke sweep
+## 1. Full API surface: read-only smoke sweep
 
 `scripts/smoke_test_queries.py` enumerates every `GET` in the Swagger +
 a hand-curated allow-list of read-only POSTs, calls them, and records the
@@ -88,8 +88,8 @@ python scripts/smoke_test_queries.py --batch-deadline 45            # per-batch 
 
 Outputs:
 
-- `references/tenant_capabilities.json`  — machine-readable per-call record
-- `references/tenant_capabilities.md`    — human-readable status rollup
+- `references/tenant_capabilities.json`: machine-readable per-call record
+- `references/tenant_capabilities.md`: human-readable status rollup
 
 Performance: the default sweep (`/export` and `/download` excluded) returns
 in **~60 seconds** for 300+ endpoints on the reference Purple tenant.
@@ -98,7 +98,7 @@ because some XDR export endpoints stream large payloads.
 
 ---
 
-## 2. Threat Intelligence IOC lifecycle — `test_ioc_lifecycle.py`
+## 2. Threat Intelligence IOC lifecycle: `test_ioc_lifecycle.py`
 
 Proves the full IOC workflow end-to-end, reversibly:
 
@@ -119,7 +119,7 @@ derived hashes that never match real malware.
 
 ---
 
-## 3. Alerts dual-API round-trip — `test_alerts_dual_api.py`
+## 3. Alerts dual-API round-trip: `test_alerts_dual_api.py`
 
 Demonstrates the alert-API story end-to-end: **GraphQL UAM is PRIMARY**,
 REST `/cloud-detection/alerts` is **SECONDARY**, parallel surfaces with
@@ -132,7 +132,7 @@ different ID formats.
 4. POST /web/api/v2.1/unifiedalerts/graphql  (alertNotes verify)
 5. GET  /web/api/v2.1/cloud-detection/alerts?limit=3   (REST surface read)
 6. POST /web/api/v2.1/unifiedalerts/graphql  (deleteAlertNote w/ mgmt_note_id retry)
-7. POST /web/api/v2.1/unifiedalerts/graphql  (alertNotes verify — removed)
+7. POST /web/api/v2.1/unifiedalerts/graphql  (alertNotes verify, removed)
 ```
 
 Why there is no `create alert` test: SentinelOne does **not** expose a
@@ -142,20 +142,20 @@ engines. To prove the create/destroy pattern on the detection side, see
 
 ---
 
-## 4. Saved-filter lifecycle — `test_saved_filter_lifecycle.py`
+## 4. Saved-filter lifecycle: `test_saved_filter_lifecycle.py`
 
 Reversible CREATE → LIST → UPDATE → DELETE → VERIFY against
 `/web/api/v2.1/filters`. A saved filter is a personal saved-search
 definition: zero protection impact, zero detection impact, invisible to
 other users.
 
-**Permission note:** token must have "Filters — create / update / delete"
+**Permission note:** token must have "Filters, create / update / delete"
 scopes. On read-only pre-sales tokens CREATE returns 403 and the test
-aborts cleanly with a clear message — expected behaviour, not a bug.
+aborts cleanly with a clear message, expected behaviour, not a bug.
 
 ---
 
-## 5. Custom Detection Rule lifecycle — `test_custom_rule_lifecycle.py`
+## 5. Custom Detection Rule lifecycle: `test_custom_rule_lifecycle.py`
 
 CREATE → LIST → UPDATE → DELETE → VERIFY on
 `/web/api/v2.1/cloud-detection/rules`.
@@ -170,7 +170,7 @@ DELETE  DELETE /web/api/v2.1/cloud-detection/rules  body.filter: {accountIds, id
 VERIFY  GET    /web/api/v2.1/cloud-detection/rules?name__contains=<run_tag>
 ```
 
-The rule is created with `status: "Disabled"` — the backend represents
+The rule is created with `status: "Disabled"`, the backend represents
 this as `status: "Draft"` in the response (a never-activated rule). A
 disabled rule never evaluates against telemetry, so zero blast radius:
 no alerts generated, no SOC noise. Belt-and-braces: the s1ql body uses a
@@ -178,12 +178,12 @@ deliberately non-matching process name
 (`zzz-smoke-test-does-not-exist.exe`).
 
 Tenant-scope filter (`filter={}`) is rejected on multi-account tokens with
-`"Filter args is not compatible with user scope"` — the test scopes to
+`"Filter args is not compatible with user scope"`, the test scopes to
 the first visible account instead.
 
 ---
 
-## 6. Alert status + verdict round-trip — `test_alert_mutation_lifecycle.py`
+## 6. Alert status + verdict round-trip: `test_alert_mutation_lifecycle.py`
 
 Proves the UAM bulk-ops mutation pattern against an existing alert,
 with full restoration:
@@ -194,23 +194,23 @@ with full restoration:
 3. restore status to original                                  → wait_for_field
 4. set_analyst_verdict (UNDEFINED ↔ TRUE_POSITIVE_BENIGN)      → wait_for_field
 5. restore verdict to original                                 → wait_for_field
-6. alertHistory audit — verify transitions logged
+6. alertHistory audit, verify transitions logged
 ```
 
 Why operate on an existing alert? SentinelOne doesn't expose
-`createAlert` — alerts are engine byproducts. For reversible *create*
+`createAlert`, alerts are engine byproducts. For reversible *create*
 coverage on the detection side see test #5 above (rules), #7 below
 (indicators pinned to alerts via IOCs).
 
 **Blast radius:** on a clean run the alert ends in its starting state.
-The alertHistory audit log *does* record the transitions — that's
+The alertHistory audit log *does* record the transitions; that's
 working-as-intended, every status change is auditable by design. Use
 `--keep` to leave mutations applied for UI inspection, `--alert-id <id>`
 to target a specific alert.
 
 ---
 
-## 7. Scheduled default-report lifecycle — `test_scheduled_report_lifecycle.py`
+## 7. Scheduled default-report lifecycle: `test_scheduled_report_lifecycle.py`
 
 CREATE → LIST → UPDATE → DELETE → VERIFY against
 `/web/api/v2.1/report-tasks`.
@@ -229,11 +229,11 @@ VERIFY GET   /web/api/v2.1/report-tasks?name=<run_tag>  (expect 0)
 
 Sharp edges baked into the test:
 
-- CREATE response is `{data: {success: true}}` — **no id returned.** Task
+- CREATE response is `{data: {success: true}}`: **no id returned.** Task
   is retrieved by name in the LIST step.
 - DELETE uses `POST /reports/delete-tasks` (not DELETE verb), wrapper is
   `filter.ids` (not `data.ids`).
-- `fromDate`/`toDate` are required even for `scheduleType=manually` — they
+- `fromDate`/`toDate` are required even for `scheduleType=manually`: they
   define the report's content window, not the schedule.
 - `siteIds` live in the top-level `filter`, NOT inside `data`.
 - PUT only accepts `name` / `frequency` / `day` / `recipients` /
@@ -245,7 +245,7 @@ during the test window.
 
 ---
 
-## 8. Alert → Indicator pivot — `test_alert_indicator_pivot.py`
+## 8. Alert → Indicator pivot: `test_alert_indicator_pivot.py`
 
 Exercises the SOC workflow "take an indicator observed on an alert and
 promote it to a tracked TI IOC":
@@ -256,7 +256,7 @@ promote it to a tracked TI IOC":
 3. CREATE an IOC for that hash, tagged to the alert:
      externalId  = <run_tag>-<alert_id>
      description = "Pinned from alert <alert_id> by API test"
-4. LIST /iocs?name__contains=<run_tag> — verify linkage via externalId
+4. LIST /iocs?name__contains=<run_tag>, verify linkage via externalId
 5. DELETE the IOC by uuid
 6. VERIFY re-query returns zero
 ```
@@ -392,9 +392,9 @@ delta is the payload shape.
 
 ---
 
-## 11. PowerQuery scheduled detection lifecycle — inline (2026-05-03)
+## 11. PowerQuery scheduled detection lifecycle: inline (2026-05-03)
 
-Proves the full lifecycle for `queryType=scheduled` rules (PowerQuery-based detections) on the demo site (`siteId=<site-id>`). No separate test script exists yet — the lifecycle was confirmed via an inline Python session. See the schema gotchas below before writing a script.
+Proves the full lifecycle for `queryType=scheduled` rules (PowerQuery-based detections) on the demo site (`siteId=<site-id>`). No separate test script exists yet, the lifecycle was confirmed via an inline Python session. See the schema gotchas below before writing a script.
 
 ```text
 CREATE  POST  /web/api/v2.1/cloud-detection/rules
@@ -433,35 +433,35 @@ VERIFY  GET   /web/api/v2.1/cloud-detection/rules?ids=...&siteIds=...&isLegacy=f
 
 **Confirmed works via lifecycle tests (reversible CRUD proven):**
 
-- Threat Intelligence IOCs — CREATE / LIST / DELETE / VERIFY
-- UAM alerts — list / detail / filter / group-by / facets / CSV export
-- UAM alert notes — add / list / delete (with mgmt_note_id retry)
-- UAM alert status + analystVerdict — bulk-ops filter round-trip
-- REST `/cloud-detection/alerts` — read (parallel surface)
-- Saved filters — CREATE / LIST / UPDATE / DELETE / VERIFY *(requires Filters scope)*
-- Custom Detection Rules — CREATE (Disabled) / LIST / UPDATE / DELETE / VERIFY
-- Scheduled default-report tasks — CREATE / LIST / UPDATE / DELETE / VERIFY
-- Alert → IOC pinning pivot — rawIndicator read + pinned IOC CRUD
+- Threat Intelligence IOCs: CREATE / LIST / DELETE / VERIFY
+- UAM alerts: list / detail / filter / group-by / facets / CSV export
+- UAM alert notes: add / list / delete (with mgmt_note_id retry)
+- UAM alert status + analystVerdict: bulk-ops filter round-trip
+- REST `/cloud-detection/alerts`: read (parallel surface)
+- Saved filters: CREATE / LIST / UPDATE / DELETE / VERIFY *(requires Filters scope)*
+- Custom Detection Rules: CREATE (Disabled) / LIST / UPDATE / DELETE / VERIFY
+- Scheduled default-report tasks: CREATE / LIST / UPDATE / DELETE / VERIFY
+- Alert → IOC pinning pivot: rawIndicator read + pinned IOC CRUD
 - UAM Alert Interface `/v1/indicators` + `/v1/alerts` -- push OCSF indicators + alert into UAM (single + batched 3-indicator / multi-observable across OCSF 1001/1007/4001), verify stitching, close via bulk-ops
-- PowerQuery Scheduled Detections (`queryType=scheduled`) — CREATE / LIST / UPDATE / ENABLE / DISABLE / DELETE / VERIFY on demo site (2026-05-03)
+- PowerQuery Scheduled Detections (`queryType=scheduled`): CREATE / LIST / UPDATE / ENABLE / DISABLE / DELETE / VERIFY on demo site (2026-05-03)
 
 **Confirmed reachable via read-only smoke sweep** (see
 `references/tenant_capabilities.md` for the current tenant's full rollup):
 
-- Accounts / Sites / Groups / Users / Service Users — full read surface
-- Agents — list, filters, count, passphrase, summary, tags
-- Threats — list, filters, count, timeline, notes, mitigation history, summary, search-on-endpoints
+- Accounts / Sites / Groups / Users / Service Users: full read surface
+- Agents: list, filters, count, passphrase, summary, tags
+- Threats: list, filters, count, timeline, notes, mitigation history, summary, search-on-endpoints
 - Activities, Firewall Control, Device Control, Exclusions (v2.0 + v2.1)
 - Graph Query Builder & Management (metadata, recent-queries, type-counts)
-- Deep Visibility — queries, query-status, events, sessions (partial)
-- Hyperautomation — workflows, executions, schedules (partial)
-- Reporting — insights, reports
-- RBAC — roles (read), token metadata
+- Deep Visibility: queries, query-status, events, sessions (partial)
+- Hyperautomation: workflows, executions, schedules (partial)
+- Reporting: insights, reports
+- RBAC: roles (read), token metadata
 - Cloud / Container / Identity / Device / Function / Data-Store inventory
-- Unified Alert Management GraphQL — full query + mutation surface
-- Purple AI GraphQL — `purpleLaunchQuery` (undocumented but reachable)
+- Unified Alert Management GraphQL: full query + mutation surface
+- Purple AI GraphQL: `purpleLaunchQuery` (undocumented but reachable)
 
-**Untested by design — destructive or high-blast-radius:**
+**Untested by design, destructive or high-blast-radius:**
 
 - Agent isolation / reconnect / uninstall / shutdown / restart
 - Policy create / update / delete (tenant-wide impact)
@@ -478,7 +478,7 @@ VERIFY  GET   /web/api/v2.1/cloud-detection/rules?ids=...&siteIds=...&isLegacy=f
 
 **Untested but eligible for future reversible coverage:**
 
-- XDR Graph Query full cycle — `test_xdr_graph_query_lifecycle.py` exists and will run once any user saves a query via the Graph Explorer UI (provides the format template). Currently skips on tenants with no saved queries.
+- XDR Graph Query full cycle: `test_xdr_graph_query_lifecycle.py` exists and will run once any user saves a query via the Graph Explorer UI (provides the format template). Currently skips on tenants with no saved queries.
 
 **Finding: no separate STAR rules endpoint.** The earlier note about a `/star-rules` endpoint family was incorrect. Confirmed against the live API (2026-05) and the swagger: no such path exists (returns 404). STAR rules are `cloud-detection/rules` with `queryType=events`. They are now covered by `test_star_rule_lifecycle.py`.
 
@@ -501,13 +501,13 @@ VERIFY  GET   (expect 0 hits)
 
 **Gotchas confirmed vs. live API:**
 
-- `modeType` and `type` are required — swagger marks them optional but API rejects without them.
+- `modeType` and `type` are required: swagger marks them optional but API rejects without them.
 - `engines` is required when `modeType=suppression`.
-- `engines` and `interactionLevel` are mutually exclusive — passing both returns HTTP 400.
+- `engines` and `interactionLevel` are mutually exclusive: passing both returns HTTP 400.
 - `pathExclusionType` valid values: `file`, `folder`, `subfolders`. `suppress` is not valid.
 - Path value goes in `value`, not `pathValue`.
 - `filter.scopeLevel` is required (despite swagger). For site scope: `scopeLevel="site"` + `scopeLevelId=<siteId>` (camelCase).
-- POST returns `data` as a list, not a single object — read `response["data"][0]["id"]`.
+- POST returns `data` as a list, not a single object: read `response["data"][0]["id"]`.
 
 ## 13. Hyperautomation workflow import lifecycle (2026-05-03)
 
@@ -526,8 +526,8 @@ DELETE  DELETE /web/api/v2.1/hyper-automate/api/v1/workflows/{id}?accountIds=<ac
 
 - Public import response key is `id` not `workflowId`; `version_id` not `versionId`.
 - `/api/public/workflows` and `/api/v1/workflows` return the same nested format: `{id, workflow: {...}, actions: []}`. The `workflow.id` == top-level `id`.
-- Tenant had 1050+ workflows. `nextCursor` returns literal string `"null"` (truthy in Python) — loop by skip/limit, not cursor. Sort by `updated_at desc` and scan first 20 to find a newly imported workflow without paginating 1050 rows.
-- Delete is a REST `DELETE /api/v1/workflows/{id}?accountIds=<acct>` (returns 204, soft/recoverable; validated 2026-06-13: import then publish then delete then gone-from-list). Scope with `accountIds` or `siteIds` to match where the workflow lives. The older `POST /workflows/archive` returns HTTP 500 on this tenant regardless of body shape — do not use it. The test deletes via the REST DELETE and treats a delete failure as fatal.
+- Tenant had 1050+ workflows. `nextCursor` returns literal string `"null"` (truthy in Python), loop by skip/limit, not cursor. Sort by `updated_at desc` and scan first 20 to find a newly imported workflow without paginating 1050 rows.
+- Delete is a REST `DELETE /api/v1/workflows/{id}?accountIds=<acct>` (returns 204, soft/recoverable; validated 2026-06-13: import then publish then delete then gone-from-list). Scope with `accountIds` or `siteIds` to match where the workflow lives. The older `POST /workflows/archive` returns HTTP 500 on this tenant regardless of body shape; do not use it. The test deletes via the REST DELETE and treats a delete failure as fatal.
 
 ## 14. Detection rule ENABLE/DISABLE lifecycle (2026-05-03)
 
@@ -543,7 +543,7 @@ DELETE   DELETE /web/api/v2.1/cloud-detection/rules
 
 **Gotchas confirmed vs. live API:**
 
-- After ENABLE, `status` transitions through `"activating"` before settling on `"active"`. Both are valid post-enable states — accept both in assertions.
+- After ENABLE, `status` transitions through `"activating"` before settling on `"active"`. Both are valid post-enable states, accept both in assertions.
 - Tested with both `queryType=scheduled` (requires `isLegacy=false` on GET) and `queryType=events`. Both use the same enable/disable endpoints.
 - Tested on demo (site `<site-id>`). Scheduled rule used `runIntervalMinutes=1440` and `threshold.value=9999` so it cannot fire within the test lifetime even when briefly enabled.
 
@@ -552,7 +552,7 @@ DELETE   DELETE /web/api/v2.1/cloud-detection/rules
 ## 15. STAR rule lifecycle (2026-05-03)
 
 STAR rules ("streaming threat assessment rules") are product marketing terminology for
-real-time event detection rules. The API has no `/star-rules` path — they are
+real-time event detection rules. The API has no `/star-rules` path; they are
 `cloud-detection/rules` with `queryType=events`. The `/star-rules` path returns 404.
 
 ```text
@@ -572,25 +572,25 @@ VERIFY  GET    ids=<id> → data=[]
 
 **Gotchas confirmed vs. live API:**
 
-- No `/star-rules` path — use `cloud-detection/rules` with `queryType=events`.
-- `"activeResponse"` in the CREATE body returns HTTP 400 "Unknown field" — omit it.
+- No `/star-rules` path: use `cloud-detection/rules` with `queryType=events`.
+- `"activeResponse"` in the CREATE body returns HTTP 400 "Unknown field": omit it.
 - `queryLang` defaults to `"1.0"` for events rules; do not set it explicitly.
 - `treatAsThreat="UNDEFINED"` is accepted on input but stored as `null` in the response.
-- GET `nameSubstring` + `queryType` together returns HTTP 500 — use only one filter per
+- GET `nameSubstring` + `queryType` together returns HTTP 500: use only one filter per
   request, or use `ids` for precise lookup after creation.
 - Draft status = rule never fires even if agent telemetry matches the query.
 - `isLegacy=false` is NOT required for events rules (only needed for scheduled).
-- DELETE body uses top-level `filter` (no `"data"` wrapper) — same as exclusion delete.
+- DELETE body uses top-level `filter` (no `"data"` wrapper): same as exclusion delete.
 
 ---
 
 ## Running the full test suite
 
 ```text
-# 1. Read-only sweep — ~60s default, several minutes with --include-slow.
+# 1. Read-only sweep: ~60s default, several minutes with --include-slow.
 python scripts/smoke_test_queries.py --workers 16 --timeout 10
 
-# 2. Reversible lifecycles — each ~3–15s end-to-end. Full set ~1 minute.
+# 2. Reversible lifecycles: each ~3-15s end-to-end. Full set ~1 minute.
 python tests/test_ioc_lifecycle.py                  # IOC CRUD (single-scope token)
 python tests/test_alerts_dual_api.py                # UAM + REST alert surfaces
 python tests/test_saved_filter_lifecycle.py         # skips cleanly if token lacks scope

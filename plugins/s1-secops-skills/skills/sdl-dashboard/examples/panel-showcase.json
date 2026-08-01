@@ -1,7 +1,7 @@
 {
   "configType": "TABBED",
   "duration": "24h",
-  "description": "Panel Showcase — every supported panel type and dashboard feature in one dashboard. Deployed at /dashboards/panel-showcase.",
+  "description": "Panel Showcase: every supported panel type and dashboard feature in one dashboard. Deployed at /dashboards/panel-showcase.",
   "tabs": [
     {
       "tabName": "SOC Overview",
@@ -219,7 +219,7 @@
         {
           "graphStyle": "markdown",
           "title": "Panel Features",
-          "markdown": "Demonstrates remaining panel features: **distribution** histogram of network destination ports, **area chart** using plots array (not PowerQuery), **gauge with estimate_distinct**, **number panel with console drill-through link**, **pie chart**, and **`filters[]`**: the Alert Product dropdown above is a tab-level `filters[]` widget — selecting a product filters all panels on this tab in real time. This is the correct filtering mechanism for TABBED dashboards. Note: `#VarName#` query substitution only works in flat (non-TABBED) dashboards.",
+          "markdown": "Demonstrates remaining panel features: **distribution** histogram of network destination ports, **area chart** using plots array (not PowerQuery), **gauge with estimate_distinct**, **number panel with console drill-through link**, **pie chart**, and **`filters[]`**: the Alert Product dropdown above is a tab-level `filters[]` widget, selecting a product filters all panels on this tab in real time. This is the correct filtering mechanism for TABBED dashboards. Note: `#VarName#` query substitution only works in flat (non-TABBED) dashboards.",
           "layout": { "h": 5, "w": 60, "x": 0, "y": 0 }
         },
         {

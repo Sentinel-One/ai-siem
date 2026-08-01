@@ -129,7 +129,7 @@ def main():
     if pick_path:
         _run(f"getFile ({pick_path[:30]})", lambda: c.get_file(pick_path, prettyprint=False))
     else:
-        print("[SKIP] getFile — no files present to read")
+        print("[SKIP] getFile; no files present to read")
         RESULTS.append(("getFile", "SKIP", 0, "no files", "tenant has no config files yet"))
 
     # --------------------------- CONFIG WRITE --------------------------------

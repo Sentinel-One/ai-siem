@@ -7,7 +7,7 @@
   // log-forwarder that unrolls `Records[]` into NDJSON).
   //
   // Why Authentication 3002 (not API Activity 6003)?
-  //   sts:AssumeRole mints temporary credentials — a session grant.
+  //   sts:AssumeRole mints temporary credentials, a session grant.
   //   OCSF's Authentication class is the idiomatic fit; it carries
   //   `session.credential_uid`, `session.expiration_time`, and
   //   `session.issuer` which line up exactly with CloudTrail's
@@ -26,7 +26,7 @@
   //      as one JSON value, see the format comment below).
   //   2. Rename/copy into OCSF dotted names inside a single v1
   //      mappings block. Dotted source keys (e.g. `user.email`) stay
-  //      FLAT under `unmapped.*` — reference them literally, do NOT
+  //      FLAT under `unmapped.*`: reference them literally, do NOT
   //      escape the dots (tenant-validated April 2026).
   //   3. Emit reserved-field-safe severity via `severity_id` only
   //      (OCSF string labels collide with SDL's reserved `severity`).
@@ -43,7 +43,7 @@
     "metadata.product.name":        "CloudTrail",
     "metadata.log_provider":        "CloudTrail",
 
-    // OCSF class — Authentication (3002) under Identity & Access Management (3)
+    // OCSF class: Authentication (3002) under Identity & Access Management (3)
     "class_uid":     3002,
     "class_name":    "Authentication",
     "category_uid":  3,
@@ -74,7 +74,7 @@
       //   (Directive switch pending demo-tenant validation.)
       //
       // NOTE: Do NOT add a `rewrites` that pulls `unmapped.eventTime`
-      // into the reserved `timestamp` field — combined with the
+      // into the reserved `timestamp` field: combined with the
       // `copy → cast` pair on `time` below, the event gets silently
       // dropped on this tenant. Mapping `time` in the mappings block
       // is sufficient for hunts; the event-time field the ingest
@@ -122,14 +122,14 @@
           // ---- Network / source endpoint ---------------------------
           { "rename": { "from": "unmapped.sourceIPAddress", "to": "src_endpoint.ip" } },
 
-          // ---- HTTP request (user-agent only — CloudTrail doesn't
+          // ---- HTTP request (user-agent only: CloudTrail doesn't
           //      carry method/URL; for TLS details see tlsDetails.*)
           { "rename": { "from": "unmapped.userAgent", "to": "http_request.user_agent" } },
 
           // ---- API operation --------------------------------------
           // The CloudTrail event itself is an API call. OCSF `api.*`
           // is the universal place to stash operation metadata that
-          // doesn't fit anywhere else — keep it even for Auth 3002
+          // doesn't fit anywhere else: keep it even for Auth 3002
           // so hunts can filter by eventName.
           { "rename": { "from": "unmapped.eventName",    "to": "api.operation" } },
           { "rename": { "from": "unmapped.eventSource",  "to": "api.service.name" } },
@@ -176,7 +176,7 @@
 
           // ---- Constants for Authentication 3002 -------------------
           // OCSF activity_id for sts:AssumeRole is "Authentication Ticket" (3)
-          // — the event mints a temporary credential, it is not a user logon.
+          // The event mints a temporary credential; it is not a user logon.
           { "constant": { "value": 3, "field": "activity_id",
                           "predicate": "api.operation == 'AssumeRole'" } },
           { "constant": { "value": "Authentication Ticket", "field": "activity_name",
@@ -196,7 +196,7 @@
           { "constant": { "value": 1,         "field": "status_id", "predicate": "true" } },
           { "constant": { "value": "Success", "field": "status",    "predicate": "true" } },
 
-          // Severity — emit integer `severity_id` (reserved-field-safe)
+          // Severity: emit integer `severity_id` (reserved-field-safe)
           // and OCSF string label as `severity_name`. Never set `severity`
           // directly: SDL's reserved pipeline rewrites it to an int 0-6
           // against its own vocabulary.

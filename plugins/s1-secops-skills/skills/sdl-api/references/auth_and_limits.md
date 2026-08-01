@@ -38,7 +38,7 @@ The `SDLClient` only sets `S1-Scope` when (a) a console token was selected for t
 
 `/api/query`, `/api/powerQuery`, `/api/timeseriesQuery`, `/api/numericQuery`, and `/api/facetQuery` all share a CPU-second budget per account.
 
-- Each call returns `cpuUsage` (ms) on success — that's how much it cost.
+- Each call returns `cpuUsage` (ms) on success: that's how much it cost.
 - The bucket leaks at `cpuUsageRefillRate` CPU sec/sec. When `cpuUsageCapacity >= 1`, queries are rejected until it drains.
 - A 429 carries:
   ```json
@@ -83,7 +83,7 @@ The SDLClient retries automatically on:
 - HTTP 5xx
 - HTTP 200 with body `status` starting `error/server/backoff`
 
-It honours `Retry-After` when present and otherwise uses `min(2**attempt, 30)` seconds. For long-running ingest pipelines, prefer the binary truncated exponential backoff loop in `integration_patterns.md` — it is designed to (a) stop on `discardBuffer` and (b) slowly relax wait time after success.
+It honours `Retry-After` when present and otherwise uses `min(2**attempt, 30)` seconds. For long-running ingest pipelines, prefer the binary truncated exponential backoff loop in `integration_patterns.md`; it is designed to (a) stop on `discardBuffer` and (b) slowly relax wait time after success.
 
 ## Audit references
 

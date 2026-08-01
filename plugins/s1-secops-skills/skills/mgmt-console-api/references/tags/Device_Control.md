@@ -11,7 +11,7 @@ Delete Device Control rules that match the filter.
 Required permissions: `Device Control.delete`
 
 Parameters:
-- `body` [body, device_control.schemas_RuleDeleteSchema] — 
+- `body` [body, device_control.schemas_RuleDeleteSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -24,44 +24,44 @@ Get the Device Control rules of a specified Account, Site, Group or Global (tena
 Required permissions: `Device Control.view`
 
 Parameters:
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `countOnly` [query, boolean] — If true, only total number of items will be returned, without any of the actual objects.
-- `skipCount` [query, boolean] — If true, total number of items will not be calculated, which speeds up execution time.
-- `sortBy` [query, string] (enum: id, interface, deviceClass, ruleName, action, status, order, version) — The column to sort the results by. Example: "id".
-- `sortOrder` [query, string] (enum: asc, desc) — Sort direction. Example: "asc".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [query, boolean] — Indicates a tenant scope request
-- `query` [query, string] — A free-text search term, will match applicable attributes.
-- `scopes` [query, array] — Return only device rules in this scope. Example: "site".
-- `interfaces` [query, array] — Return device rules with the filtered interface. Example: "USB".
-- `deviceClasses` [query, array] — Return device rules with the filtered device class. Example: "02h".
-- `serviceClasses` [query, array] — Return device rules with the filtered service class. Example: "02".
-- `ruleName` [query, string] — Return device rules with the filtered rule name.
-- `vendorIds` [query, array] — Return device rules with the filtered vendor id.
-- `productIds` [query, array] — Return device rules with the filtered product id. Example: "02".
-- `uids` [query, array] — Return device rules with the filtered uId.
-- `actions` [query, array] — Return device rules with the filtered action. Example: "Allow".
-- `statuses` [query, array] — Return device rules with the filtered status. Example: "Enabled".
-- `createdAt__lt` [query, string] — Return device rules created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gt` [query, string] — Return device rules created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__lte` [query, string] — Return device rules created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gte` [query, string] — Return device rules created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__between` [query, string] — Return device rules created within this range (inclusive). Example: "1514978764288-1514978999999".
-- `ids` [query, array] — List of ids to filter by. Example: "225494730938493804,225494730938493915".
-- `versions` [query, array] — Return device rules with the filtered versions.
-- `minorClasses` [query, array] — Return device rules with the filtered minor classes.
-- `accessPermissions` [query, array] — Access permission in. Example: "Read-Only".
-- `bluetoothAddresses` [query, array] — Return device rules with the filtered bluetooth addresses.
-- `gattServices` [query, array] — Return device rules with the filtered GATT services.
-- `manufacturerNames` [query, array] — Return device rules with the filtered manufacturer names.
-- `deviceNames` [query, array] — Return device rules with the filtered device names.
-- `deviceInformationServiceInfoKeys` [query, array] — Return device rules with the filtered device information service info keys.
-- `deviceIds` [query, array] — Return device rules with the filtered device id. Example: "02".
-- `disablePagination` [query, boolean] — If true, all rules for requested scope will be returned
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `countOnly` [query, boolean]: If true, only total number of items will be returned, without any of the actual objects.
+- `skipCount` [query, boolean]: If true, total number of items will not be calculated, which speeds up execution time.
+- `sortBy` [query, string] (enum: id, interface, deviceClass, ruleName, action, status, order, version): The column to sort the results by. Example: "id".
+- `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [query, boolean]: Indicates a tenant scope request
+- `query` [query, string]: A free-text search term, will match applicable attributes.
+- `scopes` [query, array]: Return only device rules in this scope. Example: "site".
+- `interfaces` [query, array]: Return device rules with the filtered interface. Example: "USB".
+- `deviceClasses` [query, array]: Return device rules with the filtered device class. Example: "02h".
+- `serviceClasses` [query, array]: Return device rules with the filtered service class. Example: "02".
+- `ruleName` [query, string]: Return device rules with the filtered rule name.
+- `vendorIds` [query, array]: Return device rules with the filtered vendor id.
+- `productIds` [query, array]: Return device rules with the filtered product id. Example: "02".
+- `uids` [query, array]: Return device rules with the filtered uId.
+- `actions` [query, array]: Return device rules with the filtered action. Example: "Allow".
+- `statuses` [query, array]: Return device rules with the filtered status. Example: "Enabled".
+- `createdAt__lt` [query, string]: Return device rules created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gt` [query, string]: Return device rules created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__lte` [query, string]: Return device rules created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gte` [query, string]: Return device rules created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__between` [query, string]: Return device rules created within this range (inclusive). Example: "1514978764288-1514978999999".
+- `ids` [query, array]: List of ids to filter by. Example: "225494730938493804,225494730938493915".
+- `versions` [query, array]: Return device rules with the filtered versions.
+- `minorClasses` [query, array]: Return device rules with the filtered minor classes.
+- `accessPermissions` [query, array]: Access permission in. Example: "Read-Only".
+- `bluetoothAddresses` [query, array]: Return device rules with the filtered bluetooth addresses.
+- `gattServices` [query, array]: Return device rules with the filtered GATT services.
+- `manufacturerNames` [query, array]: Return device rules with the filtered manufacturer names.
+- `deviceNames` [query, array]: Return device rules with the filtered device names.
+- `deviceInformationServiceInfoKeys` [query, array]: Return device rules with the filtered device information service info keys.
+- `deviceIds` [query, array]: Return device rules with the filtered device id. Example: "02".
+- `disablePagination` [query, boolean]: If true, all rules for requested scope will be returned
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -74,7 +74,7 @@ Use this command to create a new Device Control rule. These rules allow or block
 Required permissions: `Device Control.create`
 
 Parameters:
-- `body` [body, device_control.schemas_PostDeviceSchema] — 
+- `body` [body, device_control.schemas_PostDeviceSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -87,10 +87,10 @@ Get Device Control configuration for a given scope.<br>To filter the results for
 Required permissions: `Device Control.view`
 
 Parameters:
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [query, boolean] — Indicates a tenant scope request
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [query, boolean]: Indicates a tenant scope request
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -104,7 +104,7 @@ Device Control requires Control SKU. It is not supported on Linux.
 Required permissions: `Device Control.edit`
 
 Parameters:
-- `body` [body, device_control.schemas_PostDeviceSettingsSchema] — 
+- `body` [body, device_control.schemas_PostDeviceSettingsSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -116,7 +116,7 @@ You can copy a set of Device Control rules to use in other Accounts, Sites, or G
 Optional permissions: `Device Control.view, Device Control.create`
 
 Parameters:
-- `body` [body, device_control.schemas_CopyRuleSchema] — 
+- `body` [body, device_control.schemas_CopyRuleSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -129,7 +129,7 @@ It is best practice to disable a rule rather than delete it. Use this command to
 Required permissions: `Device Control.edit`
 
 Parameters:
-- `body` [body, device_control.schemas_EnableRuleSchema] — 
+- `body` [body, device_control.schemas_EnableRuleSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -143,35 +143,35 @@ Device Control requires Control SKU. Linux Agents do not support Device Control.
 Required permissions: `Device Control.view`
 
 Parameters:
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `countOnly` [query, boolean] — If true, only total number of items will be returned, without any of the actual objects.
-- `skipCount` [query, boolean] — If true, total number of items will not be calculated, which speeds up execution time.
-- `sortBy` [query, string] (enum: id, eventTime, eventType, agentId) — The column to sort the results by. Example: "id".
-- `sortOrder` [query, string] (enum: asc, desc) — Sort direction. Example: "asc".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [query, boolean] — Indicates a tenant scope request
-- `query` [query, string] — A free-text search term, will match applicable attributes.
-- `eventTime__gt` [query, string] — Return events generated after this time. Example: "2018-02-27T04:49:26.257525Z".
-- `eventTime__lt` [query, string] — Return events generated before this time. Example: "2018-02-27T04:49:26.257525Z".
-- `eventTime__gte` [query, string] — Return events generated after or at this time. Example: "2018-02-27T04:49:26.257525Z".
-- `eventTime__lte` [query, string] — Return events generated before or at this time. Example: "2018-02-27T04:49:26.257525Z".
-- `eventTime__between` [query, string] — Return events created within this range (inclusive). Example: "1514978764288-1514978999999".
-- `ids` [query, array] — List of IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `eventIds` [query, array] — List of event IDs to filter by
-- `interfaces` [query, array] — List of interfaces to filter by. Example: "USB".
-- `deviceClasses` [query, array] — List of device classes to filter by. Example: "02h".
-- `serviceClasses` [query, array] — List of service classes to filter by. Example: "02".
-- `vendorIds` [query, array] — List of vendor IDs to filter by.
-- `productIds` [query, array] — List of product IDs to filter by. Example: "02".
-- `uids` [query, array] — List of uIds to filter by.
-- `eventTypes` [query, array] — List of event types to filter by.
-- `accessPermissions` [query, array] — Access permission in. Example: "Read-Only".
-- `agentIds` [query, array] — List of agent Ids to filter by
-- `deviceIds` [query, array] — List of device IDs to filter by
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `countOnly` [query, boolean]: If true, only total number of items will be returned, without any of the actual objects.
+- `skipCount` [query, boolean]: If true, total number of items will not be calculated, which speeds up execution time.
+- `sortBy` [query, string] (enum: id, eventTime, eventType, agentId): The column to sort the results by. Example: "id".
+- `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [query, boolean]: Indicates a tenant scope request
+- `query` [query, string]: A free-text search term, will match applicable attributes.
+- `eventTime__gt` [query, string]: Return events generated after this time. Example: "2018-02-27T04:49:26.257525Z".
+- `eventTime__lt` [query, string]: Return events generated before this time. Example: "2018-02-27T04:49:26.257525Z".
+- `eventTime__gte` [query, string]: Return events generated after or at this time. Example: "2018-02-27T04:49:26.257525Z".
+- `eventTime__lte` [query, string]: Return events generated before or at this time. Example: "2018-02-27T04:49:26.257525Z".
+- `eventTime__between` [query, string]: Return events created within this range (inclusive). Example: "1514978764288-1514978999999".
+- `ids` [query, array]: List of IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `eventIds` [query, array]: List of event IDs to filter by
+- `interfaces` [query, array]: List of interfaces to filter by. Example: "USB".
+- `deviceClasses` [query, array]: List of device classes to filter by. Example: "02h".
+- `serviceClasses` [query, array]: List of service classes to filter by. Example: "02".
+- `vendorIds` [query, array]: List of vendor IDs to filter by.
+- `productIds` [query, array]: List of product IDs to filter by. Example: "02".
+- `uids` [query, array]: List of uIds to filter by.
+- `eventTypes` [query, array]: List of event types to filter by.
+- `accessPermissions` [query, array]: Access permission in. Example: "Read-Only".
+- `agentIds` [query, array]: List of agent Ids to filter by
+- `deviceIds` [query, array]: List of device IDs to filter by
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -184,36 +184,36 @@ Export Device Control rules to a CSV file.
 Required permissions: `Device Control.view`
 
 Parameters:
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [query, boolean] — Indicates a tenant scope request
-- `query` [query, string] — A free-text search term, will match applicable attributes.
-- `scopes` [query, array] — Return only device rules in this scope. Example: "site".
-- `interfaces` [query, array] — Return device rules with the filtered interface. Example: "USB".
-- `deviceClasses` [query, array] — Return device rules with the filtered device class. Example: "02h".
-- `serviceClasses` [query, array] — Return device rules with the filtered service class. Example: "02".
-- `ruleName` [query, string] — Return device rules with the filtered rule name.
-- `vendorIds` [query, array] — Return device rules with the filtered vendor id.
-- `productIds` [query, array] — Return device rules with the filtered product id. Example: "02".
-- `uids` [query, array] — Return device rules with the filtered uId.
-- `actions` [query, array] — Return device rules with the filtered action. Example: "Allow".
-- `statuses` [query, array] — Return device rules with the filtered status. Example: "Enabled".
-- `createdAt__lt` [query, string] — Return device rules created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gt` [query, string] — Return device rules created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__lte` [query, string] — Return device rules created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gte` [query, string] — Return device rules created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__between` [query, string] — Return device rules created within this range (inclusive). Example: "1514978764288-1514978999999".
-- `ids` [query, array] — List of ids to filter by. Example: "225494730938493804,225494730938493915".
-- `versions` [query, array] — Return device rules with the filtered versions.
-- `minorClasses` [query, array] — Return device rules with the filtered minor classes.
-- `accessPermissions` [query, array] — Access permission in. Example: "Read-Only".
-- `bluetoothAddresses` [query, array] — Return device rules with the filtered bluetooth addresses.
-- `gattServices` [query, array] — Return device rules with the filtered GATT services.
-- `manufacturerNames` [query, array] — Return device rules with the filtered manufacturer names.
-- `deviceNames` [query, array] — Return device rules with the filtered device names.
-- `deviceInformationServiceInfoKeys` [query, array] — Return device rules with the filtered device information service info keys.
-- `deviceIds` [query, array] — Return device rules with the filtered device id. Example: "02".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [query, boolean]: Indicates a tenant scope request
+- `query` [query, string]: A free-text search term, will match applicable attributes.
+- `scopes` [query, array]: Return only device rules in this scope. Example: "site".
+- `interfaces` [query, array]: Return device rules with the filtered interface. Example: "USB".
+- `deviceClasses` [query, array]: Return device rules with the filtered device class. Example: "02h".
+- `serviceClasses` [query, array]: Return device rules with the filtered service class. Example: "02".
+- `ruleName` [query, string]: Return device rules with the filtered rule name.
+- `vendorIds` [query, array]: Return device rules with the filtered vendor id.
+- `productIds` [query, array]: Return device rules with the filtered product id. Example: "02".
+- `uids` [query, array]: Return device rules with the filtered uId.
+- `actions` [query, array]: Return device rules with the filtered action. Example: "Allow".
+- `statuses` [query, array]: Return device rules with the filtered status. Example: "Enabled".
+- `createdAt__lt` [query, string]: Return device rules created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gt` [query, string]: Return device rules created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__lte` [query, string]: Return device rules created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gte` [query, string]: Return device rules created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__between` [query, string]: Return device rules created within this range (inclusive). Example: "1514978764288-1514978999999".
+- `ids` [query, array]: List of ids to filter by. Example: "225494730938493804,225494730938493915".
+- `versions` [query, array]: Return device rules with the filtered versions.
+- `minorClasses` [query, array]: Return device rules with the filtered minor classes.
+- `accessPermissions` [query, array]: Access permission in. Example: "Read-Only".
+- `bluetoothAddresses` [query, array]: Return device rules with the filtered bluetooth addresses.
+- `gattServices` [query, array]: Return device rules with the filtered GATT services.
+- `manufacturerNames` [query, array]: Return device rules with the filtered manufacturer names.
+- `deviceNames` [query, array]: Return device rules with the filtered device names.
+- `deviceInformationServiceInfoKeys` [query, array]: Return device rules with the filtered device information service info keys.
+- `deviceIds` [query, array]: Return device rules with the filtered device id. Example: "02".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -227,7 +227,7 @@ Device Control requires Control SKU. Linux Agents do not support Device Control.
 Optional permissions: `Device Control.delete, Device Control.create, Device Control.view`
 
 Parameters:
-- `body` [body, device_control.schemas_CopyRuleSchema] — 
+- `body` [body, device_control.schemas_CopyRuleSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -242,7 +242,7 @@ Device Control requires Control SKU. Linux Agents do not support Device Control.
 Required permissions: `Device Control.edit`
 
 Parameters:
-- `body` [body, device_control.schemas_ReorderSchema] — 
+- `body` [body, device_control.schemas_ReorderSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -255,7 +255,7 @@ Change the Device Control rule that matches the filter. To learn more about the 
 Required permissions: `Device Control.edit`
 
 Parameters:
-- `rule_id` [path, string] **required** — Rule ID. Example: "225494730938493804".
-- `body` [body, device_control.schemas_PutDeviceSchema] — 
+- `rule_id` [path, string] **required**: Rule ID. Example: "225494730938493804".
+- `body` [body, device_control.schemas_PutDeviceSchema]: 
 
 Responses: 404 Device rule not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

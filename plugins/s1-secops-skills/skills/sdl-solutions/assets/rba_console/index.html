@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RBA Console — SentinelOne</title>
+<title>SentinelOne RBA Console</title>
 <style>
   :root{
     --bg:#0b0b12; --panel:#14141f; --panel2:#1b1b2a; --line:#2a2a3d;
@@ -57,6 +57,11 @@
   .note{font-size:12.5px;color:var(--mut);margin-top:6px}
   a{color:var(--pur)}
 </style>
+<script>
+/* Per-session API token, injected by server.py when it serves this file.
+   Echoed back as the X-RBA-Token header on every /api/ POST. */
+window.RBA_TOKEN="__RBA_SESSION_TOKEN__";
+</script>
 </head>
 <body>
 <header>
@@ -144,7 +149,7 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
 });
 
 async function api(path,body){
-  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-RBA-Token':window.RBA_TOKEN||''},body:JSON.stringify(body||{})});
   const t=await r.text(); let j; try{j=JSON.parse(t)}catch(e){throw new Error('Bad response: '+t.slice(0,200))}
   if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status)); return j;
 }
@@ -160,7 +165,7 @@ async function loadLive(){
     const sum=await api('/api/powerQuery',{query:"dataSource.name='risk' risk_object=* | group total_events=count(), objects=estimate_distinct(risk_object), contributors=estimate_distinct(contributor), tactics=estimate_distinct(mitre_tactic) | limit 1",startTime:'24h'});
     const s=pqRows(sum)[0]||{};
     $('#tiles').innerHTML=[['Risk events',s.total_events],['Risk objects',s.objects],['Contributors',s.contributors],['MITRE tactics',s.tactics]]
-      .map(([l,n])=>`<div class="tile"><div class="n">${n??'—'}</div><div class="l">${l} (24h)</div></div>`).join('');
+      .map(([l,n])=>`<div class="tile"><div class="n">${n??'n/a'}</div><div class="l">${l} (24h)</div></div>`).join('');
     const max=Math.max(...rows.map(r=>+r.score||0),1);
     $('#leader').innerHTML=`<table><thead><tr><th>Risk object</th><th>Type</th><th class="num">Score</th><th></th><th class="num">Events</th><th class="num">Tactics</th></tr></thead><tbody>`+
       rows.map(r=>{const t=(r.risk_object_type||'').toLowerCase();const fires=(t==='host'&&+r.score>=40)||(t==='user'&&+r.score>=50);

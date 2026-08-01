@@ -54,7 +54,7 @@ header automatically. Errors surface as S1APIError with status + body.
 
 Performance:
 - HTTP connection pooling via sized HTTPAdapter (pool_maxsize=32 default).
-  Re-uses sockets across sequential and parallel calls — big win vs. the
+  Re-uses sockets across sequential and parallel calls, big win vs. the
   default 10 when fanning out.
 - Retries on 429/5xx with exponential backoff, honoring Retry-After.
 - Optional short-TTL response cache for rarely-changing read endpoints
@@ -115,7 +115,7 @@ _MNT_SKIP = frozenset({".claude", ".auto-memory", ".remote-plugins", "outputs", 
 #
 # GET /cloud-detection/rules silently drops queryType="scheduled" PowerQuery
 # rules unless isLegacy=false is on the query string. There is no error and
-# no warning — the response just lies by omission. This is the #1 way
+# no warning: the response just lies by omission. This is the #1 way
 # "list my scheduled detections" returns 0 when scheduled rules actually
 # exist. Auto-inject the parameter so callers cannot forget. Honors an
 # explicit override if the caller already set isLegacy in params.
@@ -167,7 +167,7 @@ def _walk_up_for_workspace_creds() -> Optional[Path]:
 
       1. $COWORK_WORKSPACE env var. If set, look for
          $COWORK_WORKSPACE/credentials.json (the recommended convention).
-         Falls through to walk-up if not found, rather than failing —
+         Falls through to walk-up if not found, rather than failing,
          defensive against typos.
 
       2. Walk up from cwd looking for credentials.json. Catches the common
@@ -292,7 +292,7 @@ def _apply_s1_keys(creds: Dict[str, Any], cfg: Dict[str, Any], source: str) -> N
         # that still read cfg["uam_alert_interface_url"] keep working.
         cfg["uam_alert_interface_url"] = hec_url
 
-# Endpoints where caching is safe — they change rarely during a session.
+# Endpoints where caching is safe: they change rarely during a session.
 # Prefix match, base_url stripped.
 _CACHEABLE_PATHS = (
     "/web/api/v2.1/accounts",
@@ -336,7 +336,7 @@ def _load_config() -> Dict[str, Any]:
 
     Priority order (highest wins, applied last):
       7. environment variables
-      6. workspace credentials.json — resolved by
+      6. workspace credentials.json, resolved by
          _walk_up_for_workspace_creds() in this order:
            a. $COWORK_WORKSPACE/credentials.json (recommended)
            b. cwd walk-up for credentials.json
@@ -439,7 +439,7 @@ class S1Client:
                               endpoints that reject multi-scope tokens
                               (e.g. /threat-intelligence/iocs). Falls back
                               to `api_token` if `api_token_single_scope`
-                              is not configured — callers that strictly
+                              is not configured, callers that strictly
                               need a single-scope token should check the
                               resulting `self.token_kind_effective`.
 
@@ -484,7 +484,7 @@ class S1Client:
                 "folder Cowork can access) or export S1_CONSOLE_API_TOKEN."
             )
 
-        # Session with pooled connection adapter — allows many parallel GETs
+        # Session with pooled connection adapter: allows many parallel GETs
         # to share sockets to the same host without tearing them down.
         self.session = requests.Session()
         adapter = HTTPAdapter(
@@ -501,7 +501,7 @@ class S1Client:
             "User-Agent": "s1-mgmt-api-skill/1.1 (+claude)",
         })
 
-        # response cache — (path, sorted-params-tuple) -> (expires_ts, body)
+        # response cache: (path, sorted-params-tuple) -> (expires_ts, body)
         self._cache: Dict[Tuple[str, Tuple], Tuple[float, Dict[str, Any]]] = {}
         self._cache_lock = threading.Lock()
 
@@ -592,7 +592,9 @@ class S1Client:
                 wait = min(2 ** attempt, 30)
                 retry_after = resp.headers.get("Retry-After")
                 if retry_after and retry_after.isdigit():
-                    wait = int(retry_after)
+                    # Cap honored Retry-After at 30s so a hostile or buggy
+                    # header cannot stall the client for minutes.
+                    wait = min(int(retry_after), 30)
                 time.sleep(wait)
                 continue
             # error path
@@ -748,7 +750,7 @@ class S1Client:
 
 
 if __name__ == "__main__":
-    # Smoke test — lists accounts, then fans out four parallel GETs
+    # Smoke test: lists accounts, then fans out four parallel GETs
     c = S1Client(cache_ttl=60)
     r = c.get("/web/api/v2.1/accounts", params={"limit": 5})
     print("accounts page:", len(r.get("data", []) or []))

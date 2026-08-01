@@ -10,7 +10,7 @@ Delete Firewall Control rules that match the filter.
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `body` [body, firewall_control.schemas_RuleDeleteSchema] — 
+- `body` [body, firewall_control.schemas_RuleDeleteSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -22,40 +22,40 @@ Get the Firewall Control rules for a scope specified by ID (run "accounts", "sit
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view`
 
 Parameters:
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `countOnly` [query, boolean] — If true, only total number of items will be returned, without any of the actual objects.
-- `skipCount` [query, boolean] — If true, total number of items will not be calculated, which speeds up execution time.
-- `sortBy` [query, string] (enum: id, name, action, status, order) — The column to sort the results by. Example: "id".
-- `sortOrder` [query, string] (enum: asc, desc) — Sort direction. Example: "asc".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [query, boolean] — Indicates a tenant scope request
-- `query` [query, string] — Free text search on name, tag, application, protocol
-- `scopes` [query, array] — Return only firewall rules in this scope. Example: "site".
-- `applications` [query, array] — Return firewall rules with the filtered firewall class.
-- `name` [query, string] — Return firewall rules with the filtered name.
-- `protocols` [query, array] — Return firewall rules with the filtered protocols.
-- `osTypes` [query, array] — Return firewall rules with the filtered os_type. Example: "macos".
-- `directions` [query, array] — Return firewall rules with the filtered directions. Example: "any".
-- `actions` [query, array] — Return firewall rules with the filtered action. Example: "Allow".
-- `statuses` [query, array] — Return firewall rules with the filtered status. Example: "Enabled".
-- `createdAt__lt` [query, string] — Return firewall rules created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gt` [query, string] — Return firewall rules created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__lte` [query, string] — Return firewall rules created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gte` [query, string] — Return firewall rules created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__between` [query, string] — Return firewall rules created within this range (inclusive). Example: "1514978764288-1514978999999".
-- `ids` [query, array] — List of ids to filter by. Example: "225494730938493804,225494730938493915".
-- `locationIds` [query, array] — Filter by associated locations. Example: "225494730938493804,225494730938493915".
-- `tagIds` [query, array] — Filter by associated tags. Example: "225494730938493804,225494730938493915".
-- `name__contains` [query, array] — Free-text filter by the Rule name (supports multiple values)
-- `tagName__contains` [query, array] — Free-text filter by the Tag name (supports multiple values)
-- `application__contains` [query, array] — Free-text filter by application (supports multiple values)
-- `protocol__contains` [query, array] — Free-text filter by protocol (supports multiple values)
-- `service__contains` [query, array] — Free-text filter by service (supports multiple values)
-- `disablePagination` [query, boolean] — If true, all rules for requested scope will be returned
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `countOnly` [query, boolean]: If true, only total number of items will be returned, without any of the actual objects.
+- `skipCount` [query, boolean]: If true, total number of items will not be calculated, which speeds up execution time.
+- `sortBy` [query, string] (enum: id, name, action, status, order): The column to sort the results by. Example: "id".
+- `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [query, boolean]: Indicates a tenant scope request
+- `query` [query, string]: Free text search on name, tag, application, protocol
+- `scopes` [query, array]: Return only firewall rules in this scope. Example: "site".
+- `applications` [query, array]: Return firewall rules with the filtered firewall class.
+- `name` [query, string]: Return firewall rules with the filtered name.
+- `protocols` [query, array]: Return firewall rules with the filtered protocols.
+- `osTypes` [query, array]: Return firewall rules with the filtered os_type. Example: "macos".
+- `directions` [query, array]: Return firewall rules with the filtered directions. Example: "any".
+- `actions` [query, array]: Return firewall rules with the filtered action. Example: "Allow".
+- `statuses` [query, array]: Return firewall rules with the filtered status. Example: "Enabled".
+- `createdAt__lt` [query, string]: Return firewall rules created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gt` [query, string]: Return firewall rules created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__lte` [query, string]: Return firewall rules created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gte` [query, string]: Return firewall rules created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__between` [query, string]: Return firewall rules created within this range (inclusive). Example: "1514978764288-1514978999999".
+- `ids` [query, array]: List of ids to filter by. Example: "225494730938493804,225494730938493915".
+- `locationIds` [query, array]: Filter by associated locations. Example: "225494730938493804,225494730938493915".
+- `tagIds` [query, array]: Filter by associated tags. Example: "225494730938493804,225494730938493915".
+- `name__contains` [query, array]: Free-text filter by the Rule name (supports multiple values)
+- `tagName__contains` [query, array]: Free-text filter by the Tag name (supports multiple values)
+- `application__contains` [query, array]: Free-text filter by application (supports multiple values)
+- `protocol__contains` [query, array]: Free-text filter by protocol (supports multiple values)
+- `service__contains` [query, array]: Free-text filter by service (supports multiple values)
+- `disablePagination` [query, boolean]: If true, all rules for requested scope will be returned
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -67,7 +67,7 @@ Create a Firewall Control rule for a scope specified by ID (run "accounts", "sit
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `body` [body, firewall_control.schemas_PostFirewallSchema] — 
+- `body` [body, firewall_control.schemas_PostFirewallSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -79,7 +79,7 @@ Create a Firewall Rule tag. <br>Create tags to represent Firewall policies - a s
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `body` [body, firewall_control.schemas_ChangeRulesTagsSchema] — 
+- `body` [body, firewall_control.schemas_ChangeRulesTagsSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -91,10 +91,10 @@ Get the Firewall Control configuration for a given scope.<br>To filter the resul
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view`
 
 Parameters:
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [query, boolean] — Indicates a tenant scope request
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [query, boolean]: Indicates a tenant scope request
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -106,7 +106,7 @@ Change the Firewall Control configuration for a given scope.  <br>To get the ID 
 Optional permissions: `Firewall Control.modifySettings(preferencesTab), Network Quarantine Control.modifySettings(preferencesTab), Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `body` [body, firewall_control.schemas_PostFirewallSettingsSchema] — 
+- `body` [body, firewall_control.schemas_PostFirewallSettingsSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -118,7 +118,7 @@ Copy a set of rules to other scopes. <br>In the filter of the body, enter the pr
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view, Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `body` [body, firewall_control.schemas_CopyRuleSchema] — 
+- `body` [body, firewall_control.schemas_CopyRuleSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -130,7 +130,7 @@ Change the status of a set of Firewall Control rules that match the filter to "E
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `body` [body, firewall_control.schemas_EnableRuleSchema] — 
+- `body` [body, firewall_control.schemas_EnableRuleSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -142,32 +142,32 @@ Export Firewall Control rules that match the filter to a JSON file from a scope 
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view`
 
 Parameters:
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [query, boolean] — Indicates a tenant scope request
-- `query` [query, string] — Free text search on name, tag, application, protocol
-- `scopes` [query, array] — Return only firewall rules in this scope. Example: "site".
-- `applications` [query, array] — Return firewall rules with the filtered firewall class.
-- `name` [query, string] — Return firewall rules with the filtered name.
-- `protocols` [query, array] — Return firewall rules with the filtered protocols.
-- `osTypes` [query, array] — Return firewall rules with the filtered os_type. Example: "macos".
-- `directions` [query, array] — Return firewall rules with the filtered directions. Example: "any".
-- `actions` [query, array] — Return firewall rules with the filtered action. Example: "Allow".
-- `statuses` [query, array] — Return firewall rules with the filtered status. Example: "Enabled".
-- `createdAt__lt` [query, string] — Return firewall rules created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gt` [query, string] — Return firewall rules created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__lte` [query, string] — Return firewall rules created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gte` [query, string] — Return firewall rules created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__between` [query, string] — Return firewall rules created within this range (inclusive). Example: "1514978764288-1514978999999".
-- `ids` [query, array] — List of ids to filter by. Example: "225494730938493804,225494730938493915".
-- `locationIds` [query, array] — Filter by associated locations. Example: "225494730938493804,225494730938493915".
-- `tagIds` [query, array] — Filter by associated tags. Example: "225494730938493804,225494730938493915".
-- `name__contains` [query, array] — Free-text filter by the Rule name (supports multiple values)
-- `tagName__contains` [query, array] — Free-text filter by the Tag name (supports multiple values)
-- `application__contains` [query, array] — Free-text filter by application (supports multiple values)
-- `protocol__contains` [query, array] — Free-text filter by protocol (supports multiple values)
-- `service__contains` [query, array] — Free-text filter by service (supports multiple values)
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [query, boolean]: Indicates a tenant scope request
+- `query` [query, string]: Free text search on name, tag, application, protocol
+- `scopes` [query, array]: Return only firewall rules in this scope. Example: "site".
+- `applications` [query, array]: Return firewall rules with the filtered firewall class.
+- `name` [query, string]: Return firewall rules with the filtered name.
+- `protocols` [query, array]: Return firewall rules with the filtered protocols.
+- `osTypes` [query, array]: Return firewall rules with the filtered os_type. Example: "macos".
+- `directions` [query, array]: Return firewall rules with the filtered directions. Example: "any".
+- `actions` [query, array]: Return firewall rules with the filtered action. Example: "Allow".
+- `statuses` [query, array]: Return firewall rules with the filtered status. Example: "Enabled".
+- `createdAt__lt` [query, string]: Return firewall rules created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gt` [query, string]: Return firewall rules created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__lte` [query, string]: Return firewall rules created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gte` [query, string]: Return firewall rules created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__between` [query, string]: Return firewall rules created within this range (inclusive). Example: "1514978764288-1514978999999".
+- `ids` [query, array]: List of ids to filter by. Example: "225494730938493804,225494730938493915".
+- `locationIds` [query, array]: Filter by associated locations. Example: "225494730938493804,225494730938493915".
+- `tagIds` [query, array]: Filter by associated tags. Example: "225494730938493804,225494730938493915".
+- `name__contains` [query, array]: Free-text filter by the Rule name (supports multiple values)
+- `tagName__contains` [query, array]: Free-text filter by the Tag name (supports multiple values)
+- `application__contains` [query, array]: Free-text filter by application (supports multiple values)
+- `protocol__contains` [query, array]: Free-text filter by protocol (supports multiple values)
+- `service__contains` [query, array]: Free-text filter by service (supports multiple values)
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -179,11 +179,11 @@ Import Firewall Control rules from an exported JSON file to scopes specified by 
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `accountIds` [formData, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [formData, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [formData, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [formData, boolean] — Indicates a tenant scope request
-- `file` [formData, file] **required** — File
+- `accountIds` [formData, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [formData, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [formData, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [formData, boolean]: Indicates a tenant scope request
+- `file` [formData, file] **required**: File
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -195,7 +195,7 @@ Remove Firewall Rules, defined with the ID of the rules (run 'firewall-control')
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view, Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `body` [body, firewall_control.schemas_CopyRuleSchema] — 
+- `body` [body, firewall_control.schemas_CopyRuleSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -207,15 +207,15 @@ Get a list of protocols that can be used in Firewall Control rules.
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view`
 
 Parameters:
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `countOnly` [query, boolean] — If true, only total number of items will be returned, without any of the actual objects.
-- `skipCount` [query, boolean] — If true, total number of items will not be calculated, which speeds up execution time.
-- `sortBy` [query, string] (enum: name) — The column to sort the results by. Example: "id".
-- `sortOrder` [query, string] (enum: asc, desc) — Sort direction. Example: "asc".
-- `query` [query, string] — Full text search on protocols
-- `disablePagination` [query, boolean] — If true, all rules for requested scope will be returned
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `countOnly` [query, boolean]: If true, only total number of items will be returned, without any of the actual objects.
+- `skipCount` [query, boolean]: If true, total number of items will not be calculated, which speeds up execution time.
+- `sortBy` [query, string] (enum: name): The column to sort the results by. Example: "id".
+- `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
+- `query` [query, string]: Full text search on protocols
+- `disablePagination` [query, boolean]: If true, all rules for requested scope will be returned
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -227,7 +227,7 @@ Remove firewall tags from rules matching the filter.<br>Tags represent Firewall 
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `body` [body, firewall_control.schemas_ChangeRulesTagsSchema] — 
+- `body` [body, firewall_control.schemas_ChangeRulesTagsSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -239,7 +239,7 @@ Change the order of rules for a scope  specified by ID (run "accounts", "sites",
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `body` [body, firewall_control.schemas_ReorderSchema] — 
+- `body` [body, firewall_control.schemas_ReorderSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -251,7 +251,7 @@ Set location attributes for a Location Aware Firewall Control rule. These rules 
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `body` [body, firewall_control.schemas_SetLocationSchema] — 
+- `body` [body, firewall_control.schemas_SetLocationSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -263,41 +263,41 @@ Get all Firewall rules linked to tag, regardless of inheritance mode. <br>To get
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view`
 
 Parameters:
-- `tag_id` [path, string] **required** — Rule ID. Example: "225494730938493804".
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `countOnly` [query, boolean] — If true, only total number of items will be returned, without any of the actual objects.
-- `skipCount` [query, boolean] — If true, total number of items will not be calculated, which speeds up execution time.
-- `sortBy` [query, string] (enum: id, name, action, status, order) — The column to sort the results by. Example: "id".
-- `sortOrder` [query, string] (enum: asc, desc) — Sort direction. Example: "asc".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `tenant` [query, boolean] — Indicates a tenant scope request
-- `query` [query, string] — Free text search on name, tag, application, protocol
-- `scopes` [query, array] — Return only firewall rules in this scope. Example: "site".
-- `applications` [query, array] — Return firewall rules with the filtered firewall class.
-- `name` [query, string] — Return firewall rules with the filtered name.
-- `protocols` [query, array] — Return firewall rules with the filtered protocols.
-- `osTypes` [query, array] — Return firewall rules with the filtered os_type. Example: "macos".
-- `directions` [query, array] — Return firewall rules with the filtered directions. Example: "any".
-- `actions` [query, array] — Return firewall rules with the filtered action. Example: "Allow".
-- `statuses` [query, array] — Return firewall rules with the filtered status. Example: "Enabled".
-- `createdAt__lt` [query, string] — Return firewall rules created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gt` [query, string] — Return firewall rules created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__lte` [query, string] — Return firewall rules created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__gte` [query, string] — Return firewall rules created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
-- `createdAt__between` [query, string] — Return firewall rules created within this range (inclusive). Example: "1514978764288-1514978999999".
-- `ids` [query, array] — List of ids to filter by. Example: "225494730938493804,225494730938493915".
-- `locationIds` [query, array] — Filter by associated locations. Example: "225494730938493804,225494730938493915".
-- `tagIds` [query, array] — Filter by associated tags. Example: "225494730938493804,225494730938493915".
-- `name__contains` [query, array] — Free-text filter by the Rule name (supports multiple values)
-- `tagName__contains` [query, array] — Free-text filter by the Tag name (supports multiple values)
-- `application__contains` [query, array] — Free-text filter by application (supports multiple values)
-- `protocol__contains` [query, array] — Free-text filter by protocol (supports multiple values)
-- `service__contains` [query, array] — Free-text filter by service (supports multiple values)
-- `disablePagination` [query, boolean] — If true, all rules for requested scope will be returned
+- `tag_id` [path, string] **required**: Rule ID. Example: "225494730938493804".
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `countOnly` [query, boolean]: If true, only total number of items will be returned, without any of the actual objects.
+- `skipCount` [query, boolean]: If true, total number of items will not be calculated, which speeds up execution time.
+- `sortBy` [query, string] (enum: id, name, action, status, order): The column to sort the results by. Example: "id".
+- `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `tenant` [query, boolean]: Indicates a tenant scope request
+- `query` [query, string]: Free text search on name, tag, application, protocol
+- `scopes` [query, array]: Return only firewall rules in this scope. Example: "site".
+- `applications` [query, array]: Return firewall rules with the filtered firewall class.
+- `name` [query, string]: Return firewall rules with the filtered name.
+- `protocols` [query, array]: Return firewall rules with the filtered protocols.
+- `osTypes` [query, array]: Return firewall rules with the filtered os_type. Example: "macos".
+- `directions` [query, array]: Return firewall rules with the filtered directions. Example: "any".
+- `actions` [query, array]: Return firewall rules with the filtered action. Example: "Allow".
+- `statuses` [query, array]: Return firewall rules with the filtered status. Example: "Enabled".
+- `createdAt__lt` [query, string]: Return firewall rules created before this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gt` [query, string]: Return firewall rules created after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__lte` [query, string]: Return firewall rules created before or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__gte` [query, string]: Return firewall rules created after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
+- `createdAt__between` [query, string]: Return firewall rules created within this range (inclusive). Example: "1514978764288-1514978999999".
+- `ids` [query, array]: List of ids to filter by. Example: "225494730938493804,225494730938493915".
+- `locationIds` [query, array]: Filter by associated locations. Example: "225494730938493804,225494730938493915".
+- `tagIds` [query, array]: Filter by associated tags. Example: "225494730938493804,225494730938493915".
+- `name__contains` [query, array]: Free-text filter by the Rule name (supports multiple values)
+- `tagName__contains` [query, array]: Free-text filter by the Tag name (supports multiple values)
+- `application__contains` [query, array]: Free-text filter by application (supports multiple values)
+- `protocol__contains` [query, array]: Free-text filter by protocol (supports multiple values)
+- `service__contains` [query, array]: Free-text filter by service (supports multiple values)
+- `disablePagination` [query, boolean]: If true, all rules for requested scope will be returned
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -309,7 +309,7 @@ Change a Firewall Control rule. <br>This command requires the rule ID, which you
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
-- `firewall_rule_category` [path, string] **required** — Rule ID. Example: "225494730938493804".
-- `body` [body, firewall_control.schemas_PutFirewallSchema] — 
+- `firewall_rule_category` [path, string] **required**: Rule ID. Example: "225494730938493804".
+- `body` [body, firewall_control.schemas_PutFirewallSchema]: 
 
 Responses: 404 Firewall rule not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

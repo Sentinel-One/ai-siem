@@ -166,8 +166,10 @@ def rule_P06_named_subquery(query: str) -> Optional[Tuple[str, str]]:
 
 
 def rule_P07_regex_escapes(query: str) -> Optional[Tuple[str, str]]:
-    # Detect `matches '...\\s...'` / `\\d` literally inside the regex literal.
-    if re.search(r"matches\s+'[^']*\\\\[sd][^']*'", query, flags=re.IGNORECASE):
+    # Detect a backslash escape (\s or \d) inside a `matches '...'` literal.
+    # After json.loads, real panel queries hold ONE literal backslash, so the
+    # pattern must match a single `\\` in the compiled regex (raw `\\` here).
+    if re.search(r"matches\s+'[^']*\\[sd][^']*'", query, flags=re.IGNORECASE):
         return ("P07", "Regex escapes `\\s` / `\\d` inside `matches '...'` produce HTTP 500. "
                        "Use simple character classes ([0-9], [ \\t]) or `field in (...)` for fixed lists.")
     return None

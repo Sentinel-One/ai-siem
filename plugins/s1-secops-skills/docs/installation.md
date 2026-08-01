@@ -50,7 +50,7 @@ All three servers run from public package registries: `s1-secops-mcp` and `@burt
         "-e", "SDL_LOG_READ_KEY",
         "-e", "SDL_CONFIG_WRITE_KEY",
         "-e", "SDL_CONFIG_READ_KEY",
-        "ghcr.io/pmoses-s1/s1-mcps:1.2.4",
+        "ghcr.io/pmoses-s1/s1-mcps:1.2.5",
         "sentinelone-mcp"
       ],
       "env": {

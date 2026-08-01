@@ -13,6 +13,6 @@ An unknown answer is given for hashes that are not yet known by Reputation.
 Required permissions: `Blacklist.view`
 
 Parameters:
-- `hash` [path, string] **required** — Hash
+- `hash` [path, string] **required**: Hash
 
 Responses: 200 Verdict of the hash known to the management, 401 Unauthorized access - please sign in and retry.

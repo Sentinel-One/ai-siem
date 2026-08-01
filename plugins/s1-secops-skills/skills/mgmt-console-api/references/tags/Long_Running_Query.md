@@ -13,7 +13,7 @@ Returns a `QueryResult` containing the query identifier, status, and, if the que
 Required permissions: `Skylight Query API.view`
 
 Parameters:
-- `body` [body, object] — 
+- `body` [body, object]: 
 
 Responses: 200 Query launched successfully.
 
@@ -26,8 +26,8 @@ Remove query from the list of launched queries. Clients are required to call thi
 Required permissions: `Skylight Query API.view`
 
 Parameters:
-- `id` [path, string] **required** — The unique query identifier
-- `X-Dataset-Query-Forward-Tag` [header, string] **required** — routing header
+- `id` [path, string] **required**: The unique query identifier
+- `X-Dataset-Query-Forward-Tag` [header, string] **required**: routing header
 
 Responses: 204 Query has been removed successfully
 
@@ -40,8 +40,8 @@ Poll a previously launched query by its unique identifier. Responses will return
 Required permissions: `Skylight Query API.view`
 
 Parameters:
-- `id` [path, string] **required** — The unique query identifier
-- `lastStepSeen` [query, integer] **required** — The step to start return result from
-- `X-Dataset-Query-Forward-Tag` [header, string] **required** — routing header
+- `id` [path, string] **required**: The unique query identifier
+- `lastStepSeen` [query, integer] **required**: The step to start return result from
+- `X-Dataset-Query-Forward-Tag` [header, string] **required**: routing header
 
 Responses: 200 Results retrieved successfully., 404 If no launched query found for the combination of query id +

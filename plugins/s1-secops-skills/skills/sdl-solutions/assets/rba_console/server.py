@@ -9,7 +9,7 @@ serves the 4-tab RBA demo UI at http://localhost:8787
 Run:  python3 server.py
 Then open http://localhost:8787 in your browser.
 """
-import json, os, urllib.request, urllib.error, http.server, socketserver, pathlib, sys
+import json, os, secrets, urllib.request, urllib.error, http.server, socketserver, pathlib, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 CONFIG = os.path.expanduser("~/Library/Application Support/Claude/claude_desktop_config.json")
@@ -18,6 +18,12 @@ PORT = int(os.environ.get("RBA_PORT", "8787"))
 # The proxy injects a credentialed SDL Bearer, so a wildcard CORS policy would let any
 # site open in the browser drive SDL writes. Same-origin only; no cross-origin exposure.
 ALLOWED_ORIGINS = {f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}"}
+# Second guard: the origin check alone still admits Origin-less requests (curl,
+# any local process), which could otherwise drive /api/putFile with the
+# config-write key. A per-session token is minted at startup, injected into the
+# served HTML, and must be echoed back by the frontend as the X-RBA-Token
+# header on every /api/ POST.
+SESSION_TOKEN = secrets.token_hex(16)
 
 try:
     env = json.load(open(CONFIG))["mcpServers"]["sentinelone-mcp"]["env"]
@@ -75,7 +81,11 @@ class H(http.server.BaseHTTPRequestHandler):
         p = self.path.split("?")[0]
         if p in ("/", "/index.html"):
             try:
-                self._send(200, (HERE / "index.html").read_bytes(), "text/html; charset=utf-8")
+                html = (HERE / "index.html").read_text(encoding="utf-8")
+                # Inject the per-session API token so the frontend can echo it
+                # back as X-RBA-Token on /api/ POSTs (see do_POST).
+                html = html.replace("__RBA_SESSION_TOKEN__", SESSION_TOKEN)
+                self._send(200, html, "text/html; charset=utf-8")
             except Exception as e:
                 self._send(500, f"cannot read index.html: {e}", "text/plain")
         else:
@@ -86,6 +96,14 @@ class H(http.server.BaseHTTPRequestHandler):
         if origin and origin not in ALLOWED_ORIGINS:
             self._send(403, json.dumps({"error": "cross-origin request rejected"}))
             return
+        # Per-session token check on every /api/ POST: rejects Origin-less
+        # local clients that never loaded the UI. compare_digest keeps the
+        # comparison constant-time.
+        if self.path.startswith("/api/"):
+            token = self.headers.get("X-RBA-Token") or ""
+            if not secrets.compare_digest(token, SESSION_TOKEN):
+                self._send(403, json.dumps({"error": "missing or invalid X-RBA-Token"}))
+                return
         n = int(self.headers.get("Content-Length", 0) or 0)
         raw = self.rfile.read(n) if n else b"{}"
         try:

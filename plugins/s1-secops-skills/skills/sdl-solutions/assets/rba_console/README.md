@@ -15,7 +15,7 @@ is not an issue.
 ```bash
 cd rba_console
 python3 server.py
-# then open http://localhost:8787  (use the localhost URL, NOT file:// — file:// has no proxy)
+# then open http://localhost:8787  (use the localhost URL, NOT file://, file:// has no proxy)
 ```
 
 Ctrl-C to stop. Override the port with `RBA_PORT=9000 python3 server.py`.

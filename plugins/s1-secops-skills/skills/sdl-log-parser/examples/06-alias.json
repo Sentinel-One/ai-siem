@@ -5,7 +5,7 @@
 //
 // Caveats:
 //   - aliasTo cannot chain (target must be a real parser, not another alias).
-//   - aliasTo is MUTUALLY EXCLUSIVE with everything else — including the required
+//   - aliasTo is MUTUALLY EXCLUSIVE with everything else, including the required
 //     default attributes (metadata.version, dataSource.category, dataSource.name,
 //     dataSource.vendor). If you need those attributes to land on every event, you
 //     cannot use aliasTo. Instead, copy the built-in's body into a full parser and

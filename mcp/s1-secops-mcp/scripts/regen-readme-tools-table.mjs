@@ -60,7 +60,7 @@ const TOOL_SKILL = {
 const GROUPS = [
   { label: 'PowerQuery',       prefix: 'powerquery_' },
   { label: 'Mgmt Console',     test: n => /^(s1_api_|purple_ai_|uam_(list|get|add|set))/.test(n) },
-  { label: 'SDL API',          prefix: 'sdl_' },
+  { label: 'SDL API',          test: n => n.startsWith('sdl_') || n === 'hec_ingest' },
   { label: 'Hyperautomation',  prefix: 'ha_' },
   { label: 'UAM Ingest',       test: n => /^(uam_ingest_|uam_post_)/.test(n) },
 ];

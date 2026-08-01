@@ -1,5 +1,5 @@
 {
-  "_comment": "Unified per-source/per-device STAR scheduled rules. POST each to /cloud-detection/rules; set {{SITE_ID}}. Tables ingestHealthBaseline / ingestHealthSourceStats must exist. Spike/Drop z-scores now read sig_gib/sig_ev from the per-(source, device, hod) ingestHealthBaseline row (same per-hod samples as exp_*), not the pooled per-device ingestHealthSourceStats sigma, which systematically understated z for diurnal devices. Requires the baseline builder that writes sig_* into ingestHealthBaseline. The Lag rule still gates on ingestHealthSourceStats (monitored-device check), which is unaffected. PENDING: validate on demo tenant (the lookup-dependent bodies were not syntax-validated read-only because they require the deployed lookup tables; the sigma-per-hod aggregation shape itself was live-validated 2026-07-29). Parser Drift ships separately (ingesthealth_detections_parser_drift_optional.template.json) and is OPTIONAL: needs per-environment tuning before enabling.",
+  "_comment": "Unified per-source/per-device STAR scheduled rules. POST each to /cloud-detection/rules at ACCOUNT scope: every body reads lookup tables (ingestHealthExclusions.csv, ingestHealthDeviceLevel.csv, ingestHealthBaseline, ingestHealthSourceStats), and lookup tables / datatables are ACCOUNT-level objects, so a rule whose body reads one can only be created with filter.accountIds (set {{ACCOUNT_ID}}); site-scoped creation of lookup-reading rules is invalid. Tables ingestHealthBaseline / ingestHealthSourceStats must exist. Spike/Drop z-scores now read sig_gib/sig_ev from the per-(source, device, hod) ingestHealthBaseline row (same per-hod samples as exp_*), not the pooled per-device ingestHealthSourceStats sigma, which systematically understated z for diurnal devices. Requires the baseline builder that writes sig_* into ingestHealthBaseline. The Lag rule still gates on ingestHealthSourceStats (monitored-device check), which is unaffected. PENDING: validate on demo tenant (the lookup-dependent bodies were not syntax-validated read-only because they require the deployed lookup tables; the sigma-per-hod aggregation shape itself was live-validated 2026-07-29). Parser Drift ships separately (ingesthealth_detections_parser_drift_optional.template.json) and is OPTIONAL: needs per-environment tuning before enabling.",
   "rules": [
     {
       "data": {
@@ -36,8 +36,8 @@
         }
       },
       "filter": {
-        "siteIds": [
-          "{{SITE_ID}}"
+        "accountIds": [
+          "{{ACCOUNT_ID}}"
         ]
       }
     },
@@ -76,8 +76,8 @@
         }
       },
       "filter": {
-        "siteIds": [
-          "{{SITE_ID}}"
+        "accountIds": [
+          "{{ACCOUNT_ID}}"
         ]
       }
     },
@@ -116,8 +116,8 @@
         }
       },
       "filter": {
-        "siteIds": [
-          "{{SITE_ID}}"
+        "accountIds": [
+          "{{ACCOUNT_ID}}"
         ]
       }
     }

@@ -1,5 +1,5 @@
 /**
- * PowerQuery tools — sentinelone-powerquery skill
+ * PowerQuery tools: sentinelone-powerquery skill
  *
  * Tools:
  *   powerquery_run            Run a PowerQuery via the LRQ API
@@ -39,13 +39,13 @@ export const tools = [
   // ─── powerquery_run ────────────────────────────────────────────────────────
   {
     name: 'powerquery_run',
-    description: `Run a SentinelOne PowerQuery against the Singularity Data Lake using the LRQ API. The LRQ API is async — this tool handles the full launch-poll-cancel lifecycle and returns results. Use for threat hunting, telemetry analysis, dashboard panel validation, and STAR rule testing. Auth: Bearer <jwt> (same token as mgmt API). Time range defaults to last 24 hours if startTime/endTime are omitted.`,
+    description: `Run a SentinelOne PowerQuery against the Singularity Data Lake using the LRQ API. The LRQ API is async; this tool handles the full launch-poll-cancel lifecycle and returns results. Use for threat hunting, telemetry analysis, dashboard panel validation, and STAR rule testing. Auth: Bearer <jwt> (same token as mgmt API). Time range defaults to last 24 hours if startTime/endTime are omitted.`,
     inputSchema: {
       type: 'object',
       properties: {
         query: {
           type: 'string',
-          description: 'The PowerQuery string. Use pipe-separated commands: | filter | group | sort | limit | columns. Three distinct wildcard idioms — use the right one: (1) FIELD PRESENCE / ATTRIBUTE WILDCARD: field=* means "field is present/non-null", e.g. dataSource.name=* | group count=count() by dataSource.name — use this as a query-opener or whenever you need "all events that have this field". (2) ALL-COLUMN TEXT SEARCH: * contains \'value\' or * matches \'regex\' in the initial filter (before the first |) searches ALL indexed fields — use when the user asks to find text anywhere in the event, e.g. dataSource.name=\'MySource\' * contains \'evil.com\'. Dramatically faster than message contains. (3) EMPTY FILTER (all events): start with | and no initial predicate, e.g. | group ct=count() by event.type. Do NOT use bare * alone as the initial filter — that causes HTTP 500 ("Don\'t understand [*]"). Beyond filtering, | datasource <name> [from <dataset>] reads SentinelOne-managed inventory (assets, alerts, vulnerabilities, misconfigurations, metering; e.g. | datasource assets from \'surface/identity\') and | savelookup \'<name>\' persists the result as a reusable lookup table (see references/datasource-command.md in sentinelone-powerquery).',
+          description: 'The PowerQuery string. Use pipe-separated commands: | filter | group | sort | limit | columns. Three distinct wildcard idioms; use the right one: (1) FIELD PRESENCE / ATTRIBUTE WILDCARD: field=* means "field is present/non-null", e.g. dataSource.name=* | group count=count() by dataSource.name; use this as a query-opener or whenever you need "all events that have this field". (2) ALL-COLUMN TEXT SEARCH: * contains \'value\' or * matches \'regex\' in the initial filter (before the first |) searches ALL indexed fields; use when the user asks to find text anywhere in the event, e.g. dataSource.name=\'MySource\' * contains \'evil.com\'. Dramatically faster than message contains. (3) EMPTY FILTER (all events): start with | and no initial predicate, e.g. | group ct=count() by event.type. Do NOT use bare * alone as the initial filter; that causes HTTP 500 ("Don\'t understand [*]"). Beyond filtering, | datasource <name> [from <dataset>] reads SentinelOne-managed inventory (assets, alerts, vulnerabilities, misconfigurations, metering; e.g. | datasource assets from \'surface/identity\') and | savelookup \'<name>\' persists the result as a reusable lookup table (see references/datasource-command.md in sentinelone-powerquery).',
         },
         startTime: {
           type: 'string',
@@ -99,9 +99,11 @@ export const tools = [
       required: ['dataSourceName'],
     },
     async handler({ dataSourceName, maxEvents = 5, startTime = '24h' }) {
-      // Escape single quotes to keep tenant-defined source names from breaking
-      // (or altering) the V1 filter expression.
-      const safeName = String(dataSourceName).replace(/'/g, "\\'");
+      // Escape backslashes first, then single quotes, to keep tenant-defined
+      // source names from breaking (or altering) the V1 filter expression.
+      // Quote-only escaping let a trailing backslash neutralise the added
+      // escape (e.g. name\' -> \\' which re-opens the string).
+      const safeName = String(dataSourceName).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const filter = `dataSource.name=='${safeName}'`;
       const result = await v1Query(filter, { maxCount: Math.min(maxEvents, 50), startTime });
 

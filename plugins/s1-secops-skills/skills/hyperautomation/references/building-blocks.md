@@ -12,7 +12,7 @@ Complete data payloads for every action type in SentinelOne Hyperautomation.
 
 ## TRIGGERS
 
-### Manual Trigger (static — no user input)
+### Manual Trigger (static: no user input)
 ```json
 {
   "type": "manual_trigger",
@@ -36,7 +36,7 @@ Complete data payloads for every action type in SentinelOne Hyperautomation.
 }
 ```
 
-### Manual Trigger (dynamic — prompts user for input)
+### Manual Trigger (dynamic: prompts user for input)
 ```json
 {
   "type": "manual_trigger",
@@ -158,17 +158,17 @@ Reference incoming data: `{{http-trigger.body.someField}}`
 > be a **JSON-encoded string of an array** (e.g. `"[\"HIGH\",\"CRITICAL\"]"`), not a raw JSON
 > array. Every active production flow uses this string-encoded format.
 Common trigger data references:
-- `{{singularity-response-trigger.data.id}}` — alert ID
-- `{{singularity-response-trigger.data.name}}` — alert name
-- `{{singularity-response-trigger.data.severity}}` — severity
-- `{{singularity-response-trigger.data.asset.name}}` — asset/hostname
-- `{{singularity-response-trigger.data.asset.agentUuid}}` — agent UUID
-- `{{singularity-response-trigger.data.process.file.sha1}}` — file SHA1
-- `{{singularity-response-trigger.data.process.file.sha256}}` — file SHA256
-- `{{singularity-response-trigger.data.detectionSource.product}}` — product (EDR, STAR, CWS...)
-- `{{singularity-response-trigger.data.externalId}}` — threat external ID
-- `{{singularity-response-trigger.data.indicators[0].id}}` — first indicator ID
-- `{{singularity-response-trigger.data.indicators[0].eventTime}}` — first indicator event time
+- `{{singularity-response-trigger.data.id}}`: alert ID
+- `{{singularity-response-trigger.data.name}}`: alert name
+- `{{singularity-response-trigger.data.severity}}`: severity
+- `{{singularity-response-trigger.data.asset.name}}`: asset/hostname
+- `{{singularity-response-trigger.data.asset.agentUuid}}`: agent UUID
+- `{{singularity-response-trigger.data.process.file.sha1}}`: file SHA1
+- `{{singularity-response-trigger.data.process.file.sha256}}`: file SHA256
+- `{{singularity-response-trigger.data.detectionSource.product}}`: product (EDR, STAR, CWS...)
+- `{{singularity-response-trigger.data.externalId}}`: threat external ID
+- `{{singularity-response-trigger.data.indicators[0].id}}`: first indicator ID
+- `{{singularity-response-trigger.data.indicators[0].eventTime}}`: first indicator event time
 
 ### Email Trigger
 ```json
@@ -226,7 +226,7 @@ execution detail and consumable by parent workflows).
 `expire_in_unit` / `expire_in_value` / `expire_method` are only used for global variables that
 should TTL out; leave null for local.
 
-> **HARD RULE — one variable per action when referencing other local variables**
+> **HARD RULE: one variable per action when referencing other local variables**
 >
 > All entries in a single Variable action's `variables` array are evaluated simultaneously, not
 > sequentially. If variable B's value references `{{local_var.A}}` and A is defined in the same
@@ -235,7 +235,7 @@ should TTL out; leave null for local.
 > **Rule**: if any variable's value references a local variable defined elsewhere in the same
 > workflow, give each such variable its own dedicated Variable action.
 >
-> ❌ **Wrong** — `fullPath` silently resolves to empty because `baseUrl` is not yet available:
+> ❌ **Wrong**: `fullPath` silently resolves to empty because `baseUrl` is not yet available:
 > ```json
 > {
 >   "name": "Set Vars",
@@ -248,7 +248,7 @@ should TTL out; leave null for local.
 > }
 > ```
 >
-> ✅ **Right** — two separate actions, each with one variable:
+> ✅ **Right**: two separate actions, each with one variable:
 > ```json
 > {
 >   "name": "Set Base URL",
@@ -275,7 +275,7 @@ should TTL out; leave null for local.
 > reference each other or any other `local_var` defined in this workflow (e.g., all values are
 > literals, trigger fields, or external action outputs).
 
-### Loop (dynamic — iterates over an array)
+### Loop (dynamic: iterates over an array)
 ```json
 {
   "type": "loop",
@@ -295,7 +295,7 @@ Current index: `{{loop-items.index}}`
 Connect loop to first inner action using `custom_handle: "inner"`.
 Actions inside the loop have `"parent_action": <loop_export_id>`.
 
-### Loop (while — indefinite, until Break)
+### Loop (while: indefinite, until Break)
 ```json
 {
   "type": "loop",
@@ -311,7 +311,7 @@ Actions inside the loop have `"parent_action": <loop_export_id>`.
 }
 ```
 
-### Loop (fixed — runs N times)
+### Loop (fixed: runs N times)
 ```json
 {
   "type": "loop",
@@ -412,7 +412,7 @@ Must have `"parent_action": <loop_export_id>`. `"connected_to": []`.
 friendly tables, embedded SentinelOne logo banner).
 For attachments, use the keys **`file_name`** and **`file_content`** (NOT `name`/`content`):
 `"attachments": [{"file_name": "report.csv", "file_content": "{{local_var.csvB64}}"}]`.
-`file_content` is base64-encoded — `{{Function.BASE64_ENCODE(local_var.csv)}}` for plain text, or
+`file_content` is base64-encoded, `{{Function.BASE64_ENCODE(local_var.csv)}}` for plain text, or
 `{{Function.COMPRESS(...)}}` for a zip.
 
 > **Confirmed 2026-06-11 (live import):** using `name`/`content` fails import with
@@ -443,7 +443,7 @@ shaping note bodies, normalizing event objects before SDL ingest. **75 of 249 da
 actions in the corpus are exactly the "Generate UUID" template above**, copy it verbatim
 when you need a correlation ID.
 
-### HTTP Request (core — no integration)
+### HTTP Request (core: no integration)
 ```json
 {
   "type": "http_request",
@@ -504,27 +504,35 @@ Same as above but:
 - URL uses `{{Connection.protocol}}{{Connection.url}}/path/to/api`
 
 When generating workflows for import, always set `connection_id`, `connection_name`,
-and `integration_id` to null/"" — these are resolved from the user's configured connections.
+and `integration_id` to null/""; these are resolved from the user's configured connections.
 
 ### URL pattern for integration-backed SentinelOne actions:
 ```
 "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/<endpoint>"
 ```
 
-### Snippet
+### Snippet (call a reusable sub-workflow)
+
+The calling node type is **`snippet_20`**, not `snippet` (see `building-blocks-catalog.md` A15 and `snippets.md`). A bare `"type": "snippet"` appears in older exported flows; do not generate it for new workflows.
+
 ```json
 {
-  "type": "snippet",
+  "type": "snippet_20",
   "tag": "core_action",
+  "snippet_workflow_id": "<snippet id>",
+  "snippet_version_id": "<version>",
   "data": {
     "name": "My Snippet",
-    "action_type": "snippet"
-  },
-  "snippet_workflow_id": null,
-  "snippet_version_id": null
+    "action_type": "snippet_20",
+    "inputs": "{\"Param\":\"{{some-action.value}}\"}",
+    "use_latest_snippet_version": false,
+    "is_dynamic": false,
+    "dynamic_snippet_name": "My Snippet"
+  }
 }
 ```
-Snippets are reusable groups of actions. Connect using `custom_handle: "inner"`.
+
+Snippets are reusable groups of actions. `data.inputs` is a JSON string mapping the snippet's input parameters to parent references; `use_latest_snippet_version: true` auto-tracks the newest published version. Connect it like any ordinary action (`custom_handle: null`); `custom_handle: "inner"` is only for a loop's first inner action. Authoring a snippet uses `snippet_trigger` + `snippet_output` nodes; full authoring, calling, and lifecycle detail lives in `snippets.md`.
 
 ### Create Interaction
 ```json
@@ -595,7 +603,7 @@ Action → Condition (Is Success, checks status_code) →
   FALSE: Variable (fail note) → HTTP (add note)
 ```
 
-### Add Note to Unified Alert (GraphQL mutation — most common pattern)
+### Add Note to Unified Alert (GraphQL mutation: most common pattern)
 ```json
 {
   "name": "Add Note to Alert",

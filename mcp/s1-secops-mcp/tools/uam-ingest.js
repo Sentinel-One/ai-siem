@@ -1,5 +1,5 @@
 /**
- * UAM Alert Interface tools — push OCSF indicators + alerts INTO UAM
+ * UAM Alert Interface tools: push OCSF indicators + alerts INTO UAM
  * via the SentinelOne HEC ingest host (ingest.us1.sentinelone.net).
  *
  * Tools:
@@ -22,7 +22,7 @@ export const tools = [
 
 Two-call mode (inline=false, default): POST indicator to /v1/indicators, sleep 3s, POST SecurityAlert to /v1/alerts referencing the indicator uid. The stitcher resolves the full indicator into alert.rawIndicators. Best for testing deep indicator stitching and the Indicators tab in UAM.
 
-Inline mode (inline=true): POST a single SecurityAlert to /v1/alerts with the indicator's file/device/actor fields embedded inside finding_info.related_events[]. No separate indicator POST, no sleep — one round-trip. Best for rapid alert creation or when a single call is preferred.
+Inline mode (inline=true): POST a single SecurityAlert to /v1/alerts with the indicator's file/device/actor fields embedded inside finding_info.related_events[]. No separate indicator POST, no sleep, one round-trip. Best for rapid alert creation or when a single call is preferred.
 
 Both modes return indicator_uid and alert_uid. The alert surfaces in UAM within 30-60s. Requires S1_HEC_INGEST_URL in credentials.json.`,
     inputSchema: {
@@ -62,7 +62,7 @@ Both modes return indicator_uid and alert_uid. The alert surfaces in UAM within 
         },
         inline: {
           type: 'boolean',
-          description: 'When true, embed indicator data (file, device, actor, observables) directly inside the alert\'s finding_info.related_events[] and POST only to /v1/alerts — no separate /v1/indicators call, no sleep. When false (default), use the two-call flow: POST indicator first, sleep, then POST alert.',
+          description: 'When true, embed indicator data (file, device, actor, observables) directly inside the alert\'s finding_info.related_events[] and POST only to /v1/alerts; no separate /v1/indicators call, no sleep. When false (default), use the two-call flow: POST indicator first, sleep, then POST alert.',
           default: false,
         },
       },
@@ -79,7 +79,7 @@ Both modes return indicator_uid and alert_uid. The alert surfaces in UAM within 
   // ─── uam_post_indicators ──────────────────────────────────────────────────
   {
     name: 'uam_post_indicators',
-    description: `POST one or more raw OCSF behavioral indicators to /v1/indicators on the SentinelOne HEC ingest host. Batching is supported — pass multiple indicators in the array and they are sent in a single gzip-compressed request. Each indicator must carry metadata.profiles=["s1/security_indicator"] and a unique metadata.uid (used as the join key when an alert references it). After posting, wait at least 3s before posting a SecurityAlert that references these indicator uids (use uam_post_alert or uam_ingest_alert which enforce the sleep). Requires S1_HEC_INGEST_URL in credentials.json.`,
+    description: `POST one or more raw OCSF behavioral indicators to /v1/indicators on the SentinelOne HEC ingest host. Batching is supported; pass multiple indicators in the array and they are sent in a single gzip-compressed request. Each indicator must carry metadata.profiles=["s1/security_indicator"] and a unique metadata.uid (used as the join key when an alert references it). After posting, wait at least 3s before posting a SecurityAlert that references these indicator uids (use uam_post_alert or uam_ingest_alert which enforce the sleep). Requires S1_HEC_INGEST_URL in credentials.json.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -104,7 +104,7 @@ Both modes return indicator_uid and alert_uid. The alert surfaces in UAM within 
   // ─── uam_post_alert ───────────────────────────────────────────────────────
   {
     name: 'uam_post_alert',
-    description: `POST a single raw OCSF SecurityAlert to /v1/alerts on the SentinelOne HEC ingest host. IMPORTANT: one alert per call. The HEC stitcher silently drops all but one alert in a multi-alert POST body (HTTP 202 still returned), so this tool rejects arrays. To send multiple alerts, loop this call. Always post indicator(s) first via uam_post_indicators and sleep at least 3s before calling this — posting an alert before its indicator uids are registered causes a silent drop. Requires S1_HEC_INGEST_URL in credentials.json.`,
+    description: `POST a single raw OCSF SecurityAlert to /v1/alerts on the SentinelOne HEC ingest host. IMPORTANT: one alert per call. The HEC stitcher silently drops all but one alert in a multi-alert POST body (HTTP 202 still returned), so this tool rejects arrays. To send multiple alerts, loop this call. Always post indicator(s) first via uam_post_indicators and sleep at least 3s before calling this; posting an alert before its indicator uids are registered causes a silent drop. Requires S1_HEC_INGEST_URL in credentials.json.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -114,7 +114,7 @@ Both modes return indicator_uid and alert_uid. The alert surfaces in UAM within 
         },
         alert: {
           type: 'object',
-          description: 'Single OCSF SecurityAlert object. class_uid MUST be 99602001 (S1 Security Alert extension class) with type_uid 9960200101 — the generic OCSF 2002 is silently dropped by the stitcher even though HEC returns HTTP 202. Must have metadata.uid, finding_info.related_events[] each referencing a previously-posted indicator via uid. Each related_events entry needs class_uid, type_uid, category_uid, activity_id, severity_id, time, message, and observables[] with type+typeName.',
+          description: 'Single OCSF SecurityAlert object. class_uid MUST be 99602001 (S1 Security Alert extension class) with type_uid 9960200101; the generic OCSF 2002 is silently dropped by the stitcher even though HEC returns HTTP 202. Must have metadata.uid, finding_info.related_events[] each referencing a previously-posted indicator via uid. Each related_events entry needs class_uid, type_uid, category_uid, activity_id, severity_id, time, message, and observables[] with type+typeName.',
           additionalProperties: true,
         },
       },

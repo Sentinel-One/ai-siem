@@ -4,7 +4,7 @@
  * Verifies that the s1_api_* client (lib/s1.js) can no longer be steered into
  * changing the request authority via an attacker-supplied `path`. A path like
  * "@evil.example/x", ".evil.example/x", "//evil.example/x", or "/\evil/x" used
- * to redirect the authenticated request — and the tenant ApiToken — off-host.
+ * to redirect the authenticated request, and the tenant ApiToken, off-host.
  * After the safeUrl() fix, every one of these must throw BEFORE fetch runs, and
  * a benign path must still resolve to the configured console origin with the
  * ApiToken attached.
@@ -87,7 +87,7 @@ test('ssrf: origin-pinning backstops paths that pass the leading-slash check', a
   // "//evil" is caught up front by the single-leading-slash rule.
   await assert.rejects(() => apiPost('//evil.example/x', {}), /must be a string starting with a single/);
   // "/\evil" passes the leading-slash rule (starts with one "/") but WHATWG URL
-  // normalises the backslash to "/", yielding a foreign authority — the origin
+  // normalises the backslash to "/", yielding a foreign authority; the origin
   // check is what stops it. This proves the two layers are both load-bearing.
   await assert.rejects(() => apiPost('/\\evil.example/x', {}), /may not change the request origin/);
   assert.equal(calls.length, 0);

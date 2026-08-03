@@ -8,7 +8,12 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { ALL_TOOLS, TOOL_DEFS, SERVER_INFO } from '../lib/server-core.js';
+
+// Single source of truth for the expected version: package.json. This keeps
+// the test from going stale on every release bump.
+const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version;
 
 const EXPECTED_TOOLS = [
   // PowerQuery (3)
@@ -44,8 +49,8 @@ const EXPECTED_TOOLS = [
   'uam_post_alert',
 ];
 
-test('server version is current', () => {
-  assert.equal(SERVER_INFO.version, '1.2.3');
+test('server version matches package.json', () => {
+  assert.equal(SERVER_INFO.version, PKG_VERSION);
 });
 
 test('ALL_TOOLS exposes exactly 26 tools', () => {
@@ -102,7 +107,7 @@ test('normalizeS1ApiGetParams auto-injects isLegacy=false on /cloud-detection/ru
   // Regression guard: without isLegacy=false the S1 API silently omits
   // queryType="scheduled" PowerQuery rules and the caller gets a
   // misleadingly-empty response. This was a repeated production failure
-  // before the auto-injection was added — do NOT remove this guard.
+  // before the auto-injection was added: do NOT remove this guard.
   const { normalizeS1ApiGetParams } = await import('../tools/mgmt-console.js');
 
   // 1. Missing isLegacy → injected as false

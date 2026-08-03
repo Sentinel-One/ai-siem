@@ -1,5 +1,5 @@
 {
-  // Akamai SIEM — CEF log parser
+  // Akamai SIEM: CEF log parser
   // OCSF class: HTTP Activity (4002)
   //
   // Reference example for the **inline-predicate-on-`constant`-op** pattern that
@@ -9,7 +9,7 @@
   // Why this example exists:
   //
   //   1. CEF over syslog without the syslog frame (Akamai SIEM ships the bare
-  //      CEF body via their SIEM connector — no `<PRI>timestamp host` prefix).
+  //      CEF body via their SIEM connector: no `<PRI>timestamp host` prefix).
   //   2. Live demonstration of the inline-predicate technique:
   //        • 4 conditional `severity_id` ops (CEF 0-10 → OCSF enum bucketing)
   //        • 9 conditional `action`/`action_id`/`firewall_rule.name` ops
@@ -17,12 +17,12 @@
   //        • 4 conditional `status`/`status_id` ops
   //      All 21 conditional ops fire from a single `predicate: "true"` mapping
   //      entry. Splitting them into multiple entries breaks first-match-wins.
-  //   3. OCSF `severity_id` bucketing — NEVER pass through raw vendor severity.
+  //   3. OCSF `severity_id` bucketing: NEVER pass through raw vendor severity.
   //      Akamai's CEF 0-10 maps to OCSF enum {1, 3, 4, 5}; raw value preserved
   //      under `akamai.severity`.
   //   4. Dual-emit for back-compat: events keep both `http_request.url.text`
   //      (native naming used by other parsers on the tenant) AND
-  //      `http_request.url.url_string` (OCSF canonical) — same for `cef_sig_id`
+  //      `http_request.url.url_string` (OCSF canonical): same for `cef_sig_id`
   //      → `unmapped.cef_sig_id` + `akamai.sig_id`. Useful when an existing
   //      parser version's field names are baked into dashboards/STAR rules.
   //   5. Vendor-specific gotcha: Akamai SIEM puts the HTTP version on CEF
@@ -49,7 +49,7 @@
     "activity_id": 3,
     "activity_name": "Traffic",
     "type_uid": 400203
-    // severity_id is NOT set here — derived per-event in mappings below.
+    // severity_id is NOT set here: derived per-event in mappings below.
   },
 
   patterns: {
@@ -139,7 +139,7 @@
           // =====================================================================
           //   INLINE-PREDICATE-ON-CONSTANT-OP PATTERN
           //
-          // The 21 ops below are conditional — each `constant` carries its own
+          // The 21 ops below are conditional: each `constant` carries its own
           // `predicate:` field. Do NOT split these into multiple top-level mapping
           // entries; v1 mappings are first-match-wins and only the first matching
           // entry fires. By keeping them inside this `predicate: "true"` entry

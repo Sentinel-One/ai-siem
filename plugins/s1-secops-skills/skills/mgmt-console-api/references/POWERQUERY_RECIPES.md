@@ -193,7 +193,7 @@ For the full schema, see the `sentinelone-powerquery` skill's
 ## `| group` syntax reference
 
 The `| group` pipe aggregates rows. All grouping fields must be inside
-an aggregation function — bare field names after `by` are NOT valid
+an aggregation function, bare field names after `by` are NOT valid
 and return a parse error ("Field must be enclosed in a grouping function").
 
 ### Forms
@@ -240,7 +240,7 @@ and return a parse error ("Field must be enclosed in a grouping function").
 ### What NOT to do
 
 ```
-# Wrong — bare field after by without aggregation wrapper:
+# Wrong: bare field after by without aggregation wrapper:
 | group count = count() by event.type | sort count desc   ← alias collision
 | group event.type by count()                              ← reversed
 ```

@@ -125,11 +125,16 @@ def list_rules_by_name(client: S1Client, site_id: str,
     Confirmed gotcha (live API, 2026-05): combining nameSubstring + queryType
     in the same request returns HTTP 500. Use one or the other; prefer ids for
     point-lookup after create.
+
+    Confirmed gotcha (live API, 2026-08-01): on some tenants nameSubstring
+    ALONE also returns HTTP 500 while name__contains and ids work. Callers
+    must treat a LIST failure as non-fatal and fall back to ids point-lookup;
+    main() does exactly that so a LIST 500 can never orphan the created rule.
     """
     resp = client.get(RULES_BASE, params={
         "nameSubstring": name_substring,
         "siteIds": site_id,
-        # queryType intentionally omitted — combining with nameSubstring causes HTTP 500
+        # queryType intentionally omitted, combining with nameSubstring causes HTTP 500
         "limit": 10,
     })
     # Client-side filter to our run_tag since we can't use queryType in the same call
@@ -211,58 +216,81 @@ def main() -> int:
     _log(f"CREATE ok: rule_id={rule_id}  name={created.get('name')!r}  "
          f"status={created.get('status')}  queryType={created.get('queryType')}")
 
-    # --- 2. LIST ---
-    time.sleep(1)
-    _log(f"LIST: GET {RULES_BASE}?nameSubstring={RUN_TAG!r}&siteIds={site_id}")
-    hits = list_rules_by_name(client, site_id, RUN_TAG)
-    list_ok = any(h.get("id") == rule_id for h in hits)
-    if not list_ok:
-        _log(f"LIST consistency issue: rule_id={rule_id} not found in {len(hits)} hit(s). "
-             f"Ids found: {[h.get('id') for h in hits]}")
-    else:
-        _log(f"LIST ok: {len(hits)} hit(s); created rule present")
-
-    # --- 3. UPDATE ---
-    _log(f"UPDATE: PUT {RULES_BASE}/{rule_id}")
+    # Everything after CREATE runs under a finally-guarded cleanup so no step
+    # failure (including an unexpected LIST HTTP 500, observed live 2026-08-01)
+    # can orphan the created rule.
+    deleted = False
     try:
-        update_star_rule(client, rule_id, site_id)
-    except S1APIError as e:
-        _log(f"UPDATE FAILED: HTTP {e.status} {e}")
-        _log(f"Manual cleanup: rule_id={rule_id}")
-        return 3
-    # Confirm description was written back
-    updated = get_rule_by_id(client, rule_id, site_id)
-    if updated and "UPDATED" in (updated.get("description") or ""):
-        _log("UPDATE ok: description updated")
-    else:
-        _log("UPDATE ok (description not confirmed in read-back — continuing)")
+        # --- 2. LIST ---
+        time.sleep(1)
+        _log(f"LIST: GET {RULES_BASE}?nameSubstring={RUN_TAG!r}&siteIds={site_id}")
+        try:
+            hits = list_rules_by_name(client, site_id, RUN_TAG)
+            list_ok = any(h.get("id") == rule_id for h in hits)
+            if not list_ok:
+                _log(f"LIST consistency issue: rule_id={rule_id} not found in "
+                     f"{len(hits)} hit(s). Ids found: {[h.get('id') for h in hits]}")
+            else:
+                _log(f"LIST ok: {len(hits)} hit(s); created rule present")
+        except S1APIError as e:
+            # Non-fatal: some tenants 500 on nameSubstring alone. Fall back to
+            # ids point-lookup so the lifecycle still verifies visibility.
+            _log(f"LIST via nameSubstring failed (HTTP {e.status}); "
+                 f"falling back to ids point-lookup")
+            if get_rule_by_id(client, rule_id, site_id):
+                _log("LIST fallback ok: rule visible via ids lookup")
+            else:
+                _log("LIST fallback: rule NOT visible via ids lookup (continuing)")
 
-    # --- 4. DELETE ---
-    if args.keep:
-        _log(f"KEEP flag set. Leaving rule {rule_id} (name={RULE_NAME!r})")
+        # --- 3. UPDATE ---
+        _log(f"UPDATE: PUT {RULES_BASE}/{rule_id}")
+        try:
+            update_star_rule(client, rule_id, site_id)
+        except S1APIError as e:
+            _log(f"UPDATE FAILED: HTTP {e.status} {e}")
+            return 3
+        # Confirm description was written back
+        updated = get_rule_by_id(client, rule_id, site_id)
+        if updated and "UPDATED" in (updated.get("description") or ""):
+            _log("UPDATE ok: description updated")
+        else:
+            _log("UPDATE ok (description not confirmed in read-back, continuing)")
+
+        # --- 4. DELETE ---
+        if args.keep:
+            _log(f"KEEP flag set. Leaving rule {rule_id} (name={RULE_NAME!r})")
+            deleted = True  # deliberate keep: suppress the finally cleanup
+            return 0
+
+        _log(f"DELETE: DELETE {RULES_BASE}  filter.ids=[{rule_id}]")
+        try:
+            del_resp = delete_rule(client, rule_id, site_id)
+        except S1APIError as e:
+            _log(f"DELETE FAILED: HTTP {e.status} {e}")
+            return 4
+        deleted = True
+        affected = (del_resp.get("data") or {}).get("affected")
+        _log(f"DELETE ok: affected={affected}")
+
+        # --- 5. VERIFY ---
+        time.sleep(1)
+        remaining = get_rule_by_id(client, rule_id, site_id)
+        if remaining:
+            _log(f"VERIFY FAILED: rule {rule_id} still present after delete "
+                 f"(status={remaining.get('status')})")
+            return 5
+        _log("VERIFY ok: rule absent")
+
+        _log("STAR rule lifecycle: CREATE -> LIST -> UPDATE -> DELETE -> VERIFY, ALL OK")
         return 0
-
-    _log(f"DELETE: DELETE {RULES_BASE}  filter.ids=[{rule_id}]")
-    try:
-        del_resp = delete_rule(client, rule_id, site_id)
-    except S1APIError as e:
-        _log(f"DELETE FAILED: HTTP {e.status} {e}")
-        _log(f"Manual cleanup: rule_id={rule_id}")
-        return 4
-    affected = (del_resp.get("data") or {}).get("affected")
-    _log(f"DELETE ok: affected={affected}")
-
-    # --- 5. VERIFY ---
-    time.sleep(1)
-    remaining = get_rule_by_id(client, rule_id, site_id)
-    if remaining:
-        _log(f"VERIFY FAILED: rule {rule_id} still present after delete "
-             f"(status={remaining.get('status')})")
-        return 5
-    _log("VERIFY ok: rule absent")
-
-    _log("STAR rule lifecycle: CREATE → LIST → UPDATE → DELETE → VERIFY — ALL OK")
-    return 0
+    finally:
+        if not deleted:
+            _log(f"CLEANUP (finally): best-effort delete of rule {rule_id}")
+            try:
+                delete_rule(client, rule_id, site_id)
+                _log("CLEANUP ok: rule deleted")
+            except Exception as e:  # noqa: BLE001 - last-resort cleanup must not mask the real error
+                _log(f"CLEANUP FAILED: {e}. Manual cleanup: rule_id={rule_id}")
 
 
 if __name__ == "__main__":

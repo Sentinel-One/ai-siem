@@ -1,5 +1,7 @@
 # Deployment guide
 
+The canonical team-VM walkthrough for most users is **[docs/vm-deployment.md](../../docs/vm-deployment.md)** (one-line install, per-user bearer tokens, Caddy TLS, client config, day-2 ops). This file is the full deployment reference behind it: all three topologies below, plus the AWS-specific gotchas and internals the walkthrough links to. Credential keys are in [docs/credentials.md](../../docs/credentials.md).
+
 Three supported topologies, in order of complexity.
 
 | Topology | Who runs it | Transport | Auth | Use this when |
@@ -10,7 +12,13 @@ Three supported topologies, in order of complexity.
 
 ## A. Single user, local (stdio)
 
-`curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/install.sh | bash`
+Download the installer, review it, then run it (avoid piping a remote script straight into a shell). For production, pin the URL to a tagged release commit instead of `main`:
+
+```bash
+curl -fsSL -o /tmp/s1-mcp-install.sh https://raw.githubusercontent.com/pmoses-s1/claude-skills/main/s1-secops-mcp/deploy/install.sh
+# review /tmp/s1-mcp-install.sh, then:
+bash /tmp/s1-mcp-install.sh --user
+```
 
 That runs `install.sh --user`, which:
 1. Confirms Node 18+ is present (errors out with install hints if not).
@@ -52,7 +60,7 @@ Or, equivalently, by package name without the install:
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "npx",
-      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.2.2"]
+      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.2.4"]
     }
   }
 }
@@ -126,7 +134,7 @@ Team members connect from their Claude clients with their own bearer token. Audi
 
 3. **Run the installer in server mode:**
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/install.sh | sudo bash -s -- --server
+   curl -fsSL https://raw.githubusercontent.com/pmoses-s1/claude-skills/main/s1-secops-mcp/deploy/install.sh | sudo bash -s -- --server
    ```
    It creates the `mcp` user, drops `/etc/s1-secops-mcp/credentials.json` (placeholder) and `/etc/s1-secops-mcp/bearer-tokens.json` (one freshly-generated admin token, printed once to stdout), installs the systemd unit, and starts the service.
 
@@ -257,7 +265,7 @@ curl -s https://mcp.s1.internal/healthz # in front of the proxy
 
 ## Connecting Claude Desktop to a remote MCP
 
-Claude Desktop's `claude_desktop_config.json` only accepts stdio-based MCP servers in current stable builds; the `type: "http"` form gets rejected with "not valid MCP server configuration" on load. To connect Claude Desktop to your VM's HTTPS endpoint, use the bridge script shipped in this repo at [`bridge/s1-secops-mcp-bridge.mjs`](./bridge/s1-secops-mcp-bridge.mjs) — a 40-line zero-dependency Node script that translates Claude Desktop's stdio into POST requests against the MCP HTTP endpoint.
+Claude Desktop's `claude_desktop_config.json` only accepts stdio-based MCP servers in current stable builds; the `type: "http"` form gets rejected with "not valid MCP server configuration" on load. To connect Claude Desktop to your VM's HTTPS endpoint, use the bridge script shipped in this repo at [`bridge/s1-secops-mcp-bridge.mjs`](./bridge/s1-secops-mcp-bridge.mjs), a 40-line zero-dependency Node script that translates Claude Desktop's stdio into POST requests against the MCP HTTP endpoint.
 
 Each team member drops the script anywhere on their machine (typically `~/.local/bin/s1-secops-mcp-bridge.mjs`) and points Claude Desktop at it:
 
@@ -276,7 +284,7 @@ Each team member drops the script anywhere on their machine (typically `~/.local
 }
 ```
 
-Then Cmd+Q and reopen Claude Desktop. See [`bridge/README.md`](./bridge/README.md) for install, smoke-test, and troubleshooting steps. Claude Cowork users can keep using the native `type: "http"` config (it supports remote HTTP MCPs in current builds) — only Claude Desktop needs the bridge.
+Then Cmd+Q and reopen Claude Desktop. See [`bridge/README.md`](./bridge/README.md) for install, smoke-test, and troubleshooting steps. Claude Cowork users can keep using the native `type: "http"` config (it supports remote HTTP MCPs in current builds), only Claude Desktop needs the bridge.
 
 ## AWS-specific gotchas
 
@@ -297,19 +305,19 @@ HTTP 400 urn:ietf:params:acme:error:rejectedIdentifier
 The ACME server refuses to issue a certificate for this domain name, because it is forbidden by policy
 ```
 
-Caddy auto-falls back to **ZeroSSL** (also free, also publicly trusted, no policy block on `amazonaws.com`). Use the email-shorthand form `tls <email>` and Caddy handles the fallback transparently. The right end state is a cert with `issuer=ZeroSSL ECC DV SSL CA 2` — verify with:
+Caddy auto-falls back to **ZeroSSL** (also free, also publicly trusted, no policy block on `amazonaws.com`). Use the email-shorthand form `tls <email>` and Caddy handles the fallback transparently. The right end state is a cert with `issuer=ZeroSSL ECC DV SSL CA 2`, verify with:
 
 ```bash
 echo | openssl s_client -connect $HOST:8764 -servername $HOST 2>/dev/null \
   | grep -E "^(issuer=|verify return code)"
 ```
 
-For long-term peace of mind, use a real domain instead (Route 53 A record pointing at the Elastic IP) — both LE and ZeroSSL issue without restriction and the hostname survives instance replacement.
+For long-term peace of mind, use a real domain instead (Route 53 A record pointing at the Elastic IP), both LE and ZeroSSL issue without restriction and the hostname survives instance replacement.
 
 ### Caddyfile: don't mix `tls` shorthand with `issuer acme` block
 
 ```caddyfile
-# WRONG — Caddy errors: "cannot mix issuer subdirective with other issuer-specific subdirectives"
+# WRONG: Caddy errors: "cannot mix issuer subdirective with other issuer-specific subdirectives"
 tls prithvi@example.com {
     issuer acme {
         disable_http_challenge
@@ -343,7 +351,7 @@ The hardened service file we ship omits two systemd directives that would otherw
 - `MemoryDenyWriteExecute=true`
 - `LockPersonality=true`
 
-Both block the W+X memory mappings V8 needs to JIT JavaScript. Adding them causes the service to silently SIGTRAP at startup with `Result: core-dump` and ~5 MB peak memory — no useful log output. If you customize the unit, leave both off.
+Both block the W+X memory mappings V8 needs to JIT JavaScript. Adding them causes the service to silently SIGTRAP at startup with `Result: core-dump` and ~5 MB peak memory; no useful log output. If you customize the unit, leave both off.
 
 ## Troubleshooting
 
@@ -359,7 +367,7 @@ Both block the W+X memory mappings V8 needs to JIT JavaScript. Adding them cause
 
 These are supported but not first-class:
 
-- **Docker / docker-compose.** Not shipped in this version. The single-file Node binary doesn't need it. If you want a container, the install is `FROM node:20-alpine` + `RUN npm install -g @pmoses-s1/s1-secops-mcp@1.2.2` + `CMD ["s1-secops-mcp", "--transport", "http", "--host", "0.0.0.0"]`. Mount creds at `/etc/s1-secops-mcp/credentials.json` and tokens at `/etc/s1-secops-mcp/bearer-tokens.json`.
+- **Docker / docker-compose.** Not shipped in this version. The single-file Node binary doesn't need it. If you want a container, the install is `FROM node:20-alpine` + `RUN npm install -g @pmoses-s1/s1-secops-mcp@1.2.4` + `CMD ["s1-secops-mcp", "--transport", "http", "--host", "0.0.0.0"]`. Mount creds at `/etc/s1-secops-mcp/credentials.json` and tokens at `/etc/s1-secops-mcp/bearer-tokens.json`.
 
 - **External bridge (`supergateway`, `mcp-proxy`).** Pre-1.1.0 deployments used these to wrap the stdio-only server. They still work; this server's native HTTP mode is functionally equivalent and removes the extra process. Prefer native unless you have a specific reason.
 

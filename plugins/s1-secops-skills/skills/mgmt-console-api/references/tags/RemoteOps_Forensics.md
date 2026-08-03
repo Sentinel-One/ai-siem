@@ -18,11 +18,11 @@ Returns collection file download pre-signed url
 Optional permissions: `Remote Ops Forensics.view`
 
 Parameters:
-- `siteId` [query, string] **required** — Site id. Example: "225494730938493804".
-- `agentId` [query, string] **required** — Agent id. Example: "225494730938493804".
-- `signature` [query, string] **required** — Signature
-- `signatureType` [query, string] **required** — Signature type
-- `uploadedTimestamp` [query, string] **required** — Uploaded timestamp
+- `siteId` [query, string] **required**: Site id. Example: "225494730938493804".
+- `agentId` [query, string] **required**: Agent id. Example: "225494730938493804".
+- `signature` [query, string] **required**: Signature
+- `signatureType` [query, string] **required**: Signature type
+- `uploadedTimestamp` [query, string] **required**: Uploaded timestamp
 
 Responses: 200 Remote Ops Forensics Collection File Found, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -35,7 +35,7 @@ Delete multiple Forensics Collection profiles. The profiles that are not possibl
 Required permissions: `Remote Ops Forensics.delete`
 
 Parameters:
-- `body` [body, v2_1.forensics.schema_DeleteProfilesRequestSchema] — 
+- `body` [body, v2_1.forensics.schema_DeleteProfilesRequestSchema]: 
 
 Responses: 200 Delete was completed or partially completed., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -48,19 +48,19 @@ Get list of available Forensics collection profiles. The list may be narrowed by
 Required permissions: `Remote Ops Forensics.view`
 
 Parameters:
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `sortOrder` [query, string] (enum: asc, desc) — Sort direction. Example: "asc".
-- `skipCount` [query, boolean] — If true, total number of items will not be calculated, which speeds up execution time.
-- `autoTriggeringCompatible` [query, boolean] — Fetch auto triggering compatible profiles
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `ids` [query, array] — A list of collection profiles IDs. Example: "225494730938493804,225494730938493915".
-- `osTypes` [query, array] — Os types. Example: "linux".
-- `query` [query, string] — Keyword to search in Collection profile name / description
-- `countOnly` [query, boolean] — If true, only total number of items will be returned, without any of the actual objects.
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `sortBy` [query, string] (enum: id, createdAt, mgmtId, scopeId, name, osTypes, version, scopeLevel, scopePath, creator) — The column to sort the results by. Example: "id".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
+- `skipCount` [query, boolean]: If true, total number of items will not be calculated, which speeds up execution time.
+- `autoTriggeringCompatible` [query, boolean]: Fetch auto triggering compatible profiles
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `ids` [query, array]: A list of collection profiles IDs. Example: "225494730938493804,225494730938493915".
+- `osTypes` [query, array]: Os types. Example: "linux".
+- `query` [query, string]: Keyword to search in Collection profile name / description
+- `countOnly` [query, boolean]: If true, only total number of items will be returned, without any of the actual objects.
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `sortBy` [query, string] (enum: id, createdAt, mgmtId, scopeId, name, osTypes, version, scopeLevel, scopePath, creator): The column to sort the results by. Example: "id".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -72,7 +72,7 @@ Create a Forensics Collection profile with provided artifacts on the specified s
 Optional permissions: `Remote Ops Forensics.create, Remote Ops Forensics.upload`
 
 Parameters:
-- `body` [body, v2_1.forensics.schema_CollectionProfileRequestSchema] — 
+- `body` [body, v2_1.forensics.schema_CollectionProfileRequestSchema]: 
 
 Responses: 200 Collection profile is created, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -85,7 +85,7 @@ Get contents of an existing Forensics Collection profile, including specificatio
 Required permissions: `Remote Ops Forensics.view`
 
 Parameters:
-- `profile_id` [path, string] **required** — Profile ID. Example: "225494730938493804".
+- `profile_id` [path, string] **required**: Profile ID. Example: "225494730938493804".
 
 Responses: 403 User has insufficient permission to perform such action, 404 Collection profile was not found, 200 Collection profile content in returned, 401 Unauthorized access - please sign in and retry.
 
@@ -98,8 +98,8 @@ Update contents of an existing Forensics Collection profile. All the profile dat
 Required permissions: `Remote Ops Forensics.edit`
 
 Parameters:
-- `profile_id` [path, string] **required** — Profile ID. Example: "225494730938493804".
-- `body` [body, v2_1.forensics.schema_PutCollectionProfileRequestSchema] — 
+- `profile_id` [path, string] **required**: Profile ID. Example: "225494730938493804".
+- `body` [body, v2_1.forensics.schema_PutCollectionProfileRequestSchema]: 
 
 Responses: 403 User has insufficient permission to perform such action, 404 Collection profile was not found, 200 Collection profile is updated, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -112,8 +112,8 @@ Check if collection file exists for given storyline
 Required permissions: `Remote Ops Forensics.view`
 
 Parameters:
-- `storyline` [query, string] **required** — Storyline ID
-- `agentId` [query, string] **required** — Agent's ID. Example: "225494730938493804".
+- `storyline` [query, string] **required**: Storyline ID
+- `agentId` [query, string] **required**: Agent's ID. Example: "225494730938493804".
 
 Responses: 404 Collection file not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -126,7 +126,7 @@ Start collection of Forensics artifacts according to specified profile
 Required permissions: `Remote Ops Forensics.view, Remote Ops Forensics.runForensicsCollection`
 
 Parameters:
-- `body` [body, remote_ops.schemas_StartCollectionSchema] — 
+- `body` [body, remote_ops.schemas_StartCollectionSchema]: 
 
 Responses: 202 Forensics collection has been started, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -140,6 +140,6 @@ Required permissions: `Remote Ops Forensics.view`
 Optional permissions: `Remote Ops Forensics.viewOutput`
 
 Parameters:
-- `taskId` [query, string] **required** — Task id. Example: "225494730938493804".
+- `taskId` [query, string] **required**: Task id. Example: "225494730938493804".
 
 Responses: 200 Task is found and result is returned, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

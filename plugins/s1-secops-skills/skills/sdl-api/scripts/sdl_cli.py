@@ -27,7 +27,7 @@ Examples
     python scripts/sdl_cli.py numeric-query --function count --filter "status >= 500" --start 1h --buckets 30
 
     # Put file (create/update)
-    # Parsers: use /logParsers/<name> — /parsers/ is API-accepted but invisible in the UI.
+    # Parsers: use /logParsers/<name>; /parsers/ is API-accepted but invisible in the UI.
     python scripts/sdl_cli.py put-file /logParsers/MyParser --content-file ./parser.txt
 
     # Delete file
@@ -51,27 +51,6 @@ from sdl_client import SDLClient, SDLAPIError  # noqa: E402
 
 def _print(obj) -> None:
     print(json.dumps(obj, indent=2, default=str))
-
-
-def _parse_kv(pairs):
-    out = {}
-    for p in pairs or []:
-        if "=" not in p:
-            raise SystemExit(f"invalid --attr '{p}': expected key=value")
-        k, v = p.split("=", 1)
-        # try to coerce numbers/bools
-        vs = v.strip()
-        if vs.lower() in ("true", "false"):
-            out[k] = vs.lower() == "true"
-        else:
-            try:
-                out[k] = int(vs)
-            except ValueError:
-                try:
-                    out[k] = float(vs)
-                except ValueError:
-                    out[k] = v
-    return out
 
 
 def cmd_list_files(c, args):

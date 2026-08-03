@@ -105,7 +105,9 @@ endpoint class `1xxx` for events-rule asset auto-binding).
 Onboarding tokens: `{{DETECTION_NAME}}`, `{{DETECTION_DESCRIPTION}}`, `{{MITRE_TACTIC}}`,
 `{{MITRE_TECHNIQUE}}`, `{{SEVERITY}}`, `{{PQ_BODY_ENDING_WITH_COLUMNS_PROJECTION}}`,
 `{{RENOTIFY_MINUTES}}`, `{{ENTITY_COL_1}}`, `{{ENTITY_COL_2}}`, `{{ENTITY_COL_3}}` (entityMappings
-is capped at 3), `{{SCOPE_KEY}}` (`accountIds`/`siteIds`), `{{SCOPE_ID}}`, `{{IP_SRC_FIELD}}`,
+is capped at 3), `{{SCOPE_KEY}}` (`accountIds`/`siteIds`; MUST be `accountIds` for any detection
+rule whose PQ body reads a lookup table or datatable, because lookups/datatables are account-level
+objects and site-scoped creation of lookup-reading rules is invalid), `{{SCOPE_ID}}`, `{{IP_SRC_FIELD}}`,
 `{{IP_DST_FIELD}}`, `{{PORT_FIELD}}`, `{{ACTION_FIELD}}`, `{{USER_FIELD}}`,
 `{{SOURCE_LABEL}}`, `{{ACCOUNT_ID}}`, `{{VT_API_KEY}}`, `{{NOTIFY_WEBHOOK_URL}}`,
 `{{IOC_TTL_HOURS_NEG}}`.

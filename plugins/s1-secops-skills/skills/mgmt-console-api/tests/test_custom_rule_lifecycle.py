@@ -1,5 +1,5 @@
 """
-Custom Detection Rule lifecycle round-trip test — REVERSIBLE.
+Custom Detection Rule lifecycle round-trip test, REVERSIBLE.
 
 Exercises the full rule CRUD pattern against /cloud-detection/rules:
 
@@ -49,7 +49,7 @@ RULE_NAME = f"{RUN_TAG}-rule"
 
 # A deliberately narrow query that is syntactically valid but unlikely to
 # match anything in practice. Since the rule is created in "Disabled" state
-# it never evaluates against telemetry anyway — this is belt-and-braces.
+# it never evaluates against telemetry anyway: this is belt-and-braces.
 SAFE_QUERY = 'EventType = "Process Creation" AND ProcessName = "zzz-smoke-test-does-not-exist.exe"'
 
 
@@ -148,7 +148,7 @@ def main() -> int:
     rule_id = created["id"]
     _log(f"CREATE ok: rule_id={rule_id}  status={created.get('status')!r}")
     if created.get("status") not in ("Draft", "Disabled"):
-        _log(f"WARN: unexpected rule status {created.get('status')!r} — "
+        _log(f"WARN: unexpected rule status {created.get('status')!r}, "
              "expected Draft/Disabled; continuing")
 
     # --- 2. LIST (name__contains) ---
@@ -164,7 +164,7 @@ def main() -> int:
         _log(f"LIST ok: {len(hits)} hit(s); created rule present")
 
     # --- 3. UPDATE ---
-    new_desc = f"Smoke-test rule run_tag={RUN_TAG} — updated at " \
+    new_desc = f"Smoke-test rule run_tag={RUN_TAG}, updated at " \
                f"{datetime.now(timezone.utc).isoformat(timespec='seconds')}"
     _log(f"UPDATE: PUT /cloud-detection/rules/{rule_id} (bump severity → Medium)")
     try:
@@ -204,7 +204,7 @@ def main() -> int:
              "CREATE/UPDATE/DELETE/VERIFY still passed. Returning 0 but "
              "investigate name__contains search indexing if this repeats.")
 
-    _log("Custom-rule lifecycle: CREATE → LIST → UPDATE → DELETE → VERIFY — ALL OK")
+    _log("Custom-rule lifecycle: CREATE → LIST → UPDATE → DELETE → VERIFY, ALL OK")
     return 0
 
 

@@ -11,7 +11,7 @@ Immediately stop a Full Disk Scan on all Agents that match the filter. See "Init
 Required permissions: `Endpoints.abortScan`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema] — 
+- `body` [body, agents.schemas_AgentsActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -24,7 +24,7 @@ Approve stateless upgrade for agents
 Required permissions: `Endpoints.uninstall`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsCleaninstallerSchema] — 
+- `body` [body, agents.schemas_AgentsCleaninstallerSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -37,7 +37,7 @@ If a user tries to uninstall the SentinelOne Agent from an endpoint, an uninstal
 Required permissions: `Endpoints.approveUninstall`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema] — 
+- `body` [body, agents.schemas_AgentsActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -50,7 +50,7 @@ You can send a message through the Agents that users can see. <BR>This is useful
 Required permissions: `Endpoints.sendMessage`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsBroadcastActionSchema] — 
+- `body` [body, agents.schemas_AgentsBroadcastActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -63,7 +63,7 @@ Who can run Remote Shell? Remote Shell is a powerful way to respond remotely to 
 Required permissions: `Endpoints.remoteShell`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema] — 
+- `body` [body, agents.schemas_AgentsActionSchema]: 
 
 Responses: 403 Insufficient permissions, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry., 200 Success
 
@@ -76,7 +76,7 @@ After you run "disconnect from network" on endpoints, analyze the issue, and mit
 Required permissions: `Endpoints.reconnectToNetwork`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema] — 
+- `body` [body, agents.schemas_AgentsActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -89,7 +89,7 @@ If a user is scheduled for time off, or a device is scheduled for maintenance, y
 Required permissions: `Endpoints.decommission`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsDangerousActionSchema] — 
+- `body` [body, agents.schemas_AgentsDangerousActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -102,7 +102,7 @@ Use this command to disable Agents that match the filter. <BR>Disabled agents ru
 Required permissions: `Endpoints.disableAgent`
 
 Parameters:
-- `body` [body, agents.schemas_AgentDisableActionSchema] — 
+- `body` [body, agents.schemas_AgentDisableActionSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -115,7 +115,7 @@ Use this command to isolate (quarantine) endpoints from the network, if the endp
 Required permissions: `Endpoints.disconnectFromNetwork`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsDangerousActionSchema] — 
+- `body` [body, agents.schemas_AgentsDangerousActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -128,7 +128,7 @@ Use this command to enable disabled Agents that match the filter. <BR>If the com
 Required permissions: `Endpoints.enableAgent`
 
 Parameters:
-- `body` [body, agents.schemas_AgentEnableActionSchema] — 
+- `body` [body, agents.schemas_AgentEnableActionSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -141,7 +141,7 @@ Firewall Control is disabled at the Global level. When it is first enabled, all 
 Required permissions: `Endpoints.configureFirewallLogging`
 
 Parameters:
-- `body` [body, agents.schemas_AgentFetchFirewallRulesActionSchema] — 
+- `body` [body, agents.schemas_AgentFetchFirewallRulesActionSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -154,7 +154,7 @@ Application Risk Management is an EA feature. Contact your partner or SentinelOn
 Required permissions: `Endpoints.showApplications`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsDangerousActionSchema] — 
+- `body` [body, agents.schemas_AgentsDangerousActionSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -167,7 +167,7 @@ Get the Agent and Endpoint logs from Agents that match the filter. <BR>The Agent
 Required permissions: `Endpoints.FetchLogs`
 
 Parameters:
-- `body` [body, agents.schemas_AgentFetchLogsActionSchema] — 
+- `body` [body, agents.schemas_AgentFetchLogsActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -180,7 +180,7 @@ Get Firewall Control events in the local log file, written in clear text, for Fi
 Required permissions: `Endpoints.configureFirewallLogging`
 
 Parameters:
-- `body` [body, agents.schemas_AgentFirewallLoggingActionSchema] — 
+- `body` [body, agents.schemas_AgentFirewallLoggingActionSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -193,7 +193,7 @@ Use this command to run a Full Disk Scan on Agents that match the filter. <BR>Fu
 Required permissions: `Endpoints.initiateScan`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema] — 
+- `body` [body, agents.schemas_AgentsActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -206,7 +206,7 @@ Edit when authorization of local upgrades/downgrades expires.
 Required permissions: `Local Upgrade/Downgrade Authorization.edit`
 
 Parameters:
-- `body` [body, agents.schemas_AgentLocalUpgradeAuthorizationActionSchema] — 
+- `body` [body, agents.schemas_AgentLocalUpgradeAuthorizationActionSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -219,7 +219,7 @@ The "add" operation adds the given tags to the endpoints (if not already present
 Required permissions: `Endpoints.manageEndpointTags`
 
 Parameters:
-- `body` [body, agents.schemas_ManageEndpointTagsSchema] — 
+- `body` [body, agents.schemas_ManageEndpointTagsSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -232,7 +232,7 @@ The value of the Agent version as "up-to-date" is a useful filter for many actio
 Required permissions: `Endpoints.markAsUpToDate`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema] — 
+- `body` [body, agents.schemas_AgentsActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -245,7 +245,7 @@ You can move Agents between Management Consoles. This command moves Agents to a 
 Required permissions: `Endpoints.migrateAgent`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsMoveToConsoleSchema] — 
+- `body` [body, agents.schemas_AgentsMoveToConsoleSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -258,7 +258,7 @@ This command requires Account or Global level access. <BR>Agents are assigned to
 Required permissions: `Endpoints.moveToAnotherSite`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsMoveToSiteSchema] — 
+- `body` [body, agents.schemas_AgentsMoveToSiteSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -271,7 +271,7 @@ IMPORTANT: This action will assign a new UUID to Agents that match the filter. <
 Required permissions: `Endpoints.randomizeUuid`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsDangerousActionSchema] — 
+- `body` [body, agents.schemas_AgentsDangerousActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -284,7 +284,7 @@ Disable Network Discovery from the Agents that match the filter.<BR>Singularity 
 Required permissions: `Endpoints.disableRanger`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema] — 
+- `body` [body, agents.schemas_AgentsActionSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -297,7 +297,7 @@ Singularity Network Discovery gives full visibility of all devices connected to 
 Required permissions: `Endpoints.enableRanger`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema] — 
+- `body` [body, agents.schemas_AgentsActionSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -310,7 +310,7 @@ Reject uninstall requests for all Agents that match the filter. To learn more ab
 Required permissions: `Endpoints.rejectUninstall`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema] — 
+- `body` [body, agents.schemas_AgentsActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -323,7 +323,7 @@ SentinelCtl is the CLI for Agents. It runs commands directly on one Agent at a t
 Required permissions: `Endpoints.resetLocalConfiguration`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema] — 
+- `body` [body, agents.schemas_AgentsActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -336,7 +336,7 @@ Initiate an Agent passphrase reset for Agents that match the filter. <BR>This ac
 Required permissions: `Endpoints.resetPassphrase`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsResetPassphrasesSchema] — 
+- `body` [body, agents.schemas_AgentsResetPassphrasesSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -349,7 +349,7 @@ Check if a passphrase reset can be initiated for Agents that match the filter. <
 Required permissions: `Endpoints.resetPassphrase`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsResetPassphraseCapabilitySchema] — 
+- `body` [body, agents.schemas_AgentsResetPassphraseCapabilitySchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -362,7 +362,7 @@ Use this command to restart endpoints that have an Agent installed and that fit 
 Required permissions: `Endpoints.reboot`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsDangerousActionSchema] — 
+- `body` [body, agents.schemas_AgentsDangerousActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -375,7 +375,7 @@ This command requires Global permissions or Support.<BR>The configuration of an 
 Required permissions: `Endpoints.configuration`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsSetConfigSchema] — 
+- `body` [body, agents.schemas_AgentsSetConfigSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 400 Invalid user input received. See error details for further i, 200 Success, 401 Unauthorized access - please sign in and retry.
 
@@ -388,7 +388,7 @@ You can add a Customer Identifier (a string) to identify each endpoint or to tag
 Required permissions: `Endpoints.setCustomerIdentifier`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsUpdateExternalIdScheme] — 
+- `body` [body, agents.schemas_AgentsUpdateExternalIdScheme]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -401,7 +401,7 @@ You can shut down endpoints remotely for performance, maintenance, or security. 
 Required permissions: `Endpoints.shutDown`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsDangerousActionSchema] — 
+- `body` [body, agents.schemas_AgentsDangerousActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -414,7 +414,7 @@ Use this command to start remote profiling on Agents that match the filter. <BR>
 Required permissions: `Endpoints.remoteProfiling`
 
 Parameters:
-- `body` [body, agents.schemas_AgentStartProfilingActionSchema] — 
+- `body` [body, agents.schemas_AgentStartProfilingActionSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -427,7 +427,7 @@ Remote shell is an opened websocket between the browser and the Agent, with a pr
 Required permissions: `Endpoints.remoteShell`
 
 Parameters:
-- `body` [body, agents.schemas_StartRemoteShellSchema] — 
+- `body` [body, agents.schemas_StartRemoteShellSchema]: 
 
 Responses: 403 Insufficient permissions, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry., 200 Success
 
@@ -440,7 +440,7 @@ Use this command to stop remote profiling on Agents that match the filter. <BR>I
 Required permissions: `Endpoints.remoteProfiling`
 
 Parameters:
-- `body` [body, agents.schemas_AgentStopProfilingActionSchema] — 
+- `body` [body, agents.schemas_AgentStopProfilingActionSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -453,7 +453,7 @@ Remote Shell is a powerful, full shell for Windows, macOS, and Linux. It is best
 Required permissions: `Endpoints.remoteShell`
 
 Parameters:
-- `body` [body, agents.schemas_TerminateRemoteShellSchema] — 
+- `body` [body, agents.schemas_TerminateRemoteShellSchema]: 
 
 Responses: 403 Insufficient permissions, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry., 200 Success
 
@@ -466,7 +466,7 @@ Use this command to uninstall Agents that match the filter. For Windows and macO
 Required permissions: `Endpoints.uninstall`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsDangerousActionSchema] — 
+- `body` [body, agents.schemas_AgentsDangerousActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -479,7 +479,7 @@ Use this command to update the Agent version on endpoints that have the Agent in
 Required permissions: `Endpoints.updateSoftware`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsUpdateSoftwareActionSchema] — 
+- `body` [body, agents.schemas_AgentsUpdateSoftwareActionSchema]: 
 
 Responses: 403 User has insufficient permissions to perform the requested a, 409 The Agent is automatically upgraded according to its Upgrade, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -492,7 +492,7 @@ Fetch files from endpoints (up to 10 MB for each command) to analyze the root of
 Required permissions: `Endpoints.fileFetch`
 
 Parameters:
-- `agent_id` [path, string] **required** — Agent ID. Example: "225494730938493804".
-- `body` [body, agents.schemas_AgentFetchFilesActionSchema] — 
+- `agent_id` [path, string] **required**: Agent ID. Example: "225494730938493804".
+- `body` [body, agents.schemas_AgentFetchFilesActionSchema]: 
 
 Responses: 404 Agent not found, 403 User has insufficient permissions to perform the requested a, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

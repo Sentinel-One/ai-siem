@@ -6,18 +6,18 @@ A small stdio↔HTTPS proxy so Claude Desktop can talk to a team-shared `s1-seco
 
 Claude Desktop's `claude_desktop_config.json` only accepts stdio-based MCP servers in current stable builds. Adding a remote server via `type: "http"` gets rejected with "not valid MCP server configuration". The bridge wraps the remote HTTPS endpoint as a local stdio process, which Claude Desktop accepts.
 
-Claude Cowork and Claude Code don't need this — both support `type: "http"` natively.
+Claude Cowork and Claude Code don't need this, both support `type: "http"` natively.
 
 ## What's in the box
 
-- [`s1-secops-mcp-bridge.mjs`](./s1-secops-mcp-bridge.mjs) — the script. 40 lines, zero external dependencies. Requires Node.js 18+ (uses the built-in `fetch`).
+- [`s1-secops-mcp-bridge.mjs`](./s1-secops-mcp-bridge.mjs): the script. 40 lines, zero external dependencies. Requires Node.js 18+ (uses the built-in `fetch`).
 
 ## Install (per team member, one-time)
 
 ```bash
 # Download the script
 mkdir -p ~/.local/bin
-curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
+curl -fsSL https://raw.githubusercontent.com/pmoses-s1/claude-skills/main/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
   -o ~/.local/bin/s1-secops-mcp-bridge.mjs
 chmod +x ~/.local/bin/s1-secops-mcp-bridge.mjs
 
@@ -72,7 +72,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
 | `fetch error: ... UNABLE_TO_GET_ISSUER_CERT_LOCALLY` | Server is using a private CA (e.g. `tls internal`); Node doesn't read the system keychain | Use a publicly-trusted cert on the server (Let's Encrypt or ZeroSSL). See [../README.md#aws-specific-gotchas](../README.md#aws-specific-gotchas). |
 | `bridge fetch error: ... ENOTFOUND` | DNS doesn't resolve `MCP_URL` host | Verify with `nslookup` or `dig`. If using an AWS public DNS, it may have changed; re-check the EC2 console. |
 | 401 from upstream in the log | Wrong / revoked bearer token | Ask the admin for a fresh token; replace `MCP_BEARER`. |
-| Bridge starts but Claude Desktop times out | Node version too old | `node --version` — need 18+. Built-in fetch was added in 18. |
+| Bridge starts but Claude Desktop times out | Node version too old | `node --version`: need 18+. Built-in fetch was added in 18. |
 
 ## How it works
 
@@ -84,7 +84,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
 
 The bridge reads one JSON-RPC message per line from stdin, POSTs it to `MCP_URL` with the `Authorization: Bearer <token>` header, and writes the JSON-RPC reply to stdout. JSON-RPC notifications (messages with no `id`) get no reply, matching the spec. Errors get translated to a JSON-RPC error envelope so Claude Desktop sees something useful instead of a hung process.
 
-There is no session state, no buffering, and no SDK dependency — it's just stdin → fetch → stdout.
+There is no session state, no buffering, and no SDK dependency; it's just stdin → fetch → stdout.
 
 ## Security notes
 

@@ -264,7 +264,7 @@ with its own `{{BASE_SUBQUERY}} AND NOT (...)`) per stage of a multi-event or se
 | `{{RUN_INTERVAL_MINUTES}}` / `{{LOOKBACK_MINUTES}}` | cadence + window | 60 / 60 |
 | `{{THRESHOLD_VALUE}}` / `{{THRESHOLD_OP}}` | fire condition on row count | 0 / Greater |
 | `{{RENOTIFY_MINUTES}}` | per-entity re-alert suppression | 240 |
-| `{{SCOPE_KEY}}` / `{{SCOPE_ID}}` | `accountIds` / `siteIds` + id | account |
+| `{{SCOPE_KEY}}` / `{{SCOPE_ID}}` | scope key + id; MUST be `accountIds` for the lookup-based rule (lookup tables are account-level, site scope invalid); `siteIds` allowed only for the inline variants | account |
 | `{{MITRE_TACTIC}}` / `{{MITRE_TECHNIQUE}}` | optional ATT&CK tag | source-dependent |
 
 ## Step 1: get the exclusion list into a lookup table
@@ -348,7 +348,10 @@ asset never becomes an alert.
 ## Step 3: deploy the rule
 
 `POST /web/api/v2.1/cloud-detection/rules` with the rendered envelope, scoped via
-`filter.{{SCOPE_KEY}}`. New rules land Disabled. Validate by running the body once through the LRQ
+`filter.{{SCOPE_KEY}}`. For the lookup-based rule, `{{SCOPE_KEY}}` MUST be `accountIds`: lookup
+tables / datatables are account-level objects, so a rule whose body reads one can only be created
+at account scope (the inline single-event and correlation variants may stay site-scoped). New
+rules land Disabled. Validate by running the body once through the LRQ
 runner, confirm it parses and returns the expected rows, then enable with
 `PUT /web/api/v2.1/cloud-detection/rules/enable`. The rule shows `Activating` then `Active` within
 about an hour. List rules with `isLegacy=false` or scheduled PowerQuery rules are silently omitted.

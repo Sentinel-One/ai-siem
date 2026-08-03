@@ -21,7 +21,7 @@ SDL raw-log ingestion (`uploadLogs`, `addEvents`) has been removed from this ski
 All five methods consume the CPU leaky bucket described in `auth_and_limits.md`.
 `cpuUsage` is returned on success as a rate-limiting signal.
 
-### `query` — `c.query(filter="", ...)` / `c.iter_query(...)` — CLI `query`
+### `query`: `c.query(filter="", ...)` / `c.iter_query(...)`, CLI `query`
 
 **DEPRECATED.** The V1 `/api/query` endpoint sunsets on 2027-02-15. For log search in new code use the LRQ API with `queryType: "LOG"` - async, cursor-paged to unlimited rows, survives long windows. See the `sentinelone-powerquery` skill's `references/lrq-api.md`. This method is fine for legacy one-offs until the sunset date.
 
@@ -57,7 +57,7 @@ Use `c.iter_query(...)` to iterate across pages automatically.
 
 ---
 
-### `powerQuery` — `c.power_query(query, ...)` — CLI `power-query`
+### `powerQuery`: `c.power_query(query, ...)`, CLI `power-query`
 
 **DEPRECATED.** The V1 `/api/powerQuery` endpoint at `xdr.us1.sentinelone.net` sunsets on 2027-02-15. New code should route PowerQueries through the **Long Running Query API** at `POST /sdl/v2/api/queries` on the tenant's own console host. LRQ is async, has higher row/rate limits, parallelizes cleanly across time slices, and is the only path that stays supported after the sunset date. Canonical runner, body schema, auth, and gotchas live in the `sentinelone-powerquery` skill at `references/lrq-api.md`. This method is kept here only for legacy one-offs and to round out the 10-method SDL surface.
 
@@ -102,7 +102,7 @@ field taxonomy and pipe grammar.
 
 ---
 
-### `facetQuery` — `c.facet_query(field, ...)` — CLI `facet-query`
+### `facetQuery`: `c.facet_query(field, ...)`, CLI `facet-query`
 
 Top-N most frequent values of `field` for events matching `filter`.
 
@@ -124,7 +124,7 @@ subset from at least 500K matching events.
 
 ---
 
-### `timeseriesQuery` — `c.timeseries_query(queries=[...])` — CLI `timeseries-query`
+### `timeseriesQuery`: `c.timeseries_query(queries=[...])`, CLI `timeseries-query`
 
 Bucketed numeric data; multi-query per request. Each entry in `queries` may
 include: `filter`, `function` (`count` | `rate` | `mean(field)` | ...),
@@ -132,11 +132,11 @@ include: `filter`, `function` (`count` | `rate` | `mean(field)` | ...),
 `priority`, plus cross-team fields.
 
 `createSummaries` (default `true`): create a precomputed timeseries for this
-query. Backfill begins in 2–3 minutes, ~2 months/hour. Subsequent matching
+query. Backfill begins in 2-3 minutes, ~2 months/hour. Subsequent matching
 queries become near-instant.
 
 `onlyUseSummaries` (default `false`): fail over to zeros if no precomputed
-series exists — guarantees fast/cheap response but may be incomplete until
+series exists, guarantees fast/cheap response but may be incomplete until
 backfill finishes.
 
 Novel query budget: >100 novel (uncached) queries/hour triggers rate limits.
@@ -157,7 +157,7 @@ Response:
 
 ---
 
-### `numericQuery` — `c.numeric_query(...)` — CLI `numeric-query`
+### `numericQuery`: `c.numeric_query(...)`, CLI `numeric-query`
 
 Effectively superseded by `timeseriesQuery` with `createSummaries=false` and
 `onlyUseSummaries=false`. Keep it for two reasons:
@@ -176,15 +176,15 @@ Response: `{"status": "success", "values": [n, n, ...], "cpuUsage": 12}`.
 
 Config files back every SDL customisation: parsers, dashboards, alerts,
 lookups, datatables. Paths look like `/logParsers/Foo`, `/dashboards/Bar`,
-`/alerts`, etc. Parsers specifically must use `/logParsers/<name>` —
+`/alerts`, etc. Parsers specifically must use `/logParsers/<name>`;
 the API also accepts `/parsers/<name>` but the Log Parsers UI reads only `/logParsers/`.
 
-### `listFiles` — `c.list_files()` — CLI `list-files`
+### `listFiles`: `c.list_files()`, CLI `list-files`
 
 No params. Returns `{"status":"success","paths":["/a","/b/c","/z"]}` sorted
 alphabetically.
 
-### `getFile` — `c.get_file(path, expected_version=None, prettyprint=False)` — CLI `get-file`
+### `getFile`: `c.get_file(path, expected_version=None, prettyprint=False)`, CLI `get-file`
 
 Reads a single file. Response:
 
@@ -203,11 +203,11 @@ Reads a single file. Response:
 - If the file does not exist: `{"status":"success/noSuchFile"}`.
 - If `expected_version` matches current: `{"status":"success/unchanged"}` with no `content`.
 
-### `putFile` — `c.put_file(path, content=None, delete=False, expected_version=None, prettyprint=False)` — CLI `put-file`
+### `putFile`: `c.put_file(path, content=None, delete=False, expected_version=None, prettyprint=False)`, CLI `put-file`
 
 Create, update, or delete. `delete=True` uses `{"deleteFile": true}` internally.
 
-Content validation depends on file type — dashboards expect `"{graphs: []}"`
+Content validation depends on file type, dashboards expect `"{graphs: []}"`
 as empty, parsers/datatables expect empty string. Pass a fresh `expected_version`
 from the preceding `getFile` for optimistic concurrency; a mismatch returns
 `{"status":"error/client/versionMismatch"}` and no write.
@@ -215,5 +215,5 @@ from the preceding `getFile` for optimistic concurrency; a mismatch returns
 Response on success: `{"status":"success"}`.
 
 Requires Configuration Write Access key (or console token with config-write
-permission). Console tokens are permitted but scope-aware — `S1-Scope` header
+permission). Console tokens are permitted but scope-aware, `S1-Scope` header
 may be required.

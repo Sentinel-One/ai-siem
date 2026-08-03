@@ -1,5 +1,5 @@
 /**
- * Hyperautomation tools — sentinelone-hyperautomation skill
+ * Hyperautomation tools: sentinelone-hyperautomation skill
  *
  * Tools:
  *   ha_list_workflows     List Hyperautomation workflows (with scope/state/sort filters)
@@ -17,7 +17,7 @@
  *
  * Deletion is a soft, recoverable HTTP DELETE (validated 2026-06-13):
  *   DELETE /workflows/{id}?accountIds=<acct>   (or ?siteIds=<site>)
- * The older POST /workflows/archive returns 500 on this tenant — do not use it.
+ * The older POST /workflows/archive returns 500 on this tenant: do not use it.
  *
  * Import scope: the public import endpoint accepts ?accountIds=<acct> or
  * ?siteIds=<site>; with no scope it returns a misleading 403 on a scoped tenant.
@@ -112,7 +112,7 @@ export const tools = [
   // ─── ha_get_workflow ──────────────────────────────────────────────────────
   {
     name: 'ha_get_workflow',
-    description: `Get a single Hyperautomation workflow by workflowId and revisionId. The revisionId (= workflow.version_id) is returned by ha_list_workflows — always pass both IDs for a direct fetch. If revisionId is omitted, the tool will scan the first page of workflows to find the current revision, which is slower. Returns the full workflow object including trigger configuration, action steps, integration dependencies, scope, and version metadata.`,
+    description: `Get a single Hyperautomation workflow by workflowId and revisionId. The revisionId (= workflow.version_id) is returned by ha_list_workflows; always pass both IDs for a direct fetch. If revisionId is omitted, the tool will scan the first page of workflows to find the current revision, which is slower. Returns the full workflow object including trigger configuration, action steps, integration dependencies, scope, and version metadata.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -160,7 +160,7 @@ export const tools = [
   // ─── ha_delete_workflow ───────────────────────────────────────────────────
   {
     name: 'ha_delete_workflow',
-    description: `Delete one or more Hyperautomation workflows. Uses the REST DELETE /hyper-automate/api/v1/workflows/{id} endpoint (validated 2026-06-13) — a soft, recoverable delete (the console offers a "Restore workflow" action), equivalent to clicking Delete in the Hyperautomation UI. Scope the call to where the workflow lives with accountIds (account-scoped workflow) or siteIds (site-scoped); a 404 "Object not found" means the id is not under that scope or is already deleted. Requires Hyper Automate.write permission. NOTE: do NOT use the older POST /workflows/archive path — it returns 500 on this tenant.`,
+    description: `Delete one or more Hyperautomation workflows. Uses the REST DELETE /hyper-automate/api/v1/workflows/{id} endpoint (validated 2026-06-13), a soft, recoverable delete (the console offers a "Restore workflow" action), equivalent to clicking Delete in the Hyperautomation UI. Scope the call to where the workflow lives with accountIds (account-scoped workflow) or siteIds (site-scoped); a 404 "Object not found" means the id is not under that scope or is already deleted. Requires Hyper Automate.write permission. NOTE: do NOT use the older POST /workflows/archive path; it returns 500 on this tenant.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -247,7 +247,7 @@ export const tools = [
   // ─── ha_export_workflow ───────────────────────────────────────────────────
   {
     name: 'ha_export_workflow',
-    description: `Export all Hyperautomation workflows as a ZIP archive. Returns metadata about the ZIP (size, content-type) plus the first 200 bytes of the base64-encoded content. NOTE: The export API (confirmed via live backtest) returns ALL workflows — there is no per-workflow filter. Use ha_get_workflow to read a specific workflow's JSON definition instead. Export/import endpoints were not captured in the v1 network trace; this tool uses the confirmed /public path.`,
+    description: `Export all Hyperautomation workflows as a ZIP archive. Returns metadata about the ZIP (size, content-type) plus the first 200 bytes of the base64-encoded content. NOTE: The export API (confirmed via live backtest) returns ALL workflows; there is no per-workflow filter. Use ha_get_workflow to read a specific workflow's JSON definition instead. Export/import endpoints were not captured in the v1 network trace; this tool uses the confirmed /public path.`,
     inputSchema: {
       type: 'object',
       properties: {},
@@ -274,7 +274,7 @@ export const tools = [
       const buf    = await res.arrayBuffer();
       const base64 = Buffer.from(buf).toString('base64');
       return JSON.stringify({
-        note: 'Export returns all workflows as a binary ZIP. Per-workflow filtering is not supported. METADATA ONLY: this tool does not return or persist the ZIP content — use the console UI or a direct API call with file output if you need the archive itself.',
+        note: 'Export returns all workflows as a binary ZIP. Per-workflow filtering is not supported. METADATA ONLY: this tool does not return or persist the ZIP content; use the console UI or a direct API call with file output if you need the archive itself.',
         contentType: res.headers.get('Content-Type') || 'application/zip',
         sizeBytes: buf.byteLength,
         base64Preview: base64.slice(0, 200) + '… [truncated]',

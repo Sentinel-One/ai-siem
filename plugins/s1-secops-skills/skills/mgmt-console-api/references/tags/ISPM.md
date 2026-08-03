@@ -11,8 +11,8 @@ Use the below Cloud API to get the status of the AD Assessment status for that a
 Required permissions: `AD Exposures.View`
 
 Parameters:
-- `siteIds` [query, string] — List of site IDs separated by comma
-- `accountIds` [query, string] — List of account IDs separated by comma
+- `siteIds` [query, string]: List of site IDs separated by comma
+- `accountIds` [query, string]: List of account IDs separated by comma
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -25,11 +25,11 @@ Use the below Cloud API to get all the affected objects based on the selected fi
 Required permissions: `AD Exposures.View`
 
 Parameters:
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `accountIds` [query, string] — List of account IDs separated by comma
-- `siteIds` [query, string] — List of site IDs separated by comma
-- `body` [body, v2_1.public_api.schemas_GetAffectedObjectsRequestSchema] — 
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `accountIds` [query, string]: List of account IDs separated by comma
+- `siteIds` [query, string]: List of site IDs separated by comma
+- `body` [body, v2_1.public_api.schemas_GetAffectedObjectsRequestSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -42,11 +42,11 @@ Use the below Cloud API to get all the exposures based on the selected filters
 Required permissions: `AD Exposures.View`
 
 Parameters:
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `accountIds` [query, string] — List of account IDs separated by comma
-- `siteIds` [query, string] — List of site IDs separated by comma
-- `body` [body, v2_1.public_api.schemas_GetExposuresRequestSchema] — 
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `accountIds` [query, string]: List of account IDs separated by comma
+- `siteIds` [query, string]: List of site IDs separated by comma
+- `body` [body, v2_1.public_api.schemas_GetExposuresRequestSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -59,9 +59,9 @@ Use the below Cloud API to set acknowledgement status
 Required permissions: `AD Exposures.Ack or Unack AD Assessment`
 
 Parameters:
-- `siteIds` [query, string] — List of site IDs separated by comma
-- `accountIds` [query, string] — List of account IDs separated by comma
-- `body` [body, v2_1.public_api.schemas_SetAckExposuresRequestSchema] — 
+- `siteIds` [query, string]: List of site IDs separated by comma
+- `accountIds` [query, string]: List of account IDs separated by comma
+- `body` [body, v2_1.public_api.schemas_SetAckExposuresRequestSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -74,9 +74,9 @@ Use the below Cloud API to set the list of exposures to be skipped
 Required permissions: `AD Exposure Exclusions.Edit`
 
 Parameters:
-- `siteIds` [query, string] — List of site IDs separated by comma
-- `accountIds` [query, string] — List of account IDs separated by comma
-- `body` [body, v2_1.public_api.schemas_SetSkippedExposuresRequestSchema] — 
+- `siteIds` [query, string]: List of site IDs separated by comma
+- `accountIds` [query, string]: List of account IDs separated by comma
+- `body` [body, v2_1.public_api.schemas_SetSkippedExposuresRequestSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -89,8 +89,8 @@ Use the below Cloud API to trigger ADAssessment
 Required permissions: `AD Exposures.Trigger Assessment`
 
 Parameters:
-- `siteIds` [query, string] — List of site IDs separated by comma
-- `accountIds` [query, string] — List of account IDs separated by comma
-- `body` [body, v2_1.public_api.schemas_TriggerAssessmentRequestSchema] — 
+- `siteIds` [query, string]: List of site IDs separated by comma
+- `accountIds` [query, string]: List of account IDs separated by comma
+- `body` [body, v2_1.public_api.schemas_TriggerAssessmentRequestSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

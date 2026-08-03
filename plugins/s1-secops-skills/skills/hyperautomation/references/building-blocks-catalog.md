@@ -635,7 +635,7 @@ instead of being duplicated across flows. Full authoring + calling + lifecycle: 
 - Bindings survive export as `snippet_workflow_id` / `snippet_version_id`; resolve them with
   `GET /workflow-actions/snippets-versions/{workflowId}/{versionId}?query={}`.
 
-**Authoring a snippet** uses `snippet_trigger` (inputs) + `snippet_output` (returns) — see
+**Authoring a snippet** uses `snippet_trigger` (inputs) + `snippet_output` (returns), see
 `references/snippets.md` for the node shapes and the import rules.
 
 ---
@@ -776,7 +776,7 @@ Variable (cursor = next_cursor from response)
   ↓
 Condition (cursor is empty?)
   TRUE  → Break Loop
-  (NO false edge — the while loop re-runs the inner block automatically; see warning)
+  (NO false edge, the while loop re-runs the inner block automatically; see warning)
 ```
 
 > **Confirmed 2026-06-11 (live import):** do NOT wire the condition's `FALSE` branch back to the
@@ -791,7 +791,7 @@ Most-used cursor field in the corpus:
 
 > **S1 list-endpoint pagination quirks (confirmed 2026-06-11 on `/web/api/v2.1/agents`):**
 > `pagination.totalItems` is populated only on the **first** page (empty cursor) and returns `0`
-> on later pages — for a true total, read it on page 1 or use the length of the gathered list.
+> on later pages, for a true total, read it on page 1 or use the length of the gathered list.
 > `nextCursor` is returned **already URL-encoded** (contains `%3D`); pass it straight into the
 > next request's `cursor=` (do NOT wrap it in `Function.URL_ENCODE`). An empty `cursor=` returns
 > page 1 cleanly, so seeding `cursor = ""` is safe.
@@ -1108,7 +1108,7 @@ array**, not a raw array. Verified: all 1 in-operator usage in the corpus uses
 
 - Call a snippet with a **`snippet_20`** node bound via `snippet_workflow_id` + `snippet_version_id`
   (these persist through export). Do NOT use type `"snippet"` and do NOT embed the snippet's inner
-  actions into the parent — embedding orphans a node.
+  actions into the parent, embedding orphans a node.
 - Authoring a snippet: `export_id 0` must be a real body action, not the `snippet_trigger`;
   `snippet_output` values must be non-empty (a bare `{{slug.}}` imports but is invalid at runtime,
   use a literal or a real `{{slug.field}}`); the workflow name must not contain parentheses `()`.

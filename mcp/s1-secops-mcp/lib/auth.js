@@ -2,10 +2,10 @@
  * Bearer token auth loader for HTTP transport.
  *
  * Sources (highest wins):
- *   1. MCP_BEARER_TOKENS_FILE — path to JSON: { "<name>": "<token>", ... }
+ *   1. MCP_BEARER_TOKENS_FILE: path to JSON: { "<name>": "<token>", ... }
  *      Allows per-user tokens with stable names for audit logs.
  *      File mode is enforced via the install script (0600 recommended).
- *   2. MCP_BEARER_TOKENS — comma-separated raw tokens (no per-user names).
+ *   2. MCP_BEARER_TOKENS: comma-separated raw tokens (no per-user names).
  *      Names default to "token-1", "token-2", etc.
  *
  * If neither is set, HTTP transport runs with NO authentication. The server

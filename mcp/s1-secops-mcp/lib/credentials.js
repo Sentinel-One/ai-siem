@@ -1,5 +1,5 @@
 /**
- * Credential loader — zero dependencies, synchronous.
+ * Credential loader: zero dependencies, synchronous.
  *
  * Resolution order (highest wins):
  *   1. Environment variables
@@ -34,7 +34,7 @@ function tryLoad(dir) {
 }
 
 function discoverCredentials() {
-  // 1. S1_CREDS_FILE — explicit absolute path. Useful for VM deployments and
+  // 1. S1_CREDS_FILE: explicit absolute path. Useful for VM deployments and
   //    secret-store integrations (Vault / Doppler / 1Password / sealed-secrets)
   //    that render a credentials file to a known path at boot.
   const credsFile = process.env.S1_CREDS_FILE;
@@ -120,8 +120,15 @@ export function hasS1Creds() {
   return !!(c.S1_CONSOLE_URL && c.S1_CONSOLE_API_TOKEN);
 }
 
-/** True if minimum required credentials for SDL are present. */
+/** True if minimum required credentials for SDL are present.
+ *  Any key in the auth chains counts: read-only deployments configure only
+ *  SDL_LOG_READ_KEY / SDL_CONFIG_READ_KEY and are still fully usable. */
 export function hasSdlCreds() {
   const c = getCreds();
-  return !!(c.SDL_XDR_URL && (c.SDL_CONFIG_WRITE_KEY || c.S1_CONSOLE_API_TOKEN));
+  return !!(c.SDL_XDR_URL && (
+    c.SDL_CONFIG_WRITE_KEY ||
+    c.SDL_CONFIG_READ_KEY ||
+    c.SDL_LOG_READ_KEY ||
+    c.S1_CONSOLE_API_TOKEN
+  ));
 }

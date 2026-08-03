@@ -9,10 +9,10 @@ Two environment variables drive all API interactions with the console:
 | `S1_CONSOLE_URL` | Full console base URL, e.g. `https://usea1-acme.sentinelone.net` |
 | `S1_CONSOLE_API_TOKEN` | Console User (personal) API token (generated in Settings → Users → API Token) |
 
-**Always validate these before use.** Run the two-step check below — if either step fails,
+**Always validate these before use.** Run the two-step check below, if either step fails,
 stop and tell the user what went wrong before proceeding with any workflow operation.
 
-### Step 1 — Validate `S1_CONSOLE_URL` (no auth required)
+### Step 1: Validate `S1_CONSOLE_URL` (no auth required)
 
 ```
 GET {S1_CONSOLE_URL}/web/api/v2.1/system
@@ -22,7 +22,7 @@ This endpoint requires no authentication and always returns `200` with `{"data":
 when the console is reachable. A non-200 response or a network error means `S1_CONSOLE_URL` is wrong
 or the console is unreachable.
 
-### Step 2 — Validate `S1_CONSOLE_API_TOKEN` (auth + permission check)
+### Step 2: Validate `S1_CONSOLE_API_TOKEN` (auth + permission check)
 
 ```
 GET {S1_CONSOLE_URL}/web/api/v2.1/hyper-automate/api/public/workflows?limit=1
@@ -31,8 +31,8 @@ Authorization: ApiToken {S1_CONSOLE_API_TOKEN}
 
 A `200` response confirms the token is valid and has `Hyper Automate.view` permission.
 Failure responses:
-- `401` — token is missing or expired
-- `403` — token lacks `Hyper Automate.view` permission
+- `401`: token is missing or expired
+- `403`: token lacks `Hyper Automate.view` permission
 
 ```javascript
 // Validation helper
@@ -77,7 +77,7 @@ All scope-filtering query params are **plural**: `accountIds`, `siteIds`, `group
 You will see two different scope-filter shapes in SentinelOne tutorials and
 Slack snippets. Only the **plural query-string** shape works on the
 Hyperautomation API. The other variants all return `HTTP 403 "Insufficient
-permissions"` — a misleading error that looks like a missing role, but is
+permissions"`, a misleading error that looks like a missing role, but is
 actually a wrong parameter name.
 
 | Shape | Result |
@@ -235,12 +235,12 @@ to work for post-import retrieval.
 Accepts multiple workflow objects. Use for bulk deployments.
 
 **Body params** (multipart/form-data):
-- `file` (required) — the batch import file (workflow JSON or ZIP archive)
-- `filter` (required) — JSON-encoded string. Send `{}` for "no filter".
+- `file` (required): the batch import file (workflow JSON or ZIP archive)
+- `filter` (required): JSON-encoded string. Send `{}` for "no filter".
   ⚠️ Sending `filter` as an **empty string** (`""`) triggers a server-side
   parse error that surfaces as **HTTP 500**, *not* HTTP 4xx. If you see a 500
   on batch import, suspect the `filter` field first.
-- `body` (optional) — `{ "data": {...}, "filter": {"type": "JsonPath"|"JsonSchema", "value": "..."} }`
+- `body` (optional): `{ "data": {...}, "filter": {"type": "JsonPath"|"JsonSchema", "value": "..."} }`
 
 Example:
 ```bash
@@ -251,7 +251,7 @@ curl -X POST "$S1_CONSOLE/web/api/v2.1/hyper-automate/api/public/workflow-import
 ```
 
 **Responses**: `201` success, `422` validation error (missing field),
-`403` (real permission check; fires only after schema validation passes —
+`403` (real permission check; fires only after schema validation passes;
 don't trust a 500 from a malformed `filter` as evidence about permissions).
 
 ---
@@ -273,7 +273,7 @@ Returns the full workflow JSON for re-import or inspection.
 
 **Permission**: `Hyper Automate.workflowsExport`
 
-**Query params** (all optional — combine to filter):
+**Query params** (all optional, combine to filter):
 | Param | Type | Description |
 |-------|------|-------------|
 | `workflow_ids` | string | Comma-separated workflow IDs |
@@ -401,7 +401,7 @@ returns `204`), then (2) `DELETE .../workflows/{id}?siteIds=<id>` (returns `204`
 2026-07-11 on two active watchdog flows: deactivate `204` then delete `204`; a direct delete of the
 still-active flow first returned the 400 above.
 
-**Query params**: `accountIds` or `siteIds` — match where the workflow lives. A `404 "Object not
+**Query params**: `accountIds` or `siteIds`, match where the workflow lives. A `404 "Object not
 found"` means the id is not under that scope (or already deleted).
 
 **Responses**: `204` success (no body).
@@ -537,7 +537,7 @@ Uses the `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` environment variables. Alwa
 ```javascript
 const apiUrl   = process.env.S1_CONSOLE_URL;    // e.g. https://usea1-acme.sentinelone.net
 const apiToken = process.env.S1_CONSOLE_API_TOKEN;  // Service User API token
-const siteId   = process.env.SITE_ID;    // optional — scope to a specific site
+const siteId   = process.env.SITE_ID;    // optional, scope to a specific site
 
 const base = `${apiUrl}/web/api/v2.1/hyper-automate/api/public`;
 const headers = {
@@ -583,7 +583,7 @@ const triggerRes = await fetch(
 
 | HTTP | Meaning | Common causes |
 |------|---------|---------------|
-| `200` / `201` / `204` | Success | — |
+| `200` / `201` / `204` | Success | n/a |
 | `400` | Bad request | Malformed body, invalid field value |
 | `401` | Unauthorized | Missing or expired API token |
 | `403` | Forbidden | Token lacks required permission |
@@ -591,17 +591,17 @@ const triggerRes = await fetch(
 | `422` | Validation error | Schema mismatch, duplicate `export_id`, invalid `type` value, missing required field |
 
 Common import `422` messages:
-- `"Invalid action type"` — typo in `type` field
-- `"export_id conflict"` — duplicate `export_id` values in actions array
-- `"Invalid target"` — `connected_to.target` references non-existent `export_id`
-- `"Missing required field"` — required field absent from data object
+- `"Invalid action type"`: typo in `type` field
+- `"export_id conflict"`: duplicate `export_id` values in actions array
+- `"Invalid target"`: `connected_to.target` references non-existent `export_id`
+- `"Missing required field"`: required field absent from data object
 
 ---
 
-## SentinelOne alert write-backs — use the Unified Alerts GraphQL API
+## SentinelOne alert write-backs: use the Unified Alerts GraphQL API
 
-When a workflow writes back to the alert that triggered it — add a note, set the analyst verdict,
-change status, assign an owner, or set a ticket id — use the **Unified Alerts GraphQL API**, not the
+When a workflow writes back to the alert that triggered it, add a note, set the analyst verdict,
+change status, assign an owner, or set a ticket id; use the **Unified Alerts GraphQL API**, not the
 legacy REST threats endpoints. The old `POST /web/api/v2.0/threats/*` note/verdict/status paths are
 **decommissioned and return HTTP 405.**
 
@@ -611,11 +611,11 @@ legacy REST threats endpoints. The old `POST /web/api/v2.0/threats/*` note/verdi
 
 The **note-add** mutation shape (`addAlertNote` / `alertTriggerActions` with `S1/alert/addNote`) is
 already documented in `building-blocks-catalog.md` → B6. The same `alertTriggerActions` envelope drives
-the rest of the write-back actions — pass a different `id` in `actions[]`:
+the rest of the write-back actions, pass a different `id` in `actions[]`:
 
 | Action id | Payload |
 |-----------|---------|
-| `S1/alert/addNote` | `{ note: { value: $note } }` — or rich: `{ formattedNote: { text: $text, plainText: $plain, type: MARKDOWN } }` |
+| `S1/alert/addNote` | `{ note: { value: $note } }`: or rich: `{ formattedNote: { text: $text, plainText: $plain, type: MARKDOWN } }` |
 | `S1/alert/analystVerdictUpdate` | `{ analystVerdict: { value: <ENUM> } }` |
 | `S1/alert/statusUpdate` | `{ status: { value: <ENUM> } }` |
 | `S1/alert/assignUser` | assign an owner to the alert |
@@ -626,17 +626,17 @@ the rest of the write-back actions — pass a different `id` in `actions[]`:
 - **Enum values are UNQUOTED GraphQL literals**, not strings. `AnalystVerdict`:
   `FALSE_POSITIVE_BENIGN` / `TRUE_POSITIVE_MALWARE` / `UNDEFINED` / … ; `Status`:
   `NEW` / `IN_PROGRESS` / `RESOLVED`. Writing `"IN_PROGRESS"` (quoted) fails.
-- **The `$id` GraphQL variable must be typed `String!`, not `ID!`** — `stringEqual.value` expects a
+- **The `$id` GraphQL variable must be typed `String!`, not `ID!`**: `stringEqual.value` expects a
   `String`, so an `ID!` variable raises `VariableTypeMismatch`.
 - **`ContentType` enum** for `formattedNote.type` is `HTML | MARKDOWN | PLAIN_TEXT`. `MARKDOWN` renders
-  headings, bold, tables, and links in the alert Notes panel — prefer it for rich evidence notes.
+  headings, bold, tables, and links in the alert Notes panel; prefer it for rich evidence notes.
 - **Unknown or unavailable action ids come back as FAILURES, not silent no-ops.** The mutation returns
   HTTP 200 with the bad action under `actions[].failure` (`errorMessage: "No result returned by target
   service"`), NOT an empty `actions: []` and NOT under `skip`. Always check `actions[].failure` and
   `actions[].skip`, not just `success`: a wrong or deprecated id (e.g. `setAnalystVerdict` / `setStatus`,
   which are absent from the live catalog) fails here while the HTTP action still reports 200. Enumerate
   the valid ids for an alert first via the `alertAvailableActions` query. (Live-validated 2026-07-24.)
-- Writes are **eventually consistent (~5s)** — don't read-after-write immediately and assume failure.
+- Writes are **eventually consistent (~5s)**: don't read-after-write immediately and assume failure.
 
 ---
 
@@ -653,14 +653,14 @@ render as native on the canvas, the vendor's `integration_id`.
   unconfirmed on S-26.x. `GET {base}/public-actions` returns 404 (as do `/actions` and
   `/integration-actions`); capture the current path from a browser DevTools network trace of the
   Hyperautomation > Integrations page before relying on it. (Path 404 verified live 2026-07-24.)
-- **`url` / `url_path` / `payload` overrides on an integration action ARE honored** — the action then
+- **`url` / `url_path` / `payload` overrides on an integration action ARE honored**: the action then
   executes as a generic HTTP request through the bound connection. To make a node *unambiguously* a
   generic request, set `public_action_id: null`.
 - **Null out `connection_id`s in exported workflow JSON for cross-tenant portability.** A hard-coded
   `connection_id` from the source tenant imports as `404 "connection not found"` in another tenant;
   leaving it `null` imports clean (the user binds the connection after import).
 - **Prefer NEW API endpoints over deprecated ones** for every native action, and verify the real
-  endpoint before wiring — deprecated paths can reject functions or return empty rows silently.
+  endpoint before wiring, deprecated paths can reject functions or return empty rows silently.
 
 ---
 
@@ -675,7 +675,7 @@ render as native on the canvas, the vendor's `integration_id`.
   activate, see sections 8, 8a, and 8b above.) Param behaviour live-validated 2026-07-24.
 - **Per-action execution output is NOT exposed via the API** (the per-action output endpoints 404).
   Validate a deployed workflow by triggering it and reading the resulting alert notes / downstream side
-  effects — not by inspecting action outputs over the API.
+  effects, not by inspecting action outputs over the API.
 
 ---
 
@@ -688,6 +688,6 @@ render as native on the canvas, the vendor's `integration_id`.
 | US East 2 | `https://usea2-<tenant>.sentinelone.net` |
 
 **Token location**: Settings → Users → [your user] → API Token → Generate.
-Use a **Console User (personal) token**. Do not use a Service User token — the Hyperautomation
+Use a **Console User (personal) token**. Do not use a Service User token, the Hyperautomation
 API provides no endpoint to share or transfer workflow ownership, so a workflow imported with
 a Service User token would be owned by that service account and invisible to human users.

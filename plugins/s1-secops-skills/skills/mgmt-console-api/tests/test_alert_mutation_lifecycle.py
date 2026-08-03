@@ -1,5 +1,5 @@
 """
-Alert status + analyst-verdict round-trip test — REVERSIBLE.
+Alert status + analyst-verdict round-trip test, REVERSIBLE.
 
 Exercises the bulk-ops mutation path on an existing alert:
 
@@ -22,10 +22,10 @@ Why pick an existing alert instead of creating one?
 
 Blast radius
     On most tenants the target alert's {status, analystVerdict} end the
-    test identical to their starting values — so no lasting SOC impact.
+    test identical to their starting values, so no lasting SOC impact.
     The alertHistory audit log *will* record the transitions, which is
     working-as-intended for an API test (every status change is
-    auditable — that's the feature). Use `--keep` to leave the mutations
+    auditable; that's the feature). Use `--keep` to leave the mutations
     in place for UI inspection.
 
 Usage
@@ -52,7 +52,7 @@ import unified_alerts as ua  # noqa: E402
 
 
 STATUS_ENUM = ("NEW", "IN_PROGRESS", "RESOLVED")
-# Pick two benign analyst verdicts we can ping-pong between — UNDEFINED
+# Pick two benign analyst verdicts we can ping-pong between: UNDEFINED
 # is the "no verdict recorded" default, so we always use it as one end
 # of the round-trip so the restore step is effectively a no-op on a
 # fresh alert.
@@ -73,14 +73,14 @@ def _pick_alert(client: S1Client, scope_input: Dict[str, Any],
     page = ua.list_alerts(client, scope_input=scope_input, first=5)
     edges = page.get("edges") or []
     if not edges:
-        raise RuntimeError("No alerts visible to this token — cannot round-trip")
+        raise RuntimeError("No alerts visible to this token, cannot round-trip")
     return edges[0]["node"]
 
 
 def _check_triggered_ok(resp: Dict[str, Any], operation: str) -> None:
     """`alertTriggerActions` returns a union type. Inspect __typename and
     raise on TriggerActionsError. ActionsTriggered is considered success
-    even if the `failure` sub-list is populated — the test itself will
+    even if the `failure` sub-list is populated, the test itself will
     verify the post-condition."""
     typ = resp.get("__typename")
     if typ == "TriggerActionsError":
@@ -92,7 +92,7 @@ def _check_triggered_ok(resp: Dict[str, Any], operation: str) -> None:
 
 
 def _reread_alert(client: S1Client, alert_id: str) -> Dict[str, Any]:
-    # Short poll for propagation — mutation is async on the backend.
+    # Short poll for propagation: mutation is async on the backend.
     deadline = time.time() + 30
     last: Dict[str, Any] = {}
     while time.time() < deadline:
@@ -227,13 +227,13 @@ def main() -> int:
          f"recent eventTypes={sorted(t for t in recent_types if t)}")
 
     if args.keep:
-        _log("KEEP flag set — mutations applied but not restored. Final state:")
+        _log("KEEP flag set, mutations applied but not restored. Final state:")
         final = ua.get_alert(client, alert_id)
         _log(f"  status={final.get('status')!r}  verdict={final.get('analystVerdict')!r}")
         _log(f"  (originals were status={orig_status!r}  verdict={orig_verdict!r})")
 
     _log("Alert mutation lifecycle: STATUS round-trip → VERDICT round-trip "
-         "→ HISTORY check — ALL OK")
+         "→ HISTORY check, ALL OK")
     return 0
 
 

@@ -1,8 +1,8 @@
-# Connections — creating integration connections via API
+# Connections: creating integration connections via API
 
 Integration-backed actions (`tag: "integration"`) need a connection under their `integration_id`.
 An existing connection can be bound programmatically (bind the integration id, set
-`use_authentication_data: true`). A connection can also be **created** via the API — but creating
+`use_authentication_data: true`). A connection can also be **created** via the API, but creating
 one requires supplying the integration's secret (an API token) in the request body. That secret is
 supplied by the human operator; do not hard-code, echo, or store it.
 
@@ -13,7 +13,7 @@ POST /web/api/v2.1/hyper-automate/api/v1/connections?siteIds=<id>     (or ?accou
 ```
 
 Returns `200` with a connection id. Scope with `siteIds` / `accountIds` to place the connection
-where the flow lives — connections are per-scope, so a site flow needs a connection in that site
+where the flow lives; connections are per-scope, so a site flow needs a connection in that site
 (or an account-level one that covers it).
 
 ## Body (SentinelOne first-party connections)
@@ -35,7 +35,7 @@ All three SentinelOne connections share one body shape; they differ only in `nam
       "way_to_pass_input": "Authorization",
       "way_to_pass_prefix": "Bearer",
       "authentication_type": "api_key",
-      "api_key": "<console API token — operator supplies>"
+      "api_key": "<console API token, operator supplies>"
     }
   }
 }
@@ -45,9 +45,9 @@ All three SentinelOne connections share one body shape; they differ only in `nam
 |---|---|---|---|
 | **SentinelOne SDL** | `SentinelOne SDL connection` | `Bearer` | SDL LRQ / PowerQuery / HEC ingest (`/sdl/…`, `/services/collector`) |
 | **SentinelOne GraphQL** | `SentinelOne GraphQL connection` | `Bearer` | Unified Alerts GraphQL, agentic-investigation, alert write-backs (`/web/api/v2.1/unifiedalerts/graphql`) |
-| **SentinelOne** (mgmt) | `SentinelOne connection` | `ApiToken` | Mgmt REST (`/web/api/v2.1/…`) — sign as `ApiToken`, NOT `Bearer` |
+| **SentinelOne** (mgmt) | `SentinelOne connection` | `ApiToken` | Mgmt REST (`/web/api/v2.1/…`): sign as `ApiToken`, NOT `Bearer` |
 
-- SDL and GraphQL sign `Bearer`; the mgmt "SentinelOne" connection signs `ApiToken` — set
+- SDL and GraphQL sign `Bearer`; the mgmt "SentinelOne" connection signs `ApiToken`, set
   `way_to_pass_prefix` accordingly. Binding the wrong one is the classic `HTTP 500
   "Header must start with Bearer"` (mgmt token on an SDL endpoint) failure.
 - `api_key` is the console API token for all three.
@@ -66,6 +66,6 @@ Everything except the secret comes straight from the source connection.
 
 Bind the **integration** id on `http_request` actions (`integration_id`), set
 `use_authentication_data: true`, and rely on a connection existing under that integration in the
-action's scope. Do NOT bind a specific connection id — that imports/activates but fails at runtime
+action's scope. Do NOT bind a specific connection id; that imports/activates but fails at runtime
 (`"Must provide connection…"`). If no connection exists for a bound integration in the target scope,
-activation fails `400 "requires configuration"` — create the connection there first, then activate.
+activation fails `400 "requires configuration"`, create the connection there first, then activate.

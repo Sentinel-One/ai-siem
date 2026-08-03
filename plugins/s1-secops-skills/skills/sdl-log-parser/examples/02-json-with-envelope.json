@@ -9,7 +9,7 @@
 //   `unmapped.user`, `unmapped.action`, `unmapped.meta.ip`, `unmapped.meta.country`.
 //
 // Three things the tenant's parser insists on for this shape:
-//   (1) The JSON capture MUST have an explicit `=json` pattern — without a pattern
+//   (1) The JSON capture MUST have an explicit `=json` pattern; without a pattern
 //       the default `quotable` stops at the first whitespace and the whole format
 //       fails to match.
 //   (2) `{parse=dottedJson}` only flattens JSON subfields when the capture NAME
@@ -17,7 +17,7 @@
 //       (`$payload{parse=dottedJson}$`) captures the raw JSON string but emits no
 //       dotted subfields.
 //   (3) Downstream mappings can `rename` the `unmapped.*` fields to OCSF or
-//       vendor-native names — this is the canonical ai-siem community pattern.
+//       vendor-native names: this is the canonical ai-siem community pattern.
 
 {
   attributes: {

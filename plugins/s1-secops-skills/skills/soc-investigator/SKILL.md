@@ -1,23 +1,26 @@
 ---
 name: soc-investigator
 author: Joel Mora <joelm@sentinelone.com>
-description: Autonomous DFIR investigation for Claude Cowork. Interrogates user for alert context, executes SHORT/MEDIUM/LONG investigation modes on SentinelOne alerts, then optionally expands to third-party data sources (M365, Entra, Sharepoint, etc.) for deep correlation and anomaly detection.
-compatibility: Requires sentinelone-powerquery, sentinelone-mgmt-console-api, sentinelone-sdl-api, sentinelone-sdl-log-parser, sentinelone-hyperautomation, sentinelone-sdl-dashboard, purple MCP (VirusTotal/threat intel). Works with Claude Cowork.
-metadata:
-  author: Joel Mora <joelm@sentinelone.com>
-  version: "1.1"
-  tags:
-    - dfir
-    - event-correlation
-    - threat-intelligence
-    - third-party-correlation
-    - mitre-mapping
-    - investigation-reporting
+description: >-
+  Autonomous DFIR investigation orchestrator for SentinelOne alerts in Claude Cowork. Use
+  whenever the user wants to investigate, triage, or work a SentinelOne alert or incident:
+  "investigate this alert", "triage this alert id", "is this a true positive", "run a DFIR
+  investigation", or any request for alert investigation, incident response, or a forensic
+  deep-dive on a SentinelOne tenant. Interrogates the user for alert context, then executes
+  SHORT (quick triage), MEDIUM (correlation sweep), or LONG (full forensic timeline)
+  investigation modes with threat-intel enrichment, MITRE ATT&CK mapping, and strict verdict
+  gates. Optionally expands to third-party data sources (M365, Entra ID, Okta, SharePoint,
+  firewalls) for cross-source correlation and anomaly detection. Produces a calibrated
+  verdict (true positive, false positive, or suspicious) plus a structured investigation
+  report with a mandatory query appendix. Trigger on "investigate", "triage", "DFIR",
+  "alert investigation", "incident response".
 ---
 
 # SOC Investigator - Iterative DFIR with Third-Party Expansion
 
 Autonomous investigation orchestrator with user intake, three investigation modes (SHORT/MEDIUM/LONG) focused on SentinelOne alerts, then optional iterative deep-dive into third-party data sources for correlation and anomaly detection.
+
+Compatibility: requires the `sentinelone-powerquery`, `sentinelone-mgmt-console-api`, `sentinelone-sdl-api`, `sentinelone-sdl-log-parser`, `sentinelone-hyperautomation`, and `sentinelone-sdl-dashboard` skills, plus the purple MCP (VirusTotal / threat intel). Works with Claude Cowork.
 
 ---
 

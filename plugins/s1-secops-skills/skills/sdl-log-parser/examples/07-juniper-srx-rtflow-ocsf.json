@@ -12,7 +12,7 @@
 
 {
   attributes: {
-    // Required pipeline defaults — present on every parser.
+    // Required pipeline defaults: present on every parser.
     "metadata.version":    "1.0.0",
     "dataSource.category": "security",
     "dataSource.name":     "Juniper SRX",
@@ -47,7 +47,7 @@
       id: "rtflow-extension",
       format: ".*$_=identifier$=\"$_=quotableNoEscape$\"",
       repeat: true,
-      // computeFields must run AFTER the k=v pairs have been extracted — so it lives on
+      // computeFields must run AFTER the k=v pairs have been extracted, so it lives on
       // this (repeating) format rather than the frame format.
       rewrites: [
         { action: "computeFields",
@@ -56,7 +56,7 @@
     }
   ],
 
-  // Mappings block — rename vendor-native dashed names to OCSF dotted names.
+  // Mappings block: rename vendor-native dashed names to OCSF dotted names.
   // Tenant expects: version:1, and transformations shaped as { "<op>": { ... } }.
   mappings: {
     version: 1,

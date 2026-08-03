@@ -4,19 +4,19 @@ In-depth documentation for every PowerQuery command. Read before writing anythin
 
 ## Table of contents
 
-1. `filter` — add conditions
-2. `columns` — project / rename / compute
-3. `let` — add computed fields without dropping existing ones
-4. `group` — aggregate
-5. `sort` — order rows
-6. `limit` / `nolimit` — size the output
-7. `parse` — extract fields from text
-8. `lookup` / `dataset` / `savelookup` — data tables
-9. `join` — correlate subqueries
-10. `union` — stack subqueries
-11. `transpose` — pivot a column wider
-12. `compare` — timeshift comparison
-13. `top` — probabilistic top-N
+1. `filter`: add conditions
+2. `columns`: project / rename / compute
+3. `let`: add computed fields without dropping existing ones
+4. `group`: aggregate
+5. `sort`: order rows
+6. `limit` / `nolimit`: size the output
+7. `parse`: extract fields from text
+8. `lookup` / `dataset` / `savelookup`: data tables
+9. `join`: correlate subqueries
+10. `union`: stack subqueries
+11. `transpose`: pivot a column wider
+12. `compare`: timeshift comparison
+13. `top`: probabilistic top-N
 14. Subqueries (`field in (…)`)
 
 ---
@@ -27,7 +27,7 @@ In-depth documentation for every PowerQuery command. Read before writing anythin
 | filter expr
 ```
 
-Keeps rows where `expr` evaluates truthy. The initial filter (everything before the first `|`) is implicit — you don't write `filter` for it. Use explicit `filter` later in the pipeline to prune based on computed or aggregated columns.
+Keeps rows where `expr` evaluates truthy. The initial filter (everything before the first `|`) is implicit; you don't write `filter` for it. Use explicit `filter` later in the pipeline to prune based on computed or aggregated columns.
 
 Only the initial filter supports `* contains` and `* matches`. After the first pipe, search operators must name a field.
 
@@ -74,7 +74,7 @@ Any numeric field named `timestamp` or ending in `.timestamp` renders as an ISO 
 | let f1 = expr, "f 2" = expr2, …
 ```
 
-Adds computed fields. Unlike `columns`, `let` preserves the existing record — use it when you want to add a field without losing everything else.
+Adds computed fields. Unlike `columns`, `let` preserves the existing record; use it when you want to add a field without losing everything else.
 
 Cannot overwrite a field that was produced by a preceding command; *can* overwrite a field that exists in the underlying event data.
 
@@ -96,7 +96,7 @@ src.process.name contains 'powershell' dst.ip.address = *
 
 Without `by`, returns a single row (the aggregate over all input rows). With `by`, one row per distinct combination of the `by` expressions.
 
-Like `columns`, `group` creates a new record set — fields not named in the `group` clause are unreachable afterward.
+Like `columns`, `group` creates a new record set, fields not named in the `group` clause are unreachable afterward.
 
 ### Aggregate function cheat-sheet
 
@@ -107,7 +107,7 @@ Like `columns`, `group` creates a new record set — fields not named in the `gr
 | `sum(x)`, `avg(x)`, `mean(x)`, `average(x)`, `min(x)`, `max(x)` | Standard |
 | `median(x)`, `p10 p50 p90 p95 p99 p999`, `pct(N, x)` | Percentiles |
 | `stddev(x)` | Standard deviation |
-| `estimate_distinct(x)` | HyperLogLog distinct count (~1-2% error; exact for small sets). Don't use `count(distinct …)` — PQ doesn't have it. |
+| `estimate_distinct(x)` | HyperLogLog distinct count (~1-2% error; exact for small sets). Don't use `count(distinct …)`, PQ doesn't have it. |
 | `array_agg(x[, max])`, `array_agg_distinct(x[, max])` | Collect values into an array (cap recommended; the row-byte limit is real) |
 | `any(x)` | Arbitrary (usually first-seen) value; handy for carrying a representative field through an aggregation |
 | `any_true(x)`, `all_true(x)` | Booleans |
@@ -220,7 +220,7 @@ Best practices: defer the `lookup` until after a `group`, so the lookup is perfo
     [on key, a.x = b.y]
 ```
 
-The initial `|` is mandatory — `join (…)` without a pipe is parsed as a search term. Optional names (`a =`) let you disambiguate identical field names.
+The initial `|` is mandatory, `join (…)` without a pipe is parsed as a search term. Optional names (`a =`) let you disambiguate identical field names.
 
 Match semantics:
 
@@ -235,11 +235,11 @@ Match semantics:
 
 `on` sets the keys. Without `on`, the first row of the left is joined with the first row of the right (usually not what you want).
 
-- `on fieldName` — same name in both queries
-- `on a.x = b.y` — different names, with query aliases
-- `on x, y, a.z = b.w` — multiple keys; supports the `=` form per-key
+- `on fieldName`: same name in both queries
+- `on a.x = b.y`: different names, with query aliases
+- `on x, y, a.z = b.w`: multiple keys; supports the `=` form per-key
 
-Can't match fields within the same query (`a.x = a.z` is not a legal join key). If you nest joins, inner joins can't export dotted field names — rename with `columns` before the outer join sees them.
+Can't match fields within the same query (`a.x = a.z` is not a legal join key). If you nest joins, inner joins can't export dotted field names, rename with `columns` before the outer join sees them.
 
 Performance: start with the most selective (smallest-cardinality) subquery. PQ evaluates left-to-right.
 
@@ -251,7 +251,7 @@ Performance: start with the most selective (smallest-cardinality) subquery. PQ e
 | union (query1), (query2), …                 // comma-separated branches in ONE union
 ```
 
-Stacks result sets as rows. Unlike SQL union, the queries can have different columns and different types — missing columns become null. Output has no sort order (add `sort` after).
+Stacks result sets as rows. Unlike SQL union, the queries can have different columns and different types, missing columns become null. Output has no sort order (add `sort` after).
 
 A `union` takes at most **10 subqueries**; more than 10 returns HTTP 400. Write it as a leading command, `| union (q1),(q2),...`, at the start of the query. A subquery may synthesise rows, e.g. `( | limit 1 | columns a=2, b='bar' )`, which is how you build literal rows for a `savelookup`. Do not precede `union` with a main pipeline ending in `| limit` (e.g. `<filter> | limit 1 | union (...)`); that returns HTTP 400 at any branch count. To combine more than 10 subqueries, nest: `| union ( | union (b1),...,(b10) | columns ... ), ( | union (b11),... | columns ... )`, keeping each inner union at 10 or fewer. When branches differ only by a matched literal, prefer a single scan with a `let` plus a ternary over a wide union.
 
@@ -277,7 +277,7 @@ For EDR/XDR data with a single schema, `filter (a OR b)` is usually simpler than
 | transpose columnToPivot on keys limit N
 ```
 
-Pivots a column into many columns — each distinct value becomes a column. Useful for "one column per category" reports and for plotting one series per entity on a line chart.
+Pivots a column into many columns, each distinct value becomes a column. Useful for "one column per category" reports and for plotting one series per entity on a line chart.
 
 Rules:
 - Must be the **last** command in the query.
@@ -339,7 +339,7 @@ Requires S-25.3.6+ and the Network Discovery add-on. Supported in Singularity Op
 
 ---
 
-## 14. Subqueries — `field in (…)`
+## 14. Subqueries: `field in (…)`
 
 ```
 field in (filter_expr | commands_that_yield_field)
@@ -348,10 +348,10 @@ field in (filter_expr | commands_that_yield_field)
 
 Runs the inner query first, collects one column of values, and filters the outer query to rows where `field` is in that set.
 
-Rules (enforce them — these are where subqueries go wrong):
+Rules (enforce them; these are where subqueries go wrong):
 - The inner query **must** produce a column named the same as `field`. Use `columns field` or `group 1 by field` or `top N count() by field`.
-- The `in` subquery must appear **before** any `group`, `sort`, or `limit` in the outer query. After aggregation, the left side's value is computed — PQ can't push the filter in. Use `join` for post-aggregation correlation.
-- The inner query and the outer query are independent filters. If you also want the outer rows to have a condition (e.g., severity 5), state it outside the subquery too — `threat_level = 5 user in (threat_level = 5 | top 3 count() by user)`.
+- The `in` subquery must appear **before** any `group`, `sort`, or `limit` in the outer query. After aggregation, the left side's value is computed, PQ can't push the filter in. Use `join` for post-aggregation correlation.
+- The inner query and the outer query are independent filters. If you also want the outer rows to have a condition (e.g., severity 5), state it outside the subquery too, `threat_level = 5 user in (threat_level = 5 | top 3 count() by user)`.
 - Empty inner result → empty outer result.
 
 Good patterns:
@@ -379,4 +379,4 @@ Subqueries use bloom filters automatically when the inner yields > 5,000 unique 
 
 ### When to prefer `join`
 
-Subqueries are for single-field membership. If a finding requires *row-level correlation* — "the same row must have `user=X` AND `cmdline=Y`" — use `join`. A subquery would treat those independently.
+Subqueries are for single-field membership. If a finding requires *row-level correlation*, "the same row must have `user=X` AND `cmdline=Y`", use `join`. A subquery would treat those independently.

@@ -266,6 +266,18 @@ class RuleError(Exception):
         self.message = message
 
 
+# Exception types that mean "this rule file is bad" and get reported per-file
+# instead of crashing the whole run. Anything else (network errors, real bugs)
+# is intentionally NOT caught so it surfaces loudly. ValueError covers
+# tomllib.TOMLDecodeError and the built-in TOML parser; json.JSONDecodeError is
+# a ValueError subclass but stays explicit for clarity. TypeError covers int()
+# and arithmetic on wrongly-typed rule values in build_envelope.
+_RULE_FILE_ERRORS: tuple = (RuleError, json.JSONDecodeError, ValueError, TypeError)
+if _yaml is not None:
+    # Malformed YAML rule files are equally a per-file error.
+    _RULE_FILE_ERRORS = _RULE_FILE_ERRORS + (_yaml.YAMLError,)
+
+
 # ---------------------------------------------------------------------------
 # Loading rule files
 # ---------------------------------------------------------------------------
@@ -761,7 +773,7 @@ def main(argv=None) -> int:
             rule = load_rule_file(f)
             env = build_envelope(rule, f, scope_override)
             envelopes.append((f, env))
-        except (RuleError, json.JSONDecodeError, Exception) as e:
+        except _RULE_FILE_ERRORS as e:
             errors.append(str(e) if isinstance(e, RuleError) else f"{f}: {e}")
 
     print(f"Parsed {len(envelopes)} rule(s); {len(errors)} error(s).")

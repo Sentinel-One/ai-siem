@@ -2,7 +2,7 @@
 
 A `{parse=X}` directive inside a field matcher runs a secondary parser on the captured value, generating additional fields prefixed with the parent field name. Use `{attrWhitelist=rx}` / `{attrBlacklist=rx}` to filter which generated subfields are kept.
 
-> **NOT a valid directive: `{parse=keyValue}`.** It returns `400: Syntax error: Unknown parser "keyValue"`. The `keyValue` built-in parser exists, but it is only usable as a root-level `aliasTo: "keyValue"` (a one-line alias parser). To extract key=value pairs INSIDE a format string, use the repeating idiom `".*$_=identifier$=$_=quoteOrSpace$"` with `repeat: true` — see SKILL.md decision-tree step 5 and `examples/03-key-value.json`. The leading `.*` is mandatory; without it the format anchors at position 0 of the message and captures nothing on any line that doesn't start with a bare `identifier=`. Tenant-validated 2026-05-26 on FortiGate syslog. **None of the other built-ins** (`accessLog`, `cloudfront`, `json`, `dottedJson`, `dottedEscapedJson`, `elb-access`, `heroku-logplex`, `leveldbLog`, `mysqlGeneralQueryLog`, `mysqlSlowQueryLog`, `postgresLog`, `redshift`, `s3_bucket_access`, `spot_instance_data`, `systemLog`) are accepted as `{parse=...}` directives either — they're root-level parsers only. The valid `{parse=X}` set is the one documented below (URI variants, JSON variants, key=value list, time/byte/syslog parsers).
+> **NOT a valid directive: `{parse=keyValue}`.** It returns `400: Syntax error: Unknown parser "keyValue"`. The `keyValue` built-in parser exists, but it is only usable as a root-level `aliasTo: "keyValue"` (a one-line alias parser). To extract key=value pairs INSIDE a format string, use the repeating idiom `".*$_=identifier$=$_=quoteOrSpace$"` with `repeat: true`, see SKILL.md decision-tree step 5 and `examples/03-key-value.json`. The leading `.*` is mandatory; without it the format anchors at position 0 of the message and captures nothing on any line that doesn't start with a bare `identifier=`. Tenant-validated 2026-05-26 on FortiGate syslog. **None of the other built-ins** (`accessLog`, `cloudfront`, `json`, `dottedJson`, `dottedEscapedJson`, `elb-access`, `heroku-logplex`, `leveldbLog`, `mysqlGeneralQueryLog`, `mysqlSlowQueryLog`, `postgresLog`, `redshift`, `s3_bucket_access`, `spot_instance_data`, `systemLog`) are accepted as `{parse=...}` directives either, they're root-level parsers only. The valid `{parse=X}` set is the one documented below (URI variants, JSON variants, key=value list, time/byte/syslog parsers).
 
 > **Subfield naming convention (per SDL KB 000006743):** generated fields are named `<parentFieldName><CapitalizedFirstLetterOfKey><restOfKey>`, with the source key's first letter uppercased and concatenated to the parent field name. There is NO underscore, dot, or `Query_` separator between prefix and key. Examples for a field captured as `uri`:
 > - `uriPath` (the parsed URL path component, from `{parse=uri}`)
@@ -10,14 +10,14 @@ A `{parse=X}` directive inside a field matcher runs a secondary parser on the ca
 > - `uriBusinessProfile` for query param `businessProfile`
 > - For a field captured as `details`: `detailsApple`, `detailsBanana`, etc.
 >
-> Likewise for `{parse=json}` / `{parse=dottedJson}`: a field captured as `details` parsing `{"foo":"hello"}` generates `detailsFoo` (camelCase) or `details.foo` (dotted), not `details_foo`. Verify the exact field name with a sample query if you are unsure — the obvious-looking `<prefix>_<key>` form does NOT exist on this engine.
+> Likewise for `{parse=json}` / `{parse=dottedJson}`: a field captured as `details` parsing `{"foo":"hello"}` generates `detailsFoo` (camelCase) or `details.foo` (dotted), not `details_foo`. Verify the exact field name with a sample query if you are unsure, the obvious-looking `<prefix>_<key>` form does NOT exist on this engine.
 
-> **`attrWhitelist` / `attrBlacklist` scope** — these only filter the SUBFIELDS produced by the `{parse=...}` directive, not top-level fields you captured by name in the format string. To drop a top-level field you named explicitly, use `discardAttributes: ["fieldname"]` at the parser root, NOT a blacklist on the parse directive. Catalog parsers like `cisco_firewall-latest` show liberal use of blacklists to drop noisy nested arrays (`{attrBlacklist=(targetResources)}`, `{attrBlacklist=(threatsInfoMap|messageParts)}`); the same authors use `discardAttributes: ["message"]` separately to drop the raw event body.
+> **`attrWhitelist` / `attrBlacklist` scope**; these only filter the SUBFIELDS produced by the `{parse=...}` directive, not top-level fields you captured by name in the format string. To drop a top-level field you named explicitly, use `discardAttributes: ["fieldname"]` at the parser root, NOT a blacklist on the parse directive. Catalog parsers like `cisco_firewall-latest` show liberal use of blacklists to drop noisy nested arrays (`{attrBlacklist=(targetResources)}`, `{attrBlacklist=(threatsInfoMap|messageParts)}`); the same authors use `discardAttributes: ["message"]` separately to drop the raw event body.
 
-> **Pipe vs parenthesized list syntax for `attrBlacklist=`** — both work in the wild:
-> - Parenthesized: `{attrBlacklist=(field1|field2|field3)}` — common in Microsoft Eventhub parsers.
-> - Bare list: `{attrBlacklist=field1|field2|field3}` — common in FortiGate / Cisco parsers.
-> - Single field: `{attrBlacklist=tranip}` — no delimiters needed.
+> **Pipe vs parenthesized list syntax for `attrBlacklist=`**, both work in the wild:
+> - Parenthesized: `{attrBlacklist=(field1|field2|field3)}`, common in Microsoft Eventhub parsers.
+> - Bare list: `{attrBlacklist=field1|field2|field3}`, common in FortiGate / Cisco parsers.
+> - Single field: `{attrBlacklist=tranip}`; no delimiters needed.
 > Pick one style per parser for consistency.
 
 ## URI and URL-like values
@@ -82,9 +82,9 @@ mappings: {
 
 This is how the community PARSER_TEMPLATE captures the entire event into `unmapped.*` and does every OCSF mapping in one place.
 
-**Dotted source keys are flat, not nested.** When a source JSON key literally contains a dot (e.g. `"user.email": "alice@example.com"`), gron flattens it into `unmapped.user.email` as a FLAT field name. In mappings, reference it with the literal path — `from: "unmapped.user.email"` — and do NOT escape the dots. `from: "unmapped.user\\.email"` will NOT match on current tenants (tenant-validated April 2026). This contradicts the escape-the-dots guidance in the upstream PARSER_TEMPLATE.conf in ai-siem; prefer the tenant-validated form.
+**Dotted source keys are flat, not nested.** When a source JSON key literally contains a dot (e.g. `"user.email": "alice@example.com"`), gron flattens it into `unmapped.user.email` as a FLAT field name. In mappings, reference it with the literal path, `from: "unmapped.user.email"`, and do NOT escape the dots. `from: "unmapped.user\\.email"` will NOT match on current tenants (tenant-validated April 2026). This contradicts the escape-the-dots guidance in the upstream PARSER_TEMPLATE.conf in ai-siem; prefer the tenant-validated form.
 
-**gron DOES expand arrays — into `[N]`-indexed attributes, not lossy strings. Index with `[N]`, never `.N.`** This corrects the common misconception (including elsewhere in this skill) that "gron drops arrays" or "flattens arrays to a lossy string." gron emits one queryable attribute per array leaf, using bracket-index notation:
+**gron DOES expand arrays, into `[N]`-indexed attributes, not lossy strings. Index with `[N]`, never `.N.`** This corrects the common misconception (including elsewhere in this skill) that "gron drops arrays" or "flattens arrays to a lossy string." gron emits one queryable attribute per array leaf, using bracket-index notation:
 
 ```
 "signInEventTypes":["nonInteractiveUser"]          -> unmapped.signInEventTypes[0] = "nonInteractiveUser"
@@ -105,13 +105,13 @@ Choose the capture per goal:
 
 Scalar and nested-object flattening is identical across gron, dottedJson, and the strict variants; they differ ONLY in array handling.
 
-**Querying `[N]` attributes: they are stored but a raw PowerQuery `columns`/`filter` clause cannot type the `[`.** `| columns unmapped.x[0].y` fails to parse ("Unable to parse the entire query"); backticks fail ("Don't understand [`]"); double-quotes turn the name into a string literal. The fields ARE present and queryable through the Event Search field picker and the V1 query / `powerquery_schema_discover` endpoint — so do not conclude extraction failed just because `columns` rejects the name. To confirm `[N]` fields during validation, use `powerquery_schema_discover` (returns full event JSON) rather than a `columns` projection. Tenant-validated 2026-06-22.
+**Querying `[N]` attributes: they are stored but a raw PowerQuery `columns`/`filter` clause cannot type the `[`.** `| columns unmapped.x[0].y` fails to parse ("Unable to parse the entire query"); backticks fail ("Don't understand [`]"); double-quotes turn the name into a string literal. The fields ARE present and queryable through the Event Search field picker and the V1 query / `powerquery_schema_discover` endpoint, so do not conclude extraction failed just because `columns` rejects the name. To confirm `[N]` fields during validation, use `powerquery_schema_discover` (returns full event JSON) rather than a `columns` projection. Tenant-validated 2026-06-22.
 
 See `references/ai-siem-catalog.md` §"Useful reference parsers by shape" for the canonical example, and `examples/08-gron-capture-template.json` for a ready-to-use scaffold.
 
 ### Strict variants (keep arrays as one parseable JSON value)
 
-Non-strict `gron`/`dottedJson` expand arrays into per-element `[N]`-indexed attributes (see the gron-array note above) — great when you want each leaf queryable, but you then cannot run PowerQuery array functions over the array as a whole. If you instead want the array preserved as a single JSON value that `array_from_json()` / `array_get()` can consume, use the `strict*` variant:
+Non-strict `gron`/`dottedJson` expand arrays into per-element `[N]`-indexed attributes (see the gron-array note above), great when you want each leaf queryable, but you then cannot run PowerQuery array functions over the array as a whole. If you instead want the array preserved as a single JSON value that `array_from_json()` / `array_get()` can consume, use the `strict*` variant:
 
 - `strictJson`, `strictDottedJson`
 - `strictEscapedJson`, `strictDottedEscapedJson`

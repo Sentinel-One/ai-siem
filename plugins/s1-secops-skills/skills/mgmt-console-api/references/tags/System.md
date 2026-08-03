@@ -11,8 +11,8 @@ Get the configuration of your SentinelOne system. <br>The response shows basic i
 Required permissions: `Configuration.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -26,7 +26,7 @@ Required permissions: `Configuration.edit`
 Optional permissions: `Users.allow2FAForOtherUsers`
 
 Parameters:
-- `body` [body, system_PutSystemConfiguration] — 
+- `body` [body, system_PutSystemConfiguration]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 

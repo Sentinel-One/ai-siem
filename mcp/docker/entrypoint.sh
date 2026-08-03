@@ -4,15 +4,20 @@
 # JSON-RPC over stdio per the MCP spec.
 set -e
 
+# Extra arguments after the server name are passed through to the server
+# binary (e.g. `s1-secops-mcp --transport http --port 8765`).
 case "${1:-help}" in
   s1-secops-mcp|sentinelone-mcp|s1)
-    exec sentinelone-mcp
+    shift
+    exec sentinelone-mcp "$@"
     ;;
   purple-mcp|purple)
-    exec purple-mcp-bin --mode stdio
+    shift
+    exec purple-mcp-bin --mode stdio "$@"
     ;;
   virustotal-mcp|virustotal|vt)
-    exec mcp-virustotal
+    shift
+    exec mcp-virustotal "$@"
     ;;
   help|--help|-h|"")
     cat <<'EOF'

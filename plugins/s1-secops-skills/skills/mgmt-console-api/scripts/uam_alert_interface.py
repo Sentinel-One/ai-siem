@@ -7,7 +7,7 @@ indicators. Separate host + wire contract from the Mgmt Console REST
 and the UAM GraphQL query layer (both of which are READ/mutate on
 pre-existing state).
 
-Host (region-specific, e.g. US1 shown — see https://community.sentinelone.com/s/article/000004961 for your region):
+Host (region-specific, e.g. US1 shown; see https://community.sentinelone.com/s/article/000004961 for your region):
     https://ingest.us1.sentinelone.net
 
 
@@ -26,7 +26,7 @@ Wire contract
 Auth token
 ----------
 The interface accepts the same service-user JWT used for the Mgmt
-Console API (loaded from credentials.json via S1Client.api_token —
+Console API (loaded from credentials.json via S1Client.api_token,
 canonical key `S1_CONSOLE_API_TOKEN`).
 `ApiToken <token>` is rejected with HTTP 401
 `{"details":"Unsupported auth type: ApiToken"}`, so callers MUST switch

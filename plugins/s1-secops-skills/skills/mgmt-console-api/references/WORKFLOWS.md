@@ -4,7 +4,7 @@ Ready-to-adapt multi-step recipes for the most common pre-sales / SecOps request
 
 ---
 
-## 1. Threat triage — what fired in the last N hours?
+## 1. Threat triage: what fired in the last N hours?
 
 ```python
 from datetime import datetime, timezone, timedelta
@@ -24,7 +24,7 @@ Key params: `createdAt__gte` (ISO-8601), `resolved=false`, `incidentStatuses=unr
 
 ---
 
-## 2. Endpoint inventory — what's deployed, by site, with health?
+## 2. Endpoint inventory: what's deployed, by site, with health?
 
 ```python
 rows = []
@@ -50,7 +50,7 @@ Useful filters: `isActive=true`, `osTypes=windows,macos,linux`, `siteIds=...`, `
 filt = {"computerName__contains": "laptop-", "isActive": True}
 count = c.get("/web/api/v2.1/agents/count", params=filt)
 # show user: count["data"]["total"]
-# then — after explicit confirmation —
+# then, after explicit confirmation,
 c.post("/web/api/v2.1/agents/actions/disconnect",
        json_body={"filter": filt})
 # undo
@@ -58,7 +58,7 @@ c.post("/web/api/v2.1/agents/actions/connect",
        json_body={"filter": filt})
 ```
 
-Destructive: network quarantine has no undo beyond the corresponding `connect` action. Prefer filter-based bulk ops over per-ID loops — the API is designed for them.
+Destructive: network quarantine has no undo beyond the corresponding `connect` action. Prefer filter-based bulk ops over per-ID loops, the API is designed for them.
 
 ---
 
@@ -189,7 +189,7 @@ paths  = list(c.iter_items("/web/api/v2.1/exclusions",
                            params={"type": "path", "limit": 500}))
 ```
 
-Exclusions v2.1 (`/exclusions-v2`) is the newer API — prefer it on modern tenants.
+Exclusions v2.1 (`/exclusions-v2`) is the newer API; prefer it on modern tenants.
 
 ---
 

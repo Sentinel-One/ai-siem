@@ -1,5 +1,5 @@
 /**
- * SentinelOne client — Mgmt Console REST API, LRQ PowerQuery, Purple AI, UAM GraphQL.
+ * SentinelOne client: Mgmt Console REST API, LRQ PowerQuery, Purple AI, UAM GraphQL.
  *
  * Auth patterns:
  *   Mgmt REST API   → Authorization: ApiToken <jwt>
@@ -70,9 +70,12 @@ async function doFetch(url, opts, retries = 3, { allowRetry = null } = {}) {
 
     // Retry on 429 / 5xx (idempotent methods, or explicit opt-in, only)
     if ((res.status === 429 || res.status >= 500) && attempt < retries && methodRetryable) {
-      // Retry-After may be an HTTP date; Number() of that is NaN -> fall back to delay.
-      const ra = Number(res.headers.get('Retry-After'));
-      const wait = Number.isFinite(ra) && ra >= 0 ? Math.min(ra * 1000, 30000) : delay;
+      // Retry-After may be missing or an HTTP date. Number(null) is 0, so a
+      // missing header must not be treated as "wait 0ms": only honor the
+      // header when the raw value is present and parses to a finite number.
+      const raRaw = res.headers.get('Retry-After');
+      const ra = Number(raRaw);
+      const wait = raRaw && Number.isFinite(ra) && ra >= 0 ? Math.min(ra * 1000, 30000) : delay;
       await sleep(wait);
       delay = Math.min(delay * 2, 8000);
       continue;
@@ -233,11 +236,12 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
   // Poll until done (30s expiry, poll every 1s)
   let lastStepSeen = 0;
   let result = null;
+  let pollDelay = 1000;
   const deadline = Date.now() + 5 * 60 * 1000; // 5 min hard timeout
 
   try {
     while (Date.now() < deadline) {
-      await sleep(1000);
+      await sleep(pollDelay);
       const pollUrl = `${b}/sdl/v2/api/queries/${queryId}?lastStepSeen=${lastStepSeen}`;
       let pollRes;
       try {
@@ -248,9 +252,18 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
       }
 
       if (!pollRes.ok) {
-        const body = await pollRes.text();
+        const body = await pollRes.text().catch(() => '');
+        // A transient 429/5xx on a single poll must not cancel a running
+        // query: keep polling (doubling the interval up to 5s, still well
+        // under the 30s poll-expiry window) until the 5-minute deadline.
+        // Other 4xx responses are permanent and remain fatal.
+        if (pollRes.status === 429 || pollRes.status >= 500) {
+          pollDelay = Math.min(pollDelay * 2, 5000);
+          continue;
+        }
         throw new Error(`LRQ poll failed (${pollRes.status}): ${body}`);
       }
+      pollDelay = 1000; // healthy poll: restore the normal interval
 
       const state = await pollRes.json();
       lastStepSeen = state.stepsCompleted ?? lastStepSeen;
@@ -279,7 +292,7 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
 
   // Cap rows
   // Confirmed: LRQ API returns columns as descriptor objects {name, cellType, ...}, not strings.
-  // Must use col.name (not col itself) as the row key — col.toString() produces "[object Object]".
+  // Must use col.name (not col itself) as the row key, col.toString() produces "[object Object]".
   const rows = rawRows.slice(0, maxRows).map(r => {
     const obj = {};
     columns.forEach((col, i) => { obj[col.name ?? col] = r[i]; });
@@ -299,155 +312,15 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
 // ─── Purple AI ────────────────────────────────────────────────────────────────
 // Reverse-engineered from live network traffic on usea1-acme.sentinelone.net.
 //
-// IMPORTANT: purpleLaunchQuery is a GraphQL QUERY (not mutation).
-// Variable wrapper is `request` (type PurpleLaunchQueryRequest), NOT `input`.
-// The prior implementation used mutation + PurpleLaunchQueryInput — both wrong,
-// causing HTTP 400 "invalid query" at the middleware layer.
-//
 // Endpoints:
 //   Purple AI LLM  → POST /web/api/v2.1/graphql       (ApiToken auth)
 //   SDL/History    → POST <base>/sdl/v2/graphql        (Bearer auth, same token)
-
-function randomHex(len = 32) {
-  return Array.from({ length: len }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-}
-
-/**
- * Run a Purple AI natural-language query.
- *
- * Flow:
- *   1. purpleLaunchQuery (contentType=NATURAL_LANGUAGE) → PowerQuery string
- *   2. Return the generated PowerQuery + token for downstream SDL execution.
- *
- * Returns { powerQuery, viewSelector, timeRange, token, status, resultType }
- */
-export async function purpleAiQuery(userInput, { viewSelector = 'EDR', hours = 24 } = {}) {
-  const now = Date.now();
-  const startMs = now - hours * 3600 * 1000;
-  const conversationId = randomHex(32);
-  const feedItemId     = randomHex(32);
-  const msgId          = randomHex(32);
-  const consoleUrl     = `${base()}/`;
-
-  // Confirmed correct shape from live API validation (2026-05-03):
-  // - operation type is `query` not `mutation`
-  // - variable name is `request` not `input`
-  // - type is `PurpleLaunchQueryRequest` not `PurpleLaunchQueryInput`
-  // - inputContent MUST appear at the top level of `request` (confirmed: HTTP 400
-  //   "missing input value at $request.inputContent" when omitted)
-  // - PurpleUserDetailsRequest schema (confirmed from live validation error):
-  //   { accountId: ID!, teamToken: ID!, sessionId, emailAddress, userAgent, buildDate, buildHash }
-  //   Does NOT have siteIds or groupIds.
-  const inputContentPayload = {
-    userInput,
-    viewSelector,
-    displayedTimeRange: { start: startMs, end: now },
-    resultsPq: null,
-    powerQueryForResults: null,
-    additionalFieldsForPq: null,
-    contextId: null,
-    userDetails: null,
-  };
-
-  const gqlBody = {
-    operationName: 'purpleLaunchQuery',
-    variables: {
-      request: {
-        isAsync: false,
-        contentType: 'NATURAL_LANGUAGE',
-        consoleDetails: {
-          baseUrl: consoleUrl,
-          version: 'S-26.1.3#69',
-        },
-        // Top-level inputContent required by PurpleLaunchQueryRequest schema.
-        inputContent: inputContentPayload,
-        conversation: {
-          id: conversationId,
-          messages: [
-            {
-              inputMessage: {
-                id: msgId,
-                feedItemId,
-                conversationId,
-                createdAt: new Date(now).toISOString(),
-                messageType: 'INPUT',
-                contentType: 'NATURAL_LANGUAGE',
-                inputContent: inputContentPayload,
-              },
-            },
-          ],
-        },
-      },
-    },
-    query: `
-      query purpleLaunchQuery($request: PurpleLaunchQueryRequest!) {
-        purpleLaunchQuery(request: $request) {
-          token
-          resultType
-          status { state error { errorType errorDetail origin } }
-          stepsCompleted
-          result {
-            message
-            summary
-            maskedMetadata
-            powerQuery {
-              query
-              viewSelector
-              timeRange { start end }
-            }
-            suggestedQuestions {
-              question
-              powerQuery
-              viewSelector
-              timeRange { start end }
-            }
-          }
-        }
-      }
-    `,
-  };
-
-  const data = await apiPost('/web/api/v2.1/graphql', gqlBody, { allowRetry: true }); // read-only launch
-
-  if (data.errors?.length) {
-    throw new Error(`Purple AI GraphQL error: ${data.errors[0].message}`);
-  }
-
-  const plq = data?.data?.purpleLaunchQuery || {};
-  const state = plq?.status?.state;
-  if (state && state !== 'COMPLETED') {
-    const err = plq?.status?.error || {};
-    const detail = err.errorDetail || '';
-    const origin = err.origin || '';
-    // AsimovError from LaunchQueryManager = LLM workspace layer rejected the request.
-    // Root cause: purpleLaunchQuery NATURAL_LANGUAGE requires a browser-session teamToken
-    // (obtained from /sdl/v2/graphql) that service-account API tokens never have.
-    // purpleAlertSummary (ALERT_ENTRY) does not have this limitation and works fine.
-    if (detail.includes('AsimovError') || origin === 'LaunchQueryManager') {
-      throw new Error(
-        'Purple AI NL query failed: the LLM workspace layer (LaunchQueryManager) rejected this ' +
-        'service-account request. purpleLaunchQuery NATURAL_LANGUAGE requires a browser-session ' +
-        'teamToken that API-token service accounts do not have. Use purple_ai_alert_summary ' +
-        '(ALERT_ENTRY) instead, or run the query interactively in the Purple AI browser console.'
-      );
-    }
-    throw new Error(`Purple AI state: ${state}${detail ? ` (${origin}: ${detail})` : ''}`);
-  }
-
-  const r = plq.result || {};
-  return {
-    token:       plq.token || null,
-    resultType:  plq.resultType || null,
-    status:      plq.status || null,
-    powerQuery:  r.powerQuery?.query || null,
-    viewSelector: r.powerQuery?.viewSelector || viewSelector,
-    timeRange:   r.powerQuery?.timeRange || { start: startMs, end: now },
-    summary:     r.summary || null,
-    message:     r.message || null,
-    suggestedQuestions: r.suggestedQuestions || [],
-    maskedMetadata: r.maskedMetadata || null,
-  };
-}
+//
+// The dead exports purpleAiQuery and purpleAiInvestigate were deleted
+// 2026-07-31. Their MCP tools were removed 2026-05-03: purpleLaunchQuery
+// NATURAL_LANGUAGE and aiInvestigation/run both require a browser-session
+// teamToken that service-account API tokens never obtain (AsimovError /
+// SERVICE_ERROR). purpleAlertSummary (ALERT_ENTRY) has no such limitation.
 
 /**
  * Get a Purple AI natural-language summary for a specific UAM alert.
@@ -500,128 +373,6 @@ export async function purpleAlertSummary(alertOcsfJson, { userDetails = null } =
   };
 }
 
-/**
- * Trigger and poll Purple AI auto-investigation on a UAM alert.
- *
- * Step 1: alertTriggerActions with id="S1/aiInvestigation/run"
- * Step 2: poll aiInvestigations until status=COMPLETED or FAILED
- *
- * Returns { verdict, markdown, investigationSteps[], alertId }
- */
-export async function purpleAiInvestigate(alertId, { scopeId, scopeType = 'ACCOUNT', timeoutMs = 5 * 60 * 1000 } = {}) {
-  // Resolve account scope from user profile if not provided
-  let resolvedScopeId = scopeId;
-  if (!resolvedScopeId) {
-    const userInfo = await doFetch(`${base()}/web/api/v2.1/user`, {
-      method: 'GET',
-      headers: { Authorization: `ApiToken ${jwt()}`, 'Content-Type': 'application/json' },
-    });
-    resolvedScopeId = userInfo?.data?.scopeRoles?.[0]?.id || userInfo?.data?.id;
-    if (!resolvedScopeId) throw new Error('Could not resolve account scopeId for aiInvestigation. Pass scopeId explicitly.');
-  }
-
-  const scope = { scopeIds: [resolvedScopeId], scopeType };
-
-  // Step 1: Trigger investigation
-  const triggerBody = {
-    operationName: 'AlertTriggerActions',
-    variables: {
-      scope,
-      filter: { or: [{ and: [{ fieldId: 'id', stringEqual: { value: alertId } }] }] },
-      viewType: 'ALL',
-      actions: [{
-        id: 'S1/aiInvestigation/run',
-        payload: {
-          aiInvestigation: {
-            buildDate:      new Date().toISOString(),
-            buildHash:      '',
-            consoleVersion: 'S-26.1.3#69',
-            scope,
-            tenantId:       resolvedScopeId,
-            userAgent:      's1-secops-mcp/1.0',
-            sessionId:      randomHex(32),
-            userTime:       new Date().toISOString(),
-          },
-        },
-      }],
-    },
-    query: `
-      mutation AlertTriggerActions($scope: ScopeSelectorInput, $filter: OrFilterSelectionInput, $actions: [TriggerActionInput!]!, $viewType: ViewType) {
-        alertTriggerActions(filter: $filter scope: $scope actions: $actions viewType: $viewType) {
-          ... on ActionsTriggered {
-            actions { actionId skip { id } failure { id errorMessage errorType } success { id } }
-          }
-          ... on TriggerActionsError {
-            errors { errorMessage }
-          }
-        }
-      }
-    `,
-  };
-
-  const triggerRes = await uamGraphql(triggerBody.query, triggerBody.variables, 'AlertTriggerActions');
-  const triggerData = triggerRes?.alertTriggerActions;
-  if (triggerData?.errors?.length) {
-    throw new Error(`aiInvestigation trigger error: ${triggerData.errors[0].errorMessage}`);
-  }
-  const triggered = triggerData?.actions?.[0];
-  if (triggered?.failure?.length) {
-    const f = triggered.failure[0];
-    // SERVICE_ERROR without errorMessage = LLM-layer rejection (same root cause as
-    // purpleLaunchQuery AsimovError). aiInvestigation/run requires a browser-session
-    // workspace; API-token service accounts are rejected at the service layer.
-    if (f.errorType === 'SERVICE_ERROR' && !f.errorMessage) {
-      throw new Error(
-        'aiInvestigation SERVICE_ERROR: the AI investigation service rejected this service-account ' +
-        'request. Like purpleLaunchQuery, this feature requires an active browser-session workspace. ' +
-        'Trigger the investigation interactively from the Purple AI card in the alert detail panel.'
-      );
-    }
-    throw new Error(`aiInvestigation trigger failure: ${f.errorMessage || f.errorType}`);
-  }
-
-  // Step 2: Poll GetAlertAiInvestigations
-  const pollQuery = `
-    query GetAlertAiInvestigations($alertIds: [ID!]!, $scope: ScopeSelectorInput) {
-      aiInvestigations(alertIds: $alertIds, scope: $scope) {
-        alertId status purpleAiStatus investigationStep verdict timestamp result restrictionReason
-      }
-    }
-  `;
-
-  const deadline = Date.now() + timeoutMs;
-  const steps = [];
-  let lastStep = null;
-
-  while (Date.now() < deadline) {
-    await sleep(4000);
-    const pollRes = await uamGraphql(pollQuery, { alertIds: [alertId], scope }, 'GetAlertAiInvestigations');
-    const inv = pollRes?.aiInvestigations?.[0];
-    if (!inv) continue;
-
-    const step = inv.investigationStep;
-    if (step && step !== lastStep) {
-      steps.push(step);
-      lastStep = step;
-    }
-
-    if (inv.status === 'COMPLETED') {
-      return {
-        alertId:             inv.alertId,
-        verdict:             inv.verdict,
-        markdown:            inv.result,
-        investigationSteps:  steps,
-        timestamp:           inv.timestamp,
-      };
-    }
-    if (inv.status === 'FAILED') {
-      throw new Error(`aiInvestigation FAILED: ${inv.restrictionReason || 'unknown reason'}`);
-    }
-  }
-
-  throw new Error(`aiInvestigation timed out after ${timeoutMs / 1000}s`);
-}
-
 // ─── UAM GraphQL ─────────────────────────────────────────────────────────────
 
 /** Execute a raw UAM GraphQL operation. */
@@ -641,7 +392,7 @@ export async function uamGraphql(query, variables = {}, operationName, { readOnl
  * List UAM alerts using the correct `filters: [FilterInput!]` schema.
  *
  * IMPORTANT: The `alerts` query takes `filters: [FilterInput!]` (flat AND-joined list).
- * Do NOT pass `filter: String` or `OrFilterSelectionInput` — those belong to mutations only.
+ * Do NOT pass `filter: String` or `OrFilterSelectionInput`: those belong to mutations only.
  *
  * Each FilterInput is: { fieldId, <comparator>: <value> }
  * Valid comparators (confirmed via introspection):
@@ -664,10 +415,10 @@ export async function uamListAlerts({
   severity = null,         // e.g. 'CRITICAL', 'HIGH'
   detectionProduct = null, // e.g. 'EDR', 'STAR'
   searchText = null,       // fullText search across all fields
-  // Time range — specify either ISO strings OR epoch ms; both become dateRange { from, to }
+  // Time range: specify either ISO strings OR epoch ms; both become dateRange { from, to }
   startTime = null,        // ISO string "2026-05-03T07:32:00Z" or epoch ms number
   endTime = null,          // ISO string or epoch ms; defaults to now when startTime is set
-  // Raw FilterInput list — overrides all convenience params above when provided
+  // Raw FilterInput list: overrides all convenience params above when provided
   filters = null,
 } = {}) {
 
@@ -694,7 +445,7 @@ export async function uamListAlerts({
       const toMs = endTime
         ? (typeof endTime === 'number' ? endTime : new Date(endTime).getTime())
         : Date.now();
-      // Correct FilterInput field: dateTimeRange { start, end } — NOT dateRange, NOT date_range
+      // Correct FilterInput field: dateTimeRange { start, end }, NOT dateRange, NOT date_range
       builtFilters.push({ fieldId: 'detectedAt', dateTimeRange: { start: fromMs, end: toMs } });
     }
   }
@@ -803,14 +554,25 @@ export async function uamAddNote(alertId, noteText) {
 /**
  * Update the status of a UAM alert via alertTriggerActions.
  * Valid status values (confirmed via Status enum introspection): NEW | IN_PROGRESS | RESOLVED
- * Note: FALSE_POSITIVE is not a status — it is an analystVerdict value.
- * To mark false positive: use uam_set_analyst_verdict with a FALSE_POSITIVE_* value instead.
+ * Note: FALSE_POSITIVE is not a status; it is an analystVerdict value.
+ * To mark false positive: there is no dedicated tool. POST the raw
+ * alertTriggerActions mutation with the S1/alert/analystVerdictUpdate action
+ * via s1_api_post to /web/api/v2.1/unifiedalerts/graphql.
+ *
+ * The mutation result is verified: a __typename-only selection previously
+ * reported success even when the backend skipped or failed the action
+ * (observed live: status stayed unchanged). Fixed 2026-07-31.
  */
 export async function uamSetStatus(alertId, status) {
   const query = `
     mutation SetStatus($filter: OrFilterSelectionInput, $actions: [TriggerActionInput!]) {
       alertTriggerActions(filter: $filter, actions: $actions) {
-        __typename
+        ... on ActionsTriggered {
+          actions { actionId skip { id } failure { id errorMessage errorType } success { id } }
+        }
+        ... on TriggerActionsError {
+          errors { errorMessage }
+        }
       }
     }
   `;
@@ -821,5 +583,28 @@ export async function uamSetStatus(alertId, status) {
     actions: [{ id: 'S1/alert/statusUpdate', payload: { status: { value: status } } }],
   };
   const data = await uamGraphql(query, variables);
-  return data?.alertTriggerActions || null;
+  const result = data?.alertTriggerActions || null;
+  if (result?.errors?.length) {
+    throw new Error(`uamSetStatus trigger error: ${result.errors[0].errorMessage}`);
+  }
+  const action = result?.actions?.[0];
+  if (!action) {
+    // Empty actions array: the backend applied nothing (e.g. the filter matched
+    // no alert). Same silent-success class as skip-without-success; fail loudly.
+    throw new Error(
+      `uamSetStatus applied no action for alert ${alertId}: the backend returned an empty actions list. ` +
+      'Verify the alert id, then re-check with uam_get_alert.'
+    );
+  }
+  if (action.failure?.length) {
+    const f = action.failure[0];
+    throw new Error(`uamSetStatus failed for alert ${alertId}: ${f.errorMessage || f.errorType || 'unknown error'}`);
+  }
+  if (!(action.success?.length) && action.skip?.length) {
+    throw new Error(
+      `uamSetStatus skipped for alert ${alertId}: the backend did not apply the status update. ` +
+      'Verify the alert id and that the transition is valid, then re-check with uam_get_alert.'
+    );
+  }
+  return result;
 }

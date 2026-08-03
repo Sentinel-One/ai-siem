@@ -8,13 +8,13 @@
  * Source of truth: S-26.1 User Guide, "Singularity Data Lake > Data Ingestion >
  * Additional Integrations > HTTP Event Collector (HEC)", p.4723-4726.
  *   Host      : S1_HEC_INGEST_URL (e.g. https://ingest.us1.sentinelone.net)
- *   Endpoints : /services/collector/raw   (raw text — recommended for logs)
+ *   Endpoints : /services/collector/raw   (raw text, recommended for logs)
  *               /services/collector/event (structured JSON)
  *   Auth      : Authorization: Bearer <S1_CONSOLE_API_TOKEN> (the same Management Console API token the other tools use)
  *   Scope     : S1-Scope header is REQUIRED (accountId or accountId:siteId). Without it HEC returns 400 "Missing S1-Scope header".
  *   Parser    : ?sourcetype=<parserName> query param. Other query params become fields in the UI.
  *   Pre-parsed: /event with ?isParsed=true indexes already-structured JSON fields directly, with no SDL parser.
- *   Compress  : optional "Content-Encoding: gzip" (or zstd) — recommended, lowers egress cost.
+ *   Compress  : optional "Content-Encoding: gzip" (or zstd), recommended, lowers egress cost.
  *   Limits    : 10 MB uncompressed per request, 1000 requests/sec, 2 GB/sec per account.
  */
 
@@ -122,9 +122,11 @@ export async function hecIngest(logContent, { parser, fields = {}, scope, endpoi
     // committed) and HEC has no idempotency key, so retrying risks duplicate
     // events inflating SDL counts. Fixed 2026-07-29: no automatic 5xx retry.
     if (res.status === 429 && attempt < 3) {
-      // Retry-After may be an HTTP date; Number() of that is NaN -> fall back to delay.
-      const ra = Number(res.headers.get('Retry-After'));
-      await sleep(Number.isFinite(ra) && ra >= 0 ? Math.min(ra * 1000, 30000) : delay);
+      // Retry-After may be missing or an HTTP date. Number(null) is 0, so a
+      // missing header must fall back to the exponential delay, not sleep 0ms.
+      const raRaw = res.headers.get('Retry-After');
+      const ra = Number(raRaw);
+      await sleep(raRaw && Number.isFinite(ra) && ra >= 0 ? Math.min(ra * 1000, 30000) : delay);
       delay = Math.min(delay * 2, 8000);
       continue;
     }

@@ -6,12 +6,12 @@ This module wraps the `purpleLaunchQuery` operation so the skill can
 ask Purple AI in natural language and get a structured response back
 (summary text + generated PowerQuery).
 
-Auth is identical to the REST API — `Authorization: ApiToken <token>` —
+Auth is identical to the REST API, `Authorization: ApiToken <token>`,
 so this reuses S1Client for transport and doesn't add any new credential
 requirements.
 
 Purple AI's domain boundary (important):
-    It answers questions about SDL telemetry — process/network/file
+    It answers questions about SDL telemetry: process/network/file
     events, indicators, ingested third-party logs. It does NOT answer
     questions about console entities like alerts, threats, agents,
     sites, or policies. Those are REST resources; route them to the
@@ -20,9 +20,9 @@ Purple AI's domain boundary (important):
     and a scope-refusal message in result.message.
 
 Typical failure modes (all return HTTP 200):
-  * Tenant lacks Purple AI entitlement — status.error.errorType is set.
-  * Token's role lacks Purple AI permission — same surface as above.
-  * Malformed GraphQL body — top-level `errors` array is populated.
+  * Tenant lacks Purple AI entitlement: status.error.errorType is set.
+  * Token's role lacks Purple AI permission: same surface as above.
+  * Malformed GraphQL body: top-level `errors` array is populated.
 The wrapper raises PurpleAIError on any of the above so callers don't
 silently receive empty results.
 
@@ -147,7 +147,7 @@ def purple_query(
     Args:
         client: An S1Client (transport + auth).
         user_input: The natural-language question.
-        view_selector: Data domain hint — one of VIEW_SELECTORS. Default EDR.
+        view_selector: Data domain hint, one of VIEW_SELECTORS. Default EDR.
         hours: Look-back window from now. Ignored if start_ms/end_ms given.
         start_ms, end_ms: Explicit time window in epoch milliseconds.
         is_async: If True, Purple AI may return before generation completes
@@ -201,7 +201,7 @@ def purple_query(
     # so keeping the client's 429/5xx retry (now GET-only by default) is safe.
     resp = client.post("/web/api/v2.1/graphql", json_body=body, allow_retry=True)
 
-    # Top-level GraphQL errors — malformed query, auth issues that bubbled up
+    # Top-level GraphQL errors: malformed query, auth issues that bubbled up
     # as a GraphQL error rather than HTTP 401.
     if resp.get("errors"):
         first = resp["errors"][0] if resp["errors"] else {}
@@ -217,7 +217,7 @@ def purple_query(
     state = status.get("state")
     err = status.get("error")
 
-    # Status-level error — typically entitlement or permission.
+    # Status-level error: typically entitlement or permission.
     if err:
         raise PurpleAIError(
             f"Purple AI returned an error ({err.get('errorType')}): "

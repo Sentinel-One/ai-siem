@@ -1,5 +1,5 @@
 """
-Saved-filter lifecycle round-trip test — REVERSIBLE.
+Saved-filter lifecycle round-trip test, REVERSIBLE.
 
 Demonstrates that the skill can exercise CREATE → UPDATE → LIST → DELETE →
 VERIFY for a console "saved filter" (Filters tag) without leaving state
@@ -11,7 +11,7 @@ behind.
     DELETE  DELETE /web/api/v2.1/filters/{filter_id}
     VERIFY  GET    /web/api/v2.1/filters?name__contains=<run_tag>
 
-A saved filter is a personal saved-search definition — no protection impact,
+A saved filter is a personal saved-search definition; no protection impact,
 no detection impact, no other user can see it. This is the lowest blast-
 radius content-create path in the REST API. Safe to run on any shared
 tenant at any time.
@@ -116,7 +116,7 @@ def main() -> int:
     if not any(h.get("id") == fid for h in hits):
         _log(f"LIST FAILED: created filter {fid} not surfaced by name__contains filter")
         _log(f"Hits ({len(hits)}): {[h.get('id') for h in hits]}")
-        # don't bail out — cleanup below will still remove it
+        # don't bail out: cleanup below will still remove it
         list_ok = False
     else:
         list_ok = True
@@ -162,7 +162,7 @@ def main() -> int:
              "CREATE/UPDATE/DELETE/VERIFY still passed. Returning 0 but "
              "investigate name__contains search indexing if this repeats.")
 
-    _log("Saved-filter lifecycle: CREATE → LIST → UPDATE → DELETE → VERIFY — ALL OK")
+    _log("Saved-filter lifecycle: CREATE → LIST → UPDATE → DELETE → VERIFY, ALL OK")
     return 0
 
 

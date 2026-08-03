@@ -55,7 +55,7 @@ VERB_MAP = {
 
 # S1-specific synonym expansion: users say "isolate" but S1 calls it
 # "disconnect"; "endpoint" and "agent" are used interchangeably; etc.
-# These are additive — both original and synonym become search tokens.
+# These are additive: both original and synonym become search tokens.
 SYNONYMS = {
     "isolate":    ["disconnect", "quarantine"],
     "deisolate":  ["reconnect"],
@@ -95,7 +95,7 @@ def _score(entry: Dict[str, Any], tokens: List[str]) -> float:
     score = 0.0
 
     for t in tokens:
-        # path segment match (exact) — most valuable
+        # path segment match (exact): most valuable
         path_segs = re.split(r"[/{}]", hay_path)
         if t in path_segs:
             score += 10.0
@@ -109,7 +109,7 @@ def _score(entry: Dict[str, Any], tokens: List[str]) -> float:
             score += 2.5
         if t in hay_tag:
             score += 4.0
-        # verb/method intent — boost endpoints matching the implied method
+        # verb/method intent: boost endpoints matching the implied method
         expected = VERB_MAP.get(t)
         if expected and entry["method"] == expected:
             score += 5.0
@@ -177,12 +177,12 @@ def main():
 
     total = len(hits)
     shown = hits[: args.limit]
-    print(f"{total} match(es)" + (f" — showing top {len(shown)}" if total > len(shown) else ""))
+    print(f"{total} match(es)" + (f", showing top {len(shown)}" if total > len(shown) else ""))
     if works is not None:
         print("(filtered to endpoints confirmed working on this tenant)")
     for e in shown:
         sc = f"{_score(e, tokens):5.1f}" if tokens else "     "
-        print(f"  {sc}  {e['method']:6} {e['path']:60} [{e['tag']}] — {e['summary']}")
+        print(f"  {sc}  {e['method']:6} {e['path']:60} [{e['tag']}]: {e['summary']}")
 
 
 if __name__ == "__main__":

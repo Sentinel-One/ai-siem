@@ -2,10 +2,10 @@
 
 Mappers run *after* the parser emits an event and restructure it in place. They're the mechanism for conforming events to OCSF, ECS, or any other target schema without authoring a custom ingest pipeline.
 
-> **Two equivalent syntaxes are in the wild.** Both work on current tenants. Pick one and stick to it within a parser — do not mix.
+> **Two equivalent syntaxes are in the wild.** Both work on current tenants. Pick one and stick to it within a parser; do not mix.
 >
-> - **`version: 1` / singular-op** — tenant-validated April 2026, used by the `PARSER_TEMPLATE` and by parsers authored against the latest mapper engine. Each transformation is `{<op_name>: {...body}}`. Predicates use `==`. This is what you should prefer for new parsers — see §"Block shape (v1, preferred)".
-> - **`version: 0` / plural-grouped** — used by most S1 Marketplace parsers (AWS RDS, Corelight, Cloudflare, Fortinet). Operations are plural arrays at the top level of each mapping entry: `renames: [...], copies: [...], constants: [...]`. Predicates use `=`. See §"Block shape (v0, marketplace)".
+> - **`version: 1` / singular-op**, tenant-validated April 2026, used by the `PARSER_TEMPLATE` and by parsers authored against the latest mapper engine. Each transformation is `{<op_name>: {...body}}`. Predicates use `==`. This is what you should prefer for new parsers, see §"Block shape (v1, preferred)".
+> - **`version: 0` / plural-grouped**: used by most S1 Marketplace parsers (AWS RDS, Corelight, Cloudflare, Fortinet). Operations are plural arrays at the top level of each mapping entry: `renames: [...], copies: [...], constants: [...]`. Predicates use `=`. See §"Block shape (v0, marketplace)".
 >
 > If one syntax fails validation, the engine error message will tell you (`unsupported event mapper version -1` means `version:` is missing; predicate parse errors usually flag the equality operator). When adapting a catalog parser, check the version at the top of the `mappings` block and keep the matching syntax.
 
@@ -20,7 +20,7 @@ mappings: {
       predicate: "metadata.event_code == 'RT_FLOW_SESSION_CREATE'",  // first match wins; see "Notes that bite people" below
       transformations: [
         // Each transformation is { <op_name>: { ...body... } }.
-        // op_name is the OUTER key — NOT an `op:` field.
+        // op_name is the OUTER key: NOT an `op:` field.
         { rename:   { from: "source-address",        to: "src_endpoint.ip" } },
         { cast:     { field: "src_endpoint.port",    type: "int" } },
         { drop:     { field: "debug" } },
@@ -37,10 +37,10 @@ Notes that bite people:
 
 - **First-match-wins.** Mapping entries are tried in declaration order; only the first entry whose `predicate` matches an event runs its `transformations`. A `predicate: "true"` catch-all therefore MUST go last in the list, otherwise it shadows every entry below it and they silently never fire (renames don't apply, per-class constants stay overridden by the catch-all). When you want a default-then-overrides pattern, structure the entries as: most specific predicates first, generic catch-all last. If two predicates are equally specific and both should fire on the same event, fold their transformations into a single entry. Validated against tenant April 2026.
 - `version: 1` at the top of the block is mandatory.
-- Each transformation's op is the **outer key**. Public docs sometimes show `{op: "rename", from: ..., to: ...}` — that is wrong. Use `{rename: {...}}`.
+- Each transformation's op is the **outer key**. Public docs sometimes show `{op: "rename", from: ..., to: ...}`; that is wrong. Use `{rename: {...}}`.
 - `from` on `rename` is a **single string**, not a list. If you need "first of N matches", use `copy` first (which does accept a list) then `rename`/`drop`.
 - `cast` takes `type: "..."`, not `to: "..."`. So `{cast: {field: "x", type: "int"}}`.
-- `cast` does NOT honor an `output:` key — it overwrites the source field. To cast into a different field, `copy` first, then `cast` the copy.
+- `cast` does NOT honor an `output:` key: it overwrites the source field. To cast into a different field, `copy` first, then `cast` the copy.
 - Predicate uses `==` (double-equals), not `=`.
 - `rename` silently no-ops when the source field is absent, which is the idiom that lets a single catch-all entry hold renames for several different vendor-native key sets (e.g. `verb` → `http_request.http_method` for app A, `method` → `http_request.http_method` for app B). Each rename only fires on events that actually carry that source key.
 
@@ -50,7 +50,7 @@ Most S1 Marketplace parsers (AWS RDS, Corelight, Cloudflare, Fortinet FortiGate)
 
 ```js
 mappings: {
-  version: 0,                                      // NOT 1 — must match the body shape below.
+  version: 0,                                      // NOT 1, must match the body shape below.
   mappings: [
     {
       predicate: "true",                           // unconditional
@@ -75,9 +75,9 @@ mappings: {
 Differences from v1:
 
 - Top-level ops are **plural arrays**: `copies`, `renames`, `constants` (not `transformations`).
-- Each op entry has `inputs: [list]` (even for `rename` — always a list in v0) + `output: "..."` + `type: "..."`.
+- Each op entry has `inputs: [list]` (even for `rename`: always a list in v0) + `output: "..."` + `type: "..."`.
 - Predicate inside a constant uses `=` (single equals). Engine-level predicates (the outer `predicate:` on the mapping entry) also accept `=` in v0.
-- `type:` on copies/renames is a soft coerce — `"string"` is the universal safe choice when in doubt.
+- `type:` on copies/renames is a soft coerce: `"string"` is the universal safe choice when in doubt.
 - No `transformations` wrapper. The ops are direct keys on the mapping entry.
 
 **When to use v0:** when you are copying a marketplace parser and want a minimal diff. **When to use v1:** for all new parsers, because `transformations` keeps ordering explicit and makes fan-out patterns (`cast` after `copy`, multiple `constant` with different predicates) easier to read.
@@ -115,15 +115,15 @@ SKU: Ops Center only; not available on FedRAMP or self-hosted at time of writing
 
 ## Gron-style field references
 
-- `a.b`, `a.b.c` — nested object fields.
-- `a.b[1]` — array element by index.
-- `a.b[-1]` — **append** to array.
-- `a.b[x]` — **labeled index**; appends once, then later operations referencing `[x]` target the same slot.
-- `a.b[*]` — **wildcard**; apply the operation to every element.
+- `a.b`, `a.b.c`: nested object fields.
+- `a.b[1]`: array element by index.
+- `a.b[-1]`: **append** to array.
+- `a.b[x]`: **labeled index**; appends once, then later operations referencing `[x]` target the same slot.
+- `a.b[*]`: **wildcard**; apply the operation to every element.
 
 ## Operations (tenant-validated shapes)
 
-### `rename` — rename a field
+### `rename`: rename a field
 
 ```js
 { rename: { from: "source-address", to: "src_endpoint.ip" } }
@@ -133,7 +133,7 @@ SKU: Ops Center only; not available on FedRAMP or self-hosted at time of writing
 - `to` is the target path.
 - If `from` doesn't exist on the event, the transformation silently no-ops.
 
-### `copy` — copy a field (supports first-of-N)
+### `copy`: copy a field (supports first-of-N)
 
 ```js
 { copy: { from: ["client.ip", "source.ip"], to: "actor.session.terminal.ip",
@@ -141,11 +141,11 @@ SKU: Ops Center only; not available on FedRAMP or self-hosted at time of writing
 ```
 
 - `from` is a **list**; first existing key wins.
-- `default` optional — used when no source hits.
+- `default` optional: used when no source hits.
 - **An empty string `""` counts as "exists" and wins the first-of-N race.** `copy {from: ["userId", "servicePrincipalId"]}` where `userId` is present but `""` copies the empty string, NOT `servicePrincipalId`. This silently breaks identity-coalesce / fallback patterns (e.g. service-principal sign-ins where `userPrincipalName`/`userId` are empty but `servicePrincipalName`/`servicePrincipalId` hold the real identity). Fix by dropping empty strings upstream (best done in the collector/Lua serializer, which should omit `""` values), or `drop` the empty source field before the `copy`. Tenant-validated 2026-06-22 (Microsoft Entra ID service-principal sign-ins).
 - **Use `copy` (leaves source) vs `rename` (removes source) deliberately.** Copying a source into an OCSF field leaves the original under `unmapped.*` as a duplicate. When you don't need the original retained, prefer `rename` so the field doesn't linger in `unmapped` (e.g. `rename unmapped.createdDateTime -> metadata.original_time` rather than `copy`, to avoid a duplicate `unmapped.createdDateTime`).
 
-### `cast` — convert a field's type or enum
+### `cast`: convert a field's type or enum
 
 ```js
 // Primitive
@@ -184,13 +184,13 @@ Semantic `type`: `iso8601TimestampToEpochSec`, `iso8601DateToEpochSec`, `epochSe
           enum: { "6": "TCP", "17": "UDP", "1": "ICMP" } } }
 ```
 
-### `constant` — set a field to a constant value (optionally conditional)
+### `constant`: set a field to a constant value (optionally conditional)
 
 ```js
 // v1 (singular):
 { constant: { value: 4001, field: "class_uid" } }
 
-// Conditional — only fires when the predicate matches.
+// Conditional: only fires when the predicate matches.
 { constant: { value: "Fail",  field: "activity_name",
               predicate: "conn_state == 'S0'" } }
 { constant: { value: 400104, field: "type_uid",
@@ -201,13 +201,13 @@ In v0 `constants: [...]` these look like `{ value: ..., field: ..., predicate: "
 
 Think of `constant` as "add a field that the source didn't have, possibly because the raw event contained a code we want to translate." Unlike `cast {type: "enum"}`, `constant` can assign multiple target fields (one per transformation) from the same source condition, which is the common OCSF need.
 
-### `drop` — remove a scalar field
+### `drop`: remove a scalar field
 
 ```js
 { drop: { field: "debug" } }
 ```
 
-### `drop_tree` — remove an object/array subtree
+### `drop_tree`: remove an object/array subtree
 
 ```js
 { drop_tree: { field: "raw_internals" } }
@@ -215,7 +215,7 @@ Think of `constant` as "add a field that the source didn't have, possibly becaus
 
 **`drop` and `drop_tree` work on gron-flattened dotted AND `[N]`-indexed keys.** `drop_tree {field: "unmapped._ob"}` removes `unmapped._ob.source`; `drop_tree {field: "unmapped.timestamp"}` removes the whole `unmapped.timestamp.*` set; `drop {field: "unmapped._azure_event_type"}` removes the scalar. This is the right way to strip pipeline envelope noise (`_ob`, an `os.date` `timestamp` table, `_azure_event_type`, `host`, `port`, `source_type`) that a collector adds. Because v1 mappings are first-match-wins, duplicate these drops into EVERY per-shape mapping block (or strip the envelope upstream in the collector/Lua so the parser never sees it; do both for defense-in-depth). Tenant-validated 2026-06-22.
 
-### `copy_tree` — copy a subtree
+### `copy_tree`: copy a subtree
 
 ```js
 { copy_tree: { from: "headers", to: "http_request.headers" } }
@@ -223,7 +223,7 @@ Think of `constant` as "add a field that the source didn't have, possibly becaus
 
 Object-to-object is additive; type mismatches replace. Empty-string `from: ""` copies the event root.
 
-### `rename_tree` — rename a subtree
+### `rename_tree`: rename a subtree
 
 Same shape as `rename`, but operates on an object subtree. Additive when types match, replacing otherwise.
 
@@ -233,9 +233,9 @@ Same shape as `rename`, but operates on an object subtree. Additive when types m
 { rename_tree: { from: "unmapped.targetResources[0].modifiedProperties", to: "entity.data" } }
 ```
 
-moves every `unmapped.targetResources[0].modifiedProperties[i].{displayName,oldValue,newValue}` to `entity.data[i].{displayName,oldValue,newValue}`. Do NOT escape the brackets, and don't be misled by dot-index — the source keys are bracket-indexed (`[i]`). First-match-wins still applies, so place it in the block that matches the event shape. Tenant-validated 2026-06-22.
+moves every `unmapped.targetResources[0].modifiedProperties[i].{displayName,oldValue,newValue}` to `entity.data[i].{displayName,oldValue,newValue}`. Do NOT escape the brackets, and don't be misled by dot-index, the source keys are bracket-indexed (`[i]`). First-match-wins still applies, so place it in the block that matches the event shape. Tenant-validated 2026-06-22.
 
-### `hash` — hash a string field
+### `hash`: hash a string field
 
 ```js
 { hash: { field: "actor.session.terminal.ip", to: "actor.session.terminal.ip_sha256",
@@ -244,7 +244,7 @@ moves every `unmapped.targetResources[0].modifiedProperties[i].{displayName,oldV
 
 Algorithms: `sha1`, `sha256`. Output is lowercase hex with no `0x` prefix.
 
-### `reduce_array` — collapse an array
+### `reduce_array`: collapse an array
 
 ```js
 // Params array → dict
@@ -263,9 +263,9 @@ Algorithms: `sha1`, `sha256`. Output is lowercase hex with no `0x` prefix.
 { reduce_array: { field: "flags", kind: "boolean_or", to: "any_flag_set" } }
 ```
 
-> **Tenant `reduce_array` v1 schema differs from the shapes above.** On the current Ops Center tenant (2026-06-22), `putFile` rejected `{ reduce_array: { field, kind, ... } }`: first with `400: Missing required key 'from'` (it wants **`from`**, not `field`), then with `400: Missing required key 'type'` (it wants **`type`**, not `kind`). So the deploy-validated shape is `{ reduce_array: { from: "...", type: "params"|"string_concat"|"find"|"boolean_or", key/separator/regexp: ..., to: "..." } }`. Also note `reduce_array` needs a real array input; if your source array was flattened to `[N]`-indexed scalars by gron/dottedJson (not a JSON value), `reduce_array` has nothing to fold — capture with a `strict*` variant if you need the array intact, or use `rename_tree` to relocate the `[N]` subtree instead.
+> **Tenant `reduce_array` v1 schema differs from the shapes above.** On the current Ops Center tenant (2026-06-22), `putFile` rejected `{ reduce_array: { field, kind, ... } }`: first with `400: Missing required key 'from'` (it wants **`from`**, not `field`), then with `400: Missing required key 'type'` (it wants **`type`**, not `kind`). So the deploy-validated shape is `{ reduce_array: { from: "...", type: "params"|"string_concat"|"find"|"boolean_or", key/separator/regexp: ..., to: "..." } }`. Also note `reduce_array` needs a real array input; if your source array was flattened to `[N]`-indexed scalars by gron/dottedJson (not a JSON value), `reduce_array` has nothing to fold, capture with a `strict*` variant if you need the array intact, or use `rename_tree` to relocate the `[N]` subtree instead.
 
-### `replace` — regex replace on a field value
+### `replace`: regex replace on a field value
 
 ```js
 { replace: { field: "path", regexp: "/\\d+/", replacement: "/<id>/" } }
@@ -274,10 +274,10 @@ Algorithms: `sha1`, `sha256`. Output is lowercase hex with no `0x` prefix.
 Supports `$1`…`$n` backreferences. Unchanged if no match.
 
 > **Two confirmed traps (tenant-validated 2026-06-01).**
-> 1. The regex key is **`regexp`**, NOT `pattern`. A `pattern` key returns `400: Missing required key 'regexp'` on `putFile`. (`reduce_array { kind: "find", regexp: ... }` uses the same `regexp` key — be consistent.)
-> 2. Even with the correct `regexp` key, the `replace` mapper op was observed to be a **runtime no-op** on this tenant — it passes schema validation and deploys, but the field value is unchanged at ingest (tested on both a dotted target like `process.cmd_line` and a flat scratch field). If your `replace` "succeeds" but the data is untransformed, this is why. The working substitute is a **`computeFields` rewrite** on the format that captures the field, calling the PowerQuery `replace(field, regex, replacement)` string function (PowerQuery string literals are single-quoted, so a double-quote inside the regex needs no escaping): `expression: "| let _cmdline = replace(_cmdline, 'a[0-9]+=\"([^\"]*)\"', '$1')"`. Capture into a flat scratch field, clean it with computeFields, then `rename` it to the dotted OCSF target. See `examples/12-linux-auditd-ocsf.json` (EXECVE arg vector → `process.cmd_line`).
+> 1. The regex key is **`regexp`**, NOT `pattern`. A `pattern` key returns `400: Missing required key 'regexp'` on `putFile`. (`reduce_array { kind: "find", regexp: ... }` uses the same `regexp` key, be consistent.)
+> 2. Even with the correct `regexp` key, the `replace` mapper op was observed to be a **runtime no-op** on this tenant; it passes schema validation and deploys, but the field value is unchanged at ingest (tested on both a dotted target like `process.cmd_line` and a flat scratch field). If your `replace` "succeeds" but the data is untransformed, this is why. The working substitute is a **`computeFields` rewrite** on the format that captures the field, calling the PowerQuery `replace(field, regex, replacement)` string function (PowerQuery string literals are single-quoted, so a double-quote inside the regex needs no escaping): `expression: "| let _cmdline = replace(_cmdline, 'a[0-9]+=\"([^\"]*)\"', '$1')"`. Capture into a flat scratch field, clean it with computeFields, then `rename` it to the dotted OCSF target. See `examples/12-linux-auditd-ocsf.json` (EXECVE arg vector → `process.cmd_line`).
 
-### `zip` — interleave arrays
+### `zip`: interleave arrays
 
 ```js
 { zip: { from: ["keys", "values"], to: "pairs" } }
@@ -380,7 +380,7 @@ OCSF events optionally carry an `observables: [...]` array of `{name, type_id, t
 { constant: { value: "IP Address",     field: "observables[dstip].type" } }
 ```
 
-Each `[srcip]` / `[dstip]` is a labeled index — referenced multiple times within the same mapping entry, the engine appends once and then targets that same array slot. Produces a clean array of dicts rather than separately-named scalars. Reference: `parsers/sentinelone/marketplace-fortinetfortigate-latest/` and `parsers/sentinelone/marketplace-cloudflare-latest/`.
+Each `[srcip]` / `[dstip]` is a labeled index, referenced multiple times within the same mapping entry, the engine appends once and then targets that same array slot. Produces a clean array of dicts rather than separately-named scalars. Reference: `parsers/sentinelone/marketplace-fortinetfortigate-latest/` and `parsers/sentinelone/marketplace-cloudflare-latest/`.
 
 ### Tree operations on gron-flattened JSON
 
@@ -390,11 +390,11 @@ Source `{"Resource": {"Id": "abc", "Type": "user"}}` after `${parse=gron}$` beco
 { rename_tree: { from: "unmapped.Resource", to: "resource" } }
 ```
 
-The engine walks every key with that dotted prefix and renames all of them. **Do NOT escape the dots inside the subtree path** (`from: "unmapped\\.Resource"` does not match — even though the published `PARSER_TEMPLATE.conf` shows escaped dots; that template is stale on current tenants). The dots in flat-gron keys are literal parts of the key string, not navigation operators. Reference: `parsers/sentinelone/marketplace-cloudflare-latest/`.
+The engine walks every key with that dotted prefix and renames all of them. **Do NOT escape the dots inside the subtree path** (`from: "unmapped\\.Resource"` does not match, even though the published `PARSER_TEMPLATE.conf` shows escaped dots; that template is stale on current tenants). The dots in flat-gron keys are literal parts of the key string, not navigation operators. Reference: `parsers/sentinelone/marketplace-cloudflare-latest/`.
 
 ### Enum cast with default sentinel (v1)
 
-`cast: { type: "enum", enum: {...} }` does not have a fallback by default — unmapped source values pass through unchanged. To map every unknown to a sentinel (so downstream queries can group "known" vs "unknown"), set `enum_default`:
+`cast: { type: "enum", enum: {...} }` does not have a fallback by default, unmapped source values pass through unchanged. To map every unknown to a sentinel (so downstream queries can group "known" vs "unknown"), set `enum_default`:
 
 ```js
 { cast: { field: "action_id", type: "enum",
@@ -402,7 +402,7 @@ The engine walks every key with that dotted prefix and renames all of them. **Do
           enum_default: 99 } }
 ```
 
-Cloudflare uses `enum_default: 99` (the OCSF "Unknown" sentinel) consistently — copy that pattern. Reference: `parsers/sentinelone/marketplace-cloudflare-latest/`.
+Cloudflare uses `enum_default: 99` (the OCSF "Unknown" sentinel) consistently, copy that pattern. Reference: `parsers/sentinelone/marketplace-cloudflare-latest/`.
 
 ### Conditional class assignment via per-format `attributes:`
 

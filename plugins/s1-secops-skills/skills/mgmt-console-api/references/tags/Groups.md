@@ -11,29 +11,29 @@ Get data of groups that match the filter. Best practice: use as narrow a filter 
 Required permissions: `Groups.view`
 
 Parameters:
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `countOnly` [query, boolean] — If true, only total number of items will be returned, without any of the actual objects.
-- `skipCount` [query, boolean] — If true, total number of items will not be calculated, which speeds up execution time.
-- `sortBy` [query, string] (enum: id, name, type, rank, siteId, createdAt, updatedAt, description) — The column to sort the results by. Example: "id".
-- `sortOrder` [query, string] (enum: asc, desc) — Sort direction. Example: "asc".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `type` [query, string] (enum: static, dynamic, pinned) — Group type. Example: "static".
-- `types` [query, array] — A list of Group types. Example: "static".
-- `query` [query, string] — Free text search on fields name, description
-- `id` [query, string] — Id. Example: "225494730938493804".
-- `name` [query, string] — Name
-- `description` [query, string] — The description for the Group
-- `rank` [query, integer] — The rank sets the priority of a dynamic group over others. Example: "1".
-- `isDefault` [query, boolean] — Is this the default group?
-- `updatedAt__lt` [query, string] — Updated at lesser than. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__gt` [query, string] — Updated at greater than. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__lte` [query, string] — Updated at lesser or equal than. Example: "2018-02-27T04:49:26.257525Z".
-- `updatedAt__gte` [query, string] — Updated at greater or equal than. Example: "2018-02-27T04:49:26.257525Z".
-- `registrationToken` [query, string] — Registration token. Example: "eyJ1cmwiOiAiaHR0cHM6Ly9jb25zb2xlLnNlbnRpbmVsb25lLm5ldCIsICJzaXRlX2tleSI6ICIwNzhkYjliMWUyOTA1Y2NhIn0=".
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `countOnly` [query, boolean]: If true, only total number of items will be returned, without any of the actual objects.
+- `skipCount` [query, boolean]: If true, total number of items will not be calculated, which speeds up execution time.
+- `sortBy` [query, string] (enum: id, name, type, rank, siteId, createdAt, updatedAt, description): The column to sort the results by. Example: "id".
+- `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `type` [query, string] (enum: static, dynamic, pinned): Group type. Example: "static".
+- `types` [query, array]: A list of Group types. Example: "static".
+- `query` [query, string]: Free text search on fields name, description
+- `id` [query, string]: Id. Example: "225494730938493804".
+- `name` [query, string]: Name
+- `description` [query, string]: The description for the Group
+- `rank` [query, integer]: The rank sets the priority of a dynamic group over others. Example: "1".
+- `isDefault` [query, boolean]: Is this the default group?
+- `updatedAt__lt` [query, string]: Updated at lesser than. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__gt` [query, string]: Updated at greater than. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__lte` [query, string]: Updated at lesser or equal than. Example: "2018-02-27T04:49:26.257525Z".
+- `updatedAt__gte` [query, string]: Updated at greater or equal than. Example: "2018-02-27T04:49:26.257525Z".
+- `registrationToken` [query, string]: Registration token. Example: "eyJ1cmwiOiAiaHR0cHM6Ly9jb25zb2xlLnNlbnRpbmVsb25lLm5ldCIsICJzaXRlX2tleSI6ICIwNzhkYjliMWUyOTA1Y2NhIn0=".
 
 Responses: 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -46,7 +46,7 @@ Create a new group. You must create the Group in a Site (run "sites" to get the 
 Required permissions: `Groups.create`
 
 Parameters:
-- `body` [body, groups_PostGroupSchema] — 
+- `body` [body, groups_PostGroupSchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -59,7 +59,7 @@ An Agent can belong to only one Group. If the Agent matches multiple Dynamic Gro
 Required permissions: `Groups.edit`
 
 Parameters:
-- `body` [body, groups_PutRanksSchema] — 
+- `body` [body, groups_PutRanksSchema]: 
 
 Responses: 403 Insufficient permissions, 204 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -72,7 +72,7 @@ Delete a Group given by the required Group ID (run "groups"). If there are Agent
 Required permissions: `Groups.delete`
 
 Parameters:
-- `group_id` [path, string] **required** — Group ID. Example: "225494730938493804".
+- `group_id` [path, string] **required**: Group ID. Example: "225494730938493804".
 
 Responses: 404 Group not found., 200 Success, 401 Unauthorized access - please sign in and retry.
 
@@ -85,7 +85,7 @@ Get data of a given Group. To get a Group ID, run "groups". This command respond
 Required permissions: `Groups.view`
 
 Parameters:
-- `group_id` [path, string] **required** — Group ID. Example: "225494730938493804".
+- `group_id` [path, string] **required**: Group ID. Example: "225494730938493804".
 
 Responses: 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.
 
@@ -98,8 +98,8 @@ Change properties of a Group specified by its ID (run "groups"). The body of the
 Required permissions: `Groups.edit`
 
 Parameters:
-- `group_id` [path, string] **required** — Group ID. Example: "225494730938493804".
-- `body` [body, groups_PutGroupSchema] — 
+- `group_id` [path, string] **required**: Group ID. Example: "225494730938493804".
+- `body` [body, groups_PutGroupSchema]: 
 
 Responses: 404 Group not found., 403 Insufficient permissions., 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -112,8 +112,8 @@ Move Agents that match the filter to a Group. The Group ID (run "groups") is req
 Required permissions: `Groups.moveToGroup`
 
 Parameters:
-- `group_id` [path, string] **required** — Group ID. Example: "225494730938493804".
-- `body` [body, groups_PutAddAgentsSchema] — 
+- `group_id` [path, string] **required**: Group ID. Example: "225494730938493804".
+- `body` [body, groups_PutAddAgentsSchema]: 
 
 Responses: 409 Conflict, 403 Insufficient permissions, 204 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -126,7 +126,7 @@ Get a new Group Token for a static Group. This command requires the Group ID ("g
 Required permissions: `Groups.edit`
 
 Parameters:
-- `group_id` [path, string] **required** — Group ID. Example: "225494730938493804".
+- `group_id` [path, string] **required**: Group ID. Example: "225494730938493804".
 
 Responses: 403 No permission for regenerating a key., 404 Group not found, 200 Success, 401 Unauthorized access - please sign in and retry.
 
@@ -139,8 +139,8 @@ A Group can have a policy that is different from its Site policy. Use this comma
 Required permissions: `Policy.edit`
 
 Parameters:
-- `group_id` [path, string] **required** — Group ID. Example: "225494730938493804".
-- `body` [body, policies_schemas_RevertPolicySchema] — 
+- `group_id` [path, string] **required**: Group ID. Example: "225494730938493804".
+- `body` [body, policies_schemas_RevertPolicySchema]: 
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -153,6 +153,6 @@ Get the registration token of the Group of the ID.
 Required permissions: `Groups.view`
 
 Parameters:
-- `group_id` [path, string] **required** — Group ID. Example: "225494730938493804".
+- `group_id` [path, string] **required**: Group ID. Example: "225494730938493804".
 
 Responses: 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.

@@ -15,7 +15,7 @@
   // PRI decoding (e.g. `<86>`):
   //   facility = floor(86/8) = 10 (security/authorization)
   //   severity = 86 % 8      = 6  (informational)
-  // We capture `pri` as a plain digit field — `{parse=syslogPriority}`
+  // We capture `pri` as a plain digit field: `{parse=syslogPriority}`
   // has caused silent event drops on this tenant.
   //
   // Classic-syslog timestamps carry no timezone, so `timezone: "UTC"`
@@ -36,7 +36,7 @@
     "metadata.product.name":        "PAM (pam_unix)",
     "metadata.log_provider":        "pam_unix",
 
-    // OCSF class — Authentication (3002) under Identity & Access Management (3).
+    // OCSF class: Authentication (3002) under Identity & Access Management (3).
     "class_uid":     3002,
     "class_name":    "Authentication",
     "category_uid":  3,
@@ -51,7 +51,7 @@
   "formats": [
     {
       // Capture the RFC 3164 frame AND the pam_unix(...) body in one
-      // format. `$pri=digits$` keeps PRI as a plain integer — we
+      // format. `$pri=digits$` keeps PRI as a plain integer; we
       // decode facility/severity in the mappings block below.
       // `actor.process.name` / `actor.process.pid` are OCSF-dotted;
       // SDL captures them as flat field names without any escaping.
@@ -74,7 +74,7 @@
           // for forensic use.
           //
           // IMPORTANT: do NOT capture the stamp into the reserved
-          // `timestamp` field as a string — it makes the ingest
+          // `timestamp` field as a string: it makes the ingest
           // pipeline drop the event silently. We use `ts_raw` above
           // precisely to avoid that.
           { "copy": { "from": "ts_raw", "to": "unmapped.ts_raw" } },
@@ -83,7 +83,7 @@
           // ---- PRI → facility / severity (syslog semantics) --------
           // NOTE: v1 mapper engine has no arithmetic. We keep `pri`
           // as-is (cast to int for cheap filtering) and emit the
-          // OCSF severity constants below based on the pam_action —
+          // OCSF severity constants below based on the pam_action:
           // PAM session open/close are always informational. If you
           // need dynamic severity from PRI, compute it in PowerQuery
           // with `floor(pri/8)` and `pri mod 8`.
@@ -108,7 +108,7 @@
           // ---- Status --------------------------------------------
           // pam_unix only emits "session opened/closed" on success.
           // Authentication failures surface via a different line
-          // ("authentication failure; ...") — handle those in a
+          // ("authentication failure; ..."); handle those in a
           // separate format + mapping entry branched on a format-id
           // sentinel.
           { "constant": { "value": 1,         "field": "status_id", "predicate": "true" } },
@@ -116,7 +116,7 @@
 
           // ---- Severity ------------------------------------------
           // Emit `severity_id` (int) and `severity_name` (string).
-          // NEVER set `severity` directly — it is reserved and the
+          // NEVER set `severity` directly: it is reserved and the
           // ingest pipeline coerces to 0-6 against its own vocabulary.
           { "constant": { "value": 1,                "field": "severity_id",   "predicate": "true" } },
           { "constant": { "value": "Informational", "field": "severity_name", "predicate": "true" } },
@@ -136,7 +136,7 @@
     ]
   },
 
-  // Keep the original message during iteration — uncomment for
+  // Keep the original message during iteration: uncomment for
   // production to save storage.
   "discardAttributes": []
 }

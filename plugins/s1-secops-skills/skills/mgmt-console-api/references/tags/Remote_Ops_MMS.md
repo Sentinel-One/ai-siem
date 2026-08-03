@@ -11,7 +11,7 @@ Delete multiple Destination profiles. The profiles that are not possible to dele
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
-- `body` [body, v2_1.data_exporter.schema_DeleteDestinationProfilesRequestSchema] — 
+- `body` [body, v2_1.data_exporter.schema_DeleteDestinationProfilesRequestSchema]: 
 
 Responses: 200 Delete was completed or partially completed., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -24,8 +24,8 @@ Get Destination profiles available for the specified scope. The profiles are inh
 Required permissions: `Remote Script Orchestration.viewDestinationCredentials`
 
 Parameters:
-- `scopeLevel` [query, string] (enum: tenant, account, site, group) — Scope level to get Destination profile configuration. Example: "tenant".
-- `scopeId` [query, string] — Scope ID to get Destination profiles configuration. Example: "225494730938493804".
+- `scopeLevel` [query, string] (enum: tenant, account, site, group): Scope level to get Destination profile configuration. Example: "tenant".
+- `scopeId` [query, string]: Scope ID to get Destination profiles configuration. Example: "225494730938493804".
 
 Responses: 403 User has insufficient permission to perform such action, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -38,7 +38,7 @@ Create Destination profile inside specified scope. If the created profile is req
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
-- `body` [body, v2_1.data_exporter.schema_PostDestinationProfileRequestSchema] — 
+- `body` [body, v2_1.data_exporter.schema_PostDestinationProfileRequestSchema]: 
 
 Responses: 401 Unauthorized access - please sign in and retry., 200 Successes, 400 Invalid user input received. See error details for further i
 
@@ -51,7 +51,7 @@ Set profile as default profile of the scope
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
-- `body` [body, v2_1.data_exporter.schema_SetDefaultDestinationProfile] — 
+- `body` [body, v2_1.data_exporter.schema_SetDefaultDestinationProfile]: 
 
 Responses: 403 User has insufficient permission to perform such action, 400 Invalid user input received. See error details for further i, 200 Get Destination profile, 401 Unauthorized access - please sign in and retry.
 
@@ -64,7 +64,7 @@ Delete Destination profile with specified ID. If the profile was used as default
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
-- `profile_id` [path, string] **required** — Profile ID. Example: "225494730938493804".
+- `profile_id` [path, string] **required**: Profile ID. Example: "225494730938493804".
 
 Responses: 403 User has insufficient permission to perform such action, 404 Destination profile is not found, 200 Destination profile is deleted, 401 Unauthorized access - please sign in and retry.
 
@@ -77,9 +77,9 @@ Get Destination profile with specified ID
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
-- `profile_id` [path, string] **required** — Profile ID. Example: "225494730938493804".
-- `scopeLevel` [query, string] (enum: tenant, account, site, group) — Scope level to get Destination profile configuration. Example: "tenant".
-- `scopeId` [query, string] — Scope ID to get Destination profiles configuration. Example: "225494730938493804".
+- `profile_id` [path, string] **required**: Profile ID. Example: "225494730938493804".
+- `scopeLevel` [query, string] (enum: tenant, account, site, group): Scope level to get Destination profile configuration. Example: "tenant".
+- `scopeId` [query, string]: Scope ID to get Destination profiles configuration. Example: "225494730938493804".
 
 Responses: 403 User has insufficient permission to perform such action, 404 Destination profile is not found, 200 Get Destination profile, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -92,8 +92,8 @@ Update contents of existing Destination profile with specified ID. All the profi
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
-- `profile_id` [path, string] **required** — Profile ID. Example: "225494730938493804".
-- `body` [body, v2_1.data_exporter.schema_PutDestinationProfileRequestSchema] — 
+- `profile_id` [path, string] **required**: Profile ID. Example: "225494730938493804".
+- `body` [body, v2_1.data_exporter.schema_PutDestinationProfileRequestSchema]: 
 
 Responses: 403 User has insufficient permission to perform such action, 404 Destination profile is not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -105,9 +105,9 @@ Get results sent to data exporter
 Optional permissions: `Remote Script Orchestration.view, Remote Ops Forensics.view, Remote Script Orchestration.viewDestinationResults`
 
 Parameters:
-- `taskId` [query, string] — Task id
-- `maliciousGroupId` [query, string] — Threat malicious group id
-- `agentId` [query, string] **required** — Id of the agent the data came from
+- `taskId` [query, string]: Task id
+- `maliciousGroupId` [query, string]: Threat malicious group id
+- `agentId` [query, string] **required**: Id of the agent the data came from
 
 Responses: 403 User has insufficient permission to perform such action, 200 Get Destination profile results, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -120,7 +120,7 @@ Schedule forensics for future run. The profile will be scheduled for execution o
 Required permissions: `Remote Script Orchestration.createScheduledTasks, Remote Ops Forensics.runForensicsCollection`
 
 Parameters:
-- `body` [body, v2_1.scheduling.schema_ScheduleForensicsCollectionRequestSchema] — 
+- `body` [body, v2_1.scheduling.schema_ScheduleForensicsCollectionRequestSchema]: 
 
 Responses: 401 Unauthorized access - please sign in and retry., 200 Success, 400 Invalid user input received. See error details for further i
 
@@ -134,7 +134,7 @@ Required permissions: `Remote Script Orchestration.createScheduledTasks`
 Optional permissions: `Remote Script Orchestration.runActionScript, Remote Script Orchestration.runDataCollectionScript, Remote Script Orchestration.runArtifactCollectionScript`
 
 Parameters:
-- `body` [body, v2_1.scheduling.schema_ScheduleRemoteScriptRequestSchema] — 
+- `body` [body, v2_1.scheduling.schema_ScheduleRemoteScriptRequestSchema]: 
 
 Responses: 401 Unauthorized access - please sign in and retry., 200 Success, 400 Invalid user input received. See error details for further i
 
@@ -147,7 +147,7 @@ Delete multiple Scheduled tasks. The tasks that are not possible to delete (e.g.
 Required permissions: `Remote Script Orchestration.deleteScheduledTasks`
 
 Parameters:
-- `body` [body, v2_1.scheduling.schema_DeleteScheduledTasksRequestSchema] — 
+- `body` [body, v2_1.scheduling.schema_DeleteScheduledTasksRequestSchema]: 
 
 Responses: 200 Delete was completed or partially completed., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -160,30 +160,30 @@ Get available Scheduled Tasks
 Required permissions: `Remote Script Orchestration.viewScheduledTasks`
 
 Parameters:
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `scopeName__contains` [query, array] — Keyword to search in scope name
-- `outputDestination` [query, array] — List of the tasks types. Example: "SentinelCloud".
-- `creatorId` [query, array] — IDs of creating user of scheduled task. Example: "225494730938493804,225494730938493915".
-- `createdAt__between` [query, string] — Date range for creation time
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `type` [query, array] — List of the tasks types. Example: "action".
-- `osTypes` [query, array] — List of the OS types. Example: "linux".
-- `ids` [query, array] — A list of scheduled tasks ids. Example: "225494730938493804,225494730938493915".
-- `description__contains` [query, array] — Keyword to search in description
-- `status` [query, array] — List of the tasks status. Example: "scheduled".
-- `groupIds` [query, array] — List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `query` [query, string] — Keyword to search in scheduled tasks profile name
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `scheduledTime__between` [query, string] — Date range for scheduled execution time
-- `targetScope` [query, array] — IDs of target scopes of scheduled task. Example: "225494730938493804,225494730938493915".
-- `id__contains` [query, array] — Keyword to search in task ID
-- `sortOrder` [query, string] (enum: asc, desc) — Sort direction. Example: "asc".
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `sortBy` [query, string] (enum: id, name, description, scheduledTime, type, osTypes, outputDestination, createdAt, targetScope, creator, status) — The column to sort the results by. Example: "id".
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `countOnly` [query, boolean] — If true, only total number of items will be returned, without any of the actual objects.
-- `skipCount` [query, boolean] — If true, total number of items will not be calculated, which speeds up execution time.
-- `name__contains` [query, array] — Keyword to search in task name
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `scopeName__contains` [query, array]: Keyword to search in scope name
+- `outputDestination` [query, array]: List of the tasks types. Example: "SentinelCloud".
+- `creatorId` [query, array]: IDs of creating user of scheduled task. Example: "225494730938493804,225494730938493915".
+- `createdAt__between` [query, string]: Date range for creation time
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `type` [query, array]: List of the tasks types. Example: "action".
+- `osTypes` [query, array]: List of the OS types. Example: "linux".
+- `ids` [query, array]: A list of scheduled tasks ids. Example: "225494730938493804,225494730938493915".
+- `description__contains` [query, array]: Keyword to search in description
+- `status` [query, array]: List of the tasks status. Example: "scheduled".
+- `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `query` [query, string]: Keyword to search in scheduled tasks profile name
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `scheduledTime__between` [query, string]: Date range for scheduled execution time
+- `targetScope` [query, array]: IDs of target scopes of scheduled task. Example: "225494730938493804,225494730938493915".
+- `id__contains` [query, array]: Keyword to search in task ID
+- `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `sortBy` [query, string] (enum: id, name, description, scheduledTime, type, osTypes, outputDestination, createdAt, targetScope, creator, status): The column to sort the results by. Example: "id".
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `countOnly` [query, boolean]: If true, only total number of items will be returned, without any of the actual objects.
+- `skipCount` [query, boolean]: If true, total number of items will not be calculated, which speeds up execution time.
+- `name__contains` [query, array]: Keyword to search in task name
 
 Responses: 403 User has insufficient permission to perform such action, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -196,7 +196,7 @@ Update existing Scheduled task
 Required permissions: `Remote Script Orchestration.updateScheduledTasks`
 
 Parameters:
-- `scheduled_task_id` [path, string] **required** — Scheduled Task ID. Example: "225494730938493804".
-- `body` [body, v2_1.scheduling.schema_PutScheduledTaskRequestSchema] — 
+- `scheduled_task_id` [path, string] **required**: Scheduled Task ID. Example: "225494730938493804".
+- `body` [body, v2_1.scheduling.schema_PutScheduledTaskRequestSchema]: 
 
 Responses: 403 User has insufficient permission to perform such action, 404 Scheduled task is not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

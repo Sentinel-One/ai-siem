@@ -1,5 +1,5 @@
 """
-IOC lifecycle round-trip test — REVERSIBLE.
+IOC lifecycle round-trip test, REVERSIBLE.
 
 Purpose
 -------
@@ -95,13 +95,13 @@ def _pick_account_id(client: S1Client) -> str:
     resp = client.get("/web/api/v2.1/accounts", params={"limit": 1})
     data = resp.get("data") or []
     if not data:
-        raise RuntimeError("No accounts visible to this token — cannot scope IOC create")
+        raise RuntimeError("No accounts visible to this token, cannot scope IOC create")
     return data[0]["id"]
 
 
 def create_iocs(client: S1Client, iocs: List[Dict[str, Any]],
                 account_id: str) -> Dict[str, Any]:
-    # Scope to a specific account — tenant scope requires a global user.
+    # Scope to a specific account: tenant scope requires a global user.
     body = {"filter": {"accountIds": [account_id]}, "data": iocs}
     return client.post("/web/api/v2.1/threat-intelligence/iocs", json_body=body)
 
@@ -117,7 +117,7 @@ def list_by_run_tag(client: S1Client, run_tag: str,
         params={"name__contains": run_tag, "accountIds": account_id,
                 "limit": 100},
     ):
-        # post-filter on source too — name__contains could in theory match
+        # post-filter on source too: name__contains could in theory match
         # an unrelated record (no risk in practice with the uuid tag).
         if (row.get("source") or "") == run_tag:
             found.append(row)
@@ -127,7 +127,7 @@ def list_by_run_tag(client: S1Client, run_tag: str,
 def delete_by_ids(client: S1Client, ids: List[str],
                   account_id: str) -> Dict[str, Any]:
     # DELETE /iocs takes a body with a filter. The filter schema accepts
-    # `uuids` (the IOC IDs) — NOT `source__contains` on this endpoint.
+    # `uuids` (the IOC IDs): NOT `source__contains` on this endpoint.
     # Scoping by uuids is strictly safer than a source-contains match:
     # we only delete what we just created.
     body = {"filter": {"accountIds": [account_id], "uuids": ids}}
@@ -169,7 +169,7 @@ def main() -> int:
     except S1APIError as e:
         if e.status == 403 and "multi-scopes" in str(e):
             _log("SKIP: token has multiple account scopes; /iocs requires a "
-                 "single-account-scoped token. Not a skill bug — documented "
+                 "single-account-scoped token. Not a skill bug, documented "
                  "in tests/README.md.")
             return 0
         _log(f"PRECHECK FAILED: HTTP {e.status} {e}")
@@ -193,17 +193,17 @@ def main() -> int:
     found = list_by_run_tag(client, run_tag, account_id)
     _log(f"LIST ok: {len(found)} indicators match source={run_tag}")
     if len(found) != len(iocs):
-        _log(f"WARN: expected {len(iocs)} found {len(found)} — "
+        _log(f"WARN: expected {len(iocs)} found {len(found)}, "
              "may be async indexing; continuing")
 
-    # Collect UUIDs from what we just found — safer than any content filter.
+    # Collect UUIDs from what we just found: safer than any content filter.
     # IOC records use `uuid` (not `id`) as the primary key, and the DELETE
     # filter field is `uuids` (plural).
     ids = [r["uuid"] for r in found if r.get("uuid")]
 
     # --- DELETE ---
     if args.keep:
-        _log("KEEP flag set — leaving test IOCs in place. Clean up manually with:")
+        _log("KEEP flag set, leaving test IOCs in place. Clean up manually with:")
         import json as _json
         filt = _json.dumps({"filter": {"accountIds": [account_id], "uuids": ids}})
         print(f'  python scripts/call_endpoint.py DELETE '
@@ -219,7 +219,7 @@ def main() -> int:
         del_resp = delete_by_ids(client, ids, account_id)
     except S1APIError as e:
         _log(f"DELETE FAILED: HTTP {e.status} {e}")
-        _log("Manual cleanup required — see --keep instructions above.")
+        _log("Manual cleanup required; see --keep instructions above.")
         return 3
     affected = (del_resp.get("data") or {}).get("affected")
     _log(f"DELETE ok: affected={affected}")
@@ -233,7 +233,7 @@ def main() -> int:
         return 4
     _log("VERIFY ok: zero remaining")
 
-    _log("IOC lifecycle: CREATE → LIST → DELETE → VERIFY — ALL OK")
+    _log("IOC lifecycle: CREATE → LIST → DELETE → VERIFY, ALL OK")
     return 0
 
 

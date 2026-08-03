@@ -15,7 +15,7 @@
 # end-state cert should have `issuer=ZeroSSL ECC DV SSL CA 2`. Port 80 must
 # be open in the SG for HTTP-01 to complete.
 #
-# DO NOT mix `tls <email>` with an `issuer acme { ... }` block — Caddy errors
+# DO NOT mix `tls <email>` with an `issuer acme { ... }` block: Caddy errors
 # with "cannot mix issuer subdirective with other issuer-specific subdirectives".
 # Pick one form: the email shorthand on its own line, OR a full `tls { ... }`
 # block with the email moved inside the `issuer acme` stanza. Not both.

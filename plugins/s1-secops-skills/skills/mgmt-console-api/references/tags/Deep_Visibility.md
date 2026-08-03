@@ -13,7 +13,7 @@ Stop a Deep Visibility Query by queryId. The body is {"queryID":"string_ID"}. Ge
 Required permissions: `SDL Data.viewEdr`
 
 Parameters:
-- `body` [body, deep_visibility.deep_visibility_v2_schemas_DeepVisibilityQueryIdRequestSchema] — 
+- `body` [body, deep_visibility.deep_visibility_v2_schemas_DeepVisibilityQueryIdRequestSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -26,13 +26,13 @@ Get all Deep Visibility events from a queryId. You can use this command to send 
 Required permissions: `SDL Data.viewEdr`
 
 Parameters:
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Should be used instead of skip. cursor currently supports sort by with createdAt, pid, processStartTime
-- `subQuery` [query, string] — Create a sub query to run on the data that was already pulled
-- `queryId` [query, string] **required** — QueryId obtained when creating a query under Create Query. Example: "q1xx2xx3".
-- `sortBy` [query, string] — Events sorted by field. Example: "createdAt".
-- `sortOrder` [query, string] (enum: asc, desc) — Event sorting order. Example: "asc".
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Should be used instead of skip. cursor currently supports sort by with createdAt, pid, processStartTime
+- `subQuery` [query, string]: Create a sub query to run on the data that was already pulled
+- `queryId` [query, string] **required**: QueryId obtained when creating a query under Create Query. Example: "q1xx2xx3".
+- `sortBy` [query, string]: Events sorted by field. Example: "createdAt".
+- `sortOrder` [query, string] (enum: asc, desc): Event sorting order. Example: "asc".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -45,7 +45,7 @@ Start a Deep Visibility Power Query, get back status and potential results (ping
 Required permissions: `SDL Data.viewEdr`
 
 Parameters:
-- `body` [body, deep_visibility.deep_visibility_v2_schemas_DeepVisibilityPQRequestSchema] — 
+- `body` [body, deep_visibility.deep_visibility_v2_schemas_DeepVisibilityPQRequestSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -58,7 +58,7 @@ Ping a Deep Visibility Power Query using the queryId if results have not returne
 Required permissions: `SDL Data.viewEdr`
 
 Parameters:
-- `queryId` [query, string] — QueryId query param
+- `queryId` [query, string]: QueryId query param
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -71,14 +71,14 @@ Get Deep Visibility results from the query that matches the given event type. Va
 Required permissions: `SDL Data.viewEdr`
 
 Parameters:
-- `event_type` [path, string] **required** — Event type for Autocomplete
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Should be used instead of skip. cursor currently supports sort by with createdAt, pid, processStartTime
-- `subQuery` [query, string] — Create a sub query to run on the data that was already pulled
-- `queryId` [query, string] **required** — QueryId obtained when creating a query under Create Query. Example: "q1xx2xx3".
-- `sortBy` [query, string] — Events sorted by field. Example: "createdAt".
-- `sortOrder` [query, string] (enum: asc, desc) — Event sorting order. Example: "asc".
+- `event_type` [path, string] **required**: Event type for Autocomplete
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Should be used instead of skip. cursor currently supports sort by with createdAt, pid, processStartTime
+- `subQuery` [query, string]: Create a sub query to run on the data that was already pulled
+- `queryId` [query, string] **required**: QueryId obtained when creating a query under Create Query. Example: "q1xx2xx3".
+- `sortBy` [query, string]: Events sorted by field. Example: "createdAt".
+- `sortOrder` [query, string] (enum: asc, desc): Event sorting order. Example: "asc".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -91,7 +91,7 @@ Download the source process file associated with a Deep Visibility event.
 Required permissions: `Deep Visibility.fileFetch`
 
 Parameters:
-- `downloadToken` [query, string] **required** — Download token
+- `downloadToken` [query, string] **required**: Download token
 
 Responses: 404 File not found, 400 Invalid user input received. See error details for further i, 200 Success, 401 Unauthorized access - please sign in and retry.
 
@@ -104,7 +104,7 @@ Start a Deep Visibility Query and get the queryId. You can use the queryId for o
 Required permissions: `SDL Data.viewEdr`
 
 Parameters:
-- `body` [body, deep_visibility.deep_visibility_v2_schemas_DeepVisibilityApiRequestSchema] — 
+- `body` [body, deep_visibility.deep_visibility_v2_schemas_DeepVisibilityApiRequestSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -117,12 +117,12 @@ Get details of all Deep Visibility processes from a queryId.To get the ID from "
 Required permissions: `SDL Data.viewEdr`
 
 Parameters:
-- `skip` [query, integer] — Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
-- `limit` [query, integer] — Limit number of returned items (1-1000). Example: "10".
-- `cursor` [query, string] — Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
-- `queryId` [query, string] **required** — QueryId obtained when creating a query under Create Query. Example: "q1xx2xx3".
-- `sortBy` [query, string] — Events sorted by field. Example: "SrcProcStartTime".
-- `sortOrder` [query, string] (enum: asc, desc) — Event sorting order. Example: "asc".
+- `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
+- `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
+- `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
+- `queryId` [query, string] **required**: QueryId obtained when creating a query under Create Query. Example: "q1xx2xx3".
+- `sortBy` [query, string]: Events sorted by field. Example: "SrcProcStartTime".
+- `sortOrder` [query, string] (enum: asc, desc): Event sorting order. Example: "asc".
 
 Responses: 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -135,6 +135,6 @@ Get that status of a Deep Visibility Query. When the status is FINISHED, you can
 Required permissions: `SDL Data.viewEdr`
 
 Parameters:
-- `queryId` [query, string] **required** — QueryId obtained when creating a query under Create Query. Example: "q1xx2xx3".
+- `queryId` [query, string] **required**: QueryId obtained when creating a query under Create Query. Example: "q1xx2xx3".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

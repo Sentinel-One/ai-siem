@@ -26,7 +26,7 @@ question at Step 4. Do not front-load a long form.
 | `VENDOR` | parent company (e.g. `Cisco`) | derive from source |
 | `PREFIX` | short artifact-naming code | derive from source |
 | `HOST_FIELD` / `USER_FIELD` / `IP_FIELD` | fields in the parsed event used to key asset enrichment | discovered from the sample |
-| `SITE` / `SCOPE` | where to deploy STAR rules and the HA flow | ask at Step 4 only |
+| `SITE` / `SCOPE` | where to deploy STAR rules and the HA flow; any rule whose body reads a lookup table or datatable (the recommended asset-enrichment lookup does) is account scope only | ask at Step 4 only |
 
 ## Step 0: locate the source and decide if it is editable in SDL
 

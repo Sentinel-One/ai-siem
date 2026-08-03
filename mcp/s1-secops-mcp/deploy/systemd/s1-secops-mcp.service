@@ -1,6 +1,6 @@
 [Unit]
 Description=SentinelOne MCP server (Streamable HTTP, team-shared)
-Documentation=https://github.com/Sentinel-One/ai-siem/tree/main/mcp/s1-secops-mcp
+Documentation=https://github.com/pmoses-s1/claude-skills/tree/main/s1-secops-mcp
 After=network-online.target
 Wants=network-online.target
 
@@ -10,8 +10,9 @@ User=mcp
 Group=mcp
 
 # Server credentials (the S1 service-user token + SDL keys) and bearer tokens.
-# Both are written by deploy/install.sh; rotate by editing then `systemctl reload`
-# (which sends SIGHUP and reloads bearer tokens without dropping connections).
+# Both are written by deploy/install.sh. Bearer tokens rotate via
+# `systemctl reload` (SIGHUP, no dropped connections). credentials.json is
+# read once at startup, so changes to it require `systemctl restart`.
 EnvironmentFile=/etc/s1-secops-mcp/server.env
 Environment=MCP_BEARER_TOKENS_FILE=/etc/s1-secops-mcp/bearer-tokens.json
 Environment=S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json

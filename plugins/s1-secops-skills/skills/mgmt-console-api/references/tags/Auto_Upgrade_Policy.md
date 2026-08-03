@@ -11,8 +11,8 @@ Get the number of all policies for each OS from the given scope and the inherite
 Required permissions: `Auto-Upgrade Policy.view`
 
 Parameters:
-- `scopeLevel` [query, string] **required** — Scope level, one of 'account', 'group', 'site' or 'tenant'
-- `scopeId` [query, string] — Scope ID
+- `scopeLevel` [query, string] **required**: Scope level, one of 'account', 'group', 'site' or 'tenant'
+- `scopeId` [query, string]: Scope ID
 
 Responses: 200 Success, 400 Bad request
 
@@ -25,10 +25,10 @@ Get Available Packages
 Required permissions: `Auto-Upgrade Policy.view`
 
 Parameters:
-- `scopeLevel` [query, string] **required** — Scope level, one of 'account', 'group', 'site' or 'tenant'
-- `scopeId` [query, string] — Scope ID
-- `osType` [query, string] **required** — OS type, one of 'linux', 'macos' or 'windows'
-- `displayName__contains` [query, string] — Partially match the name of the package, e.g. '22.1 GA'
+- `scopeLevel` [query, string] **required**: Scope level, one of 'account', 'group', 'site' or 'tenant'
+- `scopeId` [query, string]: Scope ID
+- `osType` [query, string] **required**: OS type, one of 'linux', 'macos' or 'windows'
+- `displayName__contains` [query, string]: Partially match the name of the package, e.g. '22.1 GA'
 
 Responses: 200 Success, 400 Bad request
 
@@ -39,7 +39,7 @@ Responses: 200 Success, 400 Bad request
 Has policy
 
 Parameters:
-- `payload` [body, v2_1.models.HasPoliciesRequest] **required** — Policy payload
+- `payload` [body, v2_1.models.HasPoliciesRequest] **required**: Policy payload
 
 Responses: 200 Success, 400 Bad request
 
@@ -52,13 +52,13 @@ Get paginated and ordered parent policies by a given scope
 Required permissions: `Auto-Upgrade Policy.view`
 
 Parameters:
-- `scopeLevel` [query, string] **required** — Scope level, one of 'account', 'group', 'site' or 'tenant'
-- `scopeId` [query, string] — Scope ID
-- `osType` [query, string] **required** — OS type, one of 'linux', 'macos' or 'windows'
-- `limit` [query, integer] **required** — Limit number of returned items. Should be more than 1. Example: '10'.
-- `skip` [query, integer] **required** — Skip first number of items. Example: '0'.
-- `sortBy` [query, string] **required** — The column to sort the results by. Example: 'priority'.
-- `sortOrder` [query, string] **required** — Sort direction. Could be 'asc' or 'desc'.
+- `scopeLevel` [query, string] **required**: Scope level, one of 'account', 'group', 'site' or 'tenant'
+- `scopeId` [query, string]: Scope ID
+- `osType` [query, string] **required**: OS type, one of 'linux', 'macos' or 'windows'
+- `limit` [query, integer] **required**: Limit number of returned items. Should be more than 1. Example: '10'.
+- `skip` [query, integer] **required**: Skip first number of items. Example: '0'.
+- `sortBy` [query, string] **required**: The column to sort the results by. Example: 'priority'.
+- `sortOrder` [query, string] **required**: Sort direction. Could be 'asc' or 'desc'.
 
 Responses: 200 Success, 400 Bad request
 
@@ -71,13 +71,13 @@ Get paginated and ordered policies by a given scope
 Required permissions: `Auto-Upgrade Policy.view`
 
 Parameters:
-- `scopeLevel` [query, string] **required** — Scope level, one of 'account', 'group', 'site' or 'tenant'
-- `scopeId` [query, string] — Scope ID
-- `osType` [query, string] **required** — OS type, one of 'linux', 'macos' or 'windows'
-- `limit` [query, integer] **required** — Limit number of returned items. Should be more than 1. Example: '10'
-- `skip` [query, integer] **required** — Skip first number of items. Example: '0'.
-- `sortBy` [query, string] **required** — The column to sort the results by. Example: 'priority'.
-- `sortOrder` [query, string] **required** — Sort direction. Could be 'asc' or 'desc'.
+- `scopeLevel` [query, string] **required**: Scope level, one of 'account', 'group', 'site' or 'tenant'
+- `scopeId` [query, string]: Scope ID
+- `osType` [query, string] **required**: OS type, one of 'linux', 'macos' or 'windows'
+- `limit` [query, integer] **required**: Limit number of returned items. Should be more than 1. Example: '10'
+- `skip` [query, integer] **required**: Skip first number of items. Example: '0'.
+- `sortBy` [query, string] **required**: The column to sort the results by. Example: 'priority'.
+- `sortOrder` [query, string] **required**: Sort direction. Could be 'asc' or 'desc'.
 
 Responses: 200 Success, 400 Bad request
 
@@ -90,9 +90,9 @@ Deactivate all policies
 Required permissions: `Auto-Upgrade Policy.disableAllPolicies`
 
 Parameters:
-- `scopeLevel` [query, string] **required** — Scope level, one of 'account', 'group', 'site' or 'tenant'
-- `scopeId` [query, string] — Scope ID
-- `osType` [query, string] **required** — OS type, one of 'linux', 'macos' or 'windows'
+- `scopeLevel` [query, string] **required**: Scope level, one of 'account', 'group', 'site' or 'tenant'
+- `scopeId` [query, string]: Scope ID
+- `osType` [query, string] **required**: OS type, one of 'linux', 'macos' or 'windows'
 
 Responses: 200 Success, 400 Bad request
 
@@ -105,8 +105,8 @@ Get the number of policies for each OS, for a given scope level and id
 Required permissions: `Auto-Upgrade Policy.view`
 
 Parameters:
-- `scopeLevel` [query, string] **required** — Scope level, one of 'account', 'group', 'site' or 'tenant'
-- `scopeId` [query, string] — Scope ID
+- `scopeLevel` [query, string] **required**: Scope level, one of 'account', 'group', 'site' or 'tenant'
+- `scopeId` [query, string]: Scope ID
 
 Responses: 200 Success, 400 Bad request
 
@@ -119,7 +119,7 @@ Add policy
 Required permissions: `Auto-Upgrade Policy.create`
 
 Parameters:
-- `payload` [body, v2_1.models.Policy] **required** — Policy payload
+- `payload` [body, v2_1.models.Policy] **required**: Policy payload
 
 Responses: 200 Success, 400 Bad request
 
@@ -132,8 +132,8 @@ Perform action on a certain policy
 Required permissions: `Auto-Upgrade Policy.policyAction`
 
 Parameters:
-- `payload` [body, v2_1.models.EndpointActionRequest] **required** — Policy payload
-- `policyid` [path, string] **required** — Policy id
+- `payload` [body, v2_1.models.EndpointActionRequest] **required**: Policy payload
+- `policyid` [path, string] **required**: Policy id
 
 Responses: 200 Success, 400 Bad request
 
@@ -146,8 +146,8 @@ Update existing policy
 Required permissions: `Auto-Upgrade Policy.edit`
 
 Parameters:
-- `payload` [body, v2_1.models.CreatePolicyRequest] **required** — Policy payload
-- `policyid` [path, string] **required** — Policy id
+- `payload` [body, v2_1.models.CreatePolicyRequest] **required**: Policy payload
+- `policyid` [path, string] **required**: Policy id
 
 Responses: 200 Success, 400 Bad request
 
@@ -160,7 +160,7 @@ Reset the number of times an Agent upgrade will be retried if the original upgra
 Required permissions: `Auto-Upgrade Policy.edit`
 
 Parameters:
-- `policyid` [path, string] **required** — Policy ID
+- `policyid` [path, string] **required**: Policy ID
 
 Responses: 200 Success, 400 Bad request
 
@@ -173,7 +173,7 @@ Reorder policies
 Required permissions: `Auto-Upgrade Policy.edit`
 
 Parameters:
-- `payload` [body, v2_1.models.ReorderPolicyRequest] **required** — Policy payload
+- `payload` [body, v2_1.models.ReorderPolicyRequest] **required**: Policy payload
 
 Responses: 200 Success, 400 Bad request
 
@@ -186,6 +186,6 @@ Set Scope Inheriting
 Required permissions: `Auto-Upgrade Policy.edit`
 
 Parameters:
-- `payload` [body, v2_1.models.ScopeInheritanceRequest] **required** — payload
+- `payload` [body, v2_1.models.ScopeInheritanceRequest] **required**: payload
 
 Responses: 200 Success, 400 Bad request

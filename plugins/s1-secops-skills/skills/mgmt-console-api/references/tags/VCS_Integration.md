@@ -9,8 +9,8 @@
 Fetch filter count
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
 
 Responses: 200 Filter count fetched successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -21,8 +21,8 @@ Responses: 200 Filter count fetched successfully, 400 Bad Request, 500 Internal 
 This API is used to off-board a VCS integration.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
 
 Responses: 200 VCS offboarding app url created successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -33,10 +33,10 @@ Responses: 200 VCS offboarding app url created successfully, 400 Bad Request, 50
 Deactivate scanning for repositories associated with the given VCS integration.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `integrationId` [path, string] **required** — 
-- `body` [body, EnableDisableRepos] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `integrationId` [path, string] **required**: 
+- `body` [body, EnableDisableRepos] **required**: 
 
 Responses: 200 Successfully disabled repositories, 400 Bad Request, 500 Internal Server Error
 
@@ -47,10 +47,10 @@ Responses: 200 Successfully disabled repositories, 400 Bad Request, 500 Internal
 Allows modification of tags associated with one or more repositories under a specified VCS integration. This operation supports adding, removing, or updating tags to help organize and categorize repositories effectively.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `integrationId` [path, string] **required** — 
-- `body` [body, EditReposTags] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `integrationId` [path, string] **required**: 
+- `body` [body, EditReposTags] **required**: 
 
 Responses: 200 Tags updated successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -61,10 +61,10 @@ Responses: 200 Tags updated successfully, 400 Bad Request, 500 Internal Server E
 Activates scanning for repositories associated with the given VCS integration.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `integrationId` [path, string] **required** — 
-- `body` [body, EnableDisableRepos] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `integrationId` [path, string] **required**: 
+- `body` [body, EnableDisableRepos] **required**: 
 
 Responses: 200 Successfully enabled repositories, 400 Bad Request, 500 Internal Server Error
 
@@ -75,10 +75,10 @@ Responses: 200 Successfully enabled repositories, 400 Bad Request, 500 Internal 
 This endpoint retrieves tags associated with repositories under a VCS integration.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `integrationId` [path, string] **required** — 
-- `body` [body, FetchReposTags] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `integrationId` [path, string] **required**: 
+- `body` [body, FetchReposTags] **required**: 
 
 Responses: 200 Repositories tags fetched successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -89,9 +89,9 @@ Responses: 200 Repositories tags fetched successfully, 400 Bad Request, 500 Inte
 This endpoint permanently deletes a VCS integration.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `vcsIntegrationId` [path, string] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `vcsIntegrationId` [path, string] **required**: 
 
 Responses: 200 VCS integration deleted successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -102,10 +102,10 @@ Responses: 200 VCS integration deleted successfully, 400 Bad Request, 500 Intern
 This endpoint allows users to update configuration details for a VCS integration.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `vcsIntegrationId` [path, string] **required** — 
-- `body` [body, UpdateVCSIntegration] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `vcsIntegrationId` [path, string] **required**: 
+- `body` [body, UpdateVCSIntegration] **required**: 
 
 Responses: 200 VCS integration updated successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -116,12 +116,12 @@ Responses: 200 VCS integration updated successfully, 400 Bad Request, 500 Intern
 Fetches a list of repositories associated with the VCS integration
 
 Parameters:
-- `scopeType` [query, string] — 
-- `scopeIds` [query, string] — 
-- `limit` [query, string] — 
-- `cursor` [query, string] — 
-- `skip` [query, string] — 
-- `vcsIntegrationId` [path, string] **required** — 
+- `scopeType` [query, string]: 
+- `scopeIds` [query, string]: 
+- `limit` [query, string]: 
+- `cursor` [query, string]: 
+- `skip` [query, string]: 
+- `vcsIntegrationId` [path, string] **required**: 
 
 Responses: 200 Successfully retrieved the list of repositories, 400 Bad Request, 500 Internal Server Error
 
@@ -132,9 +132,9 @@ Responses: 200 Successfully retrieved the list of repositories, 400 Bad Request,
 Initiates a process to resynchronize repositories associated with the specified VCS integration
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `vcsIntegrationId` [path, string] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `vcsIntegrationId` [path, string] **required**: 
 
 Responses: 200 Resynchronization initiated successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -145,10 +145,10 @@ Responses: 200 Resynchronization initiated successfully, 400 Bad Request, 500 In
 Fetches a list of all configured VCS integrations.
 
 Parameters:
-- `scopeType` [query, string] — 
-- `scopeIds` [query, string] — 
-- `limit` [query, string] — 
-- `skip` [query, string] — 
+- `scopeType` [query, string]: 
+- `scopeIds` [query, string]: 
+- `limit` [query, string]: 
+- `skip` [query, string]: 
 
 Responses: 200 Successfully retrieved the list of VCS integrations, 400 Bad Request, 500 Internal Server Error
 
@@ -159,9 +159,9 @@ Responses: 200 Successfully retrieved the list of VCS integrations, 400 Bad Requ
 Allows modification of tags in a VCS integration. This operation supports adding, removing, or updating tags to help organize and categorize integration repositories effectively.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `body` [body, EditIntegrationsTags] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `body` [body, EditIntegrationsTags] **required**: 
 
 Responses: 200 Tags updated successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -172,9 +172,9 @@ Responses: 200 Tags updated successfully, 400 Bad Request, 500 Internal Server E
 This endpoint allows users to onboard a new VCS integration, enabling automated scanning for secrets and IaC misconfigurations.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `body` [body, VCSOnboarding] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `body` [body, VCSOnboarding] **required**: 
 
 Responses: 200 VCS onboarding completed successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -185,10 +185,10 @@ Responses: 200 VCS onboarding completed successfully, 400 Bad Request, 500 Inter
 This endpoint retrieves a list of all configured scanner policies used for VCS and CICD integrations.
 
 Parameters:
-- `scopeType` [query, string] — 
-- `scopeIds` [query, string] — 
-- `limit` [query, string] — 
-- `skip` [query, string] — 
+- `scopeType` [query, string]: 
+- `scopeIds` [query, string]: 
+- `limit` [query, string]: 
+- `skip` [query, string]: 
 
 Responses: 200 Scanner policies fetched successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -199,9 +199,9 @@ Responses: 200 Scanner policies fetched successfully, 400 Bad Request, 500 Inter
 Defines a scanning policy for a VCS integration, configuring parameters for detecting secrets, IaC misconfigurations, and vulnerabilities within repositories.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `body` [body, AddScannerPolicy] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `body` [body, AddScannerPolicy] **required**: 
 
 Responses: 200 Scanner policy created successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -212,10 +212,10 @@ Responses: 200 Scanner policy created successfully, 400 Bad Request, 500 Interna
 This endpoint returns the maximum allowed value for the priority in scanner policies.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `targetScopeType` [query, string] **required** — 
-- `targetScopeId` [query, string] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `targetScopeType` [query, string] **required**: 
+- `targetScopeId` [query, string] **required**: 
 
 Responses: 200 Max allowed priority fetched successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -226,9 +226,9 @@ Responses: 200 Max allowed priority fetched successfully, 400 Bad Request, 500 I
 This endpoint deletes a scanner policy.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `policyId` [path, string] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `policyId` [path, string] **required**: 
 
 Responses: 200 VCS scanner policy deleted successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -239,9 +239,9 @@ Responses: 200 VCS scanner policy deleted successfully, 400 Bad Request, 500 Int
 Get a VCS and CICD scanner policy
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `policyId` [path, string] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `policyId` [path, string] **required**: 
 
 Responses: 200 This endpoint fetches detailed information for a scanner pol, 400 Bad Request, 500 Internal Server Error
 
@@ -252,10 +252,10 @@ Responses: 200 This endpoint fetches detailed information for a scanner pol, 400
 This endpoint updates an existing scanner policy. A scanner policy defines how secrets, IaC misconfigurations, and vulnerabilities should be detected and handled within a VCS integration/CICD.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `policyId` [path, string] **required** — 
-- `body` [body, UpdateVCSScannerPolicy] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `policyId` [path, string] **required**: 
+- `body` [body, UpdateVCSScannerPolicy] **required**: 
 
 Responses: 200 Scanner policy updated successfully, 400 Bad Request, 500 Internal Server Error
 
@@ -266,8 +266,8 @@ Responses: 200 Scanner policy updated successfully, 400 Bad Request, 500 Interna
 This API is used to register a new tunnel user. It sets up the necessary tunnel configuration and credentials for secure access.
 
 Parameters:
-- `scopeType` [query, string] **required** — 
-- `scopeIds` [query, string] **required** — 
-- `body` [body, TunnelUser] **required** — 
+- `scopeType` [query, string] **required**: 
+- `scopeIds` [query, string] **required**: 
+- `body` [body, TunnelUser] **required**: 
 
 Responses: 200 Tunnel user registered successfully, 400 Bad Request, 500 Internal Server Error

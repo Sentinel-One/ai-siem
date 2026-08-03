@@ -17,9 +17,11 @@
 // `union` is only valid as the FIRST command of a PowerQuery; a mid-pipeline `| union (subquery)`
 // returns HTTP 400 (live-verified 2026-07-29). The union-first skeleton of this body (two
 // subqueries -> group by key -> sort/limit) was validated read-only against dataSource.name='alert'
-// on 2026-07-29; the `| dataset` read of the register inside a union subquery and the savelookup
-// overwrite are PENDING: validate on demo tenant (they depend on a deployed register table and a
-// write, neither of which the read-only validation covered).
+// on 2026-07-29. The `| dataset` read of the register inside a union subquery, the savelookup
+// overwrite, and the decay-and-merge mechanics were live-validated on the demo tenant 2026-07-31
+// over 5 consecutive cycles against real dataSource.name='risk' data: merge (decayed prior + fresh
+// window) exact per entity, quiet entities retained with exact x{{DECAY}} decay over two empty
+// windows, and the >= 0.5 prune working. Multi-day cadence behavior still needs calendar time.
 //
 // Tokens: {{PREFIX}} (register name), {{DECAY}} (0.9 ~= one-week half-life; lower = shorter memory).
 // Cadence must match the window: this body sums the last 24h, so run it once per day.
@@ -27,9 +29,18 @@
 // tune the floor to taste (it only drops entities whose score has decayed to noise).
 //
 // Bootstrap: on the very first run the register does not exist yet, so the `| dataset` subquery
-// has nothing to read (and may error on a non-existent table). Seed it once by running ONLY
-// subquery A's body followed by `| limit 100000 | savelookup '{{PREFIX}}RiskRegister'` (writes
-// today's scores as the initial register), then switch to the full union body below.
+// has nothing to read (and may error on a non-existent table). Seed it once with the query below,
+// then switch to the full union body. The seed MUST emit the same column shape the full body
+// writes, in particular the score column must be named risk_score_total: subquery B decays
+// `number(risk_score_total)`, so a seed that writes `part_score` (the old instruction) makes the
+// first full run read a missing column as 0 and silently wipe all seeded state (live-proven
+// 2026-07-31: quiet entities pruned at 0 < 0.5, active entities restarted at window-only scores).
+//
+//   dataSource.name='risk' risk_object=*
+//   | group risk_score_total = sum(number(risk_score)), tactics_today = estimate_distinct(mitre_tactic), last_seen = newest(timestamp) by risk_object, risk_object_type
+//   | columns factor_key = risk_object, risk_object_type, risk_score_total, tactics_today, last_seen
+//   | limit 100000
+//   | savelookup '{{PREFIX}}RiskRegister'
 //
 // Read it back for a persistent leaderboard with:  <name> from {{PREFIX}}RiskRegister ... (dashboard
 // panel or | lookup), or query the savelookup like any datatable.

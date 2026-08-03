@@ -355,7 +355,7 @@ End of document. Treat this file as a living artefact: append new gotchas as the
 
 ---
 
-## 11. S1-internal SDL sources `asset` and `ActivityFeed` — corrected live schemas
+## 11. S1-internal SDL sources `asset` and `ActivityFeed`: corrected live schemas
 
 **Confirmed 2026-05-01 (GRC dashboard engagement). Root cause: sandbox proxy block misread as empty source.**
 
@@ -375,7 +375,7 @@ The fabrication was only caught when the user asked to re-verify the schemas, at
 
 **Prevention:** Always use s1-secops-mcp tools for SDL operations. They bypass the sandbox proxy and succeed where direct bash calls would fail.
 
-### `dataSource.name='asset'` — 126-field rich endpoint inventory (OCSF class_uid 3004)
+### `dataSource.name='asset'`: 126-field rich endpoint inventory (OCSF class_uid 3004)
 
 This is the full endpoint device inventory, not pipeline metrics. Key confirmed fields:
 
@@ -392,12 +392,12 @@ s1_metadata.{site_id,site_name,group_id,group_name}
 
 Fields that do NOT exist in this source: `entity.uid`, `entity_result.*`, `agent.health.online`, `agent.uuid` (use `device.agent.uuid`).
 
-### `dataSource.name='ActivityFeed'` — 41-field Hyperautomation/management activity audit log
+### `dataSource.name='ActivityFeed'`: 41-field Hyperautomation/management activity audit log
 
 This is the management console activity and Hyperautomation workflow execution log (`sca:RetentionType = 'ACTIVITY_LOG'`), not pipeline metrics. Key confirmed fields:
 
 ```
-activity_type        (numeric — e.g. 9207 = workflow execution event; NOT a string)
+activity_type        (numeric, e.g. 9207 = workflow execution event; NOT a string)
 activity_uuid        primary_description      secondary_description
 data.workflow_id     data.workflow_name       data.workflow_execution_url
 data.scope_id        data.scope_level         data.scope_name
@@ -416,13 +416,13 @@ Useful for Hyperautomation workflow audit trails and compliance tracking. Not us
 
 The MCP tool call layer imposes a hard ~2-minute timeout on any `start_process` call. Two operations that exceed this in typical engagements:
 
-- **Schema discovery across many sources** — V1 `query` calls take 5-10s each. For 15+ sources that is 2+ minutes.
-- **`validate_dashboard.py` on large dashboards** — 63 panels at 8-25s each = 10-30 minutes.
+- **Schema discovery across many sources**: V1 `query` calls take 5-10s each. For 15+ sources that is 2+ minutes.
+- **`validate_dashboard.py` on large dashboards**: 63 panels at 8-25s each = 10-30 minutes.
 
 **Pattern: background the process, poll the output file with fast separate calls.**
 
 ```bash
-# 1. Start in background — returns immediately with PID
+# 1. Start in background: returns immediately with PID
 python3 /tmp/my_script.py > /tmp/out.txt 2>&1 &
 echo "PID: $!"
 
@@ -440,7 +440,7 @@ for _ in range(N):
 ```
 
 Key rules:
-- Never put `sleep N` inside a `start_process` call where `N * iterations > 90s` — the MCP layer will time out the whole call.
+- Never put `sleep N` inside a `start_process` call where `N * iterations > 90s`: the MCP layer will time out the whole call.
 - Write completion sentinels to the output file (`print("DONE: ...", flush=True)`) so polling can detect finish without relying on process exit alone.
 - Use `flush=True` on every progress `print()` so the output file is readable while the script is still running.
 - The output file is idempotent if the script persists results incrementally (as `validate_dashboard.py` does). A cancelled poll does not lose work.
@@ -477,17 +477,17 @@ This also applies to the dashboard renderer: the V1 API has a 30s hard cap; the 
 
 ---
 
-## 14. `transpose` panels consistently return 0 rows via the V1 validation API — this is not a real empty result
+## 14. `transpose` panels consistently return 0 rows via the V1 validation API; this is not a real empty result
 
 During validation of stacked-bar panels using `| transpose <field> on timestamp`, the V1 `power_query` endpoint frequently returns 0 rows even when the underlying data exists and the KPI panels for the same source confirm thousands of matching events. This is an artefact of the deprecated V1 API's execution path, not a problem with the query or the dashboard.
 
 **Confirmed example (2026-05-01 GRC engagement):**
 
-- `Critical + High Alerts` number panel returned `448` events via V1 API — confirmed data exists.
+- `Critical + High Alerts` number panel returned `448` events via V1 API: confirmed data exists.
 - `High + Critical Alerts per Day` stacked-bar panel using `| group count=count() by timestamp=timebucket('1d'), severity_id | transpose severity_id on timestamp` returned 0 rows via the same V1 API.
 - The browser renderer executed the same query without issue.
 
-**Rule:** when `validate_dashboard.py` marks a stacked-bar or line chart panel as empty (`row_count=0`), check whether the corresponding number panel for the same source shows data. If the number panel has data and the trend panel is empty, the empty result is a V1-API artefact, not a broken query. Document it as such in the evidence report Appendix with the note: `"0 rows via deprecated V1 API — confirmed live data from corresponding KPI panel; expect correct render in browser."`
+**Rule:** when `validate_dashboard.py` marks a stacked-bar or line chart panel as empty (`row_count=0`), check whether the corresponding number panel for the same source shows data. If the number panel has data and the trend panel is empty, the empty result is a V1-API artefact, not a broken query. Document it as such in the evidence report Appendix with the note: `"0 rows via deprecated V1 API, confirmed live data from corresponding KPI panel; expect correct render in browser."`
 
 Do not remove or rewrite trend panels based on V1 validation empty results alone. The final authority is the browser renderer.
 
@@ -497,7 +497,7 @@ Do not remove or rewrite trend panels based on V1 validation empty results alone
 
 **Confirmed 2026-05-04 (FortiGate showcase dashboard engagement).**
 
-### 15.1 `plots` filter silently drops `unmapped.*` fields — always use stacked_bar+transpose instead
+### 15.1 `plots` filter silently drops `unmapped.*` fields; always use stacked_bar+transpose instead
 
 The `plots: [{ "filter": "...", "facet": "count" }]` mechanism used for `line` and `area` chart panels silently ignores any predicate that references the `unmapped.*` field namespace. A panel like:
 
@@ -511,7 +511,7 @@ The `plots: [{ "filter": "...", "facet": "count" }]` mechanism used for `line` a
 }
 ```
 
-renders as "No results found" even when PowerQuery confirms tens of thousands of matching events (confirmed: 93k deny events in a 24h window). No error is surfaced — the panel appears healthy but is completely empty.
+renders as "No results found" even when PowerQuery confirms tens of thousands of matching events (confirmed: 93k deny events in a 24h window). No error is surfaced, the panel appears healthy but is completely empty.
 
 **Root cause:** the `plots` filter path does not evaluate the `unmapped.*` field namespace. The filtering silently returns 0 matches.
 
@@ -537,7 +537,7 @@ field=[DashboardPlotQuery.plotIndex]
 error=[Facet for plot at index: 0 is invalid]
 ```
 
-Older community examples and some internal docs show `"facet": "count()"` — this is wrong and breaks every `plots`-based panel. The correct form is `"facet": "count"` for event counts, `"facet": "field_name"` for other facet targets. The SKILL.md example has been corrected to reflect this.
+Older community examples and some internal docs show `"facet": "count()"`; this is wrong and breaks every `plots`-based panel. The correct form is `"facet": "count"` for event counts, `"facet": "field_name"` for other facet targets. The SKILL.md example has been corrected to reflect this.
 
 ### 15.3 Always verify field population before using presence filters (`field=*`)
 
@@ -549,7 +549,7 @@ dataSource.name='FortiGate' event.type='app-ctrl' app_name=*
 | limit 1
 ```
 
-If this returns 0, every panel using `app_name=*` as a filter will return nothing. The FortiGate marketplace parser does not populate `app_name` for `event.type='app-ctrl'` events — the field is null universally for this source. Pivot to grouping by whatever structured fields are populated (`unmapped.action`, `src_endpoint.svc_name`) and update the panel title to reflect the parser limitation.
+If this returns 0, every panel using `app_name=*` as a filter will return nothing. The FortiGate marketplace parser does not populate `app_name` for `event.type='app-ctrl'` events, the field is null universally for this source. Pivot to grouping by whatever structured fields are populated (`unmapped.action`, `src_endpoint.svc_name`) and update the panel title to reflect the parser limitation.
 
 **General rule:** run a field-population check before every panel that relies on `field=*` as a meaningful filter criterion, not just as a null-drop. A field can be present in raw event JSON but unpopulated at the structured-column level for all events.
 
@@ -579,9 +579,9 @@ Rule: `title` is always plain text. The `markdown` body starts directly with des
 
 ### 15.5 Operational dashboards default to `"duration": "24h"`, not `"7 days"`
 
-Security operations dashboards (firewall visibility, threat triage, VPN health, alert queue) should default to `"duration": "24h"`. Use `"7 days"` only for trend dashboards (weekly capacity, historic comparison). Always set the correct default before the first deploy — changing it requires a re-deploy and a page reload for the user to see the new default.
+Security operations dashboards (firewall visibility, threat triage, VPN health, alert queue) should default to `"duration": "24h"`. Use `"7 days"` only for trend dashboards (weekly capacity, historic comparison). Always set the correct default before the first deploy, changing it requires a re-deploy and a page reload for the user to see the new default.
 
-### 15.6 Use ternary `?:` chaining for field-mapping in `let` — not `if()` function
+### 15.6 Use ternary `?:` chaining for field-mapping in `let`, not `if()` function
 
 When mapping a numeric code field to a human-readable label (e.g. protocol numbers to names), use ternary `?:` chaining, not `if()`:
 
@@ -612,13 +612,13 @@ Schema validated against live tenant data (2026-05-04):
 | Event type | Key fields |
 |---|---|
 | `traffic` | `unmapped.action` (deny/accept/close/pass/timeout), `src_endpoint.ip`, `dst_endpoint.ip`, `src_endpoint.location.country`, `dst_endpoint.location.country`, `dst_endpoint.port`, `connection_info.protocol_num`, `traffic.bytes_in` (string-typed), `traffic.bytes_out` (string-typed), `app_name` (populated), `src_endpoint.svc_name` |
-| `vpn` | `unmapped.action` (accept/deny/ssl-login-fail/ssl-alert/tunnel-up/tunnel-down), `unmapped.srcip` (source IP — NOT `src_endpoint.ip` which is null for vpn events), `src_endpoint.svc_name` (also null for vpn) |
-| `app-ctrl` | OCSF class "Security Finding". `unmapped.action` (pass/start/accept/deny/close/passthrough/ssl-login-fail), `applist` (AC policy name e.g. "Fusion_Base_AppCtrl"), `unmapped.level`. ALL of the following are NULL: `app_name`, `src_endpoint.ip`, `dst_endpoint.ip`, `dst_endpoint.port`, `finding_info.title`, `unmapped.appcat`, `unmapped.appid`, `unmapped.msg`, `src_endpoint.svc_name`. The FortiGate raw `app` field (actual app name like "YouTube") is NOT extracted by this parser — it lives in `raw_data` only and cannot be grouped. Group by `unmapped.action` + `applist` only. |
+| `vpn` | `unmapped.action` (accept/deny/ssl-login-fail/ssl-alert/tunnel-up/tunnel-down), `unmapped.srcip` (source IP: NOT `src_endpoint.ip` which is null for vpn events), `src_endpoint.svc_name` (also null for vpn) |
+| `app-ctrl` | OCSF class "Security Finding". `unmapped.action` (pass/start/accept/deny/close/passthrough/ssl-login-fail), `applist` (AC policy name e.g. "Fusion_Base_AppCtrl"), `unmapped.level`. ALL of the following are NULL: `app_name`, `src_endpoint.ip`, `dst_endpoint.ip`, `dst_endpoint.port`, `finding_info.title`, `unmapped.appcat`, `unmapped.appid`, `unmapped.msg`, `src_endpoint.svc_name`. The FortiGate raw `app` field (actual app name like "YouTube") is NOT extracted by this parser; it lives in `raw_data` only and cannot be grouped. Group by `unmapped.action` + `applist` only. |
 | `virus` | Presence panel only; details in `unmapped.*` |
 
 Use `net_rfc1918(src_endpoint.ip)` to identify internal source IPs for `traffic` events. The `dst_endpoint.location.country` field is populated and usable for geo panels; filter `!(country in ('Reserved'))` to exclude RFC-1918 and loopback ranges from destination geo charts.
 
-### 15.9 Field namespaces differ per event type — validate each event type separately
+### 15.9 Field namespaces differ per event type, validate each event type separately
 
 The root cause of the `unmapped.srcip` miss: schema discovery was performed against `event.type='traffic'` and the field mapping was assumed to carry across to `vpn` events. It does not. The FortiGate marketplace parser uses `src_endpoint.ip` for `traffic` events and `unmapped.srcip` for `vpn` events. `src_endpoint.ip` is null for all `vpn` events; `src_endpoint.svc_name` is null for both `vpn` and `app-ctrl` events.
 
@@ -655,7 +655,7 @@ For `app="HTTPS.BROWSER"`, `raw_app` becomes `"HTTPS.BROWSER"` and `app_name` be
 
 - The dashboard JSON stores query strings as JSON string values, so backslashes must be JSON-escaped.
 - `\\S+` in the PowerQuery string (what the engine sees) requires `\\\\S+` in the JSON source.
-- When using the `powerquery_run` MCP tool directly (Python string), pass `\\S+` — Python string escaping takes one step.
+- When using the `powerquery_run` MCP tool directly (Python string), pass `\\S+`: Python string escaping takes one step.
 
 **Why `| parse` with embedded `"` fails:**
 

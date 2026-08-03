@@ -6,7 +6,7 @@
 #   docker/build.sh                   # local single-arch build, tag s1-mcps:<version>
 #   PUSH=true docker/build.sh         # multi-arch build + push to ghcr.io
 #   TAG=dev docker/build.sh           # override tag
-#   S1_MCP_VERSION=1.2.2 docker/build.sh   # override a pin
+#   S1_MCP_VERSION=1.2.3 docker/build.sh   # override a pin
 #
 # All version pins live in the "Pinned versions" block below. Bump them
 # there and the GHA workflow at .github/workflows/docker-publish.yml,
@@ -18,10 +18,10 @@ set -euo pipefail
 # The version of THIS image. Independent of the underlying MCP versions
 # below, bump this when the image content (Dockerfile, dispatcher, bundled
 # CLAUDE.md) changes, even if all three MCP pins stay the same.
-IMAGE_VERSION="${IMAGE_VERSION:-1.2.3}"
+IMAGE_VERSION="${IMAGE_VERSION:-1.2.5}"
 
 # ── Pinned MCP versions ──────────────────────────────────────────────────────
-S1_MCP_VERSION="${S1_MCP_VERSION:-1.2.2}"
+S1_MCP_VERSION="${S1_MCP_VERSION:-1.2.4}"
 VT_MCP_PACKAGE="${VT_MCP_PACKAGE:-@burtthecoder/mcp-virustotal}"
 VT_MCP_VERSION="${VT_MCP_VERSION:-1.0.21}"
 # purple-mcp v0.7.0 (2026-06-26). Pinned to the release commit, not a floating

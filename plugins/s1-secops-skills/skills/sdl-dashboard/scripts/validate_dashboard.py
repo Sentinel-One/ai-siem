@@ -83,7 +83,9 @@ def _parse_dashboard(dash: Dict[str, Any]) -> List[Dict[str, Any]]:
 def _panel_key(panel: Dict[str, Any], idx: int) -> str:
     tab = panel.get("_tab") or "tab"
     title = panel.get("title") or f"panel-{idx}"
-    return f"{tab}::{title}"
+    # idx keeps duplicate titles distinct; old resume/evidence files keyed
+    # without idx will simply re-validate.
+    return f"{tab}::{idx}::{title}"
 
 
 def _is_runnable(panel: Dict[str, Any]) -> bool:

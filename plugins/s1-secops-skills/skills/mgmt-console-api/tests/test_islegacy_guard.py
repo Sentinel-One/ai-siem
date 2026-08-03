@@ -5,7 +5,7 @@ Why this exists
 ---------------
 GET /web/api/v2.1/cloud-detection/rules silently omits queryType="scheduled"
 PowerQuery rules from the response unless isLegacy=false is passed on the
-query string. There is no error, no warning — the response just lies by
+query string. There is no error, no warning; the response just lies by
 omission. This has bitten us multiple times: "list my scheduled detections"
 returns an empty list even though scheduled rules exist and are visible in
 the console UI.
@@ -53,7 +53,7 @@ def main() -> None:
     out = _maybe_inject_islegacy("GET", "/web/api/v2.1/cloud-detection/rules/", None)
     _assert(out == {"isLegacy": "false"}, "GET /cloud-detection/rules/ → isLegacy injected")
 
-    # Single-rule lookup (/{id}) also injects — getting one rule by ID should
+    # Single-rule lookup (/{id}) also injects: getting one rule by ID should
     # see the same scheduled/legacy fork.
     rule_id = "2487612380083288142"
     out = _maybe_inject_islegacy("GET", f"/web/api/v2.1/cloud-detection/rules/{rule_id}", None)
@@ -68,7 +68,7 @@ def main() -> None:
     out = _maybe_inject_islegacy("GET", f"/web/api/v2.1/cloud-detection/rules/{rule_id}?expanded=true", None)
     _assert(out == {"isLegacy": "false"}, "GET /cloud-detection/rules/<id>?query → isLegacy injected")
 
-    # Adjacent names that merely start with "rules" must NOT match — the guard
+    # Adjacent names that merely start with "rules" must NOT match: the guard
     # requires `/`, `?`, or end-of-string immediately after "rules".
     out = _maybe_inject_islegacy("GET", "/web/api/v2.1/cloud-detection/rules-export", None)
     _assert(out == {}, "GET /cloud-detection/rules-export → no injection")
@@ -84,7 +84,7 @@ def main() -> None:
         "existing params preserved alongside injection",
     )
 
-    # Explicit override is honored — caller may pass isLegacy=true if they
+    # Explicit override is honored: caller may pass isLegacy=true if they
     # actually want the legacy-only view for some reason.
     out = _maybe_inject_islegacy(
         "GET",
@@ -104,7 +104,7 @@ def main() -> None:
         "is_legacy snake_case override honored (no double-injection)",
     )
 
-    # POST to the same path does NOT inject — guard is GET-only.
+    # POST to the same path does NOT inject: guard is GET-only.
     out = _maybe_inject_islegacy("POST", "/web/api/v2.1/cloud-detection/rules", None)
     _assert(out == {}, "POST /cloud-detection/rules → no injection")
 
@@ -112,7 +112,7 @@ def main() -> None:
     out = _maybe_inject_islegacy("GET", "/web/api/v2.1/agents", None)
     _assert(out == {}, "GET /agents → no injection")
 
-    # Adjacent endpoint /cloud-detection/alerts does NOT inject — only the
+    # Adjacent endpoint /cloud-detection/alerts does NOT inject: only the
     # /rules surface has the legacy/scheduled fork.
     out = _maybe_inject_islegacy("GET", "/web/api/v2.1/cloud-detection/alerts", None)
     _assert(out == {}, "GET /cloud-detection/alerts → no injection")

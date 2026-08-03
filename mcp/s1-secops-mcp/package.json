@@ -1,6 +1,6 @@
 {
   "name": "@pmoses-s1/s1-secops-mcp",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "MCP server orchestrating SentinelOne skills, APIs, and SOC analyst context. Stdio or Streamable HTTP transport with per-user bearer auth for team deployments.",
   "type": "module",
   "main": "index.js",
@@ -20,7 +20,7 @@
     "start": "node index.js",
     "start:http": "node index.js --transport http",
     "dev": "node --watch index.js",
-    "test": "node --test tests/smoke.test.mjs tests/stdio-transport.test.mjs tests/http-transport.test.mjs tests/ssrf-path.test.mjs tests/http-origin-guard.test.mjs",
+    "test": "node --test tests/smoke.test.mjs tests/stdio-transport.test.mjs tests/http-transport.test.mjs tests/ssrf-path.test.mjs tests/http-origin-guard.test.mjs tests/regressions-2026-07-29.test.mjs tests/regressions-2026-07-31.test.mjs",
     "regen:readme": "node scripts/regen-readme-tools-table.mjs"
   },
   "engines": {

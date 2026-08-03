@@ -5,7 +5,7 @@ Full reference for PowerQuery expression syntax. Read when the query needs anyth
 ## Table of contents
 
 1. Boolean / arithmetic operators
-2. Text operators — `contains`, `matches`, `in`, `=`, wildcards
+2. Text operators: `contains`, `matches`, `in`, `=`, wildcards
 3. Shortcut fields (`#ip`, `#hash`, etc.)
 4. Identifier rules and escaping
 5. Regex dialect and escaping levels
@@ -24,7 +24,7 @@ Full reference for PowerQuery expression syntax. Read when the query needs anyth
 | NOT | `not a`, `NOT a`, `!a` |
 | Arithmetic | `+ - * / %` (modulo), unary `-x` |
 | Comparison | `< <= > >= == != =` (= is synonym for ==) |
-| Ternary | `cond ? then : else` (put spaces around the `:` — it can be parsed as an identifier character otherwise) |
+| Ternary | `cond ? then : else` (put spaces around the `:`: it can be parsed as an identifier character otherwise) |
 
 Parentheses work as expected: `a AND (b OR c)`.
 
@@ -32,7 +32,7 @@ Parentheses work as expected: `a AND (b OR c)`.
 
 ## 2. Text operators
 
-### `contains` — substring search
+### `contains`: substring search
 
 ```
 src.process.cmdline contains 'powershell'
@@ -44,7 +44,7 @@ Case-insensitive by default. Cannot be used on numeric values. The OR form is mu
 
 > **queryLang 2.0 vs 1.0 operators in Custom Detection rule bodies.** These are the `queryLang 2.0` operators. The S1QL-1.0 forms are different tokens: `contains:anycase` is the 2.0 spelling of 1.0 `ContainsCIS`, and `in:anycase` replaces 1.0 `In`. Custom Detection rules (events / correlation / scheduled) all run at `queryLang 2.0`, so their bodies must use the 2.0 operators. Confirmed live (2026-07): an events rule authored with the 1.0 operator `ContainsCIS` was accepted at create time but never fired; rewritten with `contains:anycase` it fired immediately. The API does not warn, it stores the 1.0 operator and the rule silently matches nothing. Lint rule bodies for 1.0 operators (`ContainsCIS`, `In`, etc.) before deploy.
 
-### `matches` — regex
+### `matches`: regex
 
 ```
 src.process.cmdline matches '\\w+\\.exe'
@@ -54,7 +54,7 @@ src.process.cmdline matches:matchcase 'CaseSensitive'
 
 Case-insensitive by default. Regex has a 1,000-byte ceiling. Double-escape special characters (`\\d`, `\\s`, `\\\\` for a literal backslash). See §5 for escaping levels.
 
-### `in` — exact equals any of
+### `in`: exact equals any of
 
 ```
 event.login.type in ('NETWORK', 'NETWORK_CLEAR_TEXT', 'CACHED_REMOTE_INTERACTIVE')
@@ -74,21 +74,21 @@ indicator.name !=*                       // never valid; use !(x=*) for is-null
 
 ### Wildcards
 
-There are three distinct `*` idioms — they look similar but mean different things:
+There are three distinct `*` idioms; they look similar but mean different things:
 
 ```
 // 1. FIELD PRESENCE / ATTRIBUTE WILDCARD
-dataSource.name = *                      // "field is present/non-null" — use as query opener or filter
+dataSource.name = *                      // "field is present/non-null"; use as query opener or filter
 indicator.category = *                   // same pattern; works for any field
 !(indicator.category = *)               // field is null / missing
 
 // 2. ALL-COLUMN TEXT SEARCH (initial filter only)
-* contains 'evil.com'                    // find text in ANY indexed field — initial filter only
-* matches 'regex'                        // regex across all indexed fields — initial filter only
+* contains 'evil.com'                    // find text in ANY indexed field, initial filter only
+* matches 'regex'                        // regex across all indexed fields, initial filter only
 $"regex"                                 // shorthand for message matches "regex" (initial filter only)
 
 // 3. EMPTY INITIAL FILTER (all events)
-| group ct=count() by event.type         // start with | — no initial predicate means all events
+| group ct=count() by event.type         // start with |; no initial predicate means all events
 ```
 
 Key facts about `*`:
@@ -105,7 +105,7 @@ When a user describes the search in English, the phrasing usually maps to one of
 |---|---|
 | "all column search" / "search all fields" / "search everything for X" / "anywhere in the event" / "wherever it appears" | `* contains 'value'` (initial filter only) |
 | "regex across every field" / "pattern match anywhere" | `* matches 'regex'` (initial filter only) |
-| "query all events for a source" / "aggregate over all logs" / "group by field across everything" | `dataSource.name=* \| group count=count() by dataSource.name` — field presence as opener |
+| "query all events for a source" / "aggregate over all logs" / "group by field across everything" | `dataSource.name=* \| group count=count() by dataSource.name`: field presence as opener |
 | "is this field set" / "rows where X is populated" | `field = *` |
 | "field is missing / null / empty" | `!(field = *)` |
 | "field equals one of these values" (case-sensitive) | `field in ('a','b','c')` |
@@ -208,13 +208,13 @@ When calling the Purple MCP `powerquery` tool, pass ISO-8601 with an explicit of
 
 ## 7. Short-circuit OR returns the first truthy value
 
-`||` and `OR` don't return booleans; they return the first truthy operand. Falsy values: `null`, `0`, `false`, `""`, `NaN`. Everything else is truthy (including `"0"` and `"false"` — those are non-empty strings).
+`||` and `OR` don't return booleans; they return the first truthy operand. Falsy values: `null`, `0`, `false`, `""`, `NaN`. Everything else is truthy (including `"0"` and `"false"`; those are non-empty strings).
 
 ```
 | let first_name = preferred_name || legal_name || 'Unknown'
 ```
 
-This is handy for coalescing. It's also a gotcha if you expected a boolean — use `bool()` to force a boolean.
+This is handy for coalescing. It's also a gotcha if you expected a boolean; use `bool()` to force a boolean.
 
 ---
 
@@ -223,7 +223,7 @@ This is handy for coalescing. It's also a gotcha if you expected a boolean — u
 The engine works with booleans, 64-bit floats, UTF-8 strings, and null.
 
 - **Arithmetic**: yields `NaN` unless both inputs are numbers. Exception: `+` with at least one string argument converts the other to string and concatenates.
-- **Comparison**: numbers compare numerically, strings compare lexicographically, booleans compare with `false < true`, two nulls are equal. Mixed types produce undefined results — coerce explicitly with `number(x)` or `string(x)`.
+- **Comparison**: numbers compare numerically, strings compare lexicographically, booleans compare with `false < true`, two nulls are equal. Mixed types produce undefined results, coerce explicitly with `number(x)` or `string(x)`.
 - **Boolean context**: `null`, `0`, `""` → false. Everything else → true. Use `bool()` to be explicit.
 
 In `group` and `let`, a reference to a field not present in an event yields `null` (not an error).

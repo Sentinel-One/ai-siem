@@ -21,8 +21,8 @@
 | `funnel` | Funnel chart | PQ | Shows volume drop-off across sequential stages. Query returns `stage` (text) + `value` (number) via a union-FIRST query (one subquery per stage; `union` must be the query's first command). |
 | `distribution` | Distribution histogram | filter+facet | Uses `filter` + `facet` (not `query`). Good for port/packet-size distributions. No PQ. |
 | `markdown` | Text panel | none | GitHub-flavored markdown. Use `markdown:` field (NOT `content:` which renders blank). |
-| `alerts_table` | Built-in alert widget | none | Uses `dataSource: "[[DataSource.ALERTS_DISTRIBUTION]]"` + `fieldId`. Not a PQ panel — pull from console widget library. |
-| Filter widget | Parameter dropdown | none | NOT a `graphStyle` — declared in the tab's `parameters: []` array. Renders as a dropdown above the tab. See Filter/Parameter section below. |
+| `alerts_table` | Built-in alert widget | none | Uses `dataSource: "[[DataSource.ALERTS_DISTRIBUTION]]"` + `fieldId`. Not a PQ panel, pull from console widget library. |
+| Filter widget | Parameter dropdown | none | NOT a `graphStyle`: declared in the tab's `parameters: []` array. Renders as a dropdown above the tab. See Filter/Parameter section below. |
 
 ---
 
@@ -167,7 +167,7 @@ Use `array(0, 1, 2).expand()` to fan a single event row into multiple Sankey lin
 ```javascript
 {
   graphStyle: "heatmap",
-  title: "Off-Hours Activity by User (22:00–06:00)",
+  title: "Off-Hours Activity by User (22:00-06:00)",
   query: "// Join timeseries to top-10 users\nevent.type = 'Process Creation'\n| filter !(src.process.user contains:anycase 'SYSTEM')\n| let hour = number(strftime(event.time * 1_000_000, '%H', 'UTC'))\n| filter hour >= 22 OR hour < 6\n| group EventCount = count() by User = src.process.user, timestamp = timebucket('1h')\n| transpose User on timestamp",
   startTime: "7d",
   colorScheme: "red",
@@ -190,7 +190,7 @@ Use `array(0, 1, 2).expand()` to fan a single event row into multiple Sankey lin
 ## Gauge panel
 
 Radial arc/dial with color-coded threshold bands. Shows a single value in context (good/warn/critical).
-Distinct from `number` — `gauge` renders a visual arc; `number` is text only.
+Distinct from `number`, `gauge` renders a visual arc; `number` is text only.
 
 ```javascript
 {
@@ -214,7 +214,7 @@ Distinct from `number` — `gauge` renders a visual arc; `number` is text only.
 
 ## Tabbed table panel
 
-A table panel where multiple sub-queries can be toggled via tabs inside the panel — without needing separate dashboard tabs.
+A table panel where multiple sub-queries can be toggled via tabs inside the panel, without needing separate dashboard tabs.
 
 ```javascript
 {
@@ -407,7 +407,7 @@ The "Filter" panel in the UI is implemented as a `parameters` array on the tab o
       "defaultValue": "*"
     },
     {
-      "name": "HiddenVar",        // internal variable — not shown to user
+      "name": "HiddenVar",        // internal variable, not shown to user
       "label": "Hidden Filter",
       "defaultValue": "severity_id >= 3",
       "options": { "display": "hidden" }
@@ -428,7 +428,7 @@ endpoint.os = #OS#
 - `facet` populates dropdown choices from live SDL data. Omit `facet` for free-text input.
 - `defaultValue: "*"` means "match all" and typically appears as "All" in the dropdown.
 - Hidden parameters (`options.display: "hidden"`) are useful for injecting pre-computed filter strings or internal constants.
-- Use `#VarName#` in any query string on that tab — works in PQ, UQL `datasource`, and `plots filter` expressions.
+- Use `#VarName#` in any query string on that tab: works in PQ, UQL `datasource`, and `plots filter` expressions.
 
 ---
 
@@ -437,22 +437,22 @@ endpoint.os = #OS#
 - **Pie/Donut**: PowerQuery must return exactly one text column and one numeric column. `| group count() by field` is the canonical pattern.
 - **Number/Gauge**: Reduce to a single row. `| group estimate_distinct(field)` or `| group count()` work.
 - **Honeycomb**: Use `| columns LabelCol=text_field, ValueCol=numeric_field` to set column names, then reference them in `honeyCombGroupBy` and thresholds.
-- **Distribution**: Does NOT use `query`: use `filter` (search expression) and `facet` (the numeric field). The `filter` field uses the old-style SDL filter syntax — do NOT use `field != null` for null checks, as this causes `field=[filter] error=[Illegal value [null]]`. Use `field=*` instead (matches any non-null value). The `facet` field MUST be a native NUMBER field in the SDL schema — string fields (even ones that look numeric like `traffic.bytes_in`) silently return an empty panel. Confirm the field type with `| group min=min(field), max=max(field)` before using it; if min/max return NaN or STRING, the field is not numeric. The `number()` cast in the `facet` expression (e.g. `facet: "number(traffic.bytes_in)"`) does NOT work for distribution panels — SDL checks the schema-level field type at render time, before the cast runs, so a string field stays blank even after casting.
+- **Distribution**: Does NOT use `query`: use `filter` (search expression) and `facet` (the numeric field). The `filter` field uses the old-style SDL filter syntax; do NOT use `field != null` for null checks, as this causes `field=[filter] error=[Illegal value [null]]`. Use `field=*` instead (matches any non-null value). The `facet` field MUST be a native NUMBER field in the SDL schema, string fields (even ones that look numeric like `traffic.bytes_in`) silently return an empty panel. Confirm the field type with `| group min=min(field), max=max(field)` before using it; if min/max return NaN or STRING, the field is not numeric. The `number()` cast in the `facet` expression (e.g. `facet: "number(traffic.bytes_in)"`) does NOT work for distribution panels, SDL checks the schema-level field type at render time, before the cast runs, so a string field stays blank even after casting.
 - **Sankey**: Query must output exactly `source`, `target`, `c` column names. Use `array(...).expand()` for multi-hop link expansion.
 - **Scattered bubble**: First 3 numeric columns = x, y, size. Add `label` column for point labels.
 - **Heatmap/multi-series line**: time mode uses `timebucket()` in `group by` with the anchor named `timestamp` (`transpose field on timestamp`). Heatmap also supports a categorical x-axis (S-26.x+): `group by <xCat>, <yCat> | transpose <yCat> on <xCat>` plus `xAxis: "grouped_data"`.
 - **Bullet**: First numeric column = actual value; second numeric column = SLA/target. Third column = row label.
 - **Tabbed table**: `tabbed: "true"` and `tabVariant: "tile"` are both required. Outer `query` is the fallback.
-- **Null check — always use `field=*`, never `field != null`**: `field=*` is the SDL predicate for "field is present and non-null". `field != null` is parsed as a literal string comparison to `"null"` in old-style filter syntax and returns wrong results or a parse error. Applies in both the initial filter predicate (before the first `|`) and in `| filter` commands: `dataSource.name='alert' severity_id=*` not `severity_id != null`.
-- **Zero suppression — `| filter count > 0` after group**: After `| group count=count() by ...`, SDL can produce zero-count rows for sparse key combinations (common after `transpose` or wide key spaces). These render as empty heatmap cells and spurious table rows. Always add `| filter EventCount > 0` (or `| filter value > 0`) after any group that feeds a heatmap, donut, or table panel where zero rows are meaningless.
+- **Null check: always use `field=*`, never `field != null`**: `field=*` is the SDL predicate for "field is present and non-null". `field != null` is parsed as a literal string comparison to `"null"` in old-style filter syntax and returns wrong results or a parse error. Applies in both the initial filter predicate (before the first `|`) and in `| filter` commands: `dataSource.name='alert' severity_id=*` not `severity_id != null`.
+- **Zero suppression: `| filter count > 0` after group**: After `| group count=count() by ...`, SDL can produce zero-count rows for sparse key combinations (common after `transpose` or wide key spaces). These render as empty heatmap cells and spurious table rows. Always add `| filter EventCount > 0` (or `| filter value > 0`) after any group that feeds a heatmap, donut, or table panel where zero rows are meaningless.
 - **`| sort` must come before `| columns`**: `| columns` removes every field not listed. A `| sort` placed after `| columns` that references a projected-away field silently fails or hangs the panel. Move `| sort` before `| columns`. Most common victim: bullet panels that sort by a severity field but project it away in the final `| columns value, target, label`.
-- **`in` operator restriction**: The `in (...)` set-membership operator only works inside `| filter` commands. It does NOT work in the initial filter predicate (the part before the first `|`). Use `dataSource.name='X'\n| filter field in ('a','b','c')` — not `field in ('a','b','c') | group ...`. Violating this causes a silent parse failure that surfaces as a frontend `TypeError: e.toLowerCase is not a function`.
+- **`in` operator restriction**: The `in (...)` set-membership operator only works inside `| filter` commands. It does NOT work in the initial filter predicate (the part before the first `|`). Use `dataSource.name='X'\n| filter field in ('a','b','c')`, not `field in ('a','b','c') | group ...`. Violating this causes a silent parse failure that surfaces as a frontend `TypeError: e.toLowerCase is not a function`.
 - **Funnel**: Query must return exactly one text column (stage label) and one numeric column (count). Build stages with a union-FIRST query (`union` as the query's very first command, one subquery per stage; mid-pipeline `| union` returns HTTP 400). Keep stage labels free of hyphens. Rows should be in stage order; rows are NOT auto-sorted. `orientation: "vertical"` stacks top-to-bottom; `"horizontal"` is left-to-right.
-- **Filter widget (parameters) — fully working on TABBED dashboards, including runtime refiltering (visually verified live 2026-07-29)**: Parameters (`parameters: []` on a tab) render a dropdown or text input in the tab header, and a panel query referencing `#VarName#` works on a TABBED dashboard. A live test tab with `dataSource.name=#SrcName#` (facet-populated dropdown, `defaultValue: "*"`) rendered correctly with the default substituted, and selecting a dropdown value then pressing **Search** re-ran the panel filtered to that value only. The one gotcha: changing the dropdown does NOT auto-refresh; the new value applies only after the user hits Search. The earlier claims that the parser sees a literal `#` and throws `Don't understand [#]`, and that parameters are UI-only with no query injection, were both wrong. Two sub-types: `facet` (dropdown populated from live field values) and `values` (static list of options).
+- **Filter widget (parameters): fully working on TABBED dashboards, including runtime refiltering (visually verified live 2026-07-29)**: Parameters (`parameters: []` on a tab) render a dropdown or text input in the tab header, and a panel query referencing `#VarName#` works on a TABBED dashboard. A live test tab with `dataSource.name=#SrcName#` (facet-populated dropdown, `defaultValue: "*"`) rendered correctly with the default substituted, and selecting a dropdown value then pressing **Search** re-ran the panel filtered to that value only. The one gotcha: changing the dropdown does NOT auto-refresh; the new value applies only after the user hits Search. The earlier claims that the parser sees a literal `#` and throws `Don't understand [#]`, and that parameters are UI-only with no query injection, were both wrong. Two sub-types: `facet` (dropdown populated from live field values) and `values` (static list of options).
 - **Breakdown graphs** (`breakdownFacet` property): Very slow, not cached. Use only for exploratory work.
 - **Stacked bar with time x-axis**: Set `xAxis: "time"` and `yScale: "linear"`.
 - **Stacked bar with category x-axis**: Set `xAxis: "grouped_data"`.
-- **`stacked_bar` vs `stacked-bar`**: The official SentinelOne community docs (article 000006455) list `"stacked-bar"` with a hyphen. All real deployed dashboard examples use `"stacked_bar"` with an underscore. Use the underscore form — it is what the current SDL frontend expects.
+- **`stacked_bar` vs `stacked-bar`**: The official SentinelOne community docs (article 000006455) list `"stacked-bar"` with a hyphen. All real deployed dashboard examples use `"stacked_bar"` with an underscore. Use the underscore form; it is what the current SDL frontend expects.
 - **`graphStyle` empty string behaviour**: When `graphStyle` is `""` and a `query` is present, SDL defaults to a table. When `graphStyle` is omitted/empty and no `query` is present (only `filter`/`facet`), it defaults to a line chart. This is why the tabbed table panel uses `graphStyle: ""`.
 - **`duration` (top-level)**: Sets the default time range shown in the global time picker when the dashboard is first loaded. Accepts any time string: `"24h"`, `"1 day"`, `"30m"`, `"7d"`, `"2 weeks"`. (Source: official SDL dashboard syntax article.)
 - **`startTime` on individual panels**: Pins that panel to a fixed time window, overriding the global time picker. Omit `startTime` from panels if you want them to follow the global `duration` selector. Set it only when a panel must always show a fixed window (e.g., a 30-day trend card on a dashboard with a 24h default).
@@ -460,6 +460,6 @@ endpoint.os = #OS#
 - **Layout grid**: Total width = 60 units. Height: ~14 units ≈ half-page height. KPI rows typically h=10, w=15 (4 across). Full-width panels use w=60.
 - **Markdown**: Use `markdown:` field, NOT `content:` which renders blank. Set a short plain-text `title` (no `##` prefix) and put prose only in `markdown`. In S-26.1 a markdown panel with NO `title` key renders an "Untitled" header (observed live), so always include a `title`. Do not repeat the title as a heading inside the body.
 - **Categorical bar chart**: use `graphStyle: "stacked_bar"` with `xAxis: "grouped_data"` and a `(category, value)` query. Plain `graphStyle: "bar"` (like `line` / `area`) defaults to a TIME x-axis and errors with "first column ... should have numeric value in epoch" when the first column is a category string.
-- **Heatmap with `rangesCreation: "automatic"`**: The `heatmapRangeConfig` array must use empty strings `""` for all middle elements — SDL auto-calculates those boundaries from live data. Providing explicit non-empty values (e.g. `"10"`, `"50"`) conflicts with automatic mode and silently produces a blank panel. Correct form: `["-∞", "", "", "", "", "∞"]`. If data density is very sparse (e.g. a 24h window with few events per cell), SDL may also fail to compute thresholds — extend to `startTime: "7d"` with `timebucket('4h')` if automatic mode remains blank on confirmed-sparse data.
+- **Heatmap with `rangesCreation: "automatic"`**: The `heatmapRangeConfig` array must use empty strings `""` for all middle elements, SDL auto-calculates those boundaries from live data. Providing explicit non-empty values (e.g. `"10"`, `"50"`) conflicts with automatic mode and silently produces a blank panel. Correct form: `["-∞", "", "", "", "", "∞"]`. If data density is very sparse (e.g. a 24h window with few events per cell), SDL may also fail to compute thresholds, extend to `startTime: "7d"` with `timebucket('4h')` if automatic mode remains blank on confirmed-sparse data.
 - **Honeycomb option schemas, BOTH valid (visually verified live 2026-07-29)**: two alternative option families render correctly and neither is "required". Variant A (solution-template style): `honeyCombColor` object (`{hover, label, value}` hex colors) + `honeyCombThresholds` (string array, e.g. `["0","25","50","75"]`) + `honeyCombGroupBy` (category column name). Variant B (this file's style): `honeycombColorScheme` (string, e.g. `"red"`) + `honeycombRangeConfig` (numeric array, e.g. `[0, 25, 50, 75]`). A side-by-side test dashboard rendered both variants with correct legends and coloring; the earlier claim that variant B's fields are mandatory and their absence throws `TypeError: e.toLowerCase is not a function` was not reproducible. Pick one family per panel; do not mix keys from both.
 - **Bullet `coloringMode`**: Only confirmed valid value from real examples is `"ranges"`. The value `"kpiReach"` is not confirmed and may cause a render error.

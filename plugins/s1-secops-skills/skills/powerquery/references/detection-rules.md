@@ -1,4 +1,4 @@
-# Detection rules — STAR / Custom Detection / PowerQuery Alerts
+# Detection rules: STAR / Custom Detection / PowerQuery Alerts
 
 PowerQuery Alerts (and STAR / Custom Detection rules that use a PowerQuery body) have tighter limits than ad-hoc hunts. This file covers how to write detection rule bodies that are correct, cheap, and reliably fire.
 
@@ -85,10 +85,10 @@ The detection engine matches against a SINGLE backslash. In the raw query text y
 - `nolimit` is not allowed.
 - Subqueries are not supported (the Summary service evaluates at ingest time and can't compute inner queries).
 - `compare` isn't useful here (alerts don't do timeshift).
-- Depending on platform version, `transpose` may not be supported — prefer `group` + explicit columns.
+- Depending on platform version, `transpose` may not be supported: prefer `group` + explicit columns.
 - The rule should return **one row per finding** with stable, well-named columns (the detection engine maps these to alert fields).
 
-If you hit the 1,000-row limit on an intermediate `group`, the alert silently under-counts. This is dangerous for detections — validate the filter is selective enough before saving as a rule.
+If you hit the 1,000-row limit on an intermediate `group`, the alert silently under-counts. This is dangerous for detections, validate the filter is selective enough before saving as a rule.
 
 ## Shape of a good rule
 
@@ -109,10 +109,10 @@ If you hit the 1,000-row limit on an intermediate `group`, the alert silently un
 Why this shape:
 
 - `group by agent.uuid, src.process.storyline.id` gives one row per (endpoint, activity cluster). That matches what the detection engine wants.
-- `any(endpoint.name)` / `any(src.process.cmdline)` carry human-readable context through the group. Don't use `array_agg` in an alert body — arrays aren't supported by `savelookup` and bloat the 1 MB budget.
+- `any(endpoint.name)` / `any(src.process.cmdline)` carry human-readable context through the group. Don't use `array_agg` in an alert body, arrays aren't supported by `savelookup` and bloat the 1 MB budget.
 - `oldest(timestamp)` / `newest(timestamp)` are the canonical way to surface the detection window. They require *no* preceding `sort` / `group` / `limit` and must appear in the aggregation.
 - `filter count >= N` is the threshold. Keeping the threshold inside the query (rather than tuning outside) keeps the rule self-contained.
-- A final `limit` caps the emitted alert count per evaluation window — keeps you honest about alert fatigue.
+- A final `limit` caps the emitted alert count per evaluation window: keeps you honest about alert fatigue.
 
 ## Patterns
 
@@ -150,7 +150,7 @@ event.login.loginIsSuccessful = false
 
 ### 3. Anomaly via combined signals
 
-Combine filters with `and` in the initial filter, not `and` in a computed column — the initial filter is cheapest and gates what the Summary service scans.
+Combine filters with `and` in the initial filter, not `and` in a computed column, the initial filter is cheapest and gates what the Summary service scans.
 
 ```
 event.type = 'Process Creation'
@@ -232,13 +232,13 @@ Renames are fine: the engine resolves by name, so `host = any(endpoint.name)` is
 
 ### Target Asset / entity binding (scheduled rules need `entityMappings`)
 
-A scheduled (PowerQuery) rule **binds the Target Asset via an explicit `entityMappings` config — it is not automatic.** Out of the box a scheduled-rule alert shows "Unknown Device" (`agentUuid: null`); projecting `endpoint.name` / `agent.uuid` columns is necessary but **not sufficient on its own**. The rule must also declare which result columns are the entity, via the top-level `entityMappings` array (the **"Entity column mapping"** field in the rule UI):
+A scheduled (PowerQuery) rule **binds the Target Asset via an explicit `entityMappings` config; it is not automatic.** Out of the box a scheduled-rule alert shows "Unknown Device" (`agentUuid: null`); projecting `endpoint.name` / `agent.uuid` columns is necessary but **not sufficient on its own**. The rule must also declare which result columns are the entity, via the top-level `entityMappings` array (the **"Entity column mapping"** field in the rule UI):
 
 ```json
 "entityMappings": [ { "columnName": "endpoint.name" }, { "columnName": "src_ip" } ]
 ```
 
-Working recipe for a scheduled rule with a mapped asset — two parts that must agree:
+Working recipe for a scheduled rule with a mapped asset, two parts that must agree:
 
 1. Project the entity column(s) in the query body, e.g. `| columns endpoint.name = device.hostname, src_ip = src_endpoint.ip, ...`.
 2. Set `data.entityMappings` to those exact output column names: `[{ "columnName": "endpoint.name" }, { "columnName": "src_ip" }]`.
@@ -264,7 +264,7 @@ Other paths that bind the entity:
 
 `storylineId` is NOT required for binding.
 
-## Scheduled detection rule — full option set (UI ↔ API)
+## Scheduled detection rule: full option set (UI ↔ API)
 
 Every option on the rule's Overview page maps to a field in the `POST/PUT /cloud-detection/rules` body (`data` object unless noted). Confirmed against a live rule.
 
@@ -330,7 +330,7 @@ The query string goes inside `data.scheduledParams.query`, not in `data.s1ql`. T
 Notes on the shape:
 
 - **Scope:** `filter` accepts `accountIds` or `siteIds`. Pick the layer the rule should fire at. Account-level rules cover all sites under the account.
-- **Threshold:** the trigger threshold is the alert-firing threshold (`scheduledParams.threshold`), not the internal `| filter` inside the PowerQuery. `{value: 0, operator: "Greater"}` means "alert if the PQ returns any rows at all" — combined with an internal `| filter hits >= N`, you get N as the effective threshold.
+- **Threshold:** the trigger threshold is the alert-firing threshold (`scheduledParams.threshold`), not the internal `| filter` inside the PowerQuery. `{value: 0, operator: "Greater"}` means "alert if the PQ returns any rows at all", combined with an internal `| filter hits >= N`, you get N as the effective threshold.
 - **Run interval and lookback:** match these (e.g. 60 / 60) for non-overlapping evaluation. Setting `lookbackWindowMinutes` higher than `runIntervalMinutes` causes overlap and duplicate alerts.
 - **`status`:** new rules land as `Draft` on creation regardless of the requested status. Enable separately with `PUT /web/api/v2.1/cloud-detection/rules/enable` (body `{"filter": {"ids": [...], "accountIds": [...]}}`).
 - **No `disableAgentMitigation` field:** that property is not part of the scheduled-rule schema. Including it returns HTTP 400 `Unknown field`. Cloud-source PQ rules do not need it.
@@ -350,7 +350,7 @@ PUT /web/api/v2.1/cloud-detection/rules/enable      # body: {"filter": {"ids": [
 PUT /web/api/v2.1/cloud-detection/rules/disable     # same shape
 ```
 
-`GET /cloud-detection/rules?ids=...&accountIds=...&isLegacy=false` requires `isLegacy=false` for scheduled rules — without it the list call returns zero results even when the rules exist and the POST response gave you their IDs.
+`GET /cloud-detection/rules?ids=...&accountIds=...&isLegacy=false` requires `isLegacy=false` for scheduled rules, without it the list call returns zero results even when the rules exist and the POST response gave you their IDs.
 
 `isLegacy` is a GET-listing query parameter ONLY. Do NOT put it in the `enable` / `disable` PUT body: `{"filter": {"ids": [...], "isLegacy": false}}` returns `400 filter: isLegacy: Unknown field`. The enable/disable filter accepts `ids` plus an optional scope (`accountIds` / `siteIds`); `ids` alone is sufficient because rule IDs are globally unique. Tenant-validated 2026-06-16: `PUT /cloud-detection/rules/enable` with `{"filter": {"ids": [...]}}` returned `{"affected": N}`.
 
@@ -371,8 +371,8 @@ Do not ingest, do not judge a rule "not firing", and do not strip attributes to 
 
 ## Testing a rule body before deploying
 
-1. Run it with the Purple MCP `powerquery` tool over the last 24 hours. Confirm it parses and returns 0–N rows (not an error, not thousands).
-2. Confirm the threshold (`filter count >= N`) doesn't zero out the result for a known-good example — walk `N` down until you see a row, then set `N` slightly above what a benign environment would produce.
+1. Run it with the Purple MCP `powerquery` tool over the last 24 hours. Confirm it parses and returns 0-N rows (not an error, not thousands).
+2. Confirm the threshold (`filter count >= N`) doesn't zero out the result for a known-good example, walk `N` down until you see a row, then set `N` slightly above what a benign environment would produce.
 3. Run it over 7 days for baseline volume: expected row count × 7 ≈ what a week of alerting will look like.
 4. If the `group`-intermediate ever exceeds 1,000 rows in a 24-hour window, tighten the initial filter.
 

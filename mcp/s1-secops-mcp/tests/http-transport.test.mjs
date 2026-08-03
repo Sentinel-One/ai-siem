@@ -18,13 +18,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const SERVER = resolve(__dir, '..', 'index.js');
+// Expected version comes from package.json so release bumps cannot go stale here.
+const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url))).version;
 
 async function waitForHealth(port, attempts = 50) {
   for (let i = 0; i < attempts; i++) {
@@ -89,7 +91,7 @@ test('http: POST /mcp initialize returns server info', async () => {
     const body = await r.json();
     assert.equal(body.id, 1);
     assert.equal(body.result.serverInfo.name, 's1-secops-mcp-server');
-    assert.equal(body.result.serverInfo.version, '1.2.2');
+    assert.equal(body.result.serverInfo.version, PKG_VERSION);
   });
 });
 

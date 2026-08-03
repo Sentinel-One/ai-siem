@@ -36,7 +36,7 @@
     syslogTs: "[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}",
     // CEF pipe-delimited field body: anything that isn't a pipe. Required because the
     // CEF `name` field is free-form text WITH SPACES ("Connection Allowed"), and the
-    // default capture (`quotable`) stops at whitespace — so the format silently fails
+    // default capture (`quotable`) stops at whitespace, so the format silently fails
     // to match. `notPipe` lets the capture span spaces up to the next `|`.
     notPipe:  "[^|]*"
   },
@@ -50,7 +50,7 @@
     // digit field and capture the classic-syslog stamp as `ts_raw` (we're ingesting
     // close to real-time so the pipeline's own receive-time is fine).
     //
-    // DO NOT set `halt: true` here — the extension k/v extractor below must still
+    // DO NOT set `halt: true` here: the extension k/v extractor below must still
     // run on the same line to populate `src`, `dst`, etc. With halt, format 1
     // still matches and emits the header fields, but the event ends up with a
     // null `src`/`dst`.

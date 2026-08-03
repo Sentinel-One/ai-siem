@@ -27,7 +27,7 @@ Every item in the `actions` array is an **action object**:
     "connection_name": null | "",
     "use_connection_name": false,
     "integration_id": null | "<uuid>",
-    "data": { /* action-type-specific payload — see building-blocks.md */ },
+    "data": { /* action-type-specific payload; see building-blocks.md */ },
     "state": "active",
     "description": null | "human description",
     "client_data": {
@@ -59,30 +59,30 @@ The trigger typically gets the highest export_id.
 Defines edges (connections) to downstream actions.
 - `target`: the `export_id` of the next action
 - `custom_handle`:
-  - `null` — default (only one outgoing connection)
-  - `"true"` / `"false"` — condition branches
-  - `"inner"` — used for the body of a loop (the first action inside the loop)
+  - `null`: default (only one outgoing connection)
+  - `"true"` / `"false"`: condition branches
+  - `"inner"`: used for the body of a loop (the first action inside the loop)
 
 ### `parent_action`
-- `null` — action is at the top level of the workflow
-- `<integer>` — `export_id` of the loop that contains this action
+- `null`: action is at the top level of the workflow
+- `<integer>`: `export_id` of the loop that contains this action
 
 ### `tag`
-- `"core_action"` — built-in actions (Variable, Loop, Condition, HTTP Request without integration,
+- `"core_action"`: built-in actions (Variable, Loop, Condition, HTTP Request without integration,
   Send Email, Delay, Break Loop, Scheduled/Manual/HTTP/Email/Singularity Trigger, Snippet,
   Wait for Slack, Create Interaction, Wait for Interaction)
-- `"integration"` — actions backed by a pre-configured integration connection
+- `"integration"`: actions backed by a pre-configured integration connection
 
 ### `connection_id` / `connection_name` / `use_connection_name`
 - For core actions: all null/false
 - For integration actions: `connection_id` is the UUID of the configured connection.
   When generating for import, set `connection_id: null`, `connection_name: ""`,
-  `use_connection_name: false` — the user will configure the connection after import.
+  `use_connection_name: false`, the user will configure the connection after import.
 
 ### `integration_id`
 - For core actions: `null`
 - For integration actions: the UUID of the integration type (e.g., SentinelOne = `"ef645af9-ed60-4efd-882e-bf534442ce86"`, M365/Entra = `"73475bd9-3762-4f17-aab5-c544ec5ec31b"`)
-  When generating for a new workflow, set to `null` — it will be resolved from the connection.
+  When generating for a new workflow, set to `null`; it will be resolved from the connection.
 
 ---
 
@@ -91,11 +91,11 @@ Defines edges (connections) to downstream actions.
 Position fields affect the visual canvas only. Use these conventions for readability:
 - First action (trigger): `{ "x": 0, "y": 0 }`
 - Each subsequent step: increment `y` by ~177 (height 76 + gap 101)
-- Parallel branches: offset `x` by ±160–300
+- Parallel branches: offset `x` by ±160-300
 
 Standard dimensions: `{ "width": 256, "height": 76 }` for most actions.
 Triggers: `{ "width": 256, "height": 100 }`.
-Loop containers: wider/taller to contain children — `{ "width": 760, "height": 750 }` typical.
+Loop containers: wider/taller to contain children, `{ "width": 760, "height": 750 }` typical.
 
 ---
 
@@ -121,7 +121,7 @@ Example: `"name": "Get Agents with Active Threat"` → `get-agents-with-active-t
 
 ---
 
-## Singularity Response Trigger — filter_groups structure
+## Singularity Response Trigger: filter_groups structure
 
 ```json
 "filter_groups": [
@@ -160,7 +160,7 @@ For `"in"` operator, `compared_value` is a JSON array string: `"[\"HIGH\",\"CRIT
 
 ---
 
-## Condition action — two styles
+## Condition action: two styles
 
 ### Simple condition (nested `condition` object, `condition_type: "simple"`):
 ```json

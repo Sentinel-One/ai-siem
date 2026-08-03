@@ -1,5 +1,5 @@
 /**
- * SDL API tools — sentinelone-sdl-api, sentinelone-sdl-dashboard, sentinelone-sdl-log-parser skills
+ * SDL API tools: sentinelone-sdl-api, sentinelone-sdl-dashboard, sentinelone-sdl-log-parser skills
  *
  * Tools:
  *   sdl_list_files     List all config files on the SDL tenant
@@ -31,7 +31,7 @@ export const tools = [
   // ─── sdl_get_file ─────────────────────────────────────────────────────────
   {
     name: 'sdl_get_file',
-    description: `Get the content and current version number of a SDL configuration file. Use before sdl_put_file to read the current version for optimistic locking (pass the returned version as expectedVersion). Supports any file type: parsers (/logParsers/<name>), dashboards (/dashboards/<name>), alerts (/alerts/<name>), lookups (/lookups/<name>), datatables (/datatables/<name>). Always read before overwriting — this prevents concurrent-edit conflicts.`,
+    description: `Get the content and current version number of a SDL configuration file. Use before sdl_put_file to read the current version for optimistic locking (pass the returned version as expectedVersion). Supports any file type: parsers (/logParsers/<name>), dashboards (/dashboards/<name>), alerts (/alerts/<name>), lookups (/lookups/<name>), datatables (/datatables/<name>). Always read before overwriting; this prevents concurrent-edit conflicts.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -51,7 +51,7 @@ export const tools = [
   // ─── sdl_put_file ─────────────────────────────────────────────────────────
   {
     name: 'sdl_put_file',
-    description: `Deploy or update a SDL configuration file. Always call sdl_get_file first to obtain the current expectedVersion — this prevents overwriting concurrent edits. If creating a new file, omit expectedVersion. File type conventions: parsers go to /logParsers/<name>, dashboards to /dashboards/<name>, alerts to /alerts/<name>, lookups to /lookups/<name>. Requires Configuration Write key (SDL_CONFIG_WRITE_KEY) or a console JWT that has config write permissions.`,
+    description: `Deploy or update a SDL configuration file. Always call sdl_get_file first to obtain the current expectedVersion; this prevents overwriting concurrent edits. If creating a new file, omit expectedVersion. File type conventions: parsers go to /logParsers/<name>, dashboards to /dashboards/<name>, alerts to /alerts/<name>, lookups to /lookups/<name>. Requires Configuration Write key (SDL_CONFIG_WRITE_KEY) or a console JWT that has config write permissions.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -79,7 +79,7 @@ export const tools = [
   // ─── sdl_delete_file ──────────────────────────────────────────────────────
   {
     name: 'sdl_delete_file',
-    description: `Delete a SDL configuration file (parser, dashboard, alert, lookup, datatable). Use with caution — deletion is permanent. Always read the file with sdl_get_file first to confirm you have the right path and version.`,
+    description: `Delete a SDL configuration file (parser, dashboard, alert, lookup, datatable). Use with caution; deletion is permanent. Always read the file with sdl_get_file first to confirm you have the right path and version.`,
     inputSchema: {
       type: 'object',
       properties: {

@@ -306,7 +306,7 @@ event.login.loginIsSuccessful = false
 | limit 100
 ```
 
-**Note** — `by agent.uuid, src.endpoint.ip.address` gives one row per (target host, source IP) pair. Tune `fails >= 25` to your environment; most orgs want 10–50.
+**Note**, `by agent.uuid, src.endpoint.ip.address` gives one row per (target host, source IP) pair. Tune `fails >= 25` to your environment; most orgs want 10-50.
 
 ### S1 built-in CredentialDumping indicator
 
@@ -453,7 +453,7 @@ event.type in ('File Modification', 'File Rename')
 | limit 50
 ```
 
-Backups and installers can also trip this — pair with an allowlist `lookup` on `src.process.image.path`.
+Backups and installers can also trip this, pair with an allowlist `lookup` on `src.process.image.path`.
 
 ### Archive creation in unusual location (T1560)
 
@@ -513,7 +513,7 @@ Fires when the same storyline that tripped the `CredentialDumping` indicator als
 
 ### Recon burst + remote logon
 
-Matches a host doing recon AND then seeing a remote interactive logon — "someone ran whoami then logged into another box."
+Matches a host doing recon AND then seeing a remote interactive logon, "someone ran whoami then logged into another box."
 
 ```
 | inner join
@@ -543,7 +543,7 @@ Matches a host doing recon AND then seeing a remote interactive logon — "someo
 
 ## Allowlisted rules
 
-When a rule is otherwise correct but fires on 1–2 known-good patterns, use a `lookup` against a config datatable to suppress.
+When a rule is otherwise correct but fires on 1-2 known-good patterns, use a `lookup` against a config datatable to suppress.
 
 ```
 <filters producing candidate rows>
@@ -569,9 +569,9 @@ The allowlist datatable needs a key column `image_path` (the full process image 
 
 ## Tuning checklist before deployment
 
-1. Run the body in Event Search over 24h. Expect 0–5 rows in a typical environment; 10+ usually means the filter is too loose.
-2. Confirm the `group` intermediate never exceeds 1,000 rows — the filter needs to cut hard upstream.
+1. Run the body in Event Search over 24h. Expect 0-5 rows in a typical environment; 10+ usually means the filter is too loose.
+2. Confirm the `group` intermediate never exceeds 1,000 rows: the filter needs to cut hard upstream.
 3. Walk the threshold `count >= N` down until you see a row, then set `N` slightly above benign noise.
 4. Run over 7 days to estimate alert volume (expected × 7 ≈ weekly).
-5. If the rule depends on a 2-hop indicator chain, prefer `inner join` over layering filters — joins have bounded cost.
+5. If the rule depends on a 2-hop indicator chain, prefer `inner join` over layering filters, joins have bounded cost.
 6. Set the alert severity and MITRE mapping in the UI using the fields you've carried in the output.

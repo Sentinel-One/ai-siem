@@ -12,9 +12,19 @@
 // then persists the result as the lookup table {{BASELINE_TABLE}} that the
 // detection rule and dashboard join against.
 //
-// Pairs with < 2 active days (stddev undefined) or stddev == 0 (perfectly flat,
-// z would be infinite) are dropped. Top {{TOPK}} pairs by baseline_avg are kept
-// so the table stays under the 150 MB datatable cap on high-cardinality sources.
+// Pairs with < 2 active days (stddev undefined) are dropped: with under 2 days of
+// history the pair is genuinely "new" and belongs in the NEW-BEHAVIOR panel. Pairs
+// with FLAT history (stddev 0, e.g. a service account or scheduled job emitting the
+// same count every day) are KEPT and marked is_constant = 1: a perfectly regular
+// pair is the strongest baseline there is, and dropping it (the pre-2026-08 design)
+// misclassified a spike on it as new-behavior and never flagged a silence. The
+// detection rule and dashboard score any deviation from a constant as sentinel
+// z = 999 (above) / -999 (below), and an exact match as 0, so no division by the
+// zero stddev ever happens (see ueba_detection.template.json). Ported from the
+// proven fix in sentinelone-mgmt-console-api/scripts/baseline_anomaly.py
+// (2026-07-29); build query shape live-validated read-only on 'Okta' 2026-08-01.
+// Top {{TOPK}} pairs by baseline_avg are kept so the table stays under the
+// 150 MB datatable cap on high-cardinality sources.
 //
 // Run through the sentinelone-powerquery LRQ runner over the baseline window
 // (startTime = now - {{BASELINE_HOURS}}h, endTime = now).
@@ -45,7 +55,8 @@ dataSource.name = '{{SOURCE}}' {{NOISE_FILTER}}
 | let dmin = overall_min(day), dmax = overall_max(day)
 | filter day > dmin AND day < dmax
 | group baseline_avg = avg(day_count), baseline_stddev = stddev(day_count), n_days = count() by action_v, principal_v
-| filter n_days >= 2 AND baseline_stddev > 0
+| filter n_days >= 2
+| let is_constant = (baseline_stddev > 0 ? 0 : 1)
 | sort -baseline_avg
 | limit {{TOPK}}
 | savelookup '{{BASELINE_TABLE}}'

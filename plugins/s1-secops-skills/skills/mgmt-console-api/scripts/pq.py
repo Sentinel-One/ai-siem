@@ -171,7 +171,9 @@ def _request_with_retry(
             retry_after = resp.headers.get("Retry-After")
             if retry_after:
                 try:
-                    sleep_s = float(retry_after)
+                    # Cap honored Retry-After at 30s so a hostile or buggy
+                    # header cannot stall the retry loop for minutes.
+                    sleep_s = min(float(retry_after), 30.0)
                 except ValueError:
                     sleep_s = backoff
             else:

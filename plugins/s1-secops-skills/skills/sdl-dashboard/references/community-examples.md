@@ -400,7 +400,7 @@ Bubble scatter charts for outlier detection. x = distinct ports, y = distinct de
     graphs: [
       {
         graphStyle: "heatmap",
-        title: "Off-Hours Process Execution by User (22:00–06:00)",
+        title: "Off-Hours Process Execution by User (22:00-06:00)",
         description: "Dark cells = high activity outside business hours. Top 10 users during off-hours.",
         startTime: "7d",
         query: "| left join\ntimeseries = (\n  event.type = 'Process Creation'\n  | filter !(src.process.user contains:anycase 'SYSTEM') AND src.process.user != null\n  | let hour_local = number(strftime(event.time * 1_000_000, '%H', 'UTC'))\n  | filter hour_local >= 22 OR hour_local < 6\n  | group EventCount = count() by User = src.process.user, timestamp = timebucket('1h')\n),\ntop10 = (\n  event.type = 'Process Creation'\n  | filter !(src.process.user contains:anycase 'SYSTEM') AND src.process.user != null\n  | let hour_local = number(strftime(event.time * 1_000_000, '%H', 'UTC'))\n  | filter hour_local >= 22 OR hour_local < 6\n  | group Total = count() by User = src.process.user\n  | sort -Total | limit 10\n)\non User\n| filter !isempty(Total)\n| columns User, EventCount, timestamp\n| transpose User on timestamp",
@@ -527,7 +527,7 @@ Standard 4-panel KPI row pattern. Width = 15 per panel × 4 = 60 total. Combine 
 
 SDL has two filtering mechanisms that work in different dashboard types.
 
-### `filters[]` in TABBED dashboards — the correct approach
+### `filters[]` in TABBED dashboards: the correct approach
 
 Declare `filters[]` inside a tab object. SDL populates the dropdown from live field values and applies the selection to all panels in that tab automatically. No query changes needed.
 
@@ -555,15 +555,15 @@ Declare `filters[]` inside a tab object. SDL populates the dropdown from live fi
 
 Selecting "STAR" from the Alert Product dropdown filters all panels on the tab to `metadata.product.name='STAR'` without any query edits.
 
-### `#VarName#` substitution — flat (non-TABBED) dashboards only
+### `#VarName#` substitution: flat (non-TABBED) dashboards only
 
 `#VarName#` query injection works only in flat dashboards (no `configType`, no `tabs`). The reference implementation is `parameter_examples-v1.0.json`. In a TABBED dashboard, `#VarName#` is passed literally to the query engine and throws `Don't understand [#]`.
 
-Pre-quoting rule: string values must embed single quotes — `"'logVolume'"` so substitution produces `tag='logVolume'`. Use `"*"` for wildcard.
+Pre-quoting rule: string values must embed single quotes, `"'logVolume'"` so substitution produces `tag='logVolume'`. Use `"*"` for wildcard.
 
 ```javascript
 {
-  // NO configType, NO tabs — flat dashboard only
+  // NO configType, NO tabs: flat dashboard only
   parameters: [
     {
       name: "Specified Tag",
@@ -625,7 +625,7 @@ Common activity types for audit dashboards:
 | let Threat_URL = format("https://your-console.sentinelone.net/incidents/threats/%s/overview", threat_id)
 ```
 
-### Normalize values to 0–100 for honeycomb
+### Normalize values to 0-100 for honeycomb
 ```
 | let max=overall_max(value), min=overall_min(value)
 | let normalized = ((value - min)/(max - min))*100

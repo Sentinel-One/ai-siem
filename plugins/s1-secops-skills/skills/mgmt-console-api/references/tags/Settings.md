@@ -11,8 +11,8 @@ Get the Global Active Directory settings.
 Required permissions: `Integrations.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 403 User is not allowed in this scope, 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -25,7 +25,7 @@ Update the Global Active Directory settings.
 Required permissions: `Integrations.edit`
 
 Parameters:
-- `body` [body, settings_AdSettingsPutSchema] — 
+- `body` [body, settings_AdSettingsPutSchema]: 
 
 Responses: 400 Invalid user input received. See error details for further i, 200 Success, 401 Unauthorized access - please sign in and retry.
 
@@ -38,8 +38,8 @@ Get the map of Active Directory FQDNs to user roles of the given Sites (use "sit
 Required permissions: `Integrations.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 403 User is not allowed in this scope, 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -52,7 +52,7 @@ Update the Active Directory FQDNs of a Site or Account.
 Required permissions: `Integrations.edit`
 
 Parameters:
-- `body` [body, settings_AdFqdnsPutSchema] — 
+- `body` [body, settings_AdFqdnsPutSchema]: 
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 400 Invalid user input received. See error details for further i, 200 Success, 401 Unauthorized access - please sign in and retry.
 
@@ -65,7 +65,7 @@ Test Active Directory settings.
 Required permissions: `Integrations.create`
 
 Parameters:
-- `body` [body, settings_AdSettingsPutSchema] — 
+- `body` [body, settings_AdSettingsPutSchema]: 
 
 Responses: 404 Scope does not exist, 400 Invalid user input received. See error details for further i, 200 Data retrieved successfully, 401 Unauthorized access - please sign in and retry.
 
@@ -78,8 +78,8 @@ Responses: 404 Scope does not exist, 400 Invalid user input received. See error 
 Required permissions: `Integrations.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -92,7 +92,7 @@ Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 
 Required permissions: `Integrations.edit`
 
 Parameters:
-- `body` [body, settings_MicrosoftSettingsPutSchema] — 
+- `body` [body, settings_MicrosoftSettingsPutSchema]: 
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -105,7 +105,7 @@ Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 
 Required permissions: `Integrations.create`
 
 Parameters:
-- `body` [body, settings_MicrosoftSettingsPutSchema] — 
+- `body` [body, settings_MicrosoftSettingsPutSchema]: 
 
 Responses: 404 Scope does not exist, 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -118,8 +118,8 @@ Get the notification settings for the given Sites (to get the IDs, run "settings
 Required permissions: `Notifications.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 403 User is not allowed in this scope, 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -132,7 +132,7 @@ Change the notifications for the given Sites (to get the IDs, run "settings") or
 Required permissions: `Notifications.edit`
 
 Parameters:
-- `body` [body, notifications_schemas_NotificationSettingsPutSchema] — 
+- `body` [body, notifications_schemas_NotificationSettingsPutSchema]: 
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -145,7 +145,7 @@ Clear (discard without sending) pending email notifications for the given Sites 
 Required permissions: `Notifications.delete`
 
 Parameters:
-- `body` [body, notifications_schemas_CancelPendingEmailNotificationsPostSchema] — 
+- `body` [body, notifications_schemas_CancelPendingEmailNotificationsPostSchema]: 
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -158,12 +158,12 @@ Get the emails that are configured to receive notifications.
 Required permissions: `Notifications.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `name` [query, string] — Name
-- `email` [query, string] — Email
-- `sms` [query, string] — Sms
-- `query` [query, string] — Full text search for fields: name, email, sms
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `name` [query, string]: Name
+- `email` [query, string]: Email
+- `sms` [query, string]: Sms
+- `query` [query, string]: Full text search for fields: name, email, sms
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -177,7 +177,7 @@ Required permissions: `Notifications.edit`
 Optional permissions: `Notifications.create`
 
 Parameters:
-- `body` [body, settings_NotificationRecipientSettingsPutSchema] — 
+- `body` [body, settings_NotificationRecipientSettingsPutSchema]: 
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -190,7 +190,7 @@ Delete a notification recipient by ID. To get the IDs of recipients, run "recipi
 Required permissions: `Notifications.delete`
 
 Parameters:
-- `recipient_id` [path, string] **required** — Recipient ID. Example: "225494730938493804".
+- `recipient_id` [path, string] **required**: Recipient ID. Example: "225494730938493804".
 
 Responses: 403 Insufficient permissions., 200 Recipient deleted successfully., 401 Unauthorized access - please sign in and retry.
 
@@ -203,8 +203,8 @@ Responses: 403 Insufficient permissions., 200 Recipient deleted successfully., 4
 Required permissions: `Integrations.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -217,7 +217,7 @@ Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 
 Required permissions: `Integrations.edit`
 
 Parameters:
-- `body` [body, settings_SmsSettingsPutSchema] — 
+- `body` [body, settings_SmsSettingsPutSchema]: 
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -230,8 +230,8 @@ Get the SMTP server configuration of the given Sites (to get the IDs, run "sites
 Required permissions: `Integrations.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -244,7 +244,7 @@ Change the SMTP server configuration for the given Sites or Accounts. Use this c
 Required permissions: `Integrations.edit`
 
 Parameters:
-- `body` [body, settings_SmtpSettingsPutSchema] — 
+- `body` [body, settings_SmtpSettingsPutSchema]: 
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -257,7 +257,7 @@ Test SMTP settings between the Management and the SMTP server. This integration 
 Required permissions: `Integrations.create`
 
 Parameters:
-- `body` [body, settings_SmtpSettingsTestSchema] — 
+- `body` [body, settings_SmtpSettingsTestSchema]: 
 
 Responses: 404 Scope does not exist, 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -270,8 +270,8 @@ Get the Single Sign-On configuration for the given Sites (to get the IDs, run "s
 Required permissions: `Integrations.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -284,7 +284,7 @@ Change the Single Sign-On configuration for the given Sites (to get the IDs, run
 Required permissions: `Integrations.edit`
 
 Parameters:
-- `body` [body, settings_SsoSettingsPutSchema] — 
+- `body` [body, settings_SsoSettingsPutSchema]: 
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -297,8 +297,8 @@ Get the Service Provider Certificate for the Single Sign-On configuration for th
 Required permissions: `Integrations.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -311,8 +311,8 @@ Download the Service Provider Certificate for the Single Sign-On configuration f
 Required permissions: `Integrations.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -325,7 +325,7 @@ Test Single Sign-On settings.
 Required permissions: `Integrations.create`
 
 Parameters:
-- `body` [body, settings_SsoSettingsPutSchema] — 
+- `body` [body, settings_SsoSettingsPutSchema]: 
 
 Responses: 200 The url to redirect too., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -338,8 +338,8 @@ Get the configuration of the syslog server integrated with the given Sites (to g
 Required permissions: `Integrations.view`
 
 Parameters:
-- `siteIds` [query, array] — List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
-- `accountIds` [query, array] — List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
+- `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -352,7 +352,7 @@ Change the configuration of the syslog server of the given Sites (to get the IDs
 Required permissions: `Integrations.edit`
 
 Parameters:
-- `body` [body, settings_SyslogSettingsPutSchema] — 
+- `body` [body, settings_SyslogSettingsPutSchema]: 
 
 Responses: 404 Scope does not exist, 403 User is not allowed in this scope, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
@@ -365,6 +365,6 @@ Test Syslog settings. The Management tests the connection to the Syslog server.
 Required permissions: `Integrations.create`
 
 Parameters:
-- `body` [body, settings_SyslogSettingsPutSchema] — 
+- `body` [body, settings_SyslogSettingsPutSchema]: 
 
 Responses: 404 Scope does not exist, 200 Data retrieved successfully, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

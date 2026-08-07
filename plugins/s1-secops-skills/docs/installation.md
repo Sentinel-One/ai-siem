@@ -64,8 +64,8 @@ All three servers run from public package registries: `s1-secops-mcp` and `@burt
         "stdio"
       ],
       "env": {
-        "PURPLEMCP_CONSOLE_TOKEN": "eyJ...your-api-token...",
-        "PURPLEMCP_CONSOLE_BASE_URL": "https://usea1-yourorg.sentinelone.net"
+        "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
+        "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
       }
     },
     "virustotal": {

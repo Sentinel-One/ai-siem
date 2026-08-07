@@ -374,7 +374,7 @@ Prerequisite: Docker Desktop (macOS/Windows) or Docker Engine (Linux), running. 
 docker pull ghcr.io/pmoses-s1/s1-mcps:1.3.1
 ```
 
-`:1.2.3` is the current pinned release (bundles s1-secops-mcp 1.2.2, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
+`:1.3.1` is the current pinned release (bundles s1-secops-mcp 1.3.1, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
 
 **Step 2: Configure credentials**
 
@@ -403,14 +403,14 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "command": "docker",
       "args": [
         "run", "-i", "--rm", "--pull=missing",
-        "-e", "PURPLEMCP_CONSOLE_TOKEN",
-        "-e", "PURPLEMCP_CONSOLE_BASE_URL",
+        "-e", "S1_CONSOLE_URL",
+        "-e", "S1_CONSOLE_API_TOKEN",
         "ghcr.io/pmoses-s1/s1-mcps:1.3.1",
         "purple-mcp"
       ],
       "env": {
-        "PURPLEMCP_CONSOLE_TOKEN":    "eyJ...your-api-token...",
-        "PURPLEMCP_CONSOLE_BASE_URL": "https://usea1-yourorg.sentinelone.net"
+        "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
+        "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
       }
     },
     "virustotal": {
@@ -437,8 +437,8 @@ Where to get each value:
 
 | Placeholder | What it is | Where to get it |
 |---|---|---|
-| `S1_CONSOLE_URL`, `PURPLEMCP_CONSOLE_BASE_URL` | Your console URL | e.g. `https://usea1-yourorg.sentinelone.net` |
-| `S1_CONSOLE_API_TOKEN`, `PURPLEMCP_CONSOLE_TOKEN` | Mgmt Console API token (the **same** token for both) | Settings → Users → Service Users → Create New Service User ([guide](https://community.sentinelone.com/s/article/000005291)) |
+| `S1_CONSOLE_URL` | Your console URL | e.g. `https://usea1-yourorg.sentinelone.net` |
+| `S1_CONSOLE_API_TOKEN` | Mgmt Console API token | Settings → Users → Service Users → Create New Service User ([guide](https://community.sentinelone.com/s/article/000005291)) |
 | `S1_HEC_INGEST_URL` | HEC ingest host for your region | [Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) |
 | `VIRUSTOTAL_API_KEY` | VirusTotal API key (free tier is fine) | [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) |
 
@@ -475,7 +475,7 @@ The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-
 | MCP shows red in Cowork → MCP Servers | Confirm Docker is running: `docker info \| head -3`. Start Docker Desktop, then restart Claude Desktop. |
 | `Cannot connect to the Docker daemon` in the logs | Docker Desktop is not running. |
 | `denied: permission_denied` from ghcr.io | Image is private or your network blocks ghcr.io: `docker login ghcr.io`, or check VPN/proxy. |
-| `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The env value did not propagate; re-check the `env` block and that each `-e VAR` name matches a key. |
+| `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The value did not reach the container. Check each `-e VAR` name has a matching key in the same block's `env`. |
 | `S1 Mgmt API: NOT configured` | No console token reached the container; check `S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN`. |
 
 Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log`. Upgrading from 1.2.x? See **[docs/upgrading.md](./docs/upgrading.md)**.

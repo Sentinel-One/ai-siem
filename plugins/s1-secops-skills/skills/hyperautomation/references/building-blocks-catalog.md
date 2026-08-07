@@ -1,8 +1,12 @@
 # Building Blocks Catalog, Reusable SOAR Patterns
 
-This catalog is mined from **643 active production workflows** (14,045 action steps) running on
-SentinelOne tenants. Every building block here was observed in real flows, with usage counts so
-you know what's load-bearing and what's a one-off.
+This catalog is mined from **1,205 production workflows** (17,899 action steps) running on a
+SentinelOne tenant, re-mined 2026-08-06. Every building block here was observed in real flows,
+with usage counts so you know what's load-bearing and what's a one-off.
+
+For **which integrations exist and what actions each offers**, see `integration-catalog.md`:
+all 266 packaged actions (`public_action_id`, method, path) across 45 integrations, plus the
+ad-hoc calls and the 52 custom integrations.
 
 Read this when you need to:
 
@@ -18,30 +22,55 @@ cross-reference `functions-reference.md`. For end-to-end JSON envelopes, cross-r
 
 ---
 
-## Action-type prevalence in active flows (the load-bearing 17)
+## Action-type prevalence in production flows (all 19, re-mined 2026-08-06)
+
+This is the complete set of action types **observed** across 1,244 workflows on 7 tenants. It is
+usage-derived, not the product's declared list, and no API returns the declared one. If a type is
+not in this table, it is not in the corpus; do not invent one. See **Known gap: SQL action**
+below before concluding a type does not exist at all.
 
 | Rank | Type | Count | Class | Tag |
 |------|------|------:|-------|-----|
-| 1 | `http_request` | 2,699 | I/O | core or integration |
-| 2 | `variable` | 2,459 | State | core |
-| 3 | `condition` | 1,697 | Control | core |
-| 4 | `loop` | 498 | Control | core |
-| 5 | `singularity_response_trigger` | 406 | Trigger | core |
-| 6 | `data_formation` | 249 | State | core |
-| 7 | `send_email` | 227 | I/O | core |
-| 8 | `snippet` | 194 | Composition | core |
-| 9 | `break_loop` | 181 | Control | core |
-| 10 | `manual_trigger` | 151 | Trigger | core |
-| 11 | `wait_for_slack` | 115 | Sync | core |
-| 12 | `delay` | 93 | Control | core |
-| 13 | `http_trigger` | 65 | Trigger | core |
-| 14 | `scheduled_trigger` | 20 | Trigger | core |
-| 15 | `create_interaction` | 7 | Sync | core |
-| 16 | `wait_for_interaction` | 7 | Sync | core |
-| 17 | `email_trigger` | 1 | Trigger | core |
+| 1 | `http_request` | 5,418 | I/O | core or integration |
+| 2 | `variable` | 4,496 | State | core |
+| 3 | `condition` | 2,824 | Control | core |
+| 4 | `loop` | 881 | Control | core |
+| 5 | `singularity_response_trigger` | 706 | Trigger | core |
+| 6 | `send_email` | 602 | I/O | core |
+| 7 | `break_loop` | 347 | Control | core |
+| 8 | `data_formation` | 328 | State | core |
+| 9 | `manual_trigger` | 267 | Trigger | core |
+| 10 | `snippet` | 259 | Composition | core |
+| 11 | `delay` | 227 | Control | core |
+| 12 | `wait_for_slack` | 187 | Sync | core |
+| 13 | `http_trigger` | 126 | Trigger | core |
+| 14 | `scheduled_trigger` | 94 | Trigger | core |
+| 15 | `create_interaction` | 41 | Sync | core |
+| 16 | `wait_for_interaction` | 39 | Sync | core |
+| 17 | `llm` | 16 | AI | core |
+| 18 | `email_trigger` | 13 | Trigger | core |
+| 19 | `snippet_20` | 5 | Composition | core |
 
-Of the 2,699 HTTP requests, **2,438 (90%) are integration-backed** (use a pre-configured
-connection) and **261 (10%) are core HTTP** (raw URL, OAuth/API key in headers).
+Of the 5,418 HTTP requests, **4,701 (87%) are integration-backed** (carry an `integration_id`)
+and **717 (13%) are core HTTP** (raw URL, OAuth/API key in headers).
+
+Two ordering changes versus the older 643-workflow mining worth knowing: `send_email` and
+`break_loop` have both overtaken `data_formation`, and `snippet` now trails `manual_trigger`.
+`llm` is a native action type (see `building-blocks.md` → **LLM**); it is not an OpenAI
+`http_request`.
+
+### Known gap: SQL action
+
+The S-26.2 Operations Center guide documents an **SQL action** (run a query against PostgreSQL,
+MySQL or MSSQL, with Simulate Output and Test), under *Singularity Hyperautomation > Workflow
+Creation and Management > SQL actions in Singularity Hyperautomation*. It appears in **zero**
+workflows across all 7 tenants sampled, so its JSON `type` string, `data` fields and connection
+model are **unverified**. Do not guess them. To resolve: add one in the console UI, export the
+workflow, and read the `type` off the exported action; then document it here.
+
+Every other action described in the S-26.2 docs (HTTP Request, Loop, Break, Condition, Send
+Email, Delay, Create Interaction, Wait for Interaction, Variables, and all five trigger types) is
+covered by the table above, so SQL is the single known blind spot.
 
 ---
 
@@ -559,6 +588,9 @@ pre-configured in `Hyperautomation → Integrations`. 90% of HTTP requests in ac
 `connection_id: null`, `connection_name: ""`, `use_connection_name: false`,
 `integration_id: null`. The console resolves them post-import from the user's connections.
 **Keep `public_action_id`**, it identifies which action in the integration's catalog this is.
+Look the right one up in `integration-catalog.md`: it lists all 266 packaged actions with their
+`public_action_id`, method and path, grouped by integration. 71% of production `http_request`
+steps use a packaged action, so reach for one before hand-rolling a URL.
 
 **Reach for it when**: hitting any of S1, M365, Slack, Okta, Jira, ServiceNow, etc. via their
 official integrations.

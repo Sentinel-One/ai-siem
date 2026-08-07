@@ -106,7 +106,6 @@ export function getCreds() {
     S1_CONSOLE_URL:       e('S1_CONSOLE_URL'),
     S1_CONSOLE_API_TOKEN: e('S1_CONSOLE_API_TOKEN') || e('S1_API_TOKEN'),
     S1_HEC_INGEST_URL:    e('S1_HEC_INGEST_URL'),
-    VT_API_KEY:           e('VT_API_KEY'),
   };
 }
 

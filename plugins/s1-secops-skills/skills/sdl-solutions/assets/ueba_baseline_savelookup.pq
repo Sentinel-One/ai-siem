@@ -21,12 +21,12 @@
 // detection rule and dashboard score any deviation from a constant as sentinel
 // z = 999 (above) / -999 (below), and an exact match as 0, so no division by the
 // zero stddev ever happens (see ueba_detection.template.json). Ported from the
-// proven fix in sentinelone-mgmt-console-api/scripts/baseline_anomaly.py
+// proven fix in mgmt-console-api/scripts/baseline_anomaly.py
 // (2026-07-29); build query shape live-validated read-only on 'Okta' 2026-08-01.
 // Top {{TOPK}} pairs by baseline_avg are kept so the table stays under the
 // 150 MB datatable cap on high-cardinality sources.
 //
-// Run through the sentinelone-powerquery LRQ runner over the baseline window
+// Run through the powerquery LRQ runner over the baseline window
 // (startTime = now - {{BASELINE_HOURS}}h, endTime = now).
 //
 // Runs as ONE Long-Range Query (LRQ), executed server-side. An interactive client (for

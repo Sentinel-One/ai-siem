@@ -1,6 +1,6 @@
 // Endpoint enrichment table for the asset-enrichment solution.
 // Keyed on hostname. Empty riskFactors ("[]") is converted to null.
-// Run through the sentinelone-powerquery LRQ runner. Persists as {{ENDPOINT_TABLE}}.
+// Run through the powerquery LRQ runner. Persists as {{ENDPOINT_TABLE}}.
 // Asset-binding keys for STAR-rule alerts (stamp one into device.uid in the parser, plus a class_uid):
 //   device_assetid  = the unified asset id (the `id` from datasource assets). This is the UNIVERSAL
 //                     reconciliation key, the same id space resolves device / identity / cloud assets.

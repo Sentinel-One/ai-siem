@@ -1,4 +1,4 @@
-# sentinelone-hyperautomation (Claude skill)
+# hyperautomation (Claude skill)
 
 A Claude skill for designing and generating SentinelOne Hyperautomation workflow JSON, with optional live console import via API.
 
@@ -6,7 +6,8 @@ A Claude skill for designing and generating SentinelOne Hyperautomation workflow
 
 - Generates valid Hyperautomation workflow JSON from a plain-language description
 - Covers all workflow trigger types: alert, schedule, webhook, manual, email
-- Supports core actions (conditions, loops, variables, HTTP requests, delays) and integration-backed actions (SentinelOne, M365, Slack, VirusTotal, etc.)
+- Supports core actions (conditions, loops, variables, HTTP requests, delays, approvals, and the native LLM action) and integration-backed actions across 62 built-in integrations (SentinelOne, M365, Slack, VirusTotal, Okta, Jira, ServiceNow, AWS, and more)
+- Picks the right pre-built integration action from a catalog of 266 packaged actions, instead of hand-rolling API calls
 - Validates the generated JSON against schema rules before presenting it
 - Optionally imports, activates, and triggers workflows on a live console via the Hyperautomation API
 - Warns about integrations that require pre-configuration in the console before import
@@ -18,7 +19,7 @@ This skill ships as part of the `s1-secops-skills` plugin. Install the plugin an
 To install individually, copy this folder into your user skills directory:
 
 ```bash
-cp -r sentinelone-hyperautomation ~/.claude/skills/
+cp -r hyperautomation ~/.claude/skills/
 ```
 
 ## Configure
@@ -44,6 +45,7 @@ Just describe the workflow in plain language:
 - "Build a workflow that isolates an endpoint when a critical threat alert fires"
 - "Create a scheduled workflow that runs a PowerQuery every morning and posts results to Slack"
 - "Generate a Hyperautomation workflow that enriches alerts with VirusTotal lookups"
+- "Suspend the user in Okta and open a Jira ticket when an identity alert fires"
 
 Claude will ask clarifying questions if needed, warn about any integrations that require pre-configuration, generate the workflow JSON, and optionally push it directly to your console.
 
@@ -63,12 +65,27 @@ Full pattern and the reusable-snippet library: [`references/autonomous-soc-templ
 - `SKILL.md`: instructions Claude reads when the skill triggers
 - `references/workflow-schema.md`: envelope and action structure
 - `references/building-blocks.md`: exact shape of every action type
+- `references/building-blocks-catalog.md`: which block to use for a given step, composite idioms, end-to-end recipes, and anti-patterns, mined from 1,205 production workflows
+- `references/integration-catalog.md`: all 62 built-in and 52 custom integrations, with the 266 packaged actions (`public_action_id`, method, path) available on each
 - `references/functions-reference.md`: `{{Function.X()}}` syntax and PowerQuery patterns
 - `references/validation-rules.md`: pre-output checklist
 - `references/api-integration.md`: Hyperautomation API reference (import, activate, trigger, list)
 - `references/snippets.md`: authoring and calling reusable snippets (`snippet_20` dispatch, lifecycle API)
 - `references/autonomous-soc-template.md`: the autonomous SOC pattern (investigate to decide to respond), response-snippet library, and a branded SOC-email snippet
 - `references/connections.md`: creating an integration connection via API and cloning it across sites
+
+## Coverage and known gaps
+
+The action-type and integration catalogs are **mined from live tenants**, not from a product
+manifest; SentinelOne exposes no API that lists action types, integration action packs, or their
+schemas. Current basis: 1,205 workflows / 17,899 action steps on a production tenant, plus 39
+workflows across 6 further tenants as a cross-check.
+
+Known gap: the S-26.2 docs describe an **SQL action** (PostgreSQL, MySQL, MSSQL) that appears in
+no sampled workflow, so its JSON shape is unverified and the skill will not generate one. Every
+other action documented in S-26.2 is covered. To refresh the catalogs on your own tenant, export
+your workflows via `GET /hyper-automate/api/public/workflow-import-export/export/{id}/{version_id}`
+and group the `http_request` steps by `integration_id` and `public_action_id`.
 
 ## Credit
 

@@ -75,7 +75,7 @@ List configuration files on the SDL tenant (parsers, dashboards, lookups, datata
 Download the content of a specific SDL configuration file by path.
 
 **`sdl_put_file`**
-Upload or update a configuration file on SDL. Used for deploying parsers and dashboards. Requires `SDL_CONFIG_WRITE_KEY` or a console JWT with configuration write access.
+Upload or update a configuration file on SDL. Used for deploying parsers and dashboards. Authorised by `S1_CONSOLE_API_TOKEN`.
 
 **`sdl_delete_file`**
 Delete a configuration file from SDL by path.

@@ -72,9 +72,7 @@ def main():
     c = SDLClient()
     print(f"Base URL: {c.base_url}")
     print(f"Keys configured: "
-          f"log_read={'Y' if c.keys['log_read_key'] else 'n'} "
-          f"config_read={'Y' if c.keys['config_read_key'] else 'n'} "
-          f"config_write={'Y' if c.keys['config_write_key'] else 'n'}")
+          f"token={'Y' if c.token else 'n'}")
     print("-" * 80)
 
     test_nonce = f"sdl-skill-smoke-{uuid.uuid4()}"

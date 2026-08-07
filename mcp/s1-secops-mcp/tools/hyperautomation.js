@@ -1,5 +1,5 @@
 /**
- * Hyperautomation tools: sentinelone-hyperautomation skill
+ * Hyperautomation tools: hyperautomation skill
  *
  * Tools:
  *   ha_list_workflows     List Hyperautomation workflows (with scope/state/sort filters)
@@ -207,13 +207,13 @@ export const tools = [
   // ─── ha_import_workflow ───────────────────────────────────────────────────
   {
     name: 'ha_import_workflow',
-    description: `Import a Hyperautomation workflow JSON into the SentinelOne console. Scope the import with accountIds (account-level) or siteIds (site-level); on a scoped tenant a bare import with no scope returns a misleading 403 "Insufficient permissions". The workflow JSON must follow the Hyperautomation schema (use the sentinelone-hyperautomation skill to generate valid JSON). Integration-backed actions (type=http_request with an integration_id) require pre-configured connections in Hyperautomation > Integrations before the workflow will run, and an imported flow lands as a private draft until published (publish endpoint) or activated. Returns the created workflow ID on success. Requires Hyper Automate.write permission.`,
+    description: `Import a Hyperautomation workflow JSON into the SentinelOne console. Scope the import with accountIds (account-level) or siteIds (site-level); on a scoped tenant a bare import with no scope returns a misleading 403 "Insufficient permissions". The workflow JSON must follow the Hyperautomation schema (use the hyperautomation skill to generate valid JSON). Integration-backed actions (type=http_request with an integration_id) require pre-configured connections in Hyperautomation > Integrations before the workflow will run, and an imported flow lands as a private draft until published (publish endpoint) or activated. Returns the created workflow ID on success. Requires Hyper Automate.write permission.`,
     inputSchema: {
       type: 'object',
       properties: {
         workflowJson: {
           type: 'string',
-          description: 'Full Hyperautomation workflow JSON as a string. Must be valid Hyperautomation schema. Generate this using the sentinelone-hyperautomation skill.',
+          description: 'Full Hyperautomation workflow JSON as a string. Must be valid Hyperautomation schema. Generate this using the hyperautomation skill.',
         },
         accountIds: {
           type: 'string',

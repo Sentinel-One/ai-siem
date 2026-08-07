@@ -18,6 +18,6 @@ baseline datatable (`{{BASELINE_TABLE}}`), and lookup tables / datatables are AC
 so the rule can only be created at account scope (`filter.accountIds`); site-scoped creation of
 lookup-reading rules is invalid.
 
-This solution is part of the `sentinelone-sdl-solutions` skill; it orchestrates the primitive skills
-(`sentinelone-mgmt-console-api`, `sentinelone-powerquery`, `sentinelone-hyperautomation`,
-`sentinelone-sdl-dashboard`) rather than reimplementing them.
+This solution is part of the `sdl-solutions` skill; it orchestrates the primitive skills
+(`mgmt-console-api`, `powerquery`, `hyperautomation`,
+`sdl-dashboard`) rather than reimplementing them.

@@ -136,7 +136,7 @@ Deploy in this order through the primitive skills. Every artifact is prefixed wi
 1. **Noise-vs-signal dashboard.** Render `assets/alertnoise_dashboard.template.json`, filling
    `<<ALERT_FILTER>>`, `<<NOISY_PRODUCT>>`, `<<NOISY_SOURCE>>`, `<<ACTION_FIELD>>`, `<<PREFIX>>`.
    Deploy with `sdl_put_file` to `/dashboards/<<PREFIX>> Alert Noise Reduction`. Validate every panel
-   with the `sentinelone-sdl-dashboard` skill's checks before deploy.
+   with the `sdl-dashboard` skill's checks before deploy.
 2. **Auto-resolve HA flow.** Render `assets/alertnoise_autoresolve_ha.template.json`, filling
    `<<NOISY_PRODUCT>>`, the trigger match conditions (`<<MATCH_NAME>>`, `<<MATCH_CATEGORY>>`),
    `<<NOTE_TEXT>>`, and the MANDATORY mitigation guard `<<ACTION_FIELD>>` / `<<MITIGATED_VALUE>>`

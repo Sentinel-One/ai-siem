@@ -1,5 +1,5 @@
 /**
- * SDL API tools: sentinelone-sdl-api, sentinelone-sdl-dashboard, sentinelone-sdl-log-parser skills
+ * SDL API tools: sdl-api, sdl-dashboard, sdl-log-parser skills
  *
  * Tools:
  *   sdl_list_files     List all config files on the SDL tenant
@@ -51,7 +51,7 @@ export const tools = [
   // ─── sdl_put_file ─────────────────────────────────────────────────────────
   {
     name: 'sdl_put_file',
-    description: `Deploy or update a SDL configuration file. Always call sdl_get_file first to obtain the current expectedVersion; this prevents overwriting concurrent edits. If creating a new file, omit expectedVersion. File type conventions: parsers go to /logParsers/<name>, dashboards to /dashboards/<name>, alerts to /alerts/<name>, lookups to /lookups/<name>. Requires Configuration Write key (SDL_CONFIG_WRITE_KEY) or a console JWT that has config write permissions.`,
+    description: `Deploy or update a SDL configuration file. Always call sdl_get_file first to obtain the current expectedVersion; this prevents overwriting concurrent edits. If creating a new file, omit expectedVersion. File type conventions: parsers go to /logParsers/<name>, dashboards to /dashboards/<name>, alerts to /alerts/<name>, lookups to /lookups/<name>. Authorised by S1_CONSOLE_API_TOKEN.`,
     inputSchema: {
       type: 'object',
       properties: {

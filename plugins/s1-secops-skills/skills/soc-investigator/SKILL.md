@@ -20,7 +20,7 @@ description: >-
 
 Autonomous investigation orchestrator with user intake, three investigation modes (SHORT/MEDIUM/LONG) focused on SentinelOne alerts, then optional iterative deep-dive into third-party data sources for correlation and anomaly detection.
 
-Compatibility: requires the `sentinelone-powerquery`, `sentinelone-mgmt-console-api`, `sentinelone-sdl-api`, `sentinelone-sdl-log-parser`, `sentinelone-hyperautomation`, and `sentinelone-sdl-dashboard` skills, plus the purple MCP (VirusTotal / threat intel). Works with Claude Cowork.
+Compatibility: requires the `powerquery`, `mgmt-console-api`, `sdl-api`, `sdl-log-parser`, `hyperautomation`, and `sdl-dashboard` skills, plus the purple MCP (VirusTotal / threat intel). Works with Claude Cowork.
 
 ---
 
@@ -70,12 +70,12 @@ Rules:
 Required skills for full investigation capability:
 
   Core (SentinelOne telemetry & console)
-  ├── sentinelone-mgmt-console-api   - alert fetch, IOC lookup, agent/threat queries
-  ├── sentinelone-powerquery          - Deep Visibility / SDL PowerQuery execution
-  ├── sentinelone-sdl-api             - SDL file and log management
-  │   └── sentinelone-sdl-log-parser  - log parser authoring/validation
-  ├── sentinelone-sdl-dashboard       - SDL dashboard creation
-  └── sentinelone-hyperautomation     - workflow/SOAR automation
+  ├── mgmt-console-api   - alert fetch, IOC lookup, agent/threat queries
+  ├── powerquery          - Deep Visibility / SDL PowerQuery execution
+  ├── sdl-api             - SDL file and log management
+  │   └── sdl-log-parser  - log parser authoring/validation
+  ├── sdl-dashboard       - SDL dashboard creation
+  └── hyperautomation     - workflow/SOAR automation
 
   Threat Intelligence
   └── purple MCP (VirusTotal)         - IOC enrichment
@@ -89,12 +89,12 @@ Display the result to the user before proceeding:
 === Tool Discovery ===
 
 Core skills:
-  ✓ sentinelone-mgmt-console-api
-  ✓ sentinelone-powerquery
-  ✗ sentinelone-sdl-api             [MISSING - SDL correlation unavailable]
-  ✗ sentinelone-sdl-log-parser      [MISSING - depends on sentinelone-sdl-api]
-  ✓ sentinelone-sdl-dashboard
-  ✓ sentinelone-hyperautomation
+  ✓ mgmt-console-api
+  ✓ powerquery
+  ✗ sdl-api             [MISSING - SDL correlation unavailable]
+  ✗ sdl-log-parser      [MISSING - depends on sdl-api]
+  ✓ sdl-dashboard
+  ✓ hyperautomation
 
 Threat intelligence:
   ✓ purple MCP (VirusTotal)
@@ -174,7 +174,7 @@ Mode: MEDIUM | Alerts: last 48h HIGH | Approval gates: ON
 Output: ./investigation_2025-06-16T10-00-00/
 
   PHASE 1 - Alert Ingest & Entity Extraction          [~2 min]
-    1.1  Fetch alerts via sentinelone-mgmt-console-api
+    1.1  Fetch alerts via mgmt-console-api
     1.2  Extract entities (users, endpoints, IPs, hashes)
     1.3  Build draft timeline (chronological alert order)
     1.4  Infer MITRE tactics/techniques from alert types
@@ -226,7 +226,7 @@ After the user confirms, begin Phase 1 immediately.
 #### 1.1 Fetch alerts
 
 ```text
-Use: sentinelone-mgmt-console-api
+Use: mgmt-console-api
 Query: GET /threats (filtered by user input)
 Output: alerts.jsonl
 ```
@@ -295,7 +295,7 @@ Includes SHORT, plus:
 #### 2.1 Batch IOC lookups
 
 ```text
-Use: Purple MCP (VirusTotal) + sentinelone-mgmt-console-api (S1 IOC API)
+Use: Purple MCP (VirusTotal) + mgmt-console-api (S1 IOC API)
 
 For each IOC in entities.json:
   - VirusTotal: GET /files/{hash}, /domains/{domain}, /ip_addresses/{ip}
@@ -320,7 +320,7 @@ If IOC count > 20:
 #### 3.1 One PowerQuery per unique endpoint
 
 ```text
-Use: sentinelone-powerquery skill
+Use: powerquery skill
 
 Query A: Process tree for user during alert window
   src.process.user = '<user_from_alert>'
@@ -424,7 +424,7 @@ Query D: Full network behavior
 #### 6.1 SDL threat intelligence correlation
 
 ```text
-Use: sentinelone-powerquery skill
+Use: powerquery skill
 
 For each IOC in entities.json:
   indicator.hash = '<hash>' OR indicator.domain = '<domain>' OR indicator.ip = '<ip>'
@@ -485,7 +485,7 @@ Choose: [1 | 2 | 3]
 #### 1.1 Query all available data sources
 
 ```text
-Use: sentinelone-powerquery skill
+Use: powerquery skill
 
 dataSource.name = *
 | group ct=count() by dataSource.name

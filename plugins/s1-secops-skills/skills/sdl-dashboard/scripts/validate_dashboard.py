@@ -39,16 +39,16 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 def _import_sdl_client():
-    """Locate sdl_client.py from the sibling sentinelone-sdl-api skill.
+    """Locate sdl_client.py from the sibling sdl-api skill.
 
-    Walks up from this script's location to find a sentinelone-sdl-api/scripts
+    Walks up from this script's location to find a sdl-api/scripts
     directory. Falls back to PYTHONPATH if the script is run outside the repo.
     """
     here = Path(__file__).resolve()
     candidates: List[Path] = []
     for ancestor in [here.parent, *here.parents]:
-        candidates.append(ancestor / "sentinelone-sdl-api" / "scripts")
-        candidates.append(ancestor.parent / "sentinelone-sdl-api" / "scripts")
+        candidates.append(ancestor / "sdl-api" / "scripts")
+        candidates.append(ancestor.parent / "sdl-api" / "scripts")
     for c in candidates:
         if (c / "sdl_client.py").exists():
             sys.path.insert(0, str(c))
@@ -58,7 +58,7 @@ def _import_sdl_client():
         return SDLClient
     except Exception as e:
         print(
-            "ERROR: could not import sdl_client. Add sentinelone-sdl-api/scripts "
+            "ERROR: could not import sdl_client. Add sdl-api/scripts "
             "to PYTHONPATH or run this script from inside the claude-skills repo.",
             file=sys.stderr,
         )
@@ -275,11 +275,6 @@ def main() -> int:
 
     SDLClient = _import_sdl_client()
     client = SDLClient()
-    # Force-clear scoped keys so auth falls through to the console JWT, which has the
-    # broadest read scope and is the most reliable for replaying mixed-source panels.
-    for k in ("log_read_key", "config_read_key", "config_write_key"):
-        if k in client.keys:
-            client.keys[k] = ""
 
     # Resume support
     results: Dict[str, Dict[str, Any]] = {}

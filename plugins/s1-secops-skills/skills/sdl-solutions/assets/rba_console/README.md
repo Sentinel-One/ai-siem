@@ -22,10 +22,9 @@ Ctrl-C to stop. Override the port with `RBA_PORT=9000 python3 server.py`.
 
 ## Credentials
 
-`server.py` reads `mcpServers["sentinelone-mcp"].env` from
+`server.py` reads `mcpServers["s1-secops-mcp"].env` from
 `~/Library/Application Support/Claude/claude_desktop_config.json`
-(`SDL_XDR_URL`, plus `SDL_LOG_READ_KEY` / `SDL_CONFIG_READ_KEY` / `SDL_CONFIG_WRITE_KEY`; falls back to
-`S1_CONSOLE_API_TOKEN`). To target a different tenant, set those as environment variables or edit the
+(`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN`). To target a different tenant, set those as environment variables or edit the
 config. The proxy exposes three POST/JSON endpoints: `/api/powerQuery {query,startTime}`,
 `/api/getFile {path}`, `/api/putFile {path,content}`.
 

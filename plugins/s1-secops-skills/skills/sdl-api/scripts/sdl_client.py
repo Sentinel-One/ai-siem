@@ -1,17 +1,9 @@
 """
 SentinelOne Singularity Data Lake (SDL) API client.
 
-The SDL API has four scoped key types plus the management-console user
-API token. Each method walks a per-method-class key chain (KEY_CHAINS):
-it starts with the first configured key and, if the server answers
-401/403 (e.g. a config-scoped key does not grant View Logs on the query
-methods), advances to the next key in the chain, ending at the console
-JWT. The last auth error is raised only when the chain is exhausted.
-Note the chain order is "first configured wins", not "most privileged
-wins": a config write key set alongside no log read key is still tried
-first on log-read methods and only the 401/403 fallthrough rescues the
-call, so configure SDL_LOG_READ_KEY (or rely on the console JWT) for
-query-heavy work.
+Every SDL method authenticates with the management-console API token,
+sent as ``Authorization: Bearer <token>``. That single credential covers
+config read, config write, and log read.
 
 Credential resolution order (highest wins, applied last):
   1. Environment variables
@@ -29,19 +21,15 @@ Credential resolution order (highest wins, applied last):
   working without migration.
 
 Canonical keys:
-  SDL_XDR_URL            -> base_url  (e.g. https://xdr.us1.sentinelone.net)
-  SDL_LOG_READ_KEY       -> log_read_key      (query/numeric/facet/timeseries/powerQuery)
-  SDL_CONFIG_READ_KEY    -> config_read_key   (listFiles, getFile)
-  SDL_CONFIG_WRITE_KEY   -> config_write_key  (putFile and everything above)
-  S1_CONSOLE_API_TOKEN   -> console_api_token (mgmt-console JWT; works for
-                                               SDL query and config methods,
-                                               not raw-log ingestion. Same JWT used
-                                               by S1Client.)
+  S1_CONSOLE_URL         -> base_url is <console>/sdl
+  S1_CONSOLE_API_TOKEN   -> console_api_token (mgmt-console token; authorises
+                                               every SDL query and config
+                                               method. Same token used by
+                                               S1Client.)
   SDL_S1_SCOPE           -> s1_scope          (required with console token when multi-site/account)
   SDL_VERIFY_TLS         -> verify_tls        (default true)
 
 Deprecated aliases (still read but logged once):
-  SDL_BASE_URL           -> SDL_XDR_URL  (former canonical)
   S1_API_TOKEN           -> S1_CONSOLE_API_TOKEN  (former canonical)
   SDL_CONSOLE_API_TOKEN  -> S1_CONSOLE_API_TOKEN  (legacy duplicate, same JWT)
 
@@ -198,26 +186,13 @@ def _apply_sdl_keys(creds: Dict[str, Any], cfg: Dict[str, Any], source: str) -> 
     as mgmt console). Aliases: S1_API_TOKEN (former canonical),
     SDL_CONSOLE_API_TOKEN (legacy duplicate).
 
-    URL canonical: SDL_XDR_URL drives base_url. Alias: SDL_BASE_URL
+    base_url is derived from S1_CONSOLE_URL as <console>/sdl.
     (former canonical).
     """
     global _warned_legacy_token, _warned_legacy_url
-    # SDL XDR URL: canonical SDL_XDR_URL; alias SDL_BASE_URL.
-    xdr_url = creds.get("SDL_XDR_URL") or creds.get("SDL_BASE_URL")
-    if xdr_url:
-        cfg["base_url"] = xdr_url
-        if not creds.get("SDL_XDR_URL") and creds.get("SDL_BASE_URL") and not _warned_legacy_url:
-            import warnings as _w
-            _w.warn(
-                f"{source}: SDL_BASE_URL is deprecated, rename to SDL_XDR_URL",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            _warned_legacy_url = True
+    if creds.get("S1_CONSOLE_URL"):
+        cfg["base_url"] = creds["S1_CONSOLE_URL"].rstrip("/") + "/sdl"
     direct_map = {
-        "SDL_LOG_READ_KEY": "log_read_key",
-        "SDL_CONFIG_READ_KEY": "config_read_key",
-        "SDL_CONFIG_WRITE_KEY": "config_write_key",
         "SDL_S1_SCOPE": "s1_scope",
     }
     for env, field in direct_map.items():
@@ -281,13 +256,9 @@ def _load_config() -> Dict[str, Any]:
         _apply_sdl_keys(creds, cfg, label)
 
     # Highest priority: environment variables.
-    env_xdr_url = os.environ.get("SDL_XDR_URL") or os.environ.get("SDL_BASE_URL")
-    if env_xdr_url:
-        cfg["base_url"] = env_xdr_url
+    if os.environ.get("S1_CONSOLE_URL"):
+        cfg["base_url"] = os.environ["S1_CONSOLE_URL"].rstrip("/") + "/sdl"
     direct_env = {
-        "SDL_LOG_READ_KEY": "log_read_key",
-        "SDL_CONFIG_READ_KEY": "config_read_key",
-        "SDL_CONFIG_WRITE_KEY": "config_write_key",
         "SDL_S1_SCOPE": "s1_scope",
     }
     for env, field in direct_env.items():
@@ -312,11 +283,6 @@ class SDLClient:
     # Read-log methods fall back: log_read -> config_read -> config_write -> console
     # Config-read methods: config_read -> config_write -> console
     # Config-write methods: config_write -> console
-    KEY_CHAINS = {
-        "log_read": ("log_read_key", "config_read_key", "config_write_key", "console_api_token"),
-        "config_read": ("config_read_key", "config_write_key", "console_api_token"),
-        "config_write": ("config_write_key", "console_api_token"),
-    }
 
     def __init__(
         self,
@@ -333,17 +299,18 @@ class SDLClient:
         self.base_url = (base_url or cfg.get("base_url") or "").rstrip("/")
         if not self.base_url or "REPLACE-ME" in self.base_url:
             raise RuntimeError(
-                "SDL base_url is not set. Add SDL_XDR_URL to "
+                "SDL base_url is not set. Add S1_CONSOLE_URL to "
                 "$COWORK_WORKSPACE/credentials.json (or any "
-                "folder Cowork can access) or export SDL_XDR_URL."
+                "folder Cowork can access) or export S1_CONSOLE_URL."
             )
 
-        self.keys = {
-            "log_read_key": cfg.get("log_read_key") or "",
-            "config_read_key": cfg.get("config_read_key") or "",
-            "config_write_key": cfg.get("config_write_key") or "",
-            "console_api_token": cfg.get("console_api_token") or "",
-        }
+        self.token = cfg.get("console_api_token") or ""
+        if not self.token:
+            raise RuntimeError(
+                "S1_CONSOLE_API_TOKEN is not set. Add it to "
+                "$COWORK_WORKSPACE/credentials.json (or any "
+                "folder Cowork can access) or export S1_CONSOLE_API_TOKEN."
+            )
         self.s1_scope = cfg.get("s1_scope") or ""
         self.verify_tls = cfg.get("verify_tls", True) if verify_tls is None else verify_tls
         self.timeout = timeout or cfg.get("timeout_seconds", 30)
@@ -352,41 +319,18 @@ class SDLClient:
         self.session.headers.update({"Accept": "application/json"})
 
     # ------------------------------------------------------------------ auth
-    def _candidate_keys(self, chain_name: str) -> List[str]:
-        """Return every configured key from the chain for this method,
-        in chain order. Raises when none is configured."""
-        chain = self.KEY_CHAINS[chain_name]
-        candidates = [self.keys[field] for field in chain if self.keys.get(field)]
-        if not candidates:
-            raise RuntimeError(
-                f"No API key configured for chain '{chain_name}'. Tried {chain}. "
-                "Check $COWORK_WORKSPACE/credentials.json (or any "
-                "folder Cowork can access)."
-            )
-        return candidates
-
-    def _pick_key(self, chain_name: str) -> str:
-        """Return the first configured key from the chain for this method."""
-        return self._candidate_keys(chain_name)[0]
-
-    def _headers_for_token(self, token: str, content_type: str = "application/json") -> Dict[str, str]:
-        h = {"Authorization": f"Bearer {token}", "Content-Type": content_type}
-        # Console API tokens need S1-Scope when the user has access to multiple sites/accounts.
-        # We look up which field produced the token; only set the header if the token actually
-        # came from the console_api_token field AND a scope is configured.
-        if self.keys.get("console_api_token") == token and self.s1_scope:
+    def _auth_headers(self, content_type: str = "application/json") -> Dict[str, str]:
+        h = {"Authorization": f"Bearer {self.token}", "Content-Type": content_type}
+        # S1-Scope is required when the token has access to multiple sites/accounts.
+        if self.s1_scope:
             h["S1-Scope"] = self.s1_scope
         return h
-
-    def _auth_headers(self, chain_name: str, content_type: str = "application/json") -> Dict[str, str]:
-        return self._headers_for_token(self._pick_key(chain_name), content_type)
 
     # --------------------------------------------------------------- request
     def _request(
         self,
         method: str,
         path: str,
-        chain: str,
         json_body: Optional[Any] = None,
         data: Optional[Union[str, bytes]] = None,
         params: Optional[Dict[str, Any]] = None,
@@ -398,87 +342,61 @@ class SDLClient:
             path = "/" + path
         url = self.base_url + path
 
-        # Auth fallthrough: previously only the FIRST configured key in the
-        # chain was tried and a 401/403 was fatal, even when a later key
-        # (e.g. the console JWT) would have worked. Now an auth failure
-        # advances to the next candidate key; the last auth error is raised
-        # only when the chain is exhausted. Mirrors sdlFetch in
-        # s1-secops-mcp/lib/sdl.js.
-        candidates = self._candidate_keys(chain)
-        last_auth_error: Optional[SDLAPIError] = None
+        headers = self._auth_headers(content_type=content_type)
+        if extra_headers:
+            headers.update(extra_headers)
 
-        for token in candidates:
-            headers = self._headers_for_token(token, content_type=content_type)
-            if extra_headers:
-                headers.update(extra_headers)
-
-            attempt = 0
-            while True:
-                attempt += 1
-                try:
-                    resp = self.session.request(
-                        method.upper(),
-                        url,
-                        params=params,
-                        json=json_body if data is None else None,
-                        data=data,
-                        headers=headers,
-                        timeout=self.timeout,
-                        verify=self.verify_tls,
-                    )
-                except requests.exceptions.ProxyError as exc:
-                    raise SandboxProxyBlockedError(
-                        f"Sandbox proxy blocked HTTPS to {self.base_url}. "
-                        f"Use s1-secops-mcp MCP tools instead (sdl_get_file, sdl_put_file, "
-                        f"sdl_list_files, powerquery_run), which run locally "
-                        f"and bypass the sandbox proxy entirely. This is not a credential issue."
-                    ) from exc
-                status = resp.status_code
-                # Parse body once
-                try:
-                    body: Any = resp.json() if resp.content else {}
-                except ValueError:
-                    body = {"_raw": resp.text}
-
-                # SDL API treats 200 + status='error/server/backoff' as retryable.
-                sdl_status = body.get("status") if isinstance(body, dict) else None
-                retryable = (
-                    status == 429
-                    or 500 <= status < 600
-                    or (sdl_status and isinstance(sdl_status, str) and sdl_status.startswith("error/server/backoff"))
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                resp = self.session.request(
+                    method.upper(),
+                    url,
+                    params=params,
+                    json=json_body if data is None else None,
+                    data=data,
+                    headers=headers,
+                    timeout=self.timeout,
+                    verify=self.verify_tls,
                 )
-                if status < 400 and not (isinstance(sdl_status, str) and sdl_status.startswith("error/")):
-                    return body
-                if status in (401, 403):
-                    # Wrong-scoped key (e.g. a config key on a log-read
-                    # method returns 403 "does not grant View logs").
-                    # Remember the error and fall through to the next
-                    # candidate key in the chain.
-                    msg = ""
-                    if isinstance(body, dict):
-                        msg = body.get("message") or body.get("status") or ""
-                    if not msg:
-                        msg = resp.text[:500]
-                    last_auth_error = SDLAPIError(status, msg or f"status={sdl_status}", body)
-                    break
-                if retryable and attempt <= retries:
-                    wait = min(2 ** attempt, 30)
-                    ra = resp.headers.get("Retry-After")
-                    if ra and ra.isdigit():
-                        wait = int(ra)
-                    time.sleep(wait)
-                    continue
-                # non-retryable, non-auth failure
-                msg = ""
-                if isinstance(body, dict):
-                    msg = body.get("message") or body.get("status") or ""
-                if not msg:
-                    msg = resp.text[:500]
-                raise SDLAPIError(status, msg or f"status={sdl_status}", body)
+            except requests.exceptions.ProxyError as exc:
+                raise SandboxProxyBlockedError(
+                    f"Sandbox proxy blocked HTTPS to {self.base_url}. "
+                    f"Use s1-secops-mcp MCP tools instead (sdl_get_file, sdl_put_file, "
+                    f"sdl_list_files, powerquery_run), which run locally "
+                    f"and bypass the sandbox proxy entirely. This is not a credential issue."
+                ) from exc
+            status = resp.status_code
+            # Parse body once
+            try:
+                body: Any = resp.json() if resp.content else {}
+            except ValueError:
+                body = {"_raw": resp.text}
 
-        # Every candidate key was rejected with 401/403.
-        assert last_auth_error is not None
-        raise last_auth_error
+            # SDL API treats 200 + status='error/server/backoff' as retryable.
+            sdl_status = body.get("status") if isinstance(body, dict) else None
+            retryable = (
+                status == 429
+                or 500 <= status < 600
+                or (sdl_status and isinstance(sdl_status, str) and sdl_status.startswith("error/server/backoff"))
+            )
+            if status < 400 and not (isinstance(sdl_status, str) and sdl_status.startswith("error/")):
+                return body
+            if retryable and attempt <= retries:
+                wait = min(2 ** attempt, 30)
+                ra = resp.headers.get("Retry-After")
+                if ra and ra.isdigit():
+                    wait = int(ra)
+                time.sleep(wait)
+                continue
+            # non-retryable, non-auth failure
+            msg = ""
+            if isinstance(body, dict):
+                msg = body.get("message") or body.get("status") or ""
+            if not msg:
+                msg = resp.text[:500]
+            raise SDLAPIError(status, msg or f"status={sdl_status}", body)
 
     # =========================================================================
     # Log read (queries)
@@ -523,7 +441,7 @@ class SDLClient:
             body["priority"] = priority
         if team_emails:
             body["teamEmails"] = team_emails
-        return self._request("POST", "/api/query", chain="log_read", json_body=body)
+        return self._request("POST", "/api/query", json_body=body)
 
     def numeric_query(
         self,
@@ -553,7 +471,7 @@ class SDLClient:
             body["endTime"] = end_time
         if priority:
             body["priority"] = priority
-        return self._request("POST", "/api/numericQuery", chain="log_read", json_body=body)
+        return self._request("POST", "/api/numericQuery", json_body=body)
 
     def facet_query(
         self,
@@ -582,7 +500,7 @@ class SDLClient:
             body["endTime"] = end_time
         if priority:
             body["priority"] = priority
-        return self._request("POST", "/api/facetQuery", chain="log_read", json_body=body)
+        return self._request("POST", "/api/facetQuery", json_body=body)
 
     def timeseries_query(
         self,
@@ -599,7 +517,7 @@ class SDLClient:
         if not queries:
             raise ValueError("queries must be a non-empty list")
         return self._request(
-            "POST", "/api/timeseriesQuery", chain="log_read", json_body={"queries": queries}
+            "POST", "/api/timeseriesQuery", json_body={"queries": queries}
         )
 
     def power_query(
@@ -625,14 +543,14 @@ class SDLClient:
             body["priority"] = priority
         if team_emails:
             body["teamEmails"] = team_emails
-        return self._request("POST", "/api/powerQuery", chain="log_read", json_body=body)
+        return self._request("POST", "/api/powerQuery", json_body=body)
 
     # =========================================================================
     # Configuration files
     # =========================================================================
     def list_files(self) -> Dict[str, Any]:
         """POST /api/listFiles: list every configuration file path."""
-        return self._request("POST", "/api/listFiles", chain="config_read", json_body={})
+        return self._request("POST", "/api/listFiles", json_body={})
 
     def get_file(
         self,
@@ -650,7 +568,7 @@ class SDLClient:
             body["expectedVersion"] = expected_version
         if prettyprint:
             body["prettyprint"] = True
-        return self._request("POST", "/api/getFile", chain="config_read", json_body=body)
+        return self._request("POST", "/api/getFile", json_body=body)
 
     def put_file(
         self,
@@ -677,7 +595,7 @@ class SDLClient:
             body["content"] = content
             if prettyprint:
                 body["prettyprint"] = True
-        return self._request("POST", "/api/putFile", chain="config_write", json_body=body)
+        return self._request("POST", "/api/putFile", json_body=body)
 
     # =========================================================================
     # Helpers

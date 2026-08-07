@@ -231,7 +231,7 @@ All five `data` fields are required. `queryLang: "2.0"` is mandatory; omitting i
 - `disableAgentMitigation` is **not** part of the scheduled schema. Including it returns HTTP 400 `Unknown field`. Cloud-source PQ rules do not need it; mitigation actions are not supported on scheduled rules anyway.
 - `treatAsThreat: "Malicious"` is for events rules with EDR telemetry. Scheduled rules accept `treatAsThreat: "UNDEFINED"` (or omit) and `networkQuarantine: false`. The verdict surfaces via the rule's `severity`, not via mitigation.
 - New rules are created in `Draft` status regardless of the requested `status` in the POST. To enable, call `PUT /web/api/v2.1/cloud-detection/rules/enable` with `{"filter": {"ids": [...], "accountIds": [...]}}` after creation. The response transitions to `Activating` and then `Active` within the hour.
-- The PowerQuery in `scheduledParams.query` must NOT use `nolimit`, `compare`, or subqueries. The 1,000-row intermediate cap documented in the `sentinelone-powerquery` skill at `references/detection-rules.md` applies.
+- The PowerQuery in `scheduledParams.query` must NOT use `nolimit`, `compare`, or subqueries. The 1,000-row intermediate cap documented in the `powerquery` skill at `references/detection-rules.md` applies.
 
 **GET requires `isLegacy=false`**, without this query parameter, the list endpoint returns 0 results for scheduled rules even though they exist and are visible in the console UI. Always include it. **When listing all rules regardless of type (e.g. searching by name), always pass `isLegacy=false`, without it you will only see events-type rules and silently miss all scheduled rules:**
 
@@ -324,7 +324,7 @@ It enumerates every GET plus a curated allow-list of read-only query POSTs, reco
 - `references/endpoint_index.json`: compact machine-readable index (one entry per op). Used by `search_endpoints.py` but can be read directly if you need to filter programmatically.
 - `references/tags/<Tag>.md`: per-tag reference with parameters, descriptions, and required permissions. Load only the files you need.
 - `references/common_params.md`: shared query params (`skip`, `limit`, `cursor`, `sortBy`, etc.) and the pagination pattern.
-- `references/POWERQUERY_RECIPES.md`: PowerQuery / SDL query recipes tested on-tenant: indicator prevalence, PowerShell outbound to public IPs, failed-login triage, storyline activity summary, UAM-indicator SDL crosscheck, endpoint heartbeat. For full PQ language reference use the dedicated `sentinelone-powerquery` skill.
+- `references/POWERQUERY_RECIPES.md`: PowerQuery / SDL query recipes tested on-tenant: indicator prevalence, PowerShell outbound to public IPs, failed-login triage, storyline activity summary, UAM-indicator SDL crosscheck, endpoint heartbeat. For full PQ language reference use the dedicated `powerquery` skill.
 - `spec/swagger_2_1.json`, the original full Swagger spec (14 MB). Use only when the per-tag reference is insufficient, e.g. to resolve a deeply nested request-body schema by `$ref`. Never read this whole file into context.
 - `tests/test_ioc_lifecycle.py`: reversible CREATE → LIST → DELETE → VERIFY round-trip for Threat Intelligence IOCs. Uses a unique run-tag per invocation, scopes to a single account, and cleans up before exit. Covers the one "create content" path against the S1 detection surface.
 - `tests/test_alerts_dual_api.py`: dual-API round-trip for alerts: GraphQL list/detail/addNote/notes/deleteNote plus a parallel REST `/cloud-detection/alerts` read. Demonstrates that UAM GraphQL is the PRIMARY alert surface and REST is SECONDARY, with the note mutation cleaned up before exit (handles the `mgmt_note_id` propagation delay).
@@ -683,7 +683,7 @@ The helper does ALL of this for you, so there is nothing to remember:
 
 ### Step 3: for large windows / heavy aggregates, slice
 
-For ranges past 2-3 days with `event.type=*`-scale aggregates, slice the window and run slices in parallel. Full reference, measured perf (30d 574M-event aggregate lands in ~29s with two service-user JWTs), and the two-JWT runner recipe are in the `sentinelone-powerquery` skill at `references/lrq-api.md`. `run_pq` is the single-slice primitive underneath.
+For ranges past 2-3 days with `event.type=*`-scale aggregates, slice the window and run slices in parallel. Full reference, measured perf (30d 574M-event aggregate lands in ~29s with two service-user JWTs), and the two-JWT runner recipe are in the `powerquery` skill at `references/lrq-api.md`. `run_pq` is the single-slice primitive underneath.
 
 ### Step 3a (timeseries): prefer client-side day slicing over `timebucket(...)`
 
@@ -713,7 +713,7 @@ with cf.ThreadPoolExecutor(max_workers=3) as ex:   # 3rps user cap
     results = list(ex.map(lambda se: slice_day(c, base, *se), days))
 ```
 
-7 daily slices run in ~20s wall-clock (vs ~2 min for a 7d aggregate) and respect the per-user 3 rps cap. For hourly buckets over a 24h window use 24 slices at the same concurrency; for 30d use hourly slicing with 2 JWTs (see `sentinelone-powerquery` skill).
+7 daily slices run in ~20s wall-clock (vs ~2 min for a 7d aggregate) and respect the per-user 3 rps cap. For hourly buckets over a 24h window use 24 slices at the same concurrency; for 30d use hourly slicing with 2 JWTs (see `powerquery` skill).
 
 ### Step 3b: window-scaling playbook (performance by period)
 
@@ -722,7 +722,7 @@ with cf.ThreadPoolExecutor(max_workers=3) as ex:   # 3rps user cap
 | seconds to 1h | single `run_pq(hours=1)` | server returns in <5s |
 | 1h to 24h | single `run_pq(hours=24)` | 5-30s depending on filter selectivity |
 | 24h to 7d | single call OK for selective filters; for `event.type=*`-scale aggregates, 7 x 1d slices in parallel (max_workers=3) | single-call ~2 min; sliced ~20s |
-| 7d to 30d | mandatory slicing (daily buckets) + 2 JWTs | two-JWT runner in `sentinelone-powerquery` |
+| 7d to 30d | mandatory slicing (daily buckets) + 2 JWTs | two-JWT runner in `powerquery` |
 | 30d+ | hourly slicing + 2-3 JWTs, cache results | 574M-event aggregate at 30d = ~29s with two JWTs |
 
 ### Step 3c: LRQ response-shape gotchas (handled by `run_pq`)
@@ -1075,7 +1075,7 @@ python scripts/baseline_anomaly.py --source "FortiGate" --days 30 --stratify dow
 
 State is checkpointed to disk per source (`baseline_anomaly_<slug>_state.json`) so the script is resumable across runs; use this when working in environments with short shell budgets.
 
-PQ building blocks the script wraps live in the `sentinelone-powerquery` skill at `examples/behavioral-baselines.md`. Read that file when authoring the equivalent as a STAR / PowerQuery Alert detection rule body, the rule-body shape uses `lookup` against a pre-computed baseline table (from `savelookup`) instead of the script's two-window LRQ pattern.
+PQ building blocks the script wraps live in the `powerquery` skill at `examples/behavioral-baselines.md`. Read that file when authoring the equivalent as a STAR / PowerQuery Alert detection rule body, the rule-body shape uses `lookup` against a pre-computed baseline table (from `savelookup`) instead of the script's two-window LRQ pattern.
 
 ### When to re-run discovery
 
@@ -1221,7 +1221,7 @@ Action types observed: `singularity_response_trigger`, `manual_trigger`, `http_t
 
 Console operations use the `s1-secops-mcp` MCP tools, which bypass the Cowork sandbox proxy
 entirely. Use `s1_api_get`, `s1_api_post`, `uam_list_alerts`, `uam_get_alert`, `uam_set_status`,
-and other MCP tools directly instead of falling back to the `sentinelone-mgmt-console-api`
+and other MCP tools directly instead of falling back to the `mgmt-console-api`
 skill scripts. The MCP tools run locally on your machine and make direct HTTPS calls to
 `*.sentinelone.net` without proxy interference.
 
@@ -1230,5 +1230,5 @@ skill scripts. The MCP tools run locally on your machine and make direct HTTPS c
 - **Update in place:** `PUT /web/api/v2.1/cloud-detection/rules/{id}` requires the FULL body `{data, filter}`; omitting `filter` returns HTTP 400 "filter: Missing data for required field". PUT resets the rule to the body's `status` (typically Disabled), so re-enable afterward.
 - **Delete:** `DELETE /web/api/v2.1/cloud-detection/rules/{id}`, or bulk with `{"filter": {"ids": [...], "siteIds" | "accountIds": [...]}}`.
 - **List:** always pass `isLegacy=false` or scheduled / PowerQuery rules are silently omitted.
-- **Scheduled rules run on a pre-aggregated data layer**, so PowerQuery functions like `dataset`, `datasource`, `now`, `querystart`/`queryend`/`queryspan`, `topK`, `savelookup`, CIDR/wildcard `lookup`, `lookup` over a >10,000-row table, time-shifted `timebucket`, and `timebucket` < 30s are NOT available in a scheduled-rule body (full list in the `sentinelone-powerquery` skill). A detection needing any of them, e.g. an absent-pair anti-join (`left join` + `dataset`), runs as a Hyperautomation watchdog instead (see `sentinelone-hyperautomation`).
+- **Scheduled rules run on a pre-aggregated data layer**, so PowerQuery functions like `dataset`, `datasource`, `now`, `querystart`/`queryend`/`queryspan`, `topK`, `savelookup`, CIDR/wildcard `lookup`, `lookup` over a >10,000-row table, time-shifted `timebucket`, and `timebucket` < 30s are NOT available in a scheduled-rule body (full list in the `powerquery` skill). A detection needing any of them, e.g. an absent-pair anti-join (`left join` + `dataset`), runs as a Hyperautomation watchdog instead (see `hyperautomation`).
 - **Lookup-reading rules are account-scope only.** Lookup tables / datatables are ACCOUNT-level objects, so any rule whose PQ body reads one (`| lookup ... from <table>`) can only be created with `filter.accountIds`; site-scoped creation of lookup-reading rules is invalid.

@@ -24,9 +24,6 @@ If the source the dashboard is meant to cover does not appear, the dashboard can
 `| limit N` against a parser-emitted source returns only `timestamp + message`. PowerQuery has no `| columns *` or wildcard projection. To enumerate the actual queryable attributes a parser emits for a source, use the V1 query endpoint (`/api/query`, returns full event JSON) via the SDL client. Force-clear the scoped keys so auth falls through to the console JWT:
 
 ```python
-c.keys["log_read_key"]    = ""
-c.keys["config_read_key"] = ""
-c.keys["config_write_key"] = ""
 
 res = c.query(filter=f"dataSource.name=='{source}'", max_count=50, start_time="7d")
 attrs = sorted({k for m in res["matches"] for k in (m.get("attributes") or {}).keys()})
@@ -183,9 +180,6 @@ for tab in dashboard["tabs"]:
             panels.append({"tab": tab["tabName"], "title": g["title"], "style": g["graphStyle"], "query": g["query"]})
 
 c = SDLClient()
-c.keys["log_read_key"] = ""
-c.keys["config_read_key"] = ""
-c.keys["config_write_key"] = ""
 
 results = {}
 for p in panels:
@@ -289,7 +283,7 @@ Ingested source telemetry (XDR-attributed) renders under either scope, which is 
 
 The end-to-end engagement shape that produces clean deliverables:
 
-1. Load every relevant skill upfront (`sentinelone-sdl-dashboard`, `sentinelone-powerquery`, `sentinelone-sdl-api`, plus `pdf` / `docx` for deliverables). Loading mid-task wastes turns.
+1. Load every relevant skill upfront (`sdl-dashboard`, `powerquery`, `sdl-api`, plus `pdf` / `docx` for deliverables). Loading mid-task wastes turns.
 2. Session init in parallel: data-source enumeration query + alert / asset triage queries + `get_timestamp_range` in a single tool-call batch.
 3. Schema discovery for the target source. V1 query, dump fields to JSON, persist for the session.
 4. Identify discriminator fields. Run `group by event.type, <candidate-discriminator>` to confirm cardinality and partition behaviour.
@@ -662,7 +656,6 @@ For `app="HTTPS.BROWSER"`, `raw_app` becomes `"HTTPS.BROWSER"` and `app_name` be
 All attempts to embed a literal `"` in the format string (single-quoted outer, double-quoted outer, regex `/pattern/`) produce "Start quote with no matching end quote" or "Expected a quoted string". The engine treats `"` as a string delimiter regardless of quoting style. The two-pass workaround avoids this entirely.
 
 **Invoke the PowerQuery skill before authoring parse expressions.** The skill references official documentation and reaches the correct pattern faster than ad-hoc trial-and-error.
-
 
 ---
 

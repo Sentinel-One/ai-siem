@@ -208,7 +208,7 @@ this skill and the Mgmt Console API:
 - Triage the alerts the rules generate (UAM: `uam_list_alerts`, or `GET /cloud-detection/alerts`).
 - For noisy rules, open a PR that adds an exclusion (see the `custom-detection-exclusions`
   playbook) or tightens the query, review, merge, and the sync updates the live rule.
-- Track effectiveness over time with an SDL dashboard (the `sentinelone-sdl-dashboard` skill).
+- Track effectiveness over time with an SDL dashboard (the `sdl-dashboard` skill).
 - Optionally schedule a recurring drift check that lists live rules (`isLegacy=false`) and diffs
   them against the repo, so a console-side manual edit is caught and reconciled back into Git.
 
@@ -235,12 +235,12 @@ this skill and the Mgmt Console API:
 
 ## Dependencies (load as needed)
 
-- `sentinelone-mgmt-console-api` (or the `s1-secops-mcp` `s1_api_*` tools) for site resolution,
+- `mgmt-console-api` (or the `s1-secops-mcp` `s1_api_*` tools) for site resolution,
   the Custom Detection Rule API, and verification listing. The Custom Detection Rule schema and
   every gotcha above are confirmed there.
-- `sentinelone-powerquery` to author or validate the PowerQuery body of a scheduled rule, and
+- `powerquery` to author or validate the PowerQuery body of a scheduled rule, and
   S1QL for events/correlation rules.
-- `sentinelone-sdl-dashboard` for the optional effectiveness dashboard in Step 7.
+- `sdl-dashboard` for the optional effectiveness dashboard in Step 7.
 
 ## Assets
 

@@ -1,6 +1,6 @@
 # Example parsers: pick your starting point
 
-Each template targets a specific log shape. Copy the closest match, rename, edit, and validate via the `sentinelone-sdl-api` skill (see `../references/testing-workflow.md`).
+Each template targets a specific log shape. Copy the closest match, rename, edit, and validate via the `sdl-api` skill (see `../references/testing-workflow.md`).
 
 | File | Use when |
 |---|---|

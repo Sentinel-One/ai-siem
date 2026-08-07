@@ -14,45 +14,45 @@ See **[deploy/README.md](./deploy/README.md)** for the full deployment walkthrou
 
 | Group | Tool | Skill |
 |-------|------|-------|
-| PowerQuery | `powerquery_enumerate_sources` | sentinelone-powerquery |
-| PowerQuery | `powerquery_run` | sentinelone-powerquery |
-| PowerQuery | `powerquery_schema_discover` | sentinelone-powerquery |
-| Mgmt Console | `purple_ai_alert_summary` | sentinelone-mgmt-console-api |
-| Mgmt Console | `s1_api_delete` | sentinelone-mgmt-console-api |
-| Mgmt Console | `s1_api_get` | sentinelone-mgmt-console-api |
-| Mgmt Console | `s1_api_patch` | sentinelone-mgmt-console-api |
-| Mgmt Console | `s1_api_post` | sentinelone-mgmt-console-api |
-| Mgmt Console | `s1_api_put` | sentinelone-mgmt-console-api |
-| Mgmt Console | `uam_add_note` | sentinelone-mgmt-console-api |
-| Mgmt Console | `uam_get_alert` | sentinelone-mgmt-console-api |
-| Mgmt Console | `uam_list_alerts` | sentinelone-mgmt-console-api |
-| Mgmt Console | `uam_set_status` | sentinelone-mgmt-console-api |
-| SDL API | `sdl_delete_file` | sentinelone-sdl-api |
-| SDL API | `sdl_get_file` | sentinelone-sdl-api / sdl-dashboard / sdl-log-parser |
-| SDL API | `sdl_list_files` | sentinelone-sdl-api / sdl-dashboard / sdl-log-parser |
-| SDL API | `sdl_put_file` | sentinelone-sdl-api / sdl-dashboard / sdl-log-parser |
-| SDL API | `hec_ingest` | sentinelone-sdl-api / sdl-log-parser |
-| Hyperautomation | `ha_delete_workflow` | sentinelone-hyperautomation |
-| Hyperautomation | `ha_export_workflow` | sentinelone-hyperautomation |
-| Hyperautomation | `ha_get_workflow` | sentinelone-hyperautomation |
-| Hyperautomation | `ha_import_workflow` | sentinelone-hyperautomation |
-| Hyperautomation | `ha_list_workflows` | sentinelone-hyperautomation |
-| UAM Ingest | `uam_ingest_alert` | sentinelone-mgmt-console-api (UAM Alert Interface) |
-| UAM Ingest | `uam_post_alert` | sentinelone-mgmt-console-api (UAM Alert Interface) |
-| UAM Ingest | `uam_post_indicators` | sentinelone-mgmt-console-api (UAM Alert Interface) |
+| PowerQuery | `powerquery_enumerate_sources` | powerquery |
+| PowerQuery | `powerquery_run` | powerquery |
+| PowerQuery | `powerquery_schema_discover` | powerquery |
+| Mgmt Console | `purple_ai_alert_summary` | mgmt-console-api |
+| Mgmt Console | `s1_api_delete` | mgmt-console-api |
+| Mgmt Console | `s1_api_get` | mgmt-console-api |
+| Mgmt Console | `s1_api_patch` | mgmt-console-api |
+| Mgmt Console | `s1_api_post` | mgmt-console-api |
+| Mgmt Console | `s1_api_put` | mgmt-console-api |
+| Mgmt Console | `uam_add_note` | mgmt-console-api |
+| Mgmt Console | `uam_get_alert` | mgmt-console-api |
+| Mgmt Console | `uam_list_alerts` | mgmt-console-api |
+| Mgmt Console | `uam_set_status` | mgmt-console-api |
+| SDL API | `hec_ingest` | sdl-api / sdl-log-parser |
+| SDL API | `sdl_delete_file` | sdl-api |
+| SDL API | `sdl_get_file` | sdl-api / sdl-dashboard / sdl-log-parser |
+| SDL API | `sdl_list_files` | sdl-api / sdl-dashboard / sdl-log-parser |
+| SDL API | `sdl_put_file` | sdl-api / sdl-dashboard / sdl-log-parser |
+| Hyperautomation | `ha_delete_workflow` | hyperautomation |
+| Hyperautomation | `ha_export_workflow` | hyperautomation |
+| Hyperautomation | `ha_get_workflow` | hyperautomation |
+| Hyperautomation | `ha_import_workflow` | hyperautomation |
+| Hyperautomation | `ha_list_workflows` | hyperautomation |
+| UAM Ingest | `uam_ingest_alert` | mgmt-console-api (UAM Alert Interface) |
+| UAM Ingest | `uam_post_alert` | mgmt-console-api (UAM Alert Interface) |
+| UAM Ingest | `uam_post_indicators` | mgmt-console-api (UAM Alert Interface) |
 <!-- END AUTO-GENERATED TOOLS TABLE -->
 
 **2 resources:**
-- `sentinelone://soc-context` — `CLAUDE.md`, the Principal SOC Analyst operating instructions.
-- `sentinelone://credentials-status` — which credentials are configured and which API surfaces are available.
+- `sentinelone://soc-context`: `CLAUDE.md`, the Principal SOC Analyst operating instructions.
+- `sentinelone://credentials-status`: which credentials are configured and which API surfaces are available.
 
 **2 prompts:**
-- `soc_analyst` — embeds `CLAUDE.md` as a system prompt; call at session start.
-- `session_init` — structured init: enumerate sources + triage alerts in parallel.
+- `soc_analyst`: embeds `CLAUDE.md` as a system prompt; call at session start.
+- `session_init`: structured init: enumerate sources + triage alerts in parallel.
 
 ## Quick install
 
-Three paths, pick the one that matches your setup:
+For the end-user install paths (Docker quick start, npx/uvx, and team VM), see the canonical **[README Installation section](../../README.md#installation)**; credential keys and where to get them are in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section is the MCP-server-specific reference: the exact npm package and pin, the reproducible install script, and the Claude Desktop stdio bridge for a shared team VM. Three paths, pick the one that matches your setup:
 
 ### A. Local single-user via `npx` (Claude Desktop / Claude Code / Cowork)
 
@@ -65,15 +65,11 @@ Add this to `claude_desktop_config.json` (or `.mcp.json` for Claude Code):
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "npx",
-      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.2.4"],
+      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.3.1"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...",
         "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
-        "SDL_XDR_URL":          "https://xdr.us1.sentinelone.net",
-        "SDL_LOG_READ_KEY":     "...",
-        "SDL_CONFIG_READ_KEY":  "...",
-        "SDL_CONFIG_WRITE_KEY": "..."
       }
     }
   }
@@ -85,7 +81,7 @@ Restart Claude Desktop. `npx -y` caches the package on first launch.
 ### B. Reproducible: install script
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/pmoses-s1/claude-skills/main/s1-secops-mcp/deploy/install.sh | bash
 ```
 
 Sets up a per-user npm prefix if needed, installs the package, drops a credentials skeleton at `~/.config/sentinelone/credentials.json` (mode 0600), and prints the wiring instructions for Claude Desktop.
@@ -102,7 +98,7 @@ Each team member installs the script once:
 
 ```bash
 mkdir -p ~/.local/bin
-curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
+curl -fsSL https://raw.githubusercontent.com/pmoses-s1/claude-skills/main/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
   -o ~/.local/bin/s1-secops-mcp-bridge.mjs
 chmod +x ~/.local/bin/s1-secops-mcp-bridge.mjs
 ```
@@ -124,9 +120,11 @@ Then adds this block to `claude_desktop_config.json`:
 }
 ```
 
-Cmd+Q and reopen Claude Desktop. SentinelOne credentials live on the VM in `/etc/s1-secops-mcp/credentials.json` — only the bearer token sits in each user's local Claude config. Full setup + smoke-test instructions at [`deploy/bridge/README.md`](./deploy/bridge/README.md).
+Cmd+Q and reopen Claude Desktop. SentinelOne credentials live on the VM in `/etc/s1-secops-mcp/credentials.json`, only the bearer token sits in each user's local Claude config. Full setup + smoke-test instructions at [`deploy/bridge/README.md`](./deploy/bridge/README.md).
 
 ## Credentials
+
+Credential keys, where to get each one, and the two token types are documented canonically in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section adds the MCP-server-specific detail: which tools each key gates, and the server's full credential-resolution order.
 
 `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are sufficient for the PowerQuery, Mgmt Console REST, Purple AI summary, and UAM tools (16 of the 26).
 
@@ -139,15 +137,11 @@ Cmd+Q and reopen Claude Desktop. SentinelOne credentials live on the VM in `/etc
 | `S1_CONSOLE_URL` | Console URL, e.g. `https://usea1-acme.sentinelone.net` | All Mgmt + PowerQuery tools |
 | `S1_CONSOLE_API_TOKEN` | Mgmt Console API token (Settings → Users → Service Users) | All Mgmt + PowerQuery + UAM tools |
 | `S1_HEC_INGEST_URL` | HEC ingest host, e.g. `https://ingest.us1.sentinelone.net` | `uam_ingest_alert`, `uam_post_indicators`, `uam_post_alert`, `hec_ingest` |
-| `SDL_XDR_URL` | SDL tenant URL, e.g. `https://xdr.us1.sentinelone.net` | All `sdl_*` tools and `powerquery_schema_discover` |
-| `SDL_LOG_READ_KEY` | SDL Log Read key | SDL query operations |
-| `SDL_CONFIG_READ_KEY` | SDL Config Read key | `sdl_list_files`, `sdl_get_file` |
-| `SDL_CONFIG_WRITE_KEY` | SDL Config Write key | `sdl_put_file`, `sdl_delete_file` |
 
 ### Credential resolution order (highest priority wins)
 
 1. Environment variables (set in `claude_desktop_config.json` `env`, systemd `EnvironmentFile`, or your shell).
-2. `S1_CREDS_FILE` — explicit path to a JSON file (recommended for VM deployments and secret-store integrations).
+2. `S1_CREDS_FILE`: explicit path to a JSON file (recommended for VM deployments and secret-store integrations).
 3. `COWORK_WORKSPACE/credentials.json`.
 4. Walk-up from the current working directory looking for `credentials.json`.
 5. `~/mnt/<folder>/credentials.json` (Cowork workspace mounts).
@@ -187,8 +181,8 @@ Configuration via flags or environment variables:
 
 In HTTP mode the server exposes:
 
-- `POST /mcp` — accepts JSON-RPC, returns JSON-RPC. The MCP entry point.
-- `GET /healthz` — returns `200 ok`. For load balancer probes; no auth.
+- `POST /mcp`: accepts JSON-RPC, returns JSON-RPC. The MCP entry point.
+- `GET /healthz`: returns `200 ok`. For load balancer probes; no auth.
 
 ### Team auth: bearer tokens
 
@@ -218,7 +212,7 @@ Every authenticated HTTP request emits a structured stderr line that systemd cap
 
 ## Calling the HTTP endpoint directly
 
-You don't need an MCP client library. The HTTP transport is plain JSON-RPC 2.0 over `POST`, with bearer auth in the `Authorization` header. Any HTTP client works — `curl`, Python `requests`, Node `fetch`, Go `net/http`, etc. This is how you'd integrate from a custom script, a CI job, or a non-MCP tool that just needs to call SentinelOne via the same wrapped surface.
+You don't need an MCP client library. The HTTP transport is plain JSON-RPC 2.0 over `POST`, with bearer auth in the `Authorization` header. Any HTTP client works, `curl`, Python `requests`, Node `fetch`, Go `net/http`, etc. This is how you'd integrate from a custom script, a CI job, or a non-MCP tool that just needs to call SentinelOne via the same wrapped surface.
 
 > **Ready-made check:** [`scripts/smoke-test-http.sh`](./scripts/smoke-test-http.sh) runs the six contract checks documented below (healthz, initialize, tools/list, tools/call, bad-bearer 401, unknown-method JSON-RPC error) and prints PASS/FAIL. Run as `MCP_HOST=<host:port> MCP_BEARER=<token> bash s1-secops-mcp/scripts/smoke-test-http.sh`. Good for new-team-member onboarding and post-rotation validation.
 
@@ -409,9 +403,9 @@ curl -i -s -X POST "https://$HOST/mcp" \
 | 200 | (none, has `result`) | Success |
 | 200 | `-32601` | Method not found (e.g. typo in method name) |
 | 200 | `-32602` | Invalid params (tool not found, missing required arg) |
-| 200 | `-32603` | Tool handler threw — upstream S1 API error usually |
+| 200 | `-32603` | Tool handler threw: upstream S1 API error usually |
 | 400 | `-32700` | Parse error (malformed JSON body) |
-| 400 | `-32600` | Invalid request (e.g. JSON-RPC batch — not supported) |
+| 400 | `-32600` | Invalid request (e.g. JSON-RPC batch, not supported) |
 | 401 | `-32001` | Missing or invalid bearer token |
 | 405 | (none) | Wrong HTTP method on `/mcp` (only POST is accepted) |
 | 413 | `-32600` | Body exceeds 4 MB |
@@ -430,6 +424,13 @@ Every tool's input schema is documented in the `tools/list` response (look at th
 ```
 
 Parse `content[0].text` as JSON to get the actual data the tool returned. Tool-level errors set `isError: true` and put the error text in the same field.
+
+### Row / page limits (measured, not enforced)
+
+The `maxRows` (`powerquery_run`) and `first` (`uam_list_alerts`) parameters are soft client-side hints, not hard backend caps. Live-verified 2026-07-29:
+
+- `powerquery_run` `maxRows`: default 1000, but not a ceiling. The LRQ engine returns as many rows as the query's own `| limit N` asks for. A `| limit 20000` query with `maxRows: 20000` returned 20,000 rows in a single response. Set `maxRows` to match a large `| limit`; the practical ceiling is LRQ response size, not a fixed 5000. Prefer aggregating in the query (`| group ... | limit N`) over pulling tens of thousands of raw rows.
+- `uam_list_alerts` `first`: default 20, not enforced client-side. The UAM GraphQL backend accepts larger pages: `first: 500` returned 500 alerts with `pageInfo.hasNextPage: true`. Paginate with the returned `pageInfo.endCursor` via `after` rather than requesting one unbounded page.
 
 ## CLI reference
 
@@ -484,7 +485,6 @@ s1-secops-mcp/
 | Purple AI GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | UAM GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | UAM HEC ingest | `Authorization: Bearer <jwt>` | `S1_CONSOLE_API_TOKEN` |
-| SDL config ops | `Authorization: Bearer <key>` | `SDL_CONFIG_WRITE_KEY` or console JWT |
 
 ## Testing
 
@@ -494,9 +494,9 @@ npm test
 
 Three test suites under `tests/`:
 
-- `smoke.test.mjs` — introspects `ALL_TOOLS` directly, no spawning. Asserts 26 tools by name; catches any drift between code and the README regenerator.
-- `stdio-transport.test.mjs` — spawns the server in stdio mode, exercises `initialize`, `tools/list`, `resources/list`, `prompts/list`, and error handling.
-- `http-transport.test.mjs` — spawns in HTTP mode on a random ephemeral port, exercises `/healthz`, `POST /mcp`, both auth-required and auth-optional flows, and the env-var token fallback.
+- `smoke.test.mjs`: introspects `ALL_TOOLS` directly, no spawning. Asserts 26 tools by name; catches any drift between code and the README regenerator.
+- `stdio-transport.test.mjs`: spawns the server in stdio mode, exercises `initialize`, `tools/list`, `resources/list`, `prompts/list`, and error handling.
+- `http-transport.test.mjs`: spawns in HTTP mode on a random ephemeral port, exercises `/healthz`, `POST /mcp`, both auth-required and auth-optional flows, and the env-var token fallback.
 
 The smoke suite is the source of truth for the tool count and is what `scripts/regen-readme-tools-table.mjs` derives the README table from. If the table goes stale, `npm run regen:readme -- --check` fails CI; `npm run regen:readme` fixes it.
 
@@ -505,8 +505,8 @@ The smoke suite is the source of truth for the tool count and is what `scripts/r
 The `sentinelone://soc-context` resource and `soc_analyst` prompt load `CLAUDE.md` at server startup. Resolution order:
 
 1. `S1_CLAUDE_MD_PATH` env var (explicit absolute path).
-2. `<cwd>/CLAUDE.md` — your Cowork project folder, when launched from there.
-3. Same-dir / parent / grandparent of the server's `index.js` — when running from a git clone.
+2. `<cwd>/CLAUDE.md`: your Cowork project folder, when launched from there.
+3. Same-dir / parent / grandparent of the server's `index.js`: when running from a git clone.
 
 For npx installs without a CLAUDE.md nearby, set `S1_CLAUDE_MD_PATH` in the `env` block of `claude_desktop_config.json` to point at the one in your Cowork project folder. Restart Claude Desktop to pick up edits.
 

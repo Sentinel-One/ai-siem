@@ -77,10 +77,6 @@ sudo vim /etc/s1-secops-mcp/credentials.json
   "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
   "S1_CONSOLE_API_TOKEN": "eyJ...",
   "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
-  "SDL_XDR_URL":          "https://xdr.us1.sentinelone.net",
-  "SDL_LOG_READ_KEY":     "...",
-  "SDL_CONFIG_READ_KEY":  "...",
-  "SDL_CONFIG_WRITE_KEY": "..."
 }
 ```
 

@@ -35,7 +35,7 @@ Usage:
   python scripts/baseline_anomaly.py --source "<name>" --principal src.ip.address --action unmapped.action
   python scripts/baseline_anomaly.py --source "<name>" reset
 
-PQ building blocks the pipeline wraps live in the ``sentinelone-powerquery``
+PQ building blocks the pipeline wraps live in the ``powerquery``
 skill at ``examples/behavioral-baselines.md``. Read that file when authoring
 the equivalent as a STAR / PowerQuery Alert detection rule body.
 """

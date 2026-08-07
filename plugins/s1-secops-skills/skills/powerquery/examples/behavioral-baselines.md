@@ -5,7 +5,7 @@ detecting deviations from them. Source-agnostic, works on EDR, identity,
 network, cloud, email, or any custom log source ingested into SDL.
 
 For the runner, the source schema discovery, and the productionised
-end-to-end script, use `sentinelone-mgmt-console-api`'s
+end-to-end script, use `mgmt-console-api`'s
 `scripts/baseline_anomaly.py`. This document is the PQ building blocks.
 
 ## The pattern in one paragraph
@@ -304,7 +304,7 @@ dataSource.name = '<source>'
 | User asks for... | Use |
 |---|---|
 | "Write a baseline detection PQ" | This file (building blocks 1-5): paste the placeholders into PQ templates |
-| "Run a 30-day baseline for `<source>` end-to-end" | `sentinelone-mgmt-console-api` skill, `scripts/baseline_anomaly.py` |
-| "What field should I baseline on?" | `sentinelone-mgmt-console-api`, `scripts/inspect_source.py --source "<name>"` |
+| "Run a 30-day baseline for `<source>` end-to-end" | `mgmt-console-api` skill, `scripts/baseline_anomaly.py` |
+| "What field should I baseline on?" | `mgmt-console-api`, `scripts/inspect_source.py --source "<name>"` |
 | "Why does my baseline flag every Sunday?" | DoW stratification: section above |
 | "Author this as a STAR rule body" | `references/detection-rules.md` in this skill, plus the lookup pattern in section "Productionising" |

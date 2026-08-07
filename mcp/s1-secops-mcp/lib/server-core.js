@@ -94,7 +94,7 @@ const PROMPTS = [
 
 export const SERVER_INFO = {
   name: 's1-secops-mcp-server',
-  version: '1.2.4',
+  version: '1.3.1',
 };
 
 export const PROTOCOL_VERSION = '2024-11-05';
@@ -154,8 +154,7 @@ export async function dispatch(method, params, id) {
           },
           sdlApi: {
             configured: hasSdlCreds(),
-            xdrUrl: c.SDL_XDR_URL || 'NOT SET',
-            configWriteKey: !!c.SDL_CONFIG_WRITE_KEY,
+            tokenPresent: !!c.S1_CONSOLE_API_TOKEN,
           },
           uamIngestApi: {
             configured: hasHecCreds(),

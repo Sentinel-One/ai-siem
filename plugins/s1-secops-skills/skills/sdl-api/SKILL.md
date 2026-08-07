@@ -1,28 +1,28 @@
 ---
 name: sdl-api
 author: Prithvi Moses <prithvi.moses@sentinelone.com>
-description: Use whenever the user wants to read data and manage configuration through the SentinelOne Singularity Data Lake (SDL) API: run queries or manage configuration files (parsers, dashboards, alerts, lookups, datatables) on a Scalyr/SDL/XDR tenant. Trigger on "SDL", "SDL API", "Singularity Data Lake", "Scalyr", "DataSet", "xdr.us1.sentinelone.net" or any "*.sentinelone.net/api/*" URL, and on the method names "query", "powerQuery", "facetQuery", "timeseriesQuery", "numericQuery", "getFile", "putFile", "listFiles". Also trigger on tasks like "run a powerQuery", "list configuration files", "edit my parser via API", "deploy a dashboard JSON", "compute the rate of failures over time", or anything involving Log Read / Configuration Read / Configuration Write SDL keys, Bearer-token auth, or the S1-Scope header. Wraps every SDL method with a Python client and CLI.
+description: Use whenever the user wants to read data and manage configuration through the SentinelOne Singularity Data Lake (SDL) API: run queries or manage configuration files (parsers, dashboards, alerts, lookups, datatables) on a Scalyr/SDL/XDR tenant. Trigger on "SDL", "SDL API", "Singularity Data Lake", "Scalyr", "DataSet", "xdr.us1.sentinelone.net" or any "*.sentinelone.net/api/*" URL, and on the method names "query", "powerQuery", "facetQuery", "timeseriesQuery", "numericQuery", "getFile", "putFile", "listFiles". Also trigger on tasks like "run a powerQuery", "list configuration files", "edit my parser via API", "deploy a dashboard JSON", "compute the rate of failures over time", or anything involving SDL Bearer-token auth or the S1-Scope header. Wraps every SDL method with a Python client and CLI.
 ---
 
 # SentinelOne SDL API
 
 Wraps the Singularity Data Lake API (query and configuration-file methods) with a pre-built Python client, a CLI runner, and a per-method reference.
 
-The SDL API is distinct from the Management Console API. It speaks JSON over `Bearer` tokens (not `ApiToken`) and is the canonical path for querying the data lake and editing parsers/dashboards/alerts/lookups directly. Raw-log ingestion is via HEC (see the `sentinelone-mgmt-console-api` skill).
+The SDL API lives under `<console>/sdl` on the Management Console host. It speaks JSON over `Bearer` tokens (not `ApiToken`) and is the canonical path for querying the data lake and editing parsers/dashboards/alerts/lookups directly. Raw-log ingestion is via HEC (see the `mgmt-console-api` skill).
 
-> **Sandbox proxy blocked?** If calls to `*.sentinelone.net` (SDL host or console host) fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). The MCP server exposes `sdl_list_files`, `sdl_get_file`, `sdl_put_file`, and `sdl_delete_file`, running directly from your machine against the SDL API. Raw-log ingestion uses HEC (see `sentinelone-mgmt-console-api`), not this skill.
+> **Sandbox proxy blocked?** If calls to `*.sentinelone.net` (SDL host or console host) fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). The MCP server exposes `sdl_list_files`, `sdl_get_file`, `sdl_put_file`, and `sdl_delete_file`, running directly from your machine against the SDL API. Raw-log ingestion uses HEC (see `mgmt-console-api`), not this skill.
 
 ## IMPORTANT: query methods are deprecated, and LRQ is NOT available here
 
-The query methods on this skill (`query`, `powerQuery`, `facetQuery`, `timeseriesQuery`, `numericQuery`) wrap the V1 SDL endpoints (`/api/query`, `/api/powerQuery`, etc.) at the centralized host `xdr.us1.sentinelone.net`. Those endpoints are **deprecated and sunset on 2027-02-15** (also applies to the Deep Visibility `/web/api/v2.1/dv/events/pq` endpoint).
+The query methods on this skill (`query`, `powerQuery`, `facetQuery`, `timeseriesQuery`, `numericQuery`) wrap the V1 SDL endpoints (`/api/query`, `/api/powerQuery`, etc.) under `<console>/sdl`. Those endpoints are **deprecated and sunset on 2027-02-15** (also applies to the Deep Visibility `/web/api/v2.1/dv/events/pq` endpoint).
 
-**The LRQ API is NOT a replacement available through this skill.** LRQ runs at `POST /sdl/v2/api/queries` on the tenant's own **Management Console** host (e.g. `your-tenant.sentinelone.net`); it is part of the Mgmt Console API surface, not the SDL API (`xdr.us1.sentinelone.net`). To run PowerQueries programmatically, use the **`sentinelone-mgmt-console-api`** skill which holds the LRQ runner, auth pattern, and slicing strategy.
+**The LRQ API is NOT a replacement available through this skill.** LRQ runs at `POST /sdl/v2/api/queries` on the tenant's own **Management Console** host (e.g. `your-tenant.sentinelone.net`); it is part of the Mgmt Console API surface, not the SDL config/query API. To run PowerQueries programmatically, use the **`mgmt-console-api`** skill which holds the LRQ runner, auth pattern, and slicing strategy.
 
 **SDL dashboard panels do not use LRQ either.** Dashboard panel queries are executed by the SDL console's own built-in rendering engine when a user loads the dashboard in their browser. The panel JSON just stores the query string; no API call is needed. Do not attempt to test or run dashboard panel queries via LRQ.
 
 | Task | Correct skill / path |
 |------|------|
-| PowerQuery programmatically (any range) | **`sentinelone-mgmt-console-api`** → LRQ at `POST /sdl/v2/api/queries` on console host |
+| PowerQuery programmatically (any range) | **`mgmt-console-api`** → LRQ at `POST /sdl/v2/api/queries` on console host |
 | Dashboard panel queries | SDL console renders them in-browser: no API needed |
 | Quick one-off stats under 24h (deprecated) | V1 methods on this skill still work until 2027-02-15 |
 | `get_file` / `put_file` / `list_files` (parsers, dashboards, lookups) | **This skill** |
@@ -33,9 +33,7 @@ Drop a `credentials.json` file directly into your Cowork project folder with the
 
 ```json
 {
-  "SDL_XDR_URL":          "https://xdr.us1.sentinelone.net",
   "S1_CONSOLE_API_TOKEN": "eyJ...your-token...",
-  "SDL_CONFIG_WRITE_KEY": "0mXas6PD1Zvg..."
 }
 ```
 
@@ -45,26 +43,17 @@ The plugin's SessionStart hook auto-discovers the file at the start of every ses
 bash scripts/bootstrap_creds.sh   # idempotent, returns the destination path
 ```
 
-Each key type unlocks a specific set of methods (matrix below). The client walks the per-method key chain and, on a 401/403, advances to the next configured key in the chain, so a wrong-scoped key no longer dead-ends a call.
+`S1_CONSOLE_API_TOKEN` authorises every query and config method. Set `SDL_S1_SCOPE` if the token spans multiple sites or accounts. (Legacy alias `SDL_CONSOLE_API_TOKEN` is still recognised.)
 
-| Key | Methods unlocked |
-|-----|-----------------|
-| Log Read Access         | `query`, `numericQuery`, `facetQuery`, `timeseriesQuery`, `powerQuery` |
-| Configuration Read      | `getFile`, `listFiles`. Does NOT grant View Logs on the query methods (live-confirmed 403, see the auth caveat below). |
-| Configuration Write     | `putFile`, plus `getFile`, `listFiles`. Does NOT grant View Logs on the query methods either. |
-| `S1_CONSOLE_API_TOKEN` (mgmt-console JWT)  | All query + config methods; set `SDL_S1_SCOPE` if multi-site/account. Same JWT used by `S1Client`. (Legacy alias `SDL_CONSOLE_API_TOKEN` still recognised.) |
+Environment variables override the credentials file if set.
 
-Log-read methods therefore require `SDL_LOG_READ_KEY` or the console JWT; the config keys cannot substitute for them.
-
-Environment variables (`SDL_XDR_URL`, `S1_CONSOLE_API_TOKEN`, etc.) still override the credentials file if set.
-
-Before running anything, confirm `SDL_XDR_URL` is set and at least one key for the operation chain is present. If not, stop and ask the user to drop `credentials.json` into their Cowork project folder.
+Before running anything, confirm `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are set. If not, stop and ask the user to drop `credentials.json` into their Cowork project folder.
 
 ## Workflow
 
 When the user asks for something involving the SDL API:
 
-1. **Pick the method.** Check `references/methods.md` for the right call. For **configuration files** (`get_file`, `put_file`, `list_files`), this skill is the right tool. Raw-log ingestion is via HEC (see `sentinelone-mgmt-console-api`). For **queries**, use the V1 methods on this skill only for quick one-off stats under 24h; for anything programmatic or multi-day, switch to the **`sentinelone-mgmt-console-api`** skill and the LRQ API, LRQ is NOT available at the SDL API host (`xdr.us1.sentinelone.net`).
+1. **Pick the method.** Check `references/methods.md` for the right call. For **configuration files** (`get_file`, `put_file`, `list_files`), this skill is the right tool. Raw-log ingestion is via HEC (see `mgmt-console-api`). For **queries**, use the V1 methods on this skill only for quick one-off stats under 24h; for anything programmatic or multi-day, switch to the **`mgmt-console-api`** skill and the LRQ API, LRQ is NOT available on the SDL config/query surface.
 2. **Use the client.** `from sdl_client import SDLClient` then call the named method (`query`, `power_query`, `facet_query`, `timeseries_query`, `numeric_query`, `list_files`, `get_file`, `put_file`). The client picks the correct key, handles JSON encoding, retries 429/5xx/`error/server/backoff`, and returns parsed JSON. Note: `query` and `power_query` hit the deprecated V1 endpoints; they work until 2027-02-15 for quick lookups but should not be used for production query pipelines.
 3. **For ad-hoc shots, use the CLI.** `python scripts/sdl_cli.py <method> [args]`. The CLI mirrors the client.
 4. **Summarize for the user.** Don't dump raw JSON unless asked. For query results, prefer a concise table or CSV; for ingestion, confirm `bytesCharged` and the session ID; for config files, show path + version + (truncated) content.
@@ -94,25 +83,13 @@ which defeats the purpose of discovery.
 JSON with every populated attribute keyed in an `attributes` dict. That's the
 only built-in way to see what fields a source actually carries.
 
-**Auth caveat:** the V1 `query` method requires Log Read permission. The
-default credential chain is
-`log_read_key → config_read_key → config_write_key → console_api_token`. If
-your `credentials.json` has `SDL_CONFIG_WRITE_KEY` set but no
-`SDL_LOG_READ_KEY`, the chain picks the config write key first, which does
-NOT grant View Logs and returns
-`HTTP 403: authorization token does not grant View logs permission`.
-
-The current `SDLClient` handles this automatically: on a 401/403 it advances
-to the next configured key in the chain (ending at the console JWT) and only
-raises when the whole chain is exhausted. On older client versions,
-force-clear the scoped keys so the chain falls through to the console JWT:
+`SDLClient` authenticates every method with `S1_CONSOLE_API_TOKEN`, which
+carries Log Read as well as config permissions, so no per-method credential
+selection is needed.
 
 ```python
 from sdl_client import SDLClient
 c = SDLClient()
-c.keys["log_read_key"] = ""
-c.keys["config_read_key"] = ""
-c.keys["config_write_key"] = ""
 
 schemas = {}
 for source in all_sources_from_step1_enumeration:
@@ -149,7 +126,6 @@ sdk_dir = [p for p in result.stdout.strip().split("\n") if "claude-skills" in p]
 sys.path.insert(0, sdk_dir)
 from sdl_client import SDLClient
 c = SDLClient()
-c.keys["log_read_key"] = c.keys["config_read_key"] = c.keys["config_write_key"] = ""
 # SDLClient.query(...) / put_file(...) / get_file(...) here
 ```
 
@@ -172,14 +148,13 @@ Prefer numeric OCSF for filters; the string `severity_` is case-mixed
 
 ## HEC ingestion, simulating events for detection testing
 
-Raw-log ingestion runs through HEC (the `hec_ingest` tool; `POST {S1_HEC_INGEST_URL}/services/collector`, client documented with `sentinelone-mgmt-console-api`). When injecting events into the data lake to validate a detection, these behaviours are confirmed live (2026-07):
+Raw-log ingestion runs through HEC (the `hec_ingest` tool; `POST {S1_HEC_INGEST_URL}/services/collector`, client documented with `mgmt-console-api`). When injecting events into the data lake to validate a detection, these behaviours are confirmed live (2026-07):
 
 - **Use flat dotted keys, not nested JSON.** With `/event?isParsed=true`, nested OCSF such as `{"event":{"category":"firewall"}}` dropped `event.category` (read back null, since `event.*` is a reserved namespace). The flat key `{"event.category":"firewall"}` landed correctly. Flat dotted keys reliably populate arbitrary OCSF fields (`src.ip.address`, `dst.ip.address`, `threat.category`, ...) and even EDR-style S1QL column names (`EventType`, `TgtProcName`, `LogonResult`) as literal, queryable attributes. `dataSource.name` / `.category` / `.vendor` set via flat keys stick (e.g. `dataSource.category` stays `security`).
-- **HEC data can drive all three custom-rule types.** On an AI-SIEM tenant, `events` and `correlation` STAR rules evaluate HEC-ingested data (both fired from HEC events in testing), not only EDR-agent telemetry, and `scheduled` PowerQuery rules run over the same data lake. So HEC ingest of flat-key events is a working way to end-to-end test any of the three custom detection rule types. See the Detection-as-Code playbook in `sentinelone-sdl-solutions`.
+- **HEC data can drive all three custom-rule types.** On an AI-SIEM tenant, `events` and `correlation` STAR rules evaluate HEC-ingested data (both fired from HEC events in testing), not only EDR-agent telemetry, and `scheduled` PowerQuery rules run over the same data lake. So HEC ingest of flat-key events is a working way to end-to-end test any of the three custom detection rule types. See the Detection-as-Code playbook in `sdl-solutions`.
 
 ## Files in this skill
 
-- `<project folder>/credentials.json`: credentials (set `SDL_XDR_URL` and the keys you need; see Setup above). Auto-discovered by the plugin's SessionStart hook.
 - `scripts/bootstrap_creds.sh`: idempotent helper that copies workspace creds into the sandbox-local path. Wired to the plugin's SessionStart hook; safe to re-run manually.
 - `scripts/sdl_client.py`: importable Python client (`SDLClient`). Picks the right key per method, retries with exponential backoff, exposes ergonomic method names.
 - `scripts/sdl_cli.py`: CLI runner: `python scripts/sdl_cli.py power-query "dataset='accesslog' | group count() by status" --start 1h`.
@@ -228,9 +203,7 @@ c.put_file("/logParsers/Stale", delete=True)
 
 Every request sets `Authorization: Bearer <token>`. The client picks the key per method using these chains (first non-empty wins):
 
-- `log_read`:    `log_read_key` → `config_read_key` → `config_write_key` → `console_api_token`
-- `config_read`: `config_read_key` → `config_write_key` → `console_api_token`
-- `config_write` (putFile): `config_write_key` → `console_api_token`
+Every method authenticates with `S1_CONSOLE_API_TOKEN`.
 
 If a `console_api_token` is used and the user has access to multiple sites or accounts, set `s1_scope` (e.g. `"<account_id>:<site_id>"` for site scope, `"<account_id>"` for account scope). The client adds `S1-Scope` automatically when both conditions hold.
 
@@ -258,12 +231,12 @@ There is no undo. Configuration files are versioned but accidental deletes still
 
 ## Common high-value workflows
 
-- **Hunt with PowerQuery.** Use the **`sentinelone-mgmt-console-api`** skill, which holds the LRQ runner at `POST /sdl/v2/api/queries` on your console host. LRQ is NOT reachable via the SDL API (`xdr.us1.sentinelone.net`). This skill's `c.power_query()` hits the deprecated V1 endpoint and should only be used for a quick ad-hoc one-off before 2027-02-15.
+- **Hunt with PowerQuery.** Use the **`mgmt-console-api`** skill, which holds the LRQ runner at `POST /sdl/v2/api/queries` on your console host. LRQ is NOT reachable via the SDL API (`xdr.us1.sentinelone.net`). This skill's `c.power_query()` hits the deprecated V1 endpoint and should only be used for a quick ad-hoc one-off before 2027-02-15.
 - **Promote a parser/dashboard.** `get_file("/logParsers/Foo")` from staging → `put_file("/logParsers/Foo", content=..., expected_version=N)` on production. The `expected_version` guard catches concurrent edits. (Parser path is `/logParsers/`, `/parsers/` is API-accepted but not UI-visible.)
 - **Audit configuration drift.** `list_files()` then `get_file()` for each path; diff against a checked-in copy.
 - **Quick stats panel.** `facet_query(field="srcIp", filter="status >= 500", start_time="1h")` returns the top offenders fast.
 
-For complex hunts and detection authoring use the `sentinelone-powerquery` skill for the query body, then call `c.power_query()` from this skill to execute it. For Mgmt Console resources (agents, threats, sites) use `sentinelone-mgmt-console-api`.
+For complex hunts and detection authoring use the `powerquery` skill for the query body, then call `c.power_query()` from this skill to execute it. For Mgmt Console resources (agents, threats, sites) use `mgmt-console-api`.
 
 ## Using s1-secops-mcp tools for direct SDL operations
 

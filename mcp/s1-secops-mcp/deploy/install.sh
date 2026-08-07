@@ -155,11 +155,7 @@ if [[ ! -f "$CRED_PATH" ]]; then
 {
   "S1_CONSOLE_URL":       "https://usea1-acme.sentinelone.net",
   "S1_CONSOLE_API_TOKEN": "REPLACE_WITH_API_TOKEN",
-  "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
-  "SDL_XDR_URL":          "https://xdr.us1.sentinelone.net",
-  "SDL_LOG_READ_KEY":     "",
-  "SDL_CONFIG_READ_KEY":  "",
-  "SDL_CONFIG_WRITE_KEY": ""
+  "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net"
 }
 EOF
   chmod 600 "$CRED_PATH"

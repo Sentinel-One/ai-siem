@@ -82,5 +82,17 @@ strip_tree "$TMP_PLUGIN"
 mkdir -p "$DIST_DIR"
 cp "$TMP_DIST"/*.skill "$TMP_DIST"/*.plugin "$DIST_DIR/"
 
+# Always drop superseded versioned plugin files so dist/ carries exactly one
+# .plugin (the current version). Rebuilding the SAME version overwrites in
+# place; a version bump would otherwise leave the old file sitting next to
+# the new one until someone remembered --clean.
+for old_plugin in "$DIST_DIR"/s1-secops-skills-v*.plugin; do
+    [ -e "$old_plugin" ] || continue
+    if [[ "$(basename "$old_plugin")" != "$PLUGIN_FILENAME" ]]; then
+        echo "  Removing superseded $(basename "$old_plugin")"
+        rm -f "$old_plugin"
+    fi
+done
+
 echo "Done. Contents of dist/:"
 ls -lh "$DIST_DIR"

@@ -288,9 +288,7 @@ Most first-run failures are Docker not running or a token that didn't propagate.
 
 ### 401 / 403 errors
 
-- **Wrong region URL.** `S1_CONSOLE_URL`, `S1_HEC_INGEST_URL`, and `SDL_XDR_URL` are region-specific. Cross-check against the [Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) article.
 - **Token scope too low.** Read operations need Viewer or higher; response actions need IR Team or higher.
-- **Wrong key for the operation.** `SDL_CONFIG_WRITE_KEY` does NOT grant View Logs access; using it for a query returns 403. The console JWT works for SDL config and query operations on Mgmt Z SP5+ and is the Bearer for HEC log ingest (`hec_ingest`); the dedicated `SDL_CONFIG_WRITE_KEY` is only needed for parser/dashboard `putFile`.
 
 ### Plugin upload failed
 

@@ -1,6 +1,6 @@
 ---
 name: hyperautomation
-author: Prithvi Moses <prithvi.moses@sentinelone.com>
+author: Prithvi Moses <prithvi.moses@sentinelone.com>, Marco Rottigni <marco.rottigni@sentinelone.com>
 description: >-
   Use this skill whenever a user wants to create, design, build, generate, write, or export
   a SentinelOne Hyperautomation workflow in JSON format. Triggers: any mention of
@@ -99,7 +99,20 @@ configure connections for these in your Hyperautomation → Integrations section
 
 Integration-backed actions have `"tag": "integration"` and a non-null `integration_id`.
 Core actions (Variable, Loop, Condition, Delay, Send Email, HTTP Request without integration,
-Break Loop, Snippet, Wait for Slack, Create Interaction) have `"tag": "core_action"`.
+Break Loop, Snippet, Wait for Slack, Create Interaction, LLM) have `"tag": "core_action"`.
+
+**Packaged vs ad-hoc integration actions.** Every built-in integration ships an action pack. A
+packaged action carries `data.public_action_id` (a pack UUID) and a pre-filled `data.url_path`;
+an ad-hoc action has `public_action_id: null` and a URL you write yourself. In production, 71%
+of `http_request` steps (3,822 of 5,418) use a packaged action. **Prefer a packaged action when
+one exists** and keep `url`, `url_path` and `public_action_id` consistent.
+
+The action packs are not queryable: `GET /integrations/{id}` returns connection and auth metadata
+only, `/integrations/{id}/actions` is 404, and there is no `GET /integrations` list endpoint (405).
+So use `references/integration-catalog.md`, which records all 266 packaged actions across 45
+integrations plus the ad-hoc calls, mined from a live tenant. To see what a specific console has,
+enumerate with `GET /hyper-automate/api/v1/connections/scope` and resolve each distinct
+`integration_id` via `GET /hyper-automate/api/v1/integrations/{id}`.
 
 ### Step 3: Generate the JSON
 
@@ -166,7 +179,8 @@ A workflow imported or created via the API is a **Private Draft owned by the tok
 |------|-------------|
 | `references/workflow-schema.md` | Always when generating JSON: defines the envelope and action structure |
 | `references/building-blocks.md` | Need the exact shape of a specific action type (trigger, loop, condition, etc.) |
-| `references/building-blocks-catalog.md` | **Picking what to use** for a given step / composing multi-action idioms / bootstrapping a SOAR recipe. Mined from 643 active production workflows. Read FIRST when designing a new workflow. |
+| `references/building-blocks-catalog.md` | **Picking what to use** for a given step / composing multi-action idioms / bootstrapping a SOAR recipe. Mined from 1,205 production workflows (17,899 action steps). Read FIRST when designing a new workflow. |
+| `references/integration-catalog.md` | **Which integrations exist and what actions each one offers.** 62 built-in + 52 custom integrations resolved live, with all 266 packaged actions (`public_action_id`, method, path) plus observed ad-hoc calls. Read when the user names a third-party product ("open a Jira ticket", "block on the Palo Alto", "post to Teams") and you need the real action or endpoint shape. Also documents the integration-enumeration API. |
 | `references/functions-reference.md` | Using `{{Function.X()}}` syntax or PowerQuery patterns |
 | `references/validation-rules.md` | Before outputting any workflow: run the checklist |
 | `references/api-integration.md` | User wants to import/export/submit to a live console |
@@ -196,11 +210,17 @@ table to jump straight to the right starting point:
 
 **Reuse via snippets is the default for shared logic.** Whenever the same action graph would appear in more than one workflow (a response action, a notification, a poll loop), build it once as a snippet and call it with a `snippet_20` node instead of duplicating it. See `references/snippets.md`.
 
-When in doubt, the load-bearing 17 atoms are:
+The 19 action types **observed in production** (1,244 workflows across 7 tenants) are:
 `http_request`, `variable`, `condition`, `loop`, `singularity_response_trigger`,
-`data_formation`, `send_email`, `snippet`, `break_loop`, `manual_trigger`, `wait_for_slack`,
-`delay`, `http_trigger`, `scheduled_trigger`, `create_interaction`, `wait_for_interaction`,
-`email_trigger`. Anything outside this set is exotic; confirm it exists before generating.
+`send_email`, `break_loop`, `data_formation`, `manual_trigger`, `snippet`, `delay`,
+`wait_for_slack`, `http_trigger`, `scheduled_trigger`, `create_interaction`,
+`wait_for_interaction`, `llm`, `email_trigger`, `snippet_20`.
+
+This is an **observed** list, not the product's declared list, and there is no API that returns
+the declared one. One known gap: the S-26.2 docs describe a **SQL action** (PostgreSQL, MySQL,
+MSSQL) that appears in zero workflows in the corpus, so its JSON `type` string is unverified.
+Before emitting an action type outside the 19, confirm it by building one in the console UI and
+exporting the workflow to read its `type`. Do not guess the string.
 
 > **Snippet node types.** *Calling* a snippet from a workflow uses a `snippet_20` node (not `snippet`). *Authoring* a snippet uses a `snippet_trigger` (inputs) + `snippet_output` (returns) in place of a normal trigger. See `references/snippets.md`.
 
@@ -208,7 +228,7 @@ When in doubt, the load-bearing 17 atoms are:
 
 Annotated real examples to use as structural references:
 
-- `references/building-blocks-catalog.md`: patterns mined from 643 active production workflows. Atomic node shapes (Section A), composite idioms such as condition branches with success/fail notes, loops with APPEND and BREAK logic, and integration-backed HTTP requests with connection placeholders (Section B), plus full use-case recipes (Section C) and anti-patterns (Section E).
+- `references/building-blocks-catalog.md`: patterns mined from 1,205 production workflows. Atomic node shapes (Section A), composite idioms such as condition branches with success/fail notes, loops with APPEND and BREAK logic, and integration-backed HTTP requests with connection placeholders (Section B), plus full use-case recipes (Section C) and anti-patterns (Section E).
 - `references/snippets.md`: authoring and calling reusable snippets, with worked `snippet_trigger`, `snippet_output`, and `snippet_20` node shapes.
 - `references/autonomous-soc-template.md`: the canonical end-to-end investigate-decide-respond workflow template.
 
@@ -377,7 +397,7 @@ Some detection logic cannot run as a PowerQuery **scheduled** Custom Detection r
 rules run on a pre-aggregated data layer where functions like `dataset`, `datasource`, `now`,
 `querystart` / `queryend` / `queryspan`, `topK`, `savelookup`, CIDR/wildcard `lookup`, `lookup` over a
 >10,000-row table, time-shifted `timebucket`, and `timebucket` < 30s are unavailable (full list in the
-`sentinelone-powerquery` skill). The classic case is enumerating **absent** rows, a pair present in a
+`powerquery` skill). The classic case is enumerating **absent** rows, a pair present in a
 baseline but with zero events in the live window, which needs a `left join` + `dataset` anti-join.
 
 The **alternate is an HA watchdog**: a scheduled (or manual / run-now) workflow that
@@ -401,7 +421,7 @@ at a time.
 
 Workflow import, export, and listing use the `s1-secops-mcp` MCP server, which bypasses the
 Cowork sandbox proxy entirely. Use `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`,
-and `ha_export_workflow` directly instead of falling back to the `sentinelone-mgmt-console-api`
+and `ha_export_workflow` directly instead of falling back to the `mgmt-console-api`
 skill scripts. The MCP server runs locally on your machine and makes direct HTTPS calls to
 `*.sentinelone.net` without proxy interference.
 
@@ -411,7 +431,7 @@ skill scripts. The MCP server runs locally on your machine and makes direct HTTP
   on a site-scoped tenant it returns the misleading `403 "Insufficient permissions"`, not a role
   problem. For a site-scoped deploy, call the REST endpoint directly with the scope param:
   `POST /web/api/v2.1/hyper-automate/api/public/workflow-import-export/import?siteIds=<id>` with
-  body `{"data": <workflow>}` (e.g. via the `sentinelone-mgmt-console-api` POST helper). For an
+  body `{"data": <workflow>}` (e.g. via the `mgmt-console-api` POST helper). For an
   account-level deploy use the same public endpoint with `?accountIds=<acct>`; the v1
   `/workflow-import-export/import?_scopeId=<acct>&_scopeLevel=account` path returns `403`. Same
   scope rule applies to `activation`, `deactivate`, `publish`, and `DELETE`, append

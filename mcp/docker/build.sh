@@ -18,14 +18,15 @@ set -euo pipefail
 # The version of THIS image. Independent of the underlying MCP versions
 # below, bump this when the image content (Dockerfile, dispatcher, bundled
 # CLAUDE.md) changes, even if all three MCP pins stay the same.
-IMAGE_VERSION="${IMAGE_VERSION:-1.2.5}"
+IMAGE_VERSION="${IMAGE_VERSION:-1.3.1}"
 
 # ── Pinned MCP versions ──────────────────────────────────────────────────────
-S1_MCP_VERSION="${S1_MCP_VERSION:-1.2.4}"
+S1_MCP_VERSION="${S1_MCP_VERSION:-1.3.1}"
 VT_MCP_PACKAGE="${VT_MCP_PACKAGE:-@burtthecoder/mcp-virustotal}"
 VT_MCP_VERSION="${VT_MCP_VERSION:-1.0.21}"
 # purple-mcp v0.7.0 (2026-06-26). Pinned to the release commit, not a floating
-# branch, per upstream security guidance. Keep in sync with mcp/docker/README.md.
+# branch, per upstream's security guidance. Bump this to the newest release tag's
+# commit when refreshing; keep it in sync with the GHA workflow env block.
 PURPLE_MCP_REF="${PURPLE_MCP_REF:-07d4992089b10affff6163f296b1f6cb5734539f}"
 
 # ── Image identity ───────────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ echo "Image:         ${REGISTRY}/${IMAGE_NAME}:${TAG}"
 echo "Image version: ${IMAGE_VERSION}"
 echo "Platforms:     ${PLATFORMS}"
 echo "MCP pins:"
-echo "  sentinelone-mcp:   ${S1_MCP_VERSION}"
+echo "  s1-secops-mcp:   ${S1_MCP_VERSION}"
 echo "  ${VT_MCP_PACKAGE}: ${VT_MCP_VERSION}"
 echo "  purple-mcp ref:    ${PURPLE_MCP_REF}"
 echo "Build date: ${BUILD_DATE}"

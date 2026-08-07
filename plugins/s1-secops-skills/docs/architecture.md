@@ -120,10 +120,10 @@ S1_CONSOLE_API_TOKEN  ──► S1 Mgmt REST API    (Authorization: ApiToken <jw
                       ──► LRQ PowerQuery       (Authorization: Bearer <jwt>)
                       ──► HEC log ingest       (Authorization: Bearer <jwt>, host S1_HEC_INGEST_URL)
 
-SDL_CONFIG_WRITE_KEY  ──► SDL putFile          (Authorization: Bearer <key>)
+S1_CONSOLE_API_TOKEN  ──► SDL putFile          (Authorization: Bearer <token>)
 ```
 
-The console JWT (`S1_CONSOLE_API_TOKEN`) grants access to SDL config and query operations from Management version Z SP5+, and is also the Bearer used for HEC log ingest (`hec_ingest`, posted to `S1_HEC_INGEST_URL`). The dedicated `SDL_CONFIG_WRITE_KEY` is only needed for parser/dashboard deployment (`sdl_put_file`).
+`S1_CONSOLE_API_TOKEN` authorises every SDL operation, config read, config write and log read, and is also the Bearer used for HEC log ingest.
 
 Credential resolution order (highest priority first):
 

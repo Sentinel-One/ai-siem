@@ -2,7 +2,7 @@
 
 9 endpoints.
 
-**All query endpoints in this tag are deprecated and sunset on 2027-02-15.** Use the Long Running Query (LRQ) tag instead: `POST /sdl/v2/api/queries` with `queryType="LOG"` (S1QL) or `queryType="PQ"` (PowerQuery), poll `GET /sdl/v2/api/queries/{id}` echoing the `X-Dataset-Query-Forward-Tag` response header, DELETE when done. Auth is Bearer, not ApiToken. See `tags/Long_Running_Query.md` and the `sentinelone-powerquery` skill for the canonical runner. `GET /dv/fetch-file` (file download) is the only endpoint in this tag that is not deprecated.
+**All query endpoints in this tag are deprecated and sunset on 2027-02-15.** Use the Long Running Query (LRQ) tag instead: `POST /sdl/v2/api/queries` with `queryType="LOG"` (S1QL) or `queryType="PQ"` (PowerQuery), poll `GET /sdl/v2/api/queries/{id}` echoing the `X-Dataset-Query-Forward-Tag` response header, DELETE when done. Auth is Bearer, not ApiToken. See `tags/Long_Running_Query.md` and the `powerquery` skill for the canonical runner. `GET /dv/fetch-file` (file download) is the only endpoint in this tag that is not deprecated.
 
 ## `POST /web/api/v2.1/dv/cancel-query`
 **[DEPRECATED] Cancel Running Query**

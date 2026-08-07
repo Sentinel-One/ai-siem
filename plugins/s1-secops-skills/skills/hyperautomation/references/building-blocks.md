@@ -4,7 +4,7 @@ Complete data payloads for every action type in SentinelOne Hyperautomation.
 
 > **See also**: `building-blocks-catalog.md`, same atoms, organized by *when to reach for
 > them*, with composite patterns (success/fail branch, pagination loop, hash enrichment),
-> end-to-end SOAR recipes, and anti-patterns. Mined from 643 active production workflows.
+> end-to-end SOAR recipes, and anti-patterns. Mined from 1,205 production workflows.
 > Use this file (`building-blocks.md`) for the field-by-field schema; use the catalog when
 > you need to *compose* a workflow.
 
@@ -591,6 +591,44 @@ Reference interaction ID: `{{create-interaction.interaction_id}}`.
 ```
 Reference response: `{{wait-for-slack.body}}`, `{{wait-for-slack.timeout}}`,
 `{{wait-for-slack.body.actions[0].value}}`
+
+### LLM (native AI action)
+
+A first-class core action, **not** an OpenAI/Anthropic `http_request` and **not**
+integration-backed. It needs no connection: `integration_id`, `connection_id` and
+`connection_name` are all `null` and `use_connection_name` is `false`.
+
+```json
+{
+  "type": "llm",
+  "tag": "core_action",
+  "connection_id": null,
+  "connection_name": null,
+  "use_connection_name": false,
+  "integration_id": null,
+  "data": {
+    "name": "AI Summary of auth",
+    "action_type": "llm",
+    "model": "019c981f-3ffe-7741-8c40-5babcc3f4432",
+    "prompt": "Look at the results at {{local_var.auth_details}} and summarise with your verdict at the end.",
+    "response_format": "off",
+    "json_schema": null
+  }
+}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `model` | yes | Console-assigned model UUID. **Tenant-specific, do not hard-code across tenants**; read it off an existing `llm` action in the target console. The literal string `"deep"` also appears in the corpus, so the field is not strictly a UUID. |
+| `prompt` | yes | Free text; interpolate prior step output with the normal `{{...}}` expressions. |
+| `response_format` | yes | `"off"` in every observed action (16/16). Set `"off"` unless you have confirmed another value on the target console. |
+| `json_schema` | yes | Present but `null` in every observed action. Pairs with a structured `response_format`. |
+
+Reference the output like any other action: `{{ai-summary.body}}`.
+
+Use it for: alert triage verdicts, human-readable incident summaries, and picking one response
+action by name from a fixed list (see `autonomous-soc-template.md`). It is rare in the corpus
+(16 actions), so treat the shape above as the whole known surface rather than a subset.
 
 ---
 

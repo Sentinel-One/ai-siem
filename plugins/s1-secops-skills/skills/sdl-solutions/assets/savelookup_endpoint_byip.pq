@@ -2,7 +2,7 @@
 // device_ip is FIRST so the parser join works: `| lookup ... from <table> by device_ip = unmapped.<client_ip>`.
 // Keyed on agentLastReportedIp. Empty riskFactors ("[]") is converted to null.
 // Reuse ONE generic table (e.g. assetEndpointByIp) across all network sources; do not rebuild per source.
-// Run through the sentinelone-powerquery LRQ runner. Persists as {{ENDPOINT_TABLE}}.
+// Run through the powerquery LRQ runner. Persists as {{ENDPOINT_TABLE}}.
 // Asset-binding keys for STAR-rule alerts (project these in the detection | columns and entityMappings):
 //   device_assetid  = the unified asset id (the `id` from datasource assets). UNIVERSAL reconciliation key.
 //   device_agentid  = the numeric console agent id (agentId). NOT agentUuid and NOT a uuid.

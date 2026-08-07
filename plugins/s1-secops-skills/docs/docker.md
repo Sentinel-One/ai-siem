@@ -27,7 +27,6 @@ Credential keys and where to get each one: [credentials.md](./credentials.md).
 | Docker (Desktop on macOS/Windows, Engine on Linux) | `docker --version` | [docker.com/get-started](https://www.docker.com/get-started/) |
 | SentinelOne API token | Settings → Users → Service Users | [Community guide](https://community.sentinelone.com/s/article/000005291) |
 | SDL API keys | Singularity Data Lake → API Keys | [Community guide](https://community.sentinelone.com/s/article/000006763) |
-| Regional endpoint URLs | `S1_CONSOLE_URL`, `SDL_XDR_URL`, `S1_HEC_INGEST_URL` | [Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) |
 | VirusTotal API key | [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) | Free tier is sufficient |
 
 Apple Silicon and Intel are both supported; the image is multi-arch (`linux/amd64` + `linux/arm64`) so qemu emulation is never used.
@@ -78,19 +77,16 @@ This bypasses Claude Desktop entirely and confirms the image and credentials wor
 docker run -i --rm --pull=missing \
   -e S1_CONSOLE_URL='https://usea1-yourorg.sentinelone.net' \
   -e S1_CONSOLE_API_TOKEN='eyJ...' \
-  -e SDL_XDR_URL='https://xdr.us1.sentinelone.net' \
-  -e SDL_LOG_READ_KEY='...' \
-  -e SDL_CONFIG_READ_KEY='...' \
-  ghcr.io/pmoses-s1/s1-mcps:1.2.5 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
+  ghcr.io/pmoses-s1/s1-mcps:1.3.1 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
 ```
 
-Expected: a single JSON line back on stdout with `serverInfo.name = "sentinelone-mcp-server"`. Stderr should show `Tools: 26 registered` and one of the `configured`/`NOT configured` summaries per API surface.
+Expected: a single JSON line back on stdout with `serverInfo.name = "s1-secops-mcp-server"`. Stderr should show `Tools: 26 registered` and one of the `configured`/`NOT configured` summaries per API surface.
 
 For a less verbose env-source pattern, put the values in a `.env` file and pass it with `--env-file`:
 
 ```bash
 docker run -i --rm --pull=missing --env-file ~/.config/sentinelone/s1-mcp.env \
-  ghcr.io/pmoses-s1/s1-mcps:1.2.5 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
+  ghcr.io/pmoses-s1/s1-mcps:1.3.1 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
 ```
 
 The `.env` file is plain `KEY=value` per line. Keep its mode 0600 and out of any repo.
@@ -100,8 +96,8 @@ The `.env` file is plain `KEY=value` per line. Keep its mode 0600 and out of any
 If you suspect a corrupted local image:
 
 ```bash
-docker rmi ghcr.io/pmoses-s1/s1-mcps:1.2.5
-docker pull ghcr.io/pmoses-s1/s1-mcps:1.2.5
+docker rmi ghcr.io/pmoses-s1/s1-mcps:1.3.1
+docker pull ghcr.io/pmoses-s1/s1-mcps:1.3.1
 ```
 
 ### 5. Roll back to the npx path
@@ -131,10 +127,7 @@ To use your own copy, mount your Cowork project folder read-only and point the e
     "-v", "/Users/yourname/Documents/Claude/Projects/PrincipalSOCAnalyst:/workspace:ro",
     "-e", "S1_CLAUDE_MD_PATH=/workspace/CLAUDE.md",
     "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-    "-e", "S1_HEC_INGEST_URL", "-e", "SDL_XDR_URL",
-    "-e", "SDL_LOG_READ_KEY",
-    "-e", "SDL_CONFIG_WRITE_KEY", "-e", "SDL_CONFIG_READ_KEY",
-    "ghcr.io/pmoses-s1/s1-mcps:1.2.5",
+    "ghcr.io/pmoses-s1/s1-mcps:1.3.1",
     "s1-secops-mcp"
   ],
   "env": { "...": "..." }

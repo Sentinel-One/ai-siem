@@ -13,7 +13,7 @@ Before writing a parser from scratch, check the **`Sentinel-One/ai-siem`** GitHu
 1. Search ai-siem for the vendor or product name (e.g. "juniper", "okta", "fortigate", "palo alto", "corelight", "abnormal").
 2. If a parser exists, download it. It becomes your starting point.
 3. Diff what the user asked for against what the catalog parser emits. Audit the **4 mandatory attributes** (`dataSource.category` hardcoded to `"security"`, `dataSource.name`, `dataSource.vendor`, `metadata.version`) and add or correct any that are missing or wrong. Shift to OCSF field names if the parser uses vendor-native, every emitted dotted path must come from `references/ocsf-schema-documentation.md`, not from the catalog parser. **Always increment `metadata.version`** to mark this build as different from upstream (patch for fixes, minor for additive changes, major for breaking schema changes).
-4. Validate end-to-end via `sentinelone-sdl-api` (the usual loop).
+4. Validate end-to-end via `sdl-api` (the usual loop).
 
 Only write from scratch when no catalog parser matches.
 

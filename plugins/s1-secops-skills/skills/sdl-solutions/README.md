@@ -1,10 +1,10 @@
-# sentinelone-sdl-solutions
+# sdl-solutions
 
 Deploy packaged, repeatable SentinelOne Singularity Data Lake (SDL) solutions into a specific
 customer site from one short prompt. This skill is an orchestration layer: it collects a few
 parameters, previews the rendered config, then deploys and validates through the primitive
-SentinelOne skills (`sentinelone-powerquery`, `sentinelone-sdl-api`, `sentinelone-sdl-log-parser`,
-`sentinelone-sdl-dashboard`, `sentinelone-mgmt-console-api`, `sentinelone-hyperautomation`). It does
+SentinelOne skills (`powerquery`, `sdl-api`, `sdl-log-parser`,
+`sdl-dashboard`, `mgmt-console-api`, `hyperautomation`). It does
 not reimplement them.
 
 Use it for whole solutions. For a single query, parser, dashboard, or workflow, use the matching

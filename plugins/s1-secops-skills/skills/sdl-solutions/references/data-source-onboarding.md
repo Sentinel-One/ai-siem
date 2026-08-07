@@ -70,10 +70,10 @@ OCSF mapping and the choice of `HOST_FIELD` / `USER_FIELD` / `IP_FIELD` for enri
 
 ## Step 1: create or update the parser (OCSF + asset enrichment)
 
-Load `sentinelone-sdl-log-parser`. Two hard rules from that skill apply to every parser here:
+Load `sdl-log-parser`. Two hard rules from that skill apply to every parser here:
 the four mandatory attributes are always present (`dataSource.category` fixed at `security`,
 `dataSource.name`, `dataSource.vendor`, `metadata.version`), and every OCSF field name is verified
-against `sentinelone-sdl-log-parser/references/ocsf-schema-documentation.md`, never invented.
+against `sdl-log-parser/references/ocsf-schema-documentation.md`, never invented.
 
 1. **Check the ai-siem catalog** for an existing parser for this vendor before authoring. Most
    common sources already have one; diffing it is far less work than starting from scratch.
@@ -102,7 +102,7 @@ against `sentinelone-sdl-log-parser/references/ocsf-schema-documentation.md`, ne
 4. **Add asset enrichment.** Asset attributes (OS, agent UUID, criticality, AD groups, SID, risk
    factors) are not in the source telemetry. They come from the Asset Inventory through the
    PowerQuery `datasource` command, which is a query, not a REST call: see
-   `sentinelone-powerquery/references/datasource-command.md`. Reuse the asset-enrichment solution:
+   `powerquery/references/datasource-command.md`. Reuse the asset-enrichment solution:
    build the `assetIdentityLookup` and `assetEndpointLookup` datatables with the savelookup PQ in
    `assets/savelookup_identity.pq` and `assets/savelookup_endpoint.pq`, then add two
    `computeFields | lookup` rewrites to this source's parser keyed on the source's host and user
@@ -136,7 +136,7 @@ version to dominate, then drive everything from the normalised stream.
 
 Both read the now-normalised `dataSource.name='<DATASOURCE_NAME>'` data. Build them together.
 
-### Dashboard (load `sentinelone-sdl-dashboard`)
+### Dashboard (load `sdl-dashboard`)
 
 A comprehensive operational view of the source. Render the relevant panels from
 `assets/onboarding_dashboard.template.json` and deploy with `sdl_put_file` to
@@ -154,7 +154,7 @@ Mind the tenant dashboard pitfalls in the umbrella SKILL.md and the dashboard sk
 not `content:` for markdown panels; `stacked_bar`/`line` not `area` for query-driven series;
 nothing after `transpose`; spaces around `-` in arithmetic; `| limit 1` on number panels.
 
-### Detections (load `sentinelone-mgmt-console-api` + `sentinelone-powerquery`)
+### Detections (load `mgmt-console-api` + `powerquery`)
 
 Identify the top detections that matter for this source class and author them as STAR scheduled
 rules from `assets/onboarding_detection.template.json`. Map every rule to MITRE ATT&CK in the
@@ -199,7 +199,7 @@ Detection design rules that hold on this tenant:
   For the device entity, project and map the enriched **`device_agentid`** (the numeric console
   agent id) and/or `device_host` so the alert binds a real Target Asset rather than "Unknown Device".
   Binding reconciles against the live Asset Inventory, so the enriched id must belong to an enrolled
-  agent. See the tested binding matrix in `sentinelone-powerquery/references/detection-rules.md`.
+  agent. See the tested binding matrix in `powerquery/references/detection-rules.md`.
 - **Set an appropriate cool-off, never 24h.** `data.coolOffSettings.renotifyMinutes` suppresses
   re-notification per entity. With streak-dedup on, a long cool-off (e.g. 1440) masks an ongoing
   threat for a day. Tie it to severity and the run cadence: High active-threat rules ~60 (re-notify
@@ -223,7 +223,7 @@ Candidate detections by source class (pick what the source actually emits):
 
 ## Step 4: Hyperautomation flow, then ask where to deploy
 
-Load `sentinelone-hyperautomation`. The primary HA deliverable is a **SOC threat-response
+Load `hyperautomation`. The primary HA deliverable is a **SOC threat-response
 playbook tied to the detections you just built**, not a generic monitor. It should automate what
 an analyst would actually do when one of those detections fires:
 

@@ -2,13 +2,13 @@
 #
 # SentinelOne Claude Skills MCP Stack
 # ─────────────────────────────────────────────────────────────────────────────
-# One image, three MCPs (sentinelone-mcp, purple-mcp, virustotal-mcp).
+# One image, three MCPs (s1-secops-mcp, purple-mcp, virustotal-mcp).
 # Pinned versions are passed as build args by docker/build.sh and the GHA
 # workflow at .github/workflows/docker-publish.yml. Bumping a pin = one edit
 # in build.sh, then re-run.
 #
 # Layout inside the image:
-#   /usr/local/bin/sentinelone-mcp       (Node, from @pmoses-s1/sentinelone-mcp)
+#   /usr/local/bin/s1-secops-mcp       (Node, from @pmoses-s1/s1-secops-mcp)
 #   /usr/local/bin/mcp-virustotal        (Node, from @burtthecoder/mcp-virustotal)
 #   /usr/local/bin/purple-mcp-bin        (Python venv at /opt/purple-mcp)
 #   /usr/local/bin/entrypoint.sh         (dispatcher; selects which MCP to run)
@@ -25,9 +25,9 @@ ARG BUILD_DATE
 ARG VCS_REF
 
 LABEL org.opencontainers.image.title="SentinelOne Claude Skills MCP Stack" \
-      org.opencontainers.image.description="sentinelone-mcp + purple-mcp + virustotal MCP, single image" \
-      org.opencontainers.image.source="https://github.com/Sentinel-One/ai-siem" \
-      org.opencontainers.image.documentation="https://github.com/Sentinel-One/ai-siem/blob/main/plugins/s1-secops-skills/docs/docker.md" \
+      org.opencontainers.image.description="s1-secops-mcp + purple-mcp + virustotal MCP, single image" \
+      org.opencontainers.image.source="https://github.com/pmoses-s1/claude-skills" \
+      org.opencontainers.image.documentation="https://github.com/pmoses-s1/claude-skills/blob/main/docs/docker.md" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.revision="${VCS_REF}" \
@@ -45,7 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # ─── Node-based MCPs (pinned to exact npm versions) ───────────────────────────
 RUN npm install -g \
-      "@pmoses-s1/sentinelone-mcp@${S1_MCP_VERSION}" \
+      "@pmoses-s1/s1-secops-mcp@${S1_MCP_VERSION}" \
       "${VT_MCP_PACKAGE}@${VT_MCP_VERSION}" \
     && npm cache clean --force
 

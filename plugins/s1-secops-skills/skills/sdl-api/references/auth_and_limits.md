@@ -2,16 +2,11 @@
 
 ## Key types
 
-The SDL API recognises four scoped key types plus the SentinelOne Console user API token (Mgmt version Z SP5+).
+The SDL API authenticates with the SentinelOne Console user API token.
 
 | Key type                | Where to generate (SDL UI: user menu → API Keys) | Methods unlocked |
 |-------------------------|---------------------------------------------------|------------------|
-| Log Read Access         | API Keys → Log Access Keys                        | `query`, `numericQuery`, `facetQuery`, `timeseriesQuery`, `powerQuery` |
-| Configuration Read      | API Keys → Configuration Access Keys              | `listFiles`, `getFile`. Does NOT grant View Logs on the query methods (live-confirmed 403 on `/api/query`). |
-| Configuration Write     | API Keys → Configuration Access Keys              | `putFile` + `listFiles`, `getFile`. Does NOT grant View Logs on the query methods (live-confirmed 403). |
 | Console User API token  | S1 Console → Settings → Users → My User → API Token | All query + config methods. |
-
-The query methods require a Log Read Access key (`SDL_LOG_READ_KEY`) or the console JWT; config keys cannot substitute. The `SDLClient` advances to the next key in the chain on a 401/403 and only raises once the chain is exhausted.
 
 Notes:
 

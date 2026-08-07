@@ -25,7 +25,6 @@ The MCP servers all run via package managers (`npx` and `uvx`). There is no git 
 | `uv` (for purple-mcp) | `uvx --version` | `curl -LsSf https://astral.sh/uv/install.sh \| sh`, then open a new terminal |
 | SentinelOne API token | Settings → Users → Service Users | [Community guide](https://community.sentinelone.com/s/article/000005291) |
 | SDL API keys | Singularity Data Lake → API Keys | [Community guide](https://community.sentinelone.com/s/article/000006763) |
-| Regional endpoint URLs | `S1_CONSOLE_URL`, `SDL_XDR_URL`, `S1_HEC_INGEST_URL` | [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) |
 | VirusTotal API key | [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) | Free tier is sufficient |
 
 ---
@@ -46,21 +45,13 @@ All three servers run from public package registries: `s1-secops-mcp` and `@burt
         "-e", "S1_CONSOLE_URL",
         "-e", "S1_CONSOLE_API_TOKEN",
         "-e", "S1_HEC_INGEST_URL",
-        "-e", "SDL_XDR_URL",
-        "-e", "SDL_LOG_READ_KEY",
-        "-e", "SDL_CONFIG_WRITE_KEY",
-        "-e", "SDL_CONFIG_READ_KEY",
-        "ghcr.io/pmoses-s1/s1-mcps:1.2.5",
-        "sentinelone-mcp"
+        "ghcr.io/pmoses-s1/s1-mcps:1.3.1",
+        "s1-secops-mcp"
       ],
       "env": {
         "S1_CONSOLE_URL": "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
         "S1_HEC_INGEST_URL": "https://ingest.us1.sentinelone.net",
-        "SDL_XDR_URL": "https://xdr.us1.sentinelone.net",
-        "SDL_LOG_READ_KEY": "your-log-read-key",
-        "SDL_CONFIG_WRITE_KEY": "your-config-write-key",
-        "SDL_CONFIG_READ_KEY": "your-config-read-key"
       }
     },
     "purple-mcp": {
@@ -157,7 +148,6 @@ If anything is red, check:
 
 - All three MCPs are listed and green under MCP Servers in the Cowork session panel
 - The API token has the right scope (Viewer or higher for read; IR Team or higher for response actions)
-- `SDL_XDR_URL` and the SDL keys match your region
 
 To confirm the active plugin version: `which version of s1-secops-skills is installed?`
 

@@ -1,5 +1,5 @@
 /**
- * PowerQuery tools: sentinelone-powerquery skill
+ * PowerQuery tools: powerquery skill
  *
  * Tools:
  *   powerquery_run            Run a PowerQuery via the LRQ API
@@ -45,7 +45,7 @@ export const tools = [
       properties: {
         query: {
           type: 'string',
-          description: 'The PowerQuery string. Use pipe-separated commands: | filter | group | sort | limit | columns. Three distinct wildcard idioms; use the right one: (1) FIELD PRESENCE / ATTRIBUTE WILDCARD: field=* means "field is present/non-null", e.g. dataSource.name=* | group count=count() by dataSource.name; use this as a query-opener or whenever you need "all events that have this field". (2) ALL-COLUMN TEXT SEARCH: * contains \'value\' or * matches \'regex\' in the initial filter (before the first |) searches ALL indexed fields; use when the user asks to find text anywhere in the event, e.g. dataSource.name=\'MySource\' * contains \'evil.com\'. Dramatically faster than message contains. (3) EMPTY FILTER (all events): start with | and no initial predicate, e.g. | group ct=count() by event.type. Do NOT use bare * alone as the initial filter; that causes HTTP 500 ("Don\'t understand [*]"). Beyond filtering, | datasource <name> [from <dataset>] reads SentinelOne-managed inventory (assets, alerts, vulnerabilities, misconfigurations, metering; e.g. | datasource assets from \'surface/identity\') and | savelookup \'<name>\' persists the result as a reusable lookup table (see references/datasource-command.md in sentinelone-powerquery).',
+          description: 'The PowerQuery string. Use pipe-separated commands: | filter | group | sort | limit | columns. Three distinct wildcard idioms; use the right one: (1) FIELD PRESENCE / ATTRIBUTE WILDCARD: field=* means "field is present/non-null", e.g. dataSource.name=* | group count=count() by dataSource.name; use this as a query-opener or whenever you need "all events that have this field". (2) ALL-COLUMN TEXT SEARCH: * contains \'value\' or * matches \'regex\' in the initial filter (before the first |) searches ALL indexed fields; use when the user asks to find text anywhere in the event, e.g. dataSource.name=\'MySource\' * contains \'evil.com\'. Dramatically faster than message contains. (3) EMPTY FILTER (all events): start with | and no initial predicate, e.g. | group ct=count() by event.type. Do NOT use bare * alone as the initial filter; that causes HTTP 500 ("Don\'t understand [*]"). Beyond filtering, | datasource <name> [from <dataset>] reads SentinelOne-managed inventory (assets, alerts, vulnerabilities, misconfigurations, metering; e.g. | datasource assets from \'surface/identity\') and | savelookup \'<name>\' persists the result as a reusable lookup table (see references/datasource-command.md in powerquery).',
         },
         startTime: {
           type: 'string',

@@ -1,6 +1,6 @@
 # Docker image: SentinelOne Claude Skills MCP Stack
 
-Single image bundling all three MCPs (`sentinelone-mcp`, `purple-mcp`, `virustotal-mcp`) so end users only need Docker installed. No Node, no Python, no `uv`, no `npm install`. Alternative to the npx/uvx install path.
+Single image bundling all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`) so end users only need Docker installed. No Node, no Python, no `uv`, no `npm install`. Alternative to the npx/uvx install path.
 
 End-user reference: [`docs/docker.md`](../docs/docker.md). This file is for image maintainers.
 
@@ -28,14 +28,14 @@ When bumping a pin, edit both. They are checked once via `grep` in CI; a mismatc
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.2.5` |
-| `@pmoses-s1/sentinelone-mcp` | npm | `1.2.4` |
+| Image version (`IMAGE_VERSION`) | this repo | `1.3.1` |
+| `@pmoses-s1/s1-secops-mcp` | npm | `1.3.1` |
 | `@burtthecoder/mcp-virustotal` | npm | `1.0.21` |
 | `purple-mcp` | git | `07d4992` (Sentinel-One/purple-mcp `v0.7.0`, 2026-06-26) |
 
-`purple-mcp` is pinned to the `v0.7.0` release commit rather than a floating `main`, per upstream security guidance. When a newer release ships, repin here and in `mcp/docker/build.sh`.
+`purple-mcp` is pinned to the `v0.7.0` release commit rather than a floating `main`, per upstream's security guidance. When a newer release ships, repin to that tag's commit here, in `docker/build.sh`, and in the workflow env block.
 
-`IMAGE_VERSION` is the tag the image is published under (`ghcr.io/pmoses-s1/s1-mcps:1.2.5`). It is independent of the underlying MCP versions: bump it when the Dockerfile, dispatcher, or bundled CLAUDE.md changes, even if all three MCP pins stay the same.
+`IMAGE_VERSION` is the tag the image is published under (`ghcr.io/pmoses-s1/s1-mcps:1.3.1`). It is independent of the underlying MCP versions: bump it when the Dockerfile, dispatcher, or bundled CLAUDE.md changes, even if all three MCP pins stay the same.
 
 ## Build locally
 
@@ -44,12 +44,12 @@ When bumping a pin, edit both. They are checked once via `grep` in CI; a mismatc
 docker/build.sh
 
 # Smoke test
-docker run -i --rm s1-mcps:1.2.5 help
+docker run -i --rm s1-mcps:1.3.1 help
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm s1-mcps:1.2.5 s1-secops-mcp
+  | docker run -i --rm s1-mcps:1.3.1 s1-secops-mcp
 ```
 
-The dispatcher accepts `sentinelone-mcp`, `purple-mcp`, `virustotal-mcp`, or `help`.
+The dispatcher accepts `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, or `help`.
 
 ## Push manually
 
@@ -75,7 +75,7 @@ git tag -a v1.0.1 -m "..." && git push --tags    # CI builds and pushes :1.0.1
 
 ## Why one image with three entrypoints?
 
-Three entries in `claude_desktop_config.json` (one per MCP) all reference the same image and tag, so a single `docker pull` covers all three MCPs and the versions stay in lockstep. A "router" MCP that exposes all bundled tools through one process was rejected because the MCP spec has no tool-namespacing convention; tool name collisions across `sentinelone-mcp` and `purple-mcp` would force ad-hoc renaming.
+Three entries in `claude_desktop_config.json` (one per MCP) all reference the same image and tag, so a single `docker pull` covers all three MCPs and the versions stay in lockstep. A "router" MCP that exposes all bundled tools through one process was rejected because the MCP spec has no tool-namespacing convention; tool name collisions across `s1-secops-mcp` and `purple-mcp` would force ad-hoc renaming.
 
 ## Why install pip-style for purple-mcp instead of via uv?
 

@@ -167,7 +167,6 @@ missing milliseconds alone; carrying `tz` does not compensate for a millisecond-
 `start_at`. Keep `"tz": "UTC"` in the template and always render `{{START_AT}}` with
 milliseconds.
 
-
 ## Example alert emails
 
 Real Watchdog alert emails from the demo tenant (hourly runs, 2026-07-31 and 2026-08-01).

@@ -1,11 +1,11 @@
 {
   "name": "@pmoses-s1/s1-secops-mcp",
-  "version": "1.2.4",
+  "version": "1.3.1",
   "description": "MCP server orchestrating SentinelOne skills, APIs, and SOC analyst context. Stdio or Streamable HTTP transport with per-user bearer auth for team deployments.",
   "type": "module",
   "main": "index.js",
   "bin": {
-    "s1-secops-mcp": "./index.js"
+    "s1-secops-mcp": "index.js"
   },
   "files": [
     "index.js",
@@ -28,11 +28,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Sentinel-One/ai-siem.git",
+    "url": "git+https://github.com/pmoses-s1/claude-skills.git",
     "directory": "s1-secops-mcp"
   },
-  "homepage": "https://github.com/Sentinel-One/ai-siem/tree/main/mcp/s1-secops-mcp#readme",
-  "bugs": "https://github.com/Sentinel-One/ai-siem/issues",
+  "homepage": "https://github.com/pmoses-s1/claude-skills/tree/main/s1-secops-mcp#readme",
+  "bugs": "https://github.com/pmoses-s1/claude-skills/issues",
   "keywords": [
     "mcp",
     "sentinelone",

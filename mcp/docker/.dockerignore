@@ -11,12 +11,12 @@ node_modules
 **/.pytest_cache
 
 # Build artefacts
-sentinelone-skills-plugin/dist/
+s1-secops-skills-plugin/dist/
 *.tar.gz
 *.zip
 
 # Heavy reference / test data not needed inside the image
-sentinelone-mgmt-console-api/spec/
+mgmt-console-api/spec/
 **/tests/
 tests/
 spec/

@@ -15,7 +15,7 @@
  * 3. normalizeS1ApiGetParams: an inline ?isLegacy= already present in the
  *    path must be honored; appending a conflicting isLegacy=false query param
  *    contradicts the caller. Mirrors _maybe_inject_islegacy in the Python
- *    twin (sentinelone-mgmt-console-api/scripts/s1_client.py).
+ *    twin (mgmt-console-api/scripts/s1_client.py).
  */
 
 import { test } from 'node:test';

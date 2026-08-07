@@ -1,11 +1,10 @@
-# Validation Workflow: Using `sentinelone-sdl-api` to Test a Parser
+# Validation Workflow: Using `sdl-api` to Test a Parser
 
 There is **no dedicated `testParser` REST endpoint** on the SDL tenant. The in-console `Test Parser` button at `/logImportTester` runs the parser client-side in JavaScript. To validate end-to-end you must deploy the parser, ingest a sample through it, and query the result back. This doc is the recipe.
 
 ## Prerequisites
 
-- `sentinelone-sdl-api` skill is installed.
-- `credentials.json` is dropped directly into your Cowork project folder and contains at minimum `SDL_CONFIG_WRITE_KEY` and `SDL_LOG_READ_KEY` plus a HEC ingest token, or `S1_CONSOLE_API_TOKEN` (the same management-console JWT; legacy `SDL_CONSOLE_API_TOKEN` is also accepted). The plugin's SessionStart hook auto-discovers it at session start.
+- `sdl-api` skill is installed.
 
 - You have a draft parser JSON and a sample log file.
 
@@ -14,7 +13,7 @@ There is **no dedicated `testParser` REST endpoint** on the SDL tenant. The in-c
 ```python
 import sys, os, time, uuid, json, pathlib
 _sdl_scripts = os.environ.get("SDL_API_SCRIPTS") or os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sentinelone-sdl-api", "scripts")
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sdl-api", "scripts")
 )
 sys.path.insert(0, _sdl_scripts)
 from sdl_client import SDLClient

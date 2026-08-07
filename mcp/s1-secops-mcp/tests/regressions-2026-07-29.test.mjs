@@ -11,15 +11,15 @@
  * 2. pickMatchCount: matchCount lives at data.matchCount on current LRQ
  *    engines. Reading only the top level returned null on all 22 live calls.
  *
- * 3. keyCandidates + sdlFetch: a 401/403 from a wrong-scoped SDL key must
- *    advance to the next candidate key instead of failing the request.
- *    (SDL_CONFIG_WRITE_KEY does not grant View Logs on /api/query.)
+ * 3. sdlToken + sdlFetch: every SDL call authenticates with the console API
+ *    token as `Authorization: Bearer <token>`, and a missing token fails
+ *    fast with an actionable message rather than sending `Bearer undefined`.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveLrqWindow, pickMatchCount } from '../lib/s1.js';
-import { keyCandidates } from '../lib/sdl.js';
+import { sdlToken } from '../lib/sdl.js';
 
 // ─── resolveLrqWindow ─────────────────────────────────────────────────────────
 
@@ -75,38 +75,24 @@ test('pickMatchCount: null when absent everywhere', () => {
   assert.equal(pickMatchCount({}), null);
 });
 
-// ─── keyCandidates ────────────────────────────────────────────────────────────
+// ─── sdlToken ─────────────────────────────────────────────────────────────────
 
-test('keyCandidates: log_read skips unconfigured keys, keeps scope order, ends at console JWT', () => {
-  process.env.SDL_LOG_READ_KEY = '';
-  process.env.SDL_CONFIG_READ_KEY = 'cfg-read';
-  process.env.SDL_CONFIG_WRITE_KEY = 'cfg-write';
-  process.env.S1_CONSOLE_API_TOKEN = 'console-jwt';
+test('sdlToken: returns the console API token', () => {
+  process.env.S1_CONSOLE_API_TOKEN = 'console-token';
   try {
-    assert.deepEqual(keyCandidates('log_read'), ['cfg-read', 'cfg-write', 'console-jwt']);
+    assert.equal(sdlToken(), 'console-token');
   } finally {
-    delete process.env.SDL_LOG_READ_KEY;
-    delete process.env.SDL_CONFIG_READ_KEY;
-    delete process.env.SDL_CONFIG_WRITE_KEY;
     delete process.env.S1_CONSOLE_API_TOKEN;
   }
 });
 
-test('keyCandidates: returns ALL configured candidates so 403s can fall through', () => {
-  process.env.SDL_LOG_READ_KEY = 'log-read';
-  process.env.SDL_CONFIG_READ_KEY = 'cfg-read';
-  process.env.SDL_CONFIG_WRITE_KEY = '';
-  process.env.S1_CONSOLE_API_TOKEN = 'console-jwt';
+test('sdlToken: throws an actionable error when the token is absent', () => {
+  const saved = process.env.S1_CONSOLE_API_TOKEN;
+  delete process.env.S1_CONSOLE_API_TOKEN;
   try {
-    const c = keyCandidates('log_read');
-    assert.ok(c.length > 1, 'must expose the full chain, not just the first key');
-    assert.equal(c[0], 'log-read');
-    assert.equal(c[c.length - 1], 'console-jwt');
+    assert.throws(() => sdlToken(), /S1_CONSOLE_API_TOKEN not configured/);
   } finally {
-    delete process.env.SDL_LOG_READ_KEY;
-    delete process.env.SDL_CONFIG_READ_KEY;
-    delete process.env.SDL_CONFIG_WRITE_KEY;
-    delete process.env.S1_CONSOLE_API_TOKEN;
+    if (saved !== undefined) process.env.S1_CONSOLE_API_TOKEN = saved;
   }
 });
 
@@ -202,26 +188,16 @@ test('apiPost with allowRetry:true retries a read-only POST on 500', async () =>
   }
 });
 
-// ─── sdlFetch 403 fallthrough (mocked fetch, no network) ─────────────────────
+// ─── sdlFetch auth header (mocked fetch, no network) ─────────────────────────
 
-test('sdlFetch: 403 on first key falls through to the console JWT', async (t) => {
-  process.env.SDL_XDR_URL = 'https://xdr.example.invalid';
-  process.env.SDL_LOG_READ_KEY = '';
-  process.env.SDL_CONFIG_READ_KEY = 'wrong-scope-key';
-  process.env.SDL_CONFIG_WRITE_KEY = '';
-  process.env.S1_CONSOLE_API_TOKEN = 'console-jwt';
+test('sdlFetch: sends the console API token as a Bearer header', async () => {
+  process.env.S1_CONSOLE_URL = 'https://console.example.invalid';
+  process.env.S1_CONSOLE_API_TOKEN = 'console-token';
 
   const seenTokens = [];
   const realFetch = globalThis.fetch;
   globalThis.fetch = async (url, opts) => {
-    const auth = opts.headers.Authorization;
-    seenTokens.push(auth);
-    if (auth === 'Bearer wrong-scope-key') {
-      return new Response(
-        JSON.stringify({ message: 'authorization token does not grant View logs permission' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
+    seenTokens.push(opts.headers.Authorization);
     return new Response(JSON.stringify({ matches: [] }), {
       status: 200, headers: { 'Content-Type': 'application/json' },
     });
@@ -231,14 +207,38 @@ test('sdlFetch: 403 on first key falls through to the console JWT', async (t) =>
     const { v1Query } = await import('../lib/sdl.js');
     const res = await v1Query("dataSource.name=='x'", { maxCount: 1 });
     assert.deepEqual(res, { matches: [] });
-    assert.deepEqual(seenTokens, ['Bearer wrong-scope-key', 'Bearer console-jwt'],
-      'must try the wrong-scoped key, get 403, then fall through to the console JWT');
+    assert.deepEqual(seenTokens, ['Bearer console-token'],
+      'exactly one credential is used: the console API token');
   } finally {
     globalThis.fetch = realFetch;
-    delete process.env.SDL_XDR_URL;
-    delete process.env.SDL_LOG_READ_KEY;
-    delete process.env.SDL_CONFIG_READ_KEY;
-    delete process.env.SDL_CONFIG_WRITE_KEY;
+    delete process.env.S1_CONSOLE_URL;
+    delete process.env.S1_CONSOLE_API_TOKEN;
+  }
+});
+
+test('sdlFetch: a 403 is raised, not silently retried against another credential', async () => {
+  process.env.S1_CONSOLE_URL = 'https://console.example.invalid';
+  process.env.S1_CONSOLE_API_TOKEN = 'console-token';
+
+  let calls = 0;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ message: 'forbidden' }), {
+      status: 403, headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  try {
+    const { v1Query } = await import('../lib/sdl.js');
+    await assert.rejects(
+      () => v1Query("dataSource.name=='x'", { maxCount: 1 }),
+      /403/,
+    );
+    assert.equal(calls, 1, 'no credential fallthrough: one request, one failure');
+  } finally {
+    globalThis.fetch = realFetch;
+    delete process.env.S1_CONSOLE_URL;
     delete process.env.S1_CONSOLE_API_TOKEN;
   }
 });

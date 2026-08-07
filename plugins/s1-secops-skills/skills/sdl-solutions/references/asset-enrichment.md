@@ -8,7 +8,7 @@ asset criticality and risk factors, so an analyst can triage without leaving the
 The asset attributes are not in event telemetry and the unified inventory REST API returns them
 null on at least one tenant. The only query path to them is the PowerQuery `datasource` command
 (`datasource assets from 'surface/identity'` and `'surface/endpoint'`). See
-`sentinelone-powerquery/references/datasource-command.md`.
+`powerquery/references/datasource-command.md`.
 
 ## Prompts (two required questions, the rest defaulted)
 
@@ -91,7 +91,7 @@ Note: `count(<predicate>)` is valid and counts the rows matching the predicate (
 mode that puts the binding fields on the event so STAR detections auto-map the asset. Automatic lookups
 do not apply inside dashboards, alert triggers, or parser PowerQueries, and the 100-row cap rules out the
 full asset tables. Use ingest or query mode for the full tables; reserve auto for small sets. See
-`sentinelone-powerquery/references/automatic-lookups.md`.
+`powerquery/references/automatic-lookups.md`.
 
 **A parser cannot query `datasource` directly: a lookup table is mandatory for parser mode.**
 Tenant-validated 2026-06-14: deploying a parser whose `computeFields` used
@@ -154,12 +154,12 @@ the event, so the enrichment has to stamp the right identifier plus a class.
   `device_agentid` / `device_agentuuid` in `| columns` and set `entityMappings` on them. The general
   fallback that binds for network / identity / cloud sources.
 
-Full tested binding matrix and the exact minimum: `sentinelone-powerquery/references/detection-rules.md`.
+Full tested binding matrix and the exact minimum: `powerquery/references/detection-rules.md`.
 
 ## Step 1: build the selected lookup tables
 
 Build only the tables for the enrichments the user picked in the catalog (not always both). For
-each selected row, run its builder through the LRQ runner (sentinelone-powerquery): it reads the
+each selected row, run its builder through the LRQ runner (powerquery): it reads the
 `datasource` and persists with `savelookup`. The shipped builders cover Device
 (`assets/savelookup_endpoint.pq`) and User (`assets/savelookup_identity.pq`); render the catalog's
 aggregate pattern for Vulnerabilities / Misconfigurations / Alerts / Cloud after confirming their
@@ -218,7 +218,7 @@ poll until the new `metadata.version` appears on fresh events.
 ## Step 4: keep the tables current (Hyperautomation)
 
 If `SCHEDULE_HOUR` is set, render `assets/refresh_workflow.template.json` and deploy it with the
-sentinelone-hyperautomation skill. It is a scheduled workflow with two HTTP actions that re-run
+hyperautomation skill. It is a scheduled workflow with two HTTP actions that re-run
 the two savelookup queries against the LRQ API, so the tables stay current and keep the empty
 suppression. Deploy scoped to the site:
 

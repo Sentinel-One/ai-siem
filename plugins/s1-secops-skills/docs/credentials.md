@@ -11,10 +11,6 @@ This is the canonical credentials reference for every install path (Docker quick
   "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
   "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
   "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
-  "SDL_XDR_URL":          "https://xdr.us1.sentinelone.net",
-  "SDL_LOG_READ_KEY":     "0tzj...",
-  "SDL_CONFIG_WRITE_KEY": "0mXas6...",
-  "SDL_CONFIG_READ_KEY":  "0MQTx..."
 }
 ```
 
@@ -23,18 +19,10 @@ This is the canonical credentials reference for every install path (Docker quick
 | `S1_CONSOLE_URL` | Everything | Your console URL, e.g. `https://usea1-acme.sentinelone.net`. No trailing slash. |
 | `S1_CONSOLE_API_TOKEN` | Mgmt Console REST, PowerQuery LRQ, UAM GraphQL, Purple AI GraphQL, SDL config ops (Management Z SP5+) | Settings → Users → Service Users → Create Service User → copy the API token. |
 | `S1_HEC_INGEST_URL` | UAM alert/indicator ingest, SDL log ingest | Region-specific HEC host, e.g. `https://ingest.us1.sentinelone.net`. Look up yours at [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961). |
-| `SDL_XDR_URL` | SDL API operations (list/get/put config files, PowerQuery via SDL client) | Your SDL tenant URL, e.g. `https://xdr.us1.sentinelone.net`. Region-specific; same reference as above. |
-| `SDL_LOG_READ_KEY` | SDL V1 query via SDL client (fallback) | Same location, Log Read Access. |
-| `SDL_CONFIG_WRITE_KEY` | `sdl_put_file` (parser/dashboard deploy) | Singularity Data Lake → API Keys → Configuration Access Keys → New Key (Config Write). |
-| `SDL_CONFIG_READ_KEY` | `sdl_list_files`, `sdl_get_file` | Same location, Config Read Access. |
 
 `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are the minimum required for most operations. Add the SDL keys only when you need log ingest or parser/dashboard deployment.
 
-**Important:** `SDL_CONFIG_WRITE_KEY` does NOT grant log read access. If your SDL queries return 403, force-clear the scoped keys so auth falls through to the console JWT:
-
 ```python
-c.keys["log_read_key"] = ""
-c.keys["config_read_key"] = ""
 ```
 
 ---

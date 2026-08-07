@@ -1,4 +1,4 @@
-# sentinelone-hyperautomation (Claude skill)
+# hyperautomation (Claude skill)
 
 A Claude skill for designing and generating SentinelOne Hyperautomation workflow JSON, with optional live console import via API.
 
@@ -19,7 +19,7 @@ This skill ships as part of the `s1-secops-skills` plugin. Install the plugin an
 To install individually, copy this folder into your user skills directory:
 
 ```bash
-cp -r sentinelone-hyperautomation ~/.claude/skills/
+cp -r hyperautomation ~/.claude/skills/
 ```
 
 ## Configure

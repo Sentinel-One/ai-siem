@@ -1,6 +1,6 @@
 ---
 name: hyperautomation
-author: Prithvi Moses <prithvi.moses@sentinelone.com>
+author: Prithvi Moses <prithvi.moses@sentinelone.com>, Marco Rottigni <marco.rottigni@sentinelone.com>
 description: >-
   Use this skill whenever a user wants to create, design, build, generate, write, or export
   a SentinelOne Hyperautomation workflow in JSON format. Triggers: any mention of
@@ -397,7 +397,7 @@ Some detection logic cannot run as a PowerQuery **scheduled** Custom Detection r
 rules run on a pre-aggregated data layer where functions like `dataset`, `datasource`, `now`,
 `querystart` / `queryend` / `queryspan`, `topK`, `savelookup`, CIDR/wildcard `lookup`, `lookup` over a
 >10,000-row table, time-shifted `timebucket`, and `timebucket` < 30s are unavailable (full list in the
-`sentinelone-powerquery` skill). The classic case is enumerating **absent** rows, a pair present in a
+`powerquery` skill). The classic case is enumerating **absent** rows, a pair present in a
 baseline but with zero events in the live window, which needs a `left join` + `dataset` anti-join.
 
 The **alternate is an HA watchdog**: a scheduled (or manual / run-now) workflow that
@@ -421,7 +421,7 @@ at a time.
 
 Workflow import, export, and listing use the `s1-secops-mcp` MCP server, which bypasses the
 Cowork sandbox proxy entirely. Use `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`,
-and `ha_export_workflow` directly instead of falling back to the `sentinelone-mgmt-console-api`
+and `ha_export_workflow` directly instead of falling back to the `mgmt-console-api`
 skill scripts. The MCP server runs locally on your machine and makes direct HTTPS calls to
 `*.sentinelone.net` without proxy interference.
 
@@ -431,7 +431,7 @@ skill scripts. The MCP server runs locally on your machine and makes direct HTTP
   on a site-scoped tenant it returns the misleading `403 "Insufficient permissions"`, not a role
   problem. For a site-scoped deploy, call the REST endpoint directly with the scope param:
   `POST /web/api/v2.1/hyper-automate/api/public/workflow-import-export/import?siteIds=<id>` with
-  body `{"data": <workflow>}` (e.g. via the `sentinelone-mgmt-console-api` POST helper). For an
+  body `{"data": <workflow>}` (e.g. via the `mgmt-console-api` POST helper). For an
   account-level deploy use the same public endpoint with `?accountIds=<acct>`; the v1
   `/workflow-import-export/import?_scopeId=<acct>&_scopeLevel=account` path returns `403`. Same
   scope rule applies to `activation`, `deactivate`, `publish`, and `DELETE`, append

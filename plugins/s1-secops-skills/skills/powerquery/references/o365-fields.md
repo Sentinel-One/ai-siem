@@ -6,7 +6,7 @@ Where the data actually lives on an M365 / Exchange / Teams / SharePoint audit s
 
 **Never hardcode an M365 field path.** Run schema discovery first, every time, on the tenant you're about to query. The right helpers already exist:
 
-- `sentinelone-mgmt-console-api/scripts/inspect_source.py` enumerates fields for a given `dataSource.name`, classifies them into role buckets (principal user, principal host, principal IP, action, etc.), and returns `(prim_key, action_key)`. Use it before writing any filter against a source you haven't queried recently.
+- `mgmt-console-api/scripts/inspect_source.py` enumerates fields for a given `dataSource.name`, classifies them into role buckets (principal user, principal host, principal IP, action, etc.), and returns `(prim_key, action_key)`. Use it before writing any filter against a source you haven't queried recently.
 - For an ad-hoc check inside a query, `dataSource.name='<m365_source>' | limit 1 | columns *` shows every parsed field on one event. `| group ct=count() by <candidate_field> | sort -ct | limit 20` confirms which fields actually carry data on this tenant.
 
 Treat the names below as conceptual placeholders. Discover the real ones each time.

@@ -1,7 +1,7 @@
 ---
 name: sdl-log-parser
 author: Prithvi Moses <prithvi.moses@sentinelone.com>
-description: Use whenever the user wants to author, edit, debug, validate, or explain a SentinelOne Singularity Data Lake (SDL) log parser, the augmented-JSON files at /logParsers/ that extract fields from raw log text before ingestion. Trigger on "SDL parser", "Skylight parser", "log parser", "parser editor", "write a parser", "test parser", or any pasted raw log the user wants turned into structured fields. Also trigger on parser-DSL keywords like `formats:`, `patterns:`, `lineGroupers:`, `rewrites:`, `discardAttributes:`, `aliasTo:`, `{parse=...}`, `{regex=...}`. Especially trigger when the user pastes a raw log (CEF, syslog, JSON, key=value, multi-line, CSV) and asks to extract fields, normalize timestamps, or drop noise. If the project is SDL/Singularity/Scalyr and the user says "parse this log", use this skill. Always validates end-to-end via putFile → HEC ingest (parser applied) → query. NOT for PowerQuery (use sentinelone-powerquery), NOT for plain ingest without a parser (use sentinelone-sdl-api).
+description: Use whenever the user wants to author, edit, debug, validate, or explain a SentinelOne Singularity Data Lake (SDL) log parser, the augmented-JSON files at /logParsers/ that extract fields from raw log text before ingestion. Trigger on "SDL parser", "Skylight parser", "log parser", "parser editor", "write a parser", "test parser", or any pasted raw log the user wants turned into structured fields. Also trigger on parser-DSL keywords like `formats:`, `patterns:`, `lineGroupers:`, `rewrites:`, `discardAttributes:`, `aliasTo:`, `{parse=...}`, `{regex=...}`. Especially trigger when the user pastes a raw log (CEF, syslog, JSON, key=value, multi-line, CSV) and asks to extract fields, normalize timestamps, or drop noise. If the project is SDL/Singularity/Scalyr and the user says "parse this log", use this skill. Always validates end-to-end via putFile → HEC ingest (parser applied) → query. NOT for PowerQuery (use powerquery), NOT for plain ingest without a parser (use sdl-api).
 ---
 
 # SentinelOne SDL Log Parser Authoring
@@ -71,7 +71,7 @@ Use this skill when the user wants to turn raw log text into structured SDL even
 - Edits to an existing parser ("add a rewrite that masks the password", "tag every event with `dataset=fortinet`").
 - Migration ("alias the new parser to the old one").
 
-Do **not** use this skill for PowerQuery authoring (use `sentinelone-powerquery`) or for plain-text ingestion that does not need a parser (use `sentinelone-sdl-api` directly).
+Do **not** use this skill for PowerQuery authoring (use `powerquery`) or for plain-text ingestion that does not need a parser (use `sdl-api` directly).
 
 ## Workflow
 
@@ -476,7 +476,7 @@ When a question goes deeper than this file, read the relevant reference. Each is
 - `references/parse-directives.md`: Every `{parse=...}` sub-parser (json/dottedJson/escaped/urlEncoded/base64Encoded variants, strict variants for arrays, uri/uriMultivalue/uriAttributes, commaKeyValues, commaSeparated/pipeSeparated, sqlToSignature, syslogPriority, dateTime{Seconds,Ms,Ns}, hoursMinutesSeconds, seconds/milliseconds, bytes/kb/mb/gb, plus per-directive `attrWhitelist`/`attrBlacklist` rules). Read whenever the body of a field is itself structured.
 - `references/builtin-parsers.md`: Catalog of all 16 built-in parsers (`accessLog`, `cloudfront`, `json`, `dottedJson`, `dottedEscapedJson`, `elb-access`, `heroku-logplex`, `keyValue`, `leveldbLog`, `mysqlGeneralQueryLog`, `mysqlSlowQueryLog`, `postgresLog`, `redshift`, `s3_bucket_access`, `spot_instance_data`, `systemLog`) and when to alias vs override. Read first when sizing up a new log source; you may not need to write a parser at all.
 - `references/mappers.md`: `mappings` block (gron-style transformations: `cast`, `copy`, `copy_tree`, `drop`, `drop_tree`, `hash`, `reduce_array`, `rename`, `rename_tree`, `replace`, `zip`), array index syntax, predicate semantics. Read when restructuring events to OCSF or another target schema.
-- `references/testing-workflow.md`: Detailed validation recipe with the `sentinelone-sdl-api` skill, including how to scope queries with a unique host tag, how to interpret common error responses, and how to clean up.
+- `references/testing-workflow.md`: Detailed validation recipe with the `sdl-api` skill, including how to scope queries with a unique host tag, how to interpret common error responses, and how to clean up.
 
 ## Bundled examples
 
@@ -501,7 +501,7 @@ When a user pastes a log and asks you to parse it, you owe them: (1) a parser fi
 
 Parser deployment and validation use the `s1-secops-mcp` MCP tools, which bypass the
 Cowork sandbox proxy entirely. Use `sdl_put_file`, `sdl_get_file`, `sdl_list_files`,
-and `hec_ingest` directly instead of falling back to the `sentinelone-sdl-api`
+and `hec_ingest` directly instead of falling back to the `sdl-api`
 skill scripts. The MCP tools run locally on your machine and make direct HTTPS calls
 to `*.sentinelone.net` without proxy interference.
 
@@ -543,7 +543,7 @@ Any `app_name` with `has_class == 0` and meaningful volume is a candidate for a 
 
 ## Onboarding learnings (tenant-validated 2026-06-13, usea1-purple)
 
-These came out of onboarding Cisco Meraki via the `sentinelone-sdl-solutions` onboarding playbook.
+These came out of onboarding Cisco Meraki via the `sdl-solutions` onboarding playbook.
 
 - **JSON-per-line flatten needs a dotted-prefix capture.** `format: "$unmapped.=json{parse=dottedJson}$"`
   flattens the body into `unmapped.*` queryable fields. A non-prefix capture name like

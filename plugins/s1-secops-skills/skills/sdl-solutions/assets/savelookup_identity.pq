@@ -1,7 +1,7 @@
 // Identity enrichment table for the asset-enrichment solution.
 // Keyed on {{USERNAME_KEY}} (samAccountName or principalName).
 // Empty riskFactors ("[]") is converted to null so enrichment never writes an empty field.
-// Run through the sentinelone-powerquery LRQ runner. Persists as {{IDENTITY_TABLE}}.
+// Run through the powerquery LRQ runner. Persists as {{IDENTITY_TABLE}}.
 // user_assetid = the unified asset id (the `id` from datasource assets). Stamp it into user.uid
 //   in the parser (plus an Identity class_uid such as 3002) to bind this user as the alert's
 //   Target Asset on an events-type STAR rule. An objectSid / objectGuid / RANGER id only TYPES the

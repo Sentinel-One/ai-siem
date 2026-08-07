@@ -67,11 +67,7 @@ Full field reference: `mgmt-console-api/SKILL.md`
 - SDL config file CRUD (`sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`)
 - SDL V1 query (full-event JSON, used for schema discovery)
 
-**Auth note:** `SDL_CONFIG_WRITE_KEY` does not grant log read access. Force-clear scoped keys to fall through to the console JWT for V1 queries:
-
 ```python
-c.keys["log_read_key"] = ""
-c.keys["config_read_key"] = ""
 ```
 
 ---

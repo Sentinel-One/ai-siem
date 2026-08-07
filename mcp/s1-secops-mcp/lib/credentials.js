@@ -106,10 +106,6 @@ export function getCreds() {
     S1_CONSOLE_URL:       e('S1_CONSOLE_URL'),
     S1_CONSOLE_API_TOKEN: e('S1_CONSOLE_API_TOKEN') || e('S1_API_TOKEN'),
     S1_HEC_INGEST_URL:    e('S1_HEC_INGEST_URL'),
-    SDL_XDR_URL:          e('SDL_XDR_URL') || e('SDL_BASE_URL'),
-    SDL_CONFIG_WRITE_KEY: e('SDL_CONFIG_WRITE_KEY'),
-    SDL_CONFIG_READ_KEY:  e('SDL_CONFIG_READ_KEY'),
-    SDL_LOG_READ_KEY:     e('SDL_LOG_READ_KEY'),
     VT_API_KEY:           e('VT_API_KEY'),
   };
 }
@@ -121,14 +117,8 @@ export function hasS1Creds() {
 }
 
 /** True if minimum required credentials for SDL are present.
- *  Any key in the auth chains counts: read-only deployments configure only
- *  SDL_LOG_READ_KEY / SDL_CONFIG_READ_KEY and are still fully usable. */
+ *  SDL lives under <console>/sdl and uses the console API token. */
 export function hasSdlCreds() {
   const c = getCreds();
-  return !!(c.SDL_XDR_URL && (
-    c.SDL_CONFIG_WRITE_KEY ||
-    c.SDL_CONFIG_READ_KEY ||
-    c.SDL_LOG_READ_KEY ||
-    c.S1_CONSOLE_API_TOKEN
-  ));
+  return !!(c.S1_CONSOLE_URL && c.S1_CONSOLE_API_TOKEN);
 }

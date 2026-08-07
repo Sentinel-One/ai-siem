@@ -109,10 +109,6 @@ ENVIRONMENT
   S1_CONSOLE_API_TOKEN        Mgmt Console API token. Required for most tools.
   S1_HEC_INGEST_URL           HEC ingest host. Required for uam_ingest_alert,
                               uam_post_indicators, uam_post_alert.
-  SDL_XDR_URL                 SDL tenant URL.
-  SDL_LOG_READ_KEY            SDL Log Read key.
-  SDL_CONFIG_READ_KEY         SDL Config Read key.
-  SDL_CONFIG_WRITE_KEY        SDL Config Write key. Required for sdl_put_file.
   S1_CREDS_FILE               Explicit path to a credentials.json file.
                               Highest priority for credential resolution.
   S1_CLAUDE_MD_PATH           Absolute path to CLAUDE.md for the soc_analyst
@@ -145,7 +141,7 @@ async function main() {
 
   const creds = getCreds();
   log(`S1 Mgmt API:  ${hasS1Creds() ? 'configured (' + creds.S1_CONSOLE_URL + ')' : 'NOT configured'}`);
-  log(`SDL API:      ${hasSdlCreds() ? 'configured (' + creds.SDL_XDR_URL + ')' : 'NOT configured'}`);
+  log(`SDL API:      ${hasSdlCreds() ? 'configured (' + creds.S1_CONSOLE_URL + '/sdl)' : 'NOT configured'}`);
   log(`UAM Ingest:   ${hasHecCreds() ? 'configured (' + creds.S1_HEC_INGEST_URL + ')' : 'NOT configured (add S1_HEC_INGEST_URL)'}`);
   log(`Tools:        ${ALL_TOOLS.length} registered`);
 

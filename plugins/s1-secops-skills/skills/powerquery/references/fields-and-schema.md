@@ -229,7 +229,7 @@ sca:ingestTime=* dataSource.name=*
 | sort -p95_lag_min
 ```
 
-Source: used throughout the `sentinelone-sdl-solutions` ingest-health-monitoring templates (volume, chargeback, lag, and per-device baseline panels and detections).
+Source: used throughout the `sdl-solutions` ingest-health-monitoring templates (volume, chargeback, lag, and per-device baseline panels and detections).
 
 ---
 

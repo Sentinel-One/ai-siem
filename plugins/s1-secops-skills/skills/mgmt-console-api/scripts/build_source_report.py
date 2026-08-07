@@ -90,7 +90,7 @@ def pick_strategy(hours: float) -> Dict[str, Any]:
                 "poll_deadline": 420}
     raise SystemExit(
         f"window > 30d ({days:.1f}d) requires the two-JWT runner. "
-        "See `references/lrq-api.md` in the sentinelone-powerquery skill.")
+        "See `references/lrq-api.md` in the powerquery skill.")
 
 
 # --------------------------------------------------------------- discovery

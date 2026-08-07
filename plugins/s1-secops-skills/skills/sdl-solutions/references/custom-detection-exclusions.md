@@ -429,7 +429,7 @@ scope), the total / excluded / kept counts, and the top suppressed values.
   observables carrying `typeName`, and `state_id`/`s1_classification_id`. Generic OCSF `class_uid 2002`
   returns HTTP 202 but is silently dropped (this was the real bug). Also remember the async LRQ
   launch+poll pattern (capture `id` + `X-Dataset-Query-Forward-Tag`, then GET for `data.values`). Full
-  field list is in the `sentinelone-hyperautomation` skill (tenant-validated 2026-06-22).
+  field list is in the `hyperautomation` skill (tenant-validated 2026-06-22).
 
 ## Deployed artifacts
 

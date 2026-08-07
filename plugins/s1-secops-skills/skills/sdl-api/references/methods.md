@@ -12,7 +12,7 @@ and CLI subcommands (in `scripts/sdl_cli.py`).
 
 ## Ingestion (moved to HEC)
 
-SDL raw-log ingestion (`uploadLogs`, `addEvents`) has been removed from this skill. Ingest raw logs/events via the **HEC ingest** path (HTTP Event Collector on the ingest host, with a named `parser`), which feeds Event Search, PowerQuery, and detection rules. UAM alert/indicator creation is separate and lives in `sentinelone-mgmt-console-api` (`uam_*`, posted to `/v1/*` on the same ingest host but a distinct API). This skill now covers queries and configuration files only.
+SDL raw-log ingestion (`uploadLogs`, `addEvents`) has been removed from this skill. Ingest raw logs/events via the **HEC ingest** path (HTTP Event Collector on the ingest host, with a named `parser`), which feeds Event Search, PowerQuery, and detection rules. UAM alert/indicator creation is separate and lives in `mgmt-console-api` (`uam_*`, posted to `/v1/*` on the same ingest host but a distinct API). This skill now covers queries and configuration files only.
 
 ---
 
@@ -23,7 +23,7 @@ All five methods consume the CPU leaky bucket described in `auth_and_limits.md`.
 
 ### `query`: `c.query(filter="", ...)` / `c.iter_query(...)`, CLI `query`
 
-**DEPRECATED.** The V1 `/api/query` endpoint sunsets on 2027-02-15. For log search in new code use the LRQ API with `queryType: "LOG"` - async, cursor-paged to unlimited rows, survives long windows. See the `sentinelone-powerquery` skill's `references/lrq-api.md`. This method is fine for legacy one-offs until the sunset date.
+**DEPRECATED.** The V1 `/api/query` endpoint sunsets on 2027-02-15. For log search in new code use the LRQ API with `queryType: "LOG"` - async, cursor-paged to unlimited rows, survives long windows. See the `powerquery` skill's `references/lrq-api.md`. This method is fine for legacy one-offs until the sunset date.
 
 Event search. Filter syntax matches the UI search bar.
 
@@ -59,7 +59,7 @@ Use `c.iter_query(...)` to iterate across pages automatically.
 
 ### `powerQuery`: `c.power_query(query, ...)`, CLI `power-query`
 
-**DEPRECATED.** The V1 `/api/powerQuery` endpoint at `xdr.us1.sentinelone.net` sunsets on 2027-02-15. New code should route PowerQueries through the **Long Running Query API** at `POST /sdl/v2/api/queries` on the tenant's own console host. LRQ is async, has higher row/rate limits, parallelizes cleanly across time slices, and is the only path that stays supported after the sunset date. Canonical runner, body schema, auth, and gotchas live in the `sentinelone-powerquery` skill at `references/lrq-api.md`. This method is kept here only for legacy one-offs and to round out the 10-method SDL surface.
+**DEPRECATED.** The V1 `/api/powerQuery` endpoint at `xdr.us1.sentinelone.net` sunsets on 2027-02-15. New code should route PowerQueries through the **Long Running Query API** at `POST /sdl/v2/api/queries` on the tenant's own console host. LRQ is async, has higher row/rate limits, parallelizes cleanly across time slices, and is the only path that stays supported after the sunset date. Canonical runner, body schema, auth, and gotchas live in the `powerquery` skill at `references/lrq-api.md`. This method is kept here only for legacy one-offs and to round out the 10-method SDL surface.
 
 Full pipeline query language (S1QL-style). `query` is limited to 10K chars; escape `"` with `\"`.
 
@@ -95,9 +95,9 @@ Usage Metering (cost / usage / MSSP chargeback) is reached through the `datasour
 | datasource "metering" from "server_endpoints" | filter endpoint_bundle in ('Core', 'Complete')
 ```
 
-Key response columns include `calculation_time`, `date`, `timestamp`, `Console_id/hostname`, `Account_scope_*`, `Site_scope_*`, `tenant_scope_*`, `tenant_id/name`, the `organization_level_{0,1,2}_*` hierarchy, `environment`, `cloud_region`, `cloud_provider`, plus report-specific fields. Full column reference and authoring help: the `sentinelone-powerquery` skill, `references/datasource-command.md`.
+Key response columns include `calculation_time`, `date`, `timestamp`, `Console_id/hostname`, `Account_scope_*`, `Site_scope_*`, `tenant_scope_*`, `tenant_id/name`, the `organization_level_{0,1,2}_*` hierarchy, `environment`, `cloud_region`, `cloud_provider`, plus report-specific fields. Full column reference and authoring help: the `powerquery` skill, `references/datasource-command.md`.
 
-For query authoring, use the `sentinelone-powerquery` skill, it knows the
+For query authoring, use the `powerquery` skill, it knows the
 field taxonomy and pipe grammar.
 
 ---

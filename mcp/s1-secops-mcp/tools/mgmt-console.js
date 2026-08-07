@@ -1,5 +1,5 @@
 /**
- * Management Console API tools: sentinelone-mgmt-console-api skill
+ * Management Console API tools: mgmt-console-api skill
  *
  * Tools:
  *   s1_api_get              Generic GET against S1 Mgmt Console REST API
@@ -38,7 +38,7 @@ export function normalizeS1ApiGetParams(path, params) {
     // Respect an explicit inline override in the path query string, e.g.
     // /cloud-detection/rules?isLegacy=true; do not append a conflicting
     // isLegacy=false. Mirrors _maybe_inject_islegacy in
-    // sentinelone-mgmt-console-api/scripts/s1_client.py.
+    // mgmt-console-api/scripts/s1_client.py.
     !/[?&]is_?legacy=/i.test(path) &&
     p.isLegacy === undefined &&
     p.is_legacy === undefined
@@ -109,7 +109,7 @@ export const tools = [
   // ─── s1_api_put ───────────────────────────────────────────────────────────
   {
     name: 's1_api_put',
-    description: `Generic PUT request to the SentinelOne Management Console REST API (v2.1). Use for full-replacement updates: update agent policies, replace exclusion rules, set system configuration, update firewall/device control rules, update group settings, etc. The path should start with /web/api/v2.1/. The body replaces the resource in full; include all required fields, not just the changed ones. Consult the swagger reference at references/tags/ in the sentinelone-mgmt-console-api skill before calling. Examples: path="/web/api/v2.1/accounts/{id}/policy" body={"data":{...policy fields...}}, path="/web/api/v2.1/system/configuration" body={"data":{...}}.`,
+    description: `Generic PUT request to the SentinelOne Management Console REST API (v2.1). Use for full-replacement updates: update agent policies, replace exclusion rules, set system configuration, update firewall/device control rules, update group settings, etc. The path should start with /web/api/v2.1/. The body replaces the resource in full; include all required fields, not just the changed ones. Consult the swagger reference at references/tags/ in the mgmt-console-api skill before calling. Examples: path="/web/api/v2.1/accounts/{id}/policy" body={"data":{...policy fields...}}, path="/web/api/v2.1/system/configuration" body={"data":{...}}.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -135,7 +135,7 @@ export const tools = [
   // ─── s1_api_delete ────────────────────────────────────────────────────────
   {
     name: 's1_api_delete',
-    description: `Generic DELETE request to the SentinelOne Management Console REST API (v2.1). Use for delete operations: delete IOCs (DELETE /web/api/v2.1/threat-intelligence/iocs), delete unified exclusions, delete custom detection rules, delete remote scripts, delete firewall/device control rules, delete tags, etc. The path should start with /web/api/v2.1/. Many S1 DELETE endpoints accept a filter body (e.g. IOCDeleteSchema uses accountId + one other field); pass it as the body param. Some accept query params only (body can be omitted). Consult the swagger reference at references/tags/ in the sentinelone-mgmt-console-api skill for the exact filter schema before calling. WARNING: deletions are irreversible. Confirm the target ID/filter before executing.`,
+    description: `Generic DELETE request to the SentinelOne Management Console REST API (v2.1). Use for delete operations: delete IOCs (DELETE /web/api/v2.1/threat-intelligence/iocs), delete unified exclusions, delete custom detection rules, delete remote scripts, delete firewall/device control rules, delete tags, etc. The path should start with /web/api/v2.1/. Many S1 DELETE endpoints accept a filter body (e.g. IOCDeleteSchema uses accountId + one other field); pass it as the body param. Some accept query params only (body can be omitted). Consult the swagger reference at references/tags/ in the mgmt-console-api skill for the exact filter schema before calling. WARNING: deletions are irreversible. Confirm the target ID/filter before executing.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -161,7 +161,7 @@ export const tools = [
   // ─── s1_api_patch ─────────────────────────────────────────────────────────
   {
     name: 's1_api_patch',
-    description: `Generic PATCH request to the SentinelOne Management Console REST API (v2.1). Use for partial updates where only specific fields need to change without replacing the full resource. Less common in the S1 API than PUT, but used by some endpoints for partial config updates and field-level changes. The path should start with /web/api/v2.1/. Pass only the fields to change in the body. Consult the swagger reference at references/tags/ in the sentinelone-mgmt-console-api skill to confirm whether a given endpoint expects PUT (full replace) or PATCH (partial update).`,
+    description: `Generic PATCH request to the SentinelOne Management Console REST API (v2.1). Use for partial updates where only specific fields need to change without replacing the full resource. Less common in the S1 API than PUT, but used by some endpoints for partial config updates and field-level changes. The path should start with /web/api/v2.1/. Pass only the fields to change in the body. Consult the swagger reference at references/tags/ in the mgmt-console-api skill to confirm whether a given endpoint expects PUT (full replace) or PATCH (partial update).`,
     inputSchema: {
       type: 'object',
       properties: {

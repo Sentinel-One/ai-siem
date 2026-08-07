@@ -478,7 +478,9 @@ The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-
 | `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The env value did not propagate; re-check the `env` block and that each `-e VAR` name matches a key. |
 | `S1 Mgmt API: NOT configured` | No console token reached the container; check `S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN`. |
 
-Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log`. Full troubleshooting flowchart, hand-testing with credentials, and rollback: **[docs/docker.md](./docs/docker.md)**.
+Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log`. Upgrading from 1.2.x? See **[docs/upgrading.md](./docs/upgrading.md)**.
+
+Full troubleshooting flowchart, hand-testing with credentials, and rollback: **[docs/docker.md](./docs/docker.md)**.
 
 ---
 

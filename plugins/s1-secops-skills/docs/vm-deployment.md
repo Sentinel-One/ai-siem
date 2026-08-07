@@ -162,8 +162,8 @@ Paste this into the config file. Replace `<THEIR_PERSONAL_TOKEN>` with the beare
       "command": "uvx",
       "args": ["--from", "git+https://github.com/Sentinel-One/purple-mcp.git", "purple-mcp", "--mode", "stdio"],
       "env": {
-        "PURPLEMCP_CONSOLE_TOKEN":    "...",
-        "PURPLEMCP_CONSOLE_BASE_URL": "..."
+        "S1_CONSOLE_URL":       "...",
+        "S1_CONSOLE_API_TOKEN": "..."
       }
     },
     "virustotal": {
@@ -220,8 +220,8 @@ Open `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "command": "uvx",
       "args": ["--from", "git+https://github.com/Sentinel-One/purple-mcp.git", "purple-mcp", "--mode", "stdio"],
       "env": {
-        "PURPLEMCP_CONSOLE_TOKEN":    "...",
-        "PURPLEMCP_CONSOLE_BASE_URL": "..."
+        "S1_CONSOLE_URL":       "...",
+        "S1_CONSOLE_API_TOKEN": "..."
       }
     },
     "virustotal": {

@@ -363,7 +363,7 @@ End of document. Treat this file as a living artefact: append new gotchas as the
 
 These tools run locally and bypass the sandbox proxy entirely. Do not fall back to any other approach.
 
-An earlier attempt at schema discovery in the same session ran inside the sandboxed Bash shell, which blocks all outbound HTTPS to `xdr.us1.sentinelone.net`. The V1 query calls returned a proxy error. Because the error was not recognized as a sandbox-specific block, the empty output was interpreted as the source having no useful fields, and a plausible-looking but entirely fabricated field list was deployed into the GRC dashboard panels.
+An earlier attempt at schema discovery in the same session ran inside the sandboxed Bash shell, which blocks all outbound HTTPS to `*.sentinelone.net`. The V1 query calls returned a proxy error. Because the error was not recognized as a sandbox-specific block, the empty output was interpreted as the source having no useful fields, and a plausible-looking but entirely fabricated field list was deployed into the GRC dashboard panels.
 
 The fabrication was only caught when the user asked to re-verify the schemas, at which point the operation was re-run using the s1-secops-mcp tools and returned the real data: 126 fields for `asset`, 41 fields for `ActivityFeed`.
 

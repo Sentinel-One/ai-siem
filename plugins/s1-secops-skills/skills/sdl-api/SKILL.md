@@ -1,7 +1,7 @@
 ---
 name: sdl-api
 author: Prithvi Moses <prithvi.moses@sentinelone.com>
-description: Use whenever the user wants to read data and manage configuration through the SentinelOne Singularity Data Lake (SDL) API: run queries or manage configuration files (parsers, dashboards, alerts, lookups, datatables) on a Scalyr/SDL/XDR tenant. Trigger on "SDL", "SDL API", "Singularity Data Lake", "Scalyr", "DataSet", "xdr.us1.sentinelone.net" or any "*.sentinelone.net/api/*" URL, and on the method names "query", "powerQuery", "facetQuery", "timeseriesQuery", "numericQuery", "getFile", "putFile", "listFiles". Also trigger on tasks like "run a powerQuery", "list configuration files", "edit my parser via API", "deploy a dashboard JSON", "compute the rate of failures over time", or anything involving SDL Bearer-token auth or the S1-Scope header. Wraps every SDL method with a Python client and CLI.
+description: Use whenever the user wants to read data and manage configuration through the SentinelOne Singularity Data Lake (SDL) API: run queries or manage configuration files (parsers, dashboards, alerts, lookups, datatables) on a Scalyr/SDL/XDR tenant. Trigger on "SDL", "SDL API", "Singularity Data Lake", "Scalyr", "DataSet", or any "*.sentinelone.net/sdl/api/*" URL, and on the method names "query", "powerQuery", "facetQuery", "timeseriesQuery", "numericQuery", "getFile", "putFile", "listFiles". Also trigger on tasks like "run a powerQuery", "list configuration files", "edit my parser via API", "deploy a dashboard JSON", "compute the rate of failures over time", or anything involving SDL Bearer-token auth or the S1-Scope header. Wraps every SDL method with a Python client and CLI.
 ---
 
 # SentinelOne SDL API
@@ -107,7 +107,7 @@ json.dump(schemas, open(out, "w"), indent=2)
 
 **Direct MCP tools bypass sandbox proxy entirely.**
 
-The Cowork sandboxed shell blocks all outbound HTTPS to `xdr.us1.sentinelone.net`. Use the
+The Cowork sandboxed shell blocks all outbound HTTPS to `*.sentinelone.net`. Use the
 s1-secops-mcp MCP tools instead, which run locally and bypass the proxy:
 
 | Operation | s1-secops-mcp tool |
@@ -115,7 +115,7 @@ s1-secops-mcp MCP tools instead, which run locally and bypass the proxy:
 | PowerQuery | `mcp__s1-secops-mcp__powerquery_run` or `mcp__s1-secops-mcp__powerquery_schema_discover` |
 | `put_file` / `get_file` / `list_files` | `mcp__s1-secops-mcp__sdl_put_file`, `mcp__s1-secops-mcp__sdl_get_file`, `mcp__s1-secops-mcp__sdl_list_files` |
 
-All of these tools run on your local machine and make direct HTTPS calls to `xdr.us1.sentinelone.net`
+All of these tools run on your local machine and make direct HTTPS calls to the console host
 without sandbox proxy interference. No fallback or workaround needed.
 
 ```python

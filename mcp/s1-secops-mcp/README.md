@@ -52,7 +52,7 @@ See **[deploy/README.md](./deploy/README.md)** for the full deployment walkthrou
 
 ## Quick install
 
-For the end-user install paths (Docker quick start, npx/uvx, and team VM), see the canonical **[README Installation section](../../README.md#installation)**; credential keys and where to get them are in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section is the MCP-server-specific reference: the exact npm package and pin, the reproducible install script, and the Claude Desktop stdio bridge for a shared team VM. Three paths, pick the one that matches your setup:
+For the end-user install paths (Docker quick start, npx/uvx, and team VM), see the canonical **[README Installation section](../README.md#installation)**; credential keys and where to get them are in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section is the MCP-server-specific reference: the exact npm package and pin, the reproducible install script, and the Claude Desktop stdio bridge for a shared team VM. Three paths, pick the one that matches your setup:
 
 ### A. Local single-user via `npx` (Claude Desktop / Claude Code / Cowork)
 

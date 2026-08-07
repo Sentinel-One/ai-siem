@@ -376,6 +376,7 @@ Do not ingest, do not judge a rule "not firing", and do not strip attributes to 
 3. Run it over 7 days for baseline volume: expected row count × 7 ≈ what a week of alerting will look like.
 4. If the `group`-intermediate ever exceeds 1,000 rows in a 24-hour window, tighten the initial filter.
 
+
 ## Lookup table size and per-device detections (validated)
 
 - `savelookup` / `| lookup` datatables can be up to **150MB per table** (extensible by contacting SentinelOne); table size is essentially never the design blocker. Do not treat lookups as capped to a small row count.

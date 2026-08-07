@@ -665,6 +665,7 @@ Don't keep re-running slightly rephrased versions, the Purple MCP docs warn expl
 
 Common cause: grouping dropped a field you assumed was still present, or duplicate rows from a `union`. Add `columns` at the end to make the exact shape explicit, then re-inspect.
 
+
 ## Ingest-health validated pitfalls
 
 - `replace_all(...)` returns "Unknown function" on this engine; use `replace(...)`.

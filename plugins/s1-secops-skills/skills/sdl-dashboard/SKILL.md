@@ -70,7 +70,7 @@ All SDL operations should use the s1-secops-mcp MCP tools, which run locally and
 | V1 `query` (full event JSON for schema discovery) | `mcp__s1-secops-mcp__powerquery_schema_discover` |
 | `put_file` / `get_file` / `list_files` (dashboard deploy) | `mcp__s1-secops-mcp__sdl_put_file`, `mcp__s1-secops-mcp__sdl_get_file`, `mcp__s1-secops-mcp__sdl_list_files` |
 
-These tools run on your local machine and make direct HTTPS calls to `xdr.us1.sentinelone.net`
+These tools run on your local machine and make direct HTTPS calls to the console host
 without sandbox proxy interference. No fallback or workaround needed.
 
 ### 3. A field visible in `raw_data` may NOT be queryable

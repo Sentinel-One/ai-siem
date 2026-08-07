@@ -1,6 +1,7 @@
 # SDL API method reference
 
-Every method is a JSON `POST` to `{base_url}/api/<method>` unless noted. All
+Every method is a JSON `POST` to `{base_url}/api/<method>` unless noted, where
+`base_url` is `<console>/sdl`, derived from `S1_CONSOLE_URL`. All
 requests send `Authorization: Bearer <token>` and `Content-Type: application/json`. The `status` property of every
 response uses a slash-delimited hierarchy; `success` prefix = OK,
 `error/client` prefix = caller bug, `error/server` prefix = retry.

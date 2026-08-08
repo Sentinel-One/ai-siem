@@ -3,6 +3,7 @@
 8 endpoints.
 
 ## `GET /web/api/v2.1/cloud-funnel/assume-role-external-id`
+
 **Get AWS assume role external ID.**
 `operationId`: `_web_api_cloud-funnel_assume-role-external-id_get`
 
@@ -11,12 +12,14 @@ Get the AWS assume role external ID.
 Required permissions: `Cloud Funnel.view`
 
 Parameters:
+
 - `accountId` [query, string]: Account id. Example: "225494730938493804".
 - `siteId` [query, string]: Site id. Example: "225494730938493804".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/cloud-funnel/estimator`
+
 **Get estimate size of events**
 `operationId`: `_web_api_cloud-funnel_estimator_get`
 
@@ -25,11 +28,13 @@ Get estimate size of events in the bucket. You need the estimator ID which can b
 Required permissions: `Cloud Funnel.view`
 
 Parameters:
+
 - `estimatorId` [query, string] **required**: Estimator query id.
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/cloud-funnel/estimator`
+
 **Create Estimator ID**
 `operationId`: `_web_api_cloud-funnel_estimator_post`
 
@@ -38,11 +43,13 @@ Create estimator ID. This is needed to run the API "Get Estimate Size Of Events"
 Required permissions: `Cloud Funnel.view`
 
 Parameters:
-- `body` [body, v2_1.cloud_funnel.schemas_InitEstimatorSchema]: 
+
+- `body` [body, v2_1.cloud_funnel.schemas_InitEstimatorSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `DELETE /web/api/v2.1/cloud-funnel/onboarding`
+
 **Delete cloud funnel rule**
 `operationId`: `_web_api_cloud-funnel_onboarding_delete`
 
@@ -51,11 +58,13 @@ Deletes cloud funnel onboarding rule.
 Required permissions: `Cloud Funnel.delete`
 
 Parameters:
-- `body` [body, v2_1.cloud_funnel.schemas_OnboardingDeleteSchema]: 
+
+- `body` [body, v2_1.cloud_funnel.schemas_OnboardingDeleteSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/cloud-funnel/onboarding`
+
 **Get cloud funnel rule**
 `operationId`: `_web_api_cloud-funnel_onboarding_get`
 
@@ -64,12 +73,14 @@ Gets cloud funnel onboarding rule details
 Required permissions: `Cloud Funnel.view`
 
 Parameters:
+
 - `accountId` [query, string]: Account id. Example: "225494730938493804".
 - `siteId` [query, string]: Site id. Example: "225494730938493804".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/cloud-funnel/onboarding`
+
 **Post onboarding cloud funnel**
 `operationId`: `_web_api_cloud-funnel_onboarding_post`
 
@@ -78,11 +89,13 @@ Post onboarding cloud funnel rule.
 Required permissions: `Cloud Funnel.create, Cloud Funnel.edit`
 
 Parameters:
-- `body` [body, v2_1.cloud_funnel.schemas_OnboardingPostSchema]: 
+
+- `body` [body, v2_1.cloud_funnel.schemas_OnboardingPostSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/cloud-funnel/validate-bucket-permissions`
+
 **Validate Bucket**
 `operationId`: `_web_api_cloud-funnel_validate-bucket-permissions_post`
 
@@ -91,11 +104,13 @@ Validates bucket permissions.
 Required permissions: `Cloud Funnel.create, Cloud Funnel.edit`
 
 Parameters:
-- `body` [body, v2_1.cloud_funnel.schemas_BucketValidationSchema]: 
+
+- `body` [body, v2_1.cloud_funnel.schemas_BucketValidationSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/cloud-funnel/validate-query`
+
 **Validate Query**
 `operationId`: `_web_api_cloud-funnel_validate-query_post`
 
@@ -104,6 +119,7 @@ Verifies that a query is valid before using it as filterfor a Cloud Funnel onboa
 Required permissions: `Cloud Funnel.create, Cloud Funnel.edit`
 
 Parameters:
-- `body` [body, v2_1.cloud_funnel.schemas_QueryValidationSchema]: 
+
+- `body` [body, v2_1.cloud_funnel.schemas_QueryValidationSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

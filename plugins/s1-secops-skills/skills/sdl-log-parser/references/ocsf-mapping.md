@@ -9,6 +9,7 @@ The Open Cybersecurity Schema Framework (OCSF) is the schema this skill emits **
 > Before emitting any OCSF dotted path in a parser, **grep `references/ocsf-schema-documentation.md` for the exact string**. That file is the single source of truth for the ~25,759 documented OCSF field names. Do not invent. Do not copy from a catalog parser without verifying. Do not rely on memory or on the tables in this document; they are summaries for common cases, not the catalog.
 >
 > The two reasons people drift from this rule:
+>
 > 1. "I'm sure it's `source.ip`." It is not. It is `src_endpoint.ip`. Many vendors use `source.ip` natively. OCSF does not. Always grep.
 > 2. "The catalog parser uses `attacker_ip`, so I'll keep it." Catalog parsers are full of vendor-native names. Replace them with the OCSF dotted path from the schema reference, then map via `mappings.rename`.
 
@@ -25,6 +26,7 @@ Before inventing any OCSF field name, look it up in `references/ocsf-schema-docu
 - `## Unified Alert Management`
 
 **How to use it:**
+
 1. Identify the class from the quick-pick table below (or from the section headers in `ocsf-schema-documentation.md`).
 2. Grep the relevant section of that file for the OCSF concept you want (e.g., `src_endpoint`, `actor.user.email`, `file.hashes`). Each article lists every dotted field at that level, copy the name verbatim.
 3. Use the tables lower in THIS file only as a shortcut for the most common classes. For anything beyond Network/Auth/File, consult `ocsf-schema-documentation.md` first.
@@ -36,6 +38,7 @@ Field names in OCSF are lowercase dotted-path, e.g. `actor.user.email_addr`, `sr
 You have two choices for emitting OCSF names, pick based on parser complexity:
 
 ### Option A: Capture directly into OCSF dotted names
+
 For simple line formats, name the captures with the OCSF dotted path:
 
 ```js
@@ -47,6 +50,7 @@ formats: [
 SDL allows `.` and `_` in field names. Dotted names show up as nested objects in queries. Use this for clean, single-line formats.
 
 ### Option B: Capture vendor-native, then `mappings` block to rename
+
 For multi-format or complex parsers, capture vendor-native names first (matches the source log's terminology, easier to reason about during authoring), then use a `mappings` block (see `mappers.md`) to rename to OCSF in one place. This is the cleanest pattern for repeated patterns and CEF/LEEF/structured-syslog where dozens of fields need renaming.
 
 Often a hybrid is best: capture the framing (timestamp, host, log-type) directly with OCSF names, and use `mappings.rename` for the long tail of vendor-specific fields inside the body.
@@ -54,6 +58,7 @@ Often a hybrid is best: capture the framing (timestamp, host, log-type) directly
 ## Required attributes on every parser
 
 Tag every event with:
+
 1. The four pipeline-required defaults (`metadata.version`, `dataSource.category`, `dataSource.name`, `dataSource.vendor`).
 2. The OCSF class metadata (`class_uid`, `class_name`, `category_uid`, `category_name`).
 3. Vendor/product metadata (`metadata.product.*`, `metadata.log_provider`).

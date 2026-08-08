@@ -4,7 +4,7 @@ The LRQ API is the **default** programmatic path for every PowerQuery this skill
 
 ## Endpoints (all on the tenant's own console host)
 
-```
+```text
 POST   https://<console>.sentinelone.net/sdl/v2/api/queries
 GET    https://<console>.sentinelone.net/sdl/v2/api/queries/{id}?lastStepSeen=N
 DELETE https://<console>.sentinelone.net/sdl/v2/api/queries/{id}
@@ -14,13 +14,13 @@ The console host is tenant-specific (for example `your-tenant.sentinelone.net`),
 
 ## Auth: Bearer, not ApiToken
 
-```
+```text
 Authorization: Bearer <jwt>
 ```
 
 The JWT is the **same** console service-user token used by the Mgmt API; only the prefix changes. Calling `/sdl/v2/api/queries` with `Authorization: ApiToken <jwt>` returns HTTP 500:
 
-```
+```text
 "Header must start with Bearer, but actually starts with \"ApiTok\""
 ```
 
@@ -70,7 +70,7 @@ Service user tokens are preferred over personal user tokens because the per-user
 
 ## Polling
 
-```
+```text
 GET /sdl/v2/api/queries/{id}?lastStepSeen=<stepsCompleted>
 Headers:
   Authorization: Bearer <jwt>
@@ -83,7 +83,7 @@ Done when `stepsCompleted >= stepsTotal` and `stepsTotal > 0`. `data.values` is 
 
 ## Cancel
 
-```
+```text
 DELETE /sdl/v2/api/queries/{id}
 Headers:
   Authorization: Bearer <jwt>
@@ -105,13 +105,13 @@ Each API call (POST, GET, DELETE) counts as one request. A single slice with 5s 
 
 On most SentinelOne tenants, the default scope carries a mix of SentinelOne EDR telemetry and Scalyr/infra logs. If you want EDR events (Process Creation, File Creation, Module Load, etc.), prepend this to the query:
 
-```
+```text
 dataSource.name='SentinelOne' dataSource.category='security'
 ```
 
 or equivalently:
 
-```
+```text
 i.scheme="edr"
 ```
 

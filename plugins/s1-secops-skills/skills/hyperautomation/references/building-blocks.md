@@ -13,6 +13,7 @@ Complete data payloads for every action type in SentinelOne Hyperautomation.
 ## TRIGGERS
 
 ### Manual Trigger (static: no user input)
+
 ```json
 {
   "type": "manual_trigger",
@@ -37,6 +38,7 @@ Complete data payloads for every action type in SentinelOne Hyperautomation.
 ```
 
 ### Manual Trigger (dynamic: prompts user for input)
+
 ```json
 {
   "type": "manual_trigger",
@@ -62,10 +64,12 @@ Complete data payloads for every action type in SentinelOne Hyperautomation.
   }
 }
 ```
+
 Input types: `"text"`, `"number"`, `"json"`, `"email"`, `"date"`, `"time"`, `"checkbox"`
 Reference: `{{manual-trigger.data.AssetName}}`
 
 ### Scheduled Trigger
+
 ```json
 {
   "type": "scheduled_trigger",
@@ -91,10 +95,12 @@ Reference: `{{manual-trigger.data.AssetName}}`
   }
 }
 ```
+
 `week_day`: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
 `schedule_method` options: `"daily"`, `"weekly"`, `"monthly"`, `"interval"`
 
 ### HTTP Trigger (Webhook)
+
 ```json
 {
   "type": "http_trigger",
@@ -113,9 +119,11 @@ Reference: `{{manual-trigger.data.AssetName}}`
   }
 }
 ```
+
 Reference incoming data: `{{http-trigger.body.someField}}`
 
 ### Singularity Response Trigger
+
 ```json
 {
   "type": "singularity_response_trigger",
@@ -158,6 +166,7 @@ Reference incoming data: `{{http-trigger.body.someField}}`
 > be a **JSON-encoded string of an array** (e.g. `"[\"HIGH\",\"CRITICAL\"]"`), not a raw JSON
 > array. Every active production flow uses this string-encoded format.
 Common trigger data references:
+
 - `{{singularity-response-trigger.data.id}}`: alert ID
 - `{{singularity-response-trigger.data.name}}`: alert name
 - `{{singularity-response-trigger.data.severity}}`: severity
@@ -171,6 +180,7 @@ Common trigger data references:
 - `{{singularity-response-trigger.data.indicators[0].eventTime}}`: first indicator event time
 
 ### Email Trigger
+
 ```json
 {
   "type": "email_trigger",
@@ -182,6 +192,7 @@ Common trigger data references:
   }
 }
 ```
+
 Reference: `{{email-trigger.body}}`, `{{email-trigger.subject}}`
 
 ---
@@ -189,6 +200,7 @@ Reference: `{{email-trigger.body}}`, `{{email-trigger.subject}}`
 ## CORE ACTIONS
 
 ### Variable
+
 ```json
 {
   "type": "variable",
@@ -218,6 +230,7 @@ Reference: `{{email-trigger.body}}`, `{{email-trigger.subject}}`
   }
 }
 ```
+
 `variables_scope`: `"local"` (default) or `"global"`
 Reference: `{{local_var.myVar}}` or `{{global_var.myVar}}`
 `should_use_as_output: true` exposes the variable as a workflow-level output (visible in the
@@ -236,6 +249,7 @@ should TTL out; leave null for local.
 > workflow, give each such variable its own dedicated Variable action.
 >
 > ❌ **Wrong**: `fullPath` silently resolves to empty because `baseUrl` is not yet available:
+>
 > ```json
 > {
 >   "name": "Set Vars",
@@ -249,6 +263,7 @@ should TTL out; leave null for local.
 > ```
 >
 > ✅ **Right**: two separate actions, each with one variable:
+>
 > ```json
 > {
 >   "name": "Set Base URL",
@@ -259,7 +274,9 @@ should TTL out; leave null for local.
 >   "variables_scope": "local"
 > }
 > ```
+>
 > *(connected_to → next action)*
+>
 > ```json
 > {
 >   "name": "Set Full Path",
@@ -276,6 +293,7 @@ should TTL out; leave null for local.
 > literals, trigger fields, or external action outputs).
 
 ### Loop (dynamic: iterates over an array)
+
 ```json
 {
   "type": "loop",
@@ -290,12 +308,14 @@ should TTL out; leave null for local.
   }
 }
 ```
+
 Current item reference: `{{loop-items.item}}` or `{{loop-items.item.fieldName}}`
 Current index: `{{loop-items.index}}`
 Connect loop to first inner action using `custom_handle: "inner"`.
 Actions inside the loop have `"parent_action": <loop_export_id>`.
 
 ### Loop (while: indefinite, until Break)
+
 ```json
 {
   "type": "loop",
@@ -312,6 +332,7 @@ Actions inside the loop have `"parent_action": <loop_export_id>`.
 ```
 
 ### Loop (fixed: runs N times)
+
 ```json
 {
   "type": "loop",
@@ -328,7 +349,9 @@ Actions inside the loop have `"parent_action": <loop_export_id>`.
 ```
 
 ### Condition
+
 See workflow-schema.md for simple vs. multi style details.
+
 ```json
 {
   "type": "condition",
@@ -349,6 +372,7 @@ See workflow-schema.md for simple vs. multi style details.
   }
 }
 ```
+
 Operators (with usage counts in active corpus):
 `"equals"` (1,105), `"not_equals"` (271), `"greater_than_or_equals"` (194), `"greater_than"`
 (168), `"contains"` (34), `"in"` (1), `"less_than_or_equals"` (1), `"less_than"` (1).
@@ -361,6 +385,7 @@ Also valid but unused in corpus: `"not_contains"`, `"is_empty"`, `"is_not_empty"
 > (e.g. `"[\"HIGH\",\"CRITICAL\"]"`), not a raw array.
 
 ### Delay
+
 ```json
 {
   "type": "delay",
@@ -373,9 +398,11 @@ Also valid but unused in corpus: `"not_contains"`, `"is_empty"`, `"is_not_empty"
   }
 }
 ```
+
 `time_unit` options: `"seconds"`, `"minutes"`, `"hours"`
 
 ### Break Loop
+
 ```json
 {
   "type": "break_loop",
@@ -386,9 +413,11 @@ Also valid but unused in corpus: `"not_contains"`, `"is_empty"`, `"is_not_empty"
   }
 }
 ```
+
 Must have `"parent_action": <loop_export_id>`. `"connected_to": []`.
 
 ### Send Email
+
 ```json
 {
   "type": "send_email",
@@ -408,6 +437,7 @@ Must have `"parent_action": <loop_export_id>`. `"connected_to": []`.
   }
 }
 ```
+
 `mime_type`: `"text/plain"` or `"text/html"`. HTML is more common in active flows (analyst-
 friendly tables, embedded SentinelOne logo banner).
 For attachments, use the keys **`file_name`** and **`file_content`** (NOT `name`/`content`):
@@ -423,6 +453,7 @@ For attachments, use the keys **`file_name`** and **`file_content`** (NOT `name`
 element can be a literal or a `{{...}}` expression.
 
 ### Data Formation
+
 ```json
 {
   "type": "data_formation",
@@ -436,6 +467,7 @@ element can be a literal or a `{{...}}` expression.
   }
 }
 ```
+
 Builds a structured object on the fly without paying for a Variable action. `data` is an
 object whose values can be literals or `{{...}}` expressions; reference downstream as
 `{{generate-uuid.data.uuid}}`. Real corpus uses include: building Slack channel-config dicts,
@@ -444,6 +476,7 @@ actions in the corpus are exactly the "Generate UUID" template above**, copy it 
 when you need a correlation ID.
 
 ### HTTP Request (core: no integration)
+
 ```json
 {
   "type": "http_request",
@@ -479,6 +512,7 @@ when you need a correlation ID.
   }
 }
 ```
+
 `method` (count in active corpus): `"post"` (1,962), `"get"` (664), `"put"` (55),
 `"delete"` (13), `"patch"` (5).
 Reference response: `{{action-slug.body}}`, `{{action-slug.status_code}}`,
@@ -495,7 +529,9 @@ Reference response: `{{action-slug.body}}`, `{{action-slug.status_code}}`,
   requires `application/x-www-form-urlencoded` or `multipart/form-data`.
 
 ### HTTP Request (integration-backed)
+
 Same as above but:
+
 - `"tag": "integration"`
 - `"connection_id": null` (set to null for import; user configures)
 - `"connection_name": ""`
@@ -506,8 +542,9 @@ Same as above but:
 When generating workflows for import, always set `connection_id`, `connection_name`,
 and `integration_id` to null/""; these are resolved from the user's configured connections.
 
-### URL pattern for integration-backed SentinelOne actions:
-```
+### URL pattern for integration-backed SentinelOne actions
+
+```json
 "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/<endpoint>"
 ```
 
@@ -535,6 +572,7 @@ The calling node type is **`snippet_20`**, not `snippet` (see `building-blocks-c
 Snippets are reusable groups of actions. `data.inputs` is a JSON string mapping the snippet's input parameters to parent references; `use_latest_snippet_version: true` auto-tracks the newest published version. Connect it like any ordinary action (`custom_handle: null`); `custom_handle: "inner"` is only for a loop's first inner action. Authoring a snippet uses `snippet_trigger` + `snippet_output` nodes; full authoring, calling, and lifecycle detail lives in `snippets.md`.
 
 ### Create Interaction
+
 ```json
 {
   "type": "create_interaction",
@@ -548,6 +586,7 @@ Snippets are reusable groups of actions. `data.inputs` is a JSON string mapping 
   }
 }
 ```
+
 `interaction_type: "choice"` is the only flavor seen in active flows. `options` is the array
 of button labels presented to the analyst in the Hyperautomation console; `form_schema` (when
 non-null) defines a structured form for free-text/multi-field input.
@@ -555,6 +594,7 @@ Reference interaction URLs: `{{create-interaction.interaction_url.<option-name>}
 Reference interaction ID: `{{create-interaction.interaction_id}}`.
 
 ### Wait for Interaction
+
 ```json
 {
   "type": "wait_for_interaction",
@@ -571,11 +611,13 @@ Reference interaction ID: `{{create-interaction.interaction_id}}`.
   }
 }
 ```
+
 **Field name trap**: this action uses `identifier` (not `interaction_id`) and `time_value`
 (not `value`). Earlier docs got this wrong; the corpus is unambiguous.
 `expected_respondents: N` blocks until N analysts have responded; default to 1.
 
 ### Wait for Slack
+
 ```json
 {
   "type": "wait_for_slack",
@@ -589,6 +631,7 @@ Reference interaction ID: `{{create-interaction.interaction_id}}`.
   }
 }
 ```
+
 Reference response: `{{wait-for-slack.body}}`, `{{wait-for-slack.timeout}}`,
 `{{wait-for-slack.body.actions[0].value}}`
 
@@ -635,13 +678,15 @@ action by name from a fixed list (see `autonomous-soc-template.md`). It is rare 
 ## COMMON PATTERNS
 
 ### Success/Fail branch pattern (used throughout M365 workflows)
-```
+
+```text
 Action → Condition (Is Success, checks status_code) → 
   TRUE: Variable (success note) → HTTP (add note)
   FALSE: Variable (fail note) → HTTP (add note)
 ```
 
 ### Add Note to Unified Alert (GraphQL mutation: most common pattern)
+
 ```json
 {
   "name": "Add Note to Alert",
@@ -653,6 +698,7 @@ Action → Condition (Is Success, checks status_code) →
 ```
 
 ### SDL Query (AI SIEM Singularity Data Lake)
+
 ```json
 {
   "method": "post",
@@ -662,6 +708,7 @@ Action → Condition (Is Success, checks status_code) →
 ```
 
 ### PowerQuery (SDL Power Query)
+
 ```json
 {
   "method": "post",
@@ -671,6 +718,7 @@ Action → Condition (Is Success, checks status_code) →
 ```
 
 ### TI Ingestion (Threat Intelligence IOC)
+
 ```json
 {
   "method": "post",

@@ -3,6 +3,7 @@
 22 endpoints.
 
 ## `GET /web/api/v2.1/export/threats/{threat_id}/explore/events`
+
 **Export Events**
 `operationId`: `_web_api_export_threats_{threat_id}_explore_events_get`
 
@@ -11,6 +12,7 @@ Export threat events in CSV or JSON format.
 Required permissions: `Threats.view`
 
 Parameters:
+
 - `threat_id` [path, string] **required**: Threat ID. Example: "225494730938493804".
 - `eventTypes` [query, array]: Filter events by type. Example: "events".
 - `eventSubTypes` [query, array]: Filter events by sub-type. Example: "PROCESSCREATION".
@@ -21,6 +23,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/export/threats/{threat_id}/timeline`
+
 **Export Threat Timeline**
 `operationId`: `_web_api_export_threats_{threat_id}_timeline_get`
 
@@ -29,6 +32,7 @@ Export a threat's timeline.
 Required permissions: `Threats.view`
 
 Parameters:
+
 - `threat_id` [path, string] **required**: Threat ID. Example: "225494730938493804".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -39,6 +43,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/threats`
+
 **Get Threats**
 `operationId`: `_web_api_threats_get`
 
@@ -47,6 +52,7 @@ Get data of threats that match the filter. <BR>Best Practice: Use the filters. E
 Required permissions: `Threats.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -89,8 +95,8 @@ Parameters:
 - `osTypes` [query, array]: Included OS types. Example: "macos".
 - `osTypesNin` [query, array]: Excluded OS types. Example: "macos".
 - `osArchs` [query, array]: Included OS Architectures. Example: "32 bit".
-- `osNames` [query, array]: 
-- `osNamesNin` [query, array]: 
+- `osNames` [query, array]:
+- `osNamesNin` [query, array]:
 - `agentIsActive` [query, boolean]: Include Agents currently connected to the Management Console
 - `initiatedBy` [query, array]: Only include threats from specific initiating sources. Example: "agent_policy,dv_command".
 - `initiatedByNin` [query, array]: Exclude threats with specific initiating sources. Example: "agent_policy,dv_command".
@@ -156,6 +162,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/actions/container-network-connect`
+
 **Reconnect Container**
 `operationId`: `_web_api_threats_actions_container-network-connect_post`
 
@@ -164,11 +171,13 @@ Restore network to a container that was disconnected
 Required permissions: `Endpoints.reconnectToNetwork`
 
 Parameters:
-- `body` [body, threats.schemas_ContainerNetworkQuarantineSchema]: 
+
+- `body` [body, threats.schemas_ContainerNetworkQuarantineSchema]:
 
 Responses: 200 Reconnect command was created, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/actions/container-network-disconnect`
+
 **Disconnect Container**
 `operationId`: `_web_api_threats_actions_container-network-disconnect_post`
 
@@ -177,11 +186,13 @@ Network quarantine a specific container
 Required permissions: `Endpoints.disconnectFromNetwork`
 
 Parameters:
-- `body` [body, threats.schemas_ContainerNetworkQuarantineSchema]: 
+
+- `body` [body, threats.schemas_ContainerNetworkQuarantineSchema]:
 
 Responses: 200 Disconnect command was created, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/add-to-blacklist`
+
 **Add to Blocklist**
 `operationId`: `_web_api_threats_add-to-blacklist_post`
 
@@ -191,11 +202,13 @@ Required permissions: `Blacklist.create`
 Optional permissions: `Threats.updateAnalystVerdict`
 
 Parameters:
-- `body` [body, threats.schemas_ThreatsAddToRestrictionsWithTargetSchema]: 
+
+- `body` [body, threats.schemas_ThreatsAddToRestrictionsWithTargetSchema]:
 
 Responses: 200 Hash threat added to black list, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/add-to-exclusions`
+
 **Add to Exclusions**
 `operationId`: `_web_api_threats_add-to-exclusions_post`
 
@@ -205,11 +218,13 @@ Required permissions: `Exclusions.create`
 Optional permissions: `Threats.updateAnalystVerdict`
 
 Parameters:
-- `body` [body, threats.schemas_ThreatsAddToExclusionsWithTargetSchema]: 
+
+- `body` [body, threats.schemas_ThreatsAddToExclusionsWithTargetSchema]:
 
 Responses: 200 Added to exclusions, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/analyst-verdict`
+
 **Update Threat Analyst Verdict**
 `operationId`: `_web_api_threats_analyst-verdict_post`
 
@@ -218,11 +233,13 @@ Change the verdict of a threat, as determined by a Console user.
 Required permissions: `Threats.updateAnalystVerdict`
 
 Parameters:
-- `body` [body, threats.schemas_ThreatsAnalystVerdictSchema]: 
+
+- `body` [body, threats.schemas_ThreatsAnalystVerdictSchema]:
 
 Responses: 200 Threats analyst verdict successfully updated, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/dv-add-to-blacklist`
+
 **Add to Blocklist (Deep Visibility)**
 `operationId`: `_web_api_threats_dv-add-to-blacklist_post`
 
@@ -231,11 +248,13 @@ From Deep Visibility results, add a SHA1 hash to the Blocklist. Set the scope of
 Required permissions: `Blacklist.create`
 
 Parameters:
-- `body` [body, threats.schemas_DvAddToBlackListSchema]: 
+
+- `body` [body, threats.schemas_DvAddToBlackListSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/dv-mark-as-threat`
+
 **Mark as Threat (Deep Visibility)**
 `operationId`: `_web_api_threats_dv-mark-as-threat_post`
 
@@ -244,11 +263,13 @@ Mark an event from Deep Visibility data as a threat. (see Deep Visibility > Get 
 Required permissions: `Threats.markThreat`
 
 Parameters:
-- `body` [body, threats.schemas_DvMarkAsThreatSchema]: 
+
+- `body` [body, threats.schemas_DvMarkAsThreatSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/engines/disable`
+
 **Disable Engines**
 `operationId`: `_web_api_threats_engines_disable_post`
 
@@ -257,11 +278,13 @@ If your list of threats shows too many False Positives, use this command to trou
 Required permissions: `Policy.edit`
 
 Parameters:
-- `body` [body, threats.schemas_EngineListSchema]: 
+
+- `body` [body, threats.schemas_EngineListSchema]:
 
 Responses: 200 Engines disabled, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/threats/export`
+
 **Export Threats**
 `operationId`: `_web_api_threats_export_get`
 
@@ -270,6 +293,7 @@ Export data of threats (as seen in the Console > Incidents) that match the filte
 Required permissions: `Threats.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -305,8 +329,8 @@ Parameters:
 - `osTypes` [query, array]: Included OS types. Example: "macos".
 - `osTypesNin` [query, array]: Excluded OS types. Example: "macos".
 - `osArchs` [query, array]: Included OS Architectures. Example: "32 bit".
-- `osNames` [query, array]: 
-- `osNamesNin` [query, array]: 
+- `osNames` [query, array]:
+- `osNamesNin` [query, array]:
 - `agentIsActive` [query, boolean]: Include Agents currently connected to the Management Console
 - `initiatedBy` [query, array]: Only include threats from specific initiating sources. Example: "agent_policy,dv_command".
 - `initiatedByNin` [query, array]: Exclude threats with specific initiating sources. Example: "agent_policy,dv_command".
@@ -372,6 +396,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/external-ticket-id`
+
 **Update Threat External Ticket ID**
 `operationId`: `_web_api_threats_external-ticket-id_post`
 
@@ -380,11 +405,13 @@ Change the external ticket ID of a threat.
 Required permissions: `Threats.updateExternalTicketId`
 
 Parameters:
-- `body` [body, threats.schemas_ThreatExternalTicketSchema]: 
+
+- `body` [body, threats.schemas_ThreatExternalTicketSchema]:
 
 Responses: 200 Threats external ticket id successfully updated, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/fetch-file`
+
 **Fetch Threat File**
 `operationId`: `_web_api_threats_fetch-file_post`
 
@@ -393,11 +420,13 @@ Fetch a file associated with the threat that matches the filter. Your user role 
 Required permissions: `Threats.fetchThreatFile`
 
 Parameters:
-- `body` [body, threats.schemas_ThreatsFetchFileRequestSchema]: 
+
+- `body` [body, threats.schemas_ThreatsFetchFileRequestSchema]:
 
 Responses: 200 Number of affected agents, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/incident`
+
 **Updated Threat Incident**
 `operationId`: `_web_api_threats_incident_post`
 
@@ -407,11 +436,13 @@ Required permissions: `Threats.updateIncidentStatus`
 Optional permissions: `Threats.updateAnalystVerdict`
 
 Parameters:
-- `body` [body, threats.schemas_ThreatsIncidentSchema]: 
+
+- `body` [body, threats.schemas_ThreatsIncidentSchema]:
 
 Responses: 200 Threats incident successfully updated, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/mitigate-alerts`
+
 **Mitigate Alerts**
 `operationId`: `_web_api_threats_mitigate-alerts_post`
 
@@ -420,11 +451,13 @@ Mark an alerts as a threat and run mitigation action from the Management UI.
 Required permissions: `Threats.markThreat`
 
 Parameters:
-- `body` [body, threats.schemas_MitigateAlertsSchema]: 
+
+- `body` [body, threats.schemas_MitigateAlertsSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threats/mitigate/{action}`
+
 **Mitigate Threats**
 `operationId`: `_web_api_threats_mitigate_{action}_post`
 
@@ -432,12 +465,14 @@ Apply a mitigation action to a group of threats that match the filter. Valid val
 Optional permissions: `Threats.kill, Threats.quarantine, Threats.unquarantine, Threats.remediate, Threats.rollback, Threats.removeMacro, Threats.restoreMacro`
 
 Parameters:
+
 - `action` [path, string] **required** (enum: kill, remediate, rollback-remediation, quarantine, un-quarantine, None, remove_macros, restore_macros): Mitigation action. Example: "kill".
-- `body` [body, threats.schemas_ThreatsMitigateRequestSchema]: 
+- `body` [body, threats.schemas_ThreatsMitigateRequestSchema]:
 
 Responses: 200 Threat successfully mitigated, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/threats/mitigation-report/{report_id}`
+
 **Export Mitigation Report**
 `operationId`: `_web_api_threats_mitigation-report_{report_id}_get`
 
@@ -446,11 +481,13 @@ Export the mitigation report as a CSV file.
 Required permissions: `Activity Page.view`
 
 Parameters:
+
 - `report_id` [path, string] **required**: Mitigation report ID. Example: "225494730938493804".
 
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/threats/{threat_id}/download-from-cloud`
+
 **Download from cloud**
 `operationId`: `_web_api_threats_{threat_id}_download-from-cloud_get`
 
@@ -459,11 +496,13 @@ Download threat file from cloud.
 Required permissions: `Threats.view`
 
 Parameters:
+
 - `threat_id` [path, string] **required**: Threat ID. Example: "225494730938493804".
 
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/threats/{threat_id}/explore/events`
+
 **Get Events**
 `operationId`: `_web_api_threats_{threat_id}_explore_events_get`
 
@@ -472,6 +511,7 @@ Get all threat events.
 Required permissions: `Threats.view`
 
 Parameters:
+
 - `threat_id` [path, string] **required**: Threat ID. Example: "225494730938493804".
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
@@ -488,6 +528,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/threats/{threat_id}/timeline`
+
 **Get Threat Timeline**
 `operationId`: `_web_api_threats_{threat_id}_timeline_get`
 
@@ -496,6 +537,7 @@ Get a threat's timeline.
 Required permissions: `Threats.view`
 
 Parameters:
+
 - `threat_id` [path, string] **required**: Threat ID. Example: "225494730938493804".
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
@@ -513,6 +555,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/threats/{threat_id}/whitening-options`
+
 **Exclusion Options**
 `operationId`: `_web_api_threats_{threat_id}_whitening-options_get`
 
@@ -521,6 +564,7 @@ Get the Exclusion types that can be created from the detection data. <BR> For ex
 Required permissions: `Threats.view`
 
 Parameters:
+
 - `threat_id` [path, string] **required**: Threat ID. Example: "225494730938493804".
 
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.

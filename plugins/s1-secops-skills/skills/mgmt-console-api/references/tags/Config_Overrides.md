@@ -3,6 +3,7 @@
 5 endpoints.
 
 ## `DELETE /web/api/v2.1/config-override`
+
 **Delete Config Overrides**
 `operationId`: `_web_api_config-override_delete`
 
@@ -11,11 +12,13 @@ Delete overrides value. To get the required IDs, run "config-override".
 Required permissions: `Policy Override.delete`
 
 Parameters:
-- `body` [body, config_overrides_ConfigOverrideDeleteSchema]: 
+
+- `body` [body, config_overrides_ConfigOverrideDeleteSchema]:
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/config-override`
+
 **Get Config Overrides**
 `operationId`: `_web_api_config-override_get`
 
@@ -24,6 +27,7 @@ There are different ways to override the configuration of an Agent, and the prio
 Required permissions: `Policy Override.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -52,6 +56,7 @@ Parameters:
 Responses: 400 Invalid user input received. See error details for further i, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/config-override`
+
 **Create Config Override**
 `operationId`: `_web_api_config-override_post`
 
@@ -60,11 +65,13 @@ Override the configuration of Agents that match the filter. Best practice:  Run 
 Required permissions: `Policy Override.create`
 
 Parameters:
-- `body` [body, config_overrides_CreateConfigOverrideSchema]: 
+
+- `body` [body, config_overrides_CreateConfigOverrideSchema]:
 
 Responses: 400 Invalid user input received. See error details for further i, 404 Scope not found., 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `DELETE /web/api/v2.1/config-override/{override_id}`
+
 **Delete Config Override**
 `operationId`: `_web_api_config-override_{override_id}_delete`
 
@@ -73,11 +80,13 @@ Delete an override value. To get the required ID, run "config-override".
 Required permissions: `Policy Override.delete`
 
 Parameters:
+
 - `override_id` [path, string] **required**: Config override object ID. Example: "225494730938493804".
 
 Responses: 404 Override not found., 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/config-override/{override_id}`
+
 **Update Config Override**
 `operationId`: `_web_api_config-override_{override_id}_put`
 
@@ -86,7 +95,8 @@ Use this command to change the value of one configuration value. To get the requ
 Required permissions: `Policy Override.edit`
 
 Parameters:
+
 - `override_id` [path, string] **required**: Config override object ID. Example: "225494730938493804".
-- `body` [body, config_overrides_PutConfigOverrideSchema]: 
+- `body` [body, config_overrides_PutConfigOverrideSchema]:
 
 Responses: 404 Override not found., 403 Insufficient permissions., 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

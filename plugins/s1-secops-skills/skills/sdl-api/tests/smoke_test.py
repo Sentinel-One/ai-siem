@@ -114,38 +114,73 @@ def main():
         start_time="1h",
     ))
 
-    # --------------------------- CONFIG READ ---------------------------------
-    list_res = _run("listFiles", lambda: c.list_files())
+    # --------------------------- CONFIG READ (GraphQL) -----------------------
+    # configFiles is the canonical listing. The legacy REST listFiles is checked
+    # too, but only to assert it is the NARROWER of the two: if REST ever equals
+    # or exceeds GraphQL, either the tenant has no dashboards or this test is
+    # pointed at the wrong surface, and the udoId guidance needs re-verifying.
+    files = _run("configFiles (GraphQL)", lambda: c.config_files())
+    rest = _run("listFiles (legacy REST)", lambda: c.list_files())
 
-    pick_path = None
-    if isinstance(list_res, dict):
-        paths = list_res.get("paths") or []
-        # prefer a /logParsers path for getFile; else the first one
-        parsers = [p for p in paths if p.startswith("/logParsers/")]
-        pick_path = (parsers or paths or [None])[0]
+    if isinstance(files, list) and isinstance(rest, dict):
+        gql_n, rest_n = len(files), len(rest.get("paths") or [])
+        dashboards = [f for f in files if (f.get("name") or "").startswith("/dashboards/")]
+        udo = [f for f in dashboards if f.get("udoId")]
+        ok = rest_n <= gql_n
+        RESULTS.append((
+            "GraphQL listing is a superset of REST", "PASS" if ok else "FAIL", 0,
+            f"graphql={gql_n} rest={rest_n} dashboards={len(dashboards)} udoId-addressed={len(udo)}",
+            "" if ok else "REST returned at least as many paths as GraphQL; investigate before trusting either.",
+        ))
+        print(f"[{'PASS' if ok else 'FAIL'}] GraphQL listing is a superset of REST"
+              f"       graphql={gql_n} rest={rest_n} udoId-addressed={len(udo)}")
 
-    if pick_path:
-        _run(f"getFile ({pick_path[:30]})", lambda: c.get_file(pick_path, prettyprint=False))
-    else:
-        print("[SKIP] getFile; no files present to read")
-        RESULTS.append(("getFile", "SKIP", 0, "no files", "tenant has no config files yet"))
+        # Read a udoId-addressed dashboard: the exact class of file REST cannot see.
+        if udo:
+            sample = udo[0]
+            _run(f"configFile by udoId ({str(sample['udoId'])[:16]})",
+                 lambda: c.config_file(udo_id=sample["udoId"]))
+        else:
+            print("[SKIP] configFile by udoId; tenant has no udoId-addressed dashboards")
+            RESULTS.append(("configFile by udoId", "SKIP", 0, "none present", ""))
 
-    # --------------------------- CONFIG WRITE --------------------------------
-    # Create, read, update, delete a harmless lookup file.
-    create_body = '{"keys": {"a": "1"}}'  # simple JSON lookup
+    # --------------------------- CONFIG WRITE (GraphQL) ----------------------
+    # Create, read, update (with optimistic locking), delete a harmless file.
+    _run("put_config_file create", lambda: c.put_config_file(name=test_path, content='{"keys": {"a": "1"}}'))
 
-    put_create = _run("putFile create", lambda: c.put_file(test_path, content=create_body))
+    read_back = _run("config_file (created)", lambda: c.config_file(name=test_path))
+    v = read_back.get("version") if isinstance(read_back, dict) else None
 
-    # read back to capture version for expectedVersion
-    read_back = _run("getFile (created)", lambda: c.get_file(test_path))
-    v = None
-    if isinstance(read_back, dict):
-        v = read_back.get("version")
+    _run("put_config_file update (expectedVersion)",
+         lambda: c.put_config_file(name=test_path, content='{"keys": {"a": "1", "b": "2"}}',
+                                   expected_version=v))
 
-    update_body = '{"keys": {"a": "1", "b": "2"}}'
-    _run("putFile update", lambda: c.put_file(test_path, content=update_body, expected_version=v))
+    # expectedVersion must be enforced on name-addressed writes, not merely accepted.
+    # Re-using the now-stale v must be rejected; if it succeeds, optimistic
+    # locking is silently a no-op and concurrent edits will be lost.
+    stale_rejected = False
+    try:
+        c.put_config_file(name=test_path, content='{"keys": {"stale": true}}', expected_version=v)
+    except Exception:
+        stale_rejected = True
+    RESULTS.append((
+        "stale expectedVersion is rejected", "PASS" if stale_rejected else "FAIL", 0,
+        "conflict raised" if stale_rejected else "stale write ACCEPTED",
+        "" if stale_rejected else "Optimistic locking is not being enforced on name-addressed writes.",
+    ))
+    print(f"[{'PASS' if stale_rejected else 'FAIL'}] stale expectedVersion is rejected")
 
-    _run("putFile delete", lambda: c.put_file(test_path, delete=True))
+    cur = c.config_file(name=test_path)
+    _run("delete_config_file", lambda: c.delete_config_file(name=test_path,
+                                                            expected_version=cur.get("version")))
+
+    gone = not [f for f in c.config_files() if f.get("name") == test_path]
+    RESULTS.append((
+        "deleted file is gone from configFiles", "PASS" if gone else "FAIL", 0,
+        "absent" if gone else "STILL PRESENT",
+        "" if gone else "delete_config_file reported success but the file survived.",
+    ))
+    print(f"[{'PASS' if gone else 'FAIL'}] deleted file is gone from configFiles")
 
     # --------------------------- SUMMARY -------------------------------------
     print("-" * 80)

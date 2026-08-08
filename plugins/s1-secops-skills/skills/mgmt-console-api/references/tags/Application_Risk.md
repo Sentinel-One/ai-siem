@@ -3,6 +3,7 @@
 1 endpoints.
 
 ## `GET /web/api/v2.1/export/installed-applications`
+
 **Export Applications**
 `operationId`: `_web_api_export_installed-applications_get`
 
@@ -11,6 +12,7 @@ Export the list of applications installed on endpoints with Application Risk-ena
 Required permissions: `Applications Page.view`
 
 Parameters:
+
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".

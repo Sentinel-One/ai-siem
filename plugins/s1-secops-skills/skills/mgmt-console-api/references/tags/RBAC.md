@@ -3,6 +3,7 @@
 6 endpoints.
 
 ## `GET /web/api/v2.1/rbac/role`
+
 **Get template for new role**
 `operationId`: `_web_api_rbac_role_get`
 
@@ -11,6 +12,7 @@ Get the template for a new role.
 Required permissions: `Roles.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -19,6 +21,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/rbac/role`
+
 **Create new role**
 `operationId`: `_web_api_rbac_role_post`
 
@@ -27,11 +30,13 @@ Create a new role for Role-Based Access Control (RBAC).
 Required permissions: `Roles.create`
 
 Parameters:
-- `body` [body, rbac.schemas_RbacCreateRoleSchema]: 
+
+- `body` [body, rbac.schemas_RbacCreateRoleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `DELETE /web/api/v2.1/rbac/role/{role_id}`
+
 **Delete role**
 `operationId`: `_web_api_rbac_role_{role_id}_delete`
 
@@ -41,12 +46,14 @@ Required permissions: `Roles.delete`
 Optional permissions: `Users.edit`
 
 Parameters:
+
 - `role_id` [path, string] **required**: Role ID. Example: "225494730938493804".
-- `body` [body, rbac.schemas_RbacDeleteRoleSchema]: 
+- `body` [body, rbac.schemas_RbacDeleteRoleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/rbac/role/{role_id}`
+
 **Get Specific Role Definition**
 `operationId`: `_web_api_rbac_role_{role_id}_get`
 
@@ -55,6 +62,7 @@ With the ID of a role (see Get All Roles) you can see the permissions of that ro
 Required permissions: `Roles.view`
 
 Parameters:
+
 - `role_id` [path, string] **required**: Role ID. Example: "225494730938493804".
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -76,6 +84,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/rbac/role/{role_id}`
+
 **Update role**
 `operationId`: `_web_api_rbac_role_{role_id}_put`
 
@@ -84,12 +93,14 @@ With the ID of a role (see Get All Roles), you can update the permissions of use
 Required permissions: `Roles.edit`
 
 Parameters:
+
 - `role_id` [path, string] **required**: Role ID. Example: "225494730938493804".
-- `body` [body, rbac.schemas_RbacUpdateRoleSchema]: 
+- `body` [body, rbac.schemas_RbacUpdateRoleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/rbac/roles`
+
 **Get All Roles**
 `operationId`: `_web_api_rbac_roles_get`
 
@@ -98,6 +109,7 @@ See roles assigned to users that match the filter, a basic description of the ro
 Required permissions: `Roles.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".

@@ -3,6 +3,7 @@
 12 endpoints.
 
 ## `GET /web/api/v2.1/accounts`
+
 **Get Accounts**
 `operationId`: `_web_api_accounts_get`
 
@@ -11,6 +12,7 @@ Get the Accounts, and their data, that match the filter. This command gives the 
 Required permissions: `Accounts.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -42,6 +44,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/accounts`
+
 **Create Account**
 `operationId`: `_web_api_accounts_post`
 
@@ -50,11 +53,13 @@ Create a new Account. This command requires Global permissions and an MSSP deplo
 Required permissions: `Accounts.create`
 
 Parameters:
-- `body` [body, accounts.schemas_PostAccountSchema]: 
+
+- `body` [body, accounts.schemas_PostAccountSchema]:
 
 Responses: 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/accounts/{account_id}`
+
 **Get Account by ID**
 `operationId`: `_web_api_accounts_{account_id}_get`
 
@@ -63,11 +68,13 @@ Get Account data from a given Account ID. To get an Account ID, run "accounts".
 Required permissions: `Accounts.view`
 
 Parameters:
+
 - `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
 
 Responses: 404 Account not found, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/accounts/{account_id}`
+
 **Update Account**
 `operationId`: `_web_api_accounts_{account_id}_put`
 
@@ -76,12 +83,14 @@ Change the data of an Account. This command requires a Global user or an Account
 Required permissions: `Accounts.edit`
 
 Parameters:
+
 - `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
-- `body` [body, accounts.schemas_AccountPutSchema]: 
+- `body` [body, accounts.schemas_AccountPutSchema]:
 
 Responses: 404 Account not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/accounts/{account_id}/expire-now`
+
 **Expire an Account**
 `operationId`: `_web_api_accounts_{account_id}_expire-now_post`
 
@@ -90,11 +99,13 @@ Expire an Account immediately. The user must have Global access or Account acces
 Required permissions: `Accounts.edit`
 
 Parameters:
+
 - `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
 
 Responses: 404 Account not found, 200 Expire account now, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/accounts/{account_id}/reactivate`
+
 **Reactivate Account**
 `operationId`: `_web_api_accounts_{account_id}_reactivate_put`
 
@@ -103,12 +114,14 @@ Reactivate an expired Account. This command requires a Global user or Support. C
 Required permissions: `Accounts.edit`
 
 Parameters:
+
 - `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
-- `body` [body, accounts.schemas_ReactivateAccountSchema]: 
+- `body` [body, accounts.schemas_ReactivateAccountSchema]:
 
 Responses: 404 Account not found, 200 Account reactivated, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/accounts/{account_id}/revert-policy`
+
 **Revert Policy**
 `operationId`: `_web_api_accounts_{account_id}_revert-policy_put`
 
@@ -117,12 +130,14 @@ The policy of the Account is based on the default Global policy and is enforced 
 Required permissions: `Policy.edit`
 
 Parameters:
+
 - `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
-- `body` [body, policies_schemas_RevertPolicySchema]: 
+- `body` [body, policies_schemas_RevertPolicySchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/accounts/{account_id}/uninstall-password/generate`
+
 **Generate/Regenerate Uninstall Password**
 `operationId`: `_web_api_accounts_{account_id}_uninstall-password_generate_post`
 
@@ -131,12 +146,14 @@ You can uninstall all Agents of one Account with one command that requires a pas
 Required permissions: `Endpoints.modifyUninstallPassword`
 
 Parameters:
+
 - `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
-- `body` [body, accounts.schemas_UninstallPasswordGenerateRequestSchema]: 
+- `body` [body, accounts.schemas_UninstallPasswordGenerateRequestSchema]:
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/accounts/{account_id}/uninstall-password/metadata`
+
 **Get Uninstall Password Metadata**
 `operationId`: `_web_api_accounts_{account_id}_uninstall-password_metadata_get`
 
@@ -145,11 +162,13 @@ Get the uninstall password metadata, such as which user created and revoked it a
 Required permissions: `Accounts.view`
 
 Parameters:
+
 - `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
 
 Responses: 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/accounts/{account_id}/uninstall-password/revoke`
+
 **Revoke Uninstall Password**
 `operationId`: `_web_api_accounts_{account_id}_uninstall-password_revoke_post`
 
@@ -158,11 +177,13 @@ Delete the account-level uninstall password. If you do not delete it, you or ano
 Required permissions: `Endpoints.modifyUninstallPassword`
 
 Parameters:
+
 - `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
 
 Responses: 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/accounts/{account_id}/uninstall-password/view`
+
 **Get Uninstall Password**
 `operationId`: `_web_api_accounts_{account_id}_uninstall-password_view_get`
 
@@ -171,11 +192,13 @@ Get the uninstall password to uninstall several Agents of one Account with one c
 Required permissions: `Endpoints.viewUninstallPassword`
 
 Parameters:
+
 - `account_id` [path, string] **required**: Account ID. You can get the ID from the Get accounts command. Example: "225494730938493804".
 
 Responses: 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/export/accounts`
+
 **Export Accounts**
 `operationId`: `_web_api_export_accounts_get`
 
@@ -184,6 +207,7 @@ Export Accounts data to a CSV, for Accounts that match the filter.
 Required permissions: `Accounts.view`
 
 Parameters:
+
 - `ids` [query, array]: A list of Account IDs. Example: "225494730938493804,225494730938493915".
 - `accountIds` [query, array]: List of Account IDs to search for. Example: "225494730938493804,225494730938493915".
 - `query` [query, string]: Full text search for fields: name. (Note: on single-Account Consoles, the Account name will not be matched)

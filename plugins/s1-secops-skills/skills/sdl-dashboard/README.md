@@ -22,7 +22,7 @@ Or install the full plugin (recommended) to get all the SentinelOne SecOps skill
 
 This skill has no Python client of its own: dashboards are authored as JSON and deployed via the `sdl-api` skill's `put_file` method. Use alongside:
 
-- **`sdl-api`**: to deploy the dashboard JSON to your SDL tenant (`put_file /dashboards/<name>`)
+- **`sdl-api`**: to deploy the dashboard JSON to your SDL tenant (`put_config_file`, by name on first create, by `udo_id` thereafter)
 - **`powerquery`**: to validate and compose the queries inside panels before embedding them
 
 ## What this skill does

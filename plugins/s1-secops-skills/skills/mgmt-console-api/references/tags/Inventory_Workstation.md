@@ -3,6 +3,7 @@
 8 endpoints.
 
 ## `GET /web/api/v2.1/xdr/assets/workstation`
+
 **Assets**
 `operationId`: `_web_api_xdr_assets_workstation_get`
 
@@ -11,6 +12,7 @@ Get inventory workstation assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -198,6 +200,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/workstation`
+
 **Assets using POST**
 `operationId`: `_web_api_xdr_assets_workstation_post`
 
@@ -206,14 +209,16 @@ POST API to get workstation assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
-- `body` [body, v2_1.inventory.workstation.schemas_WorkstationViewInputSchema]: 
+- `body` [body, v2_1.inventory.workstation.schemas_WorkstationViewInputSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/workstation/action`
+
 **Perform action**
 `operationId`: `_web_api_xdr_assets_workstation_action_post`
 
@@ -222,6 +227,7 @@ Perform action on selected assets
 Required permissions: `XDR Inventory.edit, XDR Inventory.delete`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -398,11 +404,12 @@ Parameters:
 - `agentDiskEncryption` [query, array]: The agent disk encryption
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
 - `osNameVersion` [query, array]: The operating system name and version of the device
-- `body` [body, v2_1.inventory.workstation.schemas_WorkstationActionPayloadSchema]: 
+- `body` [body, v2_1.inventory.workstation.schemas_WorkstationActionPayloadSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/workstation/available-actions/with-status`
+
 **Available actions**
 `operationId`: `_web_api_xdr_assets_workstation_available-actions_with-status_post`
 
@@ -411,6 +418,7 @@ Get inventory workstation available actions
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -587,11 +595,12 @@ Parameters:
 - `agentDiskEncryption` [query, array]: The agent disk encryption
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
 - `osNameVersion` [query, array]: The operating system name and version of the device
-- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]: 
+- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/workstation/export`
+
 **Export assets to CSV or JSON**
 `operationId`: `_web_api_xdr_assets_workstation_export_get`
 
@@ -600,6 +609,7 @@ Returns the results for given inventory filter in a CSV or JSON format
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -788,6 +798,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/workstation/filters/autocomplete`
+
 **Auto Complete**
 `operationId`: `_web_api_xdr_assets_workstation_filters_autocomplete_get`
 
@@ -796,6 +807,7 @@ Use this command to get values for other fields. When you send this command with
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -979,6 +991,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/workstation/filters/count`
+
 **Filter counts**
 `operationId`: `_web_api_xdr_assets_workstation_filters_count_get`
 
@@ -987,6 +1000,7 @@ Get workstation filter counts
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -1167,6 +1181,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/workstation/filters/free-text`
+
 **Free text filters**
 `operationId`: `_web_api_xdr_assets_workstation_filters_free-text_get`
 

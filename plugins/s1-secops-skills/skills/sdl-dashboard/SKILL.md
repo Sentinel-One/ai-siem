@@ -25,7 +25,7 @@ This workflow is mandatory for every new or modified dashboard. Steps 0, 1, and 
 2. **Design the structure**: Choose tabs (if multi-topic), then panels per tab. Match panel type to the data shape using the guide in `references/panel-type-cheatsheet.md`. Key decisions: flows/kill-chains → `sankey`; KPI vs SLA target → `bullet`; SOC queue health → `gauge`; 3D outlier detection → `scattered_bubble`; time-based density → `heatmap`; multiple queries in one panel → tabbed table. Where one `event.type` covers multiple semantic populations (delivery-time vs click-time, scheduled vs on-demand, inbound vs outbound), build separate sections per population, not a mixed section.
 3. **Write the JSON**: Use the panel type reference below and real examples in `references/community-examples.md`. Compute explicit `x`/`y`/`w`/`h` for every panel. Apply the naming-hygiene rule from **Panel naming hygiene** so titles read as SLA-grade claims.
 4. **Validate queries**: Sample 3-5 events per source/event-ID to confirm field semantics. Test each panel query via the `powerquery` skill. Run the parallel load test (see **Pre-deploy validation**), acceptance thresholds: slowest panel ≤ 2s, wall-clock ≤ 5s. Run `scripts/panel_safety_check.py` against the dashboard JSON; resolve every flag before deploy.
-5. **Deploy**: Use the `sdl-api` skill to `put_file` to a path like `/dashboards/my-dashboard` with `expected_version` set from a prior `get_file` (CAS guard). Save a backup of the prior JSON first. Sleep 3s, then `get_file` to verify the version bumped AND grep the returned content for a canary string from your change.
+5. **Deploy**: Use the `sdl-api` skill's GraphQL methods. First deploy only: `put_config_file(name="/dashboards/my-dashboard", content=...)`, then record the returned `udoId`. Every deploy after that: `config_file(udo_id=...)` for the current `version`, then `put_config_file(udo_id=..., content=..., expected_version=...)` as the CAS guard. A name-addressed write to an existing dashboard is refused because it duplicates. Save a backup of the prior JSON first. Sleep 3s, then re-read by `udo_id` to verify the version bumped AND grep the returned content for a canary string from your change.
 6. **Iterate**: Show the user what was built, explain each panel, offer to tweak. If the dashboard hangs, follow the escalation ladder in **Pre-deploy validation**.
 7. **Log-evidence report (MANDATORY)**: Run `scripts/validate_dashboard.py` against the deployed dashboard JSON to replay every panel, persist per-panel evidence (sample rows, row count, matchCount, elapsed, errors) to a JSON, and emit a markdown evidence file. Then run `scripts/render_validation_pdf.py` to render the PDF report (cover, per-tab sections, sample-data tables, empty-result appendix with SOC-meaningful interpretations). Deliver both alongside the dashboard. A dashboard delivered without an evidence report is incomplete.
 
@@ -623,7 +623,7 @@ preemptively when authoring panels of these shapes.
 | Dashboard panel times out, indefinite spinner | A subquery inside the main query forces the engine to scan-and-aggregate twice. Dashboards rerun panels on every load, so the cost compounds. | Don't gate a panel query on a subquery if you can avoid it. Hardcode top-N values via inline OR clauses, or accept the full cardinality (often small after the initial filter). If a subquery is unavoidable, prefer a `lookup` against a precomputed datatable. |
 | Number panel slow on a busy index | Engine keeps scanning after the answer is computed | Always terminate number panels with `\| limit 1` after the `\| group` that reduces to one row |
 | Wide range + fine `timebucket` = thousands of points per series | E.g. `timebucket("10m")` over 7d = 1,008 points × N series | Match bucket to duration: 1d → `10m`, 7d → `1h` (minimum), 30d → `1 day` minimum |
-| Two near-identical dashboards appear in *Configuration files* under `/dashboards/<name>` and `/dashboards/id/<dashboardId>/<name>` | The SDL UI's **Save** button writes to `/dashboards/id/<dashboardId>/<name>`. `put_file("/dashboards/<name>")` writes to the simpler path. Both render in the UI and both are visible to the file API; neither is access-controlled. | Pick one canonical path **before** the first deploy. Recommend the UI-native `/dashboards/id/<id>/<name>` if the dashboard already exists in the UI; otherwise `/dashboards/<name>`. Don't mix the two, each `put_file` to the alternate path creates a silent duplicate alongside the UI-saved copy. |
+| Two or more near-identical dashboards share a name in *Configuration files* | `/dashboards/id/<udoId>/<name>` is a display string, not a path; writing to it returns `no file exists at path`. Duplicates come from `addConfigFile(name:)` creating a copy instead of updating, so every name-addressed deploy adds one. A name-addressed copy (`udoId: null`) can also coexist with udoId-addressed ones. | Resolve the name with `sdl_list_files` (`pathPrefix: "/dashboards/"`) and address every update by `udoId`. Name-addressed writes are for the first create only; `sdl_put_file` refuses the rest. Delete surplus copies by `udoId`. |
 | `columns resources[0].name` or `vulnerabilities[0].cve.uid` returns HTTP 500 | PowerQuery does not accept bracket-array indexing in `columns`. The V1 query API exposes nested arrays as flattened keys (`resources[0].name`) for display, but those flattened keys are NOT valid PowerQuery field paths. | Use top-level scalar fields only (`severity_id`, `finding_info.title`, `metadata.product.name`, `class_name`, `time`). For first-element access inside a query, use `array_get(resources, 0).name` only inside `let`. For richer drill-down, switch from PowerQuery to the V1 query API (returns full event JSON); see `sdl-api` skill. |
 | `\| parse "app=$val$" from message` fails with "Start quote with no matching end quote" when the raw field value is wrapped in double quotes (e.g. `app="HTTPS.BROWSER"`) | The `\| parse` format string uses `"..."` as its outer delimiter. Any `"` character embedded in the format, to match quote-wrapped KV values common in network device logs, is treated as a string terminator. No escape sequence (backslash, single-quote outer, hex) works around this. | Use a two-pass parse: pass 1 captures the entire non-whitespace token including quotes (`{regex=\\S+}`), pass 2 extracts the clean value from that token. See **Two-pass parse for quoted KV values** below. |
 
@@ -841,28 +841,31 @@ event.type='process' | group count=count() by timestamp=timebucket('1h'), endpoi
 
 Use the `sdl-api` skill to deploy. Dashboard config files live at paths like `/dashboards/my-dashboard-name`.
 
-### 1. Always read existing version before put_file (CAS guard)
+### 1. Resolve the udoId, then write with a CAS guard
 
 ```python
-import json, time
+import json
 from sdl_client import SDLClient
 
 client = SDLClient()
-DASH_PATH = "/dashboards/soc-overview"
+DASH_NAME = "/dashboards/soc-overview"
 
-# Read existing version (or treat 404 as version=0 for a brand-new dashboard)
-try:
-    existing = client.get_file(DASH_PATH)
-    cur_version = existing.get("version")
-    backup_path = f"/tmp/{DASH_PATH.replace('/','_')}.{cur_version}.bak.json"
-    open(backup_path, "w").write(existing.get("content") or "{}")
-except Exception:
-    cur_version = None
-    backup_path = None
+# Resolve the name to its udoId. Only /dashboards/ files carry one, and a name
+# can resolve to more than one file, so check the count before writing.
+matches = [f for f in client.config_files() if f["name"] == DASH_NAME]
+if len(matches) > 1:
+    raise SystemExit(f"{len(matches)} copies already share that name: {[m['udoId'] for m in matches]}")
 
 body = json.dumps(dashboard_json, indent=2)
-res = client.put_file(path=DASH_PATH, content=body, expected_version=cur_version)
-assert res.get("status") == "success", res
+
+if matches:
+    cur = client.config_file(udo_id=matches[0]["udoId"])      # None if absent, does not raise
+    open(f"/tmp/{DASH_NAME.replace('/','_')}.{cur['version']}.bak.json", "w").write(cur["content"] or "{}")
+    res = client.put_config_file(udo_id=cur["udoId"], content=body, expected_version=cur["version"])
+else:
+    res = client.put_config_file(name=DASH_NAME, content=body)   # first create only
+
+udo_id = res["udoId"]    # record this; every later deploy addresses by udoId
 ```
 
 The `expected_version` argument is a CAS guard against concurrent writes from the SDL UI or another script.
@@ -879,9 +882,37 @@ assert "<canary-string-from-new-section>" in deployed_content, "deploy did not i
 
 A `put_file` response of `{"status": "success"}` does not guarantee the new content was written, always re-fetch and grep for a canary string from the change.
 
-### 3. Avoid duplicate dashboard paths
+### 3. Never update a dashboard by name, address it by udoId
 
-The SDL UI's **Save** button writes to `/dashboards/id/<dashboardId>/<name>`. The file API can write to either that path OR the simpler `/dashboards/<name>`. **Pick one canonical path before the first deploy and never mix.** Each deploy to the alternate path creates a silent duplicate alongside the UI-saved copy. Recommend `/dashboards/<name>` for hand-authored dashboards and `/dashboards/id/<id>/<name>` only for files originally saved through the UI.
+The console's Configuration Files grid displays a dashboard as
+`/dashboards/id/6554761743556608/AI Usage`. **That string is not a path.** The number is the
+file's `udoId`; the real `name` is `/dashboards/AI Usage`. Writing to the display string returns
+`no file exists at path`.
+
+`addConfigFile(name:)` updates in place for `/lookups/`, `/datatables/`, `/logParsers/` and
+`/automaticLookups`, but **creates a duplicate** for `/dashboards/`. Create a dashboard by name
+once (it has no `udoId` yet), then address it by `udoId` for every update after that. One tenant
+reached 152 copies of `/dashboards/AI Usage` and 256 surplus dashboard files this way.
+`sdl_put_file` refuses a path-addressed write to an existing dashboard.
+
+Resolve a name to its `udoId` with `sdl_list_files` (`pathPrefix: "/dashboards/"`). See
+`sdl-api/references/config-file-graphql.md`.
+
+**Resolving a name can return more than one file, and they need not share a storage form.**
+Measured on a live tenant: 16 dashboard names had duplicates, and in 11 of those a single
+name-addressed copy (`udoId: null`) sat alongside the `udoId`-addressed ones. Two consequences:
+
+- Never assume a name resolves to exactly one file. Filter the listing, check the match count,
+  and stop for a human decision when it is greater than one. Picking the first match silently
+  edits an arbitrary copy.
+- A name-addressed copy of a dashboard can exist. It is readable and writable by name, so a
+  script that only ever addressed dashboards by name may appear to work correctly while
+  operating on a file the console user never sees.
+
+Duplicates on this tenant cluster almost entirely on stock template names (`AI Usage` had 152
+copies, `EDR Data Collection Analysis` 25), while hand-authored names have none. Each install of
+a template dashboard creates a new file, so a shared tenant accumulates copies over time
+independently of anything the API does.
 
 ### 4. Layout coordinates accumulate
 
@@ -1142,11 +1173,11 @@ print(f"  Slowest single:      {max(r[1] for r in results):.1f}s")
 
 ### Deploy-and-verify: sleep before re-fetching
 
-`put_file` returns `{"status": "success"}` synchronously, but the file propagates across replicas with eventual consistency. Calling `get_file` ~100ms after a successful PUT can return HTTP 404. Always wait:
+`put_config_file` returns synchronously, but the file propagates across replicas with eventual consistency. Re-reading ~100ms after a successful write can report the file as absent. Always wait:
 
 ```python
-res = c.put_file(path=DASH_PATH, content=new_content, expected_version=cur_version)
-assert res.get("status") == "success"
+res = c.put_config_file(udo_id=udo_id, content=new_content, expected_version=cur_version)
+assert res.get("udoId") == udo_id
 
 import time
 time.sleep(3)            # eventual-consistency window
@@ -1249,7 +1280,7 @@ DEPLOYMENT
 [ ] put_file called with expected_version of the current deployed copy
 [ ] sleep(3) before re-fetching to verify deploy
 [ ] Re-fetched content greps for a canary string from the change
-[ ] Path is canonical (either /dashboards/<name> OR /dashboards/id/<id>/<name>, never both)
+[ ] Existing dashboard addressed by udoId from sdl_list_files, not by name (name-addressed writes are for the first create only)
 
 POST-DEPLOY (MANDATORY)
 [ ] scripts/validate_dashboard.py run; per-panel evidence JSON persisted

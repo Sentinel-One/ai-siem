@@ -3,6 +3,7 @@
 9 endpoints.
 
 ## `GET /web/api/v2.1/report-tasks`
+
 **Get Default Report Tasks**
 `operationId`: `_web_api_report-tasks_get`
 
@@ -11,6 +12,7 @@ Get the tasks that were done to generate default reports and to schedule future 
 Required permissions: `Reports Page.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -36,6 +38,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/report-tasks`
+
 **Create Default Report Task**
 `operationId`: `_web_api_report-tasks_post`
 
@@ -44,11 +47,13 @@ Create a task to generate a default report immediately, one time in the future, 
 Required permissions: `Reports Page.create`
 
 Parameters:
-- `body` [body, reports_ReportTasksPostSchema]: 
+
+- `body` [body, reports_ReportTasksPostSchema]:
 
 Responses: 404 Validation errors, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/report-tasks/{task_id}`
+
 **Update Default Report Task**
 `operationId`: `_web_api_report-tasks_{task_id}_put`
 
@@ -57,12 +62,14 @@ Update the default report task of the given ID. Default Reports require Reports 
 Required permissions: `Reports Page.edit`
 
 Parameters:
+
 - `task_id` [path, string] **required**: Task ID. Example: "225494730938493804".
-- `body` [body, reports_ReportTasksPutSchema]: 
+- `body` [body, reports_ReportTasksPutSchema]:
 
 Responses: 404 Validation errors, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/reports`
+
 **Get Default Reports**
 `operationId`: `_web_api_reports_get`
 
@@ -71,6 +78,7 @@ Get the default reports that match the filter and the data of the reports. Defau
 Required permissions: `Reports Page.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -97,6 +105,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/reports/delete-reports`
+
 **Delete Default Reports**
 `operationId`: `_web_api_reports_delete-reports_post`
 
@@ -105,11 +114,13 @@ Delete the default reports that match the filter. Default Reports require Report
 Required permissions: `Reports Page.delete`
 
 Parameters:
-- `body` [body, reports_ReportDeleteSchema]: 
+
+- `body` [body, reports_ReportDeleteSchema]:
 
 Responses: 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/reports/delete-tasks`
+
 **Delete Default Report Tasks**
 `operationId`: `_web_api_reports_delete-tasks_post`
 
@@ -118,11 +129,13 @@ You can schedule a default report to be generated on a routine. Default Reports 
 Required permissions: `Reports Page.delete`
 
 Parameters:
-- `body` [body, reports_ReportTaskDeleteSchema]: 
+
+- `body` [body, reports_ReportTaskDeleteSchema]:
 
 Responses: 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/reports/insights/types`
+
 **Get Default Insight Reports**
 `operationId`: `_web_api_reports_insights_types_get`
 
@@ -131,6 +144,7 @@ Get the Insight Report types for Default Reports. Default Reports require Report
 Required permissions: `Reports Page.view`
 
 Parameters:
+
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -139,6 +153,7 @@ Parameters:
 Responses: 404 Package not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/reports/{report_id}/{report_format}`
+
 **Download Default Report**
 `operationId`: `_web_api_reports_{report_id}_{report_format}_get`
 
@@ -147,12 +162,14 @@ When the Management generates a default report, it is uploaded to the Management
 Required permissions: `Reports Page.view`
 
 Parameters:
+
 - `report_id` [path, string] **required**: Report ID. Example: "225494730938493804".
 - `report_format` [path, string] **required** (enum: pdf, html): Report format. Example: "pdf".
 
 Responses: 404 Report not found, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/sentinelonerss`
+
 **S1 RSS Feed**
 `operationId`: `_web_api_sentinelonerss_get`
 

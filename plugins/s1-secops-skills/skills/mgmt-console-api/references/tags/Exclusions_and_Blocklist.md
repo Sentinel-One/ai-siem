@@ -3,6 +3,7 @@
 16 endpoints.
 
 ## `DELETE /web/api/v2.1/exclusions`
+
 **Delete Exclusions**
 `operationId`: `_web_api_exclusions_delete`
 
@@ -11,19 +12,22 @@ Every Exclusion opens a possible security hole. If you decide that an Exclusion 
 Required permissions: `Exclusions.delete`
 
 Parameters:
-- `body` [body, exclusions.schemas_DeleteExclusionSchema]: 
+
+- `body` [body, exclusions.schemas_DeleteExclusionSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/exclusions`
+
 **Get Exclusions**
 `operationId`: `_web_api_exclusions_get`
 
-Get a list of all the Exclusions that match the filter. <br>Note: To filter the results for a scope: <br>* Global - Make sure "tenant" is "true" and no other scope ID is given.<br>* Account - Make sure "tenant" is "false" and at least one Account ID is given.<br>* Site - Make sure "tenant" is "false" and at least one Site ID is given.
+Get a list of all the Exclusions that match the filter. <br>Note: To filter the results for a scope: <br>*Global - Make sure "tenant" is "true" and no other scope ID is given.<br>* Account - Make sure "tenant" is "false" and at least one Account ID is given.<br>* Site - Make sure "tenant" is "false" and at least one Site ID is given.
 
 Required permissions: `Exclusions.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -78,19 +82,22 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/exclusions`
+
 **Create Exclusion**
 `operationId`: `_web_api_exclusions_post`
 
-Create Exclusions to make your Agents suppress alerts and mitigation for items that you consider to be benign or which you require for interoperability.<br>IMPORTANT! Every Exclusion is a possible security hole. Do not create Exclusions unless you are sure this hash, path, certificate signer, file type, or browser is always benign.<br>Of course, if you can make the Exclusion by its hash or path, that is much more secure than excluding all detections of a specific signer, file type, or browser. We do not recommend the last types for Exclusions on production endpoints. These Exclusions might be helpful in a lab or pentester group. When you create an Exclusion, make sure you set the filter to the smallest possible scope. For example, if you can exclude security for this item on a group, do not enter values for siteIds or accountIds.<br>We recommend that you read "Not Recommended Exclusions: https://support.sentinelone.com/hc/en-us/articles/360007532894<br> and Best Practices for Exclusions: https://support.sentinelone.com/hc/en-us/articles/360008709014
+Create Exclusions to make your Agents suppress alerts and mitigation for items that you consider to be benign or which you require for interoperability.<br>IMPORTANT! Every Exclusion is a possible security hole. Do not create Exclusions unless you are sure this hash, path, certificate signer, file type, or browser is always benign.<br>Of course, if you can make the Exclusion by its hash or path, that is much more secure than excluding all detections of a specific signer, file type, or browser. We do not recommend the last types for Exclusions on production endpoints. These Exclusions might be helpful in a lab or pentester group. When you create an Exclusion, make sure you set the filter to the smallest possible scope. For example, if you can exclude security for this item on a group, do not enter values for siteIds or accountIds.<br>We recommend that you read "Not Recommended Exclusions: <https://support.sentinelone.com/hc/en-us/articles/360007532894><br> and Best Practices for Exclusions: <https://support.sentinelone.com/hc/en-us/articles/360008709014>
 
 Required permissions: `Exclusions.create`
 
 Parameters:
-- `body` [body, exclusions.schemas_PostExclusionSchema]: 
+
+- `body` [body, exclusions.schemas_PostExclusionSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/exclusions`
+
 **Update Exclusions**
 `operationId`: `_web_api_exclusions_put`
 
@@ -99,11 +106,13 @@ Change the properties of an Exclusion through the data fields. To get the origin
 Required permissions: `Exclusions.edit`
 
 Parameters:
-- `body` [body, exclusions.schemas_PutExclusionSchema]: 
+
+- `body` [body, exclusions.schemas_PutExclusionSchema]:
 
 Responses: 404 Exclusion not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/exclusions/import`
+
 **Import Exclusions**
 `operationId`: `_web_api_exclusions_import_post`
 
@@ -112,12 +121,14 @@ Upload a CSV file that contains exclusion entries to import to a scope in your M
 Required permissions: `Exclusions.create`
 
 Parameters:
+
 - `filter` [formData, string]: The details of the scope where the entities will be imported, for example:  For Global - '{"tenant":true}' For an Account - '{"accountIds": ["225494730938493804"]}' For a Site  - '{"siteIds": ["225494730938493804"]}' For a Group - '{"groupIds": ["225494730938493804"]}'
 - `file` [formData, file] **required**: The input CSV file
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/exclusions/report/{report_id}`
+
 **Get Exclusion Import Validation Report**
 `operationId`: `_web_api_exclusions_report_{report_id}_get`
 
@@ -126,24 +137,28 @@ Get the  Validation Report generated for the import to help you fix entries that
 Required permissions: `Exclusions.view`
 
 Parameters:
+
 - `report_id` [path, string] **required**: The ID of the requested Validation Report. Example: "225494730938493804".
 
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/exclusions/validate`
+
 **Validate Exclusion Item**
 `operationId`: `_web_api_exclusions_validate_post`
 
-Check if an exclusion is on the list of SentinelOne items that are "Not Allowed" or "Not Recommended". This API returns one of the following statuses:<br> * Not Recommended: This item is not recommended by SentinelOne because it decreases security. For example, If you accidentally exclude a path that is too broad, malware can enter your environment.<br>* Not Allowed: This exclusion can harm the product and lead to unexpected functionality. From version North Pole SP3 you are prevented from creating Not Allowed exclusions.* None: This item is not on the list of SentinelOne items that are "Not Allowed" or "Not Recommended".
+Check if an exclusion is on the list of SentinelOne items that are "Not Allowed" or "Not Recommended". This API returns one of the following statuses:<br> *Not Recommended: This item is not recommended by SentinelOne because it decreases security. For example, If you accidentally exclude a path that is too broad, malware can enter your environment.<br>* Not Allowed: This exclusion can harm the product and lead to unexpected functionality. From version North Pole SP3 you are prevented from creating Not Allowed exclusions.* None: This item is not on the list of SentinelOne items that are "Not Allowed" or "Not Recommended".
 
 Required permissions: `Exclusions.create`
 
 Parameters:
-- `body` [body, exclusions.schemas_ValidateExclusionSchema]: 
+
+- `body` [body, exclusions.schemas_ValidateExclusionSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/export/exclusions`
+
 **Export Exclusions**
 `operationId`: `_web_api_export_exclusions_get`
 
@@ -152,6 +167,7 @@ Get a csv of all the items in the Exclusions that match the filter. <br>Note: To
 Required permissions: `Exclusions.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -199,6 +215,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/export/restrictions`
+
 **Export Blocklist**
 `operationId`: `_web_api_export_restrictions_get`
 
@@ -207,6 +224,7 @@ Get a csv of all the items in the Blocklist that match the filter. <br>Note: To 
 Required permissions: `Blacklist.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -241,6 +259,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `DELETE /web/api/v2.1/restrictions`
+
 **Delete Blocklist Item**
 `operationId`: `_web_api_restrictions_delete`
 
@@ -249,19 +268,22 @@ Agents immediately identify files on the blocklist and block them from executing
 Required permissions: `Blacklist.delete`
 
 Parameters:
-- `body` [body, exclusions.schemas_DeleteRestrictionSchema]: 
+
+- `body` [body, exclusions.schemas_DeleteRestrictionSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/restrictions`
+
 **Get Blocklist**
 `operationId`: `_web_api_restrictions_get`
 
-Get a list of all the items in the Blocklist that match the filter. <br>To filter the results for a scope:<br>* Global - Make sure "tenant" is "true" and no other scope ID is given.<br>* Account - Make sure "tenant" is "false" and at least one Account ID is given.<br>* Site - Make sure "tenant" is "false" and at least one Site ID is given.
+Get a list of all the items in the Blocklist that match the filter. <br>To filter the results for a scope:<br>*Global - Make sure "tenant" is "true" and no other scope ID is given.<br>* Account - Make sure "tenant" is "false" and at least one Account ID is given.<br>* Site - Make sure "tenant" is "false" and at least one Site ID is given.
 
 Required permissions: `Blacklist.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -304,6 +326,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/restrictions`
+
 **Create Blocklist Item**
 `operationId`: `_web_api_restrictions_post`
 
@@ -312,11 +335,13 @@ Create a blocklist item for a SHA1 or SHA256 hash or both, for the scopes you en
 Required permissions: `Blacklist.create`
 
 Parameters:
-- `body` [body, exclusions.schemas_PostRestrictionSchema]: 
+
+- `body` [body, exclusions.schemas_PostRestrictionSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/restrictions`
+
 **Update Blocklist Item**
 `operationId`: `_web_api_restrictions_put`
 
@@ -325,11 +350,13 @@ Change the properties of a Blocklist item through the data fields. To get the or
 Required permissions: `Blacklist.edit`
 
 Parameters:
-- `body` [body, exclusions.schemas_PutRestrictionSchema]: 
+
+- `body` [body, exclusions.schemas_PutRestrictionSchema]:
 
 Responses: 404 Blocklist not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/restrictions/import`
+
 **Import Blocklist Items**
 `operationId`: `_web_api_restrictions_import_post`
 
@@ -338,12 +365,14 @@ Upload a CSV file that contains blocklist entries to import to a scope in your M
 Required permissions: `Blacklist.create`
 
 Parameters:
+
 - `filter` [formData, string]: The details of the scope where the entities will be imported, for example:  For Global - '{"tenant":true}' For an Account - '{"accountIds": ["225494730938493804"]}' For a Site  - '{"siteIds": ["225494730938493804"]}' For a Group - '{"groupIds": ["225494730938493804"]}'
 - `file` [formData, file] **required**: The input CSV file
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/restrictions/report/{report_id}`
+
 **Get Blocklist Import Validation Report**
 `operationId`: `_web_api_restrictions_report_{report_id}_get`
 
@@ -352,19 +381,22 @@ Get the  Validation Report generated for the import to help you fix entries that
 Required permissions: `Exclusions.view`
 
 Parameters:
+
 - `report_id` [path, string] **required**: The ID of the requested Validation Report. Example: "225494730938493804".
 
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/restrictions/validate`
+
 **Validate Blocklist Item**
 `operationId`: `_web_api_restrictions_validate_post`
 
-Check if a hash is on the list of SentinelOne items that are "Not Allowed" or "Not Recommended". This API returns one of the following statuses:<br> * Not Recommended: This item is not recommended by SentinelOne because it decreases security. <br>* Not Allowed: This item can harm the product and lead to unexpected functionality. From version North Pole SP3 you are prevented from creating Not Allowed blocklist item. * None: This item is not on the list of SentinelOne items that are "Not Allowed" or "Not Recommended".
+Check if a hash is on the list of SentinelOne items that are "Not Allowed" or "Not Recommended". This API returns one of the following statuses:<br> *Not Recommended: This item is not recommended by SentinelOne because it decreases security. <br>* Not Allowed: This item can harm the product and lead to unexpected functionality. From version North Pole SP3 you are prevented from creating Not Allowed blocklist item. * None: This item is not on the list of SentinelOne items that are "Not Allowed" or "Not Recommended".
 
 Required permissions: `Blacklist.create`
 
 Parameters:
-- `body` [body, exclusions.schemas_ValidateRestrictionSchema]: 
+
+- `body` [body, exclusions.schemas_ValidateRestrictionSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

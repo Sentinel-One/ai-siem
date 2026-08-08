@@ -6,7 +6,7 @@ Curated failure modes. When a PowerQuery is misbehaving, check this list before 
 
 ### `*` alone as a filter returns 500
 
-```
+```text
 *                           ← NOT a valid initial filter: HTTP 500 ("Don't understand [*]")
 * | limit 5                 ← same
 ```
@@ -17,7 +17,7 @@ There are three distinct `*` idioms in PowerQuery. They look similar but mean di
 
 Means "field is present and non-null". Use as a query-opener when you want all events that have a given field, or as the starting predicate for aggregations. Confirmed working on live tenant.
 
-```
+```text
 dataSource.name=* | group count=count() by dataSource.name | sort -count | limit 10
 event.type=* | limit 5
 ```
@@ -28,7 +28,7 @@ This is NOT an all-column text search; it checks whether a specific attribute is
 
 Searches ALL indexed fields across the event. Use when you need to find a specific string anywhere in the event, what users describe as "search all logs for X", "all column search", "find this text anywhere". Only valid as the **initial filter** (before the first `|`). Not valid in `| filter …` after a pipe, and not valid in Alerts.
 
-```
+```text
 dataSource.name='MySource' * contains 'evil.com'      // string in any field on a source
 * contains 'suspicious_domain.com' | limit 50          // all sources, any field
 * matches '\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}' | limit 20  // IP pattern anywhere
@@ -40,7 +40,7 @@ Much faster than `message contains 'value'` because it scans indexed fields, not
 
 Use when you want all events with no initial predicate.
 
-```
+```text
 | limit 5                   // "all events, first 5"
 | group ct=count() by event.type
 ```
@@ -49,14 +49,14 @@ Use when you want all events with no initial predicate.
 
 PowerQuery uses `-`/`+` prefix for sort direction. `desc` and `asc` are not valid keywords and cause the LRQ API to return HTTP 500 "Unable to parse the entire query".
 
-```
+```text
 | sort count desc          ← HTTP 500, "desc" is not valid PowerQuery syntax
 | sort timestamp asc       ← HTTP 500, "asc" is not valid PowerQuery syntax
 ```
 
 Fix: use `-` for descending, `+` for ascending (ascending is also the default when no prefix is given).
 
-```
+```text
 | sort -count
 | sort +timestamp
 | sort -hits, +endpoint.name
@@ -66,7 +66,7 @@ Fix: use `-` for descending, `+` for ascending (ascending is also the default wh
 
 ### `join` without a leading pipe
 
-```
+```text
 join (q1), (q2) on x         ← "join" is interpreted as a search keyword
 ```
 
@@ -74,7 +74,7 @@ Fix: `| join (q1), (q2) on x`. The same rule applies to `union`.
 
 ### `compare` or `transpose` not last
 
-```
+```text
 | compare last_week = timeshift('1w')
 | sort -count                ← too late; compare must be LAST
 ```
@@ -83,28 +83,28 @@ Fix: move `sort` before `compare`. The display ordering is applied to the main r
 
 ### Subquery after `group` / `sort` / `limit`
 
-```
+```text
 | group count() by user
 | filter user in (role='admin' | columns user)     ← invalid
 ```
 
 Fix: move the subquery into the initial filter position.
 
-```
+```text
 user in (role='admin' | columns user)
 | group count() by user
 ```
 
 ### Subquery doesn't define the filter column
 
-```
+```text
 user in (action='login')                                                     ← fails
 user in (action='login' | group count() by ip)                               ← fails ("user" column not produced)
 ```
 
 Fix: produce the column.
 
-```
+```text
 user in (action='login' | columns user)
 user in (action='login' | group 1 by user)
 user in (action='login' | top 10 count() by user)
@@ -112,7 +112,7 @@ user in (action='login' | top 10 count() by user)
 
 ### Shortcut fields as initial filter return 500
 
-```
+```text
 #cmdline contains 'python'              ← 500 on many tenants
 #name = 'bash'                           ← 500
 #hash = *                                ← 500
@@ -120,7 +120,7 @@ user in (action='login' | top 10 count() by user)
 
 The docs list `#cmdline`, `#name`, `#hash`, `#ip`, `#storylineid`, `#username`, `#dns` as multi-field shortcuts. In practice, they're unreliable across tenants; in this deployment they all return 500 as initial filters. Fix: use the explicit field.
 
-```
+```text
 src.process.cmdline contains 'python'
 src.process.name = 'bash'
 tgt.file.sha256 = *
@@ -130,25 +130,25 @@ The explicit form is only a few characters longer and always works. Save shortcu
 
 ### `parse` with the wrong argument order
 
-```
+```text
 | parse src.process.cmdline, "$bin$ $args$"       ← 500
 ```
 
 Fix: the source goes at the end with `from`.
 
-```
+```text
 | parse "$bin$ $args$" from src.process.cmdline
 ```
 
 ### `timebucket` in `group by` without an alias: "undefined field 'timebucket'"
 
-```
+```text
 | group count=count() by timebucket('1h')     ← 500 "undefined field 'timebucket'"
 ```
 
 Without an alias, PQ treats the bare name `timebucket` as a field lookup rather than a function call. Fix: always assign an alias in `group by` when using functions as keys.
 
-```
+```text
 | group count=count() by bucket=timebucket('1h') | sort +bucket
 ```
 
@@ -183,13 +183,13 @@ Some docs list these as aggregate functions, but they fail on many tenants. Use 
 
 ### Ternary parsed as an identifier
 
-```
+```text
 cond?x:y                     ← ":" may be glued into an identifier
 ```
 
 Fix: spaces around the `:`.
 
-```
+```text
 cond ? x : y
 ```
 
@@ -199,7 +199,7 @@ PQ has no `coalesce()`. The intuitive way to fall back across multiple
 fields breaks because `field = *` is a filter operator, not a boolean
 expression usable in a computed column.
 
-```
+```text
 | let user_id = (actor.user.email_addr = *) ? actor.user.email_addr
                                             : actor.user.name        ← HTTP 500
 ```
@@ -207,7 +207,7 @@ expression usable in a computed column.
 Fix, bare-field truthy test (the field's null-or-truthy value drives the
 ternary directly):
 
-```
+```text
 | let user_id = actor.user.email_addr
               ? actor.user.email_addr
               : (actor.user.name ? actor.user.name : src.process.user)
@@ -219,14 +219,14 @@ N fields. Use the same pattern any time you'd reach for `coalesce` /
 
 ### `sum(if(...))` for conditional counts: use `count(predicate)` instead
 
-```
+```text
 | group critical = sum(if(severity_ in:anycase ('Critical'), 1, 0)) by host    ← invalid
 ```
 
 PowerQuery does not accept `if(...)` as an aggregate body. The right idiom is
 to pass a predicate directly to `count()`:
 
-```
+```text
 | group critical = count(severity_id == 5),
         high     = count(severity_id == 4),
         medium   = count(severity_id == 3),
@@ -258,14 +258,14 @@ Same source pipeline, different upstream casing, values like `Critical`,
 `CRITICAL`, `High`, `HIGH`, `Medium`, `MEDIUM`, `Low`, `LOW` co-exist in the
 same `severity_` column.
 
-```
+```text
 | group count() by timestamp = timebucket('1h'), severity_
 | transpose severity_ on timestamp                 ← produces 8 columns
 ```
 
 Fix, normalise before grouping:
 
-```
+```text
 | let sev = lower(severity_)
 | group count() by timestamp = timebucket('1h'), sev
 | transpose sev on timestamp                       ← 4 clean columns
@@ -276,7 +276,7 @@ Fix, normalise before grouping:
 Or skip the string field entirely and use the numeric OCSF `severity_id` for
 filters:
 
-```
+```text
 severity_id >= 4
 | group count() by timestamp = timebucket('1h'), severity_id
 | transpose severity_id on timestamp               ← columns are 4, 5
@@ -290,7 +290,7 @@ the source data has been ingested untyped), the column stays string forever.
 Subsequent writes, even from a parser declaring `type: "long"`, get coerced
 back to string at index time. Numeric aggregation then breaks silently:
 
-```
+```text
 dataSource.name='FortiGate' unmapped.action='close'
 | group sessions=count(), bytes_out=sum(traffic.bytes_out)         ← NaN, even though values are populated
 | limit 1
@@ -301,7 +301,7 @@ The values ARE there (you can see them in Event Search), but `sum()` /
 
 **Failsafe pattern, cast at query time with `number()`:**
 
-```
+```text
 dataSource.name='FortiGate' unmapped.action='close'
 | let bytes_out_n = number(traffic.bytes_out)
 | let bytes_in_n  = number(traffic.bytes_in)
@@ -323,7 +323,7 @@ preemptively to:
 
 Same trick works for arithmetic comparisons and sorts:
 
-```
+```text
 | let sev = number(severity_id)
 | filter sev >= 4
 | group n=count() by sev
@@ -337,7 +337,7 @@ recommended default for OCSF counter fields.
 
 ### Bracket array indexing in `columns` returns HTTP 500
 
-```
+```text
 dataSource.name='alert'
 | columns severity_id, resources[0].name, vulnerabilities[0].cve.uid     ← HTTP 500
 ```
@@ -349,7 +349,7 @@ paths.
 
 Fix, for first-element access inside a query, use `array_get` in a `let`:
 
-```
+```text
 | let first_resource = array_get(resources, 0)
 | let first_resource_name = first_resource.name
 ```
@@ -365,7 +365,7 @@ group key on this stream. Wildcard values come back JSON-array-wrapped, e.g. `["
 `["DESKTOP-GDIA5I7"]`, so strip the `[` `]` `"` wrapping when post-processing. The same wildcard form
 reads optional MITRE on custom alerts: `finding_info.attacks[*].tactic.uid` / `.name`.
 
-```
+```text
 dataSource.name='alert' class_uid=99602001
 | filter finding_info.title contains:anycase("SPIKE")
 | group hits = count() by entity = resources[*].name, tactic = finding_info.attacks[*].tactic.uid
@@ -380,19 +380,19 @@ JSON.
 
 ### Regex backslashes eaten
 
-```
+```text
 src.process.cmdline matches "\d+"         ← only one level of escaping; often matches nothing
 ```
 
 Fix: double-escape everywhere except the `$"…"` shorthand.
 
-```
+```text
 src.process.cmdline matches "\\d+"
 ```
 
 Windows paths, four-ish backslashes for a literal `\`:
 
-```
+```text
 tgt.file.path matches '^C:\\\\Windows\\\\Temp\\\\[a-z]{8}\\.tmp$'
 ```
 
@@ -416,7 +416,7 @@ If a query "misses" something you can see in the data, check whether case was th
 
 `not in` is accepted by the parser and returns no error and no rows. In a matched A/B control (live-verified 2026-07-29 via LRQ v2), `!(x in (...))` returned ~38k rows while the identical predicate written as `x not in (...)` returned 0. Always write the negation as `!(x in (...))`:
 
-```
+```text
 event.type = 'Process Creation'
 !(src.process.parent.name in ('explorer.exe', 'svchost.exe', 'services.exe'))
 ```
@@ -439,7 +439,7 @@ These functions require the original timestamp ordering of events. If you `sort`
 
 ### "Memory limits" message
 
-```
+```text
 213,408 of 37,059,484 matching events (0.576%) were omitted due to memory limits.
 ```
 
@@ -466,7 +466,7 @@ Some data sources (O365 audit, generic webhook ingest, custom HEC sources) keep 
 
 Fix: use the multi-field shortcut `* contains 'value'` (or `* matches 'regex'`) in the initial filter. It searches across all indexed fields, including parsed scalars from the source, and is dramatically faster than scanning a single concatenated blob.
 
-```
+```text
 // slow: single-column substring scan
 dataSource.name='<source>' message contains 'value'
 
@@ -494,7 +494,7 @@ Grouping by full URL or full command line yields one row per variant, useless fo
 
 A `lookup` before a `group` is evaluated per-event. Once per-group is always cheaper:
 
-```
+```text
 // ← slower
 | lookup os_version from machineinfo by endpoint.name
 | group count() by endpoint.name, os_version
@@ -540,7 +540,7 @@ When a bare `| group count()` with no `timebucket` dimension runs against a sile
 
 **Failsafe for time-bounded aggregations:** add `by timebucket(timestamp, "<window>")` to force the engine to partition by time. Then `| sort -total | limit 1` returns only the most recent bucket:
 
-```
+```text
 dataSource.name='MySource'
 | group total=count(), field_a=count(some.field)
         by timebucket(timestamp, "10m")
@@ -561,14 +561,14 @@ Two annotations on this failsafe (live-verified 2026-07-29 via LRQ v2):
 
 **Approximate (fast):** use `estimate_distinct(x)`. Returns a probabilistic HLL count. Fine for dashboards and thresholds where ±5% error is acceptable.
 
-```
+```text
 | group approx_ports = estimate_distinct(dst_endpoint.port) by src_endpoint.ip
 | filter approx_ports > 100
 ```
 
 **Exact (two-stage grouping):** when you need a precise count of distinct values per key, do it in two `group` passes:
 
-```
+```text
 // Stage 1: one row per (src, port) pair
 dataSource.name='Palo Alto Networks Firewall' dst_endpoint.port=*
 | group count=count() by src_endpoint.ip, dst_endpoint.port
@@ -640,7 +640,7 @@ Alerts don't support these. Move the correlation logic into a `join` (bounded) o
 
 **Always add `field=*` to the initial filter** to scope to events that actually carry the field:
 
-```
+```text
 // Wrong: returns nulls because most events don't have message
 dataSource.name='FortiGate' | limit 3 | columns message
 
@@ -664,7 +664,6 @@ Don't keep re-running slightly rephrased versions, the Purple MCP docs warn expl
 ### Results look plausible but wrong magnitude
 
 Common cause: grouping dropped a field you assumed was still present, or duplicate rows from a `union`. Add `columns` at the end to make the exact shape explicit, then re-inspect.
-
 
 ## Ingest-health validated pitfalls
 

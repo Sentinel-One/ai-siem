@@ -88,6 +88,7 @@ The bullet panel shows an actual value against a target (SLA) with colored range
 ```
 
 **Color tokens:**
+
 - Semantic: `var(--g-dv-semantic-positive)`, `var(--g-dv-semantic-warning)`, `var(--g-dv-semantic-negative)`, `var(--g-dv-semantic-caution)`
 - Blue sequential (5-step): `var(--g-dv-sequential-default-5-step-1)` through `var(--g-dv-sequential-default-5-step-5)`
 
@@ -124,6 +125,7 @@ Use `array(0, 1, 2).expand()` to fan a single event row into multiple Sankey lin
 ```
 
 **When to use Sankey:**
+
 - Login flow: country → process → user → host → result
 - Process tree: parent → child process chains
 - Network: file hash → IP → country (with TI enrichment markers)
@@ -150,6 +152,7 @@ Use `array(0, 1, 2).expand()` to fan a single event row into multiple Sankey lin
 ```
 
 **When to use bubble:**
+
 - Port scan detection (x=distinct ports, y=distinct IPs, size=total connections)
 - User behaviour: login volume vs unique hosts vs failures
 - Process outliers: execution count vs unique endpoints vs file write count
@@ -181,6 +184,7 @@ Use `array(0, 1, 2).expand()` to fan a single event row into multiple Sankey lin
 ```
 
 **When to use heatmap:**
+
 - Off-hours process execution by user (insider threat pattern)
 - Hourly event volume spikes across sources
 - Day-of-week × hour activity patterns
@@ -347,7 +351,8 @@ identifier parser); use numbered prefixes like `1.` for ordering. Rows must be i
 stage first for vertical orientation).
 
 Live-validated stage/value shape (2026-07-29, severity thresholds on `dataSource.name='alert'`):
-```
+
+```text
 | union
 ( dataSource.name='alert' severity_id=* | group Count = count() | let Stage = '1. All alerts' | columns Stage, Count ),
 ( dataSource.name='alert' severity_id=* | let sev = number(severity_id) | filter sev >= 3 | group Count = count() | let Stage = '2. Medium and above' | columns Stage, Count ),
@@ -374,11 +379,13 @@ Live-validated stage/value shape (2026-07-29, severity thresholds on `dataSource
 ```
 
 **Alert lifecycle variant** (using `datasource` UQL; union-first, live-validated 2026-07-29):
+
 ```javascript
 query: "| union\n( | datasource alerts | group Count = count() | let Stage = '1. All alerts' | columns Stage, Count ),\n( | datasource alerts where (status in ('NEW','IN_PROGRESS')) | group Count = count() | let Stage = '2. Unresolved' | columns Stage, Count ),\n( | datasource alerts where (status = 'NEW' AND !(assigneeUserId=*)) | group Count = count() | let Stage = '3. Unassigned' | columns Stage, Count )\n| sort Stage"
 ```
 
 **When to use funnel:**
+
 - Detection coverage: events → storylines → indicators → alerts
 - Alert lifecycle: total → open → unassigned → breached SLA
 - IR workflow: detected → triaged → investigated → resolved
@@ -418,12 +425,14 @@ The "Filter" panel in the UI is implemented as a `parameters` array on the tab o
 ```
 
 **Usage in a PQ panel query:**
-```
+
+```text
 endpoint.os = #OS#
 | group count=count() by src.process.name
 ```
 
 **Key rules:**
+
 - Parameters are tab-scoped (not global). Each tab that needs the filter must declare its own `parameters` entry.
 - `facet` populates dropdown choices from live SDL data. Omit `facet` for free-text input.
 - `defaultValue: "*"` means "match all" and typically appears as "All" in the dropdown.
@@ -442,6 +451,16 @@ endpoint.os = #OS#
 - **Scattered bubble**: First 3 numeric columns = x, y, size. Add `label` column for point labels.
 - **Heatmap/multi-series line**: time mode uses `timebucket()` in `group by` with the anchor named `timestamp` (`transpose field on timestamp`). Heatmap also supports a categorical x-axis (S-26.x+): `group by <xCat>, <yCat> | transpose <yCat> on <xCat>` plus `xAxis: "grouped_data"`.
 - **Bullet**: First numeric column = actual value; second numeric column = SLA/target. Third column = row label.
+- **Categorical bar (`stacked_bar` over a category, not time)**: set `xAxis: "grouped_data"` and end the query with `| columns <textCol>, <numericCol>`. There are only two valid `xAxis` values, `"time"` and `"grouped_data"`. **Anything else silently degrades to time-axis behaviour** rather than erroring on the config: the panel renders `Couldn't load content, The first column of power query output should have numeric value in epoch s/ms/µs/ns, but is <your first cell>`. That message points at the query, but the bug is in the panel config, so read it as "wrong `xAxis`", not "wrong query" (live-confirmed 2026-08-07 with `xAxis: "value"`). Working shape:
+
+  ```javascript
+  {
+    graphStyle: "stacked_bar",
+    xAxis: "grouped_data",
+    query: "dataSource.name='SentinelOne' event.type=*\n| group count=count() by type=event.type\n| sort -count\n| limit 10\n| columns type, count"
+  }
+  ```
+
 - **Tabbed table**: `tabbed: "true"` and `tabVariant: "tile"` are both required. Outer `query` is the fallback.
 - **Null check: always use `field=*`, never `field != null`**: `field=*` is the SDL predicate for "field is present and non-null". `field != null` is parsed as a literal string comparison to `"null"` in old-style filter syntax and returns wrong results or a parse error. Applies in both the initial filter predicate (before the first `|`) and in `| filter` commands: `dataSource.name='alert' severity_id=*` not `severity_id != null`.
 - **Zero suppression: `| filter count > 0` after group**: After `| group count=count() by ...`, SDL can produce zero-count rows for sparse key combinations (common after `transpose` or wide key spaces). These render as empty heatmap cells and spurious table rows. Always add `| filter EventCount > 0` (or `| filter value > 0`) after any group that feeds a heatmap, donut, or table panel where zero rows are meaningless.

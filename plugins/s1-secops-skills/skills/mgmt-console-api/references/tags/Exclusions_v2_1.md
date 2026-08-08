@@ -3,25 +3,29 @@
 8 endpoints.
 
 ## `DELETE /web/api/v2.1/unified-exclusions`
+
 **Delete Exclusions**
 `operationId`: `_web_api_unified-exclusions_delete`
 
 Required permissions: `Exclusions.delete`
 
 Parameters:
-- `body` [body, exclusions.delete_schema_UnifiedExclusionSchemaDeleteRequest]: 
+
+- `body` [body, exclusions.delete_schema_UnifiedExclusionSchemaDeleteRequest]:
 
 Responses: 403 User is not allowed to perform this operation., 200 Exclusions successfully deleted., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/unified-exclusions`
+
 **Get Exclusions**
 `operationId`: `_web_api_unified-exclusions_get`
 
-Get a list of all the Exclusions that match the filter. <br>Note: To filter the results for a scope: <br>* Global - Make sure "tenant" is "true" and no other scope ID is given.<br>* Account - Make sure "tenant" is "false" and at least one Account ID is given.<br>* Site - Make sure "tenant" is "false" and at least one Site ID is given.
+Get a list of all the Exclusions that match the filter. <br>Note: To filter the results for a scope: <br>*Global - Make sure "tenant" is "true" and no other scope ID is given.<br>* Account - Make sure "tenant" is "false" and at least one Account ID is given.<br>* Site - Make sure "tenant" is "false" and at least one Site ID is given.
 
 Required permissions: `Exclusions.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -86,6 +90,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/unified-exclusions`
+
 **Create Unified Exclusion**
 `operationId`: `_web_api_unified-exclusions_post`
 
@@ -94,11 +99,13 @@ Create Exclusions to make your Agents suppress alerts and mitigation for items t
 Required permissions: `Exclusions.create`
 
 Parameters:
-- `body` [body, object]: 
+
+- `body` [body, object]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/unified-exclusions`
+
 **Update Exclusions**
 `operationId`: `_web_api_unified-exclusions_put`
 
@@ -107,11 +114,13 @@ Change the properties of an Exclusion through the data fields. To get the origin
 Required permissions: `Exclusions.edit`
 
 Parameters:
-- `body` [body, object]: 
+
+- `body` [body, object]:
 
 Responses: 404 Exclusion not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/unified-exclusions/available-actions`
+
 **Get Exclusion Actions**
 `operationId`: `_web_api_unified-exclusions_available-actions_get`
 
@@ -120,6 +129,7 @@ Get a list of available actions for exclusions that match the filter criteria.
 Required permissions: `Exclusions.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -186,6 +196,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/unified-exclusions/bulk`
+
 **Create Bulk Unified Exclusion**
 `operationId`: `_web_api_unified-exclusions_bulk_post`
 
@@ -194,11 +205,13 @@ Create Bulk Exclusions to make your Agents suppress alerts and mitigation for it
 Required permissions: `Exclusions.create`
 
 Parameters:
-- `body` [body, exclusions.post_schema_PostUnifiedExclusionSchema_many]: 
+
+- `body` [body, exclusions.post_schema_PostUnifiedExclusionSchema_many]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/unified-exclusions/export`
+
 **Export Unified Exclusions**
 `operationId`: `_web_api_unified-exclusions_export_get`
 
@@ -207,6 +220,7 @@ Export the currently filtered exclusions to a JSON file. You can use the export 
 Required permissions: `Exclusions.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -264,6 +278,7 @@ Parameters:
 Responses: 403 User is not allowed to perform this operation., 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/unified-exclusions/import`
+
 **Import Unified Exclusions**
 `operationId`: `_web_api_unified-exclusions_import_post`
 
@@ -272,6 +287,7 @@ Import exclusions to a specified scope in the Console. Use an exclusion JSON fil
 Required permissions: `Exclusions.create`
 
 Parameters:
+
 - `filter` [formData, object] **required**: Filter
 - `file` [formData, file] **required**: The input JSON or CSV file
 

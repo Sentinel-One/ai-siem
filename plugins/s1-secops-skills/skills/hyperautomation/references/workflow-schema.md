@@ -51,12 +51,15 @@ Every item in the `actions` array is an **action object**:
 ## Key fields explained
 
 ### `export_id`
+
 A unique integer within the workflow, used as the node ID in the graph.
 Assign sequentially: 0, 1, 2, 3... starting from the LAST action (the terminal node gets 0).
 The trigger typically gets the highest export_id.
 
 ### `connected_to`
+
 Defines edges (connections) to downstream actions.
+
 - `target`: the `export_id` of the next action
 - `custom_handle`:
   - `null`: default (only one outgoing connection)
@@ -64,22 +67,26 @@ Defines edges (connections) to downstream actions.
   - `"inner"`: used for the body of a loop (the first action inside the loop)
 
 ### `parent_action`
+
 - `null`: action is at the top level of the workflow
 - `<integer>`: `export_id` of the loop that contains this action
 
 ### `tag`
+
 - `"core_action"`: built-in actions (Variable, Loop, Condition, HTTP Request without integration,
   Send Email, Delay, Break Loop, Scheduled/Manual/HTTP/Email/Singularity Trigger, Snippet,
   Wait for Slack, Create Interaction, Wait for Interaction)
 - `"integration"`: actions backed by a pre-configured integration connection
 
 ### `connection_id` / `connection_name` / `use_connection_name`
+
 - For core actions: all null/false
 - For integration actions: `connection_id` is the UUID of the configured connection.
   When generating for import, set `connection_id: null`, `connection_name: ""`,
   `use_connection_name: false`, the user will configure the connection after import.
 
 ### `integration_id`
+
 - For core actions: `null`
 - For integration actions: the UUID of the integration type (e.g., SentinelOne = `"ef645af9-ed60-4efd-882e-bf534442ce86"`, M365/Entra = `"73475bd9-3762-4f17-aab5-c544ec5ec31b"`)
   When generating for a new workflow, set to `null`; it will be resolved from the connection.
@@ -89,6 +96,7 @@ Defines edges (connections) to downstream actions.
 ## Position / layout (client_data)
 
 Position fields affect the visual canvas only. Use these conventions for readability:
+
 - First action (trigger): `{ "x": 0, "y": 0 }`
 - Each subsequent step: increment `y` by ~177 (height 76 + gap 101)
 - Parallel branches: offset `x` by ±160-300
@@ -102,7 +110,8 @@ Loop containers: wider/taller to contain children, `{ "width": 760, "height": 75
 ## Dynamic variable reference syntax
 
 Reference values from previous actions using double curly braces:
-```
+
+```json
 {{action-slug.field.subfield}}
 {{action-slug.body.data[0].computerName}}
 {{action-slug.status_code}}
@@ -162,7 +171,8 @@ For `"in"` operator, `compared_value` is a JSON array string: `"[\"HIGH\",\"CRIT
 
 ## Condition action: two styles
 
-### Simple condition (nested `condition` object, `condition_type: "simple"`):
+### Simple condition (nested `condition` object, `condition_type: "simple"`)
+
 ```json
 "condition_type": "simple",
 "condition": {
@@ -188,7 +198,8 @@ For `"in"` operator, `compared_value` is a JSON array string: `"[\"HIGH\",\"CRIT
 "conditions": null
 ```
 
-### Multi condition (flat `conditions` array, `condition_type: "multi"`):
+### Multi condition (flat `conditions` array, `condition_type: "multi"`)
+
 ```json
 "condition_type": "multi",
 "condition": null,

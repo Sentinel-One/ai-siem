@@ -324,7 +324,7 @@ These are quirks of the ingest pipeline itself, not the parser DSL. They bite yo
   2. Send each logical event as a single HEC event so newlines inside the event body are preserved.
 - **The `server-host` upload header is unreliable for isolating a test.** SDL sometimes overrides the header to the literal source name, and if the parser extracts a `host` field from the log itself that wins too. Do NOT filter your validation query by `host='parser-test-<uuid>'` alone. Safer: filter by `parser='claude_test_<name>'` and `_bytes > 0`, and use a unique nonce in the payload to double-check isolation.
 - **`{parse=dottedJson}` prefixes subfields when the field has a non-empty name.** `$payload{parse=dottedJson}$` on `{"user":"alice"}` yields `payload.user = "alice"`. If you want top-level fields, capture into an empty name: `${parse=dottedJson}$`. Same applies to `json`, `escapedJson`, `urlEncodedJson`, `base64EncodedJson`.
-- **`getFile` on a missing config path raises HTTP 404**, it does not return `success=false` with `noSuchFile`. Wrap existence checks in a try/except when scripting cleanup.
+- **Existence checks: `config_file(name=...)` returns `None` for a missing path**, it does not raise. The legacy REST `get_file` raises HTTP 404 instead of returning `success=false` with `noSuchFile`. Prefer the GraphQL method and test for `None`. Parsers live at `/logParsers/` and are name-addressed, so no `udoId` is involved.
 
 ### `mappings` block gotchas
 

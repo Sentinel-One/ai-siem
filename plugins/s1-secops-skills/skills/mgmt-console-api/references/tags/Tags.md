@@ -3,6 +3,7 @@
 5 endpoints.
 
 ## `DELETE /web/api/v2.1/tags`
+
 **Delete Tags**
 `operationId`: `_web_api_tags_delete`
 
@@ -10,11 +11,13 @@ Delete tags by given filter.
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags, Ranger.manageDeviceTags`
 
 Parameters:
-- `body` [body, tags.schemas_TagDeleteSchema]: 
+
+- `body` [body, tags.schemas_TagDeleteSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/tags`
+
 **Get Tags**
 `operationId`: `_web_api_tags_get`
 
@@ -22,6 +25,7 @@ Get tags.
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view, Ranger.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -45,6 +49,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/tags`
+
 **Create Tags**
 `operationId`: `_web_api_tags_post`
 
@@ -52,11 +57,13 @@ Add tags to create user-defined logical groups.
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags, Ranger.manageDeviceTags`
 
 Parameters:
-- `body` [body, tags.schemas_PostTagSchema]: 
+
+- `body` [body, tags.schemas_PostTagSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `DELETE /web/api/v2.1/tags/{tag_id}`
+
 **Delete Tag by ID**
 `operationId`: `_web_api_tags_{tag_id}_delete`
 
@@ -64,11 +71,13 @@ Delete tag by ID.
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags, Ranger.manageDeviceTags`
 
 Parameters:
+
 - `tag_id` [path, string] **required**: Rule ID. Example: "225494730938493804".
 
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/tags/{tag_id}`
+
 **Edit Tag**
 `operationId`: `_web_api_tags_{tag_id}_put`
 
@@ -76,7 +85,8 @@ Edit tag
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags, Ranger.manageDeviceTags`
 
 Parameters:
+
 - `tag_id` [path, string] **required**: Rule ID. Example: "225494730938493804".
-- `body` [body, tags.schemas_PutTagSchema]: 
+- `body` [body, tags.schemas_PutTagSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

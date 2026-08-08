@@ -3,6 +3,7 @@
 5 endpoints.
 
 ## `GET /web/api/v2.1/xdr/assets/data-store`
+
 **Assets**
 `operationId`: `_web_api_xdr_assets_data-store_get`
 
@@ -11,6 +12,7 @@ Get assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
@@ -119,6 +121,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/data-store`
+
 **Assets using POST**
 `operationId`: `_web_api_xdr_assets_data-store_post`
 
@@ -127,14 +130,16 @@ POST API to get Assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
-- `body` [body, v2_1.inventory.data_store.schemas_DataStoreViewInputSchema]: 
+- `body` [body, v2_1.inventory.data_store.schemas_DataStoreViewInputSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/data-store/action`
+
 **Perform action**
 `operationId`: `_web_api_xdr_assets_data-store_action_post`
 
@@ -143,6 +148,7 @@ Perform action on selected assets
 Required permissions: `XDR Inventory.create, XDR Inventory.delete`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
@@ -240,11 +246,12 @@ Parameters:
 - `dataClassificationStatus__nin` [query, array]: Data Classification Status (not in)
 - `scanStatus` [query, array]: The CDS malware scan status
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.data_store.schemas_DataStoreActionPayloadSchema]: 
+- `body` [body, v2_1.inventory.data_store.schemas_DataStoreActionPayloadSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/data-store/available-actions/with-status`
+
 **Available actions**
 `operationId`: `_web_api_xdr_assets_data-store_available-actions_with-status_post`
 
@@ -253,6 +260,7 @@ Get available actions
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
@@ -350,11 +358,12 @@ Parameters:
 - `dataClassificationStatus__nin` [query, array]: Data Classification Status (not in)
 - `scanStatus` [query, array]: The CDS malware scan status
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]: 
+- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/data-store/export`
+
 **Export assets to CSV or JSON**
 `operationId`: `_web_api_xdr_assets_data-store_export_get`
 
@@ -363,6 +372,7 @@ Returns the results for given inventory filter in a CSV or JSON format
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)

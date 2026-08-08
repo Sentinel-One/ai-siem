@@ -83,13 +83,16 @@ Run this checklist before outputting any workflow JSON.
   silently resolve to empty.
 
   ❌ Wrong: `fullPath` will be empty because `baseUrl` is resolved in the same pass:
+
   ```json
   { "variables": [
       { "name": "baseUrl",  "value": "https://api.example.com" },
       { "name": "fullPath", "value": "{{local_var.baseUrl}}/v1/alerts" }
   ]}
   ```
+
   ✅ Right: split into two sequential Variable actions:
+
   ```json
   // Action 1
   { "variables": [{ "name": "baseUrl",  "value": "https://api.example.com" }] }

@@ -29,6 +29,7 @@ All five methods consume the CPU leaky bucket described in `auth_and_limits.md`.
 Event search. Filter syntax matches the UI search bar.
 
 Params:
+
 - `filter` (string): search expression (e.g. `status >= 400 status < 500`). Escape `"` with `\"` when embedding in JSON.
 - `startTime` / `endTime`: UI time syntax (`"1h"`, `"24h"`, `"10/27 4 PM"`) or epoch sec/ms/ns. `startTime` inclusive, `endTime` exclusive. Omit both for past 24h.
 - `maxCount`: 1..5000, default 100.
@@ -92,7 +93,7 @@ Usage Metering (cost / usage / MSSP chargeback) is reached through the `datasour
 - **Rate limit:** metering datasource calls are capped at **50 rps with a 100-request burst** (see `auth_and_limits.md`).
 - **Drilldown filter:** append normal PQ to post-process the returned rows:
 
-```
+```text
 | datasource "metering" from "server_endpoints" | filter endpoint_bundle in ('Core', 'Complete')
 ```
 
@@ -162,6 +163,7 @@ Response:
 
 Effectively superseded by `timeseriesQuery` with `createSummaries=false` and
 `onlyUseSummaries=false`. Keep it for two reasons:
+
 1. Users whose role cannot call timeseriesQuery can still call this.
 2. Sub-30-second bucket granularity (timeseries min is 30s).
 
@@ -179,6 +181,17 @@ Config files back every SDL customisation: parsers, dashboards, alerts,
 lookups, datatables. Paths look like `/logParsers/Foo`, `/dashboards/Bar`,
 `/alerts`, etc. Parsers specifically must use `/logParsers/<name>`;
 the API also accepts `/parsers/<name>` but the Log Parsers UI reads only `/logParsers/`.
+
+> **Warning: `listFiles`, `getFile` and `putFile` are legacy and incomplete.**
+> These three REST methods omit every udoId-addressed `/dashboards/` file.
+> Measured live on `usea1-purple`: REST `listFiles` returned **1,914** paths
+> against GraphQL `configFiles`' **2,264**, and REST `getFile` on any file in
+> that 350-file gap returns `success/noSuchFile`. **A `noSuchFile` response is
+> not proof that a file is absent.** Use the GraphQL surface for all
+> configuration-file work: `configFiles`, `configFile`, `addConfigFile` and
+> `deleteConfigFile` at `POST <console>/sdl/v2/graphql`, exposed on the client
+> as `config_files()`, `config_file()`, `put_config_file()` and
+> `delete_config_file()`. Full reference: `references/config-file-graphql.md`.
 
 ### `listFiles`: `c.list_files()`, CLI `list-files`
 
@@ -215,6 +228,7 @@ from the preceding `getFile` for optimistic concurrency; a mismatch returns
 
 Response on success: `{"status":"success"}`.
 
-Requires Configuration Write Access key (or console token with config-write
-permission). Console tokens are permitted but scope-aware, `S1-Scope` header
-may be required.
+Authorisation is `S1_CONSOLE_API_TOKEN`, sent as `Authorization: Bearer <token>`.
+The scoped SDL keys are retired; the console token covers every SDL operation.
+Console tokens are scope-aware, so the `S1-Scope` header may be required on the
+REST endpoints.

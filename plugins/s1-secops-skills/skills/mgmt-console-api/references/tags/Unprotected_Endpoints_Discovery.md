@@ -3,6 +3,7 @@
 4 endpoints.
 
 ## `GET /web/api/v2.1/rogues/report/csv`
+
 **Export Unprotected Endpoints Discovery Data**
 `operationId`: `_web_api_rogues_report_csv_get`
 
@@ -11,6 +12,7 @@ Export Unprotected Endpoints Discovery data to CSV. You can set filters to get o
 Required permissions: `Rogues.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -48,20 +50,23 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/rogues/settings`
+
 **Get Unprotected Endpoints Discovery Settings**
 `operationId`: `_web_api_rogues_settings_get`
 
-Unprotected Endpoints Discovery gives full visibility of all unsecured devices connected to your network. Unprotected Endpoints Discovery scans your corporate environment to identify and manage connected devices, even those not protected by or supported by SentinelOne. Unprotected Endpoints Discovery identifies devices as:<BR> * UnSecured - End-user computer or laptop, or server, without a SentinelOne Agent.<BR> When you install Windows Agents with Unprotected Endpoints Discovery, the Agents can become scanners. Selected scanners from networks that you enable for scanning find connected devices with passive and active scan techniques. The scanners send the collected data to Unprotected Endpoints Discovery page on the Management. Unprotected Endpoints Discovery then runs fingerprinting to identify and classify unique devices and to update the Device Inventory Table in the Management Console. With port scanning, it is important that you understand the legal and ethical considerations and that you document an Unprotected Endpoints Discovery plan and implementation. See Legal Considerations and Proper Implementation in the Console Help.<BR> * minAgentsInNetworkToScan - To help you dete …
+Unprotected Endpoints Discovery gives full visibility of all unsecured devices connected to your network. Unprotected Endpoints Discovery scans your corporate environment to identify and manage connected devices, even those not protected by or supported by SentinelOne. Unprotected Endpoints Discovery identifies devices as:<BR> *UnSecured - End-user computer or laptop, or server, without a SentinelOne Agent.<BR> When you install Windows Agents with Unprotected Endpoints Discovery, the Agents can become scanners. Selected scanners from networks that you enable for scanning find connected devices with passive and active scan techniques. The scanners send the collected data to Unprotected Endpoints Discovery page on the Management. Unprotected Endpoints Discovery then runs fingerprinting to identify and classify unique devices and to update the Device Inventory Table in the Management Console. With port scanning, it is important that you understand the legal and ethical considerations and that you document an Unprotected Endpoints Discovery plan and implementation. See Legal Considerations and Proper Implementation in the Console Help.<BR>* minAgentsInNetworkToScan - To help you dete …
 
 Required permissions: `Rogues.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/rogues/settings`
+
 **Update Unprotected Endpoints Discovery Settings**
 `operationId`: `_web_api_rogues_settings_put`
 
@@ -70,11 +75,13 @@ Change the Unprotected Endpoints Discovery Settings. Best Practice: Get the curr
 Required permissions: `Rogues.edit`
 
 Parameters:
-- `body` [body, rogue_schemas_PutRoguesSchema]: 
+
+- `body` [body, rogue_schemas_PutRoguesSchema]:
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/rogues/table-view`
+
 **Get Unprotected Endpoints Discovery Table**
 `operationId`: `_web_api_rogues_table-view_get`
 
@@ -83,6 +90,7 @@ Get the data for each row in the Unprotected Endpoints Discovery Device Inventor
 Required permissions: `Rogues.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".

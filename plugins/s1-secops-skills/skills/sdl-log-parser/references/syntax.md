@@ -68,7 +68,7 @@ When a fragment format pulls a token out of the middle of a line, the prefix's r
 
 1. **The literal anchor must live INSIDE the prefix's regex, not as separate format-string text.** A pattern like `$_pre{regex=[\s\S]*}$/actuator/health$_suf{regex=[\s\S]*}$` (greedy `[\s\S]*` followed by literal `/actuator/health` between the two field markers) does NOT match. The format engine commits each captured field's regex independently and does not backtrack the previous field once a literal-text gap has been crossed. The working form puts the literal inside the regex of the prefix itself: `$_pre{regex=[\s\S]*\/actuator\/health}$$_suf{regex=[\s\S]*}$`. Phase-10-style IOC formats do this with anchors like `[\s\S]*X-Forwarded-For=[\[]?` baked into the prefix regex.
 
-2. **`[\s\S]*ANCHOR` is greedy and lands on the LAST occurrence of `ANCHOR`.** That is correct when the desired token always follows the rightmost anchor on the line, Phase-5-style Dropwizard formats (`[\s\S]*\[dw-[0-9]+ - `) work because `[dw-N - ` is unique to the request-line bracket. It fails when the anchor is too generic: `[\s\S]*\[` followed by a capture of `UT-[0-9]+` will fail on any line where a later `[` exists (e.g. `[#033[36mClassName#033[0;39m]` ANSI brackets), because greedy match commits to the last `[` and `UT-` does not follow there. Fix: make the anchor multi-character and discriminating (`[\s\S]*\[UT-` so only the bracket that actually opens a UT- token is matched), accepting that the discriminating literal is consumed by the anchor and your capture holds only the trailing portion (`$user_task_id_num{regex=[0-9]+}$`).
+2. **`[\s\S]*ANCHOR` is greedy and lands on the LAST occurrence of `ANCHOR`.** That is correct when the desired token always follows the rightmost anchor on the line, Phase-5-style Dropwizard formats (`[\s\S]*\[dw-[0-9]+ -`) work because `[dw-N -` is unique to the request-line bracket. It fails when the anchor is too generic: `[\s\S]*\[` followed by a capture of `UT-[0-9]+` will fail on any line where a later `[` exists (e.g. `[#033[36mClassName#033[0;39m]` ANSI brackets), because greedy match commits to the last `[` and `UT-` does not follow there. Fix: make the anchor multi-character and discriminating (`[\s\S]*\[UT-` so only the bracket that actually opens a UT- token is matched), accepting that the discriminating literal is consumed by the anchor and your capture holds only the trailing portion (`$user_task_id_num{regex=[0-9]+}$`).
 
 3. **DO NOT use `[\s\S]*?` lazy quantifier at the start of a prefix regex.** Same family as the documented `.*?` orphaned-`?` trap, but no error: the format silently matches almost nothing (tenant-validated 2026-05-13, `[\s\S]*?` prefixes hit 365 of ~190K events when greedy + literal anchor hit close to all). The SDL regex engine does not backtrack the lazy quantifier across field boundaries to find a position where the next field's regex matches. Always use greedy `[\s\S]*` plus a discriminating literal anchor (rule 2 above). If you actually need first-match-on-line semantics, encode it with a literal that only appears once per line (e.g. `[\s\S]*\"merchant_transaction_id\":\"` to anchor on a unique JSON key), do not reach for `*?`.
 
@@ -76,7 +76,7 @@ When a fragment format pulls a token out of the middle of a line, the prefix's r
 
 Inside a format string, `$name=pattern{opt1}{opt2}$` captures a named field. All parts except `$name$` are optional:
 
-```
+```text
 $fieldName  = patternName  {parse=json}  {regex=\\d+}  {attrWhitelist=foo.*}  {timezone=UTC}  $
 ```
 
@@ -101,7 +101,7 @@ A `$field$` followed by a **space** with no explicit pattern defaults to the `qu
 ### Escaping literals
 
 - Literal `$`: `\$$` (backslash, dollar, terminator).
-- Literal single space: `\\ ` (backslash-space); a bare space matches `\s+`.
+- Literal single space: `\\` (backslash-space); a bare space matches `\s+`.
 - Literal backslash: `\\\\`.
 
 ## Patterns
@@ -191,6 +191,7 @@ rewrites: [
 ```
 
 Notes:
+
 - `$1..$n` reference regex capture groups.
 - `replaceAll: true` replaces every match, not just the first.
 - `outputIfNoMatch: false` suppresses the output field when the regex doesn't match (default is to copy `input` verbatim).

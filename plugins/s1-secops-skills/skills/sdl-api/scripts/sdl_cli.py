@@ -53,7 +53,55 @@ def _print(obj) -> None:
     print(json.dumps(obj, indent=2, default=str))
 
 
+def cmd_config_files(c, args):
+    """Complete listing via GraphQL, including udoId-addressed dashboards."""
+    files = c.config_files()
+    if args.prefix:
+        files = [f for f in files if (f.get("name") or "").startswith(args.prefix)]
+    _print({"count": len(files), "files": files})
+
+
+def cmd_config_file(c, args):
+    if not args.name and not args.udo_id:
+        raise SystemExit("config-file requires --name or --udo-id")
+    res = c.config_file(name=args.name, udo_id=args.udo_id)
+    if res is None:
+        raise SystemExit(
+            "No file at that address. If this is a dashboard it is udoId-addressed: "
+            "run 'config-files --prefix /dashboards/' and retry with --udo-id."
+        )
+    _print(res)
+
+
+def cmd_put_config_file(c, args):
+    if args.content is not None:
+        content = args.content
+    elif args.content_file:
+        content = Path(args.content_file).read_text()
+    else:
+        raise SystemExit("put-config-file requires --content or --content-file")
+    _print(
+        c.put_config_file(
+            name=args.name,
+            udo_id=args.udo_id,
+            content=content,
+            expected_version=args.expected_version,
+        )
+    )
+
+
+def cmd_delete_config_file(c, args):
+    if not args.name and not args.udo_id:
+        raise SystemExit("delete-config-file requires --name or --udo-id")
+    _print(
+        c.delete_config_file(
+            name=args.name, udo_id=args.udo_id, expected_version=args.expected_version
+        )
+    )
+
+
 def cmd_list_files(c, args):
+    """Legacy REST listing. Incomplete: omits udoId-addressed dashboards."""
     _print(c.list_files())
 
 
@@ -144,8 +192,36 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="sdl_cli", description="SentinelOne SDL API CLI")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    # list-files
-    sp = sub.add_parser("list-files", help="List configuration file paths")
+    # ---- configuration files (GraphQL, canonical) ----
+    sp = sub.add_parser(
+        "config-files", help="List every configuration file (complete; includes dashboards)"
+    )
+    sp.add_argument("--prefix", default=None, help='Filter, e.g. "/dashboards/"')
+    sp.set_defaults(func=cmd_config_files)
+
+    sp = sub.add_parser("config-file", help="Read a configuration file by name or udoId")
+    sp.add_argument("--name", default=None, help="Path for name-addressed files")
+    sp.add_argument("--udo-id", default=None, help="udoId, required for /dashboards/ files")
+    sp.set_defaults(func=cmd_config_file)
+
+    sp = sub.add_parser("put-config-file", help="Create or update a configuration file")
+    sp.add_argument("--name", default=None, help="Path; use to create, or to update a non-dashboard file")
+    sp.add_argument("--udo-id", default=None, help="udoId; required to update an existing dashboard")
+    sp.add_argument("--content", default=None)
+    sp.add_argument("--content-file", default=None)
+    sp.add_argument("--expected-version", type=int, default=None)
+    sp.set_defaults(func=cmd_put_config_file)
+
+    sp = sub.add_parser("delete-config-file", help="Delete a configuration file")
+    sp.add_argument("--name", default=None)
+    sp.add_argument("--udo-id", default=None)
+    sp.add_argument("--expected-version", type=int, default=None)
+    sp.set_defaults(func=cmd_delete_config_file)
+
+    # ---- legacy REST config methods (incomplete; omit udoId dashboards) ----
+    sp = sub.add_parser(
+        "list-files", help="[legacy] REST listing; omits udoId-addressed dashboards"
+    )
     sp.set_defaults(func=cmd_list_files)
 
     # get-file

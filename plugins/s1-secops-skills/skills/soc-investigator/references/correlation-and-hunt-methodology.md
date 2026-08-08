@@ -83,7 +83,7 @@ time.
 
 ## Incident report structure
 
-```
+```text
 Executive Summary (with a Key Verdicts table)
 Scope & Data
 Threat-Hunting & Correlation Methodology

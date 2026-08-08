@@ -19,6 +19,7 @@ Device identity coalesce (one key for all source types, falls back to source):
 hostname ? ... : dataSource.name`.
 
 Two tenant-level savelookup tables:
+
 - `ingestHealthBaseline` key `srckey`=`source||device||hour-of-day`: `exp_gib, sig_gib, exp_ev, sig_ev`
   (detections and dashboard read sigma from here).
 - `ingestHealthSourceStats` key `devkey`=`source||device`: `sig_gib, sig_ev` (pooled across all hours;
@@ -59,7 +60,7 @@ Which sources are monitored is controlled by ONE editable CSV lookup, not by har
 detection rules, the watchdog live subquery, and every dashboard panel) carries the same anti-join
 right after its opener:
 
-```
+```text
 <opener> | lookup ih_excl_n = reason from ingestHealthExclusions.csv by value =:anycase dataSource.name
          | lookup ih_excl_v = reason from ingestHealthExclusions.csv by value =:anycase dataSource.vendor
          | filter (ih_excl_n = null and ih_excl_v = null)
@@ -72,6 +73,7 @@ row (`Zscaler,vendor,decommissioned`); to resume, delete the row. No query edits
 table (header only) excludes nothing.
 
 Mechanics:
+
 - The anti-join tests `value` against BOTH `dataSource.name` and `dataSource.vendor`, so `match_type` is
   documentation only: a row matches if its value equals either field (case-insensitive via `=:anycase`).
 - This is the right place to drop the platform's own internal streams, which a vendor filter misses.
@@ -167,7 +169,6 @@ missing milliseconds alone; carrying `tz` does not compensate for a millisecond-
 `start_at`. Keep `"tz": "UTC"` in the template and always render `{{START_AT}}` with
 milliseconds.
 
-
 ## Example alert emails
 
 Real Watchdog alert emails from the demo tenant (hourly runs, 2026-07-31 and 2026-08-01).
@@ -236,5 +237,5 @@ A full deployment produces the artifacts below. Each renders from a template in 
 | Ingest health detections (unified) | `assets/ingesthealth_detections.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | Unified Volume Spike, Volume Drop, Ingest Lag scheduled rules vs the seasonal baseline; each handles both levels and tags alerts with a `level` column |
 | Parser Drift (OPTIONAL) | `assets/ingesthealth_detections_parser_drift_optional.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | Per-parser drift detector. Environment-specific, ships Disabled, do NOT deploy by default; tune `drift_ratio` first |
 | Ingest Loss Watchdog workflow | `assets/ingesthealth_watchdog.workflow.template.json` | Hyperautomation workflow import | Hourly per-device anti-join that emails when a baselined device stops sending logs |
-| Ingest health dashboard | `assets/ingesthealth_dashboard.template.json` | `sdl_put_file /dashboards/Ingest Health Monitoring` | Five-tab view: Overview, Devices, Volume & Sources, Latency & Lag, Parser Health |
+| Ingest health dashboard | `assets/ingesthealth_dashboard.template.json` | `sdl_put_file /dashboards/Ingest Health Monitoring` (create); re-deploy by `udoId` | Five-tab view: Overview, Devices, Volume & Sources, Latency & Lag, Parser Health |
 | Alert Notifier workflow | `assets/ingesthealth_alert_notifier.workflow.template.json` | Hyperautomation workflow import | Alert-triggered email on any "Ingest Health" detection |

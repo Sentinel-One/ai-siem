@@ -1,7 +1,7 @@
 # OCSF Schema Documentation
 
 **Source:** SentinelOne Customer Community Knowledge Base  
-**Overview article:** https://community.sentinelone.com/s/article/000010516  
+**Overview article:** <https://community.sentinelone.com/s/article/000010516>  
 **Compiled:** Auto-extracted summary (per-article field-name lists)
 
 ## About OCSF
@@ -37,7 +37,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - File System Activity - Part 1
 
 - **Article ID:** `000010500`
-- **URL:** https://community.sentinelone.com/s/article/000010500
+- **URL:** <https://community.sentinelone.com/s/article/000010500>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -47,7 +47,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - File System Activity - Part 2
 
 - **Article ID:** `000010501`
-- **URL:** https://community.sentinelone.com/s/article/000010501
+- **URL:** <https://community.sentinelone.com/s/article/000010501>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -57,7 +57,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - File System Activity - Part 3
 
 - **Article ID:** `000010502`
-- **URL:** https://community.sentinelone.com/s/article/000010502
+- **URL:** <https://community.sentinelone.com/s/article/000010502>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -71,7 +71,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Kernel Extension Activity - Part 1
 
 - **Article ID:** `000010503`
-- **URL:** https://community.sentinelone.com/s/article/000010503
+- **URL:** <https://community.sentinelone.com/s/article/000010503>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -81,7 +81,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Kernel Extension Activity - Part 2
 
 - **Article ID:** `000010504`
-- **URL:** https://community.sentinelone.com/s/article/000010504
+- **URL:** <https://community.sentinelone.com/s/article/000010504>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -95,7 +95,7 @@ This event category spans 1 article with a combined 7 documented field entries.
 #### OCSF Event - Kernel Activity
 
 - **Article ID:** `000010505`
-- **URL:** https://community.sentinelone.com/s/article/000010505
+- **URL:** <https://community.sentinelone.com/s/article/000010505>
 - **Field count:** 7
 
 **Fields:**
@@ -109,7 +109,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Memory Activity - Part 1
 
 - **Article ID:** `000010506`
-- **URL:** https://community.sentinelone.com/s/article/000010506
+- **URL:** <https://community.sentinelone.com/s/article/000010506>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -119,7 +119,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Memory Activity - Part 2
 
 - **Article ID:** `000010507`
-- **URL:** https://community.sentinelone.com/s/article/000010507
+- **URL:** <https://community.sentinelone.com/s/article/000010507>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -133,7 +133,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Module Activity - Part 1
 
 - **Article ID:** `000010508`
-- **URL:** https://community.sentinelone.com/s/article/000010508
+- **URL:** <https://community.sentinelone.com/s/article/000010508>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -143,7 +143,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Module Activity - Part 2
 
 - **Article ID:** `000010509`
-- **URL:** https://community.sentinelone.com/s/article/000010509
+- **URL:** <https://community.sentinelone.com/s/article/000010509>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -157,7 +157,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Scheduled Job Activity - Part 1
 
 - **Article ID:** `000010510`
-- **URL:** https://community.sentinelone.com/s/article/000010510
+- **URL:** <https://community.sentinelone.com/s/article/000010510>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -167,7 +167,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Scheduled Job Activity - Part 2
 
 - **Article ID:** `000010511`
-- **URL:** https://community.sentinelone.com/s/article/000010511
+- **URL:** <https://community.sentinelone.com/s/article/000010511>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -181,7 +181,7 @@ This event category spans 4 articles with a combined 1200 documented field entri
 #### OCSF Event - Process Activity - Part 1
 
 - **Article ID:** `000010512`
-- **URL:** https://community.sentinelone.com/s/article/000010512
+- **URL:** <https://community.sentinelone.com/s/article/000010512>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -191,7 +191,7 @@ This event category spans 4 articles with a combined 1200 documented field entri
 #### OCSF Event - Process Activity - Part 2
 
 - **Article ID:** `000010513`
-- **URL:** https://community.sentinelone.com/s/article/000010513
+- **URL:** <https://community.sentinelone.com/s/article/000010513>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -201,7 +201,7 @@ This event category spans 4 articles with a combined 1200 documented field entri
 #### OCSF Event - Process Activity - Part 3
 
 - **Article ID:** `000010514`
-- **URL:** https://community.sentinelone.com/s/article/000010514
+- **URL:** <https://community.sentinelone.com/s/article/000010514>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -211,7 +211,7 @@ This event category spans 4 articles with a combined 1200 documented field entri
 #### OCSF Event - Process Activity - Part 4
 
 - **Article ID:** `000010515`
-- **URL:** https://community.sentinelone.com/s/article/000010515
+- **URL:** <https://community.sentinelone.com/s/article/000010515>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -229,7 +229,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Security Finding - Part 1
 
 - **Article ID:** `000010452`
-- **URL:** https://community.sentinelone.com/s/article/000010452
+- **URL:** <https://community.sentinelone.com/s/article/000010452>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -239,7 +239,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Security Finding - Part 2
 
 - **Article ID:** `000010453`
-- **URL:** https://community.sentinelone.com/s/article/000010453
+- **URL:** <https://community.sentinelone.com/s/article/000010453>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -253,7 +253,7 @@ This event category spans 1 article with a combined 19 documented field entries.
 #### OCSF Events for Vulnerabilities
 
 - **Article ID:** `000011414`
-- **URL:** https://community.sentinelone.com/s/article/000011414
+- **URL:** <https://community.sentinelone.com/s/article/000011414>
 - **Field count:** 19
 
 **Fields:**
@@ -267,7 +267,7 @@ This event category spans 1 article with a combined 59 documented field entries.
 #### OCSF Events for Misconfigurations
 
 - **Article ID:** `000011415`
-- **URL:** https://community.sentinelone.com/s/article/000011415
+- **URL:** <https://community.sentinelone.com/s/article/000011415>
 - **Field count:** 59
 
 **Fields:**
@@ -285,7 +285,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Account Change - Part 1
 
 - **Article ID:** `000010467`
-- **URL:** https://community.sentinelone.com/s/article/000010467
+- **URL:** <https://community.sentinelone.com/s/article/000010467>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -295,7 +295,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Account Change - Part 2
 
 - **Article ID:** `000010468`
-- **URL:** https://community.sentinelone.com/s/article/000010468
+- **URL:** <https://community.sentinelone.com/s/article/000010468>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -309,7 +309,7 @@ This event category spans 4 articles with a combined 1200 documented field entri
 #### OCSF Event - Authentication - Part 1
 
 - **Article ID:** `000010469`
-- **URL:** https://community.sentinelone.com/s/article/000010469
+- **URL:** <https://community.sentinelone.com/s/article/000010469>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -319,7 +319,7 @@ This event category spans 4 articles with a combined 1200 documented field entri
 #### OCSF Event - Authentication - Part 2
 
 - **Article ID:** `000010470`
-- **URL:** https://community.sentinelone.com/s/article/000010470
+- **URL:** <https://community.sentinelone.com/s/article/000010470>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -329,7 +329,7 @@ This event category spans 4 articles with a combined 1200 documented field entri
 #### OCSF Event - Authentication - Part 3
 
 - **Article ID:** `000010471`
-- **URL:** https://community.sentinelone.com/s/article/000010471
+- **URL:** <https://community.sentinelone.com/s/article/000010471>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -339,7 +339,7 @@ This event category spans 4 articles with a combined 1200 documented field entri
 #### OCSF Event - Authentication - Part 4
 
 - **Article ID:** `000010472`
-- **URL:** https://community.sentinelone.com/s/article/000010472
+- **URL:** <https://community.sentinelone.com/s/article/000010472>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -353,7 +353,7 @@ This event category spans 1 article with a combined 61 documented field entries.
 #### OCSF Event - Authorize Session
 
 - **Article ID:** `000010473`
-- **URL:** https://community.sentinelone.com/s/article/000010473
+- **URL:** <https://community.sentinelone.com/s/article/000010473>
 - **Field count:** 61
 
 **Fields:**
@@ -367,7 +367,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Entity Management - Part 1
 
 - **Article ID:** `000010474`
-- **URL:** https://community.sentinelone.com/s/article/000010474
+- **URL:** <https://community.sentinelone.com/s/article/000010474>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -377,7 +377,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Entity Management - Part 2
 
 - **Article ID:** `000010475`
-- **URL:** https://community.sentinelone.com/s/article/000010475
+- **URL:** <https://community.sentinelone.com/s/article/000010475>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -391,7 +391,7 @@ This event category spans 1 article with a combined 59 documented field entries.
 #### OCSF Event - User Access Management
 
 - **Article ID:** `000010476`
-- **URL:** https://community.sentinelone.com/s/article/000010476
+- **URL:** <https://community.sentinelone.com/s/article/000010476>
 - **Field count:** 59
 
 **Fields:**
@@ -405,7 +405,7 @@ This event category spans 1 article with a combined 64 documented field entries.
 #### OCSF Event - Group Management
 
 - **Article ID:** `000010477`
-- **URL:** https://community.sentinelone.com/s/article/000010477
+- **URL:** <https://community.sentinelone.com/s/article/000010477>
 - **Field count:** 64
 
 **Fields:**
@@ -423,7 +423,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Network Activity - Part 1
 
 - **Article ID:** `000010478`
-- **URL:** https://community.sentinelone.com/s/article/000010478
+- **URL:** <https://community.sentinelone.com/s/article/000010478>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -433,7 +433,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Network Activity - Part 2
 
 - **Article ID:** `000010479`
-- **URL:** https://community.sentinelone.com/s/article/000010479
+- **URL:** <https://community.sentinelone.com/s/article/000010479>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -443,7 +443,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Network Activity - Part 3
 
 - **Article ID:** `000010480`
-- **URL:** https://community.sentinelone.com/s/article/000010480
+- **URL:** <https://community.sentinelone.com/s/article/000010480>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -457,7 +457,7 @@ This event category spans 1 article with a combined 27 documented field entries.
 #### OCSF Event - HTTP Activity
 
 - **Article ID:** `000010481`
-- **URL:** https://community.sentinelone.com/s/article/000010481
+- **URL:** <https://community.sentinelone.com/s/article/000010481>
 - **Field count:** 27
 
 **Fields:**
@@ -471,7 +471,7 @@ This event category spans 1 article with a combined 59 documented field entries.
 #### OCSF Event - DNS Activity
 
 - **Article ID:** `000010482`
-- **URL:** https://community.sentinelone.com/s/article/000010482
+- **URL:** <https://community.sentinelone.com/s/article/000010482>
 - **Field count:** 59
 
 **Fields:**
@@ -485,7 +485,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - DHCP Activity - Part 1
 
 - **Article ID:** `000010483`
-- **URL:** https://community.sentinelone.com/s/article/000010483
+- **URL:** <https://community.sentinelone.com/s/article/000010483>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -495,7 +495,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - DHCP Activity - Part 2
 
 - **Article ID:** `000010484`
-- **URL:** https://community.sentinelone.com/s/article/000010484
+- **URL:** <https://community.sentinelone.com/s/article/000010484>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -505,7 +505,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - DHCP Activity - Part 3
 
 - **Article ID:** `000010485`
-- **URL:** https://community.sentinelone.com/s/article/000010485
+- **URL:** <https://community.sentinelone.com/s/article/000010485>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -519,7 +519,7 @@ This event category spans 1 article with a combined 114 documented field entries
 #### OCSF Event - RDP Activity
 
 - **Article ID:** `000010486`
-- **URL:** https://community.sentinelone.com/s/article/000010486
+- **URL:** <https://community.sentinelone.com/s/article/000010486>
 - **Field count:** 114
 
 **Fields:**
@@ -533,7 +533,7 @@ This event category spans 1 article with a combined 158 documented field entries
 #### OCSF Event - SMB Activity
 
 - **Article ID:** `000010487`
-- **URL:** https://community.sentinelone.com/s/article/000010487
+- **URL:** <https://community.sentinelone.com/s/article/000010487>
 - **Field count:** 158
 
 **Fields:**
@@ -547,7 +547,7 @@ This event category spans 1 article with a combined 9 documented field entries.
 #### OCSF Event - SSH Activity
 
 - **Article ID:** `000010488`
-- **URL:** https://community.sentinelone.com/s/article/000010488
+- **URL:** <https://community.sentinelone.com/s/article/000010488>
 - **Field count:** 9
 
 **Fields:**
@@ -561,7 +561,7 @@ This event category spans 1 article with a combined 7 documented field entries.
 #### OCSF Event - FTP Activity
 
 - **Article ID:** `000010489`
-- **URL:** https://community.sentinelone.com/s/article/000010489
+- **URL:** <https://community.sentinelone.com/s/article/000010489>
 - **Field count:** 7
 
 **Fields:**
@@ -575,7 +575,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Email Activity - Part 1
 
 - **Article ID:** `000010490`
-- **URL:** https://community.sentinelone.com/s/article/000010490
+- **URL:** <https://community.sentinelone.com/s/article/000010490>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -585,7 +585,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Email Activity - Part 2
 
 - **Article ID:** `000010491`
-- **URL:** https://community.sentinelone.com/s/article/000010491
+- **URL:** <https://community.sentinelone.com/s/article/000010491>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -595,7 +595,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Email Activity - Part 3
 
 - **Article ID:** `000010492`
-- **URL:** https://community.sentinelone.com/s/article/000010492
+- **URL:** <https://community.sentinelone.com/s/article/000010492>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -609,7 +609,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Network File Activity - Part 1
 
 - **Article ID:** `000010493`
-- **URL:** https://community.sentinelone.com/s/article/000010493
+- **URL:** <https://community.sentinelone.com/s/article/000010493>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -619,7 +619,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Network File Activity - Part 2
 
 - **Article ID:** `000010494`
-- **URL:** https://community.sentinelone.com/s/article/000010494
+- **URL:** <https://community.sentinelone.com/s/article/000010494>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -633,7 +633,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Email File Activity - Part 1
 
 - **Article ID:** `000010495`
-- **URL:** https://community.sentinelone.com/s/article/000010495
+- **URL:** <https://community.sentinelone.com/s/article/000010495>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -643,7 +643,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Email File Activity - Part 2
 
 - **Article ID:** `000010496`
-- **URL:** https://community.sentinelone.com/s/article/000010496
+- **URL:** <https://community.sentinelone.com/s/article/000010496>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -653,7 +653,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Email File Activity - Part 3
 
 - **Article ID:** `000010497`
-- **URL:** https://community.sentinelone.com/s/article/000010497
+- **URL:** <https://community.sentinelone.com/s/article/000010497>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -667,7 +667,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Email URL Activity - Part 1
 
 - **Article ID:** `000010498`
-- **URL:** https://community.sentinelone.com/s/article/000010498
+- **URL:** <https://community.sentinelone.com/s/article/000010498>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -677,7 +677,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Email URL Activity - Part 2
 
 - **Article ID:** `000010499`
-- **URL:** https://community.sentinelone.com/s/article/000010499
+- **URL:** <https://community.sentinelone.com/s/article/000010499>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -695,7 +695,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Device Inventory Info - Part 1
 
 - **Article ID:** `000010454`
-- **URL:** https://community.sentinelone.com/s/article/000010454
+- **URL:** <https://community.sentinelone.com/s/article/000010454>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -705,7 +705,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Device Inventory Info - Part 2
 
 - **Article ID:** `000010455`
-- **URL:** https://community.sentinelone.com/s/article/000010455
+- **URL:** <https://community.sentinelone.com/s/article/000010455>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -719,7 +719,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Device Config State - Part 1
 
 - **Article ID:** `000010456`
-- **URL:** https://community.sentinelone.com/s/article/000010456
+- **URL:** <https://community.sentinelone.com/s/article/000010456>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -729,7 +729,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Device Config State - Part 2
 
 - **Article ID:** `000010457`
-- **URL:** https://community.sentinelone.com/s/article/000010457
+- **URL:** <https://community.sentinelone.com/s/article/000010457>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -747,7 +747,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Web Resources Activity - Part 1
 
 - **Article ID:** `000010458`
-- **URL:** https://community.sentinelone.com/s/article/000010458
+- **URL:** <https://community.sentinelone.com/s/article/000010458>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -757,7 +757,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Web Resources Activity - Part 2
 
 - **Article ID:** `000010459`
-- **URL:** https://community.sentinelone.com/s/article/000010459
+- **URL:** <https://community.sentinelone.com/s/article/000010459>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -771,7 +771,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Application Lifecycle - Part 1
 
 - **Article ID:** `000010460`
-- **URL:** https://community.sentinelone.com/s/article/000010460
+- **URL:** <https://community.sentinelone.com/s/article/000010460>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -781,7 +781,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - Application Lifecycle - Part 2
 
 - **Article ID:** `000010461`
-- **URL:** https://community.sentinelone.com/s/article/000010461
+- **URL:** <https://community.sentinelone.com/s/article/000010461>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -795,7 +795,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - API Activity - Part 1
 
 - **Article ID:** `000010462`
-- **URL:** https://community.sentinelone.com/s/article/000010462
+- **URL:** <https://community.sentinelone.com/s/article/000010462>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -805,7 +805,7 @@ This event category spans 2 articles with a combined 600 documented field entrie
 #### OCSF Event - API Activity - Part 2
 
 - **Article ID:** `000010463`
-- **URL:** https://community.sentinelone.com/s/article/000010463
+- **URL:** <https://community.sentinelone.com/s/article/000010463>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -819,7 +819,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Web Resource Access Activity - Part 1
 
 - **Article ID:** `000010464`
-- **URL:** https://community.sentinelone.com/s/article/000010464
+- **URL:** <https://community.sentinelone.com/s/article/000010464>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -829,7 +829,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Web Resource Access Activity - Part 2
 
 - **Article ID:** `000010465`
-- **URL:** https://community.sentinelone.com/s/article/000010465
+- **URL:** <https://community.sentinelone.com/s/article/000010465>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**
@@ -839,7 +839,7 @@ This event category spans 3 articles with a combined 900 documented field entrie
 #### OCSF Event - Web Resource Access Activity - Part 3
 
 - **Article ID:** `000010466`
-- **URL:** https://community.sentinelone.com/s/article/000010466
+- **URL:** <https://community.sentinelone.com/s/article/000010466>
 - **Field count:** 300 (paginated, more fields in subsequent parts)
 
 **Fields:**

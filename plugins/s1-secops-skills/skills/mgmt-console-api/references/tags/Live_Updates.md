@@ -3,6 +3,7 @@
 1 endpoints.
 
 ## `GET /web/api/v2.1/content-updates-inventory`
+
 **Get Agent Merged Updates**
 `operationId`: `_web_api_content-updates-inventory_get`
 
@@ -11,6 +12,7 @@ Get Agent's merged updates.
 Required permissions: `Endpoints.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".

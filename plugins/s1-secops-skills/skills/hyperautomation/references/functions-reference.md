@@ -9,6 +9,7 @@ this avoids escaping headaches: `{{Function.JQ(input, local_var.myJqExpression)}
 ---
 
 ## Arithmetic
+
 | Function | Description | Usage |
 |----------|-------------|-------|
 | `ADD(n1, n2)` | Sum | `{{Function.ADD(5, 3)}}` |
@@ -19,6 +20,7 @@ this avoids escaping headaches: `{{Function.JQ(input, local_var.myJqExpression)}
 ---
 
 ## Date & Time
+
 | Function | Description | Usage |
 |----------|-------------|-------|
 | `DATETIME_NOW()` | Current datetime as string | `{{Function.DATETIME_NOW()}}` |
@@ -35,6 +37,7 @@ this avoids escaping headaches: `{{Function.JQ(input, local_var.myJqExpression)}
 ---
 
 ## Array & Object Operations
+
 | Function | Description | Usage |
 |----------|-------------|-------|
 | `APPEND(array, item)` | Add item to array | `{{Function.APPEND(local_var.myList, loop.item)}}` |
@@ -58,20 +61,24 @@ this avoids escaping headaches: `{{Function.JQ(input, local_var.myJqExpression)}
 ---
 
 ## JQ (JSON Query)
-The most powerful function. Reference: https://jqlang.org/manual
 
-```
+The most powerful function. Reference: <https://jqlang.org/manual>
+
+```json
 {{Function.JQ(input, jq_filter)}}
 {{Function.JQ(input, jq_filter, true)}}  ← raw output (no JSON wrapping)
 ```
 
 **Best practice**: Store the JQ expression in a Variable first:
+
 ```json
 { "name": "jqFilter", "value": ".[] | select(.score > 50) | {ip: .ipAddress, score: .abuseConfidenceScore}" }
 ```
+
 Then use: `{{Function.JQ(local_var.data, local_var.jqFilter)}}`
 
 Common patterns:
+
 ```jq
 # Extract field from array
 .[].name
@@ -95,6 +102,7 @@ Common patterns:
 ---
 
 ## Extraction
+
 | Function | Description | Usage |
 |----------|-------------|-------|
 | `EXTRACT_IPS(string)` | Extract all IPs from text | `{{Function.EXTRACT_IPS(response.body)}}` |
@@ -112,6 +120,7 @@ Common patterns:
 ---
 
 ## String Manipulation
+
 | Function | Description | Usage |
 |----------|-------------|-------|
 | `REPLACE(str, find, replace)` | Replace all occurrences | `{{Function.REPLACE(text, "]", "")}}` |
@@ -158,6 +167,7 @@ Common patterns:
 ---
 
 ## Validation & Conditions
+
 | Function | Description | Usage |
 |----------|-------------|-------|
 | `DEFAULT(value, fallback)` | Use fallback if value is null/empty | `{{Function.DEFAULT(action.body.field, "")}}` |
@@ -167,6 +177,7 @@ Common patterns:
 ---
 
 ## File Handling
+
 | Function | Description | Usage |
 |----------|-------------|-------|
 | `COMPRESS(files_array, type?, password?)` | Compress files | `{{Function.COMPRESS([local_var.csvData], "zip")}}` |
@@ -179,6 +190,7 @@ For Send Email attachments: pass in `[local_var.fileDataVar]` (in square bracket
 ---
 
 ## Hashing & Cryptography
+
 | Function | Description | Usage |
 |----------|-------------|-------|
 | `MD5(input)` | MD5 hash | `{{Function.MD5(text)}}` |
@@ -195,6 +207,7 @@ For Send Email attachments: pass in `[local_var.fileDataVar]` (in square bracket
 ---
 
 ## Workflow Metadata
+
 | Function | Description | Usage |
 |----------|-------------|-------|
 | `GET_WORKFLOW_ID()` | Current workflow ID | `{{Function.GET_WORKFLOW_ID()}}` |
@@ -207,6 +220,7 @@ For Send Email attachments: pass in `[local_var.fileDataVar]` (in square bracket
 ---
 
 ## Variable Retrieval
+
 | Function | Description | Usage |
 |----------|-------------|-------|
 | `GET_LOCAL_VAR(name)` | Get local variable | `{{Function.GET_LOCAL_VAR("myVar")}}` |

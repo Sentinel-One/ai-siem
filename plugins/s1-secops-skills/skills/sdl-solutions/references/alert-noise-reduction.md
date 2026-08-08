@@ -59,7 +59,7 @@ four-way classification of each pair:
 
 ## Step 0: confirm the alert class and window
 
-```
+```text
 class_uid=99602001 | group c=count() | limit 1
 ```
 
@@ -73,29 +73,35 @@ Run these with the confirmed filter and window. Each is parameterized on `<ALERT
 window; none names a product.
 
 Volume by product:
-```
+
+```text
 <ALERT_FILTER> finding_info.title=* | group Alerts=count() by Product=metadata.product.name | sort -Alerts
 ```
 
 Ingested vs S1-native (the "is this even our detection" test):
-```
+
+```text
 <ALERT_FILTER> | group Alerts=count() by Product=metadata.product.name, LogName=metadata.log_name, AnalyticType=finding_info.analytic.type, TypeId=finding_info.analytic.type_id | sort -Alerts
 ```
+
 Confirm ingestion for a suspected source with a rule-uid presence check (0 rows = ingested, not a
 rule): `<ALERT_FILTER> metadata.product.name='<PRODUCT>' finding_info.analytic.uid=* | group c=count() | limit 1`.
 
 Severity split:
-```
+
+```text
 <ALERT_FILTER> severity_id=* | group Alerts=count() by severity_id | sort severity_id
 ```
 
 Noisiest signatures:
-```
+
+```text
 <ALERT_FILTER> finding_info.title=* | group Alerts=count() by Detection=finding_info.title, Product=metadata.product.name, Category=finding_info.analytic.category | sort -Alerts | limit 25
 ```
 
 Time series (spot an onboarding spike that explains a step change in volume):
-```
+
+```text
 <ALERT_FILTER> | group Alerts=count() by timestamp=timebucket('1 day') | sort timestamp
 ```
 
@@ -104,9 +110,11 @@ Time series (spot an onboarding spike that explains a step change in volume):
 For the noisiest ingested source, schema-discover its raw feed (`dataSource.name='<SOURCE>'`) to find
 the field that records what the source did with the event (commonly `unmapped.action`). Then break the
 dominators down by signature x action x severity:
-```
+
+```text
 dataSource.name='<SOURCE>' finding_info.title=* | group Alerts=count() by Signature=finding_info.title, Action=<ACTION_FIELD>, Severity=severity_id | sort -Alerts | limit 25
 ```
+
 Label each dominator: already-actioned (action in the discovered block/drop/sinkhole/reset set),
 informational-only, or signal-worth-keeping. This table is the evidence for every recommendation.
 

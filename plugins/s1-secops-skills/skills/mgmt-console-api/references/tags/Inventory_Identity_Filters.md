@@ -3,6 +3,7 @@
 3 endpoints.
 
 ## `GET /web/api/v2.1/xdr/assets/identity/filters/autocomplete`
+
 **Auto Complete**
 `operationId`: `_web_api_xdr_assets_identity_filters_autocomplete_get`
 
@@ -11,6 +12,7 @@ Use this command to get values for other fields. When you send this command with
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
@@ -59,7 +61,7 @@ Parameters:
 - `mail__contains` [query, array]: The Email Address
 - `cloudTagsKeyValue` [query, array]: The cloud tags key value
 - `accountIds` [query, array]: List of Account IDs to filter by
-- `onPremisesDistinguishedName__contains` [query, array]: 
+- `onPremisesDistinguishedName__contains` [query, array]:
 - `domain__contains` [query, array]: The AD Domain Name
 - `resourceType__nin` [query, array]: The canonical name for the resource type (not in)
 - `cn` [query, array]: The LDAP Common Name
@@ -73,7 +75,7 @@ Parameters:
 - `assetEnvironment` [query, array]: The environment that the asset exists in - AWS | Azure | GCP | Active Directory
 - `surfaces__nin` [query, array]: The Surface that each asset belongs to (not in)
 - `forest__nin` [query, array]: The Forest Name (not in)
-- `onPremisesSecurityIdentifier__contains` [query, array]: 
+- `onPremisesSecurityIdentifier__contains` [query, array]:
 - `id__in` [query, array]: The ID
 - `cloudTagsKeyValue__contains` [query, array]: Free-text filter by cloud tag key value (supports multiple values)
 - `resourceType__contains` [query, array]: The Asset Type
@@ -137,6 +139,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/identity/filters/count`
+
 **Filter counts**
 `operationId`: `_web_api_xdr_assets_identity_filters_count_get`
 
@@ -145,6 +148,7 @@ Get filter counts
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
@@ -191,7 +195,7 @@ Parameters:
 - `mail__contains` [query, array]: The Email Address
 - `cloudTagsKeyValue` [query, array]: The cloud tags key value
 - `accountIds` [query, array]: List of Account IDs to filter by
-- `onPremisesDistinguishedName__contains` [query, array]: 
+- `onPremisesDistinguishedName__contains` [query, array]:
 - `domain__contains` [query, array]: The AD Domain Name
 - `resourceType__nin` [query, array]: The canonical name for the resource type (not in)
 - `cn` [query, array]: The LDAP Common Name
@@ -205,7 +209,7 @@ Parameters:
 - `assetEnvironment` [query, array]: The environment that the asset exists in - AWS | Azure | GCP | Active Directory
 - `surfaces__nin` [query, array]: The Surface that each asset belongs to (not in)
 - `forest__nin` [query, array]: The Forest Name (not in)
-- `onPremisesSecurityIdentifier__contains` [query, array]: 
+- `onPremisesSecurityIdentifier__contains` [query, array]:
 - `id__in` [query, array]: The ID
 - `cloudTagsKeyValue__contains` [query, array]: Free-text filter by cloud tag key value (supports multiple values)
 - `resourceType__contains` [query, array]: The Asset Type
@@ -268,6 +272,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/identity/filters/free-text`
+
 **Free text filters**
 `operationId`: `_web_api_xdr_assets_identity_filters_free-text_get`
 

@@ -36,6 +36,7 @@ The `SDLClient` only sets `S1-Scope` when (a) a console token was selected for t
 - Each call returns `cpuUsage` (ms) on success: that's how much it cost.
 - The bucket leaks at `cpuUsageRefillRate` CPU sec/sec. When `cpuUsageCapacity >= 1`, queries are rejected until it drains.
 - A 429 carries:
+
   ```json
   {
     "rateLimit": {
@@ -48,6 +49,7 @@ The `SDLClient` only sets `S1-Scope` when (a) a console token was selected for t
     "status": "error/server/backoff"
   }
   ```
+
 - Headers also surface state: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-RefillRate`.
 
 `priority: low` (the default) gets a more generous bucket than `priority: high`. Audit trail: search `tag='audit' cpuUsage=*` for query audit events.
@@ -65,6 +67,7 @@ Non-query operations:
 - Aggregate request bytes per operation: starting budget **30 MB**, refill **4 MB/s**.
 
 Usage Metering datasource calls (`| datasource "metering"` for `tenants` / `reports` / `report_name`) have their own cap: **50 requests/sec with a 100-request burst**, and require the `Metering Reports - View` permission. See `methods.md` → Usage Metering reports.
+
 - **12 concurrent requests** max from the same API key.
 
 ### Ingestion (moved to HEC)
@@ -74,6 +77,7 @@ Raw-log/event ingestion is no longer part of this skill; use the HEC ingest path
 ## Retry strategy
 
 The SDLClient retries automatically on:
+
 - HTTP 429
 - HTTP 5xx
 - HTTP 200 with body `status` starting `error/server/backoff`

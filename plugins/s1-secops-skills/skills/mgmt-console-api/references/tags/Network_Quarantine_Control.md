@@ -3,6 +3,7 @@
 15 endpoints.
 
 ## `DELETE /web/api/v2.1/firewall-control/{firewall_rule_category}`
+
 **Delete Rules**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_delete`
 
@@ -10,12 +11,14 @@ Delete Firewall Control rules that match the filter.
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
-- `body` [body, firewall_control.schemas_RuleDeleteSchema]: 
+- `body` [body, firewall_control.schemas_RuleDeleteSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/firewall-control/{firewall_rule_category}`
+
 **Get Firewall Rules**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_get`
 
@@ -23,6 +26,7 @@ Get the Firewall Control rules for a scope specified by ID (run "accounts", "sit
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
@@ -62,6 +66,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/firewall-control/{firewall_rule_category}`
+
 **Create Firewall Rule**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_post`
 
@@ -69,32 +74,37 @@ Create a Firewall Control rule for a scope specified by ID (run "accounts", "sit
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
-- `body` [body, firewall_control.schemas_PostFirewallSchema]: 
+- `body` [body, firewall_control.schemas_PostFirewallSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/firewall-control/{firewall_rule_category}/add-tags`
+
 **Add Rule Tags**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_add-tags_post`
 
-Create a Firewall Rule tag. <br>Create tags to represent Firewall policies - a set of rules in a specific order. After you create the tag, add rules to it.<br>Notes:<br>* Tags apply to a scope and cannot be linked to rules from different scopes.<br>* Tags must be 2 to 256 characters.
+Create a Firewall Rule tag. <br>Create tags to represent Firewall policies - a set of rules in a specific order. After you create the tag, add rules to it.<br>Notes:<br>*Tags apply to a scope and cannot be linked to rules from different scopes.<br>* Tags must be 2 to 256 characters.
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
-- `body` [body, firewall_control.schemas_ChangeRulesTagsSchema]: 
+- `body` [body, firewall_control.schemas_ChangeRulesTagsSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/firewall-control/{firewall_rule_category}/configuration`
+
 **Get Configuration**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_configuration_get`
 
-Get the Firewall Control configuration for a given scope.<br>To filter the results for a scope:<br>* Global - Make sure "tenant" is "true" and no other scope ID is given.<br>* Account - Make sure "tenant" is "false" and at least one Account ID is given.<br>* Site - Make sure "tenant" is "false" and at least one Site ID is given.<br>The response shows if Firewall Control is enabled for the scope, if Location Awareness is enabled, the higher scope from which this scope inherited the configuration, and whether a lower scope inherits this configuration.<br>Firewall Control requires Control SKU.
+Get the Firewall Control configuration for a given scope.<br>To filter the results for a scope:<br>*Global - Make sure "tenant" is "true" and no other scope ID is given.<br>* Account - Make sure "tenant" is "false" and at least one Account ID is given.<br>* Site - Make sure "tenant" is "false" and at least one Site ID is given.<br>The response shows if Firewall Control is enabled for the scope, if Location Awareness is enabled, the higher scope from which this scope inherited the configuration, and whether a lower scope inherits this configuration.<br>Firewall Control requires Control SKU.
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -104,6 +114,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/firewall-control/{firewall_rule_category}/configuration`
+
 **Update Configuration**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_configuration_put`
 
@@ -111,12 +122,14 @@ Change the Firewall Control configuration for a given scope.  <br>To get the ID 
 Optional permissions: `Firewall Control.modifySettings(preferencesTab), Network Quarantine Control.modifySettings(preferencesTab), Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
-- `body` [body, firewall_control.schemas_PostFirewallSettingsSchema]: 
+- `body` [body, firewall_control.schemas_PostFirewallSettingsSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/firewall-control/{firewall_rule_category}/copy-rules`
+
 **Copy Rules**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_copy-rules_post`
 
@@ -124,12 +137,14 @@ Copy a set of rules to other scopes. <br>In the filter of the body, enter the pr
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view, Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
-- `body` [body, firewall_control.schemas_CopyRuleSchema]: 
+- `body` [body, firewall_control.schemas_CopyRuleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/firewall-control/{firewall_rule_category}/enable`
+
 **Enable/Disable Rules**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_enable_put`
 
@@ -137,12 +152,14 @@ Change the status of a set of Firewall Control rules that match the filter to "E
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
-- `body` [body, firewall_control.schemas_EnableRuleSchema]: 
+- `body` [body, firewall_control.schemas_EnableRuleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/firewall-control/{firewall_rule_category}/export`
+
 **Export Rules**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_export_get`
 
@@ -150,6 +167,7 @@ Export Firewall Control rules that match the filter to a JSON file from a scope 
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -181,6 +199,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/firewall-control/{firewall_rule_category}/import`
+
 **Import Rules**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_import_post`
 
@@ -188,6 +207,7 @@ Import Firewall Control rules from an exported JSON file to scopes specified by 
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
 - `accountIds` [formData, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [formData, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -198,6 +218,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/firewall-control/{firewall_rule_category}/move-rules`
+
 **Move Rules**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_move-rules_post`
 
@@ -205,12 +226,14 @@ Remove Firewall Rules, defined with the ID of the rules (run 'firewall-control')
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view, Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
-- `body` [body, firewall_control.schemas_CopyRuleSchema]: 
+- `body` [body, firewall_control.schemas_CopyRuleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/firewall-control/{firewall_rule_category}/protocols`
+
 **Get Protocols**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_protocols_get`
 
@@ -218,6 +241,7 @@ Get a list of protocols that can be used in Firewall Control rules.
 Optional permissions: `Firewall Control.view, Network Quarantine Control.view`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
@@ -232,6 +256,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/firewall-control/{firewall_rule_category}/remove-tags`
+
 **Remove Rule Tags**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_remove-tags_post`
 
@@ -239,12 +264,14 @@ Remove firewall tags from rules matching the filter.<br>Tags represent Firewall 
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
-- `body` [body, firewall_control.schemas_ChangeRulesTagsSchema]: 
+- `body` [body, firewall_control.schemas_ChangeRulesTagsSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/firewall-control/{firewall_rule_category}/reorder`
+
 **Reorder Rules**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_reorder_put`
 
@@ -252,12 +279,14 @@ Change the order of rules for a scope  specified by ID (run "accounts", "sites",
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
-- `body` [body, firewall_control.schemas_ReorderSchema]: 
+- `body` [body, firewall_control.schemas_ReorderSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/firewall-control/{firewall_rule_category}/set-location`
+
 **Set Location**
 `operationId`: `_web_api_firewall-control_{firewall_rule_category}_set-location_post`
 
@@ -265,7 +294,8 @@ Set location attributes for a Location Aware Firewall Control rule. These rules 
 Optional permissions: `Firewall Control.manageRulesAndTags, Network Quarantine Control.manageRulesAndTags`
 
 Parameters:
+
 - `firewall_rule_category` [path, string] **required**: To affect Network Quarantine use network-quarantine
-- `body` [body, firewall_control.schemas_SetLocationSchema]: 
+- `body` [body, firewall_control.schemas_SetLocationSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

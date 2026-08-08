@@ -3,6 +3,7 @@
 6 endpoints.
 
 ## `DELETE /web/api/v2.1/cloud-detection/rules`
+
 **Delete Rules**
 `operationId`: `_web_api_cloud-detection_rules_delete`
 
@@ -11,11 +12,13 @@ Deletes Custom Detection Rules that match a filter.
 Required permissions: `Custom Rules.manage`
 
 Parameters:
-- `body` [body, v2_1.rules.schemas_RuleDeleteSchema]: 
+
+- `body` [body, v2_1.rules.schemas_RuleDeleteSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/cloud-detection/rules`
+
 **Get Rules**
 `operationId`: `_web_api_cloud-detection_rules_get`
 
@@ -27,6 +30,7 @@ Get a list of Custom Detection Rules for a given scope. <br>Note:  You can creat
 > If you ever want to claim "this tenant has no scheduled detections", you MUST have called this endpoint with `isLegacy=false` first. Without it, the absence of evidence is meaningless.
 >
 > Correct invocations (re-verified 2026-05):
+>
 > - All rules: `GET /cloud-detection/rules?isLegacy=false&limit=200`
 > - Only scheduled: `GET /cloud-detection/rules?isLegacy=false&queryType=scheduled&limit=200`
 > - Only events: `GET /cloud-detection/rules?queryType=events&limit=200` (isLegacy not needed)
@@ -37,6 +41,7 @@ Get a list of Custom Detection Rules for a given scope. <br>Note:  You can creat
 Required permissions: `Custom Rules.view`
 
 Parameters:
+
 - `statuses` [query, array]: Statuses. Example: "Activating".
 - `name__contains` [query, array]: Free-text filter by rule name. You can enter multiple values, separated by commas. Example: "Service Pack 1".
 - `description__contains` [query, array]: Free-text filter by rule description. You can enter multiple values, separated by commas. Example: "Service Pack 1".
@@ -79,6 +84,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/cloud-detection/rules`
+
 **Create Rule**
 `operationId`: `_web_api_cloud-detection_rules_post`
 
@@ -88,11 +94,13 @@ Required permissions: `Custom Rules.manage`
 Optional permissions: `Threats.markSuspicious, Threats.markThreat, Endpoints.disconnectFromNetwork`
 
 Parameters:
-- `body` [body, v2_1.rules.schemas_PostRuleSchema]: 
+
+- `body` [body, v2_1.rules.schemas_PostRuleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/cloud-detection/rules/disable`
+
 **Disable Rules**
 `operationId`: `_web_api_cloud-detection_rules_disable_put`
 
@@ -101,11 +109,13 @@ Disable Custom Detection Rules based on a filter.
 Required permissions: `Custom Rules.manage`
 
 Parameters:
-- `body` [body, v2_1.rules.schemas_FilterRuleSchema]: 
+
+- `body` [body, v2_1.rules.schemas_FilterRuleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/cloud-detection/rules/enable`
+
 **Activate Rules**
 `operationId`: `_web_api_cloud-detection_rules_enable_put`
 
@@ -114,11 +124,13 @@ Activate Custom Detection Rules based on a filter.
 Required permissions: `Custom Rules.manage`
 
 Parameters:
-- `body` [body, v2_1.rules.schemas_FilterRuleSchema]: 
+
+- `body` [body, v2_1.rules.schemas_FilterRuleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/cloud-detection/rules/{rule_id}`
+
 **Update Rule**
 `operationId`: `_web_api_cloud-detection_rules_{rule_id}_put`
 
@@ -128,8 +140,9 @@ Required permissions: `Custom Rules.manage`
 Optional permissions: `Threats.markSuspicious, Threats.markThreat, Endpoints.disconnectFromNetwork`
 
 Parameters:
+
 - `rule_id` [path, string] **required**: The Rule ID in the URL path. Example: "225494730938493804".
-- `body` [body, v2_1.rules.schemas_PostRuleSchema]: 
+- `body` [body, v2_1.rules.schemas_PostRuleSchema]:
 
 Responses: 404 Custom Detection rule not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 

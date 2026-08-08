@@ -3,6 +3,7 @@
 4 endpoints.
 
 ## `POST /web/api/v2.1/xdr/assets/fetch-tags`
+
 **Get tags info of assets by asset id**
 `operationId`: `_web_api_xdr_assets_fetch-tags_post`
 
@@ -11,6 +12,7 @@ Get tags info for all assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -99,11 +101,12 @@ Parameters:
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items.
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.unified_actions.schemas_AffectedEntitiesSchema]: 
+- `body` [body, v2_1.inventory.unified_actions.schemas_AffectedEntitiesSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/tags`
+
 **Fetch all Unique Tags**
 `operationId`: `_web_api_xdr_assets_tags_get`
 
@@ -112,6 +115,7 @@ Fetch all tags removing duplicates
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor".
 - `includeParent` [query, boolean]: Include parent
 - `groupIds` [query, array]: List of Group IDs to filter by
@@ -133,6 +137,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/tags/count`
+
 **Get count of assets by tag id**
 `operationId`: `_web_api_xdr_assets_tags_count_post`
 
@@ -141,14 +146,16 @@ Get asset count for given tag ids
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
-- `body` [body, v2_1.inventory.tags.schemas_InventoryTagsCountPayloadSchema]: 
+- `body` [body, v2_1.inventory.tags.schemas_InventoryTagsCountPayloadSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/tags/filters-count`
+
 **Get asset tags filters count**
 `operationId`: `_web_api_xdr_assets_tags_filters-count_get`
 
@@ -157,6 +164,7 @@ Get asset tags filters count
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `includeParent` [query, boolean]: Include parent
 - `groupIds` [query, array]: List of Group IDs to filter by
 - `accountIds` [query, array]: List of Account IDs to filter by

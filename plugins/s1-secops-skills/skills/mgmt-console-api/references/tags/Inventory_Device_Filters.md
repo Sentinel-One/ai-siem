@@ -3,6 +3,7 @@
 3 endpoints.
 
 ## `GET /web/api/v2.1/xdr/assets/device/filters/autocomplete`
+
 **Auto Complete**
 `operationId`: `_web_api_xdr_assets_device_filters_autocomplete_get`
 
@@ -11,6 +12,7 @@ Use this command to get values for other fields. When you send this command with
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -117,6 +119,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/device/filters/count`
+
 **Filter counts**
 `operationId`: `_web_api_xdr_assets_device_filters_count_get`
 
@@ -125,6 +128,7 @@ Get filter counts
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -228,6 +232,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/device/filters/free-text`
+
 **Free text filters**
 `operationId`: `_web_api_xdr_assets_device_filters_free-text_get`
 

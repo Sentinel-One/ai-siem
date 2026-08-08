@@ -446,7 +446,7 @@ Full key reference, token types, and resolution order: **[docs/credentials.md](.
 
 **Step 3: Install the plugin (all eight skills)**
 
-Download the latest plugin, [`s1-secops-skills-v1.2.5.plugin`](./dist/), from the `dist/` folder. In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All seven skills install in one step.
+Download the latest plugin, [`s1-secops-skills-v1.3.1.plugin`](./dist/), from the `dist/` folder. In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All seven skills install in one step.
 
 Then create a Cowork project named `PrincipalSOCAnalyst` and select a folder for it. The Docker image ships a default CLAUDE.md, so dropping your own [`CLAUDE.md`](./CLAUDE.md) into the folder is only needed if you want to customise the persona.
 

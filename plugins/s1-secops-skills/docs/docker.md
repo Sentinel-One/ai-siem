@@ -7,7 +7,7 @@ This page is the full Docker reference for everything beyond those three steps: 
 One Docker image bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`) so you only need Docker on the host: no Node, Python, or `uv`. This is the recommended path for most users, and the only option on machines where IT policy blocks `npm install -g` or `pip install`.
 
 Image: `ghcr.io/pmoses-s1/s1-mcps`
-Tags: `latest` (newest published), `1` / `1.2` / `1.2.3` (pinned semver, current), `sha-<short>` (any commit). Pin an explicit version for reproducible, forensically consistent installs.
+Tags: `latest` (newest published), `1` / `1.3` / `1.3.1` (pinned semver, current), `sha-<short>` (any commit). Pin an explicit version for reproducible, forensically consistent installs.
 
 - [Prerequisites](#prerequisites)
 - [Troubleshooting](#troubleshooting)

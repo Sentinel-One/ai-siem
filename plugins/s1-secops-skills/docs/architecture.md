@@ -110,7 +110,7 @@ The skills are read-only procedural knowledge. They do not execute API calls dir
 
 ## Authentication flow
 
-All four API surfaces use a single service user token (`S1_CONSOLE_API_TOKEN`) plus surface-specific keys for SDL write operations.
+All four API surfaces use a single service user token (`S1_CONSOLE_API_TOKEN`), including every SDL read and write operation.
 
 ```
 S1_CONSOLE_API_TOKEN  ──► S1 Mgmt REST API    (Authorization: ApiToken <jwt>)

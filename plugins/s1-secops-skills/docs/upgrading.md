@@ -41,8 +41,8 @@ you will have two binaries on `PATH`:
 
 ```bash
 npm uninstall -g @pmoses-s1/sentinelone-mcp
-npm install  -g @pmoses-s1/s1-secops-mcp@1.3.1
-s1-secops-mcp --version     # expect 1.3.1
+npm install  -g @pmoses-s1/s1-secops-mcp@1.3.3
+s1-secops-mcp --version     # expect 1.3.3
 ```
 
 ---
@@ -157,7 +157,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
   | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.3.1 s1-secops-mcp
 ```
 
-Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.3.1"`, and
+Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.3.3"`, and
 `Tools: 26 registered` on stderr.
 
 ---

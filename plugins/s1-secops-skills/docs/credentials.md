@@ -20,7 +20,7 @@ This is the canonical credentials reference for every install path (Docker quick
 | `S1_CONSOLE_API_TOKEN` | Mgmt Console REST, PowerQuery LRQ, UAM GraphQL, Purple AI GraphQL, SDL config ops (Management Z SP5+) | Settings → Users → Service Users → Create Service User → copy the API token. |
 | `S1_HEC_INGEST_URL` | UAM alert/indicator ingest, SDL log ingest | Region-specific HEC host, e.g. `https://ingest.us1.sentinelone.net`. Look up yours at [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961). |
 
-`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are the minimum required for most operations. Add the SDL keys only when you need log ingest or parser/dashboard deployment.
+`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are the minimum required, and between them they authorise every SDL operation including parser and dashboard deployment. Add `S1_HEC_INGEST_URL` only when you need HEC log or alert ingest. The scoped SDL keys (`SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`, `SDL_XDR_URL`) are retired and are no longer read.
 
 ```python
 ```
@@ -54,7 +54,7 @@ The skills auto-detect and fall back to this key when the primary token is rejec
 
 Credentials are resolved in this priority order (highest wins):
 
-1. Environment variables (`S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `SDL_*`)
+1. Environment variables (`S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `S1_HEC_INGEST_URL`)
 2. `credentials.json` in the Cowork project folder (auto-discovered by the plugin's SessionStart hook, and by s1-secops-mcp walking up the directory tree)
 3. `~/.config/sentinelone/credentials.json` (fallback for terminal/Claude Code sessions)
 
@@ -76,7 +76,7 @@ JSON
 ${EDITOR:-nano} "$PROJECT_DIR/credentials.json"
 ```
 
-Add any `SDL_*` keys you need alongside these (full list in the [keys table](#credentialsjson-keys) above).
+Add `S1_HEC_INGEST_URL` alongside these if you need HEC ingest (full list in the [keys table](#credentialsjson-keys) above).
 
 When creating the project in Cowork, add `credentials.json` and `CLAUDE.md` under **Add files** so Claude has access to both in every session.
 

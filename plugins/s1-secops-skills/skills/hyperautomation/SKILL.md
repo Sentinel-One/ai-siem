@@ -310,6 +310,10 @@ Use this when the workflow contains integration-backed actions:
   ✅ Bind the built-in **integration (action-pack) id**, the value `discover`/list returns as the workflow action's `integration_id` (e.g. the SentinelOne SDL action-pack id). A connection created via `POST /web/api/v2.1/hyper-automate/api/v1/connections` returns a *connection* id; do NOT bind that, bind the integration id it was created under, and rely on a connection existing under that integration.
 - ❌ **Trusting activation (204) as proof a flow works.** Activation validates neither connection binding nor `{{Function.JQ}}` references.
   ✅ Always run-now (or the per-action **Test Action**) after activating and confirm state `Completed` with empty `error_actions`.
+- ❌ **Reading an http_request's `status` field to decide whether the call worked.** `status` is `"success"` whenever ANY response arrives, including `404`/`4xx`. A flow that branches on it treats an error body as data. Tenant-validated 2026-08-09.
+  ✅ Branch on `{{action-slug.status_code}}` (top level of the action output, NOT under `.body`). `continue_on_fail` governs transport failures, not HTTP status; only `retry_on_status_codes` reacts to codes, and it cannot help with a terminal 4xx.
+- ❌ **Triggering run-now on several flows concurrently.** Executions park in `Running` with `executed_actions: 0` indefinitely, and abandoned parked executions accumulate and hold scheduler slots (10 observed on one tenant after a day of killed harnesses, blocking new runs). Tenant-validated 2026-08-09.
+  ✅ Serialise run-now. To clear a parked execution: `deactivate` → `activate` → run again (a full delete of the workflow also releases it). Before blaming a flow that will not start, check `workflow-execution` for `state: Running` + `executed_actions: 0`. Calibrate any "is it stuck?" timeout against measured healthy start latency: a heavy flow legitimately sat at 0 actions for ~82s before completing with 40.
 - ❌ **`select((ARR | index(.field)) != null)` in `Function.JQ`.** The `| index(...)` pipe rebinds `.` to `ARR`, so `.field` then indexes the array → `Cannot index array with string "field"`.
   ✅ Bind first: `select(.field as $n | (ARR | index($n)) != null)`. And when building HTML inside a `Function.JQ` string, use SINGLE-quoted HTML attributes so the only double quotes are jq string delimiters (pre-escaping `\"` inside collides with the wrapper's single quote-escape and the platform reports "Invalid References").
 - ❌ Guarding a destructive action (block, isolate, disable) with a fail-OPEN approval gate (`... not_equals "dismissed"`). A `wait_for_slack` / `wait_for_interaction` timeout yields an empty value that passes `not_equals`, so the action auto-runs with **no** approval.
@@ -348,6 +352,38 @@ the query is done. Required pattern (tenant-validated 2026-06-25):
    neither doc was wrong about the key existing; use `stepsTotal` for consistency with pq.py and the
    SDL docs). TRUE → consume results + `break_loop`. FALSE → a
    short `delay` (~5s) as the leaf of the false branch; the loop then re-iterates and re-polls.
+
+   **Read both counters through JQ WITH DEFAULTS, and gate on `> 0`.** A bare
+   `{{poll-slug.body.stepsTotal}}` ERRORS the whole run when a poll response omits the attribute
+   ("Attribute totalSteps not found in Action poll-silent-pairs"), which kills a watchdog whose
+   query was fine. Use `{{Function.JQ(poll-slug.body, "(.stepsCompleted // -1)", true)}}` against
+   `{{Function.JQ(poll-slug.body, "(.stepsTotal // 0)", true)}}`, plus a second condition
+   `stepsTotal greater_than 0`. Without the `> 0` gate a pre-assignment 0/0 first poll satisfies
+   `equals` and the flow processes an EMPTY result set as complete, which for a baseline refresh
+   silently writes a stub that then suppresses every detection reading it.
+
+   **Gate the loop on a 4xx, or a killed query spins to the workflow timeout.** The backend can
+   terminate a running LRQ; the poll then answers `404 {"code":"not_found"}` for the rest of the
+   run. HA does NOT treat that as a failed action, its `status` is `"success"` whenever a response
+   arrives whatever the code, so with the JQ defaults above the equality never matches and the loop
+   iterates until the run times out (17+ iterations observed live). `continue_on_fail: false` does
+   NOT help, verified live: status codes are actionable only via `retry_on_status_codes`, and
+   retrying a dead token is pointless. Put a condition BETWEEN the poll and the done-check:
+
+   ```jsonc
+   {"input_value": "{{poll-slug.status_code}}", "compared_value": "400",
+    "comparison_operator": "greater_than_or_equals"}
+   //   true  -> an action that ENDS the run
+   //   false -> the existing done-check
+   ```
+
+   `status_code` sits at the TOP level of the action output, not under `.body`. To end the run
+   deliberately, reference an attribute that cannot exist (e.g.
+   `{{poll-slug.body.LRQ_TERMINATED_BY_BACKEND}}`): a missing attribute is the one mechanism
+   observed to fail an HA run outright, and the attribute name becomes the console error text, so
+   name it descriptively. Ending in Error is also what a health-notifier flow keys on. Silent
+   completion is strictly worse than a loud failure here. Verified live: the flow that had been
+   spinning errored in 103s after 6 actions with the sentinel named in `error_actions`.
 3. **Loop-scoped outputs are NOT visible outside the loop.** Every action that reads a poll result
    (`{{poll-slug.body...}}`), extract/read, branch, notify, break, MUST live INSIDE the loop
    (`parent_action` = the loop's export_id). An action placed after the loop that references a

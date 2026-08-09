@@ -1172,6 +1172,30 @@ Auth: same `Authorization: ApiToken <token>` header as all other S1 REST calls.
 
 Export/import were not captured in the v1 network trace. They are confirmed working at the `/public` base path; the `/v1` equivalents have not been verified.
 
+**⚠ Listing workflows: the page is alphabetical and capped, and the name filter 502s on spaces.**
+Both bite any "does this workflow already exist?" check, and both fail SILENTLY as "not found",
+which makes a deploy re-import and leave a duplicate ACTIVE copy of every flow. Tenant-validated
+2026-08-09 (one redeploy produced 4 active duplicates on a 400+ workflow tenant).
+
+| Call | Result |
+| --- | --- |
+| `GET /workflows?limit=200` (no filter) | first 200 **by name**; anything sorting later is invisible |
+| `GET /workflows?name__contains=<value with a space>` | **HTTP 502** |
+| `GET /workflows?name__contains=<single token>` | 200, correct subset |
+
+So: filter server-side on a whitespace-free token (e.g. the deployment prefix), then match the
+exact name client-side. Never scan an unfiltered capped page. And do not treat an API error as
+"absent": `mgmt()`-style helpers turn a 502 into an empty result, which is exactly how a lookup
+built to prevent duplicates ends up causing them. On error, log and fall back rather than
+reporting not-found.
+
+**Parked run-now executions.** A manually triggered execution can sit at `state: Running` with
+`executed_actions: 0` indefinitely, and abandoned ones accumulate and hold scheduler slots (10
+observed after a day of interrupted test runs, blocking new executions). Clear one with
+`deactivate` → `activate` → run again, or delete the workflow. Never trigger multiple flows
+concurrently. Check `GET /workflow-execution` for `Running` + `executed_actions: 0` before
+debugging a flow that "will not start".
+
 ### List response shape (key fields)
 
 Each item in `data[]`:

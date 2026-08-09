@@ -460,6 +460,37 @@ The query timeout is 5 minutes. If a 30-day query times out:
 - Use `top` instead of `group`.
 - Consider running the query over 7-day chunks and `savelookup`-ing each, then `union`-ing.
 
+Note the chunking suggestion above cannot be spread across separate writers to one table: see
+"`savelookup` replaces, it does not append".
+
+### `savelookup` replaces its table, it does not append
+
+Each `| savelookup '<table>'` REPLACES the table's contents. Tenant-validated 2026-08-09: writing
+source A then source B to the same table left only B's rows. Any design where N flows each
+`savelookup` into a shared table silently keeps only whichever ran last. If you need N producers,
+give each its own table and add a merge pass that `| dataset`-unions them into the canonical table
+(the merge is cheap, it reads datatables rather than raw events).
+
+### A wide `| union` is what gets a query killed, not the time window
+
+Query cost scales with the number of union blocks, roughly 15 execution steps per block, and the
+backend terminates long-running queries mid-flight. Measured on one tenant with a per-source union
+baseline (`| nolimit` savelookup):
+
+| union blocks | `stepsTotal` | outcome |
+| --- | --- | --- |
+| 1 | 16 | always completes |
+| 3 | 46 | completes (139s) |
+| 6 | 91 | **killed at step 58** |
+
+Shortening the window does NOT rescue it: at 6 blocks the same query was killed with a 5-day
+window (47s standalone) exactly as with 7 days (86s). Nor is poll interval a factor: fixed 5s, 4s
+and 2s polls all completed the same query standalone. **Cap the number of union blocks**, and note
+the query completing standalone via the API proves nothing about it surviving inside an HA flow.
+
+When a query IS killed, subsequent polls answer `404 {"code":"not_found"}` on the query token
+forever, which is why any HA poll loop needs an explicit 4xx gate (see the hyperautomation skill).
+
 ### Reaching for `message contains` on a JSON-blob source
 
 Some data sources (O365 audit, generic webhook ingest, custom HEC sources) keep most fields inside a raw JSON `message` blob rather than as parsed top-level columns. The first instinct is to write `message contains 'value'`, but that forces a substring scan of the entire blob and falls off a performance cliff fast: queries that work at 1 day routinely time out at 7.

@@ -396,7 +396,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
-        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
+        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net"
       }
     },
     "purple-mcp": {

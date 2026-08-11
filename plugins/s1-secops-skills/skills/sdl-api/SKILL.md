@@ -80,7 +80,7 @@ Drop a `credentials.json` file directly into your Cowork project folder with the
 
 ```json
 {
-  "S1_CONSOLE_API_TOKEN": "eyJ...your-token...",
+  "S1_CONSOLE_API_TOKEN": "eyJ...your-token..."
 }
 ```
 

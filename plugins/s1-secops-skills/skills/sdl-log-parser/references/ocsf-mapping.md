@@ -228,3 +228,35 @@ See `references/mappers.md` for the full authoritative mapper syntax (it differs
 ## Confirm with the user when class is ambiguous
 
 If the source could reasonably belong to multiple OCSF classes (e.g., a proxy log is HTTP Activity 4002 *or* Network Activity 4001 depending on what fields you keep), surface the choice rather than picking silently. Once chosen, stick with it for the whole parser, mixed classes break downstream filters.
+
+## OCSF class quick-picker (full list, relocated from SKILL.md)
+
+Use this to find the class number, then look up the fields in `ocsf-schema-documentation.md`. This is the consolidated picker (it includes Findings and Registry classes not tabulated above).
+
+Quick picker (use this to find the class number, then look up fields in `ocsf-schema-documentation.md`):
+
+- Network firewall / NAT / flow → `4001` Network Activity
+- HTTP / web / proxy → `4002` HTTP Activity
+- DNS → `4003` DNS Activity
+- DHCP → `4004` DHCP Activity
+- RDP session → `4005` RDP Activity
+- SMB / file-share traffic → `4006` SMB Activity
+- SSH session → `4007` SSH Activity
+- TLS / SSL handshake → no TLS class exists in the bundled catalog; TLS attributes ride on `tls.*` / `connection_info` under 4001/4002. For anything not listed here, check `references/ocsf-schema-documentation.md`
+- Email → `4009` Email Activity
+- Authentication → `3002` Authentication
+- Account change → `3001` Account Change
+- API activity → `6003` API Activity
+- File system ops → `1001` File System Activity
+- Kernel ops → `1003` Kernel Activity
+- Memory ops → `1004` Memory Activity
+- Module ops → `1005` Module Activity
+- Process ops → `1007` Process Activity
+- Registry ops → `201001` (Windows Registry)
+- Detection finding → `2004` Detection Finding
+- Compliance finding → `2003` Compliance Finding
+- Vulnerability finding → `2002` Vulnerability Finding
+- Inventory / device → `5001` Device Inventory Info
+- Email / file finding → `2007` (Email Finding) / `2006` (File Hosting Finding)
+
+When the source could reasonably belong to multiple classes (proxy logs, EDR alerts), confirm with the user rather than picking silently.

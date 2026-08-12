@@ -114,50 +114,9 @@ A `mappings.constant` overrides the parser-root `attributes:` value when its pre
 
 ## Default output schema: OCSF (mandatory reference)
 
-Unless the user explicitly asks for vendor-native names, **emit OCSF-shaped events**. This means:
+Unless the user explicitly asks for vendor-native names, **emit OCSF-shaped events**: name captured fields with their OCSF dotted paths and tag every event with the class metadata (`class_uid`, `class_name`, `category_uid`, `category_name`, `metadata.product.*`, plus per-subtype `activity_id` on the format). OCSF is the mandatory default output schema for this skill.
 
-- Name captured fields with their OCSF dotted paths (e.g. `src_endpoint.ip`, `dst_endpoint.port`, `connection_info.protocol_num`, `app_name`, `actor.user.name`).
-- Tag every event with the class metadata on `attributes`: `class_uid`, `class_name`, `category_uid`, `category_name`, and `metadata.product.vendor_name` / `metadata.product.name` / `metadata.log_provider`, all IN ADDITION TO the four mandatory attributes above.
-- Put the per-event subtype (`activity_id` + `activity_name`) on the **format**, not the top-level attributes, because one parser often handles multiple subtypes (SESSION_CREATE vs SESSION_CLOSE).
-
-**OCSF mapping MUST always be done using `references/ocsf-schema-documentation.md`.** This file is the authoritative SentinelOne community-documented OCSF field catalog (7 categories, 96 articles, ~25,759 field entries across every event class). Before emitting any OCSF field name, grep this file for the exact dotted path. Do **not** invent field names, do **not** copy from memory, do **not** trust catalog parsers to have the right name (many community parsers in ai-siem use vendor-native or stale OCSF names that need correcting). Workflow:
-
-1. Pick the OCSF class (see Quick picker below).
-2. Open `references/ocsf-schema-documentation.md` and grep for the class number / category to find the field block.
-3. Copy the dotted path verbatim into your parser.
-4. If unsure between two candidate fields, confirm with the user rather than guessing.
-
-`references/ocsf-mapping.md` covers the two authoring idioms (capture-directly-into-dotted vs capture-vendor-then-rename) and the most common class-specific tables (Network Activity, Authentication, File Activity).
-
-Why this matters: downstream PowerQuery hunts, STAR rules, dashboards, and Marketplace integrations assume OCSF. Vendor-native names force every consumer to learn each source format and break portability. A wrong dotted path (`source.ip` instead of `src_endpoint.ip`, `dst.port` instead of `dst_endpoint.port`) is silently wrong: it ingests, but every downstream consumer fails to match.
-
-Quick picker (use this to find the class number, then look up fields in `ocsf-schema-documentation.md`):
-
-- Network firewall / NAT / flow → `4001` Network Activity
-- HTTP / web / proxy → `4002` HTTP Activity
-- DNS → `4003` DNS Activity
-- DHCP → `4004` DHCP Activity
-- RDP session → `4005` RDP Activity
-- SMB / file-share traffic → `4006` SMB Activity
-- SSH session → `4007` SSH Activity
-- TLS / SSL handshake → no TLS class exists in the bundled catalog; TLS attributes ride on `tls.*` / `connection_info` under 4001/4002. For anything not listed here, check `references/ocsf-schema-documentation.md`
-- Email → `4009` Email Activity
-- Authentication → `3002` Authentication
-- Account change → `3001` Account Change
-- API activity → `6003` API Activity
-- File system ops → `1001` File System Activity
-- Kernel ops → `1003` Kernel Activity
-- Memory ops → `1004` Memory Activity
-- Module ops → `1005` Module Activity
-- Process ops → `1007` Process Activity
-- Registry ops → `201001` (Windows Registry)
-- Detection finding → `2004` Detection Finding
-- Compliance finding → `2003` Compliance Finding
-- Vulnerability finding → `2002` Vulnerability Finding
-- Inventory / device → `5001` Device Inventory Info
-- Email / file finding → `2007` (Email Finding) / `2006` (File Hosting Finding)
-
-When the source could reasonably belong to multiple classes (proxy logs, EDR alerts), confirm with the user rather than picking silently.
+**OCSF mapping MUST always be done using `references/ocsf-schema-documentation.md`**, the authoritative catalog (7 categories, ~25,759 field entries). Grep it for the exact dotted path before emitting any OCSF field name; never invent a name, never trust memory or a catalog parser. `references/ocsf-mapping.md` holds the OCSF class quick-picker (4001/4002/3002/1001, etc.), the field-to-dotted-path tables, and the two authoring idioms (capture-directly-into-dotted vs capture-vendor-native-then-rename). Consult both before writing any mapping.
 
 ## Top-level parser structure
 
@@ -477,6 +436,8 @@ When a question goes deeper than this file, read the relevant reference. Each is
 - `references/builtin-parsers.md`: Catalog of all 16 built-in parsers (`accessLog`, `cloudfront`, `json`, `dottedJson`, `dottedEscapedJson`, `elb-access`, `heroku-logplex`, `keyValue`, `leveldbLog`, `mysqlGeneralQueryLog`, `mysqlSlowQueryLog`, `postgresLog`, `redshift`, `s3_bucket_access`, `spot_instance_data`, `systemLog`) and when to alias vs override. Read first when sizing up a new log source; you may not need to write a parser at all.
 - `references/mappers.md`: `mappings` block (gron-style transformations: `cast`, `copy`, `copy_tree`, `drop`, `drop_tree`, `hash`, `reduce_array`, `rename`, `rename_tree`, `replace`, `zip`), array index syntax, predicate semantics. Read when restructuring events to OCSF or another target schema.
 - `references/testing-workflow.md`: Detailed validation recipe with the `sdl-api` skill, including how to scope queries with a unique host tag, how to interpret common error responses, and how to clean up.
+- `references/per-app-sentinel.md`: The per-app sentinel pattern for a single parser that fans many services or applications out to their own OCSF classes: pattern overview, the add-a-service checklist, and the periodic catch-all audit query.
+- `references/onboarding-learnings.md`: Tenant-validated learnings from onboarding new sources via the `sdl-solutions` playbook (dotted-prefix JSON capture, `mappings` version requirement, account-level parser scope, activation latency, sourcetype binding, IP-keyed network-source enrichment).
 
 ## Bundled examples
 
@@ -507,61 +468,8 @@ to `*.sentinelone.net` without proxy interference.
 
 ## Per-app sentinel pattern (multi-tenant / multi-service parsers)
 
-Use this pattern when a single parser handles events from many distinct services or applications, each needing its own OCSF class assignment.
-
-### Pattern overview
-
-1. **Extract a discriminator field** (e.g. `app_name` from a raw JSON `app_id` key) using a two-segment capture format.
-2. **Create one format-id sentinel per service**: `{ id: "my_app", format: "$_scratch{regex=.*\"app_id\":\"my-app-id\"}$" }`. This sets `my_app='true'` on matching events.
-3. **List all sentinel field names in `discardAttributes`** so they don't appear in the output event.
-4. **Add one v1 mappings block per sentinel** with the OCSF constants and any drop ops. Because v1 is first-match-wins, drops cannot be factored into a shared block, duplicate them in every block including the catch-all.
-5. **End with a `predicate: "true"` catch-all** that applies drops but assigns no class. Place it last or it will consume every event.
-
-### How to add a new service
-
-1. Confirm the new service's discriminator value (e.g. sample a few raw events via PowerQuery).
-2. Check whether it already fires an existing sentinel (e.g. a shared type field that already has a sentinel). If yes, no new entry needed.
-3. Add the sentinel ID to `discardAttributes`.
-4. Add a format entry before the catch-all sentinels.
-5. Add a mapping block before `predicate: "true"` with the right OCSF constants and all noise drops.
-6. Bump `metadata.version` (minor bump for new service; patch for fixes).
-7. Deploy via `sdl_put_file` with the current `expectedVersion` from `sdl_get_file`.
-8. Wait ~3 min for propagation, then verify on a short window (5 min): `dataSource.name = 'MySource' | group count=count(), has_class=count(class_uid) by app_name | filter app_name = 'my-new-service'`.
-
-### Periodic audit query
-
-Run this periodically to catch new services that have accumulated in the catch-all:
-
-```text
-dataSource.name = 'MySource' app_name = *
-| group count=count(), has_class=count(class_uid) by app_name
-| filter has_class == 0
-| sort -count
-```
-
-Any `app_name` with `has_class == 0` and meaningful volume is a candidate for a new sentinel.
+When one parser handles events from many distinct services or applications, each needing its own OCSF class assignment, use the per-app sentinel pattern: extract a discriminator field, add one format-id sentinel per service, list every sentinel field in `discardAttributes`, add one v1 first-match-wins `mappings` block per sentinel (drops duplicated into each block because v1 is first-match-wins), and end with a `predicate: "true"` catch-all placed last. The full pattern overview, the how-to-add-a-new-service checklist, and the periodic audit query for services stuck in the catch-all are in `references/per-app-sentinel.md`.
 
 ## Onboarding learnings (tenant-validated 2026-06-13, usea1-purple)
 
-These came out of onboarding Cisco Meraki via the `sdl-solutions` onboarding playbook.
-
-- **JSON-per-line flatten needs a dotted-prefix capture.** `format: "$unmapped.=json{parse=dottedJson}$"`
-  flattens the body into `unmapped.*` queryable fields. A non-prefix capture name like
-  `$json{parse=json}$` captures the raw JSON string and emits NO subfields, so every field reads
-  null after deploy and only the parser-root `attributes` (e.g. `dataSource.name`) apply. This is
-  already shown in `examples/02-json-with-envelope.json`; reach for it first for any JSON source.
-- **`mappings` requires `version: 1` and `transformations`.** The error
-  `Got unsupported event mapper version -1` on `putFile` means the `mappings` block is missing
-  `version`. Ops go inside `transformations: [...]`, each as `{ <op>: {...} }`.
-- **Parsers are account-level.** Deploy at account scope even when the data ingests at a site.
-  There is no site-scoped `/logParsers/` file; the sourcetype label binds events to the parser.
-- **Activation latency is 3 to 5 minutes per deploy** on this tenant, not seconds. Batch parser
-  edits and wait out the window before validating, rather than iterating one field at a time.
-- **A `parser=<name>` label with no `/logParsers/<name>` file and no `dataSource.name`** means the
-  events were tagged with a sourcetype but never transformed (e.g. a marketplace `*-latest` label
-  with no editable file). Creating the parser at that exact path normalises the live stream. The
-  initial `sdl_get_file` 404 is a "create me", not an error.
-- **Network-source enrichment keys on IP.** Build an IP-keyed endpoint lookup
-  (`datasource assets from 'surface/endpoint'`, keyed on `agentLastReportedIp`) and join in the
-  `computeFields` rewrite `by device_ip = unmapped.src_ip` using the pre-rename `unmapped.*` field,
-  since the rewrite runs before `mappings` renames.
+Tenant-validated learnings from onboarding new sources through the `sdl-solutions` playbook, JSON-per-line dotted-prefix capture (`$unmapped.=json{parse=dottedJson}$`), the `mappings` `version: 1` plus `transformations` requirement, account-level parser scope, 3 to 5 minute activation latency per deploy, sourcetype-to-parser binding, and IP-keyed network-source enrichment, are in `references/onboarding-learnings.md`.

@@ -1,5 +1,7 @@
 # Panel Type Cheatsheet
 
+> Full per-panel JSON catalog with complete examples: [`panel-types.md`](panel-types.md). This file is the quick one-line-per-panel cheatsheet.
+
 ## Complete panel type reference
 
 | graphStyle | Panel | Query type | Notes |

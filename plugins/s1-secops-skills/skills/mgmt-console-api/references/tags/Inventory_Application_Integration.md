@@ -3,6 +3,7 @@
 5 endpoints.
 
 ## `GET /web/api/v2.1/xdr/assets/application-integration`
+
 **Assets**
 `operationId`: `_web_api_xdr_assets_application-integration_get`
 
@@ -11,6 +12,7 @@ Get assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -94,6 +96,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/application-integration`
+
 **Assets using POST**
 `operationId`: `_web_api_xdr_assets_application-integration_post`
 
@@ -102,14 +105,16 @@ POST API to get Assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
-- `body` [body, v2_1.inventory.application_integration.schemas_ApplicationIntegrationsViewInputSchema]: 
+- `body` [body, v2_1.inventory.application_integration.schemas_ApplicationIntegrationsViewInputSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/application-integration/action`
+
 **Perform action**
 `operationId`: `_web_api_xdr_assets_application-integration_action_post`
 
@@ -118,6 +123,7 @@ Perform action on selected assets
 Required permissions: `XDR Inventory.create, XDR Inventory.delete`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `resourceType__contains` [query, array]: The Asset Type
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -190,11 +196,12 @@ Parameters:
 - `countsFor` [query, array]: The columns for which filter count would be returned for
 - `cloudTagsKeyValue__contains` [query, array]: Free-text filter by cloud tag key value (supports multiple values)
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.application_integration.schemas_ApplicationIntegrationActionPayloadSchema]: 
+- `body` [body, v2_1.inventory.application_integration.schemas_ApplicationIntegrationActionPayloadSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/application-integration/available-actions/with-status`
+
 **Available actions**
 `operationId`: `_web_api_xdr_assets_application-integration_available-actions_with-status_post`
 
@@ -203,6 +210,7 @@ Get available actions
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `resourceType__contains` [query, array]: The Asset Type
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -275,11 +283,12 @@ Parameters:
 - `countsFor` [query, array]: The columns for which filter count would be returned for
 - `cloudTagsKeyValue__contains` [query, array]: Free-text filter by cloud tag key value (supports multiple values)
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]: 
+- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/application-integration/export`
+
 **Export assets to CSV or JSON**
 `operationId`: `_web_api_xdr_assets_application-integration_export_get`
 
@@ -288,6 +297,7 @@ Returns the results for given inventory filter in a CSV or JSON format
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset

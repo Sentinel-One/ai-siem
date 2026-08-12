@@ -92,7 +92,7 @@ If you hit the 1,000-row limit on an intermediate `group`, the alert silently un
 
 ## Shape of a good rule
 
-```
+```text
 <highly-selective-initial-filter>
 | group
     count = count(),
@@ -120,7 +120,7 @@ Why this shape:
 
 Something that fires once per endpoint per unusual activity. Low threshold, high specificity.
 
-```
+```text
 indicator.name = 'EventViewerTampering'
 | group
     first_seen = oldest(timestamp),
@@ -136,7 +136,7 @@ indicator.name = 'EventViewerTampering'
 
 "More than N of X from one entity in the window."
 
-```
+```text
 event.login.loginIsSuccessful = false
 | group
     fails     = count(),
@@ -152,7 +152,7 @@ event.login.loginIsSuccessful = false
 
 Combine filters with `and` in the initial filter, not `and` in a computed column, the initial filter is cheapest and gates what the Summary service scans.
 
-```
+```text
 event.type = 'Process Creation'
 src.process.parent.name = 'winword.exe'
 src.process.name in ('powershell.exe', 'pwsh.exe', 'cmd.exe', 'wscript.exe', 'cscript.exe', 'mshta.exe', 'regsvr32.exe', 'rundll32.exe')
@@ -171,7 +171,7 @@ src.process.name in ('powershell.exe', 'pwsh.exe', 'cmd.exe', 'wscript.exe', 'cs
 
 When a rule would otherwise fire too broadly, exclude known-good via a config-managed data table.
 
-```
+```text
 <filters producing candidate rows>
 | lookup is_allowed = allowed from allowlist_hosts by endpoint.name
 | filter is_allowed = null                   // kept rows had no allowlist entry
@@ -186,7 +186,7 @@ This uses `lookup` with a config data table (`/datatables/allowlist_hosts`). Kee
 
 `inner` / `left` joins work in alerts, bounded by the 1,000-row / 1 MB budget. Put strict filters inside each subquery; don't rely on the outer `filter` to prune.
 
-```
+```text
 | inner join
     lsass_access = (
       indicator.name = 'CredentialDumping'
@@ -246,6 +246,7 @@ Working recipe for a scheduled rule with a mapped asset, two parts that must agr
 Confirmed on a live tenant: the same rule that showed "Unknown Device" with no `entityMappings` mapped the asset once `entityMappings` was configured on its `endpoint.name` / `src_ip` columns. (The earlier A/B tests showed Unknown Device only because they never set `entityMappings`.)
 
 Other paths that bind the entity:
+
 - **Events-type rules** (`queryType: "events"`): the entity is taken from the matched event automatically, with no `entityMappings`. The console binds a **Device** by reconciling the event's device identity against inventory. `i.scheme` is NOT required, and `account.id` / `site.id` come from the ingest scope (S1-Scope header), not the event body. Fields like `event.type` / `src.process.*` matter only if the rule's `s1ql` filters on them.
   - **Do NOT trust the cloud-detection REST `agentRealtimeInfo` block as proof of binding.** Tenant-tested 2026-06-14: an event carrying ONLY the top-level `agent.uuid` made the REST payload's `agentRealtimeInfo` resolve hostname/OS/agent-id for display, but the console alert still showed **Target Asset = "Unknown Device"**. `agentRealtimeInfo` is a uuid lookup for display; it is not the entity binding. Confirm the actual **Target Asset** via `datasource alerts` (`assetName` / `assetAgentUuid`, which matches the console) or the console UI, never the REST `agentRealtimeInfo`.
   - **Minimum to bind the Target Asset (pinned by bisection, 2026-06-14): two fields, `device.uid` + `class_uid`.** `device.uid` must carry the **numeric console agent id** (the `agentRealtimeInfo.id` / console agent id, e.g. `2497649316206445895`, NOT the agent UUID), and `class_uid` must be an endpoint class (tested with `1007`). With just those two on a custom `dataSource.name`, the events-rule alert bound the real endpoint (`assetName` corp-ws-01, OS Windows, real `assetId`); the platform resolved `assetAgentUuid` from inventory even though the event carried no uuid.
@@ -332,6 +333,8 @@ Notes on the shape:
 - **Scope:** `filter` accepts `accountIds` or `siteIds`. Pick the layer the rule should fire at. Account-level rules cover all sites under the account.
 - **Threshold:** the trigger threshold is the alert-firing threshold (`scheduledParams.threshold`), not the internal `| filter` inside the PowerQuery. `{value: 0, operator: "Greater"}` means "alert if the PQ returns any rows at all", combined with an internal `| filter hits >= N`, you get N as the effective threshold.
 - **Run interval and lookback:** match these (e.g. 60 / 60) for non-overlapping evaluation. Setting `lookbackWindowMinutes` higher than `runIntervalMinutes` causes overlap and duplicate alerts.
+- **Hard cap: `lookbackWindowMinutes / runIntervalMinutes` must be <= 96.** Above that the create returns `HTTP 400 "Validation Error"` naming NEITHER field, so it reads as a malformed body. Probed at the boundary (2026-08-09): lookback 1440 accepts cadence 15 (ratio 96.0) and rejects 14 (102.9), 12, 10 and 5; lookback 60 accepts 5 and 10. A daily-baseline rule therefore cannot evaluate more often than every 15 minutes. If a UI or config offers a faster cadence (a 5-minute "demo" option is a common trap), clamp it: raise the requested interval to `ceil(lookback / 96)` rather than letting the whole deploy fail.
+- **The cadence is also the floor on any end-to-end test.** There is no run-now for a scheduled rule, so validating that one fires costs at least one interval (15 min on a daily lookback). No amount of parallelism removes it; budget for it.
 - **`status`:** new rules land as `Draft` on creation regardless of the requested status. Enable separately with `PUT /web/api/v2.1/cloud-detection/rules/enable` (body `{"filter": {"ids": [...], "accountIds": [...]}}`).
 - **No `disableAgentMitigation` field:** that property is not part of the scheduled-rule schema. Including it returns HTTP 400 `Unknown field`. Cloud-source PQ rules do not need it.
 - **No `treatAsThreat: "Malicious"`:** scheduled rules accept `treatAsThreat: "UNDEFINED"` (or omit) and `networkQuarantine: false`. Inline (on-rule) mitigation is not supported on scheduled rules; drive mitigation from a Hyperautomation flow triggered by the alert instead.
@@ -344,7 +347,7 @@ Do not use Hyperautomation workflows to schedule PQ detections. `cloud-detection
 
 ### Updating and enabling a rule
 
-```
+```json
 PUT /web/api/v2.1/cloud-detection/rules/{id}        # full-replacement update; all 5 data fields required, plus filter
 PUT /web/api/v2.1/cloud-detection/rules/enable      # body: {"filter": {"ids": [...], "accountIds": [...]}}
 PUT /web/api/v2.1/cloud-detection/rules/disable     # same shape
@@ -360,7 +363,7 @@ Enabling a rule does NOT make it evaluate immediately. After `PUT .../enable` th
 
 Always poll the rule status until it is Active before ingesting any validation data:
 
-```
+```text
 GET /web/api/v2.1/cloud-detection/rules?ids=<id>&accountIds=<acct>&isLegacy=false
 # proceed only when data[0].status == "Active"
 ```
@@ -375,7 +378,6 @@ Do not ingest, do not judge a rule "not firing", and do not strip attributes to 
 2. Confirm the threshold (`filter count >= N`) doesn't zero out the result for a known-good example, walk `N` down until you see a row, then set `N` slightly above what a benign environment would produce.
 3. Run it over 7 days for baseline volume: expected row count × 7 ≈ what a week of alerting will look like.
 4. If the `group`-intermediate ever exceeds 1,000 rows in a 24-hour window, tighten the initial filter.
-
 
 ## Lookup table size and per-device detections (validated)
 

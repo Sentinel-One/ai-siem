@@ -2,7 +2,7 @@
 
 Common field paths in SentinelOne EDR / XDR data. When in doubt about a field name, the fastest way to confirm it is to run a small exploratory query:
 
-```
+```text
 event.type = 'Process Creation'
 | limit 3
 | columns timestamp, endpoint.name, src.process.name, src.process.cmdline
@@ -177,6 +177,7 @@ Repeated from the syntax reference because they save real time:
 SentinelOne fields are increasingly OCSF-aligned. Many queries also work with OCSF categories (`event.category`). When exploring a new data source in **All Data** view, read a couple of raw events first to see which fields are populated, log sources outside EDR/XDR (e.g., SentinelOne Collector logs) don't follow the EDR schema and often put the unparsed text in `message`.
 
 For those `message`-style sources, use:
+
 - `$"regex"` shorthand for `message matches "regex"` (single-escape)
 - Explicit `message contains 'text'` for non-regex
 - `| parse "…$field$…"` to extract fields on the fly
@@ -198,7 +199,7 @@ Singularity Data Lake stamps every ingested event with a small set of `sca:`-pre
 
 ### Ingest volume (the common case)
 
-```
+```text
 dataSource.name='Windows Event Logs' endpoint.name='D01-QCDC01'
 | group gb = sum(number(sca:bytesToCharge)) / 1024 / 1024 / 1024
 ```
@@ -207,7 +208,7 @@ Works for any source / endpoint combination. Divide by `1024 / 1024 / 1024` for 
 
 Per-source volume leaderboard:
 
-```
+```text
 sca:bytesToCharge=* dataSource.name=*
 | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024
 | group GiB = sum(gib), events = count() by source = dataSource.name
@@ -219,7 +220,7 @@ sca:bytesToCharge=* dataSource.name=*
 
 `sca:ingestTime` is in seconds; `timestamp` is in nanoseconds. Convert before subtracting:
 
-```
+```text
 sca:ingestTime=* dataSource.name=*
 | let ingest_ts = number(sca:ingestTime)
 | let evt_ts = number(timestamp) / 1000000000

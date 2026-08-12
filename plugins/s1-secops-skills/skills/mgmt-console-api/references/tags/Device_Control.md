@@ -3,6 +3,7 @@
 12 endpoints.
 
 ## `DELETE /web/api/v2.1/device-control`
+
 **Delete Rules**
 `operationId`: `_web_api_device-control_delete`
 
@@ -11,11 +12,13 @@ Delete Device Control rules that match the filter.
 Required permissions: `Device Control.delete`
 
 Parameters:
-- `body` [body, device_control.schemas_RuleDeleteSchema]: 
+
+- `body` [body, device_control.schemas_RuleDeleteSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/device-control`
+
 **Get Device Rules**
 `operationId`: `_web_api_device-control_get`
 
@@ -24,6 +27,7 @@ Get the Device Control rules of a specified Account, Site, Group or Global (tena
 Required permissions: `Device Control.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -66,27 +70,31 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/device-control`
+
 **Create Device Control Rule**
 `operationId`: `_web_api_device-control_post`
 
-Use this command to create a new Device Control rule. These rules allow or block devices, based on device identifiers. Rules apply to a scope: Global (tenant), Account, Site, or Group. To learn details of the fields, see https://support.sentinelone.com/hc/en-us/articles/360023338494. <br>Recommended: Before you begin, see Device Control Known Limitations: https://support.sentinelone.com/hc/en-us/articles/360021104114.<br>Device Control requires Control SKU. Linux Agents do not support Device Control.
+Use this command to create a new Device Control rule. These rules allow or block devices, based on device identifiers. Rules apply to a scope: Global (tenant), Account, Site, or Group. To learn details of the fields, see <https://support.sentinelone.com/hc/en-us/articles/360023338494>. <br>Recommended: Before you begin, see Device Control Known Limitations: <https://support.sentinelone.com/hc/en-us/articles/360021104114>.<br>Device Control requires Control SKU. Linux Agents do not support Device Control.
 
 Required permissions: `Device Control.create`
 
 Parameters:
-- `body` [body, device_control.schemas_PostDeviceSchema]: 
+
+- `body` [body, device_control.schemas_PostDeviceSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/device-control/configuration`
+
 **Get Configuration**
 `operationId`: `_web_api_device-control_configuration_get`
 
-Get Device Control configuration for a given scope.<br>To filter the results for a scope:<br>* Global - Make sure "tenant" is "true" and no other scope ID is given.<br>* Account - Make sure "tenant" is "false" and at least one Account ID is given.<br>* Site - Make sure "tenant" is "false" and at least one Site ID is given.<brDevice Control requires Control SKU. It is not supported on Linux.
+Get Device Control configuration for a given scope.<br>To filter the results for a scope:<br>*Global - Make sure "tenant" is "true" and no other scope ID is given.<br>* Account - Make sure "tenant" is "false" and at least one Account ID is given.<br>* Site - Make sure "tenant" is "false" and at least one Site ID is given.<brDevice Control requires Control SKU. It is not supported on Linux.
 
 Required permissions: `Device Control.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -95,6 +103,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/device-control/configuration`
+
 **Update Configuration**
 `operationId`: `_web_api_device-control_configuration_put`
 
@@ -104,11 +113,13 @@ Device Control requires Control SKU. It is not supported on Linux.
 Required permissions: `Device Control.edit`
 
 Parameters:
-- `body` [body, device_control.schemas_PostDeviceSettingsSchema]: 
+
+- `body` [body, device_control.schemas_PostDeviceSettingsSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/device-control/copy-rules`
+
 **Copy Rules**
 `operationId`: `_web_api_device-control_copy-rules_post`
 
@@ -116,11 +127,13 @@ You can copy a set of Device Control rules to use in other Accounts, Sites, or G
 Optional permissions: `Device Control.view, Device Control.create`
 
 Parameters:
-- `body` [body, device_control.schemas_CopyRuleSchema]: 
+
+- `body` [body, device_control.schemas_CopyRuleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/device-control/enable`
+
 **Enable/Disable Rules**
 `operationId`: `_web_api_device-control_enable_put`
 
@@ -129,11 +142,13 @@ It is best practice to disable a rule rather than delete it. Use this command to
 Required permissions: `Device Control.edit`
 
 Parameters:
-- `body` [body, device_control.schemas_EnableRuleSchema]: 
+
+- `body` [body, device_control.schemas_EnableRuleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/device-control/events`
+
 **Get Device Control Events**
 `operationId`: `_web_api_device-control_events_get`
 
@@ -143,6 +158,7 @@ Device Control requires Control SKU. Linux Agents do not support Device Control.
 Required permissions: `Device Control.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -176,6 +192,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/device-control/export`
+
 **Export Rules**
 `operationId`: `_web_api_device-control_export_get`
 
@@ -184,6 +201,7 @@ Export Device Control rules to a CSV file.
 Required permissions: `Device Control.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -218,44 +236,50 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/device-control/move-rules`
+
 **Move rules**
 `operationId`: `_web_api_device-control_move-rules_post`
 
-You can move a set of Device Control rules to other Accounts, Sites, or Groups. This command removes the rule from the source and copies to the targets. 
+You can move a set of Device Control rules to other Accounts, Sites, or Groups. This command removes the rule from the source and copies to the targets.
 Define the rules to copy with the filters. To get the values for devices, run "unscoped". To get Account IDs, run "accounts". To get Site IDs, run "sites".
 Device Control requires Control SKU. Linux Agents do not support Device Control.
 Optional permissions: `Device Control.delete, Device Control.create, Device Control.view`
 
 Parameters:
-- `body` [body, device_control.schemas_CopyRuleSchema]: 
+
+- `body` [body, device_control.schemas_CopyRuleSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/device-control/reorder`
+
 **Reorder Rules**
 `operationId`: `_web_api_device-control_reorder_put`
 
 When an external device connects to an endpoint, the SentinelOne Agent looks at the rules based on their order in the Device Control policy, from the top to the bottom. When the Agent finds a rule that matches the device identifiers of a connected device, that rule is applied. The Agent does not continue to the lower rules in the list.
-Use this command to change the order of rules for a specific scope. 
+Use this command to change the order of rules for a specific scope.
 Device Control requires Control SKU. Linux Agents do not support Device Control.
 
 Required permissions: `Device Control.edit`
 
 Parameters:
-- `body` [body, device_control.schemas_ReorderSchema]: 
+
+- `body` [body, device_control.schemas_ReorderSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/device-control/{rule_id}`
+
 **Update Device Rule**
 `operationId`: `_web_api_device-control_{rule_id}_put`
 
-Change the Device Control rule that matches the filter. To learn more about the fields, see https://support.sentinelone.com/hc/en-us/articles/360023338494.
+Change the Device Control rule that matches the filter. To learn more about the fields, see <https://support.sentinelone.com/hc/en-us/articles/360023338494>.
 
 Required permissions: `Device Control.edit`
 
 Parameters:
+
 - `rule_id` [path, string] **required**: Rule ID. Example: "225494730938493804".
-- `body` [body, device_control.schemas_PutDeviceSchema]: 
+- `body` [body, device_control.schemas_PutDeviceSchema]:
 
 Responses: 404 Device rule not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

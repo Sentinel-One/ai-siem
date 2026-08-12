@@ -16,7 +16,7 @@ Before deploying, run the body in Event Search over 24 hours and walk the thresh
 
 ### Macro-spawned LOLBin (MITRE T1566.001 + T1059)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.parent.name in ('winword.exe', 'excel.exe', 'powerpnt.exe', 'outlook.exe')
 src.process.name in ('powershell.exe', 'pwsh.exe', 'cmd.exe', 'wscript.exe', 'cscript.exe', 'mshta.exe', 'regsvr32.exe', 'rundll32.exe', 'certutil.exe', 'bitsadmin.exe')
@@ -35,7 +35,7 @@ src.process.name in ('powershell.exe', 'pwsh.exe', 'cmd.exe', 'wscript.exe', 'cs
 
 ### HTA execution from Office or mail client (T1218.005)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.name = 'mshta.exe'
 src.process.parent.name in ('winword.exe', 'excel.exe', 'outlook.exe', 'explorer.exe')
@@ -57,7 +57,7 @@ src.process.parent.name in ('winword.exe', 'excel.exe', 'outlook.exe', 'explorer
 
 ### Encoded PowerShell (T1059.001)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.name in ('powershell.exe', 'pwsh.exe')
 src.process.cmdline matches '(?i)\\s-(e|en|enc|enco|encod|encode|encoded|encodedc|encodedco|encodedcom|encodedcomm|encodedcomma|encodedcomman|encodedcommand)\\b'
@@ -75,7 +75,7 @@ src.process.cmdline matches '(?i)\\s-(e|en|enc|enco|encod|encode|encoded|encoded
 
 ### Suspicious LOLBin with download-like args (T1105)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.name in ('certutil.exe', 'bitsadmin.exe', 'mshta.exe', 'regsvr32.exe', 'rundll32.exe')
 (src.process.cmdline contains 'http://' or src.process.cmdline contains 'https://' or src.process.cmdline contains 'frombase64string')
@@ -93,7 +93,7 @@ src.process.name in ('certutil.exe', 'bitsadmin.exe', 'mshta.exe', 'regsvr32.exe
 
 ### Rundll32 launching `javascript:` (T1055 / T1218.011)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.name = 'rundll32.exe'
 src.process.cmdline matches '(?i)javascript:'
@@ -114,7 +114,7 @@ src.process.cmdline matches '(?i)javascript:'
 
 ### Run-key / RunOnce registry write (T1547.001)
 
-```
+```text
 event.type = 'Registry Value Modified'
 registry.keyPath matches '(?i)(\\\\Run\\\\|\\\\RunOnce\\\\|\\\\RunServices\\\\)'
 | group
@@ -132,7 +132,7 @@ registry.keyPath matches '(?i)(\\\\Run\\\\|\\\\RunOnce\\\\|\\\\RunServices\\\\)'
 
 ### Scheduled task created from script host (T1053.005)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.cmdline matches '(?i)(schtasks\\s+/create|new-scheduledtask|register-scheduledtask)'
 !(src.process.parent.name in ('msiexec.exe', 'svchost.exe', 'services.exe'))
@@ -150,7 +150,7 @@ src.process.cmdline matches '(?i)(schtasks\\s+/create|new-scheduledtask|register
 
 ### WMI event subscription persistence (T1546.003)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.cmdline matches '(?i)(__EventFilter|CommandLineEventConsumer|FilterToConsumerBinding)'
 | group
@@ -170,7 +170,7 @@ src.process.cmdline matches '(?i)(__EventFilter|CommandLineEventConsumer|FilterT
 
 ### UAC bypass via fodhelper / computerdefaults (T1548.002)
 
-```
+```text
 event.type = 'Registry Value Modified'
 registry.keyPath matches '(?i)\\\\Classes\\\\ms-settings\\\\Shell\\\\Open\\\\command'
 | group
@@ -188,7 +188,7 @@ registry.keyPath matches '(?i)\\\\Classes\\\\ms-settings\\\\Shell\\\\Open\\\\com
 
 ### Printspoofer / tokenvator / juicypotato (T1134)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.cmdline matches '(?i)(printspoofer|juicypotato|tokenvator|getsystem)'
 | group
@@ -209,7 +209,7 @@ src.process.cmdline matches '(?i)(printspoofer|juicypotato|tokenvator|getsystem)
 
 ### EventLog clearing (T1070.001)
 
-```
+```text
 event.type = 'Process Creation'
 (
   src.process.cmdline contains 'wevtutil cl'
@@ -230,7 +230,7 @@ event.type = 'Process Creation'
 
 ### Defender tampering (T1562.001)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.cmdline matches '(?i)(Set-MpPreference\\s+-Disable|Add-MpPreference\\s+-ExclusionPath|sc\\s+(config|stop)\\s+WinDefend)'
 | group
@@ -247,7 +247,7 @@ src.process.cmdline matches '(?i)(Set-MpPreference\\s+-Disable|Add-MpPreference\
 
 ### Shadow copy deletion (pre-ransomware, T1490)
 
-```
+```text
 event.type = 'Process Creation'
 (
   src.process.cmdline matches '(?i)vssadmin\\s+delete\\s+shadows'
@@ -272,7 +272,7 @@ event.type = 'Process Creation'
 
 ### Mimikatz / secretsdump / procdump lsass (T1003.001)
 
-```
+```text
 event.type = 'Process Creation'
 (
   (src.process.name in ('procdump.exe', 'procdump64.exe') and src.process.cmdline contains 'lsass')
@@ -292,7 +292,7 @@ event.type = 'Process Creation'
 
 ### Failed logon spike (T1110)
 
-```
+```text
 event.category = 'logins'
 event.login.loginIsSuccessful = false
 | group
@@ -310,7 +310,7 @@ event.login.loginIsSuccessful = false
 
 ### S1 built-in CredentialDumping indicator
 
-```
+```text
 indicator.name = 'CredentialDumping'
 | group
     count      = count(),
@@ -330,7 +330,7 @@ indicator.name = 'CredentialDumping'
 
 ### Burst of recon commands in one storyline (T1082 / T1087 / T1016)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.name in ('whoami.exe', 'net.exe', 'net1.exe', 'nltest.exe', 'systeminfo.exe', 'hostname.exe', 'ipconfig.exe', 'tasklist.exe', 'quser.exe', 'arp.exe', 'route.exe')
 | group
@@ -354,7 +354,7 @@ A single storyline running whoami + net user + nltest + systeminfo in quick succ
 
 ### Remote service creation via SMB (T1021.002)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.parent.name = 'services.exe'
 src.process.name in ('cmd.exe', 'powershell.exe', 'pwsh.exe')
@@ -374,7 +374,7 @@ The four backslashes in the `contains` match a literal `\\` (UNC prefix); see `r
 
 ### PSEXESVC.exe execution (T1021.002)
 
-```
+```text
 event.type = 'Process Creation'
 src.process.parent.name in ('PSEXESVC.exe', 'paexec.exe', 'csexec.exe')
 | group
@@ -397,7 +397,7 @@ src.process.parent.name in ('PSEXESVC.exe', 'paexec.exe', 'csexec.exe')
 
 Detects hosts with outbound connections to the same external destination in a high fraction of the rule's lookback window: persistent traffic to a narrow destination set, a common C2 shape. This tests persistence, not interval regularity.
 
-```
+```text
 event.type = 'IP Connect'
 event.network.direction = 'OUTGOING'
 | filter !net_rfc1918(dst.ip.address) and !net_private(dst.ip.address)
@@ -416,7 +416,7 @@ Normalizing by `queryspan` keeps the threshold meaningful whatever lookback the 
 
 ### DNS to low-reputation TLD
 
-```
+```text
 event.category = 'network'
 event.type = 'DNS Resolved'
 dns.request matches '(?i)\\.(top|xyz|tk|ml|cf|gq|ga)$'
@@ -438,7 +438,7 @@ dns.request matches '(?i)\\.(top|xyz|tk|ml|cf|gq|ga)$'
 
 ### Mass file modification (ransomware shape, T1486)
 
-```
+```text
 event.type in ('File Modification', 'File Rename')
 | group
     files      = estimate_distinct(tgt.file.path),
@@ -457,7 +457,7 @@ Backups and installers can also trip this, pair with an allowlist `lookup` on `s
 
 ### Archive creation in unusual location (T1560)
 
-```
+```text
 event.type in ('File Creation', 'File Modification')
 tgt.file.path matches '(?i)\\.(7z|rar|zip|tar\\.gz|tgz)$'
 tgt.file.path matches '(?i)\\\\(Temp|AppData\\\\Local\\\\Temp|ProgramData|Users\\\\Public)\\\\'
@@ -483,7 +483,7 @@ tgt.file.size > 10000000
 
 Fires when the same storyline that tripped the `CredentialDumping` indicator also had outbound traffic to a non-internal IP.
 
-```
+```text
 | inner join
     creds = (
       indicator.name = 'CredentialDumping'
@@ -515,7 +515,7 @@ Fires when the same storyline that tripped the `CredentialDumping` indicator als
 
 Matches a host doing recon AND then seeing a remote interactive logon, "someone ran whoami then logged into another box."
 
-```
+```text
 | inner join
     recon = (
       event.type = 'Process Creation'
@@ -545,7 +545,7 @@ Matches a host doing recon AND then seeing a remote interactive logon, "someone 
 
 When a rule is otherwise correct but fires on 1-2 known-good patterns, use a `lookup` against a config datatable to suppress.
 
-```
+```text
 <filters producing candidate rows>
 | group
     count      = count(),

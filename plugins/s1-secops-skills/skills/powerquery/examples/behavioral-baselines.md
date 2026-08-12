@@ -48,7 +48,7 @@ Run this once per baseline day. Each call produces one row per
 `(action, principal)` pair seen on that day, with `day_count`. Replace
 the bracketed placeholders.
 
-```
+```text
 dataSource.name = '<source>'
 | let action = <action_field> ? <action_field> : <action_fallback>
 | let principal = <principal_field> ? <principal_field> : <principal_fallback>
@@ -73,7 +73,7 @@ client-side merge that follows.
 
 Same shape, single 24h window ending at the detection moment.
 
-```
+```text
 dataSource.name = '<source>'
 | let action = <action_field> ? <action_field> : <action_fallback>
 | let principal = <principal_field> ? <principal_field> : <principal_fallback>
@@ -272,7 +272,7 @@ The end-to-end production shape with persisted baselines:
 2. **Author the detection rule** as a PowerQuery Alert (`queryLang: "2.0"`,
    `queryType: "scheduled"`):
 
-```
+```text
 dataSource.name = '<source>'
 | let action = <action_field> ? <action_field> : <action_fallback>
 | let principal = <principal_field> ? <principal_field> : <principal_fallback>
@@ -294,7 +294,7 @@ dataSource.name = '<source>'
    table from step 1 must be keyed on `(action, principal, dow)` with
    `dow` stored in the same `%a` format, not just `(action, principal)`.
 
-3. **Set rule constraints**: for `queryType: "scheduled"`,
+1. **Set rule constraints**: for `queryType: "scheduled"`,
    `treatAsThreat: "UNDEFINED"` and `networkQuarantine: false` are
    required. Use the alert severity field, not mitigation actions, to
    surface the verdict.

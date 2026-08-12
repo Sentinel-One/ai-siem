@@ -32,14 +32,14 @@ question at Step 4. Do not front-load a long form.
 
 The editability of a source in SDL is decided by one signal: the `parser` attribute on its events.
 
-```
+```text
 parser=* | group events=count() by parser | sort -events | limit 200
 ```
 
 Then map parser to the source by pulling a sample. Because an un-normalised source has no
 `dataSource.name` yet, do not search by `dataSource.name`; search by the parser:
 
-```
+```text
 parser='<PARSER_NAME>' | sort -timestamp | limit 20
 ```
 
@@ -95,11 +95,11 @@ against `sdl-log-parser/references/ocsf-schema-documentation.md`, never invented
    block needs `version: 1` and ops under `transformations` (error `unsupported event mapper
    version -1` means `version:` is missing).
 
-3. **Set the four attributes and map to OCSF.** Give the source a clean `dataSource.name` and
+1. **Set the four attributes and map to OCSF.** Give the source a clean `dataSource.name` and
    `dataSource.vendor`, and map its fields to OCSF (`src_endpoint.ip`, `dst_endpoint.ip`,
    `actor.user.name`, `network_activity` class fields, etc.) so it is queryable with the same
    schema as the rest of the lake.
-4. **Add asset enrichment.** Asset attributes (OS, agent UUID, criticality, AD groups, SID, risk
+2. **Add asset enrichment.** Asset attributes (OS, agent UUID, criticality, AD groups, SID, risk
    factors) are not in the source telemetry. They come from the Asset Inventory through the
    PowerQuery `datasource` command, which is a query, not a REST call: see
    `powerquery/references/datasource-command.md`. Reuse the asset-enrichment solution:
@@ -112,9 +112,9 @@ against `sdl-log-parser/references/ocsf-schema-documentation.md`, never invented
    `device_agentid` plus an endpoint `class_uid` in the parser `mappings` so events-type rules
    auto-bind (the tested minimum); for network/identity sources, bind via the scheduled-rule
    `entityMappings` path in Step 3 instead.
-5. **Bump `metadata.version`** on every change. This is the propagation canary in Step 2.
-6. **Deploy** with `sdl_put_file` passing the version you read as `expectedVersion`.
-7. **Validate** by HEC re-ingesting one real sample line with `?sourcetype=<PARSER_NAME>` and
+3. **Bump `metadata.version`** on every change. This is the propagation canary in Step 2.
+4. **Deploy** with `sdl_put_file` passing the version you read as `expectedVersion`.
+5. **Validate** by HEC re-ingesting one real sample line with `?sourcetype=<PARSER_NAME>` and
    querying it back, confirming `dataSource.name`, the OCSF fields, and the enriched `device_*` /
    `user_*` fields populate, and that empty inventory values are null rather than `"[]"`.
 
@@ -125,7 +125,7 @@ live stream (tenant-validated). Sleep about 5 minutes, then poll until the new `
 appears on fresh events. Each subsequent parser edit incurs the same 3 to 5 minute wait, so batch
 parser changes rather than deploying one field at a time:
 
-```
+```text
 dataSource.name='<DATASOURCE_NAME>' | group events=count() by metadata.version | sort -events
 ```
 
@@ -307,7 +307,7 @@ A full deployment produces the artifacts below. Each renders from a template in 
 | Endpoint lookup builder | `assets/savelookup_endpoint.pq` | SDL datatable `/datatables/<prefix>EndpointLookup` | Persist device context keyed by hostname for the parser `lookup` |
 | Identity lookup builder | `assets/savelookup_identity.pq` | SDL datatable `/datatables/<prefix>IdentityLookup` | Persist AD/user context keyed by samAccountName for the parser `lookup` |
 | IP-keyed endpoint builder | `assets/savelookup_endpoint_byip.pq` | SDL datatable `/datatables/<prefix>EndpointByIp` | Device context keyed by IP for network sources that key enrichment on client IP |
-| Source dashboard | `assets/onboarding_dashboard.template.json` | `sdl_put_file /dashboards/<prefix> Overview` | Operational view: ingest volume, action breakdown, top talkers/ports/users/devices, geo, signatures |
+| Source dashboard | `assets/onboarding_dashboard.template.json` | `sdl_put_file /dashboards/<prefix> Overview` (create); re-deploy by `udoId` | Operational view: ingest volume, action breakdown, top talkers/ports/users/devices, geo, signatures |
 | Source detections | `assets/onboarding_detection.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` | MITRE-mapped scheduled detections for the source class with `entityMappings` Target-Asset binding |
 | Threat-response workflow | `assets/threat_response_workflow.template.json` | Hyperautomation workflow import | Alert-triggered SOC playbook: extract IOCs, VT-gate, contain, document, notify |
 | Refresh workflow | `assets/refresh_workflow.template.json` | Hyperautomation workflow import | Re-run the savelookup builders on a schedule so enrichment tables stay current |

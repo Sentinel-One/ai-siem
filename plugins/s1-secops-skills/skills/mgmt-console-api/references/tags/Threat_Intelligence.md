@@ -3,6 +3,7 @@
 7 endpoints.
 
 ## `DELETE /web/api/v2.1/threat-intelligence/iocs`
+
 **Delete IOCs**
 `operationId`: `_web_api_threat-intelligence_iocs_delete`
 
@@ -11,11 +12,13 @@ Delete an IoC from the Threat Intelligence database that matches a filter using 
 Required permissions: `Threat Intelligence.manage`
 
 Parameters:
-- `body` [body, v2_1.schemas_IOCDeleteSchema]: 
+
+- `body` [body, v2_1.schemas_IOCDeleteSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/threat-intelligence/iocs`
+
 **Get IOCs**
 `operationId`: `_web_api_threat-intelligence_iocs_get`
 
@@ -24,7 +27,8 @@ Get the IOCs of a specified Account that match the filter.<br>Note: Using creati
 Required permissions: `Threat Intelligence.view`
 
 Parameters:
-- `creator__contains` [query, array]: Free-text filter by the user uploaded the Threat Intelligence indicator (supports multiple values). Example: "admin@sentinelone.com".
+
+- `creator__contains` [query, array]: Free-text filter by the user uploaded the Threat Intelligence indicator (supports multiple values). Example: "<admin@sentinelone.com>".
 - `creationTime__lt` [query, string]: Creation Time as set by the user lesser than. Example: "2021-07-13T20:33:29.007906Z".
 - `creationTime__lte` [query, string]: Creation Time as set by the user lesser or equal than. Example: "2021-07-11T20:33:29.007906Z".
 - `severity` [query, array]: A list of severities to filter by (0-7)
@@ -66,6 +70,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threat-intelligence/iocs`
+
 **Create IOCs**
 `operationId`: `_web_api_threat-intelligence_iocs_post`
 
@@ -74,11 +79,13 @@ Add an IoC to the Threat Intelligence database. <br>These values under data are 
 Required permissions: `Threat Intelligence.manage`
 
 Parameters:
-- `body` [body, v2_1.schemas_PostThreatIntelligenceSchema]: 
+
+- `body` [body, v2_1.schemas_PostThreatIntelligenceSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threat-intelligence/iocs/stix`
+
 **Create IOCs from STIX bundle**
 `operationId`: `_web_api_threat-intelligence_iocs_stix_post`
 
@@ -87,11 +94,13 @@ Add IOCs to the Threat Intelligence database from a STIX 2.1 bundle. The API wil
 Required permissions: `Threat Intelligence.manage`
 
 Parameters:
-- `body` [body, v2_1.schemas_StixPostSchema]: 
+
+- `body` [body, v2_1.schemas_StixPostSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `DELETE /web/api/v2.1/threat-intelligence/user-config`
+
 **Delete Threat Intelligence user config**
 `operationId`: `_web_api_threat-intelligence_user-config_delete`
 
@@ -100,11 +109,13 @@ Delete Threat Intelligence user config that match the filter.
 Required permissions: `Threat Intelligence.manage`
 
 Parameters:
-- `body` [body, v2_1.schemas_UserConfigFilterSchema]: 
+
+- `body` [body, v2_1.schemas_UserConfigFilterSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/threat-intelligence/user-config`
+
 **Get Threat Intelligence user config**
 `operationId`: `_web_api_threat-intelligence_user-config_get`
 
@@ -113,6 +124,7 @@ Get the Threat Intelligence user config that match the filter.
 Required permissions: `Threat Intelligence.view`
 
 Parameters:
+
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "4,2,6,4,1,8,0,3,0,2,1,2,0,7,3,7,6,2".
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "4,2,6,4,1,8,0,3,0,2,1,2,0,7,3,7,6,2".
 - `tenant` [query, boolean]: Indicates a tenant scope request
@@ -120,6 +132,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/threat-intelligence/user-config`
+
 **Create Threat Intelligence user config**
 `operationId`: `_web_api_threat-intelligence_user-config_post`
 
@@ -128,6 +141,7 @@ Create Threat Intelligence user config.
 Required permissions: `Threat Intelligence.manage`
 
 Parameters:
-- `body` [body, v2_1.schemas_PostUserConfigSchema]: 
+
+- `body` [body, v2_1.schemas_PostUserConfigSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

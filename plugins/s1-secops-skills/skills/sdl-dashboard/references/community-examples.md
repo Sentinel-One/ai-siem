@@ -9,12 +9,14 @@ These are production-ready SDL dashboard JSON examples. Use them as starting poi
 Multi-tab dashboard covering agent lifecycle, threat stats, policy changes, exclusions, network control, device control, Ranger, RemoteOps, Marketplace, and login events. Uses `dataSource.name='ActivityFeed'` for all audit panels.
 
 **Key patterns used:**
+
 - Stacked bar with `timebucket("1 day")` + `transpose` for timelines
 - Table panels with `| columns` for clean column naming
 - `activity_type in (...)` filtering with quoted string values
 - `format(...)` for computed URL deep-links
 
 **Tab: Agents & Scopes**: agent subscriptions by site/group/account/OS, agent updates, decommissions, scope moves.
+
 ```javascript
 {
   tabs: [{"tabName":"Agents & Scopes",
@@ -40,6 +42,7 @@ graphs : [
 ```
 
 **Tab: Threat Stats**: timeline by confidence/verdict/status, noisiest machines, failed mitigations, custom rule alerts.
+
 ```javascript
 {
   graphStyle: "stacked_bar",
@@ -51,6 +54,7 @@ graphs : [
 ```
 
 **Tab: Conf & Policy Changes**: sensitive policy mods by user/scope, device control changes, network quarantine, inheritance changes.
+
 ```javascript
 {
   query: "dataSource.name='ActivityFeed' activity_type in (\"56\", \"57\", \"68\", \"69\", \"73\", \"76\", \"78\", \"79\", \"84\", \"105\", \"87\", \"88\", \"150\") \n| columns Time=created_at, Username=data.username, Scope=data.full_scope_details_path, type, Description=primary_description\n| sort -Time",
@@ -65,6 +69,7 @@ graphs : [
 ## 2. Purple AI Audit Dashboard
 
 Tracks Purple AI usage by analyst.
+
 ```javascript
 {
   description: "",
@@ -111,6 +116,7 @@ Tracks Purple AI usage by analyst.
 Multi-tab investigation dashboard with filters for `endpoint.name` and `src.process.storyline.id`. Covers event overview, process tree, file activity, network, indicators, and lateral movement.
 
 **Tab: Overview**: event category breakdown, indicator categories, file timeline, outbound IPs, DNS by process.
+
 ```javascript
 {
   tabs: [{"tabName":"Overview","graphs":[
@@ -143,6 +149,7 @@ Multi-tab investigation dashboard with filters for `endpoint.name` and `src.proc
 ```
 
 **Tab: File**: file event timeline, distinct file interactions by process, possible ransom notes detection.
+
 ```javascript
 {
   query: "event.category = \"file\" dataSource.category = 'security' \n| let windows_path_array = array_split(tgt.file.path, \"\\\\\\\\\")\n| let windows_directory_path_array = array_slice(windows_path_array, 0, len(windows_path_array)-1)\n| let windows_directory_path_string = array_to_string(windows_directory_path_array, \"\\\\\")\n| let windows_filename_string = windows_path_array.get(len(windows_path_array)-1)\n| let unix_path_array = array_split(tgt.file.path, \"/\")\n| let unix_directory_path_array = array_slice(unix_path_array, 0, len(unix_path_array)-1)\n| let unix_directory_path_string = array_to_string(unix_directory_path_array, \"/\")\n| let unix_filename_string = unix_path_array.get(len(unix_path_array)-1)\n| let directory_path_string = (endpoint.os = \"windows\") ? windows_directory_path_string : unix_directory_path_string\n| let filename_string = (endpoint.os = \"windows\") ? windows_filename_string : unix_filename_string\n| group distinct_path_count = estimate_distinct(directory_path_string) by endpoint.name, src.process.name, src.process.image.sha1, event.type, tgt.file.extension, filename_string\n| sort -distinct_path_count\n| columns src.process.name, event.type, distinct_path_count, filename_string\n| limit 10",
@@ -151,6 +158,7 @@ Multi-tab investigation dashboard with filters for `endpoint.name` and `src.proc
 ```
 
 **Tab: Network**: IP timeline by direction/status, outbound/inbound scan detection, top destinations/sources.
+
 ```javascript
 {
   query: "event.category = \"ip\" and event.network.direction = \"OUTGOING\" dataSource.category = 'security'\n| group distinct_dstip=estimate_distinct(dst.ip.address) by endpoint.name, src.ip.address, src.process.name, src.process.storyline.id\n| sort -distinct_dstip\n| columns endpoint.name, src.process.storyline.id, src.process.name, src.ip.address, distinct_dstip\n| limit 10",
@@ -159,6 +167,7 @@ Multi-tab investigation dashboard with filters for `endpoint.name` and `src.proc
 ```
 
 **Tab: Indicators**: indicator category breakdown, HIFI (high-fidelity) indicators, full indicator list.
+
 ```javascript
 {
   query: "event.category = 'indicators' indicator.name contains (\"appLockerBypass\",\"blockedMimikatz\",\"bloodHound\",\"maliciousPowershellScript\",\"MetasploitNamedPipeImpersonation\",\"ransomware\",\"brute\") dataSource.category = 'security'\n| group count=count() by indicator.category, indicator.name\n| sort -count",
@@ -173,6 +182,7 @@ Multi-tab investigation dashboard with filters for `endpoint.name` and `src.proc
 Multi-tab dashboard for Microsoft data sources. Tabs: O365 Alerts, Azure Login Activity, Azure AD lifecycle, SharePoint, OneDrive.
 
 **Tab: O365 Alerts**
+
 ```javascript
 {
   query: "dataSource.vendor = 'Microsoft' activity_name='newAlert'\n| columns metadata.original_time, severity=unmapped.severity, finding.types, finding.title, details=unmapped.userStates, url=finding.src_url\n| sort -metadata.original_time",
@@ -183,6 +193,7 @@ Multi-tab dashboard for Microsoft data sources. Tabs: O365 Alerts, Azure Login A
 ```
 
 **Tab: Azure Login Activity**: logon status timeline, top 15 failing users, logins by country, failed logins by country, every login attempt detailed (with geo enrichment, OS, browser extraction from JSON arrays).
+
 ```javascript
 {
   query: "dataSource.vendor='Microsoft' metadata.product.name='AzureActiveDirectory' event.type in ('Logon', 'UserLoginFailed') !isempty(actor.user.email_addr)\n| let ip_address = event.type='Logon' ? device.ip : unmapped.ActorIpAddress\n| let data_array = array_from_json(unmapped.DeviceProperties)\n| let os = json_object_value(data_array.get(0), \"Name\")=\"OS\" ? json_object_value(data_array.get(0), \"Value\") : \"not found\"\n| let browser = json_object_value(data_array.get(0), \"Name\")=\"BrowserType\" ? json_object_value(data_array.get(0), \"Value\") : \"not found\"\n| group count = count() by actor.user.email_addr, event.type, os, browser, ip_address, country=geo_ip_country(ip_address), unmapped.LogonError\n| sort -count",
@@ -191,6 +202,7 @@ Multi-tab dashboard for Microsoft data sources. Tabs: O365 Alerts, Azure Login A
 ```
 
 **Tab: OneDrive**: download timeline, top users downloading by GB and distinct file count.
+
 ```javascript
 {
   query: "dataSource.vendor='Microsoft' metadata.product.name='OneDrive' event.type in ('FileDownloaded')\n| group downloaded_bytes = sum(unmapped.FileSizeBytes), distinct_files=estimate_distinct(unmapped.SourceFileName) by user=unmapped.UserId\n| let downloaded_gbytes = downloaded_bytes/1024/1024/1024\n| columns user, downloaded_gbytes, distinct_files\n| sort -distinct_files\n| limit 10",
@@ -205,6 +217,7 @@ Multi-tab dashboard for Microsoft data sources. Tabs: O365 Alerts, Azure Login A
 Single-tab dashboard with parameters for dynamic filtering. Covers source/destination IPs, bytes sent/received, URL categories, protocol breakdown.
 
 Uses a hidden parameter pattern:
+
 ```javascript
 {
   parameters: [
@@ -253,6 +266,7 @@ Uses a hidden parameter pattern:
 Shows external and internal login flows across country, process, user, host, and result stages. Uses `array(...).expand()` to fan each result row into multiple Sankey links.
 
 **Key patterns:**
+
 - `array(0, 1, 2, 3).expand()` to produce one link row per stage from a single aggregated row
 - `sankeyColorMapping` with glob patterns (`"Inbound Login:*"`, `"*✅:*"`) for semantic coloring
 - `| left join` to enrich with TI indicator matches before building links
@@ -591,7 +605,9 @@ Pre-quoting rule: string values must embed single quotes, `"'logVolume'"` so sub
 ## Panel Snippets Library
 
 ### Activity type quick reference (ActivityFeed)
+
 Common activity types for audit dashboards:
+
 - `"17"`: Agent subscribed (new enrollment)
 - `"43"`: Agent updated
 - `"47","49","50","51","52","54"`: Agent decommissioned/uninstalled
@@ -609,24 +625,28 @@ Common activity types for audit dashboards:
 - `"3618"`: RemoteOps script executed
 
 ### Geo enrichment
-```
+
+```text
 | let country = geo_ip_country(src.ip.address)
 | let state   = geo_ip_state(src.ip.address)
 ```
 
 ### RFC1918 filter (exclude private IPs)
-```
+
+```text
 | let rfc1918 = not (dst.ip.address matches '((127\\..*)|(192\\.168\\..*)|(10\\..*)|(172\\.1[6-9]\\..*)|(172\\.2[0-9]\\..*)|(172\\.3[0-1]\\..*)).*')
 | filter rfc1918 = true
 ```
 
 ### Format deep-link URL
-```
+
+```text
 | let Threat_URL = format("https://your-console.sentinelone.net/incidents/threats/%s/overview", threat_id)
 ```
 
 ### Normalize values to 0-100 for honeycomb
-```
+
+```text
 | let max=overall_max(value), min=overall_min(value)
 | let normalized = ((value - min)/(max - min))*100
 ```

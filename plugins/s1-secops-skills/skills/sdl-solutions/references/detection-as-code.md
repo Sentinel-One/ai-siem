@@ -80,7 +80,7 @@ scope at account level. Confirm the console/tenant before writing anything.
 
 Copy `assets/detection-as-code-starter/` to the user's `REPO_TARGET` and render it:
 
-```
+```text
 detection-as-code/
 ├── detections/{endpoint,identity,cloud}/   # one rule per .toml, grouped by target system
 ├── scripts/dac_sync.py                      # validate + convert + idempotent sync (CI calls this)
@@ -148,7 +148,7 @@ lint, not in the console.
 
 | Type | `query_type` | Body field | Fires | Mitigation | API specifics the converter enforces |
 |---|---|---|---|---|---|
-| Single event (STAR) | `events` | `s1ql` (boolean S1QL) | per event, real time | yes | rejects a pipe `|` (that is PowerQuery); converter sets `queryLang` 2.0, so bodies must use 2.0 operators (`contains:anycase`, `in:anycase`), not 1.0 forms (`ContainsCIS`, `In`), which are accepted at create but never fire |
+| Single event (STAR) | `events` | `s1ql` (boolean S1QL) | per event, real time | yes | rejects a pipe `|` (that is PowerQuery); converter sets `queryLang`2.0, so bodies must use 2.0 operators (`contains:anycase`,`in:anycase`), not 1.0 forms (`ContainsCIS`,`In`), which are accepted at create but never fire |
 | Correlation | `correlation` | `[correlation]` + `[[correlation.subqueries]]` | when subqueries match in window | yes | requires `entity`, `match_in_order`, 1 to 10 subqueries; `window_minutes` in {1,5,10,30,60,240,480,720}; converter sets `queryLang` 2.0 (the API requires it) |
 | Scheduled | `scheduled` | `[scheduled].query` (PowerQuery) | on interval over lookback | no | forces `queryLang` 2.0, `treatAsThreat` UNDEFINED, `networkQuarantine` false; checks run-interval vs lookback |
 

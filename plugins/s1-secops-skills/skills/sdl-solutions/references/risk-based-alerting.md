@@ -52,7 +52,7 @@ HEC (HTTP Event Collector) is SentinelOne's HTTP event-ingest endpoint; the risk
 
 The risk index is created implicitly on first publish: ingest one sample risk event to materialise it, then confirm it queries back:
 
-```
+```json
 POST {{HEC_INGEST_URL}}/services/collector/event?isParsed=true
 Authorization: Bearer <console JWT>
 S1-Scope: {{ACCOUNT_ID}}
@@ -62,7 +62,7 @@ S1-Scope: {{ACCOUNT_ID}}
 
 `isParsed=true` indexes the JSON keys directly (no parser). The dotted `dataSource.name` key makes it land as the `risk` source. Confirm:
 
-```
+```text
 dataSource.name='risk' risk_object=* | group events=count(), score=sum(number(risk_score)), tactics=estimate_distinct(mitre_tactic) by risk_object, risk_object_type | sort -score | limit 25
 ```
 
@@ -72,7 +72,7 @@ dataSource.name='risk' risk_object=* | group events=count(), score=sum(number(ri
 
 Write `{{PREFIX}}RiskFactors.csv` to `/datatables/`. Header `factor_key,factor_type,risk_multiplier,reason`. Build it from the Asset Inventory (criticality / privileged / riskFactors) plus optional hand-edited overrides. The contributor PQ joins it:
 
-```
+```text
 | lookup mult=risk_multiplier from {{PREFIX}}RiskFactors.csv by factor_key =:anycase risk_object
 | let risk_score = base_score * (mult ? number(mult) : 1)
 ```
@@ -85,7 +85,7 @@ This is the SentinelOne equivalent of Splunk RBA "importing customer assets via 
 
 Build the factor table from AD with a `savelookup`:
 
-```
+```text
 | datasource assets from 'surface/identity'
 | filter resourceType='AD User' principalName=*
 | let mult = privileged=true ? 2.0 : (number(adminCount) > 0 ? 1.5 : (serviceAccount=true ? 0.5 : 1.0))
@@ -103,7 +103,7 @@ Build the factor table from AD with a `savelookup`:
 
 Render the contributor PowerQueries from `rba_contributors.json`. Each ends in:
 
-```
+```text
 | columns risk_object, risk_object_type, risk_score, base_score, mitre_tactic, mitre_technique, contributor, threat_object, threat_object_type, endpoint, risk_message | limit 1000
 ```
 
@@ -129,7 +129,7 @@ Deploy the four STAR scheduled rules (`assets/rba_incident_cumulative_score.temp
 
 Cumulative-score body (per object type):
 
-```
+```text
 dataSource.name='risk' risk_object_type='{{RISK_OBJECT_TYPE}}' risk_object=*
 | group risk_score_total=sum(number(risk_score)), tactics=estimate_distinct(mitre_tactic), techniques=estimate_distinct(mitre_technique), contributors=estimate_distinct(contributor), events=count(), first_seen=oldest(timestamp), last_seen=newest(timestamp), top_message=max_by(risk_message, number(risk_score)) by risk_object
 | filter risk_score_total >= {{THRESHOLD}}
@@ -199,7 +199,7 @@ The amplification is the point. The same four observations on a standard, non-pr
 | Risk collector | `assets/rba_collector.workflow.template.json` | Hyperautomation (scheduled, account/site) | Runs contributors and publishes risk events |
 | Incident rule, cumulative score (user + host) | `assets/rba_incident_cumulative_score.template.json` | STAR scheduled rule via `/cloud-detection/rules` | Fire when 24h cumulative score per object >= threshold |
 | Incident rule, multi-tactic (user + host) | `assets/rba_incident_multitactic.template.json` | STAR scheduled rule via `/cloud-detection/rules` | Fire when 7d distinct MITRE tactics per object >= threshold |
-| RBA dashboard | `assets/rba_dashboard.template.json` | `sdl_put_file /dashboards/{{PREFIX}}-RBA` | Leaderboard, score over time, MITRE / contributor / threat-object breakdowns, timeline |
+| RBA dashboard | `assets/rba_dashboard.template.json` | `sdl_put_file /dashboards/{{PREFIX}}-RBA` (create); re-deploy by `udoId` | Leaderboard, score over time, MITRE / contributor / threat-object breakdowns, timeline |
 | Response flow (optional) | reuse `assets/threat_response_workflow.template.json` | Hyperautomation (alert-triggered) | VT-gated containment off an RBA incident alert |
 | Demo console (optional) | `assets/rba_console/` | presenter laptop (`python3 server.py`) | Browser UI: talk track, artefacts, live leaderboard, and a read/write risk-factor editor |
 | Risk register (optional) | `assets/rba_risk_register.savelookup.pq` | daily scheduled flow to `{{PREFIX}}RiskRegister` | Persisted decayed running risk per object for long-horizon trending |

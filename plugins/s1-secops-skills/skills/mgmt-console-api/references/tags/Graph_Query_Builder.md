@@ -3,6 +3,7 @@
 8 endpoints.
 
 ## `GET /web/api/v2.1/xdr/assets/query/builder/metadata`
+
 **Get Graph Query Builder Initial Metadata**
 `operationId`: `_web_api_xdr_assets_query_builder_metadata_get`
 
@@ -11,6 +12,7 @@ Get graph query builder initial metadata
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
@@ -18,6 +20,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/graph-explorer/query/builder/autocomplete`
+
 **Auto Complete**
 `operationId`: `_web_api_xdr_graph-explorer_query_builder_autocomplete_get`
 
@@ -26,6 +29,7 @@ This api is now deprecated use /xdr/graph-explorer/query/builder/autocomplete/v2
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `ids` [query, array]: List of asset type ids
 - `groupIds` [query, array]: List of Group IDs to filter by
 - `accountIds` [query, array]: List of Account IDs to filter by
@@ -40,6 +44,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/graph-explorer/query/builder/autocomplete/v2`
+
 **Auto Complete**
 `operationId`: `_web_api_xdr_graph-explorer_query_builder_autocomplete_v2_get`
 
@@ -48,6 +53,7 @@ Use this command to get values for other fields. When you send this command with
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `ids` [query, array]: List of asset type ids
 - `groupIds` [query, array]: List of Group IDs to filter by
 - `accountIds` [query, array]: List of Account IDs to filter by
@@ -62,6 +68,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/graph-explorer/query/builder/metadata`
+
 **Get Graph Query Builder Initial Metadata**
 `operationId`: `_web_api_xdr_graph-explorer_query_builder_metadata_get`
 
@@ -70,6 +77,7 @@ Get graph query builder initial metadata
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
@@ -77,6 +85,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/graph-explorer/query/builder/metadata/available-options/v2`
+
 **Get Query Builder metadata For Requested Resource Types**
 `operationId`: `_web_api_xdr_graph-explorer_query_builder_metadata_available-options_v2_get`
 
@@ -85,6 +94,7 @@ Get query builder metadata for requested cloud asset types
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `ids` [query, array]: List of asset type ids
 - `groupIds` [query, array]: List of Group IDs to filter by
 - `accountIds` [query, array]: List of Account IDs to filter by
@@ -96,6 +106,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/graph-explorer/query/builder/metadata/available-relations`
+
 **Get the available relations**
 `operationId`: `_web_api_xdr_graph-explorer_query_builder_metadata_available-relations_get`
 
@@ -104,6 +115,7 @@ Get the available relations
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
@@ -111,6 +123,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/graph-explorer/query/builder/tag/autocomplete`
+
 **Tag Auto Complete**
 `operationId`: `_web_api_xdr_graph-explorer_query_builder_tag_autocomplete_post`
 
@@ -119,6 +132,7 @@ Use this command to get tag keys or values. When you send this command with inpu
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `ids` [query, array]: List of asset type ids
 - `groupIds` [query, array]: List of Group IDs to filter by
 - `accountIds` [query, array]: List of Account IDs to filter by
@@ -133,6 +147,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/private/graph-services-features`
+
 **Get all of the feature toggles for graph services.**
 `operationId`: `_web_api_xdr_private_graph-services-features_get`
 
@@ -141,6 +156,7 @@ Get all of the feature toggles for graph services
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by

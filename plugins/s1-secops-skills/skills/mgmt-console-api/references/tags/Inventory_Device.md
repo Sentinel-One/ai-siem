@@ -3,6 +3,7 @@
 5 endpoints.
 
 ## `GET /web/api/v2.1/xdr/assets/device`
+
 **Assets**
 `operationId`: `_web_api_xdr_assets_device_get`
 
@@ -11,6 +12,7 @@ Get assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -121,6 +123,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/device`
+
 **Assets using POST**
 `operationId`: `_web_api_xdr_assets_device_post`
 
@@ -129,14 +132,16 @@ POST API to get Assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
-- `body` [body, v2_1.inventory.device.schemas_DeviceViewInputSchema]: 
+- `body` [body, v2_1.inventory.device.schemas_DeviceViewInputSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/device/action`
+
 **Perform action**
 `operationId`: `_web_api_xdr_assets_device_action_post`
 
@@ -145,6 +150,7 @@ Perform action on selected assets
 Required permissions: `XDR Inventory.edit, XDR Inventory.delete`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -244,11 +250,12 @@ Parameters:
 - `osFamily__nin` [query, array]: The operating system family of the device (not in)
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
 - `osNameVersion` [query, array]: The operating system name and version of the device
-- `body` [body, v2_1.inventory.device.schemas_DeviceActionPayloadSchema]: 
+- `body` [body, v2_1.inventory.device.schemas_DeviceActionPayloadSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/device/available-actions/with-status`
+
 **Available actions**
 `operationId`: `_web_api_xdr_assets_device_available-actions_with-status_post`
 
@@ -257,6 +264,7 @@ Get cloud inventory device available-actions
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -356,11 +364,12 @@ Parameters:
 - `osFamily__nin` [query, array]: The operating system family of the device (not in)
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
 - `osNameVersion` [query, array]: The operating system name and version of the device
-- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]: 
+- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/device/export`
+
 **Export assets to CSV or JSON**
 `operationId`: `_web_api_xdr_assets_device_export_get`
 
@@ -369,6 +378,7 @@ Returns the results for given inventory filter in a CSV or JSON format
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset

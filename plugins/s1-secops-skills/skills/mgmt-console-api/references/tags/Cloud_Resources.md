@@ -3,6 +3,7 @@
 2 endpoints.
 
 ## `GET /web/api/v2.1/cloudnative/cloud-rogues`
+
 **Get cloud rogue resources**
 `operationId`: `_web_api_cloudnative_cloud-rogues_get`
 
@@ -11,6 +12,7 @@ Returns the cloud rogue resources for given filter
 Required permissions: `cloudRogues.view`
 
 Parameters:
+
 - `cloudProviderAccountName` [query, array]: Filter by cloud account (supports multiple values)
 - `sortBy` [query, string] (enum: id, createdTime, resourceType, name, region, virtualNetworkId, imageId, osType, cloudProviderAccountName, cloudProviderAccountId, cloudProviderOrganization, cloudProviderName): The column to sort the results by. Example: "id".
 - `name__contains` [query, array]: Free-text filter by resource name (supports multiple values)
@@ -36,6 +38,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/cloudnative/cloud-rogues/export`
+
 **Export cloud rogue resources to csv (default) or json**
 `operationId`: `_web_api_cloudnative_cloud-rogues_export_get`
 
@@ -44,6 +47,7 @@ Returns the results for given cloud rogues filter in a csv (default) or json for
 Required permissions: `cloudRogues.view`
 
 Parameters:
+
 - `cloudProviderAccountName` [query, array]: Filter by cloud account (supports multiple values)
 - `sortBy` [query, string] (enum: id, createdTime): The column to sort the results by. Example: "id".
 - `name__contains` [query, array]: Free-text filter by resource name (supports multiple values)

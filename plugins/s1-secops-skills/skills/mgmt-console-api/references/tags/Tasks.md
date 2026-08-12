@@ -3,6 +3,7 @@
 7 endpoints.
 
 ## `GET /web/api/v2.1/tasks-configuration`
+
 **Get Task Configuration**
 `operationId`: `_web_api_tasks-configuration_get`
 
@@ -11,6 +12,7 @@ Get the task configuration of a scope.
 Required permissions: `Upgrade Policy.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -27,6 +29,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 404 Configuration not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/tasks-configuration`
+
 **Create Task**
 `operationId`: `_web_api_tasks-configuration_put`
 
@@ -35,11 +38,13 @@ Create a task configuration.
 Required permissions: `Upgrade Policy.edit`
 
 Parameters:
-- `body` [body, tasks.schemas_PutTaskSchema]: 
+
+- `body` [body, tasks.schemas_PutTaskSchema]:
 
 Responses: 403 Operation is not allowed, 404 Configuration not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/tasks-configuration/explicit-subscopes`
+
 **Get Child Scope Task Configuration**
 `operationId`: `_web_api_tasks-configuration_explicit-subscopes_get`
 
@@ -48,6 +53,7 @@ Get the task configuration of child scopes of the given scope, if the tasks are 
 Required permissions: `Upgrade Policy.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -65,6 +71,7 @@ Parameters:
 Responses: 403 User is not allowed in this scope, 404 Configuration not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/tasks-configuration/flexible`
+
 **Get Task Configuration (Flexible MW)**
 `operationId`: `_web_api_tasks-configuration_flexible_get`
 
@@ -73,6 +80,7 @@ Get task configuration with flexible maintenance window format. Returns policy_p
 Required permissions: `Upgrade Policy.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -82,6 +90,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 404 Configuration not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/tasks-configuration/flexible`
+
 **Update Task Configuration (Flexible MW)**
 `operationId`: `_web_api_tasks-configuration_flexible_put`
 
@@ -90,11 +99,13 @@ Update task configuration with flexible maintenance window format. Requires mw_a
 Required permissions: `Upgrade Policy.edit`
 
 Parameters:
-- `body` [body, tasks.schemas_PutFlexibleTaskSchema]: 
+
+- `body` [body, tasks.schemas_PutFlexibleTaskSchema]:
 
 Responses: 400 Invalid user input received. See error details for further i, 403 Operation is not allowed or feature not enabled, 404 Configuration not found, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/tasks-configuration/has-explicit-subscope`
+
 **Has Child Scopes**
 `operationId`: `_web_api_tasks-configuration_has-explicit-subscope_get`
 
@@ -103,6 +114,7 @@ From a given scope, see if there are scopes under it that have local, explicit t
 Required permissions: `Upgrade Policy.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -119,6 +131,7 @@ Parameters:
 Responses: 403 User is not allowed in this scope, 404 Configuration not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/tasks-configuration/maintenance-windows/export_mw`
+
 **Export Maintenance Windows as CSV**
 `operationId`: `_web_api_tasks-configuration_maintenance-windows_export_mw_get`
 
@@ -127,6 +140,7 @@ Export all maintenance window occurrences for a specific scope as CSV. Supports 
 Required permissions: `Upgrade Policy.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".

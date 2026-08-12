@@ -3,6 +3,7 @@
 9 endpoints.
 
 ## `GET /web/api/v2.1/xdr/assets`
+
 **Assets**
 `operationId`: `_web_api_xdr_assets_get`
 
@@ -11,6 +12,7 @@ Get assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -103,6 +105,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets`
+
 **Assets using POST**
 `operationId`: `_web_api_xdr_assets_post`
 
@@ -111,14 +114,16 @@ POST API to get assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
-- `body` [body, v2_1.inventory.schemas_InventoryViewInputSchema]: 
+- `body` [body, v2_1.inventory.schemas_InventoryViewInputSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/action`
+
 **Perform action**
 `operationId`: `_web_api_xdr_assets_action_post`
 
@@ -127,6 +132,7 @@ Perform action on selected assets
 Required permissions: `XDR Inventory.create, XDR Inventory.delete`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -208,11 +214,12 @@ Parameters:
 - `allTagsKey__exists` [query, array]: User and cloud tag keys exists
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.schemas_InventoryActionPayloadSchema]: 
+- `body` [body, v2_1.inventory.schemas_InventoryActionPayloadSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/asset-counts`
+
 **Get inventory counts for menu items**
 `operationId`: `_web_api_xdr_assets_asset-counts_get`
 
@@ -221,6 +228,7 @@ Get inventory counts categories, subcategories and surfaces
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
@@ -228,6 +236,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/available-actions/with-status`
+
 **Available actions**
 `operationId`: `_web_api_xdr_assets_available-actions_with-status_post`
 
@@ -236,6 +245,7 @@ Get available actions
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -317,11 +327,12 @@ Parameters:
 - `allTagsKey__exists` [query, array]: User and cloud tag keys exists
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]: 
+- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/categories`
+
 **Categories and counts**
 `operationId`: `_web_api_xdr_assets_categories_get`
 
@@ -330,6 +341,7 @@ Get inventory categories and their asset counts
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
@@ -337,6 +349,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/cloud-tags/export`
+
 **Export Cloud Tags to CSV or JSON**
 `operationId`: `_web_api_xdr_assets_cloud-tags_export_get`
 
@@ -345,6 +358,7 @@ Returns the tags for given id in a CSV or JSON format
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `groupIds` [query, array]: List of Group IDs to filter by
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `exportFormat` [query, string] **required** (enum: csv, json): Export format
@@ -354,6 +368,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/export`
+
 **Export assets to CSV or JSON**
 `operationId`: `_web_api_xdr_assets_export_get`
 
@@ -362,6 +377,7 @@ Returns the results for given inventory filter in a CSV or JSON format
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -455,6 +471,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/sub-categories`
+
 **Counts per subcategory for categories**
 `operationId`: `_web_api_xdr_assets_sub-categories_get`
 
@@ -463,6 +480,7 @@ Get asset counts per subcategory for each category
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by

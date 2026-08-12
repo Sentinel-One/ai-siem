@@ -88,6 +88,7 @@ and **when to reach for it**.
 activity is created or updated.
 
 **Real shape, high/critical EDR alert filter (most common in corpus)**:
+
 ```json
 {
   "type": "singularity_response_trigger",
@@ -133,6 +134,7 @@ console; set `true` for fully automated response.
 **Purpose**: run-on-demand. Two flavors: static (no input) and dynamic (analyst fills a form).
 
 **Static shape (151 of 151 manual triggers in active flows use this)**:
+
 ```json
 {
   "type": "manual_trigger",
@@ -148,6 +150,7 @@ console; set `true` for fully automated response.
 ```
 
 **Dynamic shape (form-driven)**:
+
 ```json
 {
   "type": "manual_trigger",
@@ -169,6 +172,7 @@ console; set `true` for fully automated response.
   }
 }
 ```
+
 Reference: `{{manual-trigger.data.Hostname}}`.
 
 **Reach for it when**: building an investigation playbook, a one-off remediation, or a
@@ -182,6 +186,7 @@ parameterized hunt that an analyst kicks off from the console.
 (6 with units `hours` 3/6/12 and `minutes` 10/15).
 
 **Daily at a fixed local time**:
+
 ```json
 {
   "type": "scheduled_trigger",
@@ -206,6 +211,7 @@ parameterized hunt that an analyst kicks off from the console.
 ```
 
 **Every N hours (interval)**:
+
 ```json
 {
   "schedule_method": "interval",
@@ -235,6 +241,7 @@ queries that drop results into a ticket.
 generates a unique `url_identifier` (UUID) baked into the URL.
 
 **Real shape**:
+
 ```json
 {
   "type": "http_trigger",
@@ -283,6 +290,7 @@ a Condition action that checks `{{http-trigger.headers.X-Auth-Token}}` to gate a
   }
 }
 ```
+
 Reference: `{{email-trigger.subject}}`, `{{email-trigger.body}}`,
 `{{email-trigger.from}}`, `{{email-trigger.attachments}}`.
 
@@ -299,6 +307,7 @@ Most-used pattern is **single-variable per action** (97 of the 100 most-named Va
 are simply called "Variable" with one entry).
 
 **Single literal**:
+
 ```json
 {
   "type": "variable",
@@ -315,6 +324,7 @@ are simply called "Variable" with one entry).
 ```
 
 **Expression (most common in corpus, `Function.DEFAULT` for safe field access)**:
+
 ```json
 {
   "data": {
@@ -332,6 +342,7 @@ are simply called "Variable" with one entry).
 ```
 
 **Multi-variable in one action, only safe when none of the values reference each other**:
+
 ```json
 {
   "data": {
@@ -369,6 +380,7 @@ universally** (1,697 of 1,697), even for single comparisons. Stick with multi.
 | `in` | 1 |
 
 **Real shape**:
+
 ```json
 {
   "type": "condition",
@@ -387,6 +399,7 @@ universally** (1,697 of 1,697), even for single comparisons. Stick with multi.
 ```
 
 **Multiple AND clauses**:
+
 ```json
 "conditions": [
   { "input_value": "{{search-for-file-hash.status_code}}", "compared_value": "200", "comparison_operator": "equals" },
@@ -408,6 +421,7 @@ result of an enrichment lookup.
 `break_loop` fires (`while`).
 
 **Dynamic loop (the only flavor seen in active flows, 498/498)**:
+
 ```json
 {
   "type": "loop",
@@ -482,6 +496,7 @@ job (RemoteOps, scan) finish before polling its status; staging notifications.
 scratchpad to assemble payloads from multiple sources.
 
 **Real shape (most-cloned: "Generate UUID", 75 occurrences)**:
+
 ```json
 {
   "type": "data_formation",
@@ -507,6 +522,7 @@ custom note bodies, normalized event objects for SDL ingest.
 auth, retry, SSL, proxy.
 
 **Real shape (most generic, note `tag: "core_action"`, all integration fields null)**:
+
 ```json
 {
   "type": "http_request",
@@ -556,6 +572,7 @@ you want to inline-template the URL with `{{...}}`.
 pre-configured in `Hyperautomation → Integrations`. 90% of HTTP requests in active flows.
 
 **Real shape, SentinelOne integration (Create Device Control Rule)**:
+
 ```json
 {
   "type": "http_request",
@@ -603,6 +620,7 @@ official integrations.
 (`list_1`).
 
 **Real shape (HTML body with templated alert fields)**:
+
 ```json
 {
   "type": "send_email",
@@ -629,11 +647,13 @@ or a `{{...}}` expression).
 
 **Attachments use `file_name` / `file_content` (NOT `name` / `content`)**, confirmed against the
 live import API on 2026-06-11:
+
 ```json
 "attachments": [
   { "file_name": "report.csv", "file_content": "{{Function.BASE64_ENCODE(local_var.csv)}}" }
 ]
 ```
+
 `file_content` is base64. Using `name`/`content` returns
 `422 "Field required"` on `attachments.0.file_name` / `attachments.0.file_content`.
 
@@ -645,6 +665,7 @@ live import API on 2026-06-11:
 instead of being duplicated across flows. Full authoring + calling + lifecycle: `references/snippets.md`.
 
 **Calling node is `snippet_20`** (not `snippet`). Static call, pinned to a version:
+
 ```json
 {
   "type": "snippet_20", "tag": "core_action",
@@ -678,6 +699,7 @@ instead of being duplicated across flows. Full authoring + calling + lifecycle: 
 message, or until the timeout elapses.
 
 **Real shape**:
+
 ```json
 {
   "type": "wait_for_slack",
@@ -706,6 +728,7 @@ request, the wait correlates the analyst's button click back to that specific me
 required).
 
 **Create**:
+
 ```json
 {
   "type": "create_interaction",
@@ -721,6 +744,7 @@ required).
 ```
 
 **Wait**:
+
 ```json
 {
   "type": "wait_for_interaction",
@@ -775,13 +799,14 @@ Always pair with a Condition that branches on `{{local_var.alert-hash}} != "no-h
 
 **Where**: 79 conditions named "Get Response on Time", 92 named "Is File Suspicious in VT".
 
-```
+```text
 HTTP Request → Condition (status_code == 200)
   TRUE  → Variable (success_note) → HTTP (Add Note "Enriched")
   FALSE → Variable (fail_note)    → HTTP (Add Note "Enrichment failed")
 ```
 
 Body of each condition:
+
 ```json
 "conditions": [{ "input_value": "{{my-action.status_code}}", "compared_value": "200", "comparison_operator": "equals" }],
 "conditions_relationship": "and"
@@ -797,7 +822,7 @@ after every external API call that the analyst needs receipts for.
 **Where**: 75 occurrences of "Set Default Cursor" / "Set Filtered Channels" / "Last Page" trio
 across Slack channel-discovery flows.
 
-```
+```text
 Variable (cursor = "")
   ↓
 Loop (while)
@@ -856,7 +881,7 @@ APPEND has nothing to append to.
 **Where**: 186 occurrences of `Function.JQ`. Per `functions-reference.md`, store the JQ
 expression in a Variable first to avoid escaping pain.
 
-```
+```text
 Variable (jq_filter = ".data.matches[] | {host: .endpoint.name, count: .count}")
   ↓
 Variable (filtered = "{{Function.JQ(my-pq.body, local_var.jq_filter)}}")
@@ -867,11 +892,13 @@ Variable (filtered = "{{Function.JQ(my-pq.body, local_var.jq_filter)}}")
 ## B6. Add Note to Unified Alert (UAM GraphQL, observed twice in two flavors)
 
 **Modern flavor (cleaner GraphQL)**:
+
 ```json
 "payload": "{\n  \"query\": \"mutation AddAlertNote { addAlertNote(text: \\\"{{Function.HTML_ENCODE(local_var.note_body)}}\\\", alertId: \\\"{{singularity-response-trigger.data.id}}\\\") { data { alertId } } }\"\n}"
 ```
 
 **Legacy flavor (alertTriggerActions wrapper, used in older flows)**:
+
 ```json
 "payload": "{\n  \"query\": \"mutation AddNoteToAlert { alertTriggerActions(actions: [{ id: \\\"S1/alert/addNote\\\", payload: { note: { value: \\\"{{Function.HTML_ENCODE(local_var.note)}}\\\" } } }], filter: { or: [{ and: [{ fieldId: \\\"id\\\", stringEqual: { value: \\\"{{singularity-response-trigger.data.id}}\\\" } }] }] }) { ... on ActionsTriggered { actions { actionId success { id } failure { id } skip { id } } } } }\"\n}"
 ```
@@ -948,7 +975,7 @@ Most flows then check `body.data.attributes.last_analysis_stats.malicious > 0` i
 
 ## B11. Slack post + interactive wait + branch on choice
 
-```
+```text
 HTTP (chat.postMessage with Block Kit buttons) → captures {{post.body.ts}}
   ↓
 Wait for Slack (message_ts = {{post.body.ts}}, value = 30 minutes)
@@ -1006,7 +1033,7 @@ starting templates.
 
 ## C1. Alert → enrich-with-VT → add-note (the workhorse, ~100 active flows)
 
-```
+```text
 Singularity Response Trigger (severity ∈ HIGH/CRITICAL, EDR)
   → Variable (alert-hash via DEFAULT chain)               [B1]
   → Condition (alert-hash != "no-hash")
@@ -1023,7 +1050,7 @@ Singularity Response Trigger (severity ∈ HIGH/CRITICAL, EDR)
 
 ## C2. Scheduled IOC ingest (TOR / AbuseIPDB / GitHub list → S1 TI)
 
-```
+```text
 Scheduled Trigger (daily 08:00)                             [A3]
   → HTTP GET <ioc-list-url>                                 [A12]
   → Variable (ioc_list = parsed lines)
@@ -1037,7 +1064,7 @@ Scheduled Trigger (daily 08:00)                             [A3]
 
 ## C3. Webhook → device-control rule + analyst email
 
-```
+```text
 HTTP Trigger (POST/GET, dedup 180s)                          [A4]
   → HTTP POST /web/api/v2.1/device-control                   [A13]
        with serial/site from {{http-trigger.query_params.*}}
@@ -1051,7 +1078,7 @@ zero-trigger-input automation.
 
 ## C4. Manual investigation playbook (analyst-driven hunt)
 
-```
+```text
 Manual Trigger (dynamic, Hostname text input)               [A2]
   → HTTP POST PowerQuery (filter src.endpoint.name = ...)    [B8]
   → Variable (rows = body.matches)
@@ -1065,7 +1092,7 @@ Manual Trigger (dynamic, Hostname text input)               [A2]
 
 ## C5. Approval gate via Slack (analyst confirms a remediation)
 
-```
+```text
 Singularity Response Trigger                                  [A1]
   → HTTP POST chat.postMessage (Block Kit Approve/Deny)
   → Wait for Slack (message_ts, 30 minutes)                   [A16]
@@ -1081,7 +1108,7 @@ Singularity Response Trigger                                  [A1]
 
 ## C6. Periodic posture report (UEBA-style)
 
-```
+```text
 Scheduled Trigger (interval, every 6 hours)                   [A3]
   → HTTP POST PowerQuery (logon counts per user)              [B8]
   → Variable (rows = MAP_TABLE(columns, matches))
@@ -1127,6 +1154,7 @@ moment the note contains a quote, ampersand, or angle bracket. Wrap, always.
 
 The corpus has IOC payloads with literal `accountIds: ["<account-id>"]`, fine for
 single-tenant flows, broken on transfer. Prefer:
+
 - Pull from a Variable (set up-front from a Manual Trigger / Webhook param), or
 - Pull from `singularity-response-trigger.data.scopeId` if the alert carries it.
 

@@ -17,7 +17,7 @@ All queries assume the EDR or XDR data view unless noted. They're written to be 
 
 **Use it when** you need to confirm a tenant has telemetry, or want a fast roll-up of active hosts.
 
-```
+```text
 | group last_seen = newest(timestamp), events = count() by endpoint.name, agent.uuid
 | sort -last_seen
 | limit 50
@@ -30,7 +30,7 @@ All queries assume the EDR or XDR data view unless noted. They're written to be 
 
 **Use it when** triaging a noisy host or hunting for "the one machine that's different."
 
-```
+```text
 | group ct = count() by endpoint.name
 | sort -ct
 | let share_pct = percent_of_total(ct), running = running_percent(ct)
@@ -47,7 +47,7 @@ All queries assume the EDR or XDR data view unless noted. They're written to be 
 
 **Use it when** hunting for download cradles, C2 beaconing from PS, or general "PowerShell that talked to the internet."
 
-```
+```text
 event.type = 'Process Creation'
 src.process.name in ('powershell.exe', 'pwsh.exe')
 !(src.process.parent.name in ('explorer.exe', 'svchost.exe', 'services.exe'))
@@ -70,7 +70,7 @@ src.process.name in ('powershell.exe', 'pwsh.exe')
 
 **Use it when** triaging phishing, BEC follow-on, or first-stage payload delivery.
 
-```
+```text
 event.type = 'Process Creation'
 src.process.parent.name in ('winword.exe', 'excel.exe', 'powerpnt.exe', 'outlook.exe')
 src.process.name in ('powershell.exe', 'pwsh.exe', 'cmd.exe', 'wscript.exe', 'cscript.exe', 'mshta.exe', 'regsvr32.exe', 'rundll32.exe', 'certutil.exe', 'bitsadmin.exe')
@@ -92,7 +92,7 @@ src.process.name in ('powershell.exe', 'pwsh.exe', 'cmd.exe', 'wscript.exe', 'cs
 
 **Use it when** broad LOLBin sweep, useful as a daily review.
 
-```
+```text
 event.type = 'Process Creation'
 src.process.name in (
   'certutil.exe', 'bitsadmin.exe', 'mshta.exe', 'regsvr32.exe',
@@ -113,7 +113,7 @@ src.process.cmdline contains ('http://', 'https://', '\\\\', '-encodedcommand', 
 
 `contains_any` does not exist in PowerQuery and returns "Unknown function" (live-verified 2026-07-29 via LRQ v2). Multi-value `contains ('a', 'b', ...)` as used above is the correct form. An explicit `or` chain is equivalent if you prefer it spelled out:
 
-```
+```text
 ... and (
   src.process.cmdline contains 'http://' or
   src.process.cmdline contains 'https://' or
@@ -127,7 +127,7 @@ src.process.cmdline contains ('http://', 'https://', '\\\\', '-encodedcommand', 
 
 **Use it when** specifically hunting `-enc` / `-EncodedCommand`.
 
-```
+```text
 event.type = 'Process Creation'
 src.process.name in ('powershell.exe', 'pwsh.exe')
 src.process.cmdline matches '(?i)\\s-(e|en|enc|enco|encod|encode|encoded|encodedc|encodedco|encodedcom|encodedcomm|encodedcomma|encodedcomman|encodedcommand)\\b'
@@ -150,7 +150,7 @@ src.process.cmdline matches '(?i)\\s-(e|en|enc|enco|encod|encode|encoded|encoded
 
 **Use it when** suspecting psexec / smbexec / remote Service Manager activity.
 
-```
+```text
 event.type = 'Process Creation'
 src.process.parent.name = 'services.exe'
 src.process.name in ('cmd.exe', 'powershell.exe', 'pwsh.exe')
@@ -170,7 +170,7 @@ The four backslashes match a literal `\\` in the command line (UNC prefix); see 
 
 **Use it when** investigating credential theft / lateral spread.
 
-```
+```text
 event.category = 'logins'
 event.login.loginIsSuccessful = true
 event.login.type in ('NETWORK', 'NETWORK_CLEAR_TEXT', 'REMOTE_INTERACTIVE')
@@ -190,7 +190,7 @@ event.login.type in ('NETWORK', 'NETWORK_CLEAR_TEXT', 'REMOTE_INTERACTIVE')
 
 **Use it when** triaging an authentication-failure alert.
 
-```
+```text
 event.category = 'logins'
 event.login.loginIsSuccessful = false
 | group
@@ -213,7 +213,7 @@ If `src.endpoint.ip.address` is null on a hit, fall back to the destination endp
 
 **Use it when** investigating a `CredentialDumping` indicator or a tooling alert.
 
-```
+```text
 indicator.name in ('CredentialDumping', 'LSASSAccess')
 | group
     first_seen = oldest(timestamp),
@@ -232,7 +232,7 @@ indicator.name in ('CredentialDumping', 'LSASSAccess')
 
 **Use it when** sweeping for `mimikatz`, `secretsdump`, `procdump lsass`.
 
-```
+```text
 event.type = 'Process Creation'
 (
   src.process.name in ('procdump.exe', 'procdump64.exe') and src.process.cmdline contains 'lsass'
@@ -256,7 +256,7 @@ event.type = 'Process Creation'
 
 **Use it when** investigating "logs went quiet" or a suspected post-exploitation cleanup.
 
-```
+```text
 event.type = 'Process Creation'
 (
   src.process.cmdline contains 'wevtutil cl'
@@ -277,7 +277,7 @@ event.type = 'Process Creation'
 
 **Use it when** persistence hunt.
 
-```
+```text
 event.type = 'Process Creation'
 src.process.name in ('schtasks.exe', 'powershell.exe', 'pwsh.exe')
 src.process.cmdline matches '(?i)(schtasks\\s+/create|new-scheduledtask|register-scheduledtask)'
@@ -294,7 +294,7 @@ src.process.cmdline matches '(?i)(schtasks\\s+/create|new-scheduledtask|register
 
 **Use it when** persistence hunt with registry data.
 
-```
+```text
 event.type = 'Registry Value Modified'
 registry.keyPath matches '(?i)(\\\\Run\\\\|\\\\RunOnce\\\\|\\\\RunServices\\\\)'
 | group
@@ -317,7 +317,7 @@ registry.keyPath matches '(?i)(\\\\Run\\\\|\\\\RunOnce\\\\|\\\\RunServices\\\\)'
 
 **Use it when** sweeping for low-reputation DGA-style domains.
 
-```
+```text
 event.category = 'network'
 event.type = 'DNS Resolved'
 dns.request matches '(?i)\\.(top|xyz|tk|ml|cf|gq|ga|cn)$'
@@ -334,7 +334,7 @@ dns.request matches '(?i)\\.(top|xyz|tk|ml|cf|gq|ga|cn)$'
 
 **Use it when** scoping data exfiltration / C2 beaconing for a single host.
 
-```
+```text
 event.type = 'IP Connect'
 event.network.direction = 'OUTGOING'
 endpoint.name = 'EC2AMAZ-4158GRS'
@@ -357,7 +357,7 @@ endpoint.name = 'EC2AMAZ-4158GRS'
 
 **Use it when** suspecting a C2 client. Buckets connections per 10-minute window per host+destination and computes the fraction of the query span in which the pair was active. This measures persistence (traffic in most windows), not interval regularity.
 
-```
+```text
 event.type = 'IP Connect'
 event.network.direction = 'OUTGOING'
 | filter !net_rfc1918(dst.ip.address)
@@ -378,7 +378,7 @@ event.network.direction = 'OUTGOING'
 
 **Use it when** investigating dropper / payload staging.
 
-```
+```text
 event.type in ('File Creation', 'File Modification')
 tgt.file.path matches '(?i)\\\\(Temp|AppData\\\\Local\\\\Temp|ProgramData)\\\\.+\\.(exe|dll|ps1|bat|vbs|js|hta)$'
 src.process.name in ('powershell.exe', 'pwsh.exe', 'cmd.exe', 'wscript.exe', 'cscript.exe', 'mshta.exe', 'rundll32.exe')
@@ -397,7 +397,7 @@ src.process.name in ('powershell.exe', 'pwsh.exe', 'cmd.exe', 'wscript.exe', 'cs
 
 **Use it when** hunting unfolding ransomware activity. Looks for one process touching many files quickly.
 
-```
+```text
 event.type in ('File Modification', 'File Rename')
 | group
     file_count = estimate_distinct(tgt.file.path),
@@ -420,7 +420,7 @@ event.type in ('File Modification', 'File Rename')
 
 **Use it when** wanting a high-level summary of what S1's behavioural engine has flagged.
 
-```
+```text
 indicator.category = *
 | group
     count    = count(),
@@ -436,7 +436,7 @@ indicator.category = *
 
 **Use it when** searching for activity tagged with a specific technique ID (the description field contains the mapping).
 
-```
+```text
 indicator.description contains 'T1055'
 | group
     count = count(),
@@ -458,7 +458,7 @@ indicator.description contains 'T1055'
 
 **Use it when** baselining "what runs on this host" or "what's unique to this host."
 
-```
+```text
 event.type = 'Process Creation'
 endpoint.name = 'LUCKY_NUCK'
 | group ct = count() by src.process.name
@@ -470,7 +470,7 @@ endpoint.name = 'LUCKY_NUCK'
 
 **Use it when** sweeping for non-vendor-signed code.
 
-```
+```text
 event.type = 'Process Creation'
 src.process.signedStatus in ('unsigned', 'unknown')
 | group
@@ -487,7 +487,7 @@ src.process.signedStatus in ('unsigned', 'unknown')
 
 **Use it when** scoping who's logged in where.
 
-```
+```text
 event.category = 'logins'
 event.login.loginIsSuccessful = true
 | group
@@ -505,7 +505,7 @@ event.login.loginIsSuccessful = true
 
 ### Process tree of a known bad storyline
 
-```
+```text
 src.process.storyline.id = '<storyline-id>' or tgt.process.storyline.id = '<storyline-id>'
 | sort timestamp
 | columns timestamp, event.type, src.process.name, src.process.cmdline, tgt.process.name, tgt.file.path
@@ -516,7 +516,7 @@ If pivoting from any event in a storyline, this gives you the chronological feed
 
 ### Find all events for a hash
 
-```
+```text
 #hash = '<sha256>'
 | sort timestamp
 | columns timestamp, endpoint.name, event.type, src.process.name, src.process.cmdline, tgt.file.path
@@ -527,7 +527,7 @@ If pivoting from any event in a storyline, this gives you the chronological feed
 
 **Use it when** asking "did the host with the credential-dumping alert also reach out to the internet?"
 
-```
+```text
 | inner join
     creds = (
       indicator.name = 'CredentialDumping'
@@ -555,7 +555,7 @@ If pivoting from any event in a storyline, this gives you the chronological feed
 
 ### Process creation rate per minute
 
-```
+```text
 event.type = 'Process Creation'
 | group rate = count() / queryspan('minutes') by endpoint.name
 | sort -rate
@@ -564,7 +564,7 @@ event.type = 'Process Creation'
 
 ### Hourly buckets of an indicator
 
-```
+```text
 indicator.category = 'Persistence'
 | group ct = count() by bucket = timebucket('1h')
 | sort bucket

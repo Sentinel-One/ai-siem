@@ -5,9 +5,10 @@ authorises every SentinelOne API surface this project touches, the SDL base URL
 is derived from the console URL, and every identity in the repo matches the
 `ai-siem` monorepo. Tool count unchanged at 26.
 
-Versioning: npm package **@pmoses-s1/s1-secops-mcp 1.3.1** (renamed from
-`@pmoses-s1/s1-secops-mcp`, last published as 1.2.4). Docker bundle image
-**1.3.1**, pinning `S1_MCP_VERSION=1.3.1`. Plugin **1.3.0**.
+Versioning: npm package **@pmoses-s1/s1-secops-mcp 1.3.3**. Docker bundle image
+**1.3.1**, pinning `S1_MCP_VERSION=1.3.3`. Plugin **1.3.1**. The image version and
+the npm version are independent: the image version tracks the Dockerfile, the
+dispatcher and the bundled `CLAUDE.md`; the npm version tracks the server itself.
 
 ### Breaking
 

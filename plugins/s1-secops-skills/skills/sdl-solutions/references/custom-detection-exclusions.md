@@ -69,13 +69,13 @@ A single-event rule body is one boolean S1QL expression with NO pipes, so there 
 
 Body shape (goes in `data.s1ql`):
 
-```
+```text
 <base single-event filter> AND NOT (<EXCL_FIELD> in:anycase ('<val1>','<val2>',...))
 ```
 
 Worked example (encoded PowerShell, excluding engineering accounts), tenant-validated 2026-06-24:
 
-```
+```text
 dataSource.name = 'SentinelOne' AND event.type = 'Process Creation'
 AND src.process.name in ('powershell.exe','pwsh.exe')
 AND src.process.cmdline matches '(?i)\s-(e|en|enc|enco|encod|encode|encoded|encodedc|encodedco|encodedcom|encodedcomm|encodedcomma|encodedcomman|encodedcommand)\b'
@@ -119,7 +119,7 @@ A correlation rule matches multiple events across a time window: `s1ql` stays em
 
 Sub-query body shape (each entry in `subQueries[]`):
 
-```
+```text
 <base sub-query filter> AND NOT (<EXCL_FIELD> in:anycase ('<val1>','<val2>',...))
 ```
 
@@ -161,7 +161,7 @@ If the analyst chose correlation, you are done after deploying and validating th
 A lookup join tags each candidate event with the matching exclusion-list value (or null if the
 event is not on the list). The rule then keeps only the null rows:
 
-```
+```text
 <base detection filters>
 | lookup excl = reason from <TABLE>.csv by <KEY_COL> <OP> <EVENT_FIELD>
 | filter excl = null          // kept rows had NO exclusion-list entry
@@ -275,11 +275,12 @@ Two ways, pick per the prompt:
    `sdl_put_file`. The header row names the columns; the key column is referenced by name in the
    `lookup`. A useful shape carries the match key plus context:
 
-   ```
+   ```text
    value,reason,owner,added           # custom-value list
    www.example.com,Sanctioned corporate domain,SecOps,2026-06-22
    ```
-   ```
+
+   ```text
    cidr,reason,owner,added            # asset list (IP / subnet)
    10.0.0.0/8,Internal RFC1918 client range,NetOps,2026-06-22
    1.2.3.4/32,Known vulnerability scanner,SecOps,2026-06-22
@@ -292,7 +293,7 @@ Two ways, pick per the prompt:
    example every asset tagged `scanner` in the Asset Inventory), build it with a `datasource` +
    `savelookup` query and refresh it on a schedule (Step 4). Example asset-tag list builder:
 
-   ```
+   ```text
    | datasource assets from 'surface/endpoint'
    | filter array_contains(tags, 'allowlist')
    | columns cidr = agentLastReportedIp, reason = 'Asset Inventory allowlist tag', owner = s1SiteName
@@ -314,7 +315,7 @@ anti-join. Because the STAR scheduled-rule validator accepts only `=` and `=:any
 below uses the hostname `=:anycase` asset variant. Demo body (Akamai DNS, asset list AND domain
 list chained):
 
-```
+```text
 dataSource.name='{{SOURCE}}' {{BASE_FILTER}} {{KEY_FIELD}} = *
 | lookup excl_asset = reason from {{ASSET_TABLE}} by host =:anycase device.name
 | filter excl_asset = null
@@ -444,7 +445,7 @@ deployed through the matching primitive skill. The `<prefix>` is the solution/cu
 | Correlation detection rule | `assets/exclusion_detection_correlation.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` (`queryType: correlation`) | Multi-event correlation (thresholds / sequences) with the exclusion as an inline hardcoded `AND NOT (<field> in:anycase (...))` negative list appended to each sub-query in `data.correlationParams`. `s1ql` empty, `queryLang: 2.0`. No lookup table, no dashboard. Supports mitigation. Tenant-validated 2026-07-01 |
 | Scheduled detection rule | `assets/exclusion_detection.template.json` | STAR rule via `POST /web/api/v2.1/cloud-detection/rules` (`queryType: scheduled`) | Base detection wrapped with the lookup anti-join (`\| lookup ... \| filter excl = null`). Supports `=` and `=:anycase` only |
 | CIDR/wildcard detection + UAM alert | `assets/exclusion_detection_ha_workflow.template.json` | Hyperautomation workflow (account/site scope) | Runs the `=:cidr` / `=:wildcard` exclusion the STAR validator rejects, via the SDL LRQ (launch + poll), then posts a self-contained OCSF S1 SecurityAlert (`class_uid 99602001`) to UAM with the offender mapped as indicator + asset |
-| Exclusion-effectiveness dashboard | `assets/exclusion_dashboard.template.json` | `sdl_put_file /dashboards/<prefix> Exclusions` | Total vs excluded vs net, exclusion rate, excluded over time, by list / reason / value, plus the post-exclusion threat view |
+| Exclusion-effectiveness dashboard | `assets/exclusion_dashboard.template.json` | `sdl_put_file /dashboards/<prefix> Exclusions` (create); re-deploy by `udoId` | Total vs excluded vs net, exclusion rate, excluded over time, by list / reason / value, plus the post-exclusion threat view |
 | List-refresh workflow (optional) | `assets/exclusion_refresh_workflow.template.json` | Hyperautomation workflow (account/site scope) | Nightly rebuild of a source-of-truth (savelookup) exclusion list; not needed for static analyst-supplied CSVs |
 
 Common tokens across templates: `{{PREFIX}}`, `{{SOURCE}}`, `{{BASE_FILTER}}`, `{{KEY_FIELD}}`,

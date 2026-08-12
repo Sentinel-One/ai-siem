@@ -12,7 +12,7 @@ The companion documents in this directory are tactical (cheatsheets, copy-paste 
 
 Different tenants have different data sources connected; even between sessions on the same tenant, the catalogue can drift. Never start a dashboard from a remembered list of `dataSource.name` values. Re-enumerate every session:
 
-```
+```text
 | group UniqueDataSourceNames = array_agg_distinct(dataSource.name)
 | limit 1000
 ```
@@ -100,7 +100,7 @@ Rules:
 
 When a field needed for the panel is buried inside `raw_data` (JSON envelope) rather than parsed to a structured column, the only way to filter on it is a full-text predicate against `raw_data`. Example pattern:
 
-```
+```text
 dataSource.name='<source>' event.type='<type>' '<json-snippet>'
 ```
 
@@ -155,7 +155,7 @@ When two semantically distinct event populations exist within the same `event.ty
 
 A single source can emit multiple log subtypes under the same `event.type` (policy events vs detection events, header logs vs body logs). Don't assume `event.type` partitions the source cleanly. Run a quick exploration query:
 
-```
+```text
 dataSource.name='<source>'
 | group hits=count() by event.type, <secondary-discriminator>
 | sort -hits
@@ -206,6 +206,7 @@ Each panel takes 1 to 4 seconds typical. Batch into chunks of about 10 per shell
 ### 7.3 Per-panel evidence captured
 
 For each panel, record:
+
 - `ok`: did the query execute?
 - `elapsed_s`: wall-clock time
 - `row_count`: number of result rows
@@ -236,29 +237,42 @@ The PDF must include an Appendix that lists every empty-result panel with its SO
 
 ## 8. Deployment safety
 
-### 8.1 Always read existing version before put_file
+### 8.1 Resolve the udoId, then write with a CAS guard
 
 ```python
-existing = c.get_file(path)
-res = c.put_file(path=path, content=body, expected_version=existing["version"])
+matches = [f for f in c.config_files() if f["name"] == name]
+if len(matches) > 1:
+    raise SystemExit(f"{len(matches)} copies share that name: {[m['udoId'] for m in matches]}")
+
+if matches:
+    cur = c.config_file(udo_id=matches[0]["udoId"])
+    res = c.put_config_file(udo_id=cur["udoId"], content=body, expected_version=cur["version"])
+else:
+    res = c.put_config_file(name=name, content=body)    # first create only
 ```
 
-The `expected_version` argument is a CAS guard against concurrent writes from the SDL UI or another script.
+`expected_version` is a CAS guard against concurrent writes from the SDL UI or another script, and
+is enforced on both address forms. A name-addressed write to an existing dashboard is refused
+because it creates a duplicate instead of updating.
 
 ### 8.2 Verify deployment by re-fetching
 
 ```python
-verify = c.get_file(path)
+verify = c.config_file(udo_id=udo_id)
 deployed_content = verify.get("content", "")
 assert verify.get("version") != cur_version, "version did not bump"
 assert "<canary-string-from-new-section>" in deployed_content, "deploy did not include new content"
 ```
 
-A `put_file` response of `{"status": "success"}` does not guarantee the new content was written. Always re-fetch and grep for a known canary string from the change.
+A successful write response does not guarantee the new content landed. Always re-read and grep for a known canary string from the change.
 
-### 8.3 Avoid duplicate dashboard paths
+### 8.3 Never update a dashboard by name
 
-The SDL UI's Save button writes to `/dashboards/id/<dashboardId>/<name>`. The file API can write to either that path OR the simpler `/dashboards/<name>`. Pick one canonical path before the first deploy and never mix. Each deploy to the alternate path creates a silent duplicate alongside the UI-saved copy. Recommend `/dashboards/<name>` for hand-authored dashboards and `/dashboards/id/<id>/<name>` only for files originally saved through the UI.
+`/dashboards/id/<udoId>/<name>` in the console grid is a display string, not a path; writing to it
+returns `no file exists at path`. Duplicates come from `addConfigFile(name:)` creating a copy
+rather than updating, so every name-addressed deploy adds one. Create by name once, then address
+by `udoId` for every write after that. A name can also resolve to several files, including a
+name-addressed copy alongside udoId-addressed ones, so check the match count before writing.
 
 ### 8.4 Layout coordinates accumulate
 
@@ -373,7 +387,7 @@ The fabrication was only caught when the user asked to re-verify the schemas, at
 
 This is the full endpoint device inventory, not pipeline metrics. Key confirmed fields:
 
-```
+```text
 device.agent.uuid              device.name                   device.os.{name,version,type}
 device.agent.network_status    device.agent.network_quarantine_enabled
 device.agent.is_active         device.agent.is_decommissioned   device.agent.is_uninstalled
@@ -390,7 +404,7 @@ Fields that do NOT exist in this source: `entity.uid`, `entity_result.*`, `agent
 
 This is the management console activity and Hyperautomation workflow execution log (`sca:RetentionType = 'ACTIVITY_LOG'`), not pipeline metrics. Key confirmed fields:
 
-```
+```text
 activity_type        (numeric, e.g. 9207 = workflow execution event; NOT a string)
 activity_uuid        primary_description      secondary_description
 data.workflow_id     data.workflow_name       data.workflow_execution_url
@@ -434,6 +448,7 @@ for _ in range(N):
 ```
 
 Key rules:
+
 - Never put `sleep N` inside a `start_process` call where `N * iterations > 90s`: the MCP layer will time out the whole call.
 - Write completion sentinels to the output file (`print("DONE: ...", flush=True)`) so polling can detect finish without relying on process exit alone.
 - Use `flush=True` on every progress `print()` so the output file is readable while the script is still running.
@@ -447,7 +462,7 @@ Key rules:
 
 **Slow (times out on large sources):**
 
-```
+```text
 dataSource.name='misconfiguration' severity_id=*
 | let sev = number(severity_id)
 | filter sev >= 4
@@ -457,7 +472,7 @@ dataSource.name='misconfiguration' severity_id=*
 
 **Fast (index-level predicate):**
 
-```
+```text
 dataSource.name='misconfiguration' severity_id >= 4
 | group count()
 | limit 1
@@ -511,7 +526,7 @@ renders as "No results found" even when PowerQuery confirms tens of thousands of
 
 **Fix:** replace any `plots`-based timeline panel that uses `unmapped.*` fields with a PowerQuery `stacked_bar` using `| transpose`:
 
-```
+```text
 dataSource.name='FortiGate' event.type='traffic' unmapped.action in ('deny', 'accept', 'close')
 | group count=count() by timestamp=timebucket('1h'), action=unmapped.action
 | transpose action on timestamp
@@ -525,7 +540,7 @@ The PowerQuery engine fully supports `unmapped.*` fields. The `stacked_bar` + tr
 
 The `plots` array entries must use `"facet": "count"` (no parentheses). The error when parentheses are present:
 
-```
+```text
 Couldn't load content
 field=[DashboardPlotQuery.plotIndex]
 error=[Facet for plot at index: 0 is invalid]
@@ -537,7 +552,7 @@ Older community examples and some internal docs show `"facet": "count()"`; this 
 
 Before building a panel with a field presence filter, confirm the field is actually populated:
 
-```
+```text
 dataSource.name='FortiGate' event.type='app-ctrl' app_name=*
 | group count=count()
 | limit 1
@@ -552,6 +567,7 @@ If this returns 0, every panel using `app_name=*` as a filter will return nothin
 The SDL UI renders the `"title"` string as the panel header. Any heading prefix (`##`) embedded in the `title` field produces raw markup in the panel header, and if the same heading also opens the `"markdown"` body, the heading appears twice.
 
 **Wrong pattern (causes doubled heading):**
+
 ```json
 {
   "title": "## Policy Enforcement Intelligence",
@@ -561,6 +577,7 @@ The SDL UI renders the `"title"` string as the panel header. Any heading prefix 
 ```
 
 **Correct pattern:**
+
 ```json
 {
   "title": "Policy Enforcement Intelligence",
@@ -579,7 +596,7 @@ Security operations dashboards (firewall visibility, threat triage, VPN health, 
 
 When mapping a numeric code field to a human-readable label (e.g. protocol numbers to names), use ternary `?:` chaining, not `if()`:
 
-```
+```text
 | let proto = connection_info.protocol_num='6' ? 'TCP'
             : connection_info.protocol_num='17' ? 'UDP'
             : connection_info.protocol_num='1' ? 'ICMP'
@@ -592,7 +609,7 @@ When mapping a numeric code field to a human-readable label (e.g. protocol numbe
 
 `traffic.bytes_in` and `traffic.bytes_out` on FortiGate events are string-typed at the index level. Arithmetic without `number()` returns NaN silently:
 
-```
+```text
 | let b_out = number(traffic.bytes_out)
 | group gb_sent = sum(b_out) / 1073741824
 ```
@@ -620,7 +637,7 @@ The root cause of the `unmapped.srcip` miss: schema discovery was performed agai
 
 Minimum check before authoring any panel that uses a shared field like `src_endpoint.ip`:
 
-```
+```text
 dataSource.name='FortiGate' event.type='vpn' src_endpoint.ip=*
 | group count=count()
 | limit 1
@@ -638,7 +655,7 @@ Pass 1: use `{regex=\\S+}` (non-whitespace) to capture the entire quoted value i
 
 Pass 2: use `{regex=[A-Z0-9./_-]+}` (or appropriate character class) to extract just the clean value from the quoted string, skipping the leading `"`.
 
-```
+```text
 | parse "app=$raw_app{regex=\\S+}$" from message
 | parse "$app_name{regex=[A-Z0-9./_-]+}$" from raw_app
 ```

@@ -8,7 +8,7 @@ supplied by the human operator; do not hard-code, echo, or store it.
 
 ## Endpoint
 
-```
+```text
 POST /web/api/v2.1/hyper-automate/api/v1/connections?siteIds=<id>     (or ?accountIds=<acct>)
 ```
 

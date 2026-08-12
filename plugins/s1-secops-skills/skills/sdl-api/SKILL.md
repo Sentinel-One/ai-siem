@@ -1,7 +1,7 @@
 ---
 name: sdl-api
 author: Prithvi Moses <prithvi.moses@sentinelone.com>
-description: Use whenever the user wants to read data and manage configuration through the SentinelOne Singularity Data Lake (SDL) API: run queries or manage configuration files (parsers, dashboards, alerts, lookups, datatables) on a Scalyr/SDL/XDR tenant. Trigger on "SDL", "SDL API", "Singularity Data Lake", "Scalyr", "DataSet", or any "*.sentinelone.net/sdl/api/*" URL, and on the method names "query", "powerQuery", "facetQuery", "timeseriesQuery", "numericQuery", "getFile", "putFile", "listFiles". Also trigger on tasks like "run a powerQuery", "list configuration files", "edit my parser via API", "deploy a dashboard JSON", "compute the rate of failures over time", or anything involving SDL Bearer-token auth or the S1-Scope header. Wraps every SDL method with a Python client and CLI.
+description: Use whenever the user wants to read data and manage configuration through the SentinelOne Singularity Data Lake (SDL) API: run queries or manage configuration files (parsers, dashboards, alerts, lookups, datatables) on a Scalyr/SDL/XDR tenant. Trigger on "SDL", "SDL API", "Singularity Data Lake", "Scalyr", "DataSet", or any "*.sentinelone.net/sdl/api/*" URL, and on the method names "query", "powerQuery", "facetQuery", "timeseriesQuery", "numericQuery", "configFiles", "configFile", "addConfigFile", "deleteConfigFile", "getFile", "putFile", "listFiles". Also trigger on "udoId", "config file", "/sdl/v2/graphql", or a console display string of the form "/dashboards/id/{number}/{name}". Also trigger on tasks like "run a powerQuery", "list configuration files", "edit my parser via API", "deploy a dashboard JSON", "compute the rate of failures over time", or anything involving SDL Bearer-token auth or the S1-Scope header. Wraps every SDL method with a Python client and CLI.
 ---
 
 # SentinelOne SDL API
@@ -25,7 +25,54 @@ The query methods on this skill (`query`, `powerQuery`, `facetQuery`, `timeserie
 | PowerQuery programmatically (any range) | **`mgmt-console-api`** → LRQ at `POST /sdl/v2/api/queries` on console host |
 | Dashboard panel queries | SDL console renders them in-browser: no API needed |
 | Quick one-off stats under 24h (deprecated) | V1 methods on this skill still work until 2027-02-15 |
-| `get_file` / `put_file` / `list_files` (parsers, dashboards, lookups) | **This skill** |
+| `get_file` / `put_file` / `list_files` (parsers, dashboards, lookups) | **This skill**, via GraphQL, see below |
+
+## STOP: config files are GraphQL, not the REST `/api/*File` endpoints
+
+`POST /sdl/v2/graphql` is the canonical config-file surface. The legacy REST endpoints
+(`/api/listFiles`, `/api/getFile`, `/api/putFile`) are **incomplete** and must not be used to
+decide whether a file exists.
+
+Measured live on `usea1-purple`: REST `listFiles` returned **1,914** paths, GraphQL
+`configFiles` returned **2,264**. The entire 350-file gap is `/dashboards/` files that carry a
+`udoId`, and REST `getFile` on any of them returns `success/noSuchFile`.
+
+**Tripwire, non-negotiable.** If a file is not found by name, or a listing count disagrees with
+what the console shows, do **not** conclude the file is absent. The REST listing is incomplete by
+design. Re-check with `configFiles` before reporting "not found". A count in the 1,900s when the
+console says 2,200-plus means you used the wrong surface.
+
+### The `udoId` rule
+
+The console's Configuration Files grid displays a dashboard as:
+
+```text
+/dashboards/id/6554761743556608/AI Usage
+              ^^^^^^^^^^^^^^^^ this is the udoId, NOT a path segment
+```
+
+That display string is not a path. Reading it as one returns `no file exists at path`. Pass
+`6554761743556608` as `udoId`; the file's real `name` is `/dashboards/AI Usage`.
+
+`udoId` assignment is by **namespace** (verified live): only `/dashboards/` files get one.
+`/lookups/`, `/datatables/`, `/logParsers/` and `/automaticLookups` all return `udoId: null` and
+are addressed by name.
+
+| Namespace | Address by | Write by name updates in place? |
+|---|---|---|
+| `/dashboards/` | `udoId` | **No, it creates a duplicate** |
+| `/lookups/`, `/datatables/`, `/logParsers/`, `/automaticLookups` | `name` | Yes |
+
+### Never write a dashboard by name
+
+`addConfigFile(name:)` **updates in place** for a name-addressed file but **creates a duplicate**
+for a dashboard. Create a dashboard by name once (there is no `udoId` yet), then address it by
+`udoId` forever after. Skipping this is how one tenant accumulated **152 copies** of
+`/dashboards/AI Usage` and 256 surplus dashboard files overall.
+
+`expectedVersion` is enforced on **both** address forms; a stale value is rejected with
+"There are conflicting changes in the file." and the stored content is left untouched. A
+`deleteConfigFile` returning `null` with no `errors` array is **success**, not failure.
 
 ## Setup: configure credentials first
 
@@ -33,7 +80,7 @@ Drop a `credentials.json` file directly into your Cowork project folder with the
 
 ```json
 {
-  "S1_CONSOLE_API_TOKEN": "eyJ...your-token...",
+  "S1_CONSOLE_API_TOKEN": "eyJ...your-token..."
 }
 ```
 
@@ -53,8 +100,8 @@ Before running anything, confirm `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are
 
 When the user asks for something involving the SDL API:
 
-1. **Pick the method.** Check `references/methods.md` for the right call. For **configuration files** (`get_file`, `put_file`, `list_files`), this skill is the right tool. Raw-log ingestion is via HEC (see `mgmt-console-api`). For **queries**, use the V1 methods on this skill only for quick one-off stats under 24h; for anything programmatic or multi-day, switch to the **`mgmt-console-api`** skill and the LRQ API, LRQ is NOT available on the SDL config/query surface.
-2. **Use the client.** `from sdl_client import SDLClient` then call the named method (`query`, `power_query`, `facet_query`, `timeseries_query`, `numeric_query`, `list_files`, `get_file`, `put_file`). The client picks the correct key, handles JSON encoding, retries 429/5xx/`error/server/backoff`, and returns parsed JSON. Note: `query` and `power_query` hit the deprecated V1 endpoints; they work until 2027-02-15 for quick lookups but should not be used for production query pipelines.
+1. **Pick the method.** Check `references/methods.md` for the right call. For **configuration files**, this skill is the right tool, but use the **GraphQL** methods (`config_files`, `config_file`, `put_config_file`, `delete_config_file`), not the legacy REST ones, see the STOP section above and `references/config-file-graphql.md`. Raw-log ingestion is via HEC (see `mgmt-console-api`). For **queries**, use the V1 methods on this skill only for quick one-off stats under 24h; for anything programmatic or multi-day, switch to the **`mgmt-console-api`** skill and the LRQ API, LRQ is NOT available on the SDL config/query surface.
+2. **Use the client.** `from sdl_client import SDLClient` then call the named method (`query`, `power_query`, `facet_query`, `timeseries_query`, `numeric_query`, `config_files`, `config_file`, `put_config_file`, `delete_config_file`). The client picks the correct key, handles JSON encoding, retries 429/5xx/`error/server/backoff`, and returns parsed JSON. Note: `query` and `power_query` hit the deprecated V1 endpoints; they work until 2027-02-15 for quick lookups but should not be used for production query pipelines.
 3. **For ad-hoc shots, use the CLI.** `python scripts/sdl_cli.py <method> [args]`. The CLI mirrors the client.
 4. **Summarize for the user.** Don't dump raw JSON unless asked. For query results, prefer a concise table or CSV; for ingestion, confirm `bytesCharged` and the session ID; for config files, show path + version + (truncated) content.
 
@@ -189,14 +236,22 @@ ts = c.timeseries_query(queries=[
     {"filter": "serverHost contains 'frontend'", "function": "count", "startTime": "1h", "buckets": 60}
 ])
 
-# ---- Configuration files ----
+# ---- Configuration files (GraphQL) ----
 # Parsers live under /logParsers/<name>: the SDL API also accepts /parsers/<name>
-# but the Log Parsers UI only reads /logParsers/, so PUTs at /parsers/ are invisible
+# but the Log Parsers UI only reads /logParsers/, so writes at /parsers/ are invisible
 # in the console. Use /logParsers/<name> by default.
-files = c.list_files()                        # {"status":"success","paths":["/foo", ...]}
-parser = c.get_file("/logParsers/MyParser")   # {"status":"success","content":"...","version":7,...}
-c.put_file("/logParsers/MyParser", content="// new parser body")
-c.put_file("/logParsers/Stale", delete=True)
+files = c.config_files()                      # [{"udoId":..., "name":"/foo", "version":7}, ...]
+
+# Name-addressed files (/logParsers/, /lookups/, /datatables/, /automaticLookups)
+parser = c.config_file(name="/logParsers/MyParser")   # {"name":..., "content":"...", "version":7, ...}
+c.put_config_file(name="/logParsers/MyParser", content="// new parser body",
+                  expected_version=parser["version"])
+c.delete_config_file(name="/logParsers/Stale", expected_version=7)
+
+# Dashboards are addressed by udoId: a name-addressed write creates a duplicate
+dash = c.config_file(udo_id="96200328708096")
+c.put_config_file(udo_id=dash["udoId"], content=new_dashboard_json,
+                  expected_version=dash["version"])
 ```
 
 ## Authentication
@@ -221,10 +276,11 @@ For long-running ingest, use the binary truncated exponential backoff loop in `r
 
 ## Destructive actions: confirm first
 
-`put_file(delete=True)` and `put_file(content=...)` overwriting an existing path can wipe a parser, dashboard, alert, or lookup table. Before any `putFile` write or delete:
+`delete_config_file(...)` and `put_config_file(content=...)` overwriting an existing file can wipe a parser, dashboard, alert, or lookup table. Before any config-file write or delete:
 
-- Run `get_file` first to read current `version` and content. Pass that version as `expected_version` on the write to fail-fast on a concurrent edit (`error/client/versionMismatch`).
-- For deletes, summarise the path and last-modified date and get explicit confirmation.
+- Run `config_file(...)` first to read current `version` and content. Pass that version as `expected_version` on the write to fail-fast on a concurrent edit; a stale value is rejected with "There are conflicting changes in the file." on both address forms.
+- Address a dashboard by `udo_id`. A name-addressed write to an existing `/dashboards/` file creates a duplicate rather than updating it.
+- For deletes, summarise the file name (and `udoId` for a dashboard) and get explicit confirmation. A `delete_config_file` returning `null` with no `errors` array is success.
 - Keep a backup in the working directory before overwriting non-trivial parsers or dashboards.
 
 There is no undo. Configuration files are versioned but accidental deletes still take effect immediately.
@@ -232,8 +288,8 @@ There is no undo. Configuration files are versioned but accidental deletes still
 ## Common high-value workflows
 
 - **Hunt with PowerQuery.** Use the **`mgmt-console-api`** skill, which holds the LRQ runner at `POST /sdl/v2/api/queries` on your console host. LRQ is NOT reachable via the SDL API (`xdr.us1.sentinelone.net`). This skill's `c.power_query()` hits the deprecated V1 endpoint and should only be used for a quick ad-hoc one-off before 2027-02-15.
-- **Promote a parser/dashboard.** `get_file("/logParsers/Foo")` from staging → `put_file("/logParsers/Foo", content=..., expected_version=N)` on production. The `expected_version` guard catches concurrent edits. (Parser path is `/logParsers/`, `/parsers/` is API-accepted but not UI-visible.)
-- **Audit configuration drift.** `list_files()` then `get_file()` for each path; diff against a checked-in copy.
+- **Promote a parser/dashboard.** `config_file(name="/logParsers/Foo")` from staging → `put_config_file(name="/logParsers/Foo", content=..., expected_version=N)` on production. The `expected_version` guard catches concurrent edits. (Parser path is `/logParsers/`, `/parsers/` is API-accepted but not UI-visible.) Promote a dashboard by `udo_id` on the target tenant, creating it by name only the first time.
+- **Audit configuration drift.** `config_files()` then `config_file(name=...)` for each name-addressed file and `config_file(udo_id=...)` for each dashboard; diff against a checked-in copy.
 - **Quick stats panel.** `facet_query(field="srcIp", filter="status >= 500", start_time="1h")` returns the top offenders fast.
 
 For complex hunts and detection authoring use the `powerquery` skill for the query body, then call `c.power_query()` from this skill to execute it. For Mgmt Console resources (agents, threats, sites) use `mgmt-console-api`.
@@ -259,3 +315,11 @@ This is not a credential issue. Do not widen time windows or change query logic 
 - **Singularity Threat Intelligence IOC matching, ingest requirements:** for a HEC-ingested OCSF event to be eligible for a TI match it must (1) carry `metadata.version` with any non-empty value, this is the only "is OCSF" check the TI engine performs, it does NOT validate the full OCSF schema; (2) be ingested with `dataSource.category=security` (see above); and (3) carry the IOC value in the OCSF field the engine matches on, for an IP IOC that is `src_endpoint.ip` (also checks `dst_endpoint.ip`). A match generates a NEW event with `dataSource.name='Threat Intelligence'` and `metadata.labels[0]='s1_threat_intelligence_indicator'`; the event Name is the source data-source name. Matching is asynchronous, allow several minutes before querying for the match log.
 - **Backdating:** a top-level `time` field in **epoch SECONDS** backdates the event; a nested `event.time` (ms) does NOT. `isParsed=true` indexes the JSON keys directly as top-level attributes, so the field names you ingest are the field names you query (source-agnostic, no OCSF mapping needed).
 - **Query-time timestamp:** on HEC `isParsed` events `event.time` is NOT populated; the queryable event time is `timestamp` (epoch NANOSECONDS). Use `timestamp` for `newest()/oldest()`, `strftime()` hour-of-day, and time math; convert to ms with `number(ts)/1000000`.
+- **⚠ Back-dated events ALSO produce receive-time "shadow" copies. Known platform defect, do not go looking for a bug in your ingest code.** A POST with a back-dated top-level `time` indexes correctly at the requested timestamp AND writes one or more extra copies stamped at ingest time. The shadows carry the URL-supplied `dataSource.name` / `dataSource.vendor` but NOT the JSON body fields, so they are invisible to `field = *` filters and show up only in unfiltered counts. Full reproduction and impact analysis: `SUPPORT_TICKET_HEC_shadow_copies.md` at the repo root (observed 2026-07-29, re-confirmed 2026-08-09).
+
+  Consequences when building synthetic test data:
+  - Any count over a window that spans "now" is inflated. Volume baselines, ingest-health analytics and dashboards summing across the ingest moment double-count.
+  - A source you deliberately left EMPTY in the live window will not read as empty, so a detection requiring zero live events (e.g. a SILENT / anti-join watchdog) cannot be validated this way.
+  - Scale seen: a source sent 430 back-dated events and nothing live read ~500 events in the trailing 24h. It is not proportional to batch size and is unaffected by payload shape.
+  - **Already eliminated as causes, do not re-test these:** envelope vs flat payload, `isParsed` on/off, chunk size (100 vs 500), run-tag field name, timestamp recency, and same-source vs cross-source concurrency. All four payload forms behave identically.
+  - Workaround for assertions: tag every event you post and count with `<tag> = *`, which excludes shadows because they carry no body fields. Only use unfiltered counts when you specifically need what a DETECTION sees, and expect them to be inflated.

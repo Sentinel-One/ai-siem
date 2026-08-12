@@ -274,6 +274,7 @@ Algorithms: `sha1`, `sha256`. Output is lowercase hex with no `0x` prefix.
 Supports `$1`…`$n` backreferences. Unchanged if no match.
 
 > **Two confirmed traps (tenant-validated 2026-06-01).**
+>
 > 1. The regex key is **`regexp`**, NOT `pattern`. A `pattern` key returns `400: Missing required key 'regexp'` on `putFile`. (`reduce_array { kind: "find", regexp: ... }` uses the same `regexp` key, be consistent.)
 > 2. Even with the correct `regexp` key, the `replace` mapper op was observed to be a **runtime no-op** on this tenant; it passes schema validation and deploys, but the field value is unchanged at ingest (tested on both a dotted target like `process.cmd_line` and a flat scratch field). If your `replace` "succeeds" but the data is untransformed, this is why. The working substitute is a **`computeFields` rewrite** on the format that captures the field, calling the PowerQuery `replace(field, regex, replacement)` string function (PowerQuery string literals are single-quoted, so a double-quote inside the regex needs no escaping): `expression: "| let _cmdline = replace(_cmdline, 'a[0-9]+=\"([^\"]*)\"', '$1')"`. Capture into a flat scratch field, clean it with computeFields, then `rename` it to the dotted OCSF target. See `examples/12-linux-auditd-ocsf.json` (EXECVE arg vector → `process.cmd_line`).
 

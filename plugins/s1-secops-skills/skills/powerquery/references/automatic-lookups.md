@@ -55,7 +55,7 @@ These were verified live while building the Windows Event Logs SID enrichment (u
 
 1. **Output value field names must be globally unique across ALL `lookupSpecs`.** Two specs writing the same output field (even when keyed on different event fields) returns:
 
-   ```
+   ```text
    HTTP 400: Syntax error at position -1: Output value fields are not unique
    ```
 
@@ -143,7 +143,7 @@ After deploy, any matching event gains the searchable fields `sid_username`, `si
 
 **1. Automatic lookup, no command.** The injected fields appear for free. Keep a presence check on the keyed field or most rows are null:
 
-```
+```text
 dataSource.name='Windows Event Logs' winEventLog.data.event.eventData.subjectUserSid=*
 | columns sid=winEventLog.data.event.eventData.subjectUserSid,
           native_user=winEventLog.data.event.eventData.subjectUserName,
@@ -153,7 +153,7 @@ dataSource.name='Windows Event Logs' winEventLog.data.event.eventData.subjectUse
 
 **2. Explicit `lookup` against the CSV.** Table name keeps the `.csv`; the `by` direction is `lookupTableColumn = eventField`:
 
-```
+```text
 dataSource.name='Windows Event Logs' winEventLog.data.event.eventData.subjectUserSid=*
 | lookup username, domain, account_type from sid_username.csv by sid = winEventLog.data.event.eventData.subjectUserSid
 | columns sid=winEventLog.data.event.eventData.subjectUserSid, username, domain, account_type
@@ -162,7 +162,7 @@ dataSource.name='Windows Event Logs' winEventLog.data.event.eventData.subjectUse
 
 **3. `lookup` after `group` (best practice, resolves once per SID):**
 
-```
+```text
 dataSource.name='Windows Event Logs' winEventLog.data.event.eventData.subjectUserSid=*
 | group cnt=count() by sid=winEventLog.data.event.eventData.subjectUserSid
 | lookup username, domain, account_type from sid_username.csv by sid = sid
@@ -181,7 +181,7 @@ dataSource.name='Windows Event Logs' winEventLog.data.event.eventData.subjectUse
 
 ## Deploying via the SDL API
 
-```
+```text
 1. sdl_get_file '/automaticLookups'                  -> capture current `version`
 2. sdl_put_file '/datatables/<name>.csv'             -> new lookup table (omit expectedVersion when creating)
 3. sdl_put_file '/automaticLookups'                  -> pass expectedVersion = version from step 1

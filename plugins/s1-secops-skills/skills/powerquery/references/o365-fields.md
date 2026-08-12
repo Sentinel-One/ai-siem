@@ -21,7 +21,7 @@ M365 audit events arrive as a hybrid: a thin layer of OCSF-normalized scalars on
 
 ## Discovery recipe (run this first)
 
-```
+```text
 // 1. Confirm the source string and event volume on this tenant.
 | group ct=count() by dataSource.name | sort -ct | limit 50
 
@@ -40,7 +40,7 @@ If `<candidate_field>` returns mostly nulls or "Unknown", it's not the right fie
 
 A common pattern, **not a contract**: many M365 fields exist in both an OCSF-normalized form (often empty) and an `unmapped.*` form (often populated, mirroring the upstream audit JSON key). When in doubt, write the filter against both with `OR`, then narrow once discovery confirms which is real on this tenant:
 
-```
+```text
 dataSource.name='<m365_source>'
 (<ocsf_user_field> contains:anycase 'user@example.com'
  OR <unmapped_user_field> contains:anycase 'user@example.com')
@@ -62,7 +62,7 @@ Two strategies for hunting on blob-only fields:
 
 Outbound mail on M365 spans several operation values across workloads. The set is not fixed across parser versions; discover the actual operation strings on this tenant, then filter on the discovered set:
 
-```
+```text
 dataSource.name='<m365_source>'
 | group ct=count() by <operation_field>
 | sort -ct | limit 50
@@ -74,7 +74,7 @@ Conceptually you'll typically see at minimum: a per-user mailbox send, a delegat
 
 M365 audit records carry an integer category code. The exact integer-to-category mapping is documented by Microsoft and is stable across tenants; the field name carrying it on the SDL side is the variable part. Discover the field name once, then use the integer for cheap pre-filters:
 
-```
+```text
 // discover the field name carrying the M365 RecordType integer
 dataSource.name='<m365_source>' | limit 1 | columns *
 
@@ -88,7 +88,7 @@ If a human-readable category column is needed, build a small lookup table (`save
 
 Client IP fields on M365 audit events are dominated by Microsoft service-tier traffic. Any "top external IPs" or "unique source IPs" analysis without a service-tier exclusion produces a meaningless ranking. The exact prefix set drifts and varies by tenant geography; **build the exclusion list from this tenant's data**, not from a hardcoded list:
 
-```
+```text
 // 1. Pull the top client IPs without filtering.
 dataSource.name='<m365_source>'
 | group ct=count() by <client_ip_field>
@@ -116,7 +116,7 @@ Searching SDL for an identity string returns two interleaved record sets:
 
 Always partition the result set on `dataSource.name` presence and report the two as separate quantities. The SDL audit trail of prior investigations is itself a finding (it tells you the subject has been investigated before), but it is not subject activity:
 
-```
+```text
 * contains 'user@example.com'
 | let category = (dataSource.name = *) ? 'subject_activity' : 'investigation_noise'
 | group ct=count() by category
@@ -124,7 +124,7 @@ Always partition the result set on `dataSource.name` presence and report the two
 
 To inspect what the investigation-noise records actually look like on this tenant, drill in:
 
-```
+```text
 * contains 'user@example.com'
 | filter !(dataSource.name = *)
 | limit 5 | columns *
@@ -134,7 +134,7 @@ To inspect what the investigation-noise records actually look like on this tenan
 
 When a user's email shows up frequently under `* contains '<email>'` but returns zero rows when filtered as actor, three interpretations are possible: the mailbox isn't ingested (coverage gap), the entity is external (only appears as a recipient or in message content), or the active UPN differs from the address you're searching for. Run both queries; if the first returns rows and the second returns zero, frame the result as one of those three, not as "no activity".
 
-```
+```text
 // Does the address appear anywhere?
 * contains 'user@example.com'
 | group ct=count() by event.type

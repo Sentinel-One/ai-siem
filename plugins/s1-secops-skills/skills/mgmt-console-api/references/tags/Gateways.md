@@ -3,15 +3,17 @@
 3 endpoints.
 
 ## `GET /web/api/v2.1/ranger/gateways`
+
 **Get Gateways**
 `operationId`: `_web_api_ranger_gateways_get`
 
-Get the gateways in your deployment that match the filter from a Network Discovery scan. 
+Get the gateways in your deployment that match the filter from a Network Discovery scan.
 Network Discovery requires a Network Discovery license.
 
 Required permissions: `Ranger.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -82,6 +84,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/ranger/gateways/update`
+
 **Update Gateways**
 `operationId`: `_web_api_ranger_gateways_update_post`
 
@@ -90,11 +93,13 @@ Change the status of filtered gateways discovered by Network Discovery. You can 
 Required permissions: `Ranger.manageDiscoveredNetworks`
 
 Parameters:
-- `body` [body, ranger.gateway_schema_PostUpdateGatewayData]: 
+
+- `body` [body, ranger.gateway_schema_PostUpdateGatewayData]:
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/ranger/gateways/{gateway_id}`
+
 **Update Gateway**
 `operationId`: `_web_api_ranger_gateways_{gateway_id}_put`
 
@@ -103,7 +108,8 @@ Change the Network Discovery scan configuration for a gateway that Network Disco
 Required permissions: `Ranger.manageDiscoveredNetworks`
 
 Parameters:
+
 - `gateway_id` [path, string] **required**: Gateway ID. Example: "225494730938493804".
-- `body` [body, ranger.gateway_schema_PutGatewayData]: 
+- `body` [body, ranger.gateway_schema_PutGatewayData]:
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

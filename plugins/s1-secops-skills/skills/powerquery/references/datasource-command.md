@@ -8,7 +8,7 @@ lookup table).
 
 Source: SentinelOne Community article 000012487, plus behaviours validated on `usea1-purple` (2026-06-13).
 
-```
+```text
 | datasource <datasource_name>
 | datasource <datasource_name> from <dataset>
 ```
@@ -50,7 +50,7 @@ and `<report_name>` (raw rows for one report; list names via the `reports` datas
 Columns vary per source and per dataset. Run the command with a small `limit` to see the
 available column set, then filter on those columns:
 
-```
+```text
 | datasource misconfigurations | limit 5
 | datasource misconfigurations | filter environment = 'AWS'
 ```
@@ -95,7 +95,7 @@ A saved lookup datatable can be up to **150 MB per table**, so a `savelookup` bu
 high `| limit` for large inventories. The much smaller 100,000-row (unvalidated) / 5 MB / 50-column cap applies only
 to tables registered as automatic lookups, not to explicit `| lookup` or `dataset` reads.
 
-```
+```text
 // Identity enrichment table, keyed on samAccountName, empties suppressed
 | datasource assets from 'surface/identity'
 | filter resourceType = 'AD User'
@@ -136,7 +136,7 @@ returned `device_os` "Windows 11 Pro", `device_criticality` "high"; `adm.webb` r
 Do not use `compare timeshift(queryspan())` or `timebucket(...)` on a raw `datasource` query.
 Use the aggregated-snapshot datasources, which carry a `snapshotDate`:
 
-```
+```text
 | datasource alert_aggregated_snapshots
 | group count=sum(findingCount) by severity, timestamp=snapshotDate
 | transpose severity
@@ -151,7 +151,7 @@ The `metering` datasource exposes Usage Metering reports for cost, usage, and (f
 - **Datasets:** `tenants` (tenants you can see), `reports` (available report names with metadata), and `<report_name>` for the raw rows of one report (e.g. `server_endpoints`). Always list report names via `from 'reports'` first; the set is tenant- and permission-dependent.
 - **Drilldown filter:** append normal PQ after the generator to post-process the rows the metering backend returns, exactly as the UI drilldowns do:
 
-```
+```text
 | datasource 'metering' from 'server_endpoints'
 | filter endpoint_bundle in ('Core', 'Complete')
 ```
@@ -160,7 +160,7 @@ The `metering` datasource exposes Usage Metering reports for cost, usage, and (f
 
 ## Example queries
 
-```
+```text
 // Total alerts in the current inventory snapshot. (`compare timeshift(...)`
 // is not valid on a raw datasource query; for a time series use
 // `alert_aggregated_snapshots`, see "Time series" above.)

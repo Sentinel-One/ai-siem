@@ -21,7 +21,7 @@ set -euo pipefail
 IMAGE_VERSION="${IMAGE_VERSION:-1.3.1}"
 
 # ── Pinned MCP versions ──────────────────────────────────────────────────────
-S1_MCP_VERSION="${S1_MCP_VERSION:-1.3.1}"
+S1_MCP_VERSION="${S1_MCP_VERSION:-1.3.3}"
 VT_MCP_PACKAGE="${VT_MCP_PACKAGE:-@burtthecoder/mcp-virustotal}"
 VT_MCP_VERSION="${VT_MCP_VERSION:-1.0.21}"
 # purple-mcp v0.7.0 (2026-06-26). Pinned to the release commit, not a floating

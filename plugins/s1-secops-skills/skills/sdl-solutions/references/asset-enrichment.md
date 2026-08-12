@@ -63,7 +63,7 @@ Cloud, confirm the real source columns first with `| datasource <name> [from <da
 (field names vary by tenant), then map them into the builder. The aggregate sources
 (vulnerabilities, misconfigurations, alerts) group to one row per asset before savelookup:
 
-```
+```text
 | datasource vulnerabilities
 | filter assetName = *
 | group vuln_open_count = count(),
@@ -106,7 +106,7 @@ table upkeep, so this is not a manual step.
 join live against it with no stored table. `join` must be the FIRST command, so both sides are
 subqueries:
 
-```
+```text
 | join (dataSource.name='<source>' hostname=* | columns timestamp, hostname, username),
        (| datasource assets from 'surface/endpoint'
           | filter name = * | columns hostname=name, device_os=os, device_site=s1SiteName, device_crit=assetCriticality)
@@ -196,11 +196,11 @@ all specs.
 Ingest a sample whose hostname and username exist in the tables, with the parser bound via the
 HEC sourcetype, then query back:
 
-```
+```text
 hostname=<known host> username=<known user> action=logon outcome=success
 ```
 
-```
+```text
 dataSource.name = '{{DATASOURCE_NAME}}'
 | sort -timestamp | limit 10
 | columns timestamp, metadata.version, {{HOSTNAME_FIELD}}, {{USERNAME_FIELD}},

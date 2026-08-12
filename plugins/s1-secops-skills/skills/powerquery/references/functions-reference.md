@@ -49,7 +49,7 @@ These are element-wise; don't confuse with the `min()` / `max()` aggregation fun
 
 Strings support `.method()` chaining: `len(x)` → `x.len()`, `substr(x, y, z)` → `x.substr(y, z)`. Drop the first (string) argument.
 
-```
+```text
 | limit 1
 | columns s = "three blind mice"
 | columns mice_len = s.substr(12).len()
@@ -61,7 +61,7 @@ Strings support `.method()` chaining: `len(x)` → `x.len()`, `substr(x, y, z)` 
 
 Printf-style; up to 50 values.
 
-```
+```text
 | let line = format("%,d events for %s (%.2f%%)", ct, endpoint, ratio * 100)
 ```
 
@@ -84,7 +84,7 @@ Flags (between `%` and the letter): `-` left-justify, `+` force sign, ` ` (space
 
 `json_object_value(obj, "field")`, parse a JSON string, return the named field's value. Returns a primitive or an array of strings.
 
-```
+```json
 | columns obj = '{"users":[{"name":"A"},{"name":"B"}]}'
 | let users = json_object_value(obj, "users")
 | let first_user = array_get(users, 0)
@@ -123,6 +123,7 @@ See [commands-reference §4](commands-reference.md#4-group) for the full list. T
 `avg(x)` is the group mean and `stddev(x)` is the sample standard deviation; percentiles support `p10/p50/p90/p95/p99/p999` and the general `pct(N, x)`. Tenant-validated.
 
 **Avoid** on general tenants (return 500 error on this deployment even though docs list them):
+
 - `percentile(x, N)`: use `p50` / `p95` / `p99` instead.
 - `first(x)` / `last(x)`: use `min_by(x, timestamp)` / `max_by(x, timestamp)`. These are more explicit and always work.
 
@@ -140,7 +141,7 @@ These operate over the already-computed result set and add a value per row.
 
 Useful for Pareto-style "top contributors" reports:
 
-```
+```text
 | group ct = count() by endpoint.name
 | sort -ct
 | let share_pct = percent_of_total(ct), running_share = running_percent(ct)
@@ -181,7 +182,7 @@ Array functions are only in PowerQueries (not alerts). Arrays cap at 8 MB. Creat
 
 `func(args) -> expression`. No nesting.
 
-```
+```text
 tgt.file.size = *
 | group sizes = array_agg(tgt.file.size) by endpoint.name
 | let big_files = sizes.filter(func(x) -> x > 1_000_000)
@@ -236,7 +237,7 @@ Timestamps are stored as nanoseconds since epoch. Any numeric field named `times
 | `queryend([unit])` | End of query window |
 | `queryspan([unit])` | Length of query window |
 
-```
+```text
 // "events per minute" rate
 indicator.category = *
 | group rate = count() / queryspan('minutes') by endpoint.name

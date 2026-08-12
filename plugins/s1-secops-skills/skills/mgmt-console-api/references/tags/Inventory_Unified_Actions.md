@@ -3,6 +3,7 @@
 3 endpoints.
 
 ## `POST /web/api/v2.1/xdr/assets/actions/fetch-agent-ids`
+
 **Loads all agent ids for the unified actions**
 `operationId`: `_web_api_xdr_assets_actions_fetch-agent-ids_post`
 
@@ -11,6 +12,7 @@ Loads all agent ids for the unified actions
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -119,7 +121,7 @@ Parameters:
 - `serialNumber__nin` [query, array]: The serial number (not in)
 - `agentDecommissioned` [query, array]: Whether the agent is decommissioned
 - `agentSubscribeOnDt__between` [query, string]: The agent subscribe time
-- `onPremisesDistinguishedName__contains` [query, array]: 
+- `onPremisesDistinguishedName__contains` [query, array]:
 - `expirationTime__between` [query, array]: Expiration Time
 - `domain__contains` [query, array]: The domain
 - `osNameVersion__contains` [query, array]: The OS names and versions
@@ -157,7 +159,7 @@ Parameters:
 - `adsEnabled` [query, array]: ADS Enabled
 - `rangerTagsKey__nin` [query, array]: The ranger tags key (not in)
 - `encryptionType` [query, array]: The encryption type
-- `onPremisesSecurityIdentifier__contains` [query, array]: 
+- `onPremisesSecurityIdentifier__contains` [query, array]:
 - `agentLocation` [query, array]: The agent location
 - `agentPendingActions__nin` [query, array]: The agent pending actions (not in)
 - `id__in` [query, array]: The ID
@@ -311,11 +313,12 @@ Parameters:
 - `enabled` [query, array]: Whether the Identity Group is enabled or not
 - `userPrincipalName__nin` [query, array]: The User Principal Name (not in)
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.unified_actions.schemas_AffectedEntitiesSchema]: 
+- `body` [body, v2_1.inventory.unified_actions.schemas_AffectedEntitiesSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/actions/fetch-unified-actions`
+
 **Get Available Actions by Asset/Entity Type**
 `operationId`: `_web_api_xdr_assets_actions_fetch-unified-actions_post`
 
@@ -324,6 +327,7 @@ Get Available Actions by Asset/Entity Type
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -432,7 +436,7 @@ Parameters:
 - `serialNumber__nin` [query, array]: The serial number (not in)
 - `agentDecommissioned` [query, array]: Whether the agent is decommissioned
 - `agentSubscribeOnDt__between` [query, string]: The agent subscribe time
-- `onPremisesDistinguishedName__contains` [query, array]: 
+- `onPremisesDistinguishedName__contains` [query, array]:
 - `expirationTime__between` [query, array]: Expiration Time
 - `domain__contains` [query, array]: The domain
 - `osNameVersion__contains` [query, array]: The OS names and versions
@@ -470,7 +474,7 @@ Parameters:
 - `adsEnabled` [query, array]: ADS Enabled
 - `rangerTagsKey__nin` [query, array]: The ranger tags key (not in)
 - `encryptionType` [query, array]: The encryption type
-- `onPremisesSecurityIdentifier__contains` [query, array]: 
+- `onPremisesSecurityIdentifier__contains` [query, array]:
 - `agentLocation` [query, array]: The agent location
 - `agentPendingActions__nin` [query, array]: The agent pending actions (not in)
 - `id__in` [query, array]: The ID
@@ -624,11 +628,12 @@ Parameters:
 - `enabled` [query, array]: Whether the Identity Group is enabled or not
 - `userPrincipalName__nin` [query, array]: The User Principal Name (not in)
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.unified_actions.schemas_AffectedEntitiesSchema]: 
+- `body` [body, v2_1.inventory.unified_actions.schemas_AffectedEntitiesSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/actions/perform-unified-action`
+
 **Perform an Action on selected assets/entities**
 `operationId`: `_web_api_xdr_assets_actions_perform-unified-action_post`
 
@@ -637,6 +642,7 @@ Perform an Action on selected assets/entities
 Required permissions: `XDR Inventory.create, XDR Inventory.delete, XDR Inventory.edit`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -745,7 +751,7 @@ Parameters:
 - `serialNumber__nin` [query, array]: The serial number (not in)
 - `agentDecommissioned` [query, array]: Whether the agent is decommissioned
 - `agentSubscribeOnDt__between` [query, string]: The agent subscribe time
-- `onPremisesDistinguishedName__contains` [query, array]: 
+- `onPremisesDistinguishedName__contains` [query, array]:
 - `expirationTime__between` [query, array]: Expiration Time
 - `domain__contains` [query, array]: The domain
 - `osNameVersion__contains` [query, array]: The OS names and versions
@@ -783,7 +789,7 @@ Parameters:
 - `adsEnabled` [query, array]: ADS Enabled
 - `rangerTagsKey__nin` [query, array]: The ranger tags key (not in)
 - `encryptionType` [query, array]: The encryption type
-- `onPremisesSecurityIdentifier__contains` [query, array]: 
+- `onPremisesSecurityIdentifier__contains` [query, array]:
 - `agentLocation` [query, array]: The agent location
 - `agentPendingActions__nin` [query, array]: The agent pending actions (not in)
 - `id__in` [query, array]: The ID
@@ -937,6 +943,6 @@ Parameters:
 - `enabled` [query, array]: Whether the Identity Group is enabled or not
 - `userPrincipalName__nin` [query, array]: The User Principal Name (not in)
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.unified_actions.schemas_PerformActionRequestSchema]: 
+- `body` [body, v2_1.inventory.unified_actions.schemas_PerformActionRequestSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

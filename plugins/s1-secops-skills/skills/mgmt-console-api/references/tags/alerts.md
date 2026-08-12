@@ -3,6 +3,7 @@
 3 endpoints.
 
 ## `GET /web/api/v2.1/cloud-detection/alerts`
+
 **Get alerts**
 `operationId`: `_web_api_cloud-detection_alerts_get`
 
@@ -11,6 +12,7 @@ Get a list of alerts for a given scope
 Required permissions: `Custom Alerts.view`
 
 Parameters:
+
 - `createdAt__gt` [query, string]: Created at greater than. Example: "2018-02-27T04:49:26.257525Z".
 - `sourceProcessFileHashSha256__contains` [query, array]: Free-text filter by source sha255. Example: "rule1".
 - `origAgentName__contains` [query, array]: Free-text filter by agent name. Example: "ilia".
@@ -66,6 +68,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/cloud-detection/alerts/analyst-verdict`
+
 **Update Alert Analyst Verdict**
 `operationId`: `_web_api_cloud-detection_alerts_analyst-verdict_post`
 
@@ -74,11 +77,13 @@ Change the verdict of an alert
 Required permissions: `Custom Alerts.updateAnalystVerdict`
 
 Parameters:
-- `body` [body, v2_1.alerts.schemas_AlertsAnalystVerdictSchema]: 
+
+- `body` [body, v2_1.alerts.schemas_AlertsAnalystVerdictSchema]:
 
 Responses: 200 Threats incident successfully updated, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/cloud-detection/alerts/incident`
+
 **Update Threat Incident**
 `operationId`: `_web_api_cloud-detection_alerts_incident_post`
 
@@ -87,6 +92,7 @@ Update the incident details of an alert.
 Required permissions: `Custom Alerts.updateIncidentStatus`
 
 Parameters:
-- `body` [body, v2_1.alerts.schemas_AlertsIncidentSchema]: 
+
+- `body` [body, v2_1.alerts.schemas_AlertsIncidentSchema]:
 
 Responses: 200 Threats incident successfully updated, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

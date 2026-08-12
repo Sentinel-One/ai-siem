@@ -3,6 +3,7 @@
 16 endpoints.
 
 ## `GET /web/api/v2.1/application-management/inventory`
+
 **Get Application Inventory**
 `operationId`: `_web_api_application-management_inventory_get`
 
@@ -11,6 +12,7 @@ Get application inventory data grouped by application name and vendor.
 Required permissions: `Applications Page.view`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
 - `accountIds` [query, array]: Single Account ID to filter by. Example: "225494730938493804".
@@ -34,6 +36,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/inventory/applications`
+
 **Get Endpoint Apps**
 `operationId`: `_web_api_application-management_inventory_applications_get`
 
@@ -42,11 +45,13 @@ Get the installed applications for a specific endpoint. <BR>To get the Agent ID,
 Required permissions: `Applications Page.view`
 
 Parameters:
+
 - `ids` [query, array] **required**: Agent ID list. Example: "225494730938493804,225494730938493915".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/inventory/endpoints`
+
 **Get App Inventory Endpoints**
 `operationId`: `_web_api_application-management_inventory_endpoints_get`
 
@@ -55,6 +60,7 @@ Get endpoint data for a specific application.
 Required permissions: `Applications Page.view`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
 - `detectionDate__gte` [query, string]: Application detection date after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
@@ -82,6 +88,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/inventory/endpoints/export/csv`
+
 **Inventory Endpoints Data Export**
 `operationId`: `_web_api_application-management_inventory_endpoints_export_csv_get`
 
@@ -90,6 +97,7 @@ Export application inventory endpoints data to CSV.
 Required permissions: `Applications Page.view`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `detectionDate__gte` [query, string]: Application detection date after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
 - `accountIds` [query, array]: Single Account ID to filter by. Example: "225494730938493804".
@@ -111,6 +119,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/inventory/export/csv`
+
 **Inventory Data Export**
 `operationId`: `_web_api_application-management_inventory_export_csv_get`
 
@@ -119,6 +128,7 @@ Export application inventory data to CSV.
 Required permissions: `Applications Page.view`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `accountIds` [query, array]: Single Account ID to filter by. Example: "225494730938493804".
 - `csvDelimiter` [query, string] (enum: ,, ;): "Optionally specify character to be used as CSV delimiter. Defaults to ",". Example: ",".
@@ -136,6 +146,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/risks`
+
 **Get CVE data**
 `operationId`: `_web_api_application-management_risks_get`
 
@@ -144,6 +155,7 @@ Get the CVE vulnerability data for each CVE.
 Required permissions: `Applications Page.viewRisks`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `riskUpdatedDate__gt` [query, string]: Significant CVE updates after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
 - `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
@@ -195,6 +207,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/risks/aggregated-applications`
+
 **Get Aggregated Applications With Risk**
 `operationId`: `_web_api_application-management_risks_aggregated-applications_get`
 
@@ -203,6 +216,7 @@ Get data for all applications. Available with Ranger Insights license.
 Required permissions: `Applications Page.viewRisks`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
 - `highestSeverities` [query, array]: Included highest severities. Example: "CRITICAL,HIGH".
@@ -238,6 +252,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/risks/aggregated-applications/export/csv`
+
 **Aggregated Application Risk Data Export**
 `operationId`: `_web_api_application-management_risks_aggregated-applications_export_csv_get`
 
@@ -246,6 +261,7 @@ Export aggregated application data to CSV. Available with Ranger Insights licens
 Required permissions: `Applications Page.viewRisks`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `highestSeverities` [query, array]: Included highest severities. Example: "CRITICAL,HIGH".
 - `detectionDate__gte` [query, string]: Application detection date after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
@@ -275,6 +291,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/risks/applications`
+
 **Get Applications With Risk**
 `operationId`: `_web_api_application-management_risks_applications_get`
 
@@ -283,6 +300,7 @@ Get data for each version of all applications.
 Required permissions: `Applications Page.viewRisks`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
 - `highestSeverities` [query, array]: Included highest severities. Example: "CRITICAL,HIGH".
@@ -318,6 +336,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/risks/applications/export/csv`
+
 **Application Risk Data Export**
 `operationId`: `_web_api_application-management_risks_applications_export_csv_get`
 
@@ -326,6 +345,7 @@ Export application data to CSV.
 Required permissions: `Applications Page.viewRisks`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `highestSeverities` [query, array]: Included highest severities. Example: "CRITICAL,HIGH".
 - `detectionDate__gte` [query, string]: Application detection date after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
@@ -355,6 +375,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/risks/cves`
+
 **Get Application CVEs**
 `operationId`: `_web_api_application-management_risks_cves_get`
 
@@ -363,6 +384,7 @@ Get CVE data for a specific application. Use applicationIds query parameter to i
 Required permissions: `Applications Page.viewRisks`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
 - `applicationIds` [query, array]: Included application versions by id. Example: "225494730938493804,225494730938493915".
@@ -393,6 +415,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/risks/cves/export/csv`
+
 **Application CVE Data Export**
 `operationId`: `_web_api_application-management_risks_cves_export_csv_get`
 
@@ -401,6 +424,7 @@ Export CVE data to CSV. Use applicationIds query parameter to include a single a
 Required permissions: `Applications Page.viewRisks`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `applicationIds` [query, array]: Included application versions by id. Example: "225494730938493804,225494730938493915".
 - `accountIds` [query, array]: Single Account ID to filter by. Example: "225494730938493804".
@@ -425,6 +449,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/risks/endpoints`
+
 **Get Endpoints For Vulnerable App**
 `operationId`: `_web_api_application-management_risks_endpoints_get`
 
@@ -433,6 +458,7 @@ Get a list of all endpoints installed with a specific application that contains 
 Required permissions: `Applications Page.viewRisks`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `statusMessage__contains` [query, array]: Free-text filter by status message (supports multiple values). Available with Ranger Insights. Example: "assigned to john,top priority".
 - `sortOrder` [query, string] (enum: asc, desc): Sort direction. Example: "asc".
@@ -475,6 +501,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/risks/endpoints/export/csv`
+
 **Risk Endpoint Data Export**
 `operationId`: `_web_api_application-management_risks_endpoints_export_csv_get`
 
@@ -483,6 +510,7 @@ Export endpoint data to CSV. Use applicationIds query parameter to include a sin
 Required permissions: `Applications Page.viewRisks`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `statusMessage__contains` [query, array]: Free-text filter by status message (supports multiple values). Available with Ranger Insights. Example: "assigned to john,top priority".
 - `applicationIds` [query, array]: Included application versions by id. Example: "225494730938493804,225494730938493915".
@@ -519,6 +547,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/application-management/risks/export/csv`
+
 **Risks Data Export**
 `operationId`: `_web_api_application-management_risks_export_csv_get`
 
@@ -527,6 +556,7 @@ Export risks data to CSV.
 Required permissions: `Applications Page.viewRisks`
 
 Parameters:
+
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `riskUpdatedDate__gt` [query, string]: Significant CVE updates after this timestamp. Example: "2018-02-27T04:49:26.257525Z".
 - `detectionDate__gte` [query, string]: CVE detection date after or at this timestamp. Example: "2018-02-27T04:49:26.257525Z".
@@ -572,6 +602,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/application-management/scan`
+
 **Initiate scan**
 `operationId`: `_web_api_application-management_scan_post`
 
@@ -580,6 +611,7 @@ Initiate application vulnerability scan.
 Required permissions: `Applications Page.scanVulnerabilities`
 
 Parameters:
-- `body` [body, v2_1.application_management.application_management_schemas_ScanPostSchema]: 
+
+- `body` [body, v2_1.application_management.application_management_schemas_ScanPostSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

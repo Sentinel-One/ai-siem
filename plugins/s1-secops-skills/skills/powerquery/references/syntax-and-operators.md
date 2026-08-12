@@ -34,7 +34,7 @@ Parentheses work as expected: `a AND (b OR c)`.
 
 ### `contains`: substring search
 
-```
+```text
 src.process.cmdline contains 'powershell'
 src.process.cmdline contains ('powershell', 'pwsh', 'cmd')     // OR of multiple
 src.process.cmdline contains:matchcase 'PowerShell'            // case-sensitive
@@ -46,7 +46,7 @@ Case-insensitive by default. Cannot be used on numeric values. The OR form is mu
 
 ### `matches`: regex
 
-```
+```text
 src.process.cmdline matches '\\w+\\.exe'
 src.process.cmdline matches ('regex1', 'regex2')               // OR of multiple
 src.process.cmdline matches:matchcase 'CaseSensitive'
@@ -56,7 +56,7 @@ Case-insensitive by default. Regex has a 1,000-byte ceiling. Double-escape speci
 
 ### `in`: exact equals any of
 
-```
+```text
 event.login.type in ('NETWORK', 'NETWORK_CLEAR_TEXT', 'CACHED_REMOTE_INTERACTIVE')
 severity in (3, 4, 5)                    // numbers / booleans unquoted
 event.login.type in:anycase ('network')  // case-insensitive variant
@@ -66,7 +66,7 @@ Default is case-sensitive (opposite of `contains`). Cannot match null. Quote str
 
 ### Equality and inequality
 
-```
+```text
 endpoint.name = 'DC-1'                   // exact equal (case-sensitive for strings)
 indicator.name != 'RawVolumeAccess'
 indicator.name !=*                       // never valid; use !(x=*) for is-null
@@ -76,7 +76,7 @@ indicator.name !=*                       // never valid; use !(x=*) for is-null
 
 There are three distinct `*` idioms; they look similar but mean different things:
 
-```
+```text
 // 1. FIELD PRESENCE / ATTRIBUTE WILDCARD
 dataSource.name = *                      // "field is present/non-null"; use as query opener or filter
 indicator.category = *                   // same pattern; works for any field
@@ -92,6 +92,7 @@ $"regex"                                 // shorthand for message matches "regex
 ```
 
 Key facts about `*`:
+
 - `*` by itself is NOT a valid filter. `*` alone returns HTTP 500 ("Don't understand [*]"). Never use `*` as the only initial token.
 - **`field = *`** (attribute wildcard) checks whether a specific field is present/non-null. Use `dataSource.name=*` as a query-opener for aggregations over all events that have that field. Confirmed working on live tenant.
 - **`* contains` / `* matches`** (all-column search) searches across ALL indexed fields. Only works in the **initial filter** (before the first `|`). Not valid in `| filter …` after a pipe, not in Alerts, not in dashboards. Much faster than `message contains` on JSON-blob sources.
@@ -142,7 +143,7 @@ Preceded by `#`, these search across multiple related fields at once. Only valid
 | `#uid` | All UID fields |
 | `#username` | All process user fields |
 
-```
+```text
 #hash = '44d88612fea8a8f36de82e1278abb02f'         // find an IOC hash anywhere
 #ip = '198.51.100.7'                                 // any IP match
 #storylineid = 'F5BA787CED1FF38A' | limit 100
@@ -210,7 +211,7 @@ When calling the Purple MCP `powerquery` tool, pass ISO-8601 with an explicit of
 
 `||` and `OR` don't return booleans; they return the first truthy operand. Falsy values: `null`, `0`, `false`, `""`, `NaN`. Everything else is truthy (including `"0"` and `"false"`; those are non-empty strings).
 
-```
+```text
 | let first_name = preferred_name || legal_name || 'Unknown'
 ```
 

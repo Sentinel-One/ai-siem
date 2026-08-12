@@ -3,6 +3,7 @@
 9 endpoints.
 
 ## `POST /web/api/v2.1/ranger/device-review`
+
 **Change Device Review in Bulk**
 `operationId`: `_web_api_ranger_device-review_post`
 
@@ -11,11 +12,13 @@ Change the review state of more than one device.
 Required permissions: `Ranger.applyDeviceReview`
 
 Parameters:
-- `body` [body, schemas_DeviceReviewSchema]: 
+
+- `body` [body, schemas_DeviceReviewSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/ranger/device-review/{inventory_id}`
+
 **Change Device Review**
 `operationId`: `_web_api_ranger_device-review_{inventory_id}_put`
 
@@ -24,12 +27,14 @@ Change the review state of one device.
 Required permissions: `Ranger.applyDeviceReview`
 
 Parameters:
+
 - `inventory_id` [path, string] **required**: Inventory ID. Example: "225494730938493804".
-- `body` [body, schemas_DeviceReviewSchemaPut]: 
+- `body` [body, schemas_DeviceReviewSchemaPut]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/ranger/report/csv`
+
 **Export Network Discovery Data**
 `operationId`: `_web_api_ranger_report_csv_get`
 
@@ -38,6 +43,7 @@ Export Network Discovery data to csv. You can set filters to get only relevant d
 Required permissions: `Ranger.view`
 
 Parameters:
+
 - `accountIds` [query, array]: Single Account ID to filter by. Example: "225494730938493804".
 - `siteIds` [query, array]: Single Site ID to filter by. Example: "225494730938493804".
 - `osType` [query, string]: OS type
@@ -91,20 +97,23 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/ranger/settings`
+
 **Get Network Discovery Settings**
 `operationId`: `_web_api_ranger_settings_get`
 
-Network Discovery gives full visibility of all devices connected to your network. Network Discovery scans your corporate environment to identify and manage connected devices, even those not protected by or supported by SentinelOne. Network Discovery identifies devices as:<br>* Secured - End-user computer or laptop, or server, with a SentinelOne Agent.<br>* Unsecured - Endpoint of supported hardware and OS, without an Agent.<br>* Unsupported - Hardware or software that are not compatible with the SentinelOne Agent.<br>* Unknown - Network Discovery cannot determine if the device is Unsecured or Unsupported.<br>When you install Windows Agents with Network Discovery, the Agents can become scanners. Selected scanners from networks that you enable for scanning find connected devices with passive and active scan techniques. The scanners send the collected data to Network Discovery on the Management. Network Discovery then runs fingerprinting to identify and classify unique devices and to update the Device Inventory Table in the Management Console. With port scanning, it is important that you understand the legal and ethical considerations and that you document a Network Discovery plan and …
+Network Discovery gives full visibility of all devices connected to your network. Network Discovery scans your corporate environment to identify and manage connected devices, even those not protected by or supported by SentinelOne. Network Discovery identifies devices as:<br>*Secured - End-user computer or laptop, or server, with a SentinelOne Agent.<br>* Unsecured - Endpoint of supported hardware and OS, without an Agent.<br>*Unsupported - Hardware or software that are not compatible with the SentinelOne Agent.<br>* Unknown - Network Discovery cannot determine if the device is Unsecured or Unsupported.<br>When you install Windows Agents with Network Discovery, the Agents can become scanners. Selected scanners from networks that you enable for scanning find connected devices with passive and active scan techniques. The scanners send the collected data to Network Discovery on the Management. Network Discovery then runs fingerprinting to identify and classify unique devices and to update the Device Inventory Table in the Management Console. With port scanning, it is important that you understand the legal and ethical considerations and that you document a Network Discovery plan and …
 
 Required permissions: `Ranger.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/ranger/settings`
+
 **Update Network Discovery Settings**
 `operationId`: `_web_api_ranger_settings_put`
 
@@ -113,11 +122,13 @@ Change the Network Discovery Settings. Best Practice: Get the current settings b
 Required permissions: `Ranger.manageNetworkDiscoverySettings`
 
 Parameters:
-- `body` [body, schemas_PutRangerSchema]: 
+
+- `body` [body, schemas_PutRangerSchema]:
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/ranger/table-view`
+
 **Get Network Discovery Table**
 `operationId`: `_web_api_ranger_table-view_get`
 
@@ -126,6 +137,7 @@ Get the data for each row in the Network Discovery Device Inventory Table. Best 
 Required permissions: `Ranger.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -186,6 +198,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/ranger/tags`
+
 **Change Device Tags**
 `operationId`: `_web_api_ranger_tags_post`
 
@@ -194,11 +207,13 @@ Change the device tags.
 Required permissions: `Ranger.manageDeviceTags`
 
 Parameters:
-- `body` [body, schemas_DeviceTagsSchema]: 
+
+- `body` [body, schemas_DeviceTagsSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/ranger/{inventory_id}/json`
+
 **JSON Raw Data**
 `operationId`: `_web_api_ranger_{inventory_id}_json_get`
 
@@ -207,11 +222,13 @@ Get a json string with the Network Discovery data for one device, by ID in the D
 Required permissions: `Ranger.view`
 
 Parameters:
+
 - `inventory_id` [path, string] **required**: Inventory ID. Example: "225494730938493804".
 
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/ranger/{inventory_id}/json/export`
+
 **Export JSON Raw Data**
 `operationId`: `_web_api_ranger_{inventory_id}_json_export_get`
 
@@ -220,6 +237,7 @@ Export the raw data for one device, by its ID in the Device Inventory Data. To g
 Required permissions: `Ranger.view`
 
 Parameters:
+
 - `inventory_id` [path, string] **required**: Inventory ID. Example: "225494730938493804".
 
 Responses: 404 Not found, 200 Success, 401 Unauthorized access - please sign in and retry.

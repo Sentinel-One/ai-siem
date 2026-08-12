@@ -124,6 +124,7 @@ requests.delete(urljoin(base, f"/sdl/v2/api/queries/{qid}"),
 ```
 
 Key points:
+
 - `queryType: "PQ"` runs a PowerQuery; `queryType: "LOG"` runs S1QL log search. Both replace the old `/dv/*` endpoints.
 - The `X-Dataset-Query-Forward-Tag` response header from the launch must be echoed on every subsequent GET/DELETE. GET/DELETE without it is rejected.
 - Per-user rate cap is 3 rps. For multi-slice parallel runs over long windows (7d+), see the `powerquery` skill's `references/lrq-api.md` for slicing, two-JWT round-robin, and merge patterns.

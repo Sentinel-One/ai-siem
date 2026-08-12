@@ -43,10 +43,12 @@ See **[deploy/README.md](./deploy/README.md)** for the full deployment walkthrou
 <!-- END AUTO-GENERATED TOOLS TABLE -->
 
 **2 resources:**
+
 - `sentinelone://soc-context`: `CLAUDE.md`, the Principal SOC Analyst operating instructions.
 - `sentinelone://credentials-status`: which credentials are configured and which API surfaces are available.
 
 **2 prompts:**
+
 - `soc_analyst`: embeds `CLAUDE.md` as a system prompt; call at session start.
 - `session_init`: structured init: enumerate sources + triage alerts in parallel.
 
@@ -65,11 +67,11 @@ Add this to `claude_desktop_config.json` (or `.mcp.json` for Claude Code):
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "npx",
-      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.3.1"],
+      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.3.3"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...",
-        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
+        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net"
       }
     }
   }
@@ -126,16 +128,16 @@ Cmd+Q and reopen Claude Desktop. SentinelOne credentials live on the VM in `/etc
 
 Credential keys, where to get each one, and the two token types are documented canonically in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section adds the MCP-server-specific detail: which tools each key gates, and the server's full credential-resolution order.
 
-`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are sufficient for the PowerQuery, Mgmt Console REST, Purple AI summary, and UAM tools (16 of the 26).
+`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are sufficient for the PowerQuery, Mgmt Console REST, Purple AI summary, UAM, Hyperautomation, and SDL config-file tools (22 of the 26).
 
-`S1_HEC_INGEST_URL` is **required** for the three UAM Ingest tools (`uam_ingest_alert`, `uam_post_indicators`, `uam_post_alert`) and for `hec_ingest`. Without it those tools error at call time; the rest still work.
+`S1_HEC_INGEST_URL` is **required** for the three UAM Ingest tools (`uam_ingest_alert`, `uam_post_indicators`, `uam_post_alert`) and for `hec_ingest`, the only four tools that need it. Without it those tools error at call time; the rest still work.
 
-`SDL_*` keys gate the SDL tools as follows:
+The SDL config-file tools (`sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`) are authorised by `S1_CONSOLE_API_TOKEN` against `POST <console>/sdl/v2/graphql`. The scoped SDL keys (`SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`, `SDL_XDR_URL`) are retired and are no longer read.
 
 | Variable | Description | Required for |
 |----------|-------------|--------------|
-| `S1_CONSOLE_URL` | Console URL, e.g. `https://usea1-acme.sentinelone.net` | All Mgmt + PowerQuery tools |
-| `S1_CONSOLE_API_TOKEN` | Mgmt Console API token (Settings → Users → Service Users) | All Mgmt + PowerQuery + UAM tools |
+| `S1_CONSOLE_URL` | Console URL, e.g. `https://usea1-acme.sentinelone.net` | All Mgmt + PowerQuery + SDL tools |
+| `S1_CONSOLE_API_TOKEN` | Mgmt Console API token (Settings → Users → Service Users) | All Mgmt + PowerQuery + UAM + SDL config-file tools |
 | `S1_HEC_INGEST_URL` | HEC ingest host, e.g. `https://ingest.us1.sentinelone.net` | `uam_ingest_alert`, `uam_post_indicators`, `uam_post_alert`, `hec_ingest` |
 
 ### Credential resolution order (highest priority wins)
@@ -204,7 +206,7 @@ If neither env var is set, HTTP transport runs **without** authentication and th
 
 Every authenticated HTTP request emits a structured stderr line that systemd captures via journald:
 
-```
+```json
 [audit] 2026-05-28T15:01:22.413Z | alice | tools/call | name=powerquery_run | 200 ok
 [audit] 2026-05-28T15:01:34.221Z | bob   | tools/list | -                  | 200 ok
 [audit] 2026-05-28T17:03:11.221Z | -     | -          | -                  | 401 unauthorized
@@ -434,7 +436,7 @@ The `maxRows` (`powerquery_run`) and `first` (`uam_list_alerts`) parameters are 
 
 ## CLI reference
 
-```
+```text
 s1-secops-mcp [options]
 
 OPTIONS
@@ -448,7 +450,7 @@ OPTIONS
 
 ## Architecture
 
-```
+```text
 s1-secops-mcp/
   index.js                    Entry: flag parsing + transport selection
   lib/
@@ -485,6 +487,7 @@ s1-secops-mcp/
 | Purple AI GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | UAM GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | UAM HEC ingest | `Authorization: Bearer <jwt>` | `S1_CONSOLE_API_TOKEN` |
+| SDL config files (`POST /sdl/v2/graphql`) | `Authorization: Bearer <jwt>`, an `s1-scope` header is ignored, not rejected | `S1_CONSOLE_API_TOKEN` |
 
 ## Testing
 

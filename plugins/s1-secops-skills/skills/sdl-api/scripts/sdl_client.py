@@ -42,10 +42,10 @@ Usage:
     c.query(filter="*", max_count=5, start_time="5m")
 
     # config files
-    c.list_files()
-    c.get_file("/alerts")
+    c.config_files()
+    c.config_file(name="/alerts")
     # Parsers: use /logParsers/<name>; /parsers/ is API-accepted but invisible in the UI.
-    c.put_file("/logParsers/MyParser", content="// parser body")
+    c.put_config_file(name="/logParsers/MyParser", content="// parser body")
 
 The client retries 429 and 5xx with exponential backoff and honours
 Retry-After. All responses are returned as parsed JSON dicts. Errors
@@ -56,8 +56,10 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import uuid
+from urllib.parse import quote
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Union
 
@@ -157,10 +159,23 @@ _warned_legacy_url = False
 
 
 class SDLAPIError(RuntimeError):
-    def __init__(self, status: int, message: str, body: Any = None):
+    def __init__(self, status: int, message: str, body: Any = None, graphql: bool = False):
         super().__init__(f"HTTP {status}: {message}")
         self.status = status
         self.body = body
+        # True when the failure came from the GraphQL layer rather than the
+        # transport. Absence detection keys off this.
+        self.graphql = graphql
+
+
+def _normalise_name(n: Any) -> str:
+    """SDL config names are case-insensitive and tolerate stray whitespace, so
+    the absence check and the duplicate guard must normalise identically."""
+    return str(n or "").strip().lower()
+
+
+def _matches_name(file_obj: Dict[str, Any], name: Any) -> bool:
+    return _normalise_name((file_obj or {}).get("name")) == _normalise_name(name)
 
 
 class SandboxProxyBlockedError(RuntimeError):
@@ -337,7 +352,16 @@ class SDLClient:
         extra_headers: Optional[Dict[str, str]] = None,
         content_type: str = "application/json",
         retries: int = 3,
+        allow_retry: Optional[bool] = None,
     ) -> Dict[str, Any]:
+        # Status-based retry is restricted to idempotent methods, mirroring
+        # lib/sdl.js. A 5xx received after the server committed a write would
+        # otherwise be re-sent, and a re-sent addConfigFile(name:) against
+        # /dashboards/ creates a duplicate. Read-only POSTs opt in explicitly.
+        method_retryable = (
+            allow_retry if allow_retry is not None
+            else method.upper() in ("GET", "HEAD")
+        )
         if not path.startswith("/"):
             path = "/" + path
         url = self.base_url + path
@@ -383,11 +407,13 @@ class SDLClient:
             )
             if status < 400 and not (isinstance(sdl_status, str) and sdl_status.startswith("error/")):
                 return body
-            if retryable and attempt <= retries:
+            if retryable and method_retryable and attempt <= retries:
                 wait = min(2 ** attempt, 30)
                 ra = resp.headers.get("Retry-After")
                 if ra and ra.isdigit():
-                    wait = int(ra)
+                    # Cap the server-supplied delay: an unbounded Retry-After
+                    # would park the process (observed guidance: cap at 30s).
+                    wait = min(int(ra), 30)
                 time.sleep(wait)
                 continue
             # non-retryable, non-auth failure
@@ -546,10 +572,274 @@ class SDLClient:
         return self._request("POST", "/api/powerQuery", json_body=body)
 
     # =========================================================================
-    # Configuration files
+    # Configuration files (GraphQL, canonical)
+    # =========================================================================
+    #
+    # POST /sdl/v2/graphql is the canonical config-file surface and a strict
+    # superset of the REST /api/*File endpoints below. Measured live: REST
+    # listFiles returned 1,914 paths, configFiles returned 2,264. The 350-file
+    # gap is entirely udoId-addressed /dashboards/ files, and REST getFile on
+    # any of them returns 'success/noSuchFile'.
+    #
+    # udoId is assigned by namespace: only /dashboards/ files have one.
+    # /lookups/, /datatables/, /logParsers/ and /automaticLookups are
+    # name-addressed with udoId None.
+
+    _CONFIG_FIELDS = "udoId name readOnly version"
+
+    def _graphql(
+        self,
+        opname: str,
+        query: str,
+        variables: Optional[Dict[str, Any]] = None,
+        read_only: bool = False,
+    ) -> Dict[str, Any]:
+        """POST /v2/graphql. Raises SDLAPIError on the GraphQL `errors` array.
+
+        GraphQL failures return HTTP 200 with an `errors` array, so the status
+        code alone never tells you a call failed. Three shapes must all raise
+        rather than fall through to an empty result, since every caller's
+        "nothing here" default is indistinguishable from a real empty answer:
+        a non-dict body (a proxy or SSO interstitial served as text), an
+        `errors` value that is not a list, and a body carrying neither `data`
+        nor `errors`.
+        """
+        body: Dict[str, Any] = {"query": query}
+        if variables:
+            body["variables"] = variables
+        payload = self._request(
+            "POST",
+            f"/v2/graphql?opname={quote(str(opname), safe='')}",
+            json_body=body,
+            allow_retry=read_only,
+        )
+        if not isinstance(payload, dict):
+            raise SDLAPIError(
+                200,
+                f"SDL GraphQL {opname}: expected a JSON object, got "
+                f"{type(payload).__name__}. This usually means a proxy or auth "
+                f"interstitial answered instead of the API. "
+                f"First 200 chars: {str(payload)[:200]}",
+                payload,
+                graphql=True,
+            )
+        errors = payload.get("errors")
+        if errors:
+            errs = errors if isinstance(errors, list) else [errors]
+            first = errs[0] if errs else {}
+            message = (first or {}).get("message", "unknown GraphQL error")
+            correlation = (payload.get("extensions") or {}).get("correlationId") or (
+                (first or {}).get("extensions") or {}
+            ).get("correlationId")
+            if correlation:
+                message = f"{message} (correlationId={correlation})"
+            raise SDLAPIError(200, f"SDL GraphQL {opname}: {message}", payload, graphql=True)
+        if "data" not in payload:
+            raise SDLAPIError(
+                200,
+                f"SDL GraphQL {opname}: response carried neither data nor errors.",
+                payload,
+                graphql=True,
+            )
+        return payload.get("data") or {}
+
+    def config_files(self) -> List[Dict[str, Any]]:
+        """Every config file on the tenant, including udoId-addressed dashboards.
+
+        Prefer this over `list_files()`, which omits them.
+        """
+        data = self._graphql(
+            "getConfigurationFiles",
+            f"query getConfigurationFiles {{ configFiles {{ {self._CONFIG_FIELDS} }} }}",
+            read_only=True,
+        )
+        return data.get("configFiles") or []
+
+    def config_file(
+        self,
+        name: Optional[str] = None,
+        udo_id: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Read one config file by name (plain files) or udo_id (dashboards).
+        Returns None when the file does not exist.
+
+        Absence is a normal outcome of a lookup, but the server reports it as a
+        GraphQL error whose message differs by address form (verified live):
+
+          by name  : "Config file with name /x/y not found."   -> explicit
+          by udo_id: "Something went wrong. Please try again..." -> generic, and
+                     the SAME text a version conflict returns, so it cannot be
+                     trusted on message alone.
+
+        The explicit form is normalised directly; the ambiguous one is
+        disambiguated against the file listing. The extra listing only happens
+        on the error path.
+        """
+        if not name and not udo_id:
+            raise ValueError("config_file requires either name or udo_id")
+        try:
+            if udo_id:
+                data = self._graphql(
+                    "configFile",
+                    f"query f($udoId: ID!) {{ configFile(udoId: $udoId) {{ {self._CONFIG_FIELDS} content }} }}",
+                    {"udoId": str(udo_id)},
+                    read_only=True,
+                )
+            else:
+                data = self._graphql(
+                    "configFile",
+                    f"query f($id: ID!) {{ configFile(id: $id) {{ {self._CONFIG_FIELDS} content }} }}",
+                    {"id": name},
+                    read_only=True,
+                )
+        except SDLAPIError as exc:
+            # Only a GraphQL-layer error can mean "absent". A transport failure
+            # whose body happens to contain "not found" must never be read as
+            # absence: that is how a delete gets confirmed against a file that
+            # was never checked.
+            if not getattr(exc, "graphql", False):
+                raise
+            if re.search(r"config file with (name|id) .* not found", str(exc), re.I):
+                return None
+            # The udo_id form returns a generic message that a version conflict
+            # also returns, so settle it against the listing. If the listing
+            # itself fails, keep the ORIGINAL error.
+            try:
+                all_files = self.config_files()
+            except SDLAPIError as list_exc:
+                raise SDLAPIError(
+                    exc.status,
+                    f"{exc} (absence check failed: {list_exc})",
+                    exc.body,
+                ) from exc
+            if udo_id:
+                present = any(str(f.get("udoId")) == str(udo_id) for f in all_files)
+            else:
+                present = any(_matches_name(f, name) for f in all_files)
+            if not present:
+                return None
+            raise
+        return data.get("configFile")
+
+    def put_config_file(
+        self,
+        name: Optional[str] = None,
+        udo_id: Optional[str] = None,
+        content: str = "",
+        expected_version: Optional[int] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Create or update a config file.
+
+        Pass `udo_id` to update a dashboard in place; pass `name` to create, or
+        to update any name-addressed file.
+
+        A name-addressed write UPDATES IN PLACE for plain files but CREATES A
+        DUPLICATE for /dashboards/. This method refuses a name-addressed write
+        to an existing dashboard for that reason; one tenant reached 152 copies
+        of '/dashboards/AI Usage' that way.
+        """
+        if not name and not udo_id:
+            raise ValueError("put_config_file requires either name or udo_id")
+        if not udo_id and _normalise_name(name).startswith("/dashboards/"):
+            all_files = self.config_files()
+            if not all_files:
+                raise ValueError(
+                    f'Refusing to write "{name}" by name: the configFiles listing came '
+                    "back empty, so the duplicate check could not run. Retry, or pass "
+                    "an explicit udo_id."
+                )
+            existing = [f for f in all_files if _matches_name(f, name)]
+            if existing:
+                ids = ", ".join(str(f.get("udoId")) for f in existing if f.get("udoId"))
+                raise ValueError(
+                    f'Refusing to write "{name}" by name: {len(existing)} dashboard(s) '
+                    "already use that name, and a name-addressed write to /dashboards/ "
+                    "creates another duplicate rather than updating. Pass one of these "
+                    f"udoIds instead: {ids or '(none)'}."
+                )
+        if udo_id:
+            data = self._graphql(
+                "addConfigFile",
+                "mutation f($udoId: ID, $content: String!, $expectedVersion: Long) "
+                "{ addConfigFile(udoId: $udoId, content: $content, expectedVersion: $expectedVersion) "
+                f"{{ {self._CONFIG_FIELDS} }} }}",
+                {
+                    "udoId": str(udo_id),
+                    "content": content,
+                    "expectedVersion": expected_version,
+                },
+            )
+        else:
+            # expectedVersion is enforced on name-addressed writes too: a stale
+            # value is rejected with "There are conflicting changes in the file."
+            # Omitting it silently downgrades every parser, lookup, datatable and
+            # /automaticLookups update to last-write-wins.
+            data = self._graphql(
+                "addConfigFile",
+                "mutation f($name: String, $content: String!, $expectedVersion: Long) "
+                "{ addConfigFile(name: $name, content: $content, expectedVersion: $expectedVersion) "
+                f"{{ {self._CONFIG_FIELDS} }} }}",
+                {
+                    "name": name,
+                    "content": content,
+                    "expectedVersion": expected_version,
+                },
+            )
+        return data.get("addConfigFile")
+
+    def delete_config_file(
+        self,
+        name: Optional[str] = None,
+        udo_id: Optional[str] = None,
+        expected_version: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Delete a config file. Dashboards by udo_id, everything else by name.
+
+        The mutation returns null on success and does not echo the deleted
+        object, so its response cannot distinguish "deleted" from "matched
+        nothing". Confirm by re-reading, and raise if the file survives.
+        """
+        if not name and not udo_id:
+            raise ValueError("delete_config_file requires either name or udo_id")
+        if udo_id:
+            raw = self._graphql(
+                "deleteConfigFile",
+                "mutation f($udoId: ID, $expectedVersion: Long) "
+                "{ deleteConfigFile(udoId: $udoId, expectedVersion: $expectedVersion) { udoId } }",
+                {"udoId": str(udo_id), "expectedVersion": expected_version},
+            )
+        else:
+            raw = self._graphql(
+                "deleteConfigFile",
+                "mutation f($id: ID, $expectedVersion: Long) "
+                "{ deleteConfigFile(id: $id, expectedVersion: $expectedVersion) { udoId } }",
+                {"id": name, "expectedVersion": expected_version},
+            )
+        still = self.config_file(name=name, udo_id=udo_id)
+        if still:
+            target = f"udoId {udo_id}" if udo_id else name
+            raise SDLAPIError(
+                200,
+                f"delete_config_file: {target} still exists after the delete mutation "
+                f"(version {still.get('version')}). The mutation reported no errors "
+                "but nothing was removed.",
+                still,
+            )
+        return {
+            "status": "success",
+            "deleted": {"udoId": str(udo_id)} if udo_id else {"name": name},
+            "raw": (raw or {}).get("deleteConfigFile"),
+        }
+
+    # =========================================================================
+    # Configuration files (legacy REST)
     # =========================================================================
     def list_files(self) -> Dict[str, Any]:
-        """POST /api/listFiles: list every configuration file path."""
+        """POST /api/listFiles. INCOMPLETE: omits udoId-addressed dashboards.
+
+        Prefer `config_files()`. Never use this listing to decide whether a
+        file exists.
+        """
         return self._request("POST", "/api/listFiles", json_body={})
 
     def get_file(
@@ -650,4 +940,4 @@ class SDLClient:
 if __name__ == "__main__":
     # Smoke test: list configuration files.
     c = SDLClient()
-    print(json.dumps(c.list_files(), indent=2)[:2000])
+    print(json.dumps(c.config_files(), indent=2)[:2000])

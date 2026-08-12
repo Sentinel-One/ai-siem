@@ -20,7 +20,7 @@ the most-frequently-seen indicator name and where it was seen.
 Useful for "how noisy is our UAM feed" and for spotting synthetic
 indicator floods from pre-sales demos.
 
-```
+```text
 event.type = 'IndicatorEvent'
 | group hits = count(),
         endpoints = count_distinct(endpoint.name),
@@ -42,7 +42,7 @@ What it finds: PowerShell processes that opened a connection to a
 non-RFC1918 IP in the time range. Classic C2 / living-off-the-land
 beaconing pattern.
 
-```
+```text
 src.process.name contains 'powershell' dst.ip.address = *
 | let is_private = net_rfc1918(dst.ip.address)
 | filter is_private = false
@@ -67,7 +67,7 @@ and source address. Good for lateral-movement / password-spray
 triage; the `count_distinct(src.ip.address)` column lets you rank by
 "one attacker hitting many boxes" vs "noise".
 
-```
+```text
 event.type = 'LoginEvent' event.login.loginIsSuccessful = false
 | group fails = count(),
         distinct_users = count_distinct(event.login.userName),
@@ -91,7 +91,7 @@ launched, files touched, and destinations contacted. This is the
 "what did this attack actually do" one-liner that SOC analysts want
 when they open a UAM alert.
 
-```
+```text
 src.process.storyline.id = *
 | group events = count(),
         procs = count_distinct(src.process.name),
@@ -118,7 +118,7 @@ and want to confirm it landed in the data lake (not just in the UAM
 console), grep for it by name or by the `run_tag` substring your
 smoke test bakes in.
 
-```
+```text
 indicator.name = *
 | filter indicator.name contains 'smoke-' OR message contains 'smoke-'
 | columns timestamp, indicator.name, indicator.category,
@@ -137,7 +137,7 @@ What it finds: for each endpoint, the most recent event and the gap
 vs now. Useful when a pre-sales demo's test VM has gone offline and
 you need to prove it before blaming the product.
 
-```
+```text
 endpoint.name = *
 | group last_seen = max(timestamp), events = count()
   by endpoint.name, endpoint.uuid
@@ -198,7 +198,7 @@ and return a parse error ("Field must be enclosed in a grouping function").
 
 ### Forms
 
-```
+```text
 | group function(expression), function2(expression2)
 | group function(expression) by expression3, expression4, …
 | group name=function(expression) by name3=expression3, name4=expression4, …
@@ -228,7 +228,7 @@ and return a parse error ("Field must be enclosed in a grouping function").
 
 ### Examples
 
-```
+```text
 | group count() by event.type
 | group hits=count() by event.type
 | group hits=count(), last=max(timestamp) by event.type
@@ -239,14 +239,15 @@ and return a parse error ("Field must be enclosed in a grouping function").
 
 ### What NOT to do
 
-```
+```text
 # Wrong: bare field after by without aggregation wrapper:
 | group count = count() by event.type | sort count desc   ← alias collision
 | group event.type by count()                              ← reversed
 ```
 
 Sort references must use the output column name (the alias you gave it):
-```
+
+```javascript
 | group hits=count() by event.type | sort -hits   ← correct
 | group count() by event.type | sort -count       ← correct (implicit alias = function name)
 ```

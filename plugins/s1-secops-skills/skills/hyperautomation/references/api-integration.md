@@ -14,7 +14,7 @@ stop and tell the user what went wrong before proceeding with any workflow opera
 
 ### Step 1: Validate `S1_CONSOLE_URL` (no auth required)
 
-```
+```text
 GET {S1_CONSOLE_URL}/web/api/v2.1/system
 ```
 
@@ -24,13 +24,14 @@ or the console is unreachable.
 
 ### Step 2: Validate `S1_CONSOLE_API_TOKEN` (auth + permission check)
 
-```
+```text
 GET {S1_CONSOLE_URL}/web/api/v2.1/hyper-automate/api/public/workflows?limit=1
 Authorization: ApiToken {S1_CONSOLE_API_TOKEN}
 ```
 
 A `200` response confirms the token is valid and has `Hyper Automate.view` permission.
 Failure responses:
+
 - `401`: token is missing or expired
 - `403`: token lacks `Hyper Automate.view` permission
 
@@ -66,6 +67,7 @@ deactivate, trigger, list, and monitor executions.
 **Content-Type**: `application/json` for POST requests
 
 All POST request bodies follow the S1 envelope pattern:
+
 ```json
 { "data": { /* payload */ } }
 ```
@@ -98,6 +100,7 @@ problem**.
 ## Endpoint Reference
 
 ### 1. Import Workflow
+
 `POST /hyper-automate/api/public/workflow-import-export/import`
 
 **Permission**: `Hyper Automate.workflowsCreateEdit`
@@ -199,6 +202,7 @@ version. Select on `state == "active"` (as above) when you want the activation-r
 `version_id`; fall back to `[0]` only for never-activated workflows.
 
 Sample response:
+
 ```json
 {
   "id": "<workflow_id>",
@@ -215,6 +219,7 @@ workflows that exist. Only the `/workflows/versions/list/{id}` path is guarantee
 to work for post-import retrieval.
 
 **Notes**:
+
 - Imported workflows are created as **Private Draft**, visible only to the owner of the token
   used for import.
 - **Use a Console User (personal) token, not a Service User token.** The Hyperautomation API
@@ -226,6 +231,7 @@ to work for post-import retrieval.
 ---
 
 ### 2. Batch Import Workflows
+
 `POST /hyper-automate/api/public/workflow-import-export/import/batch`
 
 **Permission**: `Hyper Automate.workflowsCreateEdit`
@@ -235,6 +241,7 @@ to work for post-import retrieval.
 Accepts multiple workflow objects. Use for bulk deployments.
 
 **Body params** (multipart/form-data):
+
 - `file` (required): the batch import file (workflow JSON or ZIP archive)
 - `filter` (required): JSON-encoded string. Send `{}` for "no filter".
   ⚠️ Sending `filter` as an **empty string** (`""`) triggers a server-side
@@ -243,6 +250,7 @@ Accepts multiple workflow objects. Use for bulk deployments.
 - `body` (optional): `{ "data": {...}, "filter": {"type": "JsonPath"|"JsonSchema", "value": "..."} }`
 
 Example:
+
 ```bash
 curl -X POST "$S1_CONSOLE/web/api/v2.1/hyper-automate/api/public/workflow-import-export/import/batch?siteIds=$SITE_ID" \
   -H "Authorization: ApiToken $TOKEN" \
@@ -257,6 +265,7 @@ don't trust a 500 from a malformed `filter` as evidence about permissions).
 ---
 
 ### 3. Export Workflow (single)
+
 `GET /hyper-automate/api/public/workflow-import-export/export/{workflow_id}/{version_id}`
 
 **Permission**: `Hyper Automate.workflowsExport`
@@ -269,11 +278,13 @@ Returns the full workflow JSON for re-import or inspection.
 ---
 
 ### 4. Batch Export Workflows
+
 `GET /hyper-automate/api/public/workflow-import-export/export`
 
 **Permission**: `Hyper Automate.workflowsExport`
 
 **Query params** (all optional, combine to filter):
+
 | Param | Type | Description |
 |-------|------|-------------|
 | `workflow_ids` | string | Comma-separated workflow IDs |
@@ -291,11 +302,13 @@ Returns the full workflow JSON for re-import or inspection.
 ---
 
 ### 5. List Workflows
+
 `GET /hyper-automate/api/public/workflows`
 
 **Permission**: `Hyper Automate.view`
 
 **Query params**:
+
 | Param | Type | Description |
 |-------|------|-------------|
 | `integrations` | string | Filter by integration |
@@ -320,6 +333,7 @@ Returns the full workflow JSON for re-import or inspection.
 ---
 
 ### 6. List Workflow Versions
+
 `GET /hyper-automate/api/public/workflows/versions/list/{workflow_id}`
 
 **Permission**: `Hyper Automate.view`
@@ -331,6 +345,7 @@ Returns all versions (draft, active, inactive) for a given workflow.
 ---
 
 ### 7. Activate a Workflow Version
+
 `POST /hyper-automate/api/public/workflows/{workflow_id}/{version_id}/activation`
 
 **Permission**: `Hyper Automate.workflowsActivateDeactivate`
@@ -338,6 +353,7 @@ Returns all versions (draft, active, inactive) for a given workflow.
 **Query params**: `accountIds`, `siteIds`, `groupIds` for scope.
 
 **Body** (all fields optional):
+
 ```json
 {
   "data": {
@@ -359,6 +375,7 @@ Returns all versions (draft, active, inactive) for a given workflow.
 ---
 
 ### 8. Deactivate a Workflow
+
 `POST /hyper-automate/api/public/workflows/{workflow_id}/deactivate`
 
 **Permission**: `Hyper Automate.workflowsActivateDeactivate`
@@ -374,6 +391,7 @@ to deactivate the currently active version (you do not need to look the version 
 ---
 
 ### 8a. Publish a Workflow (Share with team)
+
 `POST /hyper-automate/api/v1/workflows/{workflow_id}/publish`
 
 Transitions a Private Draft to a Shared Draft so the workflow is visible to the team in the UI
@@ -389,6 +407,7 @@ importing user until it is published or activated.
 ---
 
 ### 8b. Delete a Workflow
+
 `DELETE /hyper-automate/api/v1/workflows/{workflow_id}?accountIds=<acct>`
 
 Soft, recoverable delete (the UI offers a "Restore workflow" action). This is the correct delete
@@ -409,6 +428,7 @@ found"` means the id is not under that scope (or already deleted).
 ---
 
 ### 9. Trigger a Manual Workflow
+
 `POST /hyper-automate/api/public/workflow-execution/manual/{workflow_id}/{version_id}`
 
 **Permission**: `Hyper Automate.workflowsRun`
@@ -416,6 +436,7 @@ found"` means the id is not under that scope (or already deleted).
 **Query params**: `accountIds`, `siteIds`, `groupIds` for scope.
 
 **Body** (all fields optional):
+
 ```json
 {
   "data": {
@@ -442,11 +463,13 @@ found"` means the id is not under that scope (or already deleted).
 ---
 
 ### 10. List Workflow Executions
+
 `GET /hyper-automate/api/public/workflow-execution`
 
 **Permission**: `Hyper Automate.view`
 
 **Query params**:
+
 | Param | Type | Description |
 |-------|------|-------------|
 | `workflow_id` | string | Filter by specific workflow |
@@ -473,11 +496,13 @@ found"` means the id is not under that scope (or already deleted).
 ---
 
 ### 11. Get Execution Detail
+
 `GET /hyper-automate/api/public/workflow-execution/{workflow_execution_id}`
 
 **Permission**: `Hyper Automate.view`
 
 **Response fields**:
+
 - Required: `id`, `mgmt_id`, `scope_id`, `singularity_response_event_id`, `version_id`, `workflow_id`
 - Optional: `created_at`, `duration`, `error_actions` (array), `executed_actions` (integer),
   `scope_level` (enum), `singularity_response_event_type` (enum), `state` (enum),
@@ -486,6 +511,7 @@ found"` means the id is not under that scope (or already deleted).
 ---
 
 ### 12. Enable Agent PNA for Hyperautomation
+
 `POST /agents/enable-hyper-automation-pna`
 
 **Permission**: `Endpoints.edit` + `Hyper Automate.connectionsEdit`
@@ -495,6 +521,7 @@ Enables the Private Network Access agent integration for use in Hyperautomation 
 ---
 
 ### 13. Disable Agent PNA for Hyperautomation
+
 `POST /agents/disable-hyper-automation-pna`
 
 **Permission**: `Endpoints.edit` + `Hyper Automate.connectionsEdit`
@@ -502,11 +529,13 @@ Enables the Private Network Access agent integration for use in Hyperautomation 
 ---
 
 ### 14. Evaluate Expression
+
 `POST /hyper-automate/api/public/workflow-action-expressions/{base_action_id}/evaluate-expression`
 
 Evaluates a Hyperautomation expression string against a given context.
 
 **Body**:
+
 ```json
 {
   "data": {
@@ -521,6 +550,7 @@ Evaluates a Hyperautomation expression string against a given context.
 ---
 
 ### 15. Expression Breakdown
+
 `POST /hyper-automate/api/public/workflow-action-expressions/{base_action_id}/expression-breakdown`
 
 Same body as Evaluate Expression. Returns a parsed breakdown of expression components.
@@ -591,6 +621,7 @@ const triggerRes = await fetch(
 | `422` | Validation error | Schema mismatch, duplicate `export_id`, invalid `type` value, missing required field |
 
 Common import `422` messages:
+
 - `"Invalid action type"`: typo in `type` field
 - `"export_id conflict"`: duplicate `export_id` values in actions array
 - `"Invalid target"`: `connected_to.target` references non-existent `export_id`

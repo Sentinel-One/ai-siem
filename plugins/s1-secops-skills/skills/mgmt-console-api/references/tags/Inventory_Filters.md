@@ -3,6 +3,7 @@
 4 endpoints.
 
 ## `GET /web/api/v2.1/xdr/assets/filters/autocomplete`
+
 **Auto Complete**
 `operationId`: `_web_api_xdr_assets_filters_autocomplete_get`
 
@@ -11,6 +12,7 @@ Use this command to get values for other fields. When you send this command with
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -99,6 +101,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/filters/count`
+
 **Filter counts**
 `operationId`: `_web_api_xdr_assets_filters_count_get`
 
@@ -107,6 +110,7 @@ Get filter counts
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
 - `missingCoverage` [query, array]: The missing coverage for the asset
@@ -192,6 +196,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/filters/csv-filter`
+
 **Upload CSV file**
 `operationId`: `_web_api_xdr_assets_filters_csv-filter_post`
 
@@ -200,6 +205,7 @@ Upload CSV file
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `surface` [formData, string] (enum: Cloud, Identity, Network Discovery, Endpoint): The surface that each resource belongs to
 - `category` [formData, string] (enum: All, Account, AI ML, Application Integration, Cloud Application, Code, Container, Data Analysis, Data Store, Developer Tool, Device, Function, Identity, Secrets, Server, Storage, Network, Governance, Workstation): The category that each resource belongs to
 - `excludeHeader` [formData, boolean] **required**: Set to True to exclude the column header
@@ -209,6 +215,7 @@ Parameters:
 Responses: 400 Invalid user input received. See error details for further i, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/filters/free-text`
+
 **Free text filters**
 `operationId`: `_web_api_xdr_assets_filters_free-text_get`
 

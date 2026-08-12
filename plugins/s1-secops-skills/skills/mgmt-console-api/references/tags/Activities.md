@@ -3,6 +3,7 @@
 4 endpoints.
 
 ## `GET /web/api/v2.1/activities`
+
 **Get Activities**
 `operationId`: `_web_api_activities_get`
 
@@ -12,6 +13,7 @@ Get the activities, and their data, that match the filters.
 Required permissions: `Activity Page.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -42,6 +44,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/activities/types`
+
 **Get Activity Types**
 `operationId`: `_web_api_activities_types_get`
 
@@ -52,6 +55,7 @@ Required permissions: `Activity Page.view`
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/export/activities`
+
 **Export Activities**
 `operationId`: `_web_api_export_activities_get`
 
@@ -60,6 +64,7 @@ Export the list of activities.
 Required permissions: `Activity Page.view`
 
 Parameters:
+
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -84,6 +89,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/last-activity-as-syslog`
+
 **Last activity as Syslog message**
 `operationId`: `_web_api_last-activity-as-syslog_get`
 
@@ -92,6 +98,7 @@ To see examples of Syslog messages, you can get the Syslog message that correspo
 Required permissions: `Activity Page.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".

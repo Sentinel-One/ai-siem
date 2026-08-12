@@ -3,6 +3,7 @@
 2 endpoints.
 
 ## `GET /web/api/v2.1/installed-applications`
+
 **[DEPRECATED] Get Applications**
 `operationId`: `_web_api_installed-applications_get`
 
@@ -11,6 +12,7 @@ Get the applications, and their data (such as risk level), installed on endpoint
 Required permissions: `Applications Page.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -43,6 +45,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/installed-applications/cves`
+
 **[DEPRECATED] Get CVEs**
 `operationId`: `_web_api_installed-applications_cves_get`
 
@@ -51,6 +54,7 @@ Get known CVEs for applications that are installed on endpoints with Application
 Required permissions: `Applications Page.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".

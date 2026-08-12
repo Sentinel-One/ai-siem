@@ -3,6 +3,7 @@
 14 endpoints.
 
 ## `GET /web/api/v2.1/filters`
+
 **Get Filters**
 `operationId`: `_web_api_filters_get`
 
@@ -11,6 +12,7 @@ Get the list of saved filters. See Save Filter. The response includes the ID of 
 Required permissions: `Endpoints.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -29,6 +31,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/filters`
+
 **Save Filter**
 `operationId`: `_web_api_filters_post`
 
@@ -38,11 +41,13 @@ For example, you can save a filter with {"data":{"filterFields":{"infected":true
 Required permissions: `Endpoints.edit`
 
 Parameters:
-- `body` [body, filters.filters_NewFilterSchema]: 
+
+- `body` [body, filters.filters_NewFilterSchema]:
 
 Responses: 403 User is not allowed to perform this operation., 200 Filter successfully saved. Returns created object., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/filters/csv-filter`
+
 **Upload CSV file**
 `operationId`: `_web_api_filters_csv-filter_post`
 
@@ -51,6 +56,7 @@ Upload CSV file
 Required permissions: `Endpoints.view`
 
 Parameters:
+
 - `agentFilterField` [formData, string] **required**: The property of the endpoint to filter by
 - `excludeHeader` [formData, boolean] **required**: Set to True to exclude the column header
 - `file` [formData, file] **required**: File
@@ -58,6 +64,7 @@ Parameters:
 Responses: 400 Invalid user input received. See error details for further i, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/filters/dv`
+
 **[DEPRECATED] Get Deep Visibility Filters**
 `operationId`: `_web_api_filters_dv_get`
 
@@ -66,6 +73,7 @@ Get saved Deep Visibility queries with full data. See Save Deep Visibility Filte
 Required permissions: `Deep Visibility.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -85,6 +93,7 @@ Parameters:
 Responses: 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/filters/dv`
+
 **[DEPRECATED] Save Deep Visibility Filter**
 `operationId`: `_web_api_filters_dv_post`
 
@@ -94,11 +103,13 @@ Deep Visibility requires a Complete SKU.
 Required permissions: `Deep Visibility.create`
 
 Parameters:
-- `body` [body, filters.filters_NewDeepVisibilityFilterSchema]: 
+
+- `body` [body, filters.filters_NewDeepVisibilityFilterSchema]:
 
 Responses: 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `DELETE /web/api/v2.1/filters/dv/{filter_id}`
+
 **[DEPRECATED] Delete Deep Visibility Filter**
 `operationId`: `_web_api_filters_dv_{filter_id}_delete`
 
@@ -107,11 +118,13 @@ Delete a saved Deep Visibility query.
 Required permissions: `Deep Visibility.delete`
 
 Parameters:
+
 - `filter_id` [path, string] **required**: Filter ID. Example: "225494730938493804".
 
 Responses: 404 Filter not found, 403 User is not allowed to perform this operation., 200 Filter successfully deleted., 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/filters/dv/{filter_id}`
+
 **[DEPRECATED] Update Deep Visibility Filter**
 `operationId`: `_web_api_filters_dv_{filter_id}_put`
 
@@ -120,12 +133,14 @@ Change a saved Deep Visibility filter. To get the ID and fields to change, run G
 Required permissions: `Deep Visibility.edit`
 
 Parameters:
+
 - `filter_id` [path, string] **required**: Filter ID. Example: "225494730938493804".
-- `body` [body, filters.filters_NewDeepVisibilityFilterSchema]: 
+- `body` [body, filters.filters_NewDeepVisibilityFilterSchema]:
 
 Responses: 404 Filter not found, 403 User is not allowed to perform this operation., 200 Filter successfully updated. Returns updated object., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `DELETE /web/api/v2.1/filters/{filter_id}`
+
 **Delete Filter**
 `operationId`: `_web_api_filters_{filter_id}_delete`
 
@@ -134,11 +149,13 @@ Delete a saved filter.
 Required permissions: `Endpoints.edit`
 
 Parameters:
+
 - `filter_id` [path, string] **required**: Filter ID. Example: "225494730938493804".
 
 Responses: 404 Filter not found, 403 User is not allowed to perform this operation., 200 Filter successfully deleted., 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/filters/{filter_id}`
+
 **Update Filter**
 `operationId`: `_web_api_filters_{filter_id}_put`
 
@@ -147,12 +164,14 @@ Update an existing filter
 Required permissions: `Endpoints.edit`
 
 Parameters:
+
 - `filter_id` [path, string] **required**: Filter ID. Example: "225494730938493804".
-- `body` [body, filters.filters_UpdateFilterSchema]: 
+- `body` [body, filters.filters_UpdateFilterSchema]:
 
 Responses: 404 Filter not found, 403 User is not allowed to perform this operation., 200 Filter successfully updated. Returns updated object., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/filters`
+
 **Get Filters**
 `operationId`: `_web_api_xdr_filters_get`
 
@@ -161,6 +180,7 @@ Get the list of saved filters. See Save Filter. The response includes the ID of 
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor".
 - `sortOrder` [query, string] (enum: asc, desc): Sort direction
 - `accountIds` [query, array]: List of Account IDs to filter by
@@ -178,6 +198,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/filters`
+
 **Save Filter**
 `operationId`: `_web_api_xdr_filters_post`
 
@@ -187,11 +208,13 @@ For example, you can save a filter with {"data":{"filterFields":{"infected":true
 Required permissions: `XDR Inventory.edit`
 
 Parameters:
-- `body` [body, v2_1.config.schemas_NewFilterSchema]: 
+
+- `body` [body, v2_1.config.schemas_NewFilterSchema]:
 
 Responses: 403 User is not allowed to perform this operation., 200 Filter successfully saved. Returns created object., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `DELETE /web/api/v2.1/xdr/filters/{filter_id}`
+
 **Delete Filter**
 `operationId`: `_web_api_xdr_filters_{filter_id}_delete`
 
@@ -200,11 +223,13 @@ Delete a saved filter.
 Required permissions: `XDR Inventory.edit`
 
 Parameters:
+
 - `filter_id` [path, string] **required**: Filter ID
 
 Responses: 404 Filter not found, 403 User is not allowed to perform this operation., 200 Filter successfully deleted., 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/xdr/filters/{filter_id}`
+
 **Update Filter**
 `operationId`: `_web_api_xdr_filters_{filter_id}_put`
 
@@ -213,12 +238,14 @@ Update an existing filter
 Required permissions: `XDR Inventory.edit`
 
 Parameters:
+
 - `filter_id` [path, string] **required**: Filter ID
-- `body` [body, v2_1.config.schemas_UpdateFilterSchema]: 
+- `body` [body, v2_1.config.schemas_UpdateFilterSchema]:
 
 Responses: 404 Filter not found, 403 User is not allowed to perform this operation., 200 Filter successfully updated. Returns updated object., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/private/filters/enriched`
+
 **Filters with Metadata**
 `operationId`: `_web_api_xdr_private_filters_enriched_get`
 
@@ -227,6 +254,7 @@ Get a list of saved endpoint filters, with enriched data. One of the fields in t
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor".
 - `sortOrder` [query, string] (enum: asc, desc): Sort direction
 - `accountIds` [query, array]: List of Account IDs to filter by

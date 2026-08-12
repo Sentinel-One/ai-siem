@@ -3,6 +3,7 @@
 17 endpoints.
 
 ## `GET /web/api/v2.1/export/sites`
+
 **Export Sites**
 `operationId`: `_web_api_export_sites_get`
 
@@ -11,6 +12,7 @@ Export Sites data to a CSV, for Sites that match the filter.
 Required permissions: `Sites.view`
 
 Parameters:
+
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `query` [query, string]: Full text search for fields: name, account_name, description. (Note: on single-account consoles account name will not be matched)
@@ -43,6 +45,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/site-with-admin`
+
 **Create Site and User**
 `operationId`: `_web_api_site-with-admin_post`
 
@@ -51,11 +54,13 @@ Create a Site and an Admin role user. This requires an Admin role with a Global 
 Required permissions: `Sites.create`
 
 Parameters:
-- `body` [body, sites_SiteDataWithUserSchema]: 
+
+- `body` [body, sites_SiteDataWithUserSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/sites`
+
 **Get Sites**
 `operationId`: `_web_api_sites_get`
 
@@ -65,6 +70,7 @@ Required permissions: `Sites.view`
 Optional permissions: `Endpoints.moveToAnotherSite`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -104,6 +110,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/sites`
+
 **Create Site**
 `operationId`: `_web_api_sites_post`
 
@@ -112,11 +119,13 @@ Create a Site. This requires an Admin role with a Global scope or Account scope 
 Required permissions: `Sites.create`
 
 Parameters:
-- `body` [body, sites_PostSiteSchema]: 
+
+- `body` [body, sites_PostSiteSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/sites/duplicate-site`
+
 **Create duplicate site**
 `operationId`: `_web_api_sites_duplicate-site_post`
 
@@ -125,11 +134,13 @@ Responses: 200 Success, 400 Invalid user input received. See error details for f
 Required permissions: `Sites.create`
 
 Parameters:
-- `body` [body, sites_DuplicateSiteSchema]: 
+
+- `body` [body, sites_DuplicateSiteSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/sites/update-bulk`
+
 **Update Sites**
 `operationId`: `_web_api_sites_update-bulk_put`
 
@@ -138,11 +149,13 @@ Change the properties of the Sites given by IDs. <br>To get the IDs, run 'sites'
 Required permissions: `Sites.edit`
 
 Parameters:
-- `body` [body, sites_SiteBulkPutSchema]: 
+
+- `body` [body, sites_SiteBulkPutSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `DELETE /web/api/v2.1/sites/{site_id}`
+
 **Delete Site**
 `operationId`: `_web_api_sites_{site_id}_delete`
 
@@ -151,11 +164,13 @@ Delete the Site of the given ID. To get the ID, run "sites". <br>You must have a
 Required permissions: `Sites.delete`
 
 Parameters:
+
 - `site_id` [path, string] **required**: Site ID. Example: "225494730938493804".
 
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/sites/{site_id}`
+
 **Get Site by ID**
 `operationId`: `_web_api_sites_{site_id}_get`
 
@@ -164,11 +179,13 @@ Get the data of the Site of the ID. To get the ID, run "sites". <br>The response
 Required permissions: `Sites.view`
 
 Parameters:
+
 - `site_id` [path, string] **required**: Site ID. Example: "225494730938493804".
 
 Responses: 404 Site not found, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/sites/{site_id}`
+
 **Update Site**
 `operationId`: `_web_api_sites_{site_id}_put`
 
@@ -177,12 +194,14 @@ Change the policy and properties of the Site given by ID. <br>To get the ID, run
 Required permissions: `Sites.edit`
 
 Parameters:
+
 - `site_id` [path, string] **required**: Site ID. Example: "225494730938493804".
-- `body` [body, sites_SitePutSchema]: 
+- `body` [body, sites_SitePutSchema]:
 
 Responses: 404 Site not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/sites/{site_id}/expire-now`
+
 **Expire Site**
 `operationId`: `_web_api_sites_{site_id}_expire-now_post`
 
@@ -191,11 +210,13 @@ Expire the Site of the given ID (run "sites" to get the ID). <br>You must have a
 Required permissions: `Sites.edit`
 
 Parameters:
+
 - `site_id` [path, string] **required**: Site ID. Example: "225494730938493804".
 
 Responses: 404 Site not found, 200 Expire site now, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/sites/{site_id}/local-authorization`
+
 **Get local upgrade/downgrade Site authorization**
 `operationId`: `_web_api_sites_{site_id}_local-authorization_get`
 
@@ -204,11 +225,13 @@ Get the time when authorization of local upgrades/downgrades expires, and the nu
 Required permissions: `Local Upgrade/Downgrade Authorization.view`
 
 Parameters:
+
 - `site_id` [path, string] **required**: Site ID. Example: "225494730938493804".
 
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/sites/{site_id}/local-authorization`
+
 **Edit local upgrade/downgrade Site authorization**
 `operationId`: `_web_api_sites_{site_id}_local-authorization_put`
 
@@ -217,12 +240,14 @@ Edit when authorization of local upgrades/downgrades expires. Returns the number
 Required permissions: `Local Upgrade/Downgrade Authorization.edit`
 
 Parameters:
+
 - `site_id` [path, string] **required**: Site ID. Example: "225494730938493804".
-- `body` [body, sites_PutSiteApprovalJsonSchema]: 
+- `body` [body, sites_PutSiteApprovalJsonSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/sites/{site_id}/local-upgrade-approved-agents-csv`
+
 **Get a CSV file of local upgrade/downgrade Site authorization data**
 `operationId`: `_web_api_sites_{site_id}_local-upgrade-approved-agents-csv_get`
 
@@ -231,11 +256,13 @@ Get a CSV file containing the Agents authorized for local upgrades/downgrades, i
 Required permissions: `Local Upgrade/Downgrade Authorization.view`
 
 Parameters:
+
 - `site_id` [path, string] **required**: Site ID. Example: "225494730938493804".
 
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/sites/{site_id}/reactivate`
+
 **Reactivate Site**
 `operationId`: `_web_api_sites_{site_id}_reactivate_put`
 
@@ -244,12 +271,14 @@ Reactivate an expired Site. <br>You must have an Admin role with scope access th
 Required permissions: `Sites.edit`
 
 Parameters:
+
 - `site_id` [path, string] **required**: Site ID. Example: "225494730938493804".
-- `body` [body, sites_ReactivateSiteSchema]: 
+- `body` [body, sites_ReactivateSiteSchema]:
 
 Responses: 404 Site not found, 200 Site reactivated, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/sites/{site_id}/regenerate-key`
+
 **Regenerate Site Key**
 `operationId`: `_web_api_sites_{site_id}_regenerate-key_put`
 
@@ -258,11 +287,13 @@ Regenerate the key for the given Site. <br>To get the site_id, use "sites".
 Required permissions: `Sites.edit`
 
 Parameters:
+
 - `site_id` [path, string] **required**: Site ID. Example: "225494730938493804".
 
 Responses: 403 No permission for regenerating a key., 404 Site not found, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/sites/{site_id}/revert-policy`
+
 **Revert Policy**
 `operationId`: `_web_api_sites_{site_id}_revert-policy_put`
 
@@ -271,12 +302,14 @@ When a Site is created through the Console, it gets the Global policy. <br>If yo
 Required permissions: `Policy.edit`
 
 Parameters:
+
 - `site_id` [path, string] **required**: Site ID. Example: "225494730938493804".
-- `body` [body, policies_schemas_RevertPolicySchema]: 
+- `body` [body, policies_schemas_RevertPolicySchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/sites/{site_id}/token`
+
 **Get Site registration token by ID**
 `operationId`: `_web_api_sites_{site_id}_token_get`
 
@@ -285,6 +318,7 @@ Get the registration token of the Site of the ID.
 Required permissions: `Sites.view`
 
 Parameters:
+
 - `site_id` [path, string] **required**: Site ID. Example: "225494730938493804".
 
 Responses: 404 Site not found, 200 Success, 401 Unauthorized access - please sign in and retry.

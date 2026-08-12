@@ -4,7 +4,7 @@
 **Schema endpoint:** `POST /web/api/v2.1/unifiedalerts/graphql/schema`
 **Auth:** same `Authorization: ApiToken <token>` header as REST; no extra permission grant required beyond the RBAC entries under "Unified Alerts".
 **Skill entry points:** `scripts/unified_alerts.py` (module) and `scripts/call_unified_alerts.py` (CLI).
-**Upstream docs:** https://community.sentinelone.com/s/article/000010170
+**Upstream docs:** <https://community.sentinelone.com/s/article/000010170>
 
 ---
 
@@ -183,11 +183,13 @@ From live `alertAvailableActions` on a Singularity Platform tenant with EDR, Ide
 ## Common recipes
 
 **Status roll-up for an account**
+
 ```python
 facets = uam.filters_count(c, ["status", "severity", "detectionProduct"])
 ```
 
 **EDR alerts from the last hour**
+
 ```python
 import time
 cutoff_ms = int((time.time() - 3600) * 1000)
@@ -198,6 +200,7 @@ edr = uam.list_alerts(c, filters=[
 ```
 
 **Bulk resolve all `NEW` STAR alerts (mirrors the upstream docs example)**
+
 ```python
 filt = uam.or_filter([
     uam.build_filter(fieldId="detectionProduct", stringEqual={"value": "STAR"}),
@@ -218,6 +221,7 @@ uam.trigger_actions(
 ```
 
 **Add → update → delete note with eventual consistency handled**
+
 ```python
 notes_before = {n["id"] for n in uam.alert_notes(c, alert_id)}
 uam.add_alert_note(c, alert_id, "Investigating")
@@ -230,6 +234,7 @@ uam.delete_alert_note(c, new_id)
 ```
 
 **CSV for an executive one-pager**
+
 ```python
 csv = uam.export_alerts_csv(c, filters=[
     uam.build_filter(fieldId="severity", stringIn={"values": ["CRITICAL", "HIGH"]}),
@@ -282,5 +287,6 @@ Findings from a live events-vs-scheduled reproduction (2026-06).
 ## Ingestion paths (HEC vs UAM)
 
 Two distinct ingest APIs share the ingest host URL but are not connected:
+
 - **HEC ingest** (HTTP Event Collector): raw logs/events + a named `parser`; feeds Event Search, PowerQuery, and detection rules. This is the log-ingestion path (replaces the removed SDL `uploadLogs`). For pre-structured / OCSF JSON ingested with `?isParsed=true` (no parser), each event MUST include `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security` for custom OCSF sources), `event.type` (as a FLAT dotted key, a nested `event:{...}` object is dropped since `event` is HEC-reserved), and `site_id`. OCSF omits these, and without them events land with a null source (no attribution; `dataSource.name`-based filters/detections miss).
 - **UAM ingest** (`uam_post_indicators` / `uam_ingest_alert`, `/v1/*`): creates UAM alerts/indicators directly and builds the alert asset from the event `device` object. Site routing via `scope = accountId:siteId`.

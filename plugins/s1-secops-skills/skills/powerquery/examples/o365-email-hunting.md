@@ -6,7 +6,7 @@ Workflow patterns for the most common Microsoft 365 audit hunts: finding senders
 
 Before any M365 hunt, confirm the source string, the actor / operation field names, and the populated values on this tenant.
 
-```
+```text
 // Confirm the source name.
 | group ct=count() by dataSource.name | sort -ct | limit 50
 
@@ -26,7 +26,7 @@ The `<candidate_*_field>` placeholders below should be replaced with the field n
 
 This is the single most common M365 hunt, and the answer is rarely "yes/no" by itself; it's usually a count by operation type plus a rough cadence. The trap to avoid: assuming the user is a sender. If the address only appears as a recipient or in inbound mail content, the hunt should report a coverage gap rather than "no activity".
 
-```
+```text
 // Step A: does the address appear anywhere on this source?
 dataSource.name='<m365_source>' * contains 'user@example.com'
 | group ct=count() by <operation_field>
@@ -51,7 +51,7 @@ Reading the result:
 
 Used to spot bursts, off-hours activity, or sudden drops.
 
-```
+```text
 dataSource.name='<m365_source>'
 <operation_field> in (<discovered_send_operations>)
 (<ocsf_actor_field> contains:anycase 'user@example.com'
@@ -68,7 +68,7 @@ The "did user X send mail to anyone outside the org" question. Recipients live i
 
 PQ side:
 
-```
+```text
 dataSource.name='<m365_source>'
 <operation_field> in (<discovered_send_operations>)
 (<ocsf_actor_field> contains:anycase 'user@example.com'
@@ -137,7 +137,7 @@ for domain, count in domain_counts.most_common(20):
 
 When DLP fires on a send, the `message` blob contains policy and rule details. Useful for triaging "which DLP rules is user X tripping repeatedly".
 
-```
+```text
 dataSource.name='<m365_source>'
 <recordtype_field> = 13                       // discover the field name carrying RecordType first
 (<ocsf_actor_field> contains:anycase 'user@example.com'
@@ -162,7 +162,7 @@ Run recipe 1 step A and step B together; the comparison is the answer.
 
 When the search predicate is an identity string (email, user id, IP), partition the result set on `dataSource.name` presence to separate real-world events from SDL platform-internal audit records of prior analyst searches. The audit trail is itself a finding, but it must be reported separately.
 
-```
+```text
 * contains 'user@example.com'
 | let category = (dataSource.name = *) ? 'subject_activity' : 'investigation_noise'
 | group ct=count(), first_seen=min(timestamp), last_seen=max(timestamp) by category
@@ -170,7 +170,7 @@ When the search predicate is an identity string (email, user id, IP), partition 
 
 To inspect what the investigation-noise records carry on this tenant:
 
-```
+```text
 * contains 'user@example.com'
 | filter !(dataSource.name = *)
 | limit 5 | columns *

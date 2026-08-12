@@ -5,6 +5,7 @@ A `{parse=X}` directive inside a field matcher runs a secondary parser on the ca
 > **NOT a valid directive: `{parse=keyValue}`.** It returns `400: Syntax error: Unknown parser "keyValue"`. The `keyValue` built-in parser exists, but it is only usable as a root-level `aliasTo: "keyValue"` (a one-line alias parser). To extract key=value pairs INSIDE a format string, use the repeating idiom `".*$_=identifier$=$_=quoteOrSpace$"` with `repeat: true`, see SKILL.md decision-tree step 5 and `examples/03-key-value.json`. The leading `.*` is mandatory; without it the format anchors at position 0 of the message and captures nothing on any line that doesn't start with a bare `identifier=`. Tenant-validated 2026-05-26 on FortiGate syslog. **None of the other built-ins** (`accessLog`, `cloudfront`, `json`, `dottedJson`, `dottedEscapedJson`, `elb-access`, `heroku-logplex`, `leveldbLog`, `mysqlGeneralQueryLog`, `mysqlSlowQueryLog`, `postgresLog`, `redshift`, `s3_bucket_access`, `spot_instance_data`, `systemLog`) are accepted as `{parse=...}` directives either, they're root-level parsers only. The valid `{parse=X}` set is the one documented below (URI variants, JSON variants, key=value list, time/byte/syslog parsers).
 
 > **Subfield naming convention (per SDL KB 000006743):** generated fields are named `<parentFieldName><CapitalizedFirstLetterOfKey><restOfKey>`, with the source key's first letter uppercased and concatenated to the parent field name. There is NO underscore, dot, or `Query_` separator between prefix and key. Examples for a field captured as `uri`:
+>
 > - `uriPath` (the parsed URL path component, from `{parse=uri}`)
 > - `uriFoo` for query param `foo` (from `{parse=uri}` or `{parse=uriAttributes}` on `?foo=...`)
 > - `uriBusinessProfile` for query param `businessProfile`
@@ -15,6 +16,7 @@ A `{parse=X}` directive inside a field matcher runs a secondary parser on the ca
 > **`attrWhitelist` / `attrBlacklist` scope**; these only filter the SUBFIELDS produced by the `{parse=...}` directive, not top-level fields you captured by name in the format string. To drop a top-level field you named explicitly, use `discardAttributes: ["fieldname"]` at the parser root, NOT a blacklist on the parse directive. Catalog parsers like `cisco_firewall-latest` show liberal use of blacklists to drop noisy nested arrays (`{attrBlacklist=(targetResources)}`, `{attrBlacklist=(threatsInfoMap|messageParts)}`); the same authors use `discardAttributes: ["message"]` separately to drop the raw event body.
 
 > **Pipe vs parenthesized list syntax for `attrBlacklist=`**, both work in the wild:
+>
 > - Parenthesized: `{attrBlacklist=(field1|field2|field3)}`, common in Microsoft Eventhub parsers.
 > - Bare list: `{attrBlacklist=field1|field2|field3}`, common in FortiGate / Cisco parsers.
 > - Single field: `{attrBlacklist=tranip}`; no delimiters needed.
@@ -86,7 +88,7 @@ This is how the community PARSER_TEMPLATE captures the entire event into `unmapp
 
 **gron DOES expand arrays, into `[N]`-indexed attributes, not lossy strings. Index with `[N]`, never `.N.`** This corrects the common misconception (including elsewhere in this skill) that "gron drops arrays" or "flattens arrays to a lossy string." gron emits one queryable attribute per array leaf, using bracket-index notation:
 
-```
+```json
 "signInEventTypes":["nonInteractiveUser"]          -> unmapped.signInEventTypes[0] = "nonInteractiveUser"
 "additionalDetails":[{"key":"UserType","value":"Member"}]
                                                    -> unmapped.additionalDetails[0].key   = "UserType"
@@ -100,12 +102,13 @@ This is how the community PARSER_TEMPLATE captures the entire event into `unmapp
 The trap that makes it *look* like arrays were dropped: querying with dot-index (`unmapped.targetResources.0.id`) returns null. The actual key uses brackets (`unmapped.targetResources[0].id`). Tenant-validated 2026-06-22 (Microsoft Entra ID sign-in + directory-audit logs, deeply nested arrays).
 
 Choose the capture per goal:
+
 - **gron / dottedJson** -> every array element becomes its own `[N]`-indexed attribute. Use this when you want each leaf queryable / mappable (this is almost always what "extract all fields" means).
 - **strictDottedJson / strict\*** -> the array is preserved as one JSON value (consumable by PowerQuery `array_from_json()` / `array_get()`), NOT split into per-element attributes.
 
 Scalar and nested-object flattening is identical across gron, dottedJson, and the strict variants; they differ ONLY in array handling.
 
-**Querying `[N]` attributes: they are stored but a raw PowerQuery `columns`/`filter` clause cannot type the `[`.** `| columns unmapped.x[0].y` fails to parse ("Unable to parse the entire query"); backticks fail ("Don't understand [`]"); double-quotes turn the name into a string literal. The fields ARE present and queryable through the Event Search field picker and the V1 query / `powerquery_schema_discover` endpoint, so do not conclude extraction failed just because `columns` rejects the name. To confirm `[N]` fields during validation, use `powerquery_schema_discover` (returns full event JSON) rather than a `columns` projection. Tenant-validated 2026-06-22.
+**Querying `[N]` attributes: they are stored but a raw PowerQuery `columns`/`filter` clause cannot type the `[`.** `| columns unmapped.x[0].y` fails to parse ("Unable to parse the entire query"); backticks fail ("Don't understand [`]"); double-quotes turn the name into a string literal. The fields ARE present and queryable through the Event Search field picker and the V1 query /`powerquery_schema_discover` endpoint, so do not conclude extraction failed just because `columns` rejects the name. To confirm `[N]` fields during validation, use `powerquery_schema_discover` (returns full event JSON) rather than a `columns` projection. Tenant-validated 2026-06-22.
 
 See `references/ai-siem-catalog.md` §"Useful reference parsers by shape" for the canonical example, and `examples/08-gron-capture-template.json` for a ready-to-use scaffold.
 
@@ -184,7 +187,7 @@ Accept optional unit suffixes and normalize to a base unit:
 
 After a structural parse, the generated subfields may explode your schema. Filter them:
 
-```
+```text
 $payload{parse=dottedJson}{attrWhitelist=user\\.(id|email|name)}$
 ```
 

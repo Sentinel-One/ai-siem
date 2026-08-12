@@ -69,16 +69,16 @@ Post OCSF-formatted threat intelligence indicators (file, network, process obser
 ### SDL tools
 
 **`sdl_list_files`**
-List configuration files on the SDL tenant (parsers, dashboards, lookups, datatables). Filter by path prefix, e.g. `/logParsers/` or `/dashboards/`.
+List configuration files on the SDL tenant (parsers, dashboards, lookups, datatables) via `POST <console>/sdl/v2/graphql`. Returns each file's `name`, `version` and `udoId`. Optional `pathPrefix` scopes the listing, e.g. `/logParsers/` or `/dashboards/`, so a caller does not have to pull all 2,264 files into context.
 
 **`sdl_get_file`**
-Download the content of a specific SDL configuration file by path.
+Download the content of a single SDL configuration file. Address it by `path` for name-addressed namespaces (`/logParsers/`, `/lookups/`, `/datatables/`, `/automaticLookups`) or by `udoId` for a dashboard. The console's Configuration Files grid displays a dashboard as `/dashboards/id/<udoId>/<name>`; that is a display string, not a path. Pass the number as `udoId` and the file's real name is `/dashboards/<name>`.
 
 **`sdl_put_file`**
-Upload or update a configuration file on SDL. Used for deploying parsers and dashboards. Authorised by `S1_CONSOLE_API_TOKEN`.
+Upload or update a configuration file on SDL. Used for deploying parsers and dashboards. Takes `path` or `udoId`, plus optional `expectedVersion`, which is enforced on both address forms. A path-addressed write to an existing dashboard is refused, because `addConfigFile(name:)` creates a duplicate rather than updating in place; the tool names the `udoId`s already holding that name. Create a dashboard by name once, then address it by `udoId`. Authorised by `S1_CONSOLE_API_TOKEN`.
 
 **`sdl_delete_file`**
-Delete a configuration file from SDL by path.
+Delete a configuration file from SDL by `path` or `udoId`. The tool verifies removal by re-reading and returns `{status, deleted, raw}`.
 
 **`hec_ingest`**
 Ingest raw logs/events into SDL via the HEC (HTTP Event Collector) endpoint. Applies a named parser via `?sourcetype` and lands the data for Event Search, PowerQuery, and detection rules. Posts to `S1_HEC_INGEST_URL` with `Authorization: Bearer <S1_CONSOLE_API_TOKEN>`; the `S1-Scope` header (accountId or accountId:siteId) is required. Replaces the removed `sdl_upload_logs`. Used for ingesting custom telemetry or test events during parser development.

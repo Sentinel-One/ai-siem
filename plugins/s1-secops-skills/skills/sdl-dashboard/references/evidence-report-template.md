@@ -97,7 +97,8 @@ Sample rows (first 3):
 
 (list every panel where verdict == EMPTY, with matchCount and the operator's
 SOC-meaningful interpretation)
-```
+
+```text
 
 The Appendix is mandatory whenever any panel returns 0 rows.
 
@@ -168,7 +169,7 @@ Pass this file to `render_validation_pdf.py` with `--interpretations`. Any panel
 
 ## 6. Worked example: how the report looks for a passing 12-panel dashboard
 
-```
+```text
 Total panels: 12 (runnable: 10, markdown/skipped: 2)
 PASS:  8
 WARN:  0

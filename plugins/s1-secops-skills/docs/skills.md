@@ -64,7 +64,7 @@ Full field reference: `mgmt-console-api/SKILL.md`
 **What it provides:**
 
 - SDL log ingest via HEC (`hec_ingest`), uses the console JWT (`S1_CONSOLE_API_TOKEN`) posted to `S1_HEC_INGEST_URL`
-- SDL config file CRUD (`sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`)
+- SDL config file CRUD over `POST <console>/sdl/v2/graphql` (`sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`; Python client `config_files`, `config_file`, `put_config_file`, `delete_config_file`). Dashboards are addressed by `udoId`, every other namespace by name
 - SDL V1 query (full-event JSON, used for schema discovery)
 
 ```python
@@ -81,9 +81,9 @@ Full field reference: `mgmt-console-api/SKILL.md`
 - Complete SDL dashboard JSON schema: tabs, panels, parameters, time range controls
 - Panel type reference: timeseries, count, table, honeycomb, pie, bar, single value
 - PowerQuery integration: panel query validation against tenant sources before deployment
-- Dashboard deployment via `sdl_put_file` to `/dashboards/<name>`
+- Dashboard deployment via `sdl_put_file`: create by name at `/dashboards/<name>` once, then update by `udoId` forever after, since a name-addressed write to an existing dashboard creates a duplicate
 
-**Workflow:** Author dashboard JSON → validate queries against live tenant sources → deploy via SDL API → confirm via `sdl_list_files`.
+**Workflow:** Author dashboard JSON → validate queries against live tenant sources → deploy via the SDL config-file GraphQL surface → confirm via `sdl_list_files` with `pathPrefix` `/dashboards/` and record the returned `udoId`.
 
 ---
 

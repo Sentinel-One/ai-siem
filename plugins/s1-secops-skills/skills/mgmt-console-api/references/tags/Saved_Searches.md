@@ -3,6 +3,7 @@
 3 endpoints.
 
 ## `GET /sdl/v2/api/saved-searches`
+
 **List saved searches**
 `operationId`: `_sdl_v2_api_saved-searches_get`
 
@@ -11,11 +12,13 @@ Retrieves all saved searches visible to the current user. Saved searches allow y
 Required permissions: `SDL Search (Previously Skylight).create, SDL Search (Previously Skylight).edit, SDL Search (Previously Skylight).delete`
 
 Parameters:
+
 - `type` [query, string] (enum: PRIVATE, SHARED): Filter by search type. PRIVATE searches are visible only to you, while SHARED searches are visible to all users in your current scope. Defaults to PRIVATE if not specified.
 
 Responses: 200 List of saved searches retrieved successfully., 401 Unauthorized. Authentication is required., 403 Forbidden. User does not have permission to manage searches.
 
 ## `PUT /sdl/v2/api/saved-searches`
+
 **Create or update saved searches**
 `operationId`: `_sdl_v2_api_saved-searches_put`
 
@@ -26,11 +29,13 @@ Note: A `teamToken` query parameter will be automatically added to each search U
 Required permissions: `SDL Search (Previously Skylight).create, SDL Search (Previously Skylight).edit, SDL Search (Previously Skylight).delete`
 
 Parameters:
+
 - `body` [body, v2_1.saved_searches.schemas_BatchUpsertRequest] **required**: List of saved searches to create or update, along with the duplicate handling strategy.
 
-Responses: 200 All searches were processed successfully. This includes sear, 207 Partial success. Some searches were saved successfully, but , 400 Invalid request. The request body is malformed or contains i, 401 Authentication required. Please provide valid credentials., 403 Permission denied. You do not have the required permissions , 500 Internal server error. All searches failed to save due to a 
+Responses: 200 All searches were processed successfully. This includes sear, 207 Partial success. Some searches were saved successfully, but , 400 Invalid request. The request body is malformed or contains i, 401 Authentication required. Please provide valid credentials., 403 Permission denied. You do not have the required permissions , 500 Internal server error. All searches failed to save due to a
 
 ## `POST /sdl/v2/api/saved-searches/batch-delete`
+
 **Delete saved searches**
 `operationId`: `_sdl_v2_api_saved-searches_batch-delete_post`
 
@@ -39,6 +44,7 @@ Delete multiple saved searches in a single request. You can delete up to 100 sea
 Required permissions: `SDL Search (Previously Skylight).create, SDL Search (Previously Skylight).edit, SDL Search (Previously Skylight).delete`
 
 Parameters:
+
 - `body` [body, v2_1.saved_searches.schemas_BatchDeleteRequest] **required**: List of saved searches to delete, identified by name and type.
 
-Responses: 200 All searches were deleted successfully., 207 Partial success. Some searches were deleted successfully, bu, 400 Invalid request. The request body is malformed or contains i, 401 Authentication required. Please provide valid credentials., 403 Permission denied. You do not have the required permissions , 500 Internal server error. All searches failed to delete due to 
+Responses: 200 All searches were deleted successfully., 207 Partial success. Some searches were deleted successfully, bu, 400 Invalid request. The request body is malformed or contains i, 401 Authentication required. Please provide valid credentials., 403 Permission denied. You do not have the required permissions , 500 Internal server error. All searches failed to delete due to

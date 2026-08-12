@@ -3,6 +3,7 @@
 13 endpoints.
 
 ## `DELETE /web/api/v2.1/remote-ops/data-exporter/destination-profiles`
+
 **Delete multiple Destination profiles by ID**
 `operationId`: `_web_api_remote-ops_data-exporter_destination-profiles_delete`
 
@@ -11,11 +12,13 @@ Delete multiple Destination profiles. The profiles that are not possible to dele
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
-- `body` [body, v2_1.data_exporter.schema_DeleteDestinationProfilesRequestSchema]: 
+
+- `body` [body, v2_1.data_exporter.schema_DeleteDestinationProfilesRequestSchema]:
 
 Responses: 200 Delete was completed or partially completed., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/remote-ops/data-exporter/destination-profiles`
+
 **Get available Destination profiles**
 `operationId`: `_web_api_remote-ops_data-exporter_destination-profiles_get`
 
@@ -24,12 +27,14 @@ Get Destination profiles available for the specified scope. The profiles are inh
 Required permissions: `Remote Script Orchestration.viewDestinationCredentials`
 
 Parameters:
+
 - `scopeLevel` [query, string] (enum: tenant, account, site, group): Scope level to get Destination profile configuration. Example: "tenant".
 - `scopeId` [query, string]: Scope ID to get Destination profiles configuration. Example: "225494730938493804".
 
 Responses: 403 User has insufficient permission to perform such action, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/remote-ops/data-exporter/destination-profiles`
+
 **Create new Destination profile.**
 `operationId`: `_web_api_remote-ops_data-exporter_destination-profiles_post`
 
@@ -38,11 +43,13 @@ Create Destination profile inside specified scope. If the created profile is req
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
-- `body` [body, v2_1.data_exporter.schema_PostDestinationProfileRequestSchema]: 
+
+- `body` [body, v2_1.data_exporter.schema_PostDestinationProfileRequestSchema]:
 
 Responses: 401 Unauthorized access - please sign in and retry., 200 Successes, 400 Invalid user input received. See error details for further i
 
 ## `POST /web/api/v2.1/remote-ops/data-exporter/destination-profiles/set-default`
+
 **Set profile as default profile of the scope**
 `operationId`: `_web_api_remote-ops_data-exporter_destination-profiles_set-default_post`
 
@@ -51,11 +58,13 @@ Set profile as default profile of the scope
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
-- `body` [body, v2_1.data_exporter.schema_SetDefaultDestinationProfile]: 
+
+- `body` [body, v2_1.data_exporter.schema_SetDefaultDestinationProfile]:
 
 Responses: 403 User has insufficient permission to perform such action, 400 Invalid user input received. See error details for further i, 200 Get Destination profile, 401 Unauthorized access - please sign in and retry.
 
 ## `DELETE /web/api/v2.1/remote-ops/data-exporter/destination-profiles/{profile_id}`
+
 **Delete Destination profile by ID**
 `operationId`: `_web_api_remote-ops_data-exporter_destination-profiles_{profile_id}_delete`
 
@@ -64,11 +73,13 @@ Delete Destination profile with specified ID. If the profile was used as default
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
+
 - `profile_id` [path, string] **required**: Profile ID. Example: "225494730938493804".
 
 Responses: 403 User has insufficient permission to perform such action, 404 Destination profile is not found, 200 Destination profile is deleted, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/remote-ops/data-exporter/destination-profiles/{profile_id}`
+
 **Get Destination profile by ID**
 `operationId`: `_web_api_remote-ops_data-exporter_destination-profiles_{profile_id}_get`
 
@@ -77,6 +88,7 @@ Get Destination profile with specified ID
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
+
 - `profile_id` [path, string] **required**: Profile ID. Example: "225494730938493804".
 - `scopeLevel` [query, string] (enum: tenant, account, site, group): Scope level to get Destination profile configuration. Example: "tenant".
 - `scopeId` [query, string]: Scope ID to get Destination profiles configuration. Example: "225494730938493804".
@@ -84,6 +96,7 @@ Parameters:
 Responses: 403 User has insufficient permission to perform such action, 404 Destination profile is not found, 200 Get Destination profile, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/remote-ops/data-exporter/destination-profiles/{profile_id}`
+
 **Update existing Destination profile**
 `operationId`: `_web_api_remote-ops_data-exporter_destination-profiles_{profile_id}_put`
 
@@ -92,12 +105,14 @@ Update contents of existing Destination profile with specified ID. All the profi
 Required permissions: `Remote Script Orchestration.manageDestinationCredentials`
 
 Parameters:
+
 - `profile_id` [path, string] **required**: Profile ID. Example: "225494730938493804".
-- `body` [body, v2_1.data_exporter.schema_PutDestinationProfileRequestSchema]: 
+- `body` [body, v2_1.data_exporter.schema_PutDestinationProfileRequestSchema]:
 
 Responses: 403 User has insufficient permission to perform such action, 404 Destination profile is not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/remote-ops/data-exporter/results`
+
 **Get results sent to data exporter**
 `operationId`: `_web_api_remote-ops_data-exporter_results_get`
 
@@ -105,6 +120,7 @@ Get results sent to data exporter
 Optional permissions: `Remote Script Orchestration.view, Remote Ops Forensics.view, Remote Script Orchestration.viewDestinationResults`
 
 Parameters:
+
 - `taskId` [query, string]: Task id
 - `maliciousGroupId` [query, string]: Threat malicious group id
 - `agentId` [query, string] **required**: Id of the agent the data came from
@@ -112,6 +128,7 @@ Parameters:
 Responses: 403 User has insufficient permission to perform such action, 200 Get Destination profile results, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/remote-ops/schedule/forensics`
+
 **Schedule forensics for future run.**
 `operationId`: `_web_api_remote-ops_schedule_forensics_post`
 
@@ -120,11 +137,13 @@ Schedule forensics for future run. The profile will be scheduled for execution o
 Required permissions: `Remote Script Orchestration.createScheduledTasks, Remote Ops Forensics.runForensicsCollection`
 
 Parameters:
-- `body` [body, v2_1.scheduling.schema_ScheduleForensicsCollectionRequestSchema]: 
+
+- `body` [body, v2_1.scheduling.schema_ScheduleForensicsCollectionRequestSchema]:
 
 Responses: 401 Unauthorized access - please sign in and retry., 200 Success, 400 Invalid user input received. See error details for further i
 
 ## `POST /web/api/v2.1/remote-ops/schedule/remote-script`
+
 **Schedule remote script for future run.**
 `operationId`: `_web_api_remote-ops_schedule_remote-script_post`
 
@@ -134,11 +153,13 @@ Required permissions: `Remote Script Orchestration.createScheduledTasks`
 Optional permissions: `Remote Script Orchestration.runActionScript, Remote Script Orchestration.runDataCollectionScript, Remote Script Orchestration.runArtifactCollectionScript`
 
 Parameters:
-- `body` [body, v2_1.scheduling.schema_ScheduleRemoteScriptRequestSchema]: 
+
+- `body` [body, v2_1.scheduling.schema_ScheduleRemoteScriptRequestSchema]:
 
 Responses: 401 Unauthorized access - please sign in and retry., 200 Success, 400 Invalid user input received. See error details for further i
 
 ## `DELETE /web/api/v2.1/remote-ops/scheduled-tasks`
+
 **Delete multiple scheduled tasks by ID**
 `operationId`: `_web_api_remote-ops_scheduled-tasks_delete`
 
@@ -147,11 +168,13 @@ Delete multiple Scheduled tasks. The tasks that are not possible to delete (e.g.
 Required permissions: `Remote Script Orchestration.deleteScheduledTasks`
 
 Parameters:
-- `body` [body, v2_1.scheduling.schema_DeleteScheduledTasksRequestSchema]: 
+
+- `body` [body, v2_1.scheduling.schema_DeleteScheduledTasksRequestSchema]:
 
 Responses: 200 Delete was completed or partially completed., 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/remote-ops/scheduled-tasks`
+
 **Get available Scheduled Tasks**
 `operationId`: `_web_api_remote-ops_scheduled-tasks_get`
 
@@ -160,6 +183,7 @@ Get available Scheduled Tasks
 Required permissions: `Remote Script Orchestration.viewScheduledTasks`
 
 Parameters:
+
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
 - `scopeName__contains` [query, array]: Keyword to search in scope name
 - `outputDestination` [query, array]: List of the tasks types. Example: "SentinelCloud".
@@ -188,6 +212,7 @@ Parameters:
 Responses: 403 User has insufficient permission to perform such action, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `PUT /web/api/v2.1/remote-ops/scheduled-tasks/{scheduled_task_id}`
+
 **Update existing Scheduled task**
 `operationId`: `_web_api_remote-ops_scheduled-tasks_{scheduled_task_id}_put`
 
@@ -196,7 +221,8 @@ Update existing Scheduled task
 Required permissions: `Remote Script Orchestration.updateScheduledTasks`
 
 Parameters:
+
 - `scheduled_task_id` [path, string] **required**: Scheduled Task ID. Example: "225494730938493804".
-- `body` [body, v2_1.scheduling.schema_PutScheduledTaskRequestSchema]: 
+- `body` [body, v2_1.scheduling.schema_PutScheduledTaskRequestSchema]:
 
 Responses: 403 User has insufficient permission to perform such action, 404 Scheduled task is not found, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

@@ -23,7 +23,7 @@ In-depth documentation for every PowerQuery command. Read before writing anythin
 
 ## 1. `filter`
 
-```
+```text
 | filter expr
 ```
 
@@ -31,7 +31,7 @@ Keeps rows where `expr` evaluates truthy. The initial filter (everything before 
 
 Only the initial filter supports `* contains` and `* matches`. After the first pipe, search operators must name a field.
 
-```
+```text
 event.login.loginIsSuccessful = false
 | group ct = count() by event.login.userName
 | filter ct > 5
@@ -42,7 +42,7 @@ event.login.loginIsSuccessful = false
 
 ## 2. `columns`
 
-```
+```text
 | columns f1, f2                                    // select and order
 | columns display = f1, "Pretty Name" = f2          // rename / quote for spaces
 | columns ratio = success / (success + failure)     // compute
@@ -52,7 +52,7 @@ event.login.loginIsSuccessful = false
 
 Nice for ternary-based bucketing at the end of a pipeline:
 
-```
+```text
 | columns size_bucket = (tgt.file.size < 1_000_000) ? 'Small'
                       : (tgt.file.size < 5_000_000) ? 'Medium'
                       :                                'Large'
@@ -60,7 +60,7 @@ Nice for ternary-based bucketing at the end of a pipeline:
 
 For unit conversion on timestamps (e.g., promoting a seconds column into PQ's nanosecond-timestamp convention so it renders as a date):
 
-```
+```text
 | columns create.timestamp = createSecs * 1_000_000_000
 ```
 
@@ -70,7 +70,7 @@ Any numeric field named `timestamp` or ending in `.timestamp` renders as an ISO 
 
 ## 3. `let`
 
-```
+```text
 | let f1 = expr, "f 2" = expr2, …
 ```
 
@@ -78,7 +78,7 @@ Adds computed fields. Unlike `columns`, `let` preserves the existing record; use
 
 Cannot overwrite a field that was produced by a preceding command; *can* overwrite a field that exists in the underlying event data.
 
-```
+```text
 src.process.name contains 'powershell' dst.ip.address = *
 | let is_rfc1918 = net_rfc1918(dst.ip.address)
 | filter is_rfc1918 = false
@@ -89,7 +89,7 @@ src.process.name contains 'powershell' dst.ip.address = *
 
 ## 4. `group`
 
-```
+```text
 | group agg(x), name2 = agg2(y)
 | group agg(x) by f1, "Label" = f2
 ```
@@ -117,14 +117,14 @@ Like `columns`, `group` creates a new record set, fields not named in the `group
 
 A `where` clause applies to the LAST argument of a multi-arg function, or the sole argument otherwise:
 
-```
+```text
 | group mean(tgt.file.size where tgt.file.path contains 'temp')
 | group pct(90, tgt.file.size where tgt.file.path contains 'temp')
 ```
 
 ### Grouping by time
 
-```
+```text
 | group count() by timestamp = timebucket('1h')               // hourly buckets
 | group count() by timestamp = timebucket(timestamp, '5m')    // explicit form
 | group count() by timestamp = timebucket('1d'), endpoint.name
@@ -136,7 +136,7 @@ A `where` clause applies to the LAST argument of a multi-arg function, or the so
 
 ## 5. `sort`
 
-```
+```text
 | sort expr                // ascending
 | sort +expr               // explicit ascending
 | sort -expr               // descending
@@ -149,7 +149,7 @@ If there's no `sort` after the last `group`, results are implicitly sorted ascen
 
 ## 6. `limit` / `nolimit`
 
-```
+```text
 | limit           // default 10 rows
 | limit 250
 | nolimit         // raise cap to 3 GB; one concurrent per tenant; never in Dashboards or Alerts
@@ -163,7 +163,7 @@ Without `limit` or `group`, outputs are capped at 1,000 rows. The `Show All` but
 
 ## 7. `parse`
 
-```
+```text
 | parse "format with $field$ markers" from sourceField
 | parse "$digits=digits$ seconds" from latencyStr
 | parse ".*\\\\$filename{regex=[^\\\\]+}$$$" from tgt.file.path
@@ -179,7 +179,7 @@ Performance note: most `parse` use cases are better solved by configuring a pars
 
 Work with CSV / JSON lookup tables stored under Config Files (`/datatables/<name>`).
 
-```
+```text
 | lookup osVersion from machineinfo by endpoint.name                                // join on equal names
 | lookup osVersion, "Region" = region from machineinfo by endpoint.name = endpoint.name
 | dataset 'config://datatables/machineinfo'                                         // use the lookup table as the pipeline source
@@ -204,6 +204,8 @@ Best practices: defer the `lookup` until after a `group`, so the lookup is perfo
 **Confirmed on-tenant (usea1-purple, 2026-06-01):**
 
 - `from <table>` takes the **literal filename**. If the data table file is `sid_username.csv`, write `from sid_username.csv` (keep the extension). A bare name without the extension can miss the file. Both `/datatables/foo` and `/datatables/foo.csv` can coexist, so the name must be exact.
+- **`from <table>` resolves under `/datatables/` only, never `/lookups/`.** A CSV written to `/lookups/<name>.csv` is a real config file that reads back fine over the API, but `| lookup ... from <name>.csv` returns HTTP 400 `Lookup table "<name>.csv" does not exist`. Put lookup tables in `/datatables/` (live-confirmed 2026-08-07).
+- **Hyphens in a table name break the parser: use underscores.** `from my-table.csv` returns HTTP 400 `Identifier "my-table.csv" is ambiguous. To subtract, add spaces ... Otherwise, add backslashes`, because the parser reads the hyphens as subtraction. Escaping works (`from my\-table\.csv`) but is easy to get wrong; name the table `my_table.csv` instead. Note the asymmetry with `| dataset 'config://datatables/my-table.csv'`, which takes the name **quoted** and so accepts hyphens without escaping (live-confirmed 2026-08-07).
 - `by` direction is `lookupColumn = eventField`. Left of the `=` is the lookup-table key column, right is the event field or expression. Example: `by sid = winEventLog.data.event.eventData.subjectUserSid`.
 - `| dataset 'config://datatables/<name>'` reads a saved lookup table as the pipeline source. The leading `|` is required; without it the text is parsed as an initial filter and returns 0 rows.
 
@@ -213,7 +215,7 @@ Best practices: defer the `lookup` until after a `group`, so the lookup is perfo
 
 ## 9. `join`
 
-```
+```text
 | [inner|left|outer|sql inner|sql left|sql outer] join
     [a =] (query1),
     [b =] (query2), …
@@ -247,7 +249,7 @@ Performance: start with the most selective (smallest-cardinality) subquery. PQ e
 
 ## 10. `union`
 
-```
+```text
 | union (query1), (query2), …                 // comma-separated branches in ONE union
 ```
 
@@ -257,7 +259,7 @@ A `union` takes at most **10 subqueries**; more than 10 returns HTTP 400. Write 
 
 Use to merge heterogeneous sources (e.g., `api_server` logs with fields `operation`/`elapsed_time` and `frontend` logs with `url`/`http_status`). Rename columns in each sub-query's `columns` to unify them:
 
-```
+```text
 | union
     (logfile = 'api_server' | columns operation, status = status_code),
     (logfile = 'frontend'    | columns url, status = http_status)
@@ -270,7 +272,7 @@ For EDR/XDR data with a single schema, `filter (a OR b)` is usually simpler than
 
 ## 11. `transpose`
 
-```
+```text
 | transpose columnToPivot
 | transpose columnToPivot on keyCol1, keyCol2
 | transpose columnToPivot on keys with_totals
@@ -280,6 +282,7 @@ For EDR/XDR data with a single schema, `filter (a OR b)` is usually simpler than
 Pivots a column into many columns, each distinct value becomes a column. Useful for "one column per category" reports and for plotting one series per entity on a line chart.
 
 Rules:
+
 - Must be the **last** command in the query.
 - Cannot appear in a subquery.
 - Max 100 new columns (most-frequent 100 win).
@@ -292,7 +295,7 @@ Typical flow is `group … by <category>, <key>` then `transpose <category> on <
 
 ## 12. `compare`
 
-```
+```text
 | compare [name =] timeshift('[-|+]<timespan>')
 | compare previous = timeshift('-1w')
 | compare next_period = timeshift(+queryspan())
@@ -301,6 +304,7 @@ Typical flow is `group … by <category>, <key>` then `transpose <category> on <
 Runs the same query over a shifted time range and attaches those numeric columns (with the prefix `(<name>)`) alongside.
 
 Rules:
+
 - Must be the **last** command.
 - Only one `timeshift` per query.
 - Shifted query has the same time-range length as the original (4-hour query + `timeshift('-1d')` → the 4 hours ending 20 hours ago).
@@ -312,20 +316,21 @@ Pair with `sort` placed *before* `compare` if you want ordering on the primary r
 
 ## 13. `top`
 
-```
+```text
 | top K [alias =] scoring(expr) by f1, f2
 ```
 
 Probabilistic top-K. Scoring functions allowed: `count()` (estimated), `sum(x)` (estimated), `min(x)` (exact), `max(x)` (exact). Adds a synthetic `rank` column; estimated results append "(estimated)" to the column name.
 
 Use when:
+
 - The time range is very long (hours of `group` → minutes of `top`).
 - `group` is hitting intermediate-row memory limits.
 - You need a fast dashboard panel and can tolerate ~few-percent error on counts.
 
 For exact values on top entities without paying for full aggregation:
 
-```
+```text
 | sql join
     (| top 4 s_est = sum(x) by endpoint),
     (| group s = sum(x) by endpoint)
@@ -341,7 +346,7 @@ Requires S-25.3.6+ and the Network Discovery add-on. Supported in Singularity Op
 
 ## 14. Subqueries: `field in (…)`
 
-```
+```text
 field in (filter_expr | commands_that_yield_field)
 | outer_commands
 ```
@@ -349,6 +354,7 @@ field in (filter_expr | commands_that_yield_field)
 Runs the inner query first, collects one column of values, and filters the outer query to rows where `field` is in that set.
 
 Rules (enforce them; these are where subqueries go wrong):
+
 - The inner query **must** produce a column named the same as `field`. Use `columns field` or `group 1 by field` or `top N count() by field`.
 - The `in` subquery must appear **before** any `group`, `sort`, or `limit` in the outer query. After aggregation, the left side's value is computed, PQ can't push the filter in. Use `join` for post-aggregation correlation.
 - The inner query and the outer query are independent filters. If you also want the outer rows to have a condition (e.g., severity 5), state it outside the subquery too, `threat_level = 5 user in (threat_level = 5 | top 3 count() by user)`.
@@ -356,7 +362,7 @@ Rules (enforce them; these are where subqueries go wrong):
 
 Good patterns:
 
-```
+```text
 // Users who logged in AND ran processes
 user in (action='login' | group 1 by user)
 AND user in (action='process_start' | group 1 by user)

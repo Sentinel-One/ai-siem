@@ -76,7 +76,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
 
 ## How it works
 
-```
+```text
 +----------------+          stdio JSON-RPC          +--------+        HTTPS POST /mcp        +------+
 | Claude Desktop | <------------------------------> | bridge | <---------------------------> | VM   |
 +----------------+                                  +--------+   Bearer auth, JSON in/out    +------+

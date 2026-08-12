@@ -3,6 +3,7 @@
 14 endpoints.
 
 ## `GET /web/api/v2.1/agents`
+
 **Get Agents**
 `operationId`: `_web_api_agents_get`
 
@@ -11,6 +12,7 @@ Get the Agents, and their data, that match the filter. This command gives the Ag
 Required permissions: `Endpoints.view`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -221,6 +223,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/agents/applications`
+
 **Applications**
 `operationId`: `_web_api_agents_applications_get`
 
@@ -229,11 +232,13 @@ Get the installed applications for a specific Agent. <BR>To get the Agent ID, ru
 Required permissions: `Endpoints.view`
 
 Parameters:
+
 - `ids` [query, array] **required**: Agent ID list. Example: "225494730938493804,225494730938493915".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/agents/count`
+
 **Count Agents**
 `operationId`: `_web_api_agents_count_get`
 
@@ -242,6 +247,7 @@ Get the count of Agents that match a filter. This command is useful to run befor
 Required permissions: `Endpoints.view`
 
 Parameters:
+
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -445,6 +451,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/agents/disable-hyper-automation-pna`
+
 **Disable PNA for Hyperautomation**
 `operationId`: `_web_api_agents_disable-hyper-automation-pna_post`
 
@@ -453,11 +460,13 @@ Disable Agent PNA for Hyperautomation
 Required permissions: `Endpoints.edit, Hyper Automate.connectionsEdit`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema]: 
+
+- `body` [body, agents.schemas_AgentsActionSchema]:
 
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/agents/enable-hyper-automation-pna`
+
 **Enable Agent PNA for Hyperautomation**
 `operationId`: `_web_api_agents_enable-hyper-automation-pna_post`
 
@@ -466,11 +475,13 @@ Enable Agent PNA for Hyperautomation
 Required permissions: `Endpoints.edit, Hyper Automate.connectionsEdit`
 
 Parameters:
-- `body` [body, agents.schemas_AgentsActionSchema]: 
+
+- `body` [body, agents.schemas_AgentsActionSchema]:
 
 Responses: 400 Invalid user input received. See error details for further i, 404 Agent not found, 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/agents/passphrases`
+
 **Get Passphrase**
 `operationId`: `_web_api_agents_passphrases_get`
 
@@ -479,6 +490,7 @@ Show the passphrase for the Agents that match the filter. This is an important c
 Required permissions: `Endpoints.showPassphrase`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -687,6 +699,7 @@ Parameters:
 Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/agents/processes`
+
 **Processes**
 `operationId`: `_web_api_agents_processes_get`
 
@@ -695,11 +708,13 @@ Responses: 403 Insufficient permissions, 200 Success, 400 Invalid user input rec
 Required permissions: `Endpoints.view`
 
 Parameters:
+
 - `ids` [query, array] **required**: Agent ID list. Example: "225494730938493804,225494730938493915".
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/agents/tags`
+
 **Get the endpoint tags that match the filters.**
 `operationId`: `_web_api_agents_tags_get`
 
@@ -709,6 +724,7 @@ Required permissions: `Endpoints.view`
 Optional permissions: `Tag Management.edit`
 
 Parameters:
+
 - `skip` [query, integer]: Skip first number of items (0-1000). To iterate over more than 1000 items,  use "cursor". Example: "150".
 - `limit` [query, integer]: Limit number of returned items (1-1000). Example: "10".
 - `cursor` [query, string]: Cursor position returned by the last request. Use to iterate over more than 1000 items. Example: "YWdlbnRfaWQ6NTgwMjkzODE=".
@@ -739,6 +755,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/agents/tags/filters-count`
+
 **Endpoint tags count by Filters**
 `operationId`: `_web_api_agents_tags_filters-count_get`
 
@@ -748,6 +765,7 @@ Required permissions: `Endpoints.view`
 Optional permissions: `Tag Management.edit`
 
 Parameters:
+
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -767,6 +785,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/agents/{agent_id}/local-upgrade-authorization`
+
 **Get local upgrade/downgrade Agent authorization**
 `operationId`: `_web_api_agents_{agent_id}_local-upgrade-authorization_get`
 
@@ -775,11 +794,13 @@ Get the time when authorization of local upgrades/downgrades expires
 Required permissions: `Local Upgrade/Downgrade Authorization.view`
 
 Parameters:
+
 - `agent_id` [path, string] **required**: Agent ID. Example: "225494730938493804".
 
 Responses: 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/agents/{agent_id}/uploads/{activity_id}`
+
 **Export Agent Logs**
 `operationId`: `_web_api_agents_{agent_id}_uploads_{activity_id}_get`
 
@@ -789,12 +810,14 @@ Required permissions: `Endpoints.view`
 Optional permissions: `Endpoints.fileFetch, Endpoints.FetchLogs, Endpoints.downloadRemoteShellTranscript`
 
 Parameters:
+
 - `agent_id` [path, string] **required**: Agent ID. Example: "225494730938493804".
 - `activity_id` [path, string] **required**: ID of activity that logs files uploaded by agent. Example: "225494730938493804".
 
 Responses: 404 Agent or activity not found, 403 Insufficient permissions, 200 Success, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/export/agents`
+
 **Export Agents**
 `operationId`: `_web_api_export_agents_get`
 
@@ -803,6 +826,7 @@ Export Agent data to a CSV, for Agents that match the filter. This command expor
 Required permissions: `Endpoints.view`
 
 Parameters:
+
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -1006,6 +1030,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/export/agents-light`
+
 **Export Agents - Light**
 `operationId`: `_web_api_export_agents-light_get`
 
@@ -1014,6 +1039,7 @@ Export Agent data to a CSV, for Agents that match the filter. This command expor
 Required permissions: `Endpoints.view`
 
 Parameters:
+
 - `siteIds` [query, array]: List of Site IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `accountIds` [query, array]: List of Account IDs to filter by. Example: "225494730938493804,225494730938493915".
 - `groupIds` [query, array]: List of Group IDs to filter by. Example: "225494730938493804,225494730938493915".
@@ -1217,6 +1243,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/export/agents-passphrases`
+
 **Export Agents - Passphrases**
 `operationId`: `_web_api_export_agents-passphrases_post`
 
@@ -1225,6 +1252,7 @@ Export Agent passphrases to a CSV, for Agents that match the filter. This comman
 Required permissions: `Endpoints.showPassphrase`
 
 Parameters:
-- `body` [body, agents.schemas_ExportAgentsPassphrasesSchema]: 
+
+- `body` [body, agents.schemas_ExportAgentsPassphrasesSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.

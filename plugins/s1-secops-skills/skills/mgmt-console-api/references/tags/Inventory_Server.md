@@ -3,6 +3,7 @@
 5 endpoints.
 
 ## `GET /web/api/v2.1/xdr/assets/server`
+
 **Assets**
 `operationId`: `_web_api_xdr_assets_server_get`
 
@@ -11,6 +12,7 @@ Get assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -251,6 +253,7 @@ Parameters:
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/server`
+
 **Assets using POST**
 `operationId`: `_web_api_xdr_assets_server_post`
 
@@ -259,14 +262,16 @@ POST API to get Assets
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `accountIds` [query, array]: List of Account IDs to filter by
 - `siteIds` [query, array]: List of Site IDs to filter by
 - `groupIds` [query, array]: List of Group IDs to filter by
-- `body` [body, v2_1.inventory.server.schemas_ServerViewInputSchema]: 
+- `body` [body, v2_1.inventory.server.schemas_ServerViewInputSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/server/action`
+
 **Perform action**
 `operationId`: `_web_api_xdr_assets_server_action_post`
 
@@ -275,6 +280,7 @@ Perform action on selected assets
 Required permissions: `XDR Inventory.create, XDR Inventory.delete`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -504,11 +510,12 @@ Parameters:
 - `agentDiskEncryption` [query, array]: The agent disk encryption
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.server.schemas_ServerActionPayloadSchema]: 
+- `body` [body, v2_1.inventory.server.schemas_ServerActionPayloadSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `POST /web/api/v2.1/xdr/assets/server/available-actions/with-status`
+
 **Available actions**
 `operationId`: `_web_api_xdr_assets_server_available-actions_with-status_post`
 
@@ -517,6 +524,7 @@ Get available actions
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)
@@ -746,11 +754,12 @@ Parameters:
 - `agentDiskEncryption` [query, array]: The agent disk encryption
 - `infectionStatus__nin` [query, array]: The status alerts of the asset (not in)
 - `cloudProviderProjectId__contains` [query, array]: The cloud provider project ID
-- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]: 
+- `body` [body, v2_1.inventory.schemas_AffectedResourcesSchema]:
 
 Responses: 200 Success, 400 Invalid user input received. See error details for further i, 401 Unauthorized access - please sign in and retry.
 
 ## `GET /web/api/v2.1/xdr/assets/server/export`
+
 **Export assets to CSV or JSON**
 `operationId`: `_web_api_xdr_assets_server_export_get`
 
@@ -759,6 +768,7 @@ Returns the results for given inventory filter in a CSV or JSON format
 Required permissions: `XDR Inventory.view`
 
 Parameters:
+
 - `tagsKey__contains` [query, array]: Free-text filter by tag key (supports multiple values)
 - `agentOperationalState__nin` [query, array]: The agent operational state (not in)
 - `assetCriticality__nin` [query, array]: The criticality that each asset belongs to (not in)

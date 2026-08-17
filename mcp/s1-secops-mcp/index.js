@@ -6,7 +6,7 @@
  * Streamable HTTP, using raw JSON-RPC 2.0 throughout. No external runtime
  * dependencies. Pure Node.js 18+.
  *
- * Exposes 26 tools across PowerQuery, Mgmt Console REST, UAM, SDL API,
+ * Exposes 32 tools across PowerQuery, Mgmt Console REST, UAM, SDL API,
  * Hyperautomation, and UAM Ingest; plus 2 resources and 2 prompts.
  *
  * Quick start:

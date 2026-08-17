@@ -18,10 +18,10 @@ set -euo pipefail
 # The version of THIS image. Independent of the underlying MCP versions
 # below, bump this when the image content (Dockerfile, dispatcher, bundled
 # CLAUDE.md) changes, even if all three MCP pins stay the same.
-IMAGE_VERSION="${IMAGE_VERSION:-1.3.1}"
+IMAGE_VERSION="${IMAGE_VERSION:-1.3.2}"
 
 # ── Pinned MCP versions ──────────────────────────────────────────────────────
-S1_MCP_VERSION="${S1_MCP_VERSION:-1.3.3}"
+S1_MCP_VERSION="${S1_MCP_VERSION:-1.3.6}"
 VT_MCP_PACKAGE="${VT_MCP_PACKAGE:-@burtthecoder/mcp-virustotal}"
 VT_MCP_VERSION="${VT_MCP_VERSION:-1.0.21}"
 # purple-mcp v0.7.0 (2026-06-26). Pinned to the release commit, not a floating

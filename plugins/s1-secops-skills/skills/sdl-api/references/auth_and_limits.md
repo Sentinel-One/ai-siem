@@ -25,9 +25,17 @@ Required when a console token has access to multiple sites or accounts:
 - Site scope:    `S1-Scope: <accountScopeId>:<siteScopeId>`
 - Account scope: `S1-Scope: <accountScopeId>`
 
-Without the header on a multi-scope token, the request returns no data. Find the IDs in the S1 Console → Settings → Accounts / Sites.
+Find the IDs via `GET /web/api/v2.1/accounts` and `GET /web/api/v2.1/sites`, or in the S1 Console → Settings → Accounts / Sites. Group scope does not exist in SDL; a Group selection is silently promoted to the Site above it.
 
-The `SDLClient` only sets `S1-Scope` when (a) a console token was selected for the request and (b) `s1_scope` is configured.
+**The header applies to `/sdl/v2/graphql` config-file and dashboard operations too, not only to queries and ingest.** Verified on `usea1-purple` 2026-08-17: `configFiles` returned 113 files at account scope and 4 at a site scope, same token and same query. A dashboard created at site scope does not appear in an account-scoped listing and `configFile` on its `udoId` reports it absent. Treat every "not found" as scope-relative.
+
+Because a dropped header changes results rather than erroring, three call sites need the scope threaded through explicitly:
+
+- absence disambiguation must re-list at the scope of the failed lookup;
+- the `/dashboards/` duplicate guard must list at the scope of the write;
+- delete verification must re-read at the scope of the delete.
+
+`SDLClient` sets `S1-Scope` from the per-call `scope` argument, falling back to `s1_scope` in config / `SDL_S1_SCOPE`. Pass `scope=None` to suppress the default and send no header.
 
 ## Query rate limiting (CPU leaky bucket)
 

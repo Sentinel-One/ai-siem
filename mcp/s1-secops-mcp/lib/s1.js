@@ -9,6 +9,7 @@
  */
 
 import { getCreds } from './credentials.js';
+import { scopeHeaders } from './sdl.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -191,7 +192,7 @@ export function pickMatchCount(result) {
 }
 
 /** Run a full LRQ PowerQuery lifecycle. Returns { columns, rows, rowCount, matchCount }. */
-export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 5000 } = {}) {
+export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 5000, scope } = {}) {
   const b = base();
   const tok = jwt();
 
@@ -207,12 +208,17 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
     pq: { query, resultType: 'TABLE' },
   };
 
+  // S1-Scope applies to log reads exactly as it does to config reads: an LRQ
+  // run without the intended scope silently answers for the token default.
+  const scopeHdrs = scopeHeaders(scope);
+
   // Launch
   const launchRes = await fetch(launchUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${tok}`,
       'Content-Type': 'application/json',
+      ...scopeHdrs,
     },
     body: JSON.stringify(launchBody),
   });
@@ -230,6 +236,7 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
   const pollHeaders = {
     Authorization: `Bearer ${tok}`,
     'Content-Type': 'application/json',
+    ...scopeHdrs,
     ...(forwardTag ? { 'X-Dataset-Query-Forward-Tag': forwardTag } : {}),
   };
 

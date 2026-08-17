@@ -247,6 +247,68 @@ def rule_N02_table_no_limit(panel: Dict[str, Any]) -> Optional[Tuple[str, str]]:
     return None
 
 
+# ---------- scope rules (site-deployed dashboards) ---------------------------
+#
+# A dashboard deployed at a SITE must scope its panel queries to that site with
+# an explicit `site.id` predicate. Two independent reasons:
+#
+#   1. Portability. A panel with no site predicate silently changes meaning when
+#      the dashboard is copied, shared to another scope, or promoted to Account.
+#   2. `site.name` is NOT a safe substitute. Measured on usea1-purple 2026-08-17
+#      for one site: `site.id='<id>'` matched 60,410 events, of which 510 carried
+#      the site id but a NULL `site.name`. Those 510 included 10 `alert` records,
+#      111 `asset` records, 172 `ActivityFeed` and 48 Windows Event Logs. A
+#      `site.name` filter drops exactly the record types a SOC dashboard cares
+#      about most, with no error and no empty panel to hint at it.
+#
+# `site.id` is also the same identifier as the `siteId` in the S1-Scope header
+# and in shareResource's scopeId, and it survives a site rename.
+
+_SITE_ID_RE = re.compile(r"site\.id\s*(?:==?|\bin\b)", re.IGNORECASE)
+_SITE_NAME_RE = re.compile(r"site\.name\s*(?:==?|\bin\b|\bcontains\b)", re.IGNORECASE)
+
+
+def _is_query_panel(panel: Dict[str, Any]) -> bool:
+    """Markdown tiles and non-PQ widgets have nothing to scope."""
+    style = (panel.get("graphStyle") or "").lower()
+    if style in ("markdown", "alerts_table", "distribution"):
+        return False
+    return bool((panel.get("query") or "").strip())
+
+
+def rule_S01_site_scope_missing(
+    panel: Dict[str, Any], site_id: Optional[str]
+) -> Optional[Tuple[str, str]]:
+    """Site-deployed dashboard: every query panel needs a site.id predicate."""
+    if not site_id or not _is_query_panel(panel):
+        return None
+    q = panel.get("query") or ""
+    if f"site.id" in q and site_id in q:
+        return None
+    if _SITE_ID_RE.search(q):
+        return ("S01", f"Panel filters on site.id but not on the target site id {site_id}. "
+                       "Either scope it to the deployment site or pass "
+                       "--allow-account-scope-queries if the cross-site read is deliberate.")
+    return ("S01", f"Dashboard targets site {site_id} but this panel has no `site.id` predicate. "
+                   f"Add `site.id='{site_id}'` to the query, or pass "
+                   "--allow-account-scope-queries if account-wide panels are intended.")
+
+
+def rule_S02_site_name_as_scope(panel: Dict[str, Any]) -> Optional[Tuple[str, str]]:
+    """site.name is a lossy scoping filter; site.id is the correct one."""
+    if not _is_query_panel(panel):
+        return None
+    q = panel.get("query") or ""
+    if not _SITE_NAME_RE.search(q):
+        return None
+    if _SITE_ID_RE.search(q):
+        return None  # site.id present too; site.name is decorative here
+    return ("S02", "Scoping on `site.name` drops records that carry site.id with a null "
+                   "site.name (measured: alert, asset, ActivityFeed and Windows Event Log "
+                   "records). Use `site.id='<siteId>'` instead; it is also rename-proof and "
+                   "matches the S1-Scope siteId.")
+
+
 # ---------- runner -----------------------------------------------------------
 
 QUERY_RULES = (
@@ -264,11 +326,30 @@ PANEL_RULES = (rule_L01, rule_Q01, rule_M01)
 PANEL_QUERY_RULES = (rule_N01_number_no_limit, rule_N02_table_no_limit)
 
 
-def check(dashboard: Dict[str, Any], ignore: List[str]) -> List[Tuple[str, str, str]]:
-    """Return list of (rule_id, panel_label, message) tuples."""
+def check(
+    dashboard: Dict[str, Any],
+    ignore: List[str],
+    site_id: Optional[str] = None,
+    allow_account_scope_queries: bool = False,
+) -> List[Tuple[str, str, str]]:
+    """Return list of (rule_id, panel_label, message) tuples.
+
+    `site_id` opts into the S01 scope rule: pass the site the dashboard is being
+    deployed to. `allow_account_scope_queries` suppresses S01 only, for the
+    deliberate case of an account-wide dashboard filed at a site.
+    """
     violations: List[Tuple[str, str, str]] = []
+    effective_site_id = None if allow_account_scope_queries else site_id
     for tab, idx, panel in _flatten_panels(dashboard):
         label = _label(tab, idx, panel)
+
+        for r in (
+            lambda p: rule_S01_site_scope_missing(p, effective_site_id),
+            rule_S02_site_name_as_scope,
+        ):
+            v = r(panel)
+            if v and v[0] not in ignore:
+                violations.append((v[0], label, v[1]))
 
         for r in PANEL_RULES:
             v = r(tab, idx, panel)
@@ -294,6 +375,20 @@ def main() -> int:
     ap.add_argument("dashboard", help="Path to dashboard JSON.")
     ap.add_argument("--ignore", default="", help="Comma-separated rule IDs to skip (e.g. 'L01,N02').")
     ap.add_argument("--warn-only", action="store_true", help="Always exit 0; print findings only.")
+    ap.add_argument(
+        "--site-id",
+        default="",
+        help="Site id this dashboard is being deployed to. Enables rule S01: every query panel "
+             "must carry a site.id predicate for that site. Get it from GET /web/api/v2.1/sites; "
+             "it is the same value as the siteId in the S1-Scope header.",
+    )
+    ap.add_argument(
+        "--allow-account-scope-queries",
+        action="store_true",
+        help="Deploying at a site but deliberately querying account-wide. Suppresses S01 only. "
+             "Use ONLY when the user explicitly asked for account-scoped queries on a "
+             "site-deployed dashboard.",
+    )
     args = ap.parse_args()
 
     path = Path(args.dashboard).resolve()
@@ -308,7 +403,16 @@ def main() -> int:
         return 2
 
     ignore = [s.strip() for s in args.ignore.split(",") if s.strip()]
-    issues = check(dash, ignore)
+    site_id = args.site_id.strip() or None
+    if site_id and not re.fullmatch(r"\d+", site_id):
+        print(f"ERROR: --site-id must be a numeric site id (got {site_id!r})", file=sys.stderr)
+        return 2
+    issues = check(
+        dash,
+        ignore,
+        site_id=site_id,
+        allow_account_scope_queries=args.allow_account_scope_queries,
+    )
 
     if not issues:
         print(f"OK: panel_safety_check passed for {path.name} (no issues).")

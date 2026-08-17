@@ -7,7 +7,7 @@ This page is the full Docker reference for everything beyond those three steps: 
 One Docker image bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`) so you only need Docker on the host: no Node, Python, or `uv`. This is the recommended path for most users, and the only option on machines where IT policy blocks `npm install -g` or `pip install`.
 
 Image: `ghcr.io/pmoses-s1/s1-mcps`
-Tags: `latest` (newest published), `1` / `1.3` / `1.3.1` (pinned semver, current), `sha-<short>` (any commit). Pin an explicit version for reproducible, forensically consistent installs.
+Tags: `latest` (newest published), `1` / `1.3` / `1.3.2` (pinned semver, current), `sha-<short>` (any commit). Pin an explicit version for reproducible, forensically consistent installs.
 
 - [Prerequisites](#prerequisites)
 - [Troubleshooting](#troubleshooting)
@@ -77,7 +77,7 @@ This bypasses Claude Desktop entirely and confirms the image and credentials wor
 docker run -i --rm --pull=missing \
   -e S1_CONSOLE_URL='https://usea1-yourorg.sentinelone.net' \
   -e S1_CONSOLE_API_TOKEN='eyJ...' \
-  ghcr.io/pmoses-s1/s1-mcps:1.3.1 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
+  ghcr.io/pmoses-s1/s1-mcps:1.3.2 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
 ```
 
 Expected: a single JSON line back on stdout with `serverInfo.name = "s1-secops-mcp-server"`. Stderr should show `Tools: 26 registered` and one of the `configured`/`NOT configured` summaries per API surface.
@@ -86,7 +86,7 @@ For a less verbose env-source pattern, put the values in a `.env` file and pass 
 
 ```bash
 docker run -i --rm --pull=missing --env-file ~/.config/sentinelone/s1-mcp.env \
-  ghcr.io/pmoses-s1/s1-mcps:1.3.1 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
+  ghcr.io/pmoses-s1/s1-mcps:1.3.2 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
 ```
 
 The `.env` file is plain `KEY=value` per line. Keep its mode 0600 and out of any repo.
@@ -96,8 +96,8 @@ The `.env` file is plain `KEY=value` per line. Keep its mode 0600 and out of any
 If you suspect a corrupted local image:
 
 ```bash
-docker rmi ghcr.io/pmoses-s1/s1-mcps:1.3.1
-docker pull ghcr.io/pmoses-s1/s1-mcps:1.3.1
+docker rmi ghcr.io/pmoses-s1/s1-mcps:1.3.2
+docker pull ghcr.io/pmoses-s1/s1-mcps:1.3.2
 ```
 
 ### 5. Roll back to the npx path
@@ -127,7 +127,7 @@ To use your own copy, mount your Cowork project folder read-only and point the e
     "-v", "/Users/yourname/Documents/Claude/Projects/PrincipalSOCAnalyst:/workspace:ro",
     "-e", "S1_CLAUDE_MD_PATH=/workspace/CLAUDE.md",
     "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-    "ghcr.io/pmoses-s1/s1-mcps:1.3.1",
+    "ghcr.io/pmoses-s1/s1-mcps:1.3.2",
     "s1-secops-mcp"
   ],
   "env": { "...": "..." }
@@ -140,7 +140,7 @@ Only the `s1-secops-mcp` entry reads CLAUDE.md; you don't need the volume mount 
 
 ## Upgrading
 
-Bump the tag in your `claude_desktop_config.json` (e.g. `:1.2.2` to `:1.2.3`), save, and restart Claude Desktop. The new image is pulled on first launch (`--pull=missing` ensures this).
+Bump the tag in your `claude_desktop_config.json` (e.g. `:1.3.1` to `:1.3.2`), save, and restart Claude Desktop. The new image is pulled on first launch (`--pull=missing` ensures this).
 
 To force a fresh pull mid-tag (e.g. `:latest` moved):
 

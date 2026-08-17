@@ -2,6 +2,98 @@
 
 Deployment via the SDL API (udoId and CAS guard, duplicate handling), the pre-deploy parallel load test and verification, the escalation ladder for a hung dashboard, and the full pre-deploy checklist. Referenced from `SKILL.md`.
 
+## Choosing a deployment route
+
+Three routes. Pick by what you need, not by habit.
+
+| Route | Use when | Call |
+|---|---|---|
+| **`create_dashboard` at a scope** | Creating a new dashboard, any scope. **Preferred.** | `create_dashboard(name, config, scope=...)` / `sdl_create_dashboard` |
+| **`create` then `share`** | The calling token sits at account scope but the dashboard belongs to a site | `create_dashboard(...)` then `share_dashboard(id, scopes=[...])` |
+| **`put_config_file` by udoId** | Updating an existing dashboard's full config with a CAS guard | `put_config_file(udo_id=..., expected_version=...)` |
+
+`create_dashboard` takes the whole document as one `config` string and is the path the console itself uses. `put_config_file` is the raw config-file layer underneath; only it exposes the numeric version needed for optimistic locking.
+
+## Site-level deployment
+
+**Deployment scope and query scope are separate decisions.** Before deploying to a site, confirm the panels are scoped too: see the **Scope doctrine** section of `SKILL.md`. A site-deployed dashboard whose panels have no `site.id` predicate reports the wrong numbers, and one that filters on `site.name` silently drops `alert` and `asset` records.
+
+### Route A: create in place at the site
+
+```python
+from sdl_client import SDLClient
+
+client = SDLClient()
+ACCOUNT_ID = "2046190533732727925"
+SITE_ID    = "2547662415802335157"
+SITE_SCOPE = f"{ACCOUNT_ID}:{SITE_ID}"
+
+created = client.create_dashboard(
+    name="Metacortex Site",
+    config=json.dumps(dashboard_json),   # panels already filter site.id='<SITE_ID>'
+    scope=SITE_SCOPE,
+)
+dashboard_id = created["id"]             # == the udoId in config_files()
+```
+
+### Route B: create at account scope, then share to the site
+
+Use this when the token cannot be scoped to the site. `shareResource` is the **only** SDL operation that takes an explicit scope target; everything else infers scope from the header.
+
+```python
+created = client.create_dashboard(name="Metacortex Site", config=body)   # account scope
+
+client.share_dashboard(
+    dashboard_id=created["id"],
+    scopes=[{"scopeType": "site", "scopeId": SITE_ID, "operation": "ADD"}],
+)
+```
+
+### Two things that make a successful deploy look like a failure
+
+**Set `isPublic: true` for anything a human will open.** `createDashboardV2` defaults `public` to
+false and records `access.owner` as the calling identity. With an API service-account token that
+owner is `serviceuser-<uuid>@mgmt-<n>.sentinelone.net`, not a person, so a private dashboard is
+readable through the API and **invisible in the console to the operator**. It presents exactly like
+a failed deploy. Verified live: the same dashboard at the same scope became visible purely by
+recreating it with `public: true`, and every pre-existing dashboard at that site was public.
+`shareResource` to a scope does not flip `public`; they are independent.
+
+**Dashboard names reject punctuation, and the only error is `Invalid name`.** Probed live, one
+character class at a time:
+
+| Accepted | Rejected |
+|---|---|
+| letters, digits, space, `-`, `_`, `.`, `/` | `(` `)` `[` `]` `{` `}` `:` `,` `&` `'` `%` `#` |
+
+So `My Dashboard (prod)` fails with no hint about which character was at fault. Normalise the name
+before creating.
+
+### Verify at BOTH scopes, not one
+
+Confirming at a single scope proves nothing, because a listing at the wrong scope reports a live dashboard as absent.
+
+```python
+at_site    = client.list_dashboards(scope=SITE_SCOPE)
+at_account = client.list_dashboards(scope=ACCOUNT_ID)
+
+assert any(d["id"] == dashboard_id for d in at_site), "not visible at the site"
+# Route A: expect it ABSENT from the account listing.
+# Route B: expect it present in both.
+```
+
+Measured on `usea1-purple` 2026-08-17: `configFiles` returned 113 files at account scope and 4 at a site scope, same token and query. A dashboard created at site scope is invisible from account scope and `config_file` on its `udoId` reports it absent. **Every "not found" is scope-relative.**
+
+### Getting the ids
+
+```bash
+# account ids
+curl -s -H "Authorization: ApiToken $TOKEN" "$CONSOLE/web/api/v2.1/accounts" | jq '.data[].id'
+# site ids (the same value used in site.id predicates and shareResource scopeId)
+curl -s -H "Authorization: ApiToken $TOKEN" "$CONSOLE/web/api/v2.1/sites?states=active" \
+  | jq '.data.sites[] | {id, name}'
+```
+
 ## Deploying a dashboard via API
 
 Use the `sdl-api` skill to deploy. Dashboard config files live at paths like `/dashboards/my-dashboard-name`.

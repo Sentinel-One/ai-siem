@@ -4,7 +4,7 @@
  * Spawns `node index.js --transport http` on an ephemeral port and:
  *   - confirms /healthz returns 200
  *   - confirms POST /mcp with `initialize` returns the expected envelope
- *   - confirms POST /mcp with `tools/list` returns 26 tools
+ *   - confirms POST /mcp with `tools/list` returns 32 tools
  *   - confirms unknown path returns 404
  *   - confirms unknown method returns -32601
  *   - confirms with bearer auth configured:
@@ -95,12 +95,12 @@ test('http: POST /mcp initialize returns server info', async () => {
   });
 });
 
-test('http: POST /mcp tools/list returns 26 tools', async () => {
+test('http: POST /mcp tools/list returns 32 tools', async () => {
   await withServer({}, async (port) => {
     const r = await postMcp(port, rpc(1, 'tools/list'));
     assert.equal(r.status, 200);
     const body = await r.json();
-    assert.equal(body.result.tools.length, 26);
+    assert.equal(body.result.tools.length, 32);
   });
 });
 
@@ -179,7 +179,7 @@ test('http+auth: correct token -> 200', async () => {
       const r = await postMcp(port, rpc(1, 'tools/list'), { 'Authorization': `Bearer ${goodToken}` });
       assert.equal(r.status, 200);
       const body = await r.json();
-      assert.equal(body.result.tools.length, 26);
+      assert.equal(body.result.tools.length, 32);
     });
   } finally {
     rmSync(dir, { recursive: true, force: true });

@@ -44,6 +44,13 @@ const TOOL_SKILL = {
   sdl_get_file:                  'sdl-api / sdl-dashboard / sdl-log-parser',
   sdl_put_file:                  'sdl-api / sdl-dashboard / sdl-log-parser',
   sdl_delete_file:               'sdl-api',
+  // SDL dashboard lifecycle (dashboardsV2)
+  sdl_list_dashboards:           'sdl-api / sdl-dashboard',
+  sdl_get_dashboard:             'sdl-api / sdl-dashboard',
+  sdl_create_dashboard:          'sdl-api / sdl-dashboard',
+  sdl_share_dashboard:           'sdl-api / sdl-dashboard',
+  sdl_save_dashboard_layout:     'sdl-api / sdl-dashboard',
+  sdl_delete_dashboard:          'sdl-api / sdl-dashboard',
   hec_ingest:                    'sdl-api / sdl-log-parser',
   // Hyperautomation
   ha_list_workflows:             'hyperautomation',

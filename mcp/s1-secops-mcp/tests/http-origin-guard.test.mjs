@@ -118,7 +118,7 @@ test('guard(no-auth): normal non-browser request (no Origin, loopback Host) stil
     const r = await rawPost(port, rpc(1, 'tools/list'));
     assert.equal(r.status, 200);
     const body = JSON.parse(r.body);
-    assert.equal(body.result.tools.length, 26);
+    assert.equal(body.result.tools.length, 32);
   });
 });
 

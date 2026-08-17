@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - site-level dashboard lifecycle and scope-aware SDL calls (s1-secops-skills v1.3.2, MCP 1.3.6)
+
+- **`s1-secops-mcp` gains six dashboard-lifecycle tools** on the `dashboardsV2` GraphQL surface, the one the console itself drives: `sdl_list_dashboards`, `sdl_get_dashboard`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`. Tool count 26 to 32.
+- **`S1-Scope` is now sent on every SDL GraphQL, LRQ and V1-query call.** An optional `scope` argument (`"<accountId>"` or `"<accountId>:<siteId>"`) on the config-file, dashboard and query tools, defaulting to a new `S1_SCOPE` credential and validated before the request. Previously these calls carried no scope header at all, so every read and write landed at the token default.
+- **Corrected a wrong claim in `sdl-api`:** the `s1-scope` header is NOT ignored on `/sdl/v2/graphql`. Config listings and dashboard reads are scope-FILTERED. Measured live, same token and query: 1,515 dashboards at account scope versus 7 at one site scope. A dashboard created at site scope is invisible to an account-scoped listing, so every "not found" is scope-relative. Absence disambiguation, the `/dashboards/` duplicate guard and delete verification all now scope consistently; mixing scopes across those steps reports a live file as deleted.
+- **`sdl-dashboard` scope doctrine:** deployment scope (where the object is filed) and query scope (what the panels read) are separate decisions. A site-deployed dashboard scopes its panels with `site.id='<siteId>'` unless account-wide queries are explicitly requested. `site.name` is not a safe substitute: for one site over 24h, `site.id` matched 60,410 events of which 510 carried the site id with a null `site.name`, including 10 `alert` and 111 `asset` records. On HEC-ingested data `site.name` was absent on all 40 events while `site.id` was present on all 40.
+- **`panel_safety_check.py --site-id <id>`** adds rule **S01** (query panel with no, or a different site's, `site.id` predicate; opt out with `--allow-account-scope-queries`) and rule **S02** (`site.name` used as a scoping filter, never suppressed). New test suite, 19 cases.
+- **`sdl_create_dashboard` defaults `isPublic` to true**, diverging from the raw API's false. `access.owner` is the calling identity, so with a service-account token a private dashboard is readable via API but invisible in the console to a human at any scope, which is indistinguishable from a failed deploy.
+- **Documented two `createDashboardV2` traps:** the stub-append failure (`{graphs: []}{...}` yields "Content is invalid json"), and dashboard names rejecting `( ) [ ] { } : , & ' % #` with only `Invalid name` as the error (accepted: letters, digits, space, `-`, `_`, `.`, `/`).
+- Also recorded: the console's XDR data-source selector injects `preFilter: "dataSource.category = 'security'"` into every panel query.
+- Plugin version bumped to **1.3.2**, vendored MCP to **1.3.6**, and bundles rebuilt in `dist/`.
+- Tests: 115 JavaScript, 61 Python SDL-client, 19 panel-safety. Validated live end to end against a tenant: full create, read, share, layout, delete and confirm-absent cycles at both site and account scope, scope isolation in both directions, and HEC ingest at site scope followed by scoped queries.
+
 ### Added - detection-as-code learnings across skills (s1-secops-skills v1.2.8)
 
 - `mgmt-console-api`: operational learnings for custom detection rules and alerts, 1.0 operators (`ContainsCIS`) do not evaluate under `queryLang 2.0` and silently never fire (use `contains:anycase`); alerts inherit the rule `description`; events/correlation alerts are in `/cloud-detection/alerts` while scheduled alerts surface only in UAM; scheduled-rule activation latency and PUT re-activation.

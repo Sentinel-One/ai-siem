@@ -43,7 +43,7 @@ Reference: `mgmt-console-api/SKILL.md` for confirmed body schemas and required f
 ### UAM tools
 
 **`uam_list_alerts`**
-List UAM alerts via GraphQL. Filter with individual convenience params, not a single filter string: `status` (valid values `NEW`, `IN_PROGRESS`, `RESOLVED` only — there is no `OPEN`, which silently returns 0 results), `severity` (e.g. `CRITICAL`), `detectionProduct` (e.g. `EDR`), `searchText`, plus `startTime`/`endTime` for a time window and `first`/`after` for pagination. Returns UUID-based alert objects with full context.
+List UAM alerts via GraphQL. Filter with individual convenience params, not a single filter string: `status` (valid values `NEW`, `IN_PROGRESS`, `RESOLVED` only; there is no `OPEN`, which silently returns 0 results), `severity` (e.g. `CRITICAL`), `detectionProduct` (e.g. `EDR`), `searchText`, plus `startTime`/`endTime` for a time window and `first`/`after` for pagination. Returns UUID-based alert objects with full context.
 
 **`uam_get_alert`**
 Fetch a single UAM alert by UUID. Returns full alert detail including raw indicators, assets, threat info, analyst notes, and history.
@@ -83,7 +83,31 @@ Delete a configuration file from SDL by `path` or `udoId`. The tool verifies rem
 **`hec_ingest`**
 Ingest raw logs/events into SDL via the HEC (HTTP Event Collector) endpoint. Applies a named parser via `?sourcetype` and lands the data for Event Search, PowerQuery, and detection rules. Posts to `S1_HEC_INGEST_URL` with `Authorization: Bearer <S1_CONSOLE_API_TOKEN>`; the `S1-Scope` header (accountId or accountId:siteId) is required. Replaces the removed `sdl_upload_logs`. Used for ingesting custom telemetry or test events during parser development.
 
-When ingesting pre-structured / OCSF JSON with `?isParsed=true` (no parser), every event MUST also include the SentinelOne source-attribution fields `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security` — other categories ingest but do not process correctly for custom OCSF sources), `event.type`, and `site_id`. OCSF does not define these; without them events land with a null source (no attribution, degraded console rendering, and any `dataSource.name`-based filter or detection will not match). Emit `event.type` as a FLAT dotted key (e.g. `"event.type": "DNS Activity"`); a nested `event:{...}` object is silently dropped because `event` is a HEC-reserved key.
+When ingesting pre-structured / OCSF JSON with `?isParsed=true` (no parser), every event MUST also include the SentinelOne source-attribution fields `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security`; other categories ingest but do not process correctly for custom OCSF sources), `event.type`, and `site_id`. OCSF does not define these; without them events land with a null source (no attribution, degraded console rendering, and any `dataSource.name`-based filter or detection will not match). Emit `event.type` as a FLAT dotted key (e.g. `"event.type": "DNS Activity"`); a nested `event:{...}` object is silently dropped because `event` is a HEC-reserved key.
+
+All SDL tools take an optional `scope` argument, `"<accountId>"` or `"<accountId>:<siteId>"`, sent as the `S1-Scope` header. **Reads are scope-FILTERED, not merely scope-tagged**: measured live on one tenant, the same dashboard listing returned 1,515 at account scope and 7 at a single site scope. An object created at site scope is invisible to an account-scoped listing, so every "not found" is scope-relative. `scope` falls back to `S1_SCOPE` in credentials and omitting it uses the token default.
+
+### SDL dashboard lifecycle tools
+
+These run on the `dashboardsV2` GraphQL surface, the one the console itself drives. It is dashboard-aware where the config-file tools above are not: it carries name, description, tabs, sharing and authorship. A dashboard's `id` here is the same value as its `udoId` in `sdl_list_files`.
+
+**`sdl_list_dashboards`**
+List dashboards visible at a scope with `{id, name, description, configType, access:{public, users, owner}}`. Prefer this over `sdl_list_files` when you need the owner or sharing state; prefer `sdl_list_files` when you need the numeric version for optimistic locking.
+
+**`sdl_get_dashboard`**
+Read one dashboard including its tabs, by `id` (preferred) or `name`. Note `tabs[].graphs`, `.parameters`, `.filters` and `.options` come back as JSON **strings**, not objects. The `version` field here is a display string and is usually empty; it is NOT the optimistic-locking token, use `sdl_get_file` for that.
+
+**`sdl_create_dashboard`**
+Create a dashboard from a complete dashboard-JSON document passed as one `config` string. This is the preferred deploy path: it takes the whole document (`configType`, `duration`, `description`, `tabs[]`) in one call, and it validates the JSON before sending, which avoids the console editor's stub-append failure (`{graphs: []}{...}` yields `Content is invalid json / Additional text after JSON object` and leaves an empty dashboard behind). `isPublic` defaults to **true**, diverging from the raw API's false: `access.owner` is the calling identity, so with a service-account token a private dashboard is readable through the API but invisible in the console to a human at any scope, which is indistinguishable from a failed deploy. Names reject `( ) [ ] { } : , & ' % #` with only `Invalid name` as the error; letters, digits, space, `-`, `_`, `.` and `/` are accepted.
+
+**`sdl_share_dashboard`**
+Share or unshare a dashboard to scopes and/or users via `shareResource`. This is the **only** SDL operation that takes an explicit scope target; every other operation infers scope from the request header. Use it to push an account-scoped dashboard down to a specific site without recreating it. Note the two different scope arguments: the `scopes` array is where the dashboard goes, while `scope` is the header for the call itself.
+
+**`sdl_save_dashboard_layout`**
+Replace the panel layout of one tab. `graphs` is a JSON string shaped `{"graphs":[...]}`, including the wrapper key, even though the response echoes a bare array. Use for incremental panel edits; use `sdl_create_dashboard` for a whole new document.
+
+**`sdl_delete_dashboard`**
+Delete a dashboard by `id` or `name`. The mutation returns a bare boolean, so the tool re-reads afterwards and only reports success once removal is confirmed.
 
 ### Hyperautomation tools
 

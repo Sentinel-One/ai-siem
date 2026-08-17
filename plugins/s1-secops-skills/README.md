@@ -6,6 +6,8 @@ A full-stack AI analyst for SentinelOne, built as a set of Claude skills, three 
 >
 > **New here?** Start with the [Zero to Hero guide](./docs/zero-to-hero.md): a 20-minute onboarding walkthrough for customers and partners new to Claude Skills.
 
+> **Contributing a fix to a skill? Read this first.** Everything under `skills/` and `../../mcp/s1-secops-mcp/` is **mirrored from the upstream `claude-skills` repo** by a sync script. A change made only here is silently overwritten by the next sync. Fix it upstream in `claude-skills` and let the sync carry it, or open an issue and say what needs changing. Docs under `docs/` and this README are maintained here and are safe to edit directly.
+
 - [Architecture overview](#architecture-overview)
 - [What's included](#whats-included)
 - [PrincipalSOCAnalyst Project](#principalsocanalyst-project)
@@ -371,10 +373,10 @@ Prerequisite: Docker Desktop (macOS/Windows) or Docker Engine (Linux), running. 
 **Step 1: Pull the image (all three MCPs)**
 
 ```bash
-docker pull ghcr.io/pmoses-s1/s1-mcps:1.3.1
+docker pull ghcr.io/pmoses-s1/s1-mcps:1.3.2
 ```
 
-`:1.3.1` is the current pinned release (bundles s1-secops-mcp 1.3.1, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
+`:1.3.2` is the current pinned release (bundles s1-secops-mcp 1.3.6, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
 
 **Step 2: Configure credentials**
 
@@ -390,7 +392,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
         "-e", "S1_CONSOLE_URL",
         "-e", "S1_CONSOLE_API_TOKEN",
         "-e", "S1_HEC_INGEST_URL",
-        "ghcr.io/pmoses-s1/s1-mcps:1.3.1",
+        "ghcr.io/pmoses-s1/s1-mcps:1.3.2",
         "s1-secops-mcp"
       ],
       "env": {
@@ -405,7 +407,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
         "run", "-i", "--rm", "--pull=missing",
         "-e", "S1_CONSOLE_URL",
         "-e", "S1_CONSOLE_API_TOKEN",
-        "ghcr.io/pmoses-s1/s1-mcps:1.3.1",
+        "ghcr.io/pmoses-s1/s1-mcps:1.3.2",
         "purple-mcp"
       ],
       "env": {
@@ -418,7 +420,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "args": [
         "run", "-i", "--rm", "--pull=missing",
         "-e", "VIRUSTOTAL_API_KEY",
-        "ghcr.io/pmoses-s1/s1-mcps:1.3.1",
+        "ghcr.io/pmoses-s1/s1-mcps:1.3.2",
         "virustotal-mcp"
       ],
       "env": {
@@ -446,7 +448,7 @@ Full key reference, token types, and resolution order: **[docs/credentials.md](.
 
 **Step 3: Install the plugin (all eight skills)**
 
-Download the latest plugin, [`s1-secops-skills-v1.3.1.plugin`](./dist/), from the `dist/` folder. In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All seven skills install in one step.
+Download the latest plugin, [`s1-secops-skills-v1.3.2.plugin`](./dist/), from the `dist/` folder. In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All seven skills install in one step.
 
 Then create a Cowork project named `PrincipalSOCAnalyst` and select a folder for it. The Docker image ships a default CLAUDE.md, so dropping your own [`CLAUDE.md`](./CLAUDE.md) into the folder is only needed if you want to customise the persona.
 
@@ -455,15 +457,15 @@ Then create a Cowork project named `PrincipalSOCAnalyst` and select a folder for
 In the `PrincipalSOCAnalyst` project, start a session and run:
 
 ```
-smoke test s1 skills
+smoke test s1 secops skills
 ```
 
 Claude checks all three MCPs, confirms each skill is loaded, and reports any missing credential or unreachable endpoint. You can also test the image straight from a terminal, no Claude Desktop required:
 
 ```bash
-docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.3.1 help    # lists the three bundled servers
+docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.3.2 help    # lists the three bundled servers
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.3.1 s1-secops-mcp
+  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.3.2 s1-secops-mcp
 ```
 
 The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"`, and stderr shows `Tools: 26 registered`.
@@ -504,7 +506,7 @@ Full walkthrough (install script, tokens, TLS, client config for Cowork/Claude C
 
 ### Upgrading
 
-- **Docker**: bump the tag in `claude_desktop_config.json` (e.g. `:1.2.2` to `:1.2.3`) and restart Claude Desktop; the new image pulls on first launch.
+- **Docker**: bump the tag in `claude_desktop_config.json` (e.g. `:1.3.1` to `:1.3.2`) and restart Claude Desktop; the new image pulls on first launch.
 - **npx/uvx**: automatic. `npx -y` and `uvx` re-resolve to the latest published version on each launch.
 - **Plugin**: download the newer `.plugin` from [`dist/`](./dist/), then Cowork → Customize → Browse plugins, upload, and click **Replace**.
 - **Team VM**: `git pull` on the VM and re-run the installer, or `npm i -g @pmoses-s1/s1-secops-mcp@latest`; see [docs/vm-deployment.md](./docs/vm-deployment.md).

@@ -46,7 +46,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS,
 
 `MCP_URL` is whatever URL your team's admin gave you (it should end in `/mcp`). `MCP_BEARER` is your personal bearer token from `/etc/s1-secops-mcp/bearer-tokens.json` on the VM.
 
-Quit Claude Desktop fully (Cmd+Q on macOS, not just close the window) and reopen. The 26 tools should appear in the tools list.
+Quit Claude Desktop fully (Cmd+Q on macOS, not just close the window) and reopen. The 32 tools should appear in the tools list.
 
 ## Smoke test (without Claude Desktop)
 

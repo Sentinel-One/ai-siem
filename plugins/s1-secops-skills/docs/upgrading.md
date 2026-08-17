@@ -26,7 +26,7 @@ Back the file up:
 
 ```bash
 cd ~/Library/Application\ Support/Claude
-cp claude_desktop_config.json claude_desktop_config.json.pre-1.3.1
+cp claude_desktop_config.json claude_desktop_config.json.pre-1.3.2
 ```
 
 ---
@@ -81,7 +81,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`.
 |---|---|---|
 | Server key | `"sentinelone-mcp"` | `"s1-secops-mcp"` |
 | Dispatcher argument | `sentinelone-mcp` | `s1-secops-mcp` |
-| Image tag | `s1-mcps:1.2.x` | `s1-mcps:1.3.1` |
+| Image tag | `s1-mcps:1.2.x` | `s1-mcps:1.3.2` |
 | purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` |
 
 ### What to delete outright
@@ -100,7 +100,7 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL",
-               "ghcr.io/pmoses-s1/s1-mcps:1.3.1", "s1-secops-mcp"],
+               "ghcr.io/pmoses-s1/s1-mcps:1.3.2", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
@@ -111,7 +111,7 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-               "ghcr.io/pmoses-s1/s1-mcps:1.3.1", "purple-mcp"],
+               "ghcr.io/pmoses-s1/s1-mcps:1.3.2", "purple-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
@@ -121,7 +121,7 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "VIRUSTOTAL_API_KEY",
-               "ghcr.io/pmoses-s1/s1-mcps:1.3.1", "virustotal-mcp"],
+               "ghcr.io/pmoses-s1/s1-mcps:1.3.2", "virustotal-mcp"],
       "env": {
         "VIRUSTOTAL_API_KEY": "your-virustotal-key"
       }
@@ -147,14 +147,14 @@ Then **restart Claude Desktop**.
 In a Claude session:
 
 ```
-smoke test secops skills
+smoke test s1 secops skills
 ```
 
 Or from a terminal, without Claude Desktop:
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.3.1 s1-secops-mcp
+  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.3.2 s1-secops-mcp
 ```
 
 Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.3.3"`, and
@@ -186,7 +186,7 @@ absent, rather than failing later on the first request.
 
 | Symptom | Cause and fix |
 |---|---|
-| `manifest unknown` / image pull fails | Tag typo. The tag is `1.3.1`, not `1.3.0`. |
+| `manifest unknown` / image pull fails | Tag typo. The tag is `1.3.2`, not `1.3.1`. |
 | `entrypoint: unknown command 'sentinelone-mcp'` | The dispatcher argument still says the old name. Change it to `s1-secops-mcp`. |
 | MCP red in Cowork, `Cannot connect to the Docker daemon` | Docker Desktop is not running. |
 | Skills still mention `SDL_XDR_URL` or `c.keys[...]` | An old plugin cache. Re-check with the command in step 2. |
@@ -202,7 +202,7 @@ Per-MCP logs: `~/Library/Logs/Claude/mcp-server-<name>.log`.
 
 ```bash
 cd ~/Library/Application\ Support/Claude
-cp claude_desktop_config.json.pre-1.3.1 claude_desktop_config.json
+cp claude_desktop_config.json.pre-1.3.2 claude_desktop_config.json
 ```
 
 Then reinstall the old plugin and restart. The 1.2.x images remain on ghcr.io;

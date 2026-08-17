@@ -21,6 +21,7 @@ This workflow is mandatory for every new or modified dashboard. Steps 0, 1, and 
 
    1. **PowerQuery enumeration** (`array_agg_distinct(dataSource.name)`): run via `mcp__s1-secops-mcp__powerquery_run` directly. The s1-secops-mcp server runs locally and makes direct HTTPS calls without sandbox interference.
    2. **V1 query schema discovery** (full event JSON per source): use `mcp__s1-secops-mcp__powerquery_schema_discover` to fetch sample events from each data source and inspect their field names and types. The MCP server runs on your local machine and bypasses the sandbox proxy entirely.
+0.5. **Establish both scopes before authoring anything.** Ask, or read from the request: which scope is this dashboard *deployed* at, and which data should its panels *read*? If the deployment target is a site, every query panel gets `site.id='<siteId>'` unless the user explicitly asked for account-wide queries. See **Scope doctrine** below. Getting this wrong is not a cosmetic error: an unscoped panel on a site dashboard reports another site's numbers, and a `site.name` filter silently drops alert and asset records.
 1. **Understand the ask**: What data should the dashboard show? Who is the audience (SOC analyst, manager, customer POC)? What time range makes sense? What posture should each panel reflect (a panel that legitimately returns 0 needs a markdown header explaining the SOC-positive interpretation, see **Empty results are valid evidence**).
 2. **Design the structure**: Choose tabs (if multi-topic), then panels per tab. Match panel type to the data shape using the guide in `references/panel-type-cheatsheet.md`. Key decisions: flows/kill-chains → `sankey`; KPI vs SLA target → `bullet`; SOC queue health → `gauge`; 3D outlier detection → `scattered_bubble`; time-based density → `heatmap`; multiple queries in one panel → tabbed table. Where one `event.type` covers multiple semantic populations (delivery-time vs click-time, scheduled vs on-demand, inbound vs outbound), build separate sections per population, not a mixed section.
 3. **Write the JSON**: Use the panel type reference below and real examples in `references/community-examples.md`. Compute explicit `x`/`y`/`w`/`h` for every panel. Apply the naming-hygiene rule from **Panel naming hygiene** so titles read as SLA-grade claims.
@@ -32,6 +33,59 @@ This workflow is mandatory for every new or modified dashboard. Steps 0, 1, and 
    **`validate_dashboard.py` MUST be run as a background process**, at ~10s per panel, a 30-panel dashboard takes 5 minutes; a 60-panel dashboard takes 10-30 minutes. Both exceed the MCP timeout. Start it with `python3 scripts/validate_dashboard.py ... > /tmp/validate_out.txt 2>&1 &`, confirm the PID, then poll `len(json.load(open(evidence_json)))` vs the expected panel count in short separate calls. The script persists results after every panel (idempotent), so a cancelled poll never loses work. When a `stacked_bar` or `line` panel using `| transpose` returns 0 rows in validation, cross-check whether the corresponding number panel for the same source shows data, if it does, the empty result is a V1-API artefact, not a broken query. Document it in the Appendix as confirmed false-empty and do not remove the panel.
 
 8. **Screenshot review with the user (MANDATORY).** API validation proves each panel's query returns rows; it does NOT prove the panel RENDERS. Render-only failures happen in the browser, not the API, so `validate_dashboard.py` cannot see them: a panel showing "Couldn't load content", a markdown tile showing "Untitled", a number reading "34 principals" under a title that already says principals, an empty chart, or a broken legend. After EVERY deploy, ALWAYS ask the user to open the dashboard and send screenshots of each tab, then read them, diagnose each visual defect, fix the JSON, and re-deploy, without waiting to be asked. Prompt explicitly, e.g.: "The dashboard is deployed at `/dashboards/<name>`. Please open it and send screenshots of each tab so I can catch any render-only issues and fix them automatically." Treat this as part of deployment, not optional polish. Fixes for the common render-only defects are in the **Quick triage** table.
+
+## Scope doctrine: where the dashboard lives vs. what its queries read
+
+**Two independent decisions. Get them both explicitly before authoring a panel.**
+
+1. **Deployment scope**: which scope the dashboard object is filed at (Global, Account, or Site). Set by the `S1-Scope` header on the create call, or by `shareResource` afterwards.
+2. **Query scope**: which data the panels read. Set by what you put in the query.
+
+### The rule
+
+**A dashboard deployed at a SITE must scope its panel queries to that site with an explicit `site.id` predicate.** Add `site.id='<siteId>'` to every query panel.
+
+The single exception: the user explicitly asks for account-scoped (or cross-site) queries on a site-deployed dashboard. That is a legitimate ask, for example an MSSP hub dashboard filed in one site but reporting across the account. When it happens, say so in the dashboard `description` so the next reader is not surprised, and pass `--allow-account-scope-queries` to the safety check.
+
+Do not infer the exception from convenience. If the deployment scope is a site and the user has not said otherwise, scope the queries.
+
+### Use `site.id`, never `site.name`
+
+`site.name` is a lossy scoping filter. Measured on `usea1-purple` 2026-08-17 for one site:
+
+| Filter | Events matched |
+|---|---|
+| `site.id='2547662415802335157'` | 60,410 |
+| of those, rows where `site.name` is null | **510** |
+
+Breakdown of the 510 that a `site.name` filter would silently drop: `ActivityFeed` 172, `asset` 111, unattributed source 99, `SentinelOne` 70, `Windows Event Logs` 48, **`alert` 10**.
+
+So `site.name` drops alert and asset records, which is exactly what a SOC dashboard leans on, with no error and no empty panel to hint at it. `site.id` also:
+
+- is the **same identifier** as the `siteId` in the `S1-Scope` header and `shareResource`'s `scopeId`, so one value threads the whole deployment;
+- survives a site rename.
+
+`site.name` is fine as a display column or a `group by` key. It is not fine as the scoping predicate.
+
+### Enforcement
+
+`scripts/panel_safety_check.py` implements both halves:
+
+```bash
+# Site-deployed dashboard: every query panel must carry site.id='<siteId>'
+python3 scripts/panel_safety_check.py dash.json --site-id 2547662415802335157
+
+# Deliberate account-wide queries on a site-deployed dashboard
+python3 scripts/panel_safety_check.py dash.json --site-id 2547662415802335157 \
+    --allow-account-scope-queries
+```
+
+- **S01** fires when a site-targeted dashboard has a query panel with no `site.id` predicate, or one scoped to a *different* site. Suppressed by `--allow-account-scope-queries`.
+- **S02** fires when `site.name` is used as a scoping filter without a `site.id` predicate alongside it. **Never suppressed by the account-scope flag**, because the substitution is wrong at any scope.
+
+Markdown tiles, `alerts_table` and `distribution` panels are exempt: they have no PQ to scope.
+
+**Two deploy-time traps that mimic failure** (detail in `references/deployment.md`): `createDashboardV2` defaults `public` to false and owns the object as the API service user, so the dashboard is invisible in the console to a human even at the right scope. Pass `isPublic: true`. And dashboard names reject `( ) [ ] { } : , & ' % #` with only `Invalid name` as the error; letters, digits, space, `-`, `_`, `.` and `/` are accepted.
 
 ## Pre-authoring discovery
 

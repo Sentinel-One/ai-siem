@@ -5,7 +5,7 @@
 # Exercises the public contract end-to-end:
 #   1. healthz returns 200 (no auth)
 #   2. initialize returns the expected protocol version and server info
-#   3. tools/list returns 26 tools
+#   3. tools/list returns 32 tools
 #   4. tools/call s1_api_get works (uses /agents/count as a cheap probe)
 #   5. bad bearer returns HTTP 401
 #   6. unknown method returns JSON-RPC error -32601 inside a 200 envelope
@@ -81,7 +81,7 @@ echo "=== 3. tools/list count ==="
 TOOLS_COUNT=$(curl -s -X POST "$URL" -H "$AUTH" -H "$JSON" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
   jq '.result.tools | length')
-[[ "$TOOLS_COUNT" == "26" ]] && pass "tools/list returned 26 tools" || fail "tools/list returned $TOOLS_COUNT"
+[[ "$TOOLS_COUNT" == "32" ]] && pass "tools/list returned 32 tools" || fail "tools/list returned $TOOLS_COUNT"
 
 echo
 echo "=== 4. tools/call s1_api_get on /agents/count ==="

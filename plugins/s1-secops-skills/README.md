@@ -6,6 +6,8 @@ A full-stack AI analyst for SentinelOne, built as a set of Claude skills, three 
 >
 > **New here?** Start with the [Zero to Hero guide](./docs/zero-to-hero.md): a 20-minute onboarding walkthrough for customers and partners new to Claude Skills.
 
+> **Contributing a fix to a skill? Read this first.** Everything under `skills/` and `../../mcp/s1-secops-mcp/` is **mirrored from the upstream `claude-skills` repo** by a sync script. A change made only here is silently overwritten by the next sync. Fix it upstream in `claude-skills` and let the sync carry it, or open an issue and say what needs changing. Docs under `docs/` and this README are maintained here and are safe to edit directly.
+
 - [Architecture overview](#architecture-overview)
 - [What's included](#whats-included)
 - [PrincipalSOCAnalyst Project](#principalsocanalyst-project)

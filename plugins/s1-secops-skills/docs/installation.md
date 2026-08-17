@@ -45,7 +45,7 @@ All three servers run from public package registries: `s1-secops-mcp` and `@burt
         "-e", "S1_CONSOLE_URL",
         "-e", "S1_CONSOLE_API_TOKEN",
         "-e", "S1_HEC_INGEST_URL",
-        "ghcr.io/pmoses-s1/s1-mcps:1.3.1",
+        "ghcr.io/pmoses-s1/s1-mcps:1.3.2",
         "s1-secops-mcp"
       ],
       "env": {
@@ -139,7 +139,7 @@ Open the **PrincipalSOCAnalyst** project and start a new session. Claude will au
 Run a smoke test to confirm everything is wired up:
 
 ```
-smoke test s1 skills
+smoke test s1 secops skills
 ```
 
 Claude verifies connectivity to `s1-secops-mcp`, `purple-mcp`, and the threat intel MCP, confirms each skill is loaded, and reports any missing credentials or unreachable endpoints.

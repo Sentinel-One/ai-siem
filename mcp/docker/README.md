@@ -35,7 +35,7 @@ When bumping a pin, edit both. They are checked once via `grep` in CI; a mismatc
 
 `purple-mcp` is pinned to the `v0.7.0` release commit rather than a floating `main`, per upstream's security guidance. When a newer release ships, repin to that tag's commit here, in `docker/build.sh`, and in the workflow env block.
 
-`IMAGE_VERSION` is the tag the image is published under (`ghcr.io/pmoses-s1/s1-mcps:1.3.1`). It is independent of the underlying MCP versions: bump it when the Dockerfile, dispatcher, or bundled CLAUDE.md changes, even if all three MCP pins stay the same.
+`IMAGE_VERSION` is the tag the image is published under (`ghcr.io/pmoses-s1/s1-mcps:1.3.2`). It is independent of the underlying MCP versions: bump it when the Dockerfile, dispatcher, or bundled CLAUDE.md changes, even if all three MCP pins stay the same.
 
 ## Build locally
 
@@ -44,9 +44,9 @@ When bumping a pin, edit both. They are checked once via `grep` in CI; a mismatc
 docker/build.sh
 
 # Smoke test
-docker run -i --rm s1-mcps:1.3.1 help
+docker run -i --rm s1-mcps:1.3.2 help
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm s1-mcps:1.3.1 s1-secops-mcp
+  | docker run -i --rm s1-mcps:1.3.2 s1-secops-mcp
 ```
 
 The dispatcher accepts `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, or `help`.

@@ -37,7 +37,7 @@ CLAUDE.md            SOC Analyst persona, evidence rules, session protocol
        |
        v
 MCP Servers          Live API access (bypasses the Cowork sandbox proxy)
-  s1-secops-mcp    26 tools: PowerQuery, SDL, Mgmt REST, UAM, UAM Ingest, Hyperautomation
+  s1-secops-mcp    32 tools: PowerQuery, SDL, Mgmt REST, UAM, UAM Ingest, Hyperautomation
   purple-mcp         Alert triage, Purple AI NLQ, Deep Visibility, assets, vulns
   threat-intel-mcp   External IOC enrichment (e.g. VirusTotal)
        |

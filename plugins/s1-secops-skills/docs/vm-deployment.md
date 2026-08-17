@@ -269,7 +269,7 @@ curl -s -X POST https://mcp.s1.internal/mcp \
 # -> 26
 ```
 
-`200 ok` with 26 tools listed = green path. `401` = bearer wrong or not in `/etc/s1-secops-mcp/bearer-tokens.json`. `502` from Caddy = MCP backend down (check `systemctl status s1-secops-mcp`).
+`200 ok` with 32 tools listed = green path. `401` = bearer wrong or not in `/etc/s1-secops-mcp/bearer-tokens.json`. `502` from Caddy = MCP backend down (check `systemctl status s1-secops-mcp`).
 
 ## Day-2 operations
 

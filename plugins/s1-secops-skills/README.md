@@ -376,7 +376,7 @@ Prerequisite: Docker Desktop (macOS/Windows) or Docker Engine (Linux), running. 
 docker pull ghcr.io/pmoses-s1/s1-mcps:1.3.2
 ```
 
-`:1.3.1` is the current pinned release (bundles s1-secops-mcp 1.3.1, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
+`:1.3.2` is the current pinned release (bundles s1-secops-mcp 1.3.6, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
 
 **Step 2: Configure credentials**
 
@@ -448,7 +448,7 @@ Full key reference, token types, and resolution order: **[docs/credentials.md](.
 
 **Step 3: Install the plugin (all eight skills)**
 
-Download the latest plugin, [`s1-secops-skills-v1.3.1.plugin`](./dist/), from the `dist/` folder. In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All seven skills install in one step.
+Download the latest plugin, [`s1-secops-skills-v1.3.2.plugin`](./dist/), from the `dist/` folder. In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All seven skills install in one step.
 
 Then create a Cowork project named `PrincipalSOCAnalyst` and select a folder for it. The Docker image ships a default CLAUDE.md, so dropping your own [`CLAUDE.md`](./CLAUDE.md) into the folder is only needed if you want to customise the persona.
 

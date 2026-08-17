@@ -111,7 +111,7 @@ The recommended install is the Docker quick start: one image bundles all three M
 
 1. **Pull the image** (all three MCPs in one).
 2. **Configure credentials** in `claude_desktop_config.json`. The README has the copy-paste config block and a table of where to get each token/key; the full key reference is [`docs/credentials.md`](./credentials.md).
-3. **Install the plugin** (`s1-secops-skills-v1.3.1.plugin`) via Cowork → Customize → Browse plugins.
+3. **Install the plugin** (`s1-secops-skills-v1.3.2.plugin`) via Cowork → Customize → Browse plugins.
 
 Then create a Cowork project named `PrincipalSOCAnalyst`, select a folder for it, and (optionally) drop your own [`CLAUDE.md`](https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/plugins/s1-secops-skills/CLAUDE.md) into the folder to customise the persona; the Docker image ships a default, so this is optional (to override it, mount the folder read-only and set `S1_CLAUDE_MD_PATH`, see [`docs/docker.md`](./docker.md#claudemd-customization)).
 

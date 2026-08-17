@@ -26,7 +26,7 @@ Back the file up:
 
 ```bash
 cd ~/Library/Application\ Support/Claude
-cp claude_desktop_config.json claude_desktop_config.json.pre-1.3.1
+cp claude_desktop_config.json claude_desktop_config.json.pre-1.3.2
 ```
 
 ---
@@ -186,7 +186,7 @@ absent, rather than failing later on the first request.
 
 | Symptom | Cause and fix |
 |---|---|
-| `manifest unknown` / image pull fails | Tag typo. The tag is `1.3.1`, not `1.3.0`. |
+| `manifest unknown` / image pull fails | Tag typo. The tag is `1.3.2`, not `1.3.1`. |
 | `entrypoint: unknown command 'sentinelone-mcp'` | The dispatcher argument still says the old name. Change it to `s1-secops-mcp`. |
 | MCP red in Cowork, `Cannot connect to the Docker daemon` | Docker Desktop is not running. |
 | Skills still mention `SDL_XDR_URL` or `c.keys[...]` | An old plugin cache. Re-check with the command in step 2. |
@@ -202,7 +202,7 @@ Per-MCP logs: `~/Library/Logs/Claude/mcp-server-<name>.log`.
 
 ```bash
 cd ~/Library/Application\ Support/Claude
-cp claude_desktop_config.json.pre-1.3.1 claude_desktop_config.json
+cp claude_desktop_config.json.pre-1.3.2 claude_desktop_config.json
 ```
 
 Then reinstall the old plugin and restart. The 1.2.x images remain on ghcr.io;

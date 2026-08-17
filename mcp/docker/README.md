@@ -28,7 +28,7 @@ When bumping a pin, edit both. They are checked once via `grep` in CI; a mismatc
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.3.1` |
+| Image version (`IMAGE_VERSION`) | this repo | `1.3.2` |
 | `@pmoses-s1/s1-secops-mcp` | npm | `1.3.3` |
 | `@burtthecoder/mcp-virustotal` | npm | `1.0.21` |
 | `purple-mcp` | git | `07d4992` (Sentinel-One/purple-mcp `v0.7.0`, 2026-06-26) |

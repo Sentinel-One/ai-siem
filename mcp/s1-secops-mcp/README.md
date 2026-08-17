@@ -10,7 +10,7 @@ See **[deploy/README.md](./deploy/README.md)** for the full deployment walkthrou
 ## What this exposes
 
 <!-- BEGIN AUTO-GENERATED TOOLS TABLE -->
-**26 tools** across PowerQuery, Mgmt Console, SDL API, Hyperautomation, and UAM Ingest:
+**32 tools** across PowerQuery, Mgmt Console, SDL API, Hyperautomation, and UAM Ingest:
 
 | Group | Tool | Skill |
 |-------|------|-------|
@@ -67,7 +67,7 @@ Add this to `claude_desktop_config.json` (or `.mcp.json` for Claude Code):
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "npx",
-      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.3.3"],
+      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.3.6"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...",
@@ -487,7 +487,7 @@ s1-secops-mcp/
 | Purple AI GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | UAM GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | UAM HEC ingest | `Authorization: Bearer <jwt>` | `S1_CONSOLE_API_TOKEN` |
-| SDL config files (`POST /sdl/v2/graphql`) | `Authorization: Bearer <jwt>`, an `s1-scope` header is ignored, not rejected | `S1_CONSOLE_API_TOKEN` |
+| SDL config files (`POST /sdl/v2/graphql`) | `Authorization: Bearer <jwt>`, plus an `s1-scope` header that IS honoured: listings and reads are scope-filtered | `S1_CONSOLE_API_TOKEN` |
 
 ## Testing
 
@@ -497,7 +497,7 @@ npm test
 
 Three test suites under `tests/`:
 
-- `smoke.test.mjs`: introspects `ALL_TOOLS` directly, no spawning. Asserts 26 tools by name; catches any drift between code and the README regenerator.
+- `smoke.test.mjs`: introspects `ALL_TOOLS` directly, no spawning. Asserts 32 tools by name; catches any drift between code and the README regenerator.
 - `stdio-transport.test.mjs`: spawns the server in stdio mode, exercises `initialize`, `tools/list`, `resources/list`, `prompts/list`, and error handling.
 - `http-transport.test.mjs`: spawns in HTTP mode on a random ephemeral port, exercises `/healthz`, `POST /mcp`, both auth-required and auth-optional flows, and the env-var token fallback.
 

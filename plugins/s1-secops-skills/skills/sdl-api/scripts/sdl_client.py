@@ -158,6 +158,23 @@ _warned_legacy_token = False
 _warned_legacy_url = False
 
 
+class _Unset:
+    """Sentinel distinguishing "argument omitted" from an explicit None.
+
+    Needed for `scope`: omitting it inherits the client default, while passing
+    None deliberately sends no S1-Scope header at all. Collapsing the two would
+    make an unscoped listing unrequestable once a default is configured.
+    """
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return "<unset>"
+
+
+_UNSET = _Unset()
+
+
 class SDLAPIError(RuntimeError):
     def __init__(self, status: int, message: str, body: Any = None, graphql: bool = False):
         super().__init__(f"HTTP {status}: {message}")
@@ -341,6 +358,39 @@ class SDLClient:
             h["S1-Scope"] = self.s1_scope
         return h
 
+    # ----------------------------------------------------------------- scope
+    def _scope_headers(self, scope: Any = _UNSET) -> Dict[str, str]:
+        """Per-call S1-Scope override.
+
+        SDL config reads are scope-FILTERED, not merely scope-tagged. Measured on
+        usea1-purple 2026-08-17, same token: the same `configFiles` query returned
+        113 files at account scope and 4 at a site scope. A dashboard created at site scope is
+        invisible from account scope, so the header decides which objects appear
+        to exist at all.
+
+        `_UNSET` (the default) inherits `self.s1_scope`. Explicit `None` returns
+        an override that SUPPRESSES the instance default, which is how you take a
+        deliberately unscoped, token-default listing.
+        """
+        if scope is _UNSET:
+            return {}
+        if scope is None:
+            # requests drops a header whose value is None.
+            return {"S1-Scope": None}  # type: ignore[dict-item]
+        if not isinstance(scope, str):
+            raise ValueError(
+                f"S1-Scope must be a string, got {type(scope).__name__}. "
+                'Use "<accountId>" or "<accountId>:<siteId>".'
+            )
+        trimmed = scope.strip()
+        if not re.fullmatch(r"\d+(:\d+)?", trimmed):
+            raise ValueError(
+                f"Invalid S1-Scope {trimmed!r}. Expected \"<accountId>\" or "
+                '"<accountId>:<siteId>", both numeric ids. Get them from '
+                "GET /web/api/v2.1/accounts and /web/api/v2.1/sites."
+            )
+        return {"S1-Scope": trimmed}
+
     # --------------------------------------------------------------- request
     def _request(
         self,
@@ -438,8 +488,13 @@ class SDLClient:
         continuation_token: Optional[str] = None,
         priority: Optional[str] = None,
         team_emails: Optional[List[str]] = None,
+        scope: Any = _UNSET,
     ) -> Dict[str, Any]:
         """POST /api/query: retrieve log events matching `filter`.
+
+        `scope` sets S1-Scope. Log reads are scope-filtered exactly as config
+        reads are, so a query run without the intended scope silently answers
+        for the token default instead.
 
         `filter` uses the same syntax as the UI search bar. Escape double
         quotes with \\". `start_time`/`end_time` accept UI time strings
@@ -467,7 +522,8 @@ class SDLClient:
             body["priority"] = priority
         if team_emails:
             body["teamEmails"] = team_emails
-        return self._request("POST", "/api/query", json_body=body)
+        return self._request("POST", "/api/query", json_body=body,
+                             extra_headers=self._scope_headers(scope))
 
     def numeric_query(
         self,
@@ -477,6 +533,7 @@ class SDLClient:
         end_time: Optional[Union[str, int]] = None,
         buckets: int = 1,
         priority: Optional[str] = None,
+        scope: Any = _UNSET,
     ) -> Dict[str, Any]:
         """POST /api/numericQuery: bucketed numeric/graph data.
 
@@ -497,7 +554,8 @@ class SDLClient:
             body["endTime"] = end_time
         if priority:
             body["priority"] = priority
-        return self._request("POST", "/api/numericQuery", json_body=body)
+        return self._request("POST", "/api/numericQuery", json_body=body,
+                             extra_headers=self._scope_headers(scope))
 
     def facet_query(
         self,
@@ -507,6 +565,7 @@ class SDLClient:
         end_time: Optional[Union[str, int]] = None,
         max_count: int = 100,
         priority: Optional[str] = None,
+        scope: Any = _UNSET,
     ) -> Dict[str, Any]:
         """POST /api/facetQuery: top-N values of `field` in matching events.
 
@@ -526,11 +585,13 @@ class SDLClient:
             body["endTime"] = end_time
         if priority:
             body["priority"] = priority
-        return self._request("POST", "/api/facetQuery", json_body=body)
+        return self._request("POST", "/api/facetQuery", json_body=body,
+                             extra_headers=self._scope_headers(scope))
 
     def timeseries_query(
         self,
         queries: List[Dict[str, Any]],
+        scope: Any = _UNSET,
     ) -> Dict[str, Any]:
         """POST /api/timeseriesQuery: one or more numeric queries.
 
@@ -543,7 +604,8 @@ class SDLClient:
         if not queries:
             raise ValueError("queries must be a non-empty list")
         return self._request(
-            "POST", "/api/timeseriesQuery", json_body={"queries": queries}
+            "POST", "/api/timeseriesQuery", json_body={"queries": queries},
+            extra_headers=self._scope_headers(scope),
         )
 
     def power_query(
@@ -553,6 +615,7 @@ class SDLClient:
         end_time: Optional[Union[str, int]] = None,
         priority: Optional[str] = None,
         team_emails: Optional[List[str]] = None,
+        scope: Any = _UNSET,
     ) -> Dict[str, Any]:
         """POST /api/powerQuery: full pipeline query language.
 
@@ -569,7 +632,8 @@ class SDLClient:
             body["priority"] = priority
         if team_emails:
             body["teamEmails"] = team_emails
-        return self._request("POST", "/api/powerQuery", json_body=body)
+        return self._request("POST", "/api/powerQuery", json_body=body,
+                             extra_headers=self._scope_headers(scope))
 
     # =========================================================================
     # Configuration files (GraphQL, canonical)
@@ -593,6 +657,7 @@ class SDLClient:
         query: str,
         variables: Optional[Dict[str, Any]] = None,
         read_only: bool = False,
+        scope: Any = _UNSET,
     ) -> Dict[str, Any]:
         """POST /v2/graphql. Raises SDLAPIError on the GraphQL `errors` array.
 
@@ -612,6 +677,7 @@ class SDLClient:
             f"/v2/graphql?opname={quote(str(opname), safe='')}",
             json_body=body,
             allow_retry=read_only,
+            extra_headers=self._scope_headers(scope),
         )
         if not isinstance(payload, dict):
             raise SDLAPIError(
@@ -643,15 +709,21 @@ class SDLClient:
             )
         return payload.get("data") or {}
 
-    def config_files(self) -> List[Dict[str, Any]]:
-        """Every config file on the tenant, including udoId-addressed dashboards.
+    def config_files(self, scope: Any = _UNSET) -> List[Dict[str, Any]]:
+        """Every config file VISIBLE AT `scope`, including udoId-addressed dashboards.
 
         Prefer this over `list_files()`, which omits them.
+
+        This listing is scope-FILTERED. Measured on usea1-purple 2026-08-17, same
+        token: 113 files at account scope, 4 at a site scope. A file absent here may
+        live at another scope, so never promote "not in this listing" to
+        "does not exist" without checking the scope it was created in.
         """
         data = self._graphql(
             "getConfigurationFiles",
             f"query getConfigurationFiles {{ configFiles {{ {self._CONFIG_FIELDS} }} }}",
             read_only=True,
+            scope=scope,
         )
         return data.get("configFiles") or []
 
@@ -659,6 +731,7 @@ class SDLClient:
         self,
         name: Optional[str] = None,
         udo_id: Optional[str] = None,
+        scope: Any = _UNSET,
     ) -> Optional[Dict[str, Any]]:
         """Read one config file by name (plain files) or udo_id (dashboards).
         Returns None when the file does not exist.
@@ -684,6 +757,7 @@ class SDLClient:
                     f"query f($udoId: ID!) {{ configFile(udoId: $udoId) {{ {self._CONFIG_FIELDS} content }} }}",
                     {"udoId": str(udo_id)},
                     read_only=True,
+                    scope=scope,
                 )
             else:
                 data = self._graphql(
@@ -691,6 +765,7 @@ class SDLClient:
                     f"query f($id: ID!) {{ configFile(id: $id) {{ {self._CONFIG_FIELDS} content }} }}",
                     {"id": name},
                     read_only=True,
+                    scope=scope,
                 )
         except SDLAPIError as exc:
             # Only a GraphQL-layer error can mean "absent". A transport failure
@@ -705,7 +780,10 @@ class SDLClient:
             # also returns, so settle it against the listing. If the listing
             # itself fails, keep the ORIGINAL error.
             try:
-                all_files = self.config_files()
+                # Same scope as the failed lookup. Disambiguating against a
+                # DIFFERENT scope's listing reports a live site-scoped file as
+                # absent, which is the exact false negative this branch removes.
+                all_files = self.config_files(scope=scope)
             except SDLAPIError as list_exc:
                 raise SDLAPIError(
                     exc.status,
@@ -727,6 +805,7 @@ class SDLClient:
         udo_id: Optional[str] = None,
         content: str = "",
         expected_version: Optional[int] = None,
+        scope: Any = _UNSET,
     ) -> Optional[Dict[str, Any]]:
         """Create or update a config file.
 
@@ -741,7 +820,10 @@ class SDLClient:
         if not name and not udo_id:
             raise ValueError("put_config_file requires either name or udo_id")
         if not udo_id and _normalise_name(name).startswith("/dashboards/"):
-            all_files = self.config_files()
+            # Scoped to match the write: an account-scoped listing cannot see a
+            # same-named site-scoped dashboard, so the guard has to look where
+            # the write is going, not where the token defaults.
+            all_files = self.config_files(scope=scope)
             if not all_files:
                 raise ValueError(
                     f'Refusing to write "{name}" by name: the configFiles listing came '
@@ -768,6 +850,7 @@ class SDLClient:
                     "content": content,
                     "expectedVersion": expected_version,
                 },
+                scope=scope,
             )
         else:
             # expectedVersion is enforced on name-addressed writes too: a stale
@@ -784,6 +867,7 @@ class SDLClient:
                     "content": content,
                     "expectedVersion": expected_version,
                 },
+                scope=scope,
             )
         return data.get("addConfigFile")
 
@@ -792,6 +876,7 @@ class SDLClient:
         name: Optional[str] = None,
         udo_id: Optional[str] = None,
         expected_version: Optional[int] = None,
+        scope: Any = _UNSET,
     ) -> Dict[str, Any]:
         """Delete a config file. Dashboards by udo_id, everything else by name.
 
@@ -807,6 +892,7 @@ class SDLClient:
                 "mutation f($udoId: ID, $expectedVersion: Long) "
                 "{ deleteConfigFile(udoId: $udoId, expectedVersion: $expectedVersion) { udoId } }",
                 {"udoId": str(udo_id), "expectedVersion": expected_version},
+                scope=scope,
             )
         else:
             raw = self._graphql(
@@ -814,8 +900,9 @@ class SDLClient:
                 "mutation f($id: ID, $expectedVersion: Long) "
                 "{ deleteConfigFile(id: $id, expectedVersion: $expectedVersion) { udoId } }",
                 {"id": name, "expectedVersion": expected_version},
+                scope=scope,
             )
-        still = self.config_file(name=name, udo_id=udo_id)
+        still = self.config_file(name=name, udo_id=udo_id, scope=scope)
         if still:
             target = f"udoId {udo_id}" if udo_id else name
             raise SDLAPIError(
@@ -829,6 +916,340 @@ class SDLClient:
             "status": "success",
             "deleted": {"udoId": str(udo_id)} if udo_id else {"name": name},
             "raw": (raw or {}).get("deleteConfigFile"),
+        }
+
+    # =========================================================================
+    # Dashboard lifecycle (dashboardsV2, GraphQL)
+    #
+    # A SECOND, higher-level surface on the same POST /sdl/v2/graphql endpoint;
+    # it is what the console itself drives. Captured from live console traffic
+    # on usea1-purple 2026-08-17.
+    #
+    #   dashboardsV2   dashboard-aware: name, description, tabs, access/sharing,
+    #                  authorship. Create takes the whole document as one string.
+    #   configFiles    the raw file underneath, addressed by udoId. Same object,
+    #                  no sharing metadata.
+    #
+    # The `id` here IS the `udoId` there.
+    #
+    # TWO VERSION FIELDS, do not cross them: getDashboardV2 returns
+    # version="" (a display string), configFile returns the numeric CAS token.
+    # Only the configFile value is valid as expected_version.
+    # =========================================================================
+
+    _DASHBOARD_SUMMARY_FIELDS = "id name description configType access { public users owner }"
+
+    _VALID_SCOPE_TYPES = frozenset({"site", "account", "global"})
+    _VALID_SCOPE_OPS = frozenset({"ADD", "REMOVE"})
+
+    def list_dashboards(self, scope: Any = _UNSET) -> List[Dict[str, Any]]:
+        """Dashboards visible at `scope`, with owner and sharing metadata.
+
+        Prefer this over config_files(scope=...) filtered to /dashboards/ when you
+        need `access`; prefer config_files when you need the numeric version.
+        """
+        data = self._graphql(
+            "GetDashboardNames",
+            f"query GetDashboardNames {{ dashboardsV2 {{ {self._DASHBOARD_SUMMARY_FIELDS} }} }}",
+            read_only=True,
+            scope=scope,
+        )
+        return data.get("dashboardsV2") or []
+
+    def get_dashboard(
+        self,
+        dashboard_id: Optional[str] = None,
+        name: Optional[str] = None,
+        scope: Any = _UNSET,
+    ) -> Optional[Dict[str, Any]]:
+        """One dashboard including tabs. Returns None when absent at `scope`.
+
+        `tabs[].graphs` / `.parameters` / `.filters` / `.options` come back as
+        JSON STRINGS, not objects; the console parses them client-side.
+
+        Absence handling mirrors config_file deliberately. It is not established
+        whether a missing dashboard returns null data or a GraphQL error, so both
+        are treated as absence and disambiguated against the listing. Assuming
+        only the null form is what broke every delete in 1.3.2: the confirming
+        re-read threw on exactly the success path.
+        """
+        if not dashboard_id and not name:
+            raise ValueError("get_dashboard requires either dashboard_id or name")
+        try:
+            data = self._graphql(
+                "GetDashboardConfigV2",
+                "query GetDashboardConfigV2($id: ID, $dashboardName: String) { "
+                "getDashboardV2(id: $id, dashboardName: $dashboardName, resolveParameters: true) { "
+                "id name description configType duration isBuiltIn isEditable version "
+                "access { public users owner } "
+                "tabs { tabName parameters graphs filters options } "
+                "createdAt createdBy updatedAt updatedBy } }",
+                {
+                    "id": str(dashboard_id) if dashboard_id else None,
+                    "dashboardName": name,
+                },
+                read_only=True,
+                scope=scope,
+            )
+        except SDLAPIError as exc:
+            if not getattr(exc, "graphql", False):
+                raise
+            try:
+                all_dashboards = self.list_dashboards(scope=scope)
+            except SDLAPIError as list_exc:
+                raise SDLAPIError(
+                    exc.status,
+                    f"{exc} (absence check failed: {list_exc})",
+                    exc.body,
+                ) from exc
+            if dashboard_id:
+                present = any(str(d.get("id")) == str(dashboard_id) for d in all_dashboards)
+            else:
+                present = any(_matches_name(d, name) for d in all_dashboards)
+            if not present:
+                return None
+            raise
+        return data.get("getDashboardV2")
+
+    def create_dashboard(
+        self,
+        name: str,
+        config: str,
+        public: bool = True,
+        scope: Any = _UNSET,
+        fail_if_name_exists: bool = False,
+    ) -> Dict[str, Any]:
+        """Create a dashboard from a full dashboard-JSON document, at `scope`.
+
+        This is the console's own create path and the preferred way to deploy a
+        new dashboard: it takes the complete document (configType, duration,
+        description, tabs[]) as ONE string.
+
+        It also sidesteps the UI stub-append trap. Creating an empty dashboard in
+        the console starts from a `{graphs: []}` stub; pasting after it instead of
+        replacing it yields `{graphs: []}{...}` and the server answers
+        "Content is invalid json / Additional text after JSON object", leaving an
+        empty shell behind that looks like a render bug.
+
+        `public` DEFAULTS TO TRUE here, unlike the raw API which defaults it to
+        false. `access.owner` is the calling identity; with a service-account token
+        that is `serviceuser-<uuid>@mgmt-<n>.sentinelone.net`, not a person, and a
+        private service-user dashboard is readable through the API but INVISIBLE in
+        the console to the human operator at any scope. That is indistinguishable
+        from a failed deploy. Pass public=False deliberately for a private one.
+
+        Names reject punctuation and answer only "Invalid name". Accepted: letters,
+        digits, space, - _ . / . Rejected: ( ) [ ] { } : , & ' % # .
+
+        DUPLICATE NAMES ARE ALLOWED here, unlike put_config_file: the console
+        itself creates "<name> - Copy" siblings and shareResource addresses
+        dashboards by id. Pass fail_if_name_exists=True to refuse instead.
+        """
+        if not name or not isinstance(name, str):
+            raise ValueError("create_dashboard requires a name")
+        if not isinstance(config, str) or not config.strip():
+            raise ValueError(
+                "create_dashboard requires config as a JSON string (the full dashboard document)."
+            )
+        try:
+            json.loads(config)
+        except ValueError as exc:
+            raise ValueError(
+                f"create_dashboard: config is not valid JSON ({exc}). If this came from the "
+                "console's JSON editor, check for a leading '{graphs: []}' stub: the new "
+                "document must REPLACE it, not follow it."
+            ) from exc
+
+        if fail_if_name_exists:
+            existing = [d for d in self.list_dashboards(scope=scope) if _matches_name(d, name)]
+            if existing:
+                ids = ", ".join(str(d.get("id")) for d in existing)
+                raise ValueError(
+                    f'create_dashboard: {len(existing)} dashboard(s) named "{name}" already '
+                    f"exist at this scope (ids: {ids}). Pass fail_if_name_exists=False to "
+                    "create a sibling anyway."
+                )
+
+        data = self._graphql(
+            "CreateDashboard",
+            "mutation CreateDashboard($dashboardName: String!, $config: String, $public: Boolean) "
+            "{ createDashboardV2(dashboardName: $dashboardName, config: $config, public: $public) "
+            "{ id name } }",
+            {"dashboardName": name, "config": config, "public": bool(public)},
+            scope=scope,
+        )
+        created = data.get("createDashboardV2") or {}
+        if not created.get("id"):
+            raise SDLAPIError(
+                200,
+                "create_dashboard: mutation returned no id, so the dashboard was not created.",
+                data,
+                graphql=True,
+            )
+        return created
+
+    def share_dashboard(
+        self,
+        dashboard_id: str,
+        scopes: Optional[List[Dict[str, Any]]] = None,
+        users: Optional[List[Dict[str, Any]]] = None,
+        scope: Any = _UNSET,
+    ) -> Dict[str, Any]:
+        """Share (or unshare) a dashboard to scopes and/or users.
+
+        THE ONLY SDL OPERATION THAT TAKES AN EXPLICIT SCOPE TARGET; everything
+        else infers scope from the S1-Scope header. Use it to push an
+        account-scoped dashboard down to a site without recreating it.
+
+        Note the two different scope arguments: `scopes` is WHERE THE DASHBOARD
+        GOES; `scope` is the header for this call, i.e. where you are standing.
+
+        Each `scopes` entry is {scopeType, scopeId, operation}: scopeType is
+        site | account | global, scopeId is the numeric id from
+        /web/api/v2.1/sites or /accounts, operation is ADD | REMOVE.
+        """
+        if not dashboard_id:
+            raise ValueError("share_dashboard requires dashboard_id")
+        scopes = list(scopes or [])
+        users = list(users or [])
+        if not scopes and not users:
+            raise ValueError(
+                "share_dashboard: pass at least one scope or user, otherwise the call is a no-op."
+            )
+        # Validate up front: the server accepts a malformed entry and silently
+        # shares nothing, which reads as success.
+        normalised: List[Dict[str, str]] = []
+        for i, entry in enumerate(scopes):
+            scope_type = str((entry or {}).get("scopeType", "")).lower()
+            operation = str((entry or {}).get("operation", "ADD")).upper()
+            scope_id = str((entry or {}).get("scopeId", ""))
+            if scope_type not in self._VALID_SCOPE_TYPES:
+                raise ValueError(
+                    f"share_dashboard: scopes[{i}].scopeType must be one of "
+                    f"{sorted(self._VALID_SCOPE_TYPES)} (got {(entry or {}).get('scopeType')!r})."
+                )
+            if operation not in self._VALID_SCOPE_OPS:
+                raise ValueError(
+                    f"share_dashboard: scopes[{i}].operation must be ADD or REMOVE "
+                    f"(got {(entry or {}).get('operation')!r})."
+                )
+            if scope_type != "global" and not re.fullmatch(r"\d+", scope_id):
+                raise ValueError(
+                    f"share_dashboard: scopes[{i}].scopeId must be a numeric id for "
+                    f'scopeType "{scope_type}" (got {(entry or {}).get("scopeId")!r}).'
+                )
+            normalised.append(
+                {"scopeType": scope_type, "scopeId": scope_id, "operation": operation}
+            )
+
+        data = self._graphql(
+            "ShareDashboard",
+            "mutation ShareDashboard($id: ID!, $users: [UserSharingCommand], "
+            "$scopes: [ScopeSharingCommand]) "
+            "{ shareResource(id: $id, users: $users, scopes: $scopes) { id name } }",
+            {"id": str(dashboard_id), "users": users, "scopes": normalised},
+            scope=scope,
+        )
+        shared = data.get("shareResource") or {}
+        if not shared.get("id"):
+            raise SDLAPIError(
+                200,
+                "share_dashboard: shareResource returned no id, so nothing was shared.",
+                data,
+                graphql=True,
+            )
+        return {
+            "status": "success",
+            "dashboard": {"id": str(shared.get("id")), "name": shared.get("name")},
+            "scopes": normalised,
+            "users": users,
+        }
+
+    def save_dashboard_layout(
+        self,
+        graphs: str,
+        tab_name: str,
+        dashboard_id: Optional[str] = None,
+        name: Optional[str] = None,
+        options: Optional[str] = None,
+        scope: Any = _UNSET,
+    ) -> Optional[Dict[str, Any]]:
+        """Replace the panel layout of ONE tab.
+
+        `graphs` is a JSON string shaped {"graphs": [...]}, INCLUDING the wrapper
+        key, even though the response echoes a bare array. Use create_dashboard
+        for a whole document, or put_config_file with expected_version to rewrite
+        an existing dashboard's full config.
+        """
+        if not dashboard_id and not name:
+            raise ValueError("save_dashboard_layout requires either dashboard_id or name")
+        if not isinstance(graphs, str) or not graphs.strip():
+            raise ValueError(
+                'save_dashboard_layout requires graphs as a JSON string shaped {"graphs":[...]}.'
+            )
+        try:
+            parsed = json.loads(graphs)
+            if not isinstance(parsed, dict) or not isinstance(parsed.get("graphs"), list):
+                raise ValueError('missing the top-level "graphs" array')
+        except ValueError as exc:
+            raise ValueError(
+                f'save_dashboard_layout: graphs is not a valid {{"graphs":[...]}} JSON string ({exc}).'
+            ) from exc
+
+        data = self._graphql(
+            "SaveDashboardLayout",
+            "mutation SaveDashboardLayout($id: ID, $dashboardName: String, $graphs: String, "
+            "$options: String, $tabName: String) "
+            "{ saveDashboardLayout(id: $id, dashboardName: $dashboardName, graphs: $graphs, "
+            "options: $options, tabName: $tabName) { graphs options } }",
+            {
+                "id": str(dashboard_id) if dashboard_id else None,
+                "dashboardName": name,
+                "graphs": graphs,
+                "options": options,
+                "tabName": tab_name,
+            },
+            scope=scope,
+        )
+        return data.get("saveDashboardLayout")
+
+    def delete_dashboard(
+        self,
+        dashboard_id: Optional[str] = None,
+        name: Optional[str] = None,
+        scope: Any = _UNSET,
+    ) -> Dict[str, Any]:
+        """Delete a dashboard by id or name.
+
+        `deleteDashboard` returns a bare boolean, so per the house rule removal is
+        confirmed by re-reading rather than trusted from the mutation response.
+        """
+        if not dashboard_id and not name:
+            raise ValueError("delete_dashboard requires either dashboard_id or name")
+        data = self._graphql(
+            "DeleteDashboard",
+            "mutation DeleteDashboard($id: ID, $dashboardName: String) "
+            "{ deleteDashboard(id: $id, dashboardName: $dashboardName) }",
+            {
+                "id": str(dashboard_id) if dashboard_id else None,
+                "dashboardName": name,
+            },
+            scope=scope,
+        )
+        reported = (data or {}).get("deleteDashboard")
+        still = self.get_dashboard(dashboard_id=dashboard_id, name=name, scope=scope)
+        if still:
+            target = f"id {dashboard_id}" if dashboard_id else str(name)
+            raise SDLAPIError(
+                200,
+                f"delete_dashboard: {target} still exists after the delete mutation "
+                f"(mutation returned {reported!r}). Nothing was removed.",
+                still,
+            )
+        return {
+            "status": "success",
+            "deleted": {"id": str(dashboard_id)} if dashboard_id else {"name": name},
+            "raw": reported,
         }
 
     # =========================================================================

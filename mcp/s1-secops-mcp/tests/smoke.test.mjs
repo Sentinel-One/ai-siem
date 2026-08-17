@@ -31,11 +31,19 @@ const EXPECTED_TOOLS = [
   'uam_get_alert',
   'uam_add_note',
   'uam_set_status',
-  // SDL API (5)
+  // SDL API: config files (4)
   'sdl_list_files',
   'sdl_get_file',
   'sdl_put_file',
   'sdl_delete_file',
+  // SDL API: dashboard lifecycle, dashboardsV2 (6)
+  'sdl_list_dashboards',
+  'sdl_get_dashboard',
+  'sdl_create_dashboard',
+  'sdl_share_dashboard',
+  'sdl_save_dashboard_layout',
+  'sdl_delete_dashboard',
+  // SDL API: ingest (1)
   'hec_ingest',
   // Hyperautomation (5)
   'ha_list_workflows',
@@ -53,8 +61,8 @@ test('server version matches package.json', () => {
   assert.equal(SERVER_INFO.version, PKG_VERSION);
 });
 
-test('ALL_TOOLS exposes exactly 26 tools', () => {
-  assert.equal(ALL_TOOLS.length, 26, `expected 26, got ${ALL_TOOLS.length}`);
+test('ALL_TOOLS exposes exactly 32 tools', () => {
+  assert.equal(ALL_TOOLS.length, 32, `expected 32, got ${ALL_TOOLS.length}`);
 });
 
 test('every expected tool is registered, no extras', () => {

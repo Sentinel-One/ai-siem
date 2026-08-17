@@ -26,9 +26,39 @@ Content-Type: application/json
 | Auth scheme | `Bearer`. `ApiToken` returns `unauthenticated`. |
 | Token | A standard console API token, already a JWT. |
 | `?opname=` and `?requestId=` | Optional, correlation only. The server routes on the request body. |
-| `s1-scope` header | Not required. It is ignored, not rejected, so sending one is harmless. |
+| `s1-scope` header | **Required in practice on a multi-scope token, and it is NOT ignored.** See "Scope" below. |
 
 Errors come back as **HTTP 200 with an `errors` array**. Check `errors`, not the status code.
+
+## Scope
+
+**Corrected 2026-08-17.** An earlier revision of this file said the `s1-scope` header was "ignored, not rejected" on this endpoint. That was wrong and it caused real false negatives: config listings and dashboard reads ARE scope-filtered.
+
+Measured on `usea1-purple`, same token, same query, one header apart. Absolute counts are
+per-token (a token scoped to a larger tenant sees more); the *ratio* is the point:
+
+| `S1-Scope` | `configFiles` returned | of which `/dashboards/` |
+|---|---|---|
+| absent (token default) | 113 | 20 |
+| `<accountId>` (account) | 113 | 20 |
+| `<accountId>:<siteId>` (site) | **4** | 4 |
+
+A dashboard created at site scope is **invisible** to an account-scoped listing, and `configFile` on its `udoId` reports it absent. So a missing header is not a neutral default; it silently changes which objects exist as far as the caller can tell. Console traffic capture confirms the UI sends `s1-scope` on all 23 SDL GraphQL operations.
+
+Format:
+
+- Account scope: `S1-Scope: <accountId>`
+- Site scope: `S1-Scope: <accountId>:<siteId>`
+
+Ids come from `GET /web/api/v2.1/accounts` and `GET /web/api/v2.1/sites`. Group scope does not exist in SDL: the console silently promotes a Group selection to the Site above it.
+
+**Consequences for correctness, not just visibility:**
+
+1. Absence checks must re-list at the **same** scope as the failed lookup. Disambiguating a site-scoped miss against an account-scoped listing reports a live file as deleted.
+2. The `/dashboards/` duplicate guard must list at the scope of the write, or it will either miss a same-named sibling or block a legitimate create.
+3. "File not found" is always scope-relative. Before concluding an object is gone, re-check at the scope it was created in.
+
+`SDLClient` and the `sdl_*` MCP tools take an explicit `scope` argument, defaulting to `S1_SCOPE` from credentials. Passing `scope=None` / `scope: null` deliberately suppresses that default and sends no header, which is what a token-default listing needs.
 
 ## Why not REST
 
@@ -178,6 +208,75 @@ c.delete_config_file(udo_id=d["udoId"], expected_version=d["version"])
 `put_config_file` refuses a name-addressed write to an existing `/dashboards/` file and tells you
 which `udoId`s already hold that name.
 
+## The `dashboardsV2` surface (dashboard lifecycle)
+
+**Added 2026-08-17** from a console network capture (280 requests, 23 operations, `usea1-purple`).
+
+The same `POST /sdl/v2/graphql` endpoint carries a second, higher-level surface that the console itself drives. Everything above operates on raw config files; these operations are dashboard-aware.
+
+| Operation | Type | Purpose |
+|---|---|---|
+| `dashboardsV2` | query | List dashboards with `access { public users owner }` |
+| `getDashboardV2(id, dashboardName, resolveParameters)` | query | One dashboard incl. tabs, duration, authorship |
+| `createDashboardV2(dashboardName, config, public)` | mutation | Create from a full dashboard-JSON string |
+| `saveDashboardLayout(id, dashboardName, graphs, options, tabName)` | mutation | Replace the panels of ONE tab |
+| `shareResource(id, users, scopes)` | mutation | Share to scopes and/or users |
+| `deleteDashboard(id, dashboardName)` | mutation | Delete; returns a bare boolean |
+
+**`id` here IS `udoId` there.** Dashboard `meta1` is `id 6999000578736128` in `getDashboardV2` and `udoId 6999000578736128` / `name "/dashboards/meta1"` in `configFile`. Same object, two views.
+
+### Which surface to use
+
+- **Creating a dashboard** → `createDashboardV2`. It takes the whole document (`configType`, `duration`, `description`, `tabs[]`) as one `config` string.
+- **Updating a whole dashboard** → `addConfigFile(udoId:, expectedVersion:)`. Only the config-file layer exposes the numeric CAS token.
+- **Nudging panels on one tab** → `saveDashboardLayout`.
+- **Anything about sharing or ownership** → `dashboardsV2` / `shareResource`. The config-file layer has no concept of either.
+
+### Two version fields, do not cross them
+
+`getDashboardV2` returns `version: ""`, a display string that is empty in practice. `configFile` returns `version: 215771284`, the optimistic-locking token. **Only the `configFile` value is valid as `expectedVersion`.**
+
+### `shareResource` is the only scope-targeting operation
+
+Every other operation infers scope from the `S1-Scope` header. `shareResource` takes explicit targets, which is how you push an account-scoped dashboard down to a site without recreating it:
+
+```json
+{
+  "operationName": "ShareDashboard",
+  "variables": {
+    "id": "6999150597128192",
+    "users": [],
+    "scopes": [{ "scopeType": "site", "scopeId": "2547662415802335157", "operation": "ADD" }]
+  },
+  "query": "mutation ShareDashboard($id: ID!, $users: [UserSharingCommand], $scopes: [ScopeSharingCommand]) { shareResource(id: $id, users: $users, scopes: $scopes) { id name } }"
+}
+```
+
+`scopeType` is `site` | `account` | `global`; `operation` is `ADD` | `REMOVE`; `scopeId` is the numeric id. A malformed entry is accepted and shares nothing, which reads as success, so validate before sending.
+
+### Tab payloads are JSON strings
+
+`tabs[].graphs`, `.parameters`, `.filters` and `.options` come back as **strings**, not objects; the console parses them client-side. `saveDashboardLayout` expects `graphs` shaped `{"graphs":[...]}` **including the wrapper key**, even though the response echoes a bare array.
+
+### Trap: the UI stub-append
+
+Creating an empty dashboard in the console and pasting JSON into its editor starts from a `{graphs: []}` stub. Pasting *after* the stub instead of replacing it produces `{graphs: []}{...}`, and `addConfigFile` rejects it:
+
+```json
+{"errors":[{"path":["addConfigFile"],"details":{"content":"Additional text after JSON object","lineNumber":2,"columnNumber":12},"message":"Content is invalid json"}]}
+```
+
+The dashboard survives as an empty shell (`configType: "NOT_SPECIFIED"`, `graphs: []`), which looks like a rendering bug rather than a rejected write. `createDashboardV2` cannot hit this class of error; prefer it.
+
+### Site-level lifecycle, end to end
+
+Two equivalent routes:
+
+1. **Create in place**: call `createDashboardV2` with `S1-Scope: <accountId>:<siteId>`.
+2. **Create then share**: create at account scope, then `shareResource` with a `site` target. Use this when the calling token sits at account scope.
+
+Then verify: `dashboardsV2` at the site scope must list it, and at account scope it must be absent (or present-but-shared, depending on route). Confirming at only one scope proves nothing.
+
 ## Credentials
 
 The console API token alone covers every SDL operation. The scoped SDL keys
@@ -185,3 +284,23 @@ The console API token alone covers every SDL operation. The scoped SDL keys
 retired and are not used by this skill. Note that auth scheme differs by surface: `Bearer` for
 `/sdl/v2/graphql`, `<console>/sdl/api/*` and HEC; `ApiToken` for the Management API at
 `/web/api/v2.1/*`.
+
+### `createDashboardV2` gotchas (verified live 2026-08-17)
+
+**1. `public` defaults to false, and a private service-user dashboard is invisible to humans.**
+
+`createDashboardV2(dashboardName, config, public)` files the dashboard with `access.owner` set to the *calling identity*. With an API service-account token that is something like `serviceuser-<uuid>@mgmt-<n>.sentinelone.net`, not a person. If `public` is false, the dashboard exists, is readable through the API, and is **invisible in the console to the human operator**, even at the correct scope. It looks exactly like a failed deploy.
+
+Pass `public: true` for anything a person is meant to open. Verified: the same dashboard at the same scope went from invisible to visible in the console purely by recreating it with `public: true`, and every pre-existing dashboard at that site carried `public: true`.
+
+`shareResource` with a scope target does **not** flip `public`; the two are independent.
+
+**2. Dashboard names reject several punctuation characters, with only `Invalid name` as the error.**
+
+Probed one character class at a time against a live tenant:
+
+| Accepted | Rejected |
+|---|---|
+| letters, digits, space, `-`, `_`, `.`, `/` | `(` `)` `[` `]` `{` `}` `:` `,` `&` `'` `%` `#` |
+
+The failure is `{"errors":[{"message":"Invalid name"}]}` with no indication of which character offended, so a name like `My Dashboard (prod)` fails opaquely. Strip punctuation to spaces or hyphens before creating.

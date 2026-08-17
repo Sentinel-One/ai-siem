@@ -33,7 +33,7 @@
  *   MCP_URL=... MCP_BEARER=... bash -c '
  *     echo "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}" \
  *     | node s1-secops-mcp-bridge.mjs'
- *   # -> JSON-RPC response with 26 tools in result.tools[]
+ *   # -> JSON-RPC response with 32 tools in result.tools[]
  */
 
 import { createInterface } from 'node:readline';

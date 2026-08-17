@@ -23,15 +23,19 @@ export const tools = [
           description: 'Lookback window in hours (default 24). Increase to 168 (7d) if the last 24h had low volume.',
           default: 24,
         },
+        scope: {
+          type: 'string',
+          description: 'Optional S1-Scope, "<accountId>" or "<accountId>:<siteId>". LOG READS ARE SCOPE-FILTERED just like config reads, so this changes which events the query can see. Use it to hunt within one site, and to validate a site-scoped dashboard panel against the same boundary the dashboard will see. Omit to use S1_SCOPE from credentials.json, or the token default when that is unset.',
+        },
       },
       required: [],
     },
-    async handler({ hours = 24 } = {}) {
+    async handler({ hours = 24, scope } = {}) {
       const query = `| group UniqueDataSourceNames = array_agg_distinct(dataSource.name),
         UniqueVendors = array_agg_distinct(dataSource.vendor),
         UniqueCategories = array_agg_distinct(dataSource.category)
 | limit 1000`;
-      const result = await lrqRun(query, { hours });
+      const result = await lrqRun(query, { hours, scope });
       return JSON.stringify(result, null, 2);
     },
   },
@@ -65,11 +69,15 @@ export const tools = [
           description: 'Client-side cap on rows returned (default 1000). Not a hard backend limit: the LRQ engine returns as many rows as the query\'s own `| limit N` asks for (live-verified 2026-07-29: a `| limit 20000` query returned 20,000 rows in one response). Raise this to match a large `| limit`; the real ceiling is LRQ response size, not a fixed 5000.',
           default: 1000,
         },
+        scope: {
+          type: 'string',
+          description: 'Optional S1-Scope, "<accountId>" or "<accountId>:<siteId>". LOG READS ARE SCOPE-FILTERED just like config reads, so this changes which events the query can see. Use it to hunt within one site, and to validate a site-scoped dashboard panel against the same boundary the dashboard will see. Omit to use S1_SCOPE from credentials.json, or the token default when that is unset.',
+        },
       },
       required: ['query'],
     },
-    async handler({ query, startTime, endTime, hours = 24, maxRows = 1000 }) {
-      const result = await lrqRun(query, { startTime, endTime, hours, maxRows });
+    async handler({ query, startTime, endTime, hours = 24, maxRows = 1000, scope }) {
+      const result = await lrqRun(query, { startTime, endTime, hours, maxRows, scope });
       return JSON.stringify(result, null, 2);
     },
   },
@@ -95,17 +103,21 @@ export const tools = [
           description: 'Lookback string or ISO date, e.g. "24h", "7d", or "2026-04-20T00:00:00Z" (default "24h").',
           default: '24h',
         },
+        scope: {
+          type: 'string',
+          description: 'Optional S1-Scope, "<accountId>" or "<accountId>:<siteId>". Schema discovery is scope-filtered: a source present at one site may be absent at another, so discover at the scope you will query.',
+        },
       },
       required: ['dataSourceName'],
     },
-    async handler({ dataSourceName, maxEvents = 5, startTime = '24h' }) {
+    async handler({ dataSourceName, maxEvents = 5, startTime = '24h', scope }) {
       // Escape backslashes first, then single quotes, to keep tenant-defined
       // source names from breaking (or altering) the V1 filter expression.
       // Quote-only escaping let a trailing backslash neutralise the added
       // escape (e.g. name\' -> \\' which re-opens the string).
       const safeName = String(dataSourceName).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const filter = `dataSource.name=='${safeName}'`;
-      const result = await v1Query(filter, { maxCount: Math.min(maxEvents, 50), startTime });
+      const result = await v1Query(filter, { maxCount: Math.min(maxEvents, 50), startTime, scope });
 
       const matches = result.matches || [];
       if (matches.length === 0) {

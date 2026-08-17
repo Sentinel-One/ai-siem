@@ -4,7 +4,7 @@
  * Spawns `node index.js` with default stdio transport, sends JSON-RPC
  * over stdin, reads JSON-RPC over stdout. Verifies:
  *   - initialize returns the expected protocol version and server info
- *   - tools/list returns 26 tools
+ *   - tools/list returns 32 tools
  *   - resources/list returns 2 resources
  *   - prompts/list returns 2 prompts
  */
@@ -85,7 +85,7 @@ test('stdio: initialize returns expected envelope', async () => {
   assert.ok(r.result.capabilities.tools);
 });
 
-test('stdio: tools/list returns 26 tools', async () => {
+test('stdio: tools/list returns 32 tools', async () => {
   const { replies } = await runOnce([
     { jsonrpc: '2.0', id: 1, method: 'initialize', params: {
       protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 't', version: '1' },
@@ -95,7 +95,7 @@ test('stdio: tools/list returns 26 tools', async () => {
   const toolsReply = replies.find(r => r.id === 2);
   assert.ok(toolsReply, `no reply with id=2 in: ${JSON.stringify(replies)}`);
   assert.ok(toolsReply.result.tools);
-  assert.equal(toolsReply.result.tools.length, 26);
+  assert.equal(toolsReply.result.tools.length, 32);
 });
 
 test('stdio: resources/list returns 2 resources', async () => {

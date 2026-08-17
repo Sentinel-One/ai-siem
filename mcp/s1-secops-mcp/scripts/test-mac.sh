@@ -128,8 +128,8 @@ STDIO_REPLY="$(printf '%s\n%s\n' \
   node index.js 2>/dev/null)"
 
 TOOL_COUNT="$(echo "$STDIO_REPLY" | tail -n 1 | node -e 'let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{try{console.log(JSON.parse(s).result.tools.length)}catch(e){console.log("ERR")}})')"
-if [[ "$TOOL_COUNT" == "26" ]]; then
-  pass "stdio tools/list returned 26 tools"
+if [[ "$TOOL_COUNT" == "32" ]]; then
+  pass "stdio tools/list returned 32 tools"
 else
   fail "stdio tools/list returned $TOOL_COUNT (expected 26)" "$STDIO_REPLY"
 fi
@@ -159,8 +159,8 @@ HTTP_REPLY="$(curl -sf -X POST "http://127.0.0.1:$PORT/mcp" \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}')"
 HTTP_COUNT="$(echo "$HTTP_REPLY" | node -e 'let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{try{console.log(JSON.parse(s).result.tools.length)}catch(e){console.log("ERR")}})')"
-if [[ "$HTTP_COUNT" == "26" ]]; then
-  pass "HTTP tools/list returned 26 tools"
+if [[ "$HTTP_COUNT" == "32" ]]; then
+  pass "HTTP tools/list returned 32 tools"
 else
   fail "HTTP tools/list returned $HTTP_COUNT" "$HTTP_REPLY"
 fi

@@ -106,6 +106,12 @@ export function getCreds() {
     S1_CONSOLE_URL:       e('S1_CONSOLE_URL'),
     S1_CONSOLE_API_TOKEN: e('S1_CONSOLE_API_TOKEN') || e('S1_API_TOKEN'),
     S1_HEC_INGEST_URL:    e('S1_HEC_INGEST_URL'),
+    // Default S1-Scope for SDL requests: "<accountId>" for account scope or
+    // "<accountId>:<siteId>" for site scope. Optional. Per-call scope arguments
+    // override it; passing scope:null suppresses it entirely. SDL reads are
+    // scope-FILTERED, so this value decides which config files and dashboards a
+    // session can see at all, not merely where new ones are filed.
+    S1_SCOPE:             e('S1_SCOPE'),
   };
 }
 

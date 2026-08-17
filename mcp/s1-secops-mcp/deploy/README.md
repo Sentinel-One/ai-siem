@@ -57,7 +57,7 @@ Or, equivalently, by package name without the install:
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "npx",
-      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.3.3"]
+      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.3.6"]
     }
   }
 }
@@ -376,7 +376,7 @@ Both block the W+X memory mappings V8 needs to JIT JavaScript. Adding them cause
 
 These are supported but not first-class:
 
-- **Docker / docker-compose.** Not shipped in this version. The single-file Node binary doesn't need it. If you want a container, the install is `FROM node:20-alpine` + `RUN npm install -g @pmoses-s1/s1-secops-mcp@1.3.3` + `CMD ["s1-secops-mcp", "--transport", "http", "--host", "0.0.0.0"]`. Mount creds at `/etc/s1-secops-mcp/credentials.json` and tokens at `/etc/s1-secops-mcp/bearer-tokens.json`.
+- **Docker / docker-compose.** Not shipped in this version. The single-file Node binary doesn't need it. If you want a container, the install is `FROM node:20-alpine` + `RUN npm install -g @pmoses-s1/s1-secops-mcp@1.3.6` + `CMD ["s1-secops-mcp", "--transport", "http", "--host", "0.0.0.0"]`. Mount creds at `/etc/s1-secops-mcp/credentials.json` and tokens at `/etc/s1-secops-mcp/bearer-tokens.json`.
 
 - **External bridge (`supergateway`, `mcp-proxy`).** Pre-1.1.0 deployments used these to wrap the stdio-only server. They still work; this server's native HTTP mode is functionally equivalent and removes the extra process. Prefer native unless you have a specific reason.
 

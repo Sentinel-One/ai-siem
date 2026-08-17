@@ -689,3 +689,60 @@ Render-only defects seen live (S-26.1) and their fixes:
 - **Number reads the unit twice ("34 principals" under "Active principals").** Drop `options.suffix` when the title already names the unit; keep `{format, precision}` only.
 - **Single-series `stacked_bar` with a stray legend token.** Group only by `timebucket(...)` for a clean total series (or use a `line`/`donut`), or `| transpose <dim> on timestamp` for a real per-category series. Grouping by a dimension WITHOUT transposing produces a confusing single series plus a stray legend entry.
 - **Categorical bar/line panel errors "first column ... should have numeric value in epoch".** `graphStyle: "bar"`, `"line"`, and `"area"` default to a time x-axis and require an epoch first column. For a by-category bar chart use `graphStyle: "stacked_bar"` with `"xAxis": "grouped_data"` and a `(category, value)` query. Plain `bar` is not a categorical bar chart.
+
+## 16. Scope: dashboards are scope-filed and scope-filtered, and `site.name` is a lossy filter
+
+Verified live on `usea1-purple` 2026-08-17, from a console network capture (280 requests, 23 GraphQL operations) plus direct API probes.
+
+### The `S1-Scope` header is not optional and not ignored
+
+An earlier revision of `sdl-api/references/config-file-graphql.md` claimed the `s1-scope` header was "ignored, not rejected" on `/sdl/v2/graphql`. That was wrong. Same token, same query, one header apart:
+
+| `S1-Scope` | `configFiles` returned |
+|---|---|
+| absent (token default) | 113 files (20 dashboards) |
+| `<accountId>` (account) | 113 files (20 dashboards) |
+| `<accountId>:<siteId>` (site) | **4 files** (all 4 dashboards) |
+
+A dashboard created at site scope is **invisible** from account scope, and `config_file` on its `udoId` reports it absent. Consequences that are correctness bugs, not visibility niceties:
+
+- absence disambiguation must re-list at the **same** scope as the failed lookup, or a live file reads as deleted;
+- the `/dashboards/` duplicate guard must list at the scope of the **write**;
+- delete verification must re-read at the scope of the **delete**.
+
+Every "not found" is scope-relative. Re-check at the scope an object was created in before concluding it is gone.
+
+### Two scopes per dashboard, decided separately
+
+**Deployment scope** (where the object is filed) and **query scope** (what the panels read) are independent. A site-deployed dashboard whose panels carry no `site.id` predicate reports another site's numbers with no error. Default: site deployment means `site.id='<siteId>'` on every query panel, unless the user explicitly asks for account-wide queries. Enforced by `panel_safety_check.py --site-id <id>` (rule S01) with `--allow-account-scope-queries` as the documented opt-out.
+
+### `site.id`, never `site.name`, as the scoping predicate
+
+For one site over 24h:
+
+| Filter | Events |
+|---|---|
+| `site.id='<siteId>'` | 60,410 |
+| of those, `!(site.name = *)` | **510** |
+
+The 510 invisible-to-`site.name` rows: `ActivityFeed` 172, `asset` 111, unattributed 99, `SentinelOne` 70, `Windows Event Logs` 48, **`alert` 10**. So a `site.name` filter drops alert and asset records, the two sources a SOC dashboard most depends on, silently. `site.id` is additionally the same value as the `S1-Scope` `siteId` and `shareResource`'s `scopeId`, and it survives a rename. Rule S02 flags the substitution and is **not** suppressed by `--allow-account-scope-queries`, because it is wrong at any scope.
+
+`site.name` remains fine as a display column or `group by` key.
+
+### `createDashboardV2` is the create path; the UI editor has a stub-append trap
+
+The console drives a `dashboardsV2` surface the skill previously did not document: `dashboardsV2`, `getDashboardV2`, `createDashboardV2`, `saveDashboardLayout`, `shareResource`, `deleteDashboard`. `createDashboardV2(dashboardName, config, public)` accepts the entire dashboard document as one string.
+
+Creating an empty dashboard in the UI and pasting JSON into its editor starts from a `{graphs: []}` stub. Pasting **after** the stub instead of replacing it yields `{graphs: []}{...}` and `addConfigFile` answers:
+
+```json
+{"errors":[{"details":{"content":"Additional text after JSON object","lineNumber":2,"columnNumber":12},"message":"Content is invalid json"}]}
+```
+
+The dashboard survives as an empty shell (`configType: "NOT_SPECIFIED"`, `graphs: []`), which reads as a render bug rather than a rejected write. Both client libraries now parse `config` before sending and name this cause in the error.
+
+Two version fields exist and must not be crossed: `getDashboardV2` returns `version: ""` (a display string), `configFile` returns the numeric CAS token. Only the latter is valid as `expectedVersion`.
+
+### The data-source selector injects a `preFilter`
+
+`launchDashboardQuery` carries `"preFilter": "dataSource.category = 'security'"` when the console selector is on **XDR**. Every panel query is filtered by it, so under XDR anything outside `category='security'` is silently excluded, including `| dataset` config-table reads. This is the mechanism behind section 8.6's All Data vs XDR guidance.

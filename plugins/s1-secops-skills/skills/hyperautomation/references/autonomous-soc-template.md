@@ -37,9 +37,8 @@ a snippet whenever you notice the same action graph appearing in more than one w
 ## Canonical shape (alert-triggered)
 
 1. **Singularity Response Trigger**: fire on the target alert (filter by name / severity).
-2. **Trigger Agentic Investigation**: `http_request` to Unified Alerts GraphQL, mutation
-   `alertTriggerActions` with action `S1/aiInvestigation/run`
-   (`payload.aiInvestigation{tenantId, consoleVersion:"HyperAutomation", userAgent:"SentinelOne-HyperAutomation"}`).
+2. **Trigger Agentic Investigation**: `http_request` to Unified Alerts GraphQL (see the agentic
+   investigation section below for the exact payloads and binding).
 3. **Pause for Investigation Completion**: a **static** snippet call that polls until the
    investigation finishes (poll-until-complete loop below). Shared by every alert workflow.
 4. **Get Investigation Summary**: `http_request` GraphQL `aiInvestigations { status verdict result … }`
@@ -58,6 +57,124 @@ a snippet whenever you notice the same action graph appearing in more than one w
     `dynamic_snippet_name: "{{response-decision.data}}"`) that dispatches to the chosen response
     snippet, passing the shared input contract.
 12. **Wrap-up**: `llm` action summary → update alert notes → update the collaboration channel.
+
+## Variant: analyst-approved remediation (human in the loop)
+
+Fully autonomous is one end of the spectrum. The far more common ask is **the AI investigates, the
+human adjudicates**. The order matters and is easy to get backwards:
+
+```
+Alert Trigger (auto)
+  → Alert Context (variable)
+  → Trigger Agentic Investigation      investigation starts from workflow logic
+  → Pause For Investigation (snippet)  poll until COMPLETED
+  → Get Agentic Investigation Summary  verdict + evidence + recommendation
+  → Capture Investigation Report       DEFAULT-guarded variables
+  → Brief For Approval (llm)           markdown report to email-safe HTML
+  → Recommend Action (llm)             one remediation string
+  → Remediation Approval Form          create_interaction, type form
+  → Email Findings And Approval Link   branded HTML, brief + recommendation + button
+  → Wait For Approval                  wait_for_interaction
+  → Capture Decision
+  → Check Approval (fail closed) ──true──→ response snippet
+                                 ──false─→ no action
+```
+
+**The form gates the REMEDIATION, not the investigation.** The analyst reviews findings the AI has
+already produced and approves what to do about them. A form placed before the investigation
+(asking a human which alert to investigate) inverts the value of the feature.
+
+Ask the Recommend Action LLM to return exactly one snippet name from the response library, and
+put that name in the form's `approved_action` field guidance so the analyst confirms or overrides
+rather than composing from scratch. Capture both `ai_recommended` and the analyst's
+`approved_action`: the delta between them is a free measure of how much the SOC trusts the AI.
+
+Approval gates fail closed (`timeout equals "false"` AND `approve equals "true"`). See
+`interaction-forms.md` for the form schema, the response shape, and the mandatory
+`Function.DEFAULT` guard on optional fields.
+
+## Purple AI agentic investigation: the two calls
+
+Both are packaged actions on the **SentinelOne GraphQL** integration and both need
+`use_authentication_data: true` with that connection bound (Bearer). The mgmt "SentinelOne"
+connection signs `ApiToken` and will not work here.
+
+| Action | `public_action_id` | Path |
+|---|---|---|
+| Trigger Agentic Investigation | `99dd0d16-8eb5-4db9-8701-223e4e281f53` | `/web/api/v2.1/unifiedalerts/graphql` |
+| Get Agentic Investigation Summary | `288d7810-3e36-4aa0-a5a7-1c201c08020a` | `/web/api/v2.1/unifiedalerts/graphql` |
+
+Set `body_type: "graphql"` and `Content-Type: application/json` on both.
+
+**Trigger** (mutation, `payload` field of the http action, JSON-string-encoded):
+
+```graphql
+mutation AlertTriggerActions {
+  alertTriggerActions(
+    actions: [{id: "S1/aiInvestigation/run", payload: {aiInvestigation: {
+      tenantId: "{{local_var.tenant_id}}",
+      consoleVersion: "HyperAutomation",
+      userAgent: "SentinelOne-HyperAutomation"}}}]
+    filter: {or: [{and: [{fieldId: "id", stringEqual: {value: "{{local_var.alert_id}}"}}]}]}
+    viewType: ALL
+  ) { ... on ActionsTriggered { actions { actionId success { id } failure { id errorMessage errorType } skip { id } } }
+      ... on TriggerActionsError { errors { errorMessage } } }
+}
+```
+
+**Get summary** (query):
+
+```graphql
+query GetAgenticInvestigation {
+  aiInvestigations(alertIds: ["{{local_var.alert_id}}"], scope: null) {
+    alertId status verdict result purpleAiStatus investigationStep
+    restrictionReason autoTriggered timestamp
+  }
+}
+```
+
+Notes that save a debugging cycle:
+
+- **`tenantId` is the `mgmt_id`**, available on the trigger as `{{<trigger-slug>.mgmt_id}}`. Read it
+  from the trigger rather than hardcoding, so the flow ports between tenants unchanged.
+- **The investigation can be triggered from anywhere in a flow**, not only on the initiating alert.
+  It is an ordinary action step, so the alert id can come from enrichment, a query, a loop item, or
+  a form. Nothing binds it to the trigger node.
+- Read results as `{{get-slug.body.data.aiInvestigations[0].<field>}}`. Bracketed array indexing
+  works in HA references.
+- **Guard every field with `Function.DEFAULT`.** `verdict`, `result`, `restrictionReason` and
+  friends are absent, not null, when an investigation is restricted or incomplete, and a bare
+  reference to an absent attribute errors the run.
+- The call is asynchronous. Trigger, then poll with the snippet below; do not read the summary
+  immediately after triggering.
+
+## Rendering the investigation report into email or Slack
+
+**`aiInvestigations[].result` is a full markdown report** (headings, bold, bullets, horizontal
+rules, often several thousand words). Email clients do not render markdown, so dropping it into an
+HTML email body produces one unbroken wall of `##`, `**` and `-` characters. Slack has the same
+problem in reverse.
+
+There is no markdown renderer in Hyperautomation. The pattern is an `llm` action that emits the
+target format:
+
+```json
+{
+  "type": "llm", "tag": "core_action",
+  "data": {
+    "name": "Brief For Approval", "action_type": "llm", "model": "<model id>",
+    "prompt": "Convert the investigation report below into a short decision brief.\n\nOUTPUT RULES:\n- Return ONLY HTML list item tags, for example <li>text</li><li>text</li>\n- No markdown, no hash characters, no asterisks, no code fences, no ul wrapper, no commentary\n- Exactly 5 items, each under 22 words\n- Cover in order: what was detected, whether it executed, blast radius, key evidence gap, confidence\n\nREPORT:\n{{local_var.inv_result}}",
+    "response_format": "off", "json_schema": null
+  }
+}
+```
+
+Then `<ul>{{brief-for-approval.data}}</ul>` in the email body. Keep the raw `result` in a variable
+for the audit trail; it just never reaches the rendered message. The output rules have to be
+explicit and negative ("no markdown, no code fences") or the model reverts to markdown.
+
+The same trick handles the reverse direction: an `llm` action converting a JSON triage object into
+Slack markdown.
 
 ## The reusable snippet library
 
@@ -94,8 +211,15 @@ A while-loop that polls a status and breaks when done:
 - **Inner chain** (each node `parent_action` = the loop's `export_id`):
   `[delay] → Get Status (http) → condition(status == "COMPLETED") ─true→ break_loop`. The
   condition's false path has no edge, so the loop iterates again.
-- Read the full result AFTER the loop (a fresh Get): a node placed after the loop can read the
-  loop's own outputs but not a loop-internal node's output.
+- Read the full result AFTER the loop (a fresh Get) when you want the complete payload.
+- **A loop-internal node's output IS reachable from outside the loop via `.agg`**, which aggregates
+  across iterations: `{{get-agentic-investigation-status.agg.body.data.aiInvestigations}}`. The
+  bare reference `{{get-agentic-investigation-status.body...}}` does NOT resolve outside the loop;
+  the `.agg` form does. A production Pause snippet returns exactly this from its `snippet_output`.
+- The deployed Pause snippet uses `condition_type: "simple"` with a nested `condition` object and
+  works. `"multi"` is the safer default and is what the rest of this skill emits, but treat
+  "always multi" as a convention rather than a hard requirement.
+- A minimal working poll loop is just `poll → condition → break_loop`; the `delay` is optional.
 
 ## Build order
 

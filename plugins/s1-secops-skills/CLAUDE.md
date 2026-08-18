@@ -650,7 +650,7 @@ GET    https://<console>.sentinelone.net/sdl/v2/api/queries/{id}?lastStepSeen={n
 DELETE https://<console>.sentinelone.net/sdl/v2/api/queries/{id}
 ```
 
-`xdr.us1.sentinelone.net` is the V1 Scalyr/DataSet endpoint: deprecated, sunset Feb 2027, do not use.
+`xdr.<region>.sentinelone.net` is the V1 Scalyr/DataSet endpoint: deprecated, sunset Feb 2027, do not use.
 
 **Auth:** `Authorization: Bearer <jwt>`, the same token the Mgmt API uses with `ApiToken` prefix. Using `ApiToken` prefix on `/sdl/v2/api/queries` returns HTTP 500.
 

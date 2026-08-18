@@ -254,7 +254,7 @@ def rule_N02_table_no_limit(panel: Dict[str, Any]) -> Optional[Tuple[str, str]]:
 #
 #   1. Portability. A panel with no site predicate silently changes meaning when
 #      the dashboard is copied, shared to another scope, or promoted to Account.
-#   2. `site.name` is NOT a safe substitute. Measured on usea1-purple 2026-08-17
+#   2. `site.name` is NOT a safe substitute. Measured on <console> 2026-08-17
 #      for one site: `site.id='<id>'` matched 60,410 events, of which 510 carried
 #      the site id but a NULL `site.name`. Those 510 included 10 `alert` records,
 #      111 `asset` records, 172 `ActivityFeed` and 48 Windows Event Logs. A

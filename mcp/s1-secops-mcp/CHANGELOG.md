@@ -1,5 +1,183 @@
 # Changelog
 
+## 1.3.6 - 2026-08-17
+
+Behaviour change, found by deploying to a real site and not being able to see the
+result.
+
+### Changed
+
+- **`isPublic` / `public` now defaults to TRUE on dashboard creation** in both
+  clients, where the raw `createDashboardV2` API defaults it to false.
+
+  `access.owner` is set to the calling identity. With an API service-account
+  token that is `serviceuser-<uuid>@mgmt-<n>.sentinelone.net`, not a person, so a
+  private dashboard is readable through the API and **invisible in the console to
+  the human operator at any scope**. That is indistinguishable from a failed
+  deploy: the tool reports success, the object exists, and the user sees nothing.
+
+  Verified live: the identical config at the identical site scope went from
+  invisible to visible purely by recreating it with `public: true`, and every
+  pre-existing dashboard at that site carried `public: true`.
+
+  Pass `isPublic: false` / `public=False` deliberately for a dashboard that
+  should stay private to the service account. `shareResource` to a scope does not
+  flip `public`; the two are independent.
+
+### Documented
+
+- **Dashboard names reject punctuation, with only `Invalid name` as the error.**
+  Probed one character class at a time against a live tenant:
+
+  | Accepted | Rejected |
+  |---|---|
+  | letters, digits, space, `-`, `_`, `.`, `/` | `(` `)` `[` `]` `{` `}` `:` `,` `&` `'` `%` `#` |
+
+  So `My Dashboard (prod)` fails with no indication of which character offended.
+  Recorded in the tool description, both client docstrings,
+  `sdl-api/references/config-file-graphql.md` and
+  `sdl-dashboard/references/deployment.md`.
+
+### Tests
+
+115 JS (+1), 61 Python client (+2), 19 panel-safety. The two default-value
+assertions were updated and paired with explicit-false cases, so an accidental
+revert of the default fails the suite.
+
+### Docker
+
+Bundle image stays **1.3.2**; its npm pin moves to 1.3.6.
+
+## 1.3.5 - 2026-08-17
+
+Completes the scope work in 1.3.4. **Upgrade from 1.3.4 is recommended.**
+
+### Fixed
+
+- **Query methods ignored `scope`.** 1.3.4 added the `scope` argument to the
+  config-file and dashboard operations but not to the query paths, even though
+  log reads are filtered by the same `S1-Scope` header. A hunt or a
+  panel-validation query run without the intended scope silently answered for
+  the token default, which is the worst shape of this bug: a plausible number
+  for the wrong boundary, with no error.
+
+  Scope now threads through `lrqRun` (launch **and** poll, so the forward-tagged
+  follow-ups stay on the same scope) and through all five Python query methods:
+  `query`, `power_query`, `facet_query`, `numeric_query`, `timeseries_query`.
+  Exposed on the `powerquery_run`, `powerquery_enumerate_sources` and
+  `powerquery_schema_discover` tools.
+
+  Found by using the shipped 1.3.4 client to discover schema at a site scope and
+  getting `power_query() got an unexpected keyword argument 'scope'`.
+
+- **`scopeHeaders` is now exported from `lib/sdl.js`** and imported by the LRQ
+  path in `lib/s1.js`, rather than each surface resolving scope its own way. A
+  second implementation would drift, and the validation rules (numeric ids,
+  `null` suppresses the default) have to be identical on both.
+
+### Tests
+
+- 4 new JS cases: `v1Query` header presence and absence, malformed-scope
+  rejection before any request, and a direct contract test on the exported
+  `scopeHeaders`.
+- 8 new Python cases covering all five query methods, unscoped omission,
+  malformed-scope rejection, and `scope=None` suppression.
+- Totals: 114 JS, 59 Python client, 19 panel-safety. No regressions.
+
+### Docker
+
+Bundle image stays **1.3.2**; its npm pin moves to 1.3.5.
+
+## 1.3.4 - 2026-08-17
+
+Adds site-level dashboard lifecycle. Two gaps closed: SDL GraphQL calls never
+sent an `S1-Scope` header, and the dashboard operations the console itself uses
+were not wrapped at all. **26 tools → 32.**
+
+### Added
+
+- **`S1-Scope` on every SDL GraphQL and V1-query call.** Optional `scope`
+  argument on `configFiles`, `configFile`, `putConfigFile`, `deleteConfigFile`
+  and `v1Query`, and on the four `sdl_*_file` tools. Falls back to a new
+  `S1_SCOPE` credential; `scope: null` suppresses that default and sends no
+  header. Format `"<accountId>"` or `"<accountId>:<siteId>"`, validated before
+  the request so a typo cannot silently widen the read.
+- **Six dashboard-lifecycle tools** on the `dashboardsV2` surface:
+  `sdl_list_dashboards`, `sdl_get_dashboard`, `sdl_create_dashboard`,
+  `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`.
+- **`sdl_create_dashboard`** takes the whole dashboard document as one `config`
+  string, the path the console uses. It parses the JSON first, so the UI
+  stub-append failure (`{graphs: []}{...}` → "Content is invalid json /
+  Additional text after JSON object", leaving an empty dashboard behind) is
+  reported as a caller error instead of filing a broken shell.
+- **`sdl_share_dashboard`** wraps `shareResource`, the only SDL operation that
+  takes an explicit scope target. This is how an account-scoped dashboard is
+  pushed to a site without recreating it. Scope targets are validated up front,
+  because the server accepts a malformed entry, shares nothing, and reports
+  success.
+- **`S1_SCOPE`** added to `getCreds()`. It was absent, so any credentials-file
+  default would have been read and then dropped.
+
+### Fixed
+
+- **Scope-sensitive call sites now scope consistently.** Absence
+  disambiguation re-lists at the scope of the failed lookup, the `/dashboards/`
+  duplicate guard lists at the scope of the write, and delete verification
+  re-reads at the scope of the delete. Mixing scopes across these steps reports
+  a live site-scoped file as deleted, which is the same false-negative class
+  1.3.3 fixed for error text.
+
+### Corrected documentation
+
+- `sdl-api/references/config-file-graphql.md` claimed the `s1-scope` header was
+  "ignored, not rejected" on `/sdl/v2/graphql`. **That was wrong.** Measured on
+  `<console>`, same token and query: `configFiles` returned 113 files at
+  account scope and 4 at a site scope. Config listings and dashboard reads are
+  scope-FILTERED, so a dropped header changes which objects appear to exist.
+  `auth_and_limits.md` corrected to match.
+
+### Dashboard skill
+
+- **`site.id`, not `site.name`, is the scoping predicate.** For one site over
+  24h, `site.id='<id>'` matched 60,410 events of which 510 carried the site id
+  with a null `site.name`: `ActivityFeed` 172, `asset` 111, unattributed 99,
+  `SentinelOne` 70, `Windows Event Logs` 48, `alert` 10. A `site.name` filter
+  silently drops alert and asset records. `site.id` is also the same value as
+  the `S1-Scope` `siteId` and survives a site rename.
+- **New scope doctrine in `sdl-dashboard/SKILL.md`:** deployment scope and query
+  scope are separate decisions, and a site-deployed dashboard scopes its panels
+  to that site unless the user explicitly asks for account-wide queries.
+- **`panel_safety_check.py --site-id <id>`** adds rule **S01** (query panel with
+  no, or wrong, `site.id` predicate on a site-targeted dashboard; opt out with
+  `--allow-account-scope-queries`) and rule **S02** (`site.name` used as a
+  scoping filter; never suppressed, the substitution is wrong at any scope).
+- Recorded that the console's XDR selector injects
+  `preFilter: "dataSource.category = 'security'"` into every panel query.
+
+### Python client (`sdl-api/scripts/sdl_client.py`)
+
+- Per-call `scope` on `config_files`, `config_file`, `put_config_file`,
+  `delete_config_file`, with the same `_UNSET`-vs-`None` distinction.
+- Six new methods mirroring the JS layer: `list_dashboards`, `get_dashboard`,
+  `create_dashboard`, `share_dashboard`, `save_dashboard_layout`,
+  `delete_dashboard`.
+- `get_dashboard` treats both a null result and a GraphQL error as absence,
+  disambiguated against the listing. Assuming only the null form is what broke
+  every delete in 1.3.2; the confirming re-read threw on the success path.
+
+### Tests
+
+- 24 new cases in `tests/sdl-graphql.test.mjs`: header presence and absence,
+  credentials fallback, `scope: null` suppression, malformed-scope rejection
+  before any request, scope consistency across the guard / disambiguation /
+  delete-verify paths, the six dashboard operations, stub-append rejection, and
+  the `getDashboard` absence matrix.
+- New `sdl-dashboard/tests/test_panel_safety_check.py`: 19 cases over S01 and
+  S02 including the wrong-site case, the opt-out flag, exempt panel types, and
+  a regression guard that existing rules still fire.
+- Tool-count assertions updated 26 → 32 across the smoke, stdio, HTTP and
+  origin-guard suites.
+
 ## 1.3.3 - 2026-08-07
 
 Fixes a user-facing regression in 1.3.2 found by running the live MCP tools
@@ -65,7 +243,7 @@ Config-file operations move from the legacy REST endpoints to GraphQL. Tool coun
 ### Fixed
 
 - **`sdl_list_files` no longer returns an incomplete listing.** The REST `/sdl/api/listFiles`
-  endpoint omits every udoId-addressed dashboard. Measured live on `usea1-purple`: REST returned
+  endpoint omits every udoId-addressed dashboard. Measured live on `<console>`: REST returned
   1,914 paths against `configFiles`' 2,264, a 350-file gap consisting entirely of `/dashboards/`
   files that carry a `udoId`. REST `getFile` on any of them returns `success/noSuchFile`. The
   practical impact was a false negative: a dashboard that existed in the console was reported as

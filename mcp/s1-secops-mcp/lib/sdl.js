@@ -31,7 +31,7 @@ export function sdlToken() {
  *
  * SDL objects (dashboards, saved searches, config files) are filed against the
  * scope the request carries, and reads are filtered by it. Verified live on
- * usea1-purple 2026-08-17, same token: `configFiles` returned 113 files at
+ * <console> 2026-08-17, same token: `configFiles` returned 113 files at
  * account scope (20 of them dashboards) and 4 at a site scope (all 4
  * dashboards). A dashboard created at site scope is invisible to an
  * account-scoped listing, so a missing header is not a neutral default, it
@@ -415,7 +415,7 @@ export async function deleteConfigFile({ name, udoId, expectedVersion, scope }) 
 //
 // A SECOND, HIGHER-LEVEL SURFACE on the same `POST /sdl/v2/graphql` endpoint.
 // This is what the console itself drives; captured from live console traffic on
-// usea1-purple 2026-08-17 (280 requests, 23 operations).
+// <console> 2026-08-17 (280 requests, 23 operations).
 //
 // Relationship to the config-file layer above:
 //

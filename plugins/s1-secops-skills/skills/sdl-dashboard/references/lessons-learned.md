@@ -692,7 +692,7 @@ Render-only defects seen live (S-26.1) and their fixes:
 
 ## 16. Scope: dashboards are scope-filed and scope-filtered, and `site.name` is a lossy filter
 
-Verified live on `usea1-purple` 2026-08-17, from a console network capture (280 requests, 23 GraphQL operations) plus direct API probes.
+Verified live on `<console>` 2026-08-17, from a console network capture (280 requests, 23 GraphQL operations) plus direct API probes.
 
 ### The `S1-Scope` header is not optional and not ignored
 

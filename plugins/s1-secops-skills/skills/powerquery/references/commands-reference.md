@@ -201,7 +201,7 @@ Limits: lookup / `savelookup` datatables can be up to 150 MB per table (operator
 
 Best practices: defer the `lookup` until after a `group`, so the lookup is performed once per group row instead of once per raw event. Don't join dynamic lookups inside an Alert.
 
-**Confirmed on-tenant (usea1-purple, 2026-06-01):**
+**Confirmed on-tenant (<console>, 2026-06-01):**
 
 - `from <table>` takes the **literal filename**. If the data table file is `sid_username.csv`, write `from sid_username.csv` (keep the extension). A bare name without the extension can miss the file. Both `/datatables/foo` and `/datatables/foo.csv` can coexist, so the name must be exact.
 - **`from <table>` resolves under `/datatables/` only, never `/lookups/`.** A CSV written to `/lookups/<name>.csv` is a real config file that reads back fine over the API, but `| lookup ... from <name>.csv` returns HTTP 400 `Lookup table "<name>.csv" does not exist`. Put lookup tables in `/datatables/` (live-confirmed 2026-08-07).

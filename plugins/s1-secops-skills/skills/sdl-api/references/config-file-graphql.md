@@ -6,7 +6,7 @@ datatables, automatic lookups, monitors, alerts, and partition rules.
 This is the **canonical** config-file surface. The legacy REST endpoints (`/sdl/api/listFiles`,
 `getFile`, `putFile`) are incomplete, see "Why not REST" below.
 
-Every claim here was verified live against `usea1-purple` on 2026-08-07.
+Every claim here was verified live against `<console>` on 2026-08-07.
 
 ## Endpoint and authentication
 
@@ -34,7 +34,7 @@ Errors come back as **HTTP 200 with an `errors` array**. Check `errors`, not the
 
 **Corrected 2026-08-17.** An earlier revision of this file said the `s1-scope` header was "ignored, not rejected" on this endpoint. That was wrong and it caused real false negatives: config listings and dashboard reads ARE scope-filtered.
 
-Measured on `usea1-purple`, same token, same query, one header apart. Absolute counts are
+Measured on `<console>`, same token, same query, one header apart. Absolute counts are
 per-token (a token scoped to a larger tenant sees more); the *ratio* is the point:
 
 | `S1-Scope` | `configFiles` returned | of which `/dashboards/` |
@@ -210,7 +210,7 @@ which `udoId`s already hold that name.
 
 ## The `dashboardsV2` surface (dashboard lifecycle)
 
-**Added 2026-08-17** from a console network capture (280 requests, 23 operations, `usea1-purple`).
+**Added 2026-08-17** from a console network capture (280 requests, 23 operations, `<console>`).
 
 The same `POST /sdl/v2/graphql` endpoint carries a second, higher-level surface that the console itself drives. Everything above operates on raw config files; these operations are dashboard-aware.
 

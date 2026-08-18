@@ -28,10 +28,16 @@ See **[deploy/README.md](./deploy/README.md)** for the full deployment walkthrou
 | Mgmt Console | `uam_list_alerts` | mgmt-console-api |
 | Mgmt Console | `uam_set_status` | mgmt-console-api |
 | SDL API | `hec_ingest` | sdl-api / sdl-log-parser |
+| SDL API | `sdl_create_dashboard` | sdl-api / sdl-dashboard |
+| SDL API | `sdl_delete_dashboard` | sdl-api / sdl-dashboard |
 | SDL API | `sdl_delete_file` | sdl-api |
+| SDL API | `sdl_get_dashboard` | sdl-api / sdl-dashboard |
 | SDL API | `sdl_get_file` | sdl-api / sdl-dashboard / sdl-log-parser |
+| SDL API | `sdl_list_dashboards` | sdl-api / sdl-dashboard |
 | SDL API | `sdl_list_files` | sdl-api / sdl-dashboard / sdl-log-parser |
 | SDL API | `sdl_put_file` | sdl-api / sdl-dashboard / sdl-log-parser |
+| SDL API | `sdl_save_dashboard_layout` | sdl-api / sdl-dashboard |
+| SDL API | `sdl_share_dashboard` | sdl-api / sdl-dashboard |
 | Hyperautomation | `ha_delete_workflow` | hyperautomation |
 | Hyperautomation | `ha_export_workflow` | hyperautomation |
 | Hyperautomation | `ha_get_workflow` | hyperautomation |
@@ -487,7 +493,7 @@ s1-secops-mcp/
 | Purple AI GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | UAM GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | UAM HEC ingest | `Authorization: Bearer <jwt>` | `S1_CONSOLE_API_TOKEN` |
-| SDL config files (`POST /sdl/v2/graphql`) | `Authorization: Bearer <jwt>`, plus an `s1-scope` header that IS honoured: listings and reads are scope-filtered | `S1_CONSOLE_API_TOKEN` |
+| SDL config files (`POST /sdl/v2/graphql`) | `Authorization: Bearer <jwt>`, plus an `s1-scope` header that IS honoured: listings and reads are scope-filtered (measured 113 files at account scope vs 4 at a site scope) | `S1_CONSOLE_API_TOKEN`, optional `S1_SCOPE` |
 
 ## Testing
 

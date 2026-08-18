@@ -6,7 +6,7 @@ and SDL retention entitlements. It is the only PowerQuery path to the asset/iden
 inventory, and it is distinct from `| dataset 'config://datatables/<name>'` (which reads a saved
 lookup table).
 
-Source: SentinelOne Community article 000012487, plus behaviours validated on `usea1-purple` (2026-06-13).
+Source: SentinelOne Community article 000012487, plus behaviours validated on `<console>` (2026-06-13).
 
 ```text
 | datasource <datasource_name>
@@ -57,7 +57,7 @@ available column set, then filter on those columns:
 
 ## Tenant-validated specifics (read before building asset enrichment)
 
-These cost iteration cycles if you skip them. Validated on `usea1-purple`, 2026-06-13.
+These cost iteration cycles if you skip them. Validated on `<console>`, 2026-06-13.
 
 - **Slash dataset names MUST be single-quoted.** `from 'surface/identity'` works; bare
   `from surface/identity` returns `400 invalid_argument "Expected a name"`.

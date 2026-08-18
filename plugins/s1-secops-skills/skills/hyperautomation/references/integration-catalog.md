@@ -209,11 +209,11 @@ authors edit the path after inserting a packaged action.
 Ad-hoc calls also seen against this integration (no `public_action_id`):
 
 - `POST /web/api/v2.1/threats/notes` (n=34)
-- `POST https://usea1-purple.sentinelone.net/web/api/v2.1/unifiedalerts/graphql` (n=12)
+- `POST https://<console>.sentinelone.net/web/api/v2.1/unifiedalerts/graphql` (n=12)
 - `POST https://ingest.us1.sentinelone.net/v1/alerts` (n=11)
 - `POST (dynamic)` (n=11)
 - `POST /web/api/v2.1/threat-intelligence/iocs` (n=9)
-- `POST https://usea1-purple.sentinelone.net/web/api/v2.1/threat-intelligence/iocs` (n=8)
+- `POST https://<console>.sentinelone.net/web/api/v2.1/threat-intelligence/iocs` (n=8)
 - `POST /web/api/v2.1/dv/events/pq` (n=7)
 - `GET /web/api/v2.1/threat-intelligence/iocs` (n=5)
 
@@ -259,7 +259,7 @@ Ad-hoc calls also seen against this integration (no `public_action_id`):
 - `POST /web/api/v2.1/xspm/findings/vulnerabilities/graphql` (n=3)
 - `POST /web/api/v2.1/graphql` (n=2)
 - `POST https://ingest.us1.sentinelone.net/v1/alerts` (n=1)
-- `POST https://usea1-purple.sentinelone.net/web/api/v2.1/unifiedalerts/graphql` (n=1)
+- `POST https://<console>.sentinelone.net/web/api/v2.1/unifiedalerts/graphql` (n=1)
 
 ### Slack / Slack
 
@@ -467,7 +467,7 @@ Ad-hoc calls also seen against this integration (no `public_action_id`):
 - `GET /sdl/v2/api/queries/` (n=10)
 - `POST https://ingest.us1.sentinelone.net/v1/indicators` (n=3)
 - `POST https://ingest.us1.sentinelone.net/v1/alerts` (n=3)
-- `POST https://xdr.us1.sentinelone.net/api/powerQuery` (n=2)
+- `POST https://xdr.<region>.sentinelone.net/api/powerQuery` (n=2): **deprecated V1 endpoint**, sunsets 2027-02-15. Observed in existing flows only; new flows use LRQ (`/sdl/v2/api/queries`), see catalog B8.
 - `POST https://ingest.us1.sentinelone.net/services/collector/event` (n=1)
 - `POST /web/api/v2.1/unifiedalerts/graphql` (n=1)
 

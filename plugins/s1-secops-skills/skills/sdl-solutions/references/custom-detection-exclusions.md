@@ -123,7 +123,7 @@ Sub-query body shape (each entry in `subQueries[]`):
 <base sub-query filter> AND NOT (<EXCL_FIELD> in:anycase ('<val1>','<val2>',...))
 ```
 
-Worked example (encoded-PowerShell spike per user, excluding engineering accounts). The base body is tenant-validated 2026-06-24; the full rule below (base + inline exclusion) was created and deleted on the pmoses demo site 2026-07-01 to confirm it validates:
+Worked example (encoded-PowerShell spike per user, excluding engineering accounts). The base body is tenant-validated 2026-06-24; the full rule below (base + inline exclusion) was created and deleted on the <site> site 2026-07-01 to confirm it validates:
 
 ```json
 {

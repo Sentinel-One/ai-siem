@@ -51,7 +51,7 @@ This is the always-on, tenant-wide counterpart to the per-query `| lookup` comma
 
 ## Hard rules confirmed on-tenant
 
-These were verified live while building the Windows Event Logs SID enrichment (usea1-purple, 2026-06-01):
+These were verified live while building the Windows Event Logs SID enrichment (<console>, 2026-06-01):
 
 1. **Output value field names must be globally unique across ALL `lookupSpecs`.** Two specs writing the same output field (even when keyed on different event fields) returns:
 

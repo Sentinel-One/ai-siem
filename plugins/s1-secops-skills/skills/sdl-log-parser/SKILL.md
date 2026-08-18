@@ -470,6 +470,6 @@ to `*.sentinelone.net` without proxy interference.
 
 When one parser handles events from many distinct services or applications, each needing its own OCSF class assignment, use the per-app sentinel pattern: extract a discriminator field, add one format-id sentinel per service, list every sentinel field in `discardAttributes`, add one v1 first-match-wins `mappings` block per sentinel (drops duplicated into each block because v1 is first-match-wins), and end with a `predicate: "true"` catch-all placed last. The full pattern overview, the how-to-add-a-new-service checklist, and the periodic audit query for services stuck in the catch-all are in `references/per-app-sentinel.md`.
 
-## Onboarding learnings (tenant-validated 2026-06-13, usea1-purple)
+## Onboarding learnings (tenant-validated 2026-06-13, <console>)
 
 Tenant-validated learnings from onboarding new sources through the `sdl-solutions` playbook, JSON-per-line dotted-prefix capture (`$unmapped.=json{parse=dottedJson}$`), the `mappings` `version: 1` plus `transformations` requirement, account-level parser scope, 3 to 5 minute activation latency per deploy, sourcetype-to-parser binding, and IP-keyed network-source enrichment, are in `references/onboarding-learnings.md`.

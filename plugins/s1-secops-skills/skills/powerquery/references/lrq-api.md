@@ -10,7 +10,7 @@ GET    https://<console>.sentinelone.net/sdl/v2/api/queries/{id}?lastStepSeen=N
 DELETE https://<console>.sentinelone.net/sdl/v2/api/queries/{id}
 ```
 
-The console host is tenant-specific (for example `your-tenant.sentinelone.net`), not a centralized URL. Do not point at `xdr.us1.sentinelone.net` - that was the V1 SDL endpoint.
+The console host is tenant-specific (for example `your-tenant.sentinelone.net`), not a centralized URL. Do not point at `xdr.<region>.sentinelone.net` - that was the V1 SDL endpoint.
 
 ## Auth: Bearer, not ApiToken
 
@@ -297,7 +297,7 @@ audit   = [r for r in matches if not r.get("dataSource.name")]
 
 ## Checklist before launching a programmatic PQ or LOG query
 
-- [ ] Target the console host, not `xdr.us1.sentinelone.net`
+- [ ] Target the console host, not `xdr.<region>.sentinelone.net`
 - [ ] `Authorization: Bearer <jwt>` (same JWT as mgmt, different prefix)
 - [ ] PQ body: `queryType: "PQ"`, `tenant: true`, `pq: {query, resultType}`
 - [ ] LOG body: `queryType: "LOG"`, `tenant: true`, `log: {filter, limit}` (NOT `pq: {…, resultType: "LOG"}`)

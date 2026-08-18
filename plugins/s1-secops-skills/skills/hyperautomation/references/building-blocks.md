@@ -573,6 +573,11 @@ Snippets are reusable groups of actions. `data.inputs` is a JSON string mapping 
 
 ### Create Interaction
 
+Two flavours: `choice` (button/option links) and `form` (structured multi-field input, from
+S-26.2.6). **Full behaviour, limits, response schema and traps live in `interaction-forms.md`.**
+
+**Choice:**
+
 ```json
 {
   "type": "create_interaction",
@@ -587,11 +592,42 @@ Snippets are reusable groups of actions. `data.inputs` is a JSON string mapping 
 }
 ```
 
-`interaction_type: "choice"` is the only flavor seen in active flows. `options` is the array
-of button labels presented to the analyst in the Hyperautomation console; `form_schema` (when
-non-null) defines a structured form for free-text/multi-field input.
-Reference interaction URLs: `{{create-interaction.interaction_url.<option-name>}}`.
-Reference interaction ID: `{{create-interaction.interaction_id}}`.
+**Form:**
+
+```json
+{
+  "type": "create_interaction",
+  "tag": "core_action",
+  "data": {
+    "name": "Remediation Approval Form",
+    "action_type": "create_interaction",
+    "interaction_type": "form",
+    "options": ["Approve", "Dismiss"],
+    "form_schema": {
+      "ticket_number": {
+        "title": "Ticket reference",
+        "description": "Helper text shown under the field",
+        "index": 0,
+        "type": "text",
+        "validation": { "required": true, "min_length": null, "max_length": null },
+        "options": null
+      }
+    }
+  }
+}
+```
+
+`form_schema` mirrors the manual trigger's `dynamic_properties` shape, same seven input types:
+`text`, `number`, `json`, `email`, `date`, `time`, `checkbox`. No file upload. The schema KEY is
+the response key; `title` is the visible label. The server adds `"options": null` per field.
+
+`options` on a form is a **UI gate, not a runtime one**: a form action saved with `"options": []`
+runs fine, but the console will not enable **Test Action** until at least one option exists.
+
+Outputs: `interaction_id`, `interaction_type`, `interaction_url`
+(`{console}/hyperautomation/interactions/{interaction_id}`, live the moment the action runs).
+For a CHOICE interaction the URL is per-option, `{{create-slug.interaction_url.<option>}}`; for a
+FORM it is the single `{{create-slug.interaction_url}}`.
 
 ### Wait for Interaction
 
@@ -615,6 +651,31 @@ Reference interaction ID: `{{create-interaction.interaction_id}}`.
 **Field name trap**: this action uses `identifier` (not `interaction_id`) and `time_value`
 (not `value`). Earlier docs got this wrong; the corpus is unambiguous.
 `expected_respondents: N` blocks until N analysts have responded; default to 1.
+Timeout maximum is 7 days. The execution shows state `Waiting` while parked.
+
+Form response output:
+
+```json
+{
+  "response": {
+    "response_type": "single",
+    "result": { "ticket_number": "CHG 1234", "approve": true },
+    "responder": { "id": "<user id>" }
+  },
+  "timeout": false
+}
+```
+
+Reference values as `{{wait-slug.response.result.<field_name>}}`, the timeout branch as
+`{{wait-slug.timeout}}`, the submitter as `{{wait-slug.response.responder.id}}`.
+
+> **HARD RULE: wrap every OPTIONAL form field in `Function.DEFAULT`.** A blank optional field is
+> ABSENT from `response.result`, and a bare reference to an absent attribute errors the whole run.
+> `{{Function.DEFAULT(wait-slug.response.result.optional_field, "not provided")}}`. See
+> `interaction-forms.md`.
+
+Activation enforces the pairing: a Create Interaction whose `interaction_id` no Wait references
+will not activate.
 
 ### Wait for Slack
 

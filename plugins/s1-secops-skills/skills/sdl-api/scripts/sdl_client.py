@@ -363,7 +363,7 @@ class SDLClient:
         """Per-call S1-Scope override.
 
         SDL config reads are scope-FILTERED, not merely scope-tagged. Measured on
-        usea1-purple 2026-08-17, same token: the same `configFiles` query returned
+        <console> 2026-08-17, same token: the same `configFiles` query returned
         113 files at account scope and 4 at a site scope. A dashboard created at site scope is
         invisible from account scope, so the header decides which objects appear
         to exist at all.
@@ -714,7 +714,7 @@ class SDLClient:
 
         Prefer this over `list_files()`, which omits them.
 
-        This listing is scope-FILTERED. Measured on usea1-purple 2026-08-17, same
+        This listing is scope-FILTERED. Measured on <console> 2026-08-17, same
         token: 113 files at account scope, 4 at a site scope. A file absent here may
         live at another scope, so never promote "not in this listing" to
         "does not exist" without checking the scope it was created in.
@@ -923,7 +923,7 @@ class SDLClient:
     #
     # A SECOND, higher-level surface on the same POST /sdl/v2/graphql endpoint;
     # it is what the console itself drives. Captured from live console traffic
-    # on usea1-purple 2026-08-17.
+    # on <console> 2026-08-17.
     #
     #   dashboardsV2   dashboard-aware: name, description, tabs, access/sharing,
     #                  authorship. Create takes the whole document as one string.

@@ -61,7 +61,7 @@ Use `c.iter_query(...)` to iterate across pages automatically.
 
 ### `powerQuery`: `c.power_query(query, ...)`, CLI `power-query`
 
-**DEPRECATED.** The V1 `/api/powerQuery` endpoint at `xdr.us1.sentinelone.net` sunsets on 2027-02-15. New code should route PowerQueries through the **Long Running Query API** at `POST /sdl/v2/api/queries` on the tenant's own console host. LRQ is async, has higher row/rate limits, parallelizes cleanly across time slices, and is the only path that stays supported after the sunset date. Canonical runner, body schema, auth, and gotchas live in the `powerquery` skill at `references/lrq-api.md`. This method is kept here only for legacy one-offs and to round out the 10-method SDL surface.
+**DEPRECATED.** The V1 `/api/powerQuery` endpoint at `xdr.<region>.sentinelone.net` sunsets on 2027-02-15. New code should route PowerQueries through the **Long Running Query API** at `POST /sdl/v2/api/queries` on the tenant's own console host. LRQ is async, has higher row/rate limits, parallelizes cleanly across time slices, and is the only path that stays supported after the sunset date. Canonical runner, body schema, auth, and gotchas live in the `powerquery` skill at `references/lrq-api.md`. This method is kept here only for legacy one-offs and to round out the 10-method SDL surface.
 
 Full pipeline query language (S1QL-style). `query` is limited to 10K chars; escape `"` with `\"`.
 
@@ -184,7 +184,7 @@ the API also accepts `/parsers/<name>` but the Log Parsers UI reads only `/logPa
 
 > **Warning: `listFiles`, `getFile` and `putFile` are legacy and incomplete.**
 > These three REST methods omit every udoId-addressed `/dashboards/` file.
-> Measured live on `usea1-purple`: REST `listFiles` returned **1,914** paths
+> Measured live on `<console>`: REST `listFiles` returned **1,914** paths
 > against GraphQL `configFiles`' **2,264**, and REST `getFile` on any file in
 > that 350-file gap returns `success/noSuchFile`. **A `noSuchFile` response is
 > not proof that a file is absent.** Use the GraphQL surface for all

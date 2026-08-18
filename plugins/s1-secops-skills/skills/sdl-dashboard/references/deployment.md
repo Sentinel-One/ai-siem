@@ -82,7 +82,7 @@ assert any(d["id"] == dashboard_id for d in at_site), "not visible at the site"
 # Route B: expect it present in both.
 ```
 
-Measured on `usea1-purple` 2026-08-17: `configFiles` returned 113 files at account scope and 4 at a site scope, same token and query. A dashboard created at site scope is invisible from account scope and `config_file` on its `udoId` reports it absent. **Every "not found" is scope-relative.**
+Measured on `<console>` 2026-08-17: `configFiles` returned 113 files at account scope and 4 at a site scope, same token and query. A dashboard created at site scope is invisible from account scope and `config_file` on its `udoId` reports it absent. **Every "not found" is scope-relative.**
 
 ### Getting the ids
 

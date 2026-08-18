@@ -24,7 +24,7 @@ entire launch-poll-cancel lifecycle so the caller writes one line:
 The same JWT that S1Client uses for ApiToken REST auth is used here
 with the `Bearer` prefix that LRQ requires. The endpoint is
 `POST /sdl/v2/api/queries` on the tenant's own console host -- NOT
-`/web/api/v2.1/sdl/v2/api/queries`, NOT `xdr.us1.sentinelone.net`.
+`/web/api/v2.1/sdl/v2/api/queries`, NOT `xdr.<region>.sentinelone.net`.
 
 Key behaviors
 -------------

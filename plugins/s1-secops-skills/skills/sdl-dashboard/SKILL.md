@@ -51,7 +51,7 @@ Do not infer the exception from convenience. If the deployment scope is a site a
 
 ### Use `site.id`, never `site.name`
 
-`site.name` is a lossy scoping filter. Measured on `usea1-purple` 2026-08-17 for one site:
+`site.name` is a lossy scoping filter. Measured on `<console>` 2026-08-17 for one site:
 
 | Filter | Events matched |
 |---|---|

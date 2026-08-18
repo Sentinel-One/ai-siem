@@ -235,7 +235,7 @@ class Injection(unittest.TestCase):
 # ═══════════════════════════════════════════════════════════════════════════
 # S1-Scope plumbing and the dashboardsV2 lifecycle (added 1.3.4)
 #
-# Live evidence these encode (usea1-purple 2026-08-17): the console sends
+# Live evidence these encode (<console> 2026-08-17): the console sends
 # `s1-scope` on all 23 SDL GraphQL operations, and `getConfigurationFiles`
 # returned 113 files at account scope versus 4 at a site scope. A dashboard created at
 # site scope is invisible to an account-scoped listing, so a dropped header is
@@ -517,7 +517,7 @@ class QueryMethodsScope(unittest.TestCase):
     def test_query_rejects_a_malformed_scope_before_sending(self):
         c, calls = client_with([])
         with self.assertRaises(ValueError):
-            c.power_query("event.time=*", scope="pmoses demo")
+            c.power_query("event.time=*", scope="<site>")
         self.assertEqual(calls, [], "nothing may go out with a bad scope")
 
     def test_explicit_none_suppresses_the_default_on_queries_too(self):

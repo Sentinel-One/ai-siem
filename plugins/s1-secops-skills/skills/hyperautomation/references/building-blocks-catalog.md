@@ -765,6 +765,14 @@ required).
 **Reach for them when**: you want a built-in approval prompt rendered in the Hyperautomation
 console. Slack is more popular in the corpus (115 wait_for_slack vs 7 wait_for_interaction).
 
+**Form variant (S-26.2.6+).** Set `interaction_type: "form"` and populate `form_schema` to collect
+structured multi-field input (text, number, JSON, email, date, time, checkbox) instead of a single
+choice. The corpus predates this, so every mined example above is `choice` with
+`form_schema: null`; do not read that as evidence forms are unsupported. Authoring rules, the
+response schema, and the `Function.DEFAULT` guard that optional fields REQUIRE are in
+`interaction-forms.md`. Canonical SOC placement (the form gates the remediation, after the AI
+investigation) is in `autonomous-soc-template.md`.
+
 ---
 
 # Section B, Composite Patterns (multi-action idioms)
@@ -913,33 +921,56 @@ Method: `POST`. Headers: `{ "Content-Type": "application/json" }`.
 
 ---
 
-## B7. SDL Ingest single event (xdr.us1.sentinelone.net/api/addEvents)
+## B7. SDL ingest single event (HEC)
+
+Ingest goes to the **HEC collector on the regional ingest host**, bound to the SentinelOne SDL
+connection (Bearer):
 
 ```json
 {
   "method": "post",
-  "url": "https://xdr.us1.sentinelone.net/api/addEvents",
-  "payload": "{\n  \"session\": \"{{Function.GENERATE_UUID4()}}\",\n  \"events\": [{\n    \"ts\": \"{{Function.MUL(Function.DATETIME_TO_EPOCH(Function.DATETIME_NOW()), 1000000000)}}\",\n    \"sev\": 3,\n    \"attrs\": {\n      \"message\": \"Agent Data - Last Active\",\n      \"Hostname\": \"{{loop.item.computerName}}\",\n      \"LastActive\": \"{{loop.item.lastActiveDate}}\"\n    }\n  }]\n}"
+  "url": "{HEC_INGEST_URL}/services/collector/event?isParsed=true",
+  "payload": "{\n  \"dataSource.name\": \"my-source\",\n  \"dataSource.vendor\": \"my-vendor\",\n  \"dataSource.category\": \"security\",\n  \"event.type\": \"agent-last-active\",\n  \"site_id\": \"{{local_var.site_id}}\",\n  \"message\": \"Agent Data - Last Active\",\n  \"Hostname\": \"{{loop.item.computerName}}\",\n  \"LastActive\": \"{{loop.item.lastActiveDate}}\"\n}"
 }
 ```
 
-`ts` must be **nanoseconds since epoch** (epoch seconds × 1,000,000,000), that's why every
-active example multiplies by `1000000000`. SDL bearer token goes in the `Authorization` header
-via `use_authentication_data: true` (configured in the SDL Log-Write integration).
+Set `use_authentication_data: true` and bind the **SentinelOne SDL** connection; HEC requires
+`Bearer`. The four `dataSource.*` / `event.type` / `site_id` fields are not optional decoration:
+without them the event lands with a null source, so it has no attribution, renders poorly, and is
+invisible to any `dataSource.name` filter or detection. Emit `event.type` as a FLAT dotted key,
+a nested `event: {...}` object is dropped because `event` is HEC-reserved.
+
+> **Deprecated predecessor.** Older flows POST to `/api/addEvents` on the V1 Scalyr/DataSet host
+> (`xdr.<region>.sentinelone.net`), with a `session` + `events[]` envelope and a `ts` in
+> nanoseconds since epoch (hence the `× 1000000000` you will see in those flows). That endpoint
+> sunsets 2027-02-15. Recognise it when reading an existing workflow; never emit it in a new one.
 
 ---
 
-## B8. PowerQuery via DV API
+## B8. PowerQuery from a workflow (LRQ)
+
+**Read SDL from a workflow via LRQ, always.** Launch is async, so this is a two-step pattern:
+`POST {{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries` to launch, then a poll loop on
+`GET .../queries/{id}` echoing the `X-Dataset-Query-Forward-Tag` header. The full pattern,
+including the mandatory 4xx gate and the JQ-with-defaults counter reads, is in `SKILL.md` under
+"Running an SDL LRQ from an HA flow".
 
 ```json
 {
   "method": "post",
-  "url": "{{Connection.protocol}}xdr.us1.sentinelone.net/api/<@powerQuery@>",
-  "payload": "{\n  \"query\": \"{{local_var.pq_query}}\",\n  \"startTime\": \"24h\",\n  \"endTime\": \"0h\"\n}"
+  "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries",
+  "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{local_var.start}}\",\n  \"endTime\": \"{{local_var.end}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": { \"query\": \"{{local_var.pq_query}}\", \"resultType\": \"TABLE\" }\n}"
 }
 ```
 
-Build the PQ in a Variable first (multi-line PQ in a JSON string is awful otherwise).
+Bind the **SentinelOne SDL** connection (Bearer). The mgmt "SentinelOne" connection signs
+`ApiToken` and the SDL query endpoints reject it with `HTTP 500 "Header must start with Bearer"`.
+
+Build the PQ in a Variable first (multi-line PQ inside a JSON string is awful otherwise).
+
+> **Deprecated predecessor.** Older flows POST to `/api/powerQuery` on the V1 host
+> (`xdr.<region>.sentinelone.net`). It is synchronous, returns truncated results on large result
+> sets, and sunsets 2027-02-15. Do not emit it.
 
 ---
 

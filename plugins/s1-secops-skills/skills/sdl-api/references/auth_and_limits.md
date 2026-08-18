@@ -27,7 +27,7 @@ Required when a console token has access to multiple sites or accounts:
 
 Find the IDs via `GET /web/api/v2.1/accounts` and `GET /web/api/v2.1/sites`, or in the S1 Console → Settings → Accounts / Sites. Group scope does not exist in SDL; a Group selection is silently promoted to the Site above it.
 
-**The header applies to `/sdl/v2/graphql` config-file and dashboard operations too, not only to queries and ingest.** Verified on `usea1-purple` 2026-08-17: `configFiles` returned 113 files at account scope and 4 at a site scope, same token and same query. A dashboard created at site scope does not appear in an account-scoped listing and `configFile` on its `udoId` reports it absent. Treat every "not found" as scope-relative.
+**The header applies to `/sdl/v2/graphql` config-file and dashboard operations too, not only to queries and ingest.** Verified on `<console>` 2026-08-17: `configFiles` returned 113 files at account scope and 4 at a site scope, same token and same query. A dashboard created at site scope does not appear in an account-scoped listing and `configFile` on its `udoId` reports it absent. Treat every "not found" as scope-relative.
 
 Because a dropped header changes results rather than erroring, three call sites need the scope threaded through explicitly:
 

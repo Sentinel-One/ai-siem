@@ -451,6 +451,14 @@ found"` means the id is not under that scope (or already deleted).
 
 **Responses**: `201` success (returns the execution object with `id` and `state: "Running"`), `422` validation error.
 
+> **Run-now returns HTTP 500 on an EMPTY body.** Posting `{}` returns
+> `500 {"detail":"Internal server error"}`, not a 4xx, so it reads like a server fault rather than
+> a malformed request and sends you debugging the wrong thing. Send the full envelope even when
+> there is no payload:
+> `{"data": {"payload": "{}", "singularity_response_event_id": null,
+> "singularity_response_event_type": null, "is_downstream_execution": false,
+> "parent_execution_id": null}}`. Tenant-validated 2026-08-18.
+
 > **Run-now also works on a SCHEDULED-trigger workflow (validated 2026-06-22).** Despite the name
 > "manual", `POST .../workflow-execution/manual/{id}/{version_id}?accountIds=<acct>` triggers an
 > active scheduled-trigger workflow immediately, no need to wait for its cron. The workflow must be

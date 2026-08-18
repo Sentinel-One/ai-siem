@@ -6,7 +6,7 @@ Run: python3 -m unittest discover -s sdl-dashboard/tests -v
 
 Stdlib only, no tenant and no credentials.
 
-Why S01/S02 exist, measured on usea1-purple 2026-08-17 for site Metacortex
+Why S01/S02 exist, measured on <console> 2026-08-17 for site Metacortex
 (id 2547662415802335157):
 
     site.id='2547662415802335157'                    -> 60,410 events

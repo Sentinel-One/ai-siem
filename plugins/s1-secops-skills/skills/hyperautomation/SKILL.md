@@ -1,6 +1,6 @@
 ---
 name: hyperautomation
-author: Prithvi Moses <prithvi.moses@sentinelone.com>, Marco Rottigni <marco.rottigni@sentinelone.com>
+author: Marco Rottigni <marco.rottigni@sentinelone.com>, Prithvi Moses <prithvi.moses@sentinelone.com>
 description: >-
   Use this skill whenever a user wants to create, design, build, generate, write, or export
   a SentinelOne Hyperautomation workflow in JSON format. Triggers: any mention of
@@ -185,7 +185,8 @@ A workflow imported or created via the API is a **Private Draft owned by the tok
 | `references/validation-rules.md` | Before outputting any workflow: run the checklist |
 | `references/api-integration.md` | User wants to import/export/submit to a live console |
 | `references/snippets.md` | Building or calling a **snippet** (reusable sub-workflow): authoring rules, static vs dynamic `snippet_20` calls, and the snippet lifecycle API |
-| `references/autonomous-soc-template.md` | Building an **autonomous SOC** / auto-response workflow: canonical alert→investigate→triage→decide→respond shape, the reusable response-snippet library, dynamic-snippet dispatch, and a branded SOC-email snippet example |
+| `references/autonomous-soc-template.md` | Building an **autonomous SOC** / auto-response workflow: canonical alert→investigate→triage→decide→respond shape, the analyst-approved-remediation variant, the Purple AI agentic investigation calls, converting a markdown investigation report into email or Slack, the reusable response-snippet library, dynamic-snippet dispatch, and a branded SOC-email snippet example |
+| `references/interaction-forms.md` | Building a **form-based interaction** (S-26.2.6+): collect structured input from a person mid-run. Product behaviour and limits, the `form_schema` shape, the response schema, and the mandatory `Function.DEFAULT` guard on optional fields |
 | `references/connections.md` | Creating an integration **connection** via API (endpoint + body), cloning a connection across sites, and the integration-vs-connection binding rule |
 
 ## Decision guide: pick the right pattern by use case
@@ -199,7 +200,9 @@ table to jump straight to the right starting point:
 | "Every day / every N hours, do X" | A3 (Scheduled Trigger) + recipe C2 | B7 SDL ingest, B9 IOC create, B5 JQ shaping |
 | "When a webhook hits, do X" | A4 (HTTP Trigger) + recipe C3 | B2 status-code branch, B11 Slack ack |
 | "Let an analyst kick this off with parameters" | A2 dynamic Manual Trigger + recipe C4 | B5 JQ shaping, B4 APPEND accumulator |
-| "Wait for analyst approval before remediating" | recipe C5 (Slack approval) | B11 Slack interactive, B6 add-note |
+| "Wait for analyst approval before remediating" | recipe C5 (Slack approval), or `references/interaction-forms.md` for an in-console form | B11 Slack interactive, B6 add-note |
+| "Ask a person for structured input mid-run" / "richer approval than yes or no" | `references/interaction-forms.md` (Create Interaction type `form` + Wait for Interaction) | guard EVERY optional field with `Function.DEFAULT`, fail-closed condition |
+| "AI investigates, human approves the action" | `references/autonomous-soc-template.md` → analyst-approved remediation variant | agentic investigation, poll snippet, `llm` brief, approval form |
 | "Periodic posture / UEBA report" | A3 + recipe C6 | B8 PowerQuery, B7 SDL ingest |
 | "Page through a paginated API" | B3 (cursor + break_loop) | B4 APPEND accumulator |
 | "Summarize this evidence with an LLM" | B12 (OpenAI) | B6 add-note |
@@ -230,7 +233,8 @@ Annotated real examples to use as structural references:
 
 - `references/building-blocks-catalog.md`: patterns mined from 1,205 production workflows. Atomic node shapes (Section A), composite idioms such as condition branches with success/fail notes, loops with APPEND and BREAK logic, and integration-backed HTTP requests with connection placeholders (Section B), plus full use-case recipes (Section C) and anti-patterns (Section E).
 - `references/snippets.md`: authoring and calling reusable snippets, with worked `snippet_trigger`, `snippet_output`, and `snippet_20` node shapes.
-- `references/autonomous-soc-template.md`: the canonical end-to-end investigate-decide-respond workflow template.
+- `references/autonomous-soc-template.md`: the canonical end-to-end investigate-decide-respond workflow template, plus the analyst-approved-remediation variant and the Purple AI agentic investigation call shapes.
+- `references/interaction-forms.md`: form-based interactions end to end, product behaviour plus the tenant-validated JSON layer.
 
 ---
 
@@ -271,6 +275,19 @@ Use this when the workflow contains integration-backed actions:
 
 ## Common mistakes to avoid
 
+- ❌ Referencing an OPTIONAL interaction-form field directly. A field the respondent left blank is
+  ABSENT from `response.result`, and a bare reference to an absent attribute ERRORS the whole run.
+  The flow passes testing (every field filled) then dies in production on the first skipped field.
+  ✅ Wrap every optional field: `{{Function.DEFAULT(wait-slug.response.result.field, "not provided")}}`.
+  See `references/interaction-forms.md`.
+- ❌ Rendering a markdown-bearing field (notably Purple AI's `aiInvestigations[].result`) straight
+  into an HTML email or Slack message. Email clients do not render markdown, so it arrives as one
+  unbroken wall of `##`, `**` and `-`.
+  ✅ Convert with an `llm` action that emits the target format, keep the raw field for the audit
+  trail only. See `references/autonomous-soc-template.md`.
+- ❌ Putting the human-approval form BEFORE the AI investigation (asking a person which alert to
+  investigate). That inverts the value of both features.
+  ✅ AI investigates first, the analyst reviews the findings and approves the remediation.
 - ❌ Defining multiple variables in a single Variable action when one references another; they evaluate simultaneously and will fail with "variable not found"
   ✅ Always use one Variable action per variable when chaining references. One var → one action, always.
 - ❌ Forgetting `Function.HTML_ENCODE` on note text passed to UAM GraphQL. Any quote, ampersand, or angle bracket breaks the mutation string.
@@ -461,7 +478,7 @@ and `ha_export_workflow` directly instead of falling back to the `mgmt-console-a
 skill scripts. The MCP server runs locally on your machine and makes direct HTTPS calls to
 `*.sentinelone.net` without proxy interference.
 
-### Deployment gotchas (confirmed 2026-06-11 on usea1-purple)
+### Deployment gotchas (confirmed 2026-06-11 on <console>)
 
 - **`ha_import_workflow` does not scope to a site.** It posts to `/import` with no `siteIds`, so
   on a site-scoped tenant it returns the misleading `403 "Insufficient permissions"`, not a role

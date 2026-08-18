@@ -72,7 +72,7 @@ from urllib.parse import urljoin
 
 # Auth: the same S1Client.api_token works; swap the ApiToken prefix for Bearer
 jwt = c.api_token
-base = c.base_url.rstrip("/")  # tenant's own console host, not xdr.us1.*
+base = c.base_url.rstrip("/")  # tenant's own console host, not xdr.<region>.*
 
 body = {
     "queryType": "PQ",          # or "LOG" for S1QL log search

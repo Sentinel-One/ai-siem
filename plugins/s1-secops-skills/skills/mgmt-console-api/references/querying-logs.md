@@ -41,7 +41,7 @@ for row in res["rows"]:
 The helper does ALL of this for you, so there is nothing to remember:
 
 - `Authorization: Bearer <jwt>` (flipped from the REST `ApiToken` prefix; same JWT, different scheme).
-- `POST /sdl/v2/api/queries` on the tenant console host. **NOT** `/web/api/v2.1/sdl/v2/api/queries`, **NOT** `xdr.us1.sentinelone.net`. Do not "fix" a 404 by adding `/web/api/v2.1`; that path does not exist; the fix is the shorter path.
+- `POST /sdl/v2/api/queries` on the tenant console host. **NOT** `/web/api/v2.1/sdl/v2/api/queries`, **NOT** `xdr.<region>.sentinelone.net`. Do not "fix" a 404 by adding `/web/api/v2.1`; that path does not exist; the fix is the shorter path.
 - Captures `X-Dataset-Query-Forward-Tag` from the POST response and echoes it on every GET / DELETE (mandatory for shard routing; without it you get rejections).
 - Sets `queryType: "PQ"`, `tenant: true`, `pq: {query, resultType: "TABLE"}` (omit `tenant` and you silently get `matchCount=0`).
 - Polls at 1s (query expires 30s after the last poll: slower polling means you lose the query).
@@ -124,7 +124,7 @@ If you ever have to read a raw LRQ response (e.g. debugging), know:
 ### Checklist before running a PQ programmatically
 
 - [ ] You called `run_pq` / `list_data_sources`, not inline `requests.post`.
-- [ ] Base URL is the tenant console (e.g. `https://your-tenant.sentinelone.net`), not `xdr.us1.sentinelone.net`.
+- [ ] Base URL is the tenant console (e.g. `https://your-tenant.sentinelone.net`), not `xdr.<region>.sentinelone.net`.
 - [ ] Endpoint path is `/sdl/v2/api/queries` (short form). If you see 404s, do NOT add `/web/api/v2.1`; that's wrong.
 - [ ] If you're filtering on EDR data (`src.process.*`, `event.type=*`, `tgt.file.*`), prepend `dataSource.name='SentinelOne' dataSource.category='security'`: on mixed tenants the default scope carries Scalyr/infra logs too and wide filters silently return `matchCount=0`.
 - [ ] 0 rows → ran `list_data_sources` and checked `matchCount` vs `row_count` BEFORE widening the window.

@@ -34,7 +34,7 @@ The query methods on this skill (`query`, `powerQuery`, `facetQuery`, `timeserie
 (`/api/listFiles`, `/api/getFile`, `/api/putFile`) are **incomplete** and must not be used to
 decide whether a file exists.
 
-Measured live on `usea1-purple`: REST `listFiles` returned **1,914** paths, GraphQL
+Measured live on `<console>`: REST `listFiles` returned **1,914** paths, GraphQL
 `configFiles` returned **2,264**. The entire 350-file gap is `/dashboards/` files that carry a
 `udoId`, and REST `getFile` on any of them returns `success/noSuchFile`.
 
@@ -288,7 +288,7 @@ There is no undo. Configuration files are versioned but accidental deletes still
 
 ## Common high-value workflows
 
-- **Hunt with PowerQuery.** Use the **`mgmt-console-api`** skill, which holds the LRQ runner at `POST /sdl/v2/api/queries` on your console host. LRQ is NOT reachable via the SDL API (`xdr.us1.sentinelone.net`). This skill's `c.power_query()` hits the deprecated V1 endpoint and should only be used for a quick ad-hoc one-off before 2027-02-15.
+- **Hunt with PowerQuery.** Use the **`mgmt-console-api`** skill, which holds the LRQ runner at `POST /sdl/v2/api/queries` on your console host. LRQ is NOT reachable via the SDL API (`xdr.<region>.sentinelone.net`). This skill's `c.power_query()` hits the deprecated V1 endpoint and should only be used for a quick ad-hoc one-off before 2027-02-15.
 - **Promote a parser/dashboard.** `config_file(name="/logParsers/Foo")` from staging → `put_config_file(name="/logParsers/Foo", content=..., expected_version=N)` on production. The `expected_version` guard catches concurrent edits. (Parser path is `/logParsers/`, `/parsers/` is API-accepted but not UI-visible.) Promote a dashboard by `udo_id` on the target tenant, creating it by name only the first time.
 - **Audit configuration drift.** `config_files()` then `config_file(name=...)` for each name-addressed file and `config_file(udo_id=...)` for each dashboard; diff against a checked-in copy.
 - **Quick stats panel.** `facet_query(field="srcIp", filter="status >= 500", start_time="1h")` returns the top offenders fast.

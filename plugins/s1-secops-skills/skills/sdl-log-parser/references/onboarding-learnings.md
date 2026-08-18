@@ -2,7 +2,7 @@
 
 Reference detail for the onboarding-learnings pointer in `SKILL.md`. Tenant-validated learnings captured while onboarding data sources through the `sdl-solutions` playbook.
 
-## Onboarding learnings (tenant-validated 2026-06-13, usea1-purple)
+## Onboarding learnings (tenant-validated 2026-06-13, <console>)
 
 These came out of onboarding Cisco Meraki via the `sdl-solutions` onboarding playbook.
 

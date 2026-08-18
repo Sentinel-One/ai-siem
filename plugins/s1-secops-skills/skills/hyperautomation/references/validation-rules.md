@@ -55,6 +55,46 @@ Run this checklist before outputting any workflow JSON.
   `!= "dismissed"`, so a fail-open `not_equals` gate would auto-run the destructive action with no
   approval. Route the destructive action off the `"true"` branch of an `equals` test only.
 
+## Interaction form rules
+
+Full detail in `interaction-forms.md`.
+
+- [ ] **Every OPTIONAL form field is read through `Function.DEFAULT`.** A blank optional field is
+  **absent from `response.result` entirely**, not present-and-null, and a bare reference to an
+  absent attribute ERRORS the whole run ("Attribute not found in Action"). It does not resolve to
+  empty. This is the same failure class as bare LRQ poll counters.
+
+  ❌ Wrong, kills the run the first time a respondent skips the field:
+
+  ```json
+  {"name": "window_time", "value": "{{wait-for-approval.response.result.window_start_time}}"}
+  ```
+
+  ✅ Right:
+
+  ```json
+  {"name": "window_time",
+   "value": "{{Function.DEFAULT(wait-for-approval.response.result.window_start_time, \"not provided\")}}"}
+  ```
+
+  Required fields are guaranteed present by form validation and may be referenced directly.
+- [ ] `create_interaction` with `interaction_type: "form"` has a non-empty `form_schema`, and a
+  paired `wait_for_interaction` whose `identifier` references its `interaction_id`. Activation
+  rejects an unpaired Create; import does not.
+- [ ] `interaction_type` is lowercase `"form"` in JSON. `"Form"` is the output display value.
+- [ ] A form action carries at least one entry in `options` so the console enables **Test Action**
+  (runtime does not need them, the UI does).
+- [ ] Form approval gates FAIL CLOSED like any other: test `approve equals "true"` AND
+  `timeout equals "false"`, never `not_equals`.
+
+## Markdown-into-email rule
+
+- [ ] **Never render a markdown-bearing field directly into an HTML email or Slack message.**
+  Purple AI's `aiInvestigations[].result` is a full markdown report; email clients do not render
+  markdown, so it arrives as one unbroken wall of `##`, `**` and `-` characters. Pass it through an
+  `llm` action that emits the target format (HTML list items for email, Slack markdown for Slack),
+  and keep the raw field only for the audit trail. See `autonomous-soc-template.md`.
+
 ## Import / `parent_action` rules
 
 - [ ] **`parent_action` is for LOOP membership ONLY**: it is `null` on every node that is not inside a

@@ -58,7 +58,7 @@ Set alert status. Valid values: `NEW`, `IN_PROGRESS`, `RESOLVED`. To mark an ale
 Generate a Purple AI natural-language summary for a specific UAM alert. Pass the alert's OCSF JSON (as returned by `uam_get_alert`) and receive a `{ token, summary }` result that's identical to what the Purple AI card surfaces in the console alert detail. Synchronous; no polling.
 
 **`uam_ingest_alert`**
-Ingest a synthetic alert via the UAM Alert Interface (HEC). For creating test/synthetic alerts. Requires `S1_HEC_INGEST_URL` and `S1_CONSOLE_API_TOKEN`.
+Ingest a synthetic alert via the UAM Alert Interface (HEC). For creating test/synthetic alerts. Requires `S1_HEC_INGEST_URL` and `S1_CONSOLE_API_TOKEN`. Defaults to `inline=true`: one POST to `/v1/alerts` with the indicator's file, device and actor fields embedded in `finding_info.related_events[]`, no separate indicator POST and no sleep. `alert.indicators` is populated from `related_events[]` either way. Pass `inline=false` only to test stitcher behaviour or `alert.rawIndicators`, which stays empty in inline mode by design; that path costs a second call and a mandatory 3s wait.
 
 **`uam_post_alert`**
 Post an OCSF-formatted alert to the HEC ingest endpoint.

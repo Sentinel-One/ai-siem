@@ -20,9 +20,9 @@ export const tools = [
     name: 'uam_ingest_alert',
     description: `Create a synthetic test alert in Unified Alert Management (UAM) via the SentinelOne HEC ingest API. Supports two modes controlled by the "inline" parameter:
 
-Two-call mode (inline=false, default): POST indicator to /v1/indicators, sleep 3s, POST SecurityAlert to /v1/alerts referencing the indicator uid. The stitcher resolves the full indicator into alert.rawIndicators. Best for testing deep indicator stitching and the Indicators tab in UAM.
+Inline mode (inline=true, default): POST a single SecurityAlert to /v1/alerts with the indicator's file/device/actor fields embedded inside finding_info.related_events[]. No separate indicator POST, no sleep, one round-trip. This is the default because the two-call flow depends on a stitcher reconciling a separate POST, which adds a failure mode and a mandatory wait for no benefit in the common case; alert.indicators is populated from related_events[] either way.
 
-Inline mode (inline=true): POST a single SecurityAlert to /v1/alerts with the indicator's file/device/actor fields embedded inside finding_info.related_events[]. No separate indicator POST, no sleep, one round-trip. Best for rapid alert creation or when a single call is preferred.
+Two-call mode (inline=false): POST indicator to /v1/indicators, sleep 3s, POST SecurityAlert to /v1/alerts referencing the indicator uid. The stitcher then resolves the full indicator into alert.rawIndicators, which stays empty in inline mode by design. Use this only when you are specifically testing indicator stitching or the rawIndicators field.
 
 Both modes return indicator_uid and alert_uid. The alert surfaces in UAM within 30-60s. Requires S1_HEC_INGEST_URL in credentials.json.`,
     inputSchema: {
@@ -57,18 +57,22 @@ Both modes return indicator_uid and alert_uid. The alert surfaces in UAM within 
         },
         sleep_ms: {
           type: 'number',
-          description: 'Two-call mode only. Milliseconds to sleep between the indicator POST and the alert POST. Default 3000. Do not go below 2000 on loaded tenants.',
+          description: 'Two-call mode only (inline=false). Milliseconds to sleep between the indicator POST and the alert POST. Default 3000. Do not go below 2000 on loaded tenants.',
           default: 3000,
         },
         inline: {
           type: 'boolean',
-          description: 'When true, embed indicator data (file, device, actor, observables) directly inside the alert\'s finding_info.related_events[] and POST only to /v1/alerts; no separate /v1/indicators call, no sleep. When false (default), use the two-call flow: POST indicator first, sleep, then POST alert.',
-          default: false,
+          description: 'When true (default), embed indicator data (file, device, actor, observables) directly inside the alert\'s finding_info.related_events[] and POST only to /v1/alerts; no separate /v1/indicators call, no sleep. Set false for the two-call flow (POST indicator, sleep, POST alert), which is only needed when testing stitcher behaviour or alert.rawIndicators.',
+          default: true,
         },
       },
       required: ['scope'],
     },
-    async handler({ scope, title, description, hostname, filename, sha256, sleep_ms = 3000, inline = false }) {
+    // inline defaults to TRUE here as well as in the schema: a client that omits the key entirely
+    // gets the same behaviour as one that reads the default from the schema. The two used to be
+    // able to disagree, which is the sort of split that makes a tool behave differently depending
+    // on which client called it.
+    async handler({ scope, title, description, hostname, filename, sha256, sleep_ms = 3000, inline = true }) {
       const result = inline
         ? await ingestAlertInline({ scope, title, description, hostname, filename, sha256 })
         : await ingestAlert({ scope, title, description, hostname, filename, sha256, sleepMs: sleep_ms });

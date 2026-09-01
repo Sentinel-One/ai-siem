@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.3.7 - 2026-09-01
+
+Default change, after the single-POST design was validated live on a real tenant
+and the two-call flow turned out to buy nothing in the common case.
+
+### Changed
+
+- **`uam_ingest_alert` now defaults to `inline=true`.** One POST to `/v1/alerts`
+  with the indicator's file, device and actor fields embedded in
+  `finding_info.related_events[]`. The previous default made two calls and slept
+  3s between them so a server-side stitcher could reconcile a separately posted
+  indicator, which is a second failure mode and a mandatory wait for no gain:
+  `alert.indicators` is populated from `related_events[]` in both modes. Pass
+  `inline=false` when you are specifically testing stitcher behaviour or
+  `alert.rawIndicators`, which stays empty under inline by design.
+- The handler's own parameter default was changed alongside the schema default.
+  They could previously disagree, so a client that omitted the key entirely got
+  different behaviour from one that read the default out of the schema.
+
 ## 1.3.6 - 2026-08-17
 
 Behaviour change, found by deploying to a real site and not being able to see the

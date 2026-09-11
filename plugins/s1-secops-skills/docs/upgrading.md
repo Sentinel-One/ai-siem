@@ -99,12 +99,13 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
     "s1-secops-mcp": {
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
-               "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL",
+               "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
                "ghcr.io/pmoses-s1/s1-mcps:1.3.3", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
-        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net"
+        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
+        "S1_HEC_TOKEN":         "<SDL Log Write Key, optional; hec_ingest needs it>"
       }
     },
     "purple-mcp": {

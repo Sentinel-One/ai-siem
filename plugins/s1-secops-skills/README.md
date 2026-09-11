@@ -376,7 +376,7 @@ Prerequisite: Docker Desktop (macOS/Windows) or Docker Engine (Linux), running. 
 docker pull ghcr.io/pmoses-s1/s1-mcps:1.3.3
 ```
 
-`:1.3.2` is the current pinned release (bundles s1-secops-mcp 1.3.8, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
+`:1.3.3` is the current pinned release (bundles s1-secops-mcp 1.3.8, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
 
 **Step 2: Configure credentials**
 
@@ -391,14 +391,15 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
         "run", "-i", "--rm", "--pull=missing",
         "-e", "S1_CONSOLE_URL",
         "-e", "S1_CONSOLE_API_TOKEN",
-        "-e", "S1_HEC_INGEST_URL",
+        "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
         "ghcr.io/pmoses-s1/s1-mcps:1.3.3",
         "s1-secops-mcp"
       ],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
-        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net"
+        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
+        "S1_HEC_TOKEN":         "<SDL Log Write Key, optional; hec_ingest needs it>"
       }
     },
     "purple-mcp": {
@@ -442,13 +443,16 @@ Where to get each value:
 | `S1_CONSOLE_URL` | Your console URL | e.g. `https://usea1-yourorg.sentinelone.net` |
 | `S1_CONSOLE_API_TOKEN` | Mgmt Console API token | Settings → Users → Service Users → Create New Service User ([guide](https://community.sentinelone.com/s/article/000005291)) |
 | `S1_HEC_INGEST_URL` | HEC ingest host for your region | [Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) |
+| `S1_HEC_TOKEN` | SDL Log Write Key. Optional, but **`hec_ingest` now needs it**: the event collector rejects the console API token, so raw log ingest fails without this key. | Console → Singularity Data Lake → API Keys → Log Write Key. No API mints one. |
 | `VIRUSTOTAL_API_KEY` | VirusTotal API key (free tier is fine) | [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) |
+
+> **Optional, but raw log ingest now needs the SDL Log Write Key.** `hec_ingest` sends raw logs through the event collector, and the collector rejects the console API token: the same request returns `HTTP 200 {"text":"Success","code":0}` with a Log Write Key and `HTTP 400 {"text":"Missing S1-Scope header","code":5}` with the console token. So `S1_HEC_TOKEN` is the only credential that works for raw log ingest, and no other token substitutes for it. A key is minted for one account or site and writes only there, which also fixes the ingest destination. UAM alert ingest (`uam_ingest_alert`, `uam_post_alert`) and IOCs are unaffected and still use `S1_CONSOLE_API_TOKEN`. Omit `S1_HEC_TOKEN` only if you never ingest raw logs.
 
 Full key reference, token types, and resolution order: **[docs/credentials.md](./docs/credentials.md)**. **Restart Claude Desktop** after saving.
 
 **Step 3: Install the plugin (all eight skills)**
 
-Download the latest plugin, [`s1-secops-skills-v1.3.2.plugin`](./dist/), from the `dist/` folder. In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All seven skills install in one step.
+Download the latest plugin, [`s1-secops-skills-v1.3.6.plugin`](./dist/), from the `dist/` folder. In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All eight skills install in one step.
 
 Then create a Cowork project named `PrincipalSOCAnalyst` and select a folder for it. The Docker image ships a default CLAUDE.md, so dropping your own [`CLAUDE.md`](./CLAUDE.md) into the folder is only needed if you want to customise the persona.
 
@@ -506,7 +510,7 @@ Full walkthrough (install script, tokens, TLS, client config for Cowork/Claude C
 
 ### Upgrading
 
-- **Docker**: bump the tag in `claude_desktop_config.json` (e.g. `:1.3.1` to `:1.3.2`) and restart Claude Desktop; the new image pulls on first launch.
+- **Docker**: bump the tag in `claude_desktop_config.json` (e.g. `:1.3.2` to `:1.3.3`) and restart Claude Desktop; the new image pulls on first launch.
 - **npx/uvx**: automatic. `npx -y` and `uvx` re-resolve to the latest published version on each launch.
 - **Plugin**: download the newer `.plugin` from [`dist/`](./dist/), then Cowork → Customize → Browse plugins, upload, and click **Replace**.
 - **Team VM**: `git pull` on the VM and re-run the installer, or `npm i -g @pmoses-s1/s1-secops-mcp@latest`; see [docs/vm-deployment.md](./docs/vm-deployment.md).

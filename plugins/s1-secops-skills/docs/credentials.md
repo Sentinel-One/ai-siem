@@ -11,7 +11,7 @@ This is the canonical credentials reference for every install path (Docker quick
   "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
   "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
   "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
-  "S1_HEC_TOKEN":         "<SDL Log Write Key>"
+  "S1_HEC_TOKEN":         "<SDL Log Write Key, optional; hec_ingest needs it>"
 }
 ```
 
@@ -20,7 +20,7 @@ This is the canonical credentials reference for every install path (Docker quick
 | `S1_CONSOLE_URL` | Everything | Your console URL, e.g. `https://usea1-acme.sentinelone.net`. No trailing slash. |
 | `S1_CONSOLE_API_TOKEN` | Mgmt Console REST, PowerQuery LRQ, UAM GraphQL, Purple AI GraphQL, SDL config ops (Management Z SP5+) | Settings → Users → Service Users → Create Service User → copy the API token. |
 | `S1_HEC_INGEST_URL` | UAM alert/indicator ingest, SDL log ingest | Region-specific HEC host, e.g. `https://ingest.us1.sentinelone.net`. Look up yours at [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961). |
-| `S1_HEC_TOKEN` | Raw log ingest over the event collector (`hec_ingest`) only | An **SDL Log Write Key**, minted per account or site: Console → Singularity Data Lake → API Keys → Log Write Key. Optional; needed only for log ingest. |
+| `S1_HEC_TOKEN` | Raw log ingest over the event collector (`hec_ingest`) only | An **SDL Log Write Key**, minted per account or site: Console → Singularity Data Lake → API Keys → Log Write Key. Optional to set, but **`hec_ingest` now needs it**: the collector no longer accepts the console API token. |
 
 `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are the minimum required, and between them they authorise every SDL operation including parser and dashboard deployment. Add `S1_HEC_INGEST_URL` only when you need HEC log or alert ingest, and `S1_HEC_TOKEN` when that includes **raw log** ingest.
 

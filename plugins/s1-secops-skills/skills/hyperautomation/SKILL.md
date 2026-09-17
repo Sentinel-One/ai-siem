@@ -43,6 +43,18 @@ smallest payload the `/import` endpoint accepts: a manual trigger with no
 inputs. Use this to confirm the API path works end-to-end (import → activate)
 before iterating on real action graphs.
 
+> **Which of the two forms you need depends on how you are calling.** The block
+> below is the **raw HTTP request body**, so it includes the `{"data": {...}}`
+> envelope the `/import` endpoint requires. If you are calling through the
+> `ha_import_workflow` MCP tool, pass the **bare workflow object** instead: the
+> tool adds that envelope for you, and sending a wrapped payload produces
+> `{"data":{"data":{...}}}` and a `422 body.data.name Field required`, which reads
+> like a broken workflow rather than one extra level of nesting. Since 1.3.9 the
+> tool unwraps a wrapped payload and says so in its response, but pass the bare
+> object and the round trip is clean.
+
+**Form A, raw API body** (curl, `requests`, anything hitting the endpoint directly):
+
 ```json
 {
   "data": {
@@ -79,6 +91,48 @@ before iterating on real action graphs.
   }
 }
 ```
+
+**Form B, `ha_import_workflow` MCP tool**: the same workflow with the envelope
+removed. This is the value of the `workflowJson` argument.
+
+```json
+{
+  "name": "minimal-smoke-test",
+  "description": "validates the import path",
+  "actions": [
+    {
+      "action": {
+        "client_data": {
+          "collapsed": false,
+          "dimensions": { "height": 76.0, "width": 256.0 },
+          "position": { "x": 286.0, "y": -29.0 }
+        },
+        "connection_id": null,
+        "connection_name": null,
+        "data": {
+          "action_type": "manual_trigger",
+          "dynamic_properties": {},
+          "name": "Manual Trigger",
+          "static_payload": "{}",
+          "trigger_type": "dynamic"
+        },
+        "description": null,
+        "integration_id": null,
+        "tag": "core_action",
+        "type": "manual_trigger",
+        "use_connection_name": false
+      },
+      "connected_to": [],
+      "export_id": 0,
+      "parent_action": null
+    }
+  ]
+}
+```
+
+Pass the scope as the tool's `accountIds` or `siteIds` argument, not in the JSON.
+Form B is live-verified: it returns `201` with the new workflow `id` and
+`version_id`, in state `draft`.
 
 Notes:
 

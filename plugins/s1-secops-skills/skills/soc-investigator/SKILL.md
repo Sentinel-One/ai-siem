@@ -2,18 +2,16 @@
 name: soc-investigator
 author: Joel Mora <joelm@sentinelone.com>
 description: >-
-  Autonomous DFIR investigation orchestrator for SentinelOne alerts in Claude Cowork. Use
-  whenever the user wants to investigate, triage, or work a SentinelOne alert or incident:
-  "investigate this alert", "triage this alert id", "is this a true positive", "run a DFIR
-  investigation", or any request for alert investigation, incident response, or a forensic
-  deep-dive on a SentinelOne tenant. Interrogates the user for alert context, then executes
-  SHORT (quick triage), MEDIUM (correlation sweep), or LONG (full forensic timeline)
-  investigation modes with threat-intel enrichment, MITRE ATT&CK mapping, and strict verdict
-  gates. Optionally expands to third-party data sources (M365, Entra ID, Okta, SharePoint,
-  firewalls) for cross-source correlation and anomaly detection. Produces a calibrated
-  verdict (true positive, false positive, or suspicious) plus a structured investigation
-  report with a mandatory query appendix. Trigger on "investigate", "triage", "DFIR",
-  "alert investigation", "incident response".
+  Autonomous DFIR investigation orchestrator for SentinelOne in Claude Cowork. Use whenever the
+  user wants to investigate, triage, or work an alert or incident, and also when there is no alert
+  at all and they want raw logs swept for MITRE-mapped TTPs. Triggers include investigate this
+  alert, triage this alert id, is this a true positive, run a DFIR investigation, plus what TTPs
+  are in my logs, sweep the last 7 days, find MITRE techniques in my telemetry, hunt across every
+  source. Runs SHORT quick triage, MEDIUM correlation, LONG forensic timeline, or SWEEP, an
+  alert-agnostic hunt over a time window that enumerates sources, extracts ATT&CK, corroborates each
+  technique against raw logs and suppresses adversary-simulation and authorised-scanner noise.
+  Threat-intel enrichment, strict verdict gates, optional third-party correlation. Produces a
+  calibrated verdict and a report with a mandatory query appendix.
 ---
 
 # SOC Investigator - Iterative DFIR with Third-Party Expansion
@@ -35,6 +33,10 @@ Inherited from the Purple SOC Analyst operating standard and the SDL threat-hunt
 - Mark assumptions. Prefix any inference needed to proceed with "Assumption:" and state what would falsify it.
 - Calibrated confidence. Use confirmed, consistent with, suggests, possible, or no evidence of, matched to evidence weight. "No evidence of" is a real, valuable result; record negatives explicitly.
 - Session init first. Enumerate `dataSource.name` live and discover each source's schema before querying it; never assume a field namespace. Reuse the project schema cache if present.
+- Suppress before you count. Authorised adversary-simulation agents and posture scanners generate
+  genuine attack telemetry. Identify them by name and quarantine their events into a separate
+  bucket before reporting a technique count; never silently drop them, and never report their output
+  as adversary activity.
 - Apply the anomaly checklist to every log result: frequency, timing, geolocation, baseline deviation, volume, new entity, privilege, chain.
 - Hold findings until the end and do not over-correlate: a shared time window is not causation; assert a link only when an entity or artifact bridges the clusters. Map every finding to MITRE ATT&CK and lead each conclusion with verdict, confidence, and evidence count.
 - Query appendix, mandatory in every report. Always append an appendix listing every PowerQuery run during the investigation, each with its evidence (see the "Query appendix" section below). Never present a query result without also showing the query and a raw-telemetry excerpt.
@@ -43,7 +45,7 @@ Inherited from the Purple SOC Analyst operating standard and the SDL threat-hunt
 
 ## Query appendix (mandatory in every report)
 
-Every report this skill produces (summary.md, report.md, full_report.md, third_party_report.md, and any exported .docx / .pdf) MUST end with an appendix that documents all PowerQueries used, with evidence. This is non-negotiable and applies to all modes (SHORT / MEDIUM / LONG) and to the third-party phase.
+Every report this skill produces (summary.md, report.md, full_report.md, sweep_report.md, third_party_report.md, and any exported .docx / .pdf) MUST end with an appendix that documents all PowerQueries used, with evidence. This is non-negotiable and applies to all modes (SHORT / MEDIUM / LONG / SWEEP) and to the third-party phase.
 
 For each PowerQuery run during the investigation, in execution order, record:
 
@@ -122,6 +124,7 @@ After tool discovery, ask the user:
    a) Alert ID(s): [comma-separated list, e.g., "alert_001, alert_002"]
    b) Time range query: [e.g., "last 48 hours, threat level HIGH"]
    c) SIEM/JSON paste: [paste alert JSON array]
+   d) No alerts - sweep a time window: [e.g. "last 7 days"]  (SWEEP mode only)
    → Cowork fetches from SentinelOne console or accepts raw JSON
 
 2. INVESTIGATION SCOPE (SentinelOne focus first)
@@ -149,7 +152,14 @@ After tool discovery, ask the user:
       - Output: JSON + full_report.md + visualizations
       - Then: "Deep-dive third-party interrogation?"
 
-   → Select: [SHORT | MEDIUM | LONG]
+   🗺️  SWEEP (30 min, ~15k tokens)  [no alert ID required]
+      - Answers "what TTPs are in my logs over window X"
+      - Live source enumeration + per-source schema discovery
+      - ATT&CK extraction from the alert stream, corroborated against raw logs
+      - Simulation / scanner suppression pass (BAS agents, CSPM and CASB roles)
+      - Output: JSON + ttp_matrix.csv + sweep_report.md
+
+   → Select: [SHORT | MEDIUM | LONG | SWEEP]
 
 3. APPROVAL GATES (optional)
    Do you want approval prompts at each phase?
@@ -209,6 +219,8 @@ Proceed? [YES | MODIFY | CANCEL]
 ```
 
 For LONG mode, include all 7 phases in the plan. For SHORT mode, show only Phase 1.
+For SWEEP mode, show the six sweep phases from `references/ttp-sweep.md` instead; the third-party
+block does not apply, because SWEEP already enumerates every source.
 Always show the optional third-party block at the bottom so the user knows it's available.
 
 If approval gates are OFF, omit the `→ APPROVAL GATE` lines from the plan.
@@ -226,6 +238,10 @@ The skill runs one of three cumulative SentinelOne-focused modes, chosen at inta
 | SHORT | ~5 min | ~2k | SentinelOne alert data only: fetch alerts, extract entities (users, endpoints, IPs, hashes), draft timeline, infer MITRE. Output: entities.json, timeline_draft.csv, mitre_draft.json, summary.md. |
 | MEDIUM | ~15 min | ~8k | SHORT plus IOC enrichment (VirusTotal + S1 IOC API) and one PowerQuery per endpoint (process tree + network). Output: threat_intel.json, powerquery_results.jsonl, timeline_enriched.json, report.md, timeline.csv. |
 | LONG | ~45 min | ~30k | MEDIUM plus four deep PowerQueries per endpoint (process, files, registry, network), SDL threat-intel correlation, and full MITRE refinement. Output: threat_intel_complete.json, full_report.md, timeline_forensic.csv. |
+| SWEEP | ~30 min | ~15k | Alert-agnostic hunt across a time window. Enumerate sources, discover schemas, extract ATT&CK from the alert stream, corroborate each technique against raw logs, suppress simulation and authorised-scanner activity, report a tactic/technique matrix with coverage gaps. Output: ttp_matrix.csv, sweep_findings.json, sweep_report.md. |
+
+SWEEP is a peer of the other three, not a cumulative step: it takes no alert ID and does not run
+their phases. Its run instructions are in `references/ttp-sweep.md`.
 
 After MEDIUM or LONG completes, the operator may expand into third-party sources. That optional, iterative playbook (source discovery, entity correlation, anomaly detection, deep interrogation) is documented in `references/third-party-playbook.md`; run it only when the operator selects the third-party option at a MEDIUM or LONG approval gate.
 
@@ -262,7 +278,7 @@ All phases write their artifacts into a single `investigation_<timestamp>/` dire
 2. **Tool Discovery**: Verify required skills are available; warn on missing ones
 3. **Intake**: Answer questions (alerts, mode, approvals)
 4. **Investigation Plan**: Display full phase-by-phase plan; user confirms before execution begins
-5. **Investigation**: Run SHORT/MEDIUM/LONG per the phase instructions in `references/investigation-modes.md`
+5. **Investigation**: Run SHORT/MEDIUM/LONG per the phase instructions in `references/investigation-modes.md`, or SWEEP per `references/ttp-sweep.md`
 6. **Approval + Expansion Choice**: Review findings, choose to dig into third-party or stop
 7. **Third-Party (optional)**: Discover sources, correlate entities, detect anomalies (see `references/third-party-playbook.md`)
 8. **Deep-Dive (optional)**: User-driven interrogation of specific findings

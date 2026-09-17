@@ -72,6 +72,44 @@ join (q1), (q2) on x         ← "join" is interpreted as a search keyword
 
 Fix: `| join (q1), (q2) on x`. The same rule applies to `union`.
 
+### `join` zips the two sides, it does not cross-product them
+
+This one returns rows and reports no error, which is why it survives review.
+
+Measured with a controlled probe: two 20-row sides joined on a **constant** key returned
+**20 rows**. A cartesian product would have returned 400. The engine pairs the sides
+roughly one-to-one.
+
+Anything built on "pair every row with every other row and take the extreme" is therefore
+wrong here, and wrong quietly. The canonical victim is impossible travel: pair every logon
+with every other logon for the same principal and take the fastest pair. What you actually
+get is the speed of one arbitrary pair reported as the maximum, so a principal seen in
+three countries is scored on whichever two happened to be zipped, and can be scored on the
+slowest pair. This shipped in a real detection and passed review because it fired correctly
+on demo data.
+
+Fix: do not pair at all. Compute the extremes inside a single `group` with
+`min_by(x, timestamp)` / `max_by(x, timestamp)`, then derive the rate afterwards. Worked
+example under "Geo-velocity" in `examples/behavioral-baselines.md`.
+
+### Divide by zero yields the string `'Infinity'`
+
+```text
+| let hours = 0
+| let kmh = km / hours        # Wrong: 'Infinity' as a STRING, no error raised
+```
+
+Not an error, not a number. A string sorts as a string, so `| sort -kmh` misplaces the
+broken rows, and any numeric threshold such as `| filter kmh >= 900` is comparing against
+a string. Guard every division whose denominator is computed from data:
+
+```text
+| let kmh = (hours > 0 ? km / hours : 0)
+```
+
+Related: `max()` over a string column renders `NaN`, which looks like a failed function
+call but is not. Inspect string columns with `array_agg_distinct()` or `| columns`.
+
 ### `join` placed mid-pipeline
 
 A leading pipe is necessary but not sufficient: `join` must be the FIRST command
@@ -356,12 +394,22 @@ works and is slightly more robust against fields like `"42 KB"` (where you
 want the digits, not a NaN), but `number()` is shorter and is the
 recommended default for OCSF counter fields.
 
-### Bracket array indexing in `columns` returns HTTP 500
+### Bracket array indexing is rejected everywhere: `columns`, `group by` and filters
 
 ```text
 dataSource.name='alert'
-| columns severity_id, resources[0].name, vulnerabilities[0].cve.uid     ← HTTP 500
+| columns severity_id, resources[0].name, vulnerabilities[0].cve.uid     ← rejected
 ```
+
+Indexed access (`[0]`) fails in every position, measured as HTTP 400 on current
+platform versions and reported as 500 on some older ones. Quoting the field name
+is worse than useless: the parser then treats `"finding_info.attacks[0].technique.uid"`
+as a string literal and returns that literal back as the value, so the query appears
+to succeed and yields one row containing the column name. That silent success is the
+trap; a genuine rejection at least tells you.
+
+The **wildcard** accessor `[*]` is a different thing and does work as a grouping and
+filtering key on the alert stream, as described below.
 
 PowerQuery does not accept `[N]` array indexing in `columns`. The V1 `query`
 API (used for schema discovery) flattens nested arrays into display keys like

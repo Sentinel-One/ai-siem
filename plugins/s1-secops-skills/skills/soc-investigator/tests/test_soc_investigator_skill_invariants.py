@@ -53,6 +53,7 @@ SKILL = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 DISCIPLINE = (REFS / "evidence-and-verdict-discipline.md").read_text(
     encoding="utf-8")
 MODES = (REFS / "investigation-modes.md").read_text(encoding="utf-8")
+SWEEP = (REFS / "ttp-sweep.md").read_text(encoding="utf-8")
 
 FENCE = re.compile(r"^```(\w*)\n(.*?)^```", re.M | re.S)
 PQ_LANGS = {"text", "powerquery", "pq"}
@@ -208,7 +209,7 @@ class QueryAppendixIsMandatory(unittest.TestCase):
 
     def test_every_mode_produces_a_report_that_carries_it(self):
         for artifact in ("summary.md", "report.md", "full_report.md",
-                         "third_party_report.md"):
+                         "sweep_report.md", "third_party_report.md"):
             self.assertIn(artifact, SKILL,
                           f"{artifact} is no longer named in the appendix "
                           f"scope, so that mode's output escapes the rule")
@@ -342,6 +343,49 @@ class EvalSuiteIsGradable(unittest.TestCase):
             earns,
             "no case asserts a TRUE POSITIVE verdict on strong evidence; a "
             "suite that only rewards refusal teaches the skill to hedge")
+
+
+class SweepModeIsRunnableAndHonest(unittest.TestCase):
+    def test_the_mode_is_advertised_and_documented(self):
+        self.assertIn("SWEEP", SKILL, "SKILL.md lost the SWEEP mode")
+        self.assertRegex(
+            SWEEP, r"(?m)^## Phase 0",
+            "ttp-sweep.md has no run instructions, so the mode is advertised "
+            "and unrunnable")
+
+    def test_sweep_is_declared_a_peer_not_a_cumulative_step(self):
+        self.assertRegex(
+            SKILL + MODES, r"(?i)SWEEP is a peer",
+            "without this, SWEEP gets read as cumulative with LONG and an "
+            "operator waits for alert phases that never run")
+
+    def test_bracketed_attack_fields_are_warned_against(self):
+        self.assertRegex(
+            SWEEP, r"finding_info\.attacks\[0\]",
+            "the HTTP 400 trap on bracketed array fields is undocumented; the "
+            "quoted-name workaround fails silently and looks like a result")
+        self.assertRegex(SWEEP, r"(?i)400")
+
+    def test_suppression_pass_exists_and_cannot_delete_evidence(self):
+        self.assertRegex(SWEEP, r"(?i)simulation")
+        self.assertRegex(
+            SWEEP, r"(?i)never deleted|not deleted",
+            "suppressed activity must still be reported; a suppression pass "
+            "that can delete evidence launders a real finding")
+        self.assertRegex(
+            SWEEP, r"(?i)requires a named agent, host, or principal",
+            "suppression without a named cause is just an excuse to discount "
+            "inconvenient telemetry")
+
+    def test_event_and_alert_counts_are_distinguished(self):
+        self.assertRegex(
+            SWEEP, r"(?i)never conflated|alert \*events\*",
+            "conflating alert events with distinct alerts overstates volume "
+            "by roughly 5x on an observed tenant")
+
+    def test_truncation_reconciliation_is_required(self):
+        self.assertRegex(SWEEP, r"(?i)truncat")
+        self.assertRegex(SWEEP, r"(?i)match count|matchCount")
 
 
 if __name__ == "__main__":

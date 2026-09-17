@@ -73,7 +73,7 @@ Add this to `claude_desktop_config.json` (or `.mcp.json` for Claude Code):
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "npx",
-      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.3.8"],
+      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.3.9"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...",
@@ -522,6 +522,49 @@ The `sentinelone://soc-context` resource and `soc_analyst` prompt load `CLAUDE.m
 3. Same-dir / parent / grandparent of the server's `index.js`: when running from a git clone.
 
 For npx installs without a CLAUDE.md nearby, set `S1_CLAUDE_MD_PATH` in the `env` block of `claude_desktop_config.json` to point at the one in your Cowork project folder. Restart Claude Desktop to pick up edits.
+
+## Known client issue: omitted parameters that declare a default are rejected
+
+On affected Claude Code / Claude Desktop builds, calling one of the tools below without
+passing **every** parameter fails before the request reaches this server:
+
+```
+MCP error -32602: Input validation error: Invalid arguments for tool powerquery_run: [
+  { "code": "invalid_type", "expected": "nonoptional", "path": ["maxRows"],
+    "message": "Invalid input: expected nonoptional, received undefined" } ]
+```
+
+**This is not a defect in this server, and upgrading it will not fix it.** This package
+has no dependencies and does not use zod; those are Zod v4 error codes, emitted by the
+host, and the error arrives before dispatch. The host converts a tool's JSON Schema into
+a validator and maps a property carrying `default` to a non-optional field, so an absent
+value raises an error instead of taking the default. It validates against the schema's
+*output* type rather than its *input* type. Any MCP server that declares defaults is
+affected.
+
+**Workaround:** pass every parameter explicitly, including the ones you want at their
+default value.
+
+**Affected tools and parameters**, 7 of 32:
+
+| Tool | Parameters carrying a `default` |
+|---|---|
+| `ha_list_workflows` | `limit`, `skip`, `sortBy`, `sortOrder` |
+| `uam_list_alerts` | `first`, `viewType` |
+| `powerquery_run` | `hours`, `maxRows` |
+| `powerquery_schema_discover` | `maxEvents`, `startTime` |
+| `powerquery_enumerate_sources` | `hours` |
+| `sdl_create_dashboard` | `isPublic` |
+| `uam_ingest_alert` | `title`, `hostname`, `filename`, `inline` |
+
+Every other tool is unaffected, and within these tools only the listed parameters are
+rejected. Parameters without a default (`query`, `scope`, `startTime` on
+`powerquery_run`, `status`, `severity`, `siteIds`) work when omitted.
+
+Tools added in 1.3.9 (`limit`, `offset`, `namesOnly` on `sdl_list_dashboards` and
+`sdl_list_files`) deliberately omit the `default` keyword and document their defaults in
+the parameter description instead, so they are not affected. Reported upstream; when the
+host is fixed, the defaults can go back into the schemas.
 
 ## Removed tools
 

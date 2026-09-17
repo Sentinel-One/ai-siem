@@ -216,6 +216,8 @@ blocks are in `powerquery/examples/behavioral-baselines.md`.
 
 These are real questions you can ask. Claude will pick the right skill automatically.
 
+**Keep them short.** The skills carry the constraints, so you do not have to. You never need to write "put the predicate in `where (...)`", "`now()` is nanoseconds", "use chained group not `estimate_distinct`", or "validate before deploying". Those are defaults. If you find yourself typing a constraint into a prompt, that is a bug in the skill, not a habit worth keeping, so raise it.
+
 ### Threat hunting
 
 - *"Hunt for any process that opened a connection to a non-RFC1918 IP in the last 7 days; show me top endpoints by hit count"*
@@ -224,6 +226,7 @@ These are real questions you can ask. Claude will pick the right skill automatic
 - *"Find PowerShell scripts that encoded a Base64 command, group by endpoint"*
 - *"Show me the top 20 destination IPs for outbound connections from Windows servers this week"*
 - *"Write a STAR detection rule that fires when a script interpreter spawns a network tool"*
+- *"Impossible travel for the last 24 hours"* (geo-velocity in km/h, computed without the `| join` that silently reports an arbitrary pair)
 
 ### Behavioural baselining and anomaly detection
 
@@ -252,6 +255,17 @@ These are real questions you can ask. Claude will pick the right skill automatic
 - *"Build an O365 tab for my audit dashboard with login failures by user and country"*
 - *"Deploy my dashboard JSON to SDL at `/dashboards/soc-overview`"*
 
+UQL and inventory, on `| datasource` rather than the event stream:
+
+- *"Build a SOC leader alert dashboard"*
+- *"Build a vulnerability management dashboard"*
+- *"Add an identity tab to `SOC Leader Alert Operations`"*
+- *"Fix the broken panels on `<dashboard>`"* (reaches the XDR scope trap, the visual's column contract and hyphens in transposed values on its own)
+- *"This panel is blank but the query returns rows"*
+- *"Show me dashboards in this account that already use `| datasource`"*
+- *"Exact distinct count of assets with alerts"*
+- *"UQL query for open Critical alerts older than 14 days, grouped by owner"*
+
 ### Log parsers
 
 - *"Write an SDL parser for this Palo Alto syslog sample: `<paste log>`"*
@@ -276,6 +290,12 @@ These are real questions you can ask. Claude will pick the right skill automatic
 - *"Check endpoint `DESKTOP-XYZ` for anomalies: run the full anomaly checklist across process, network, and identity data"*
 - *"Apply the MITRE ATT&CK framework to what we've found so far: what techniques are mapped and where are the detection gaps?"*
 - *"Score the current investigation using the cross-source anomaly framework and tell me if we should escalate to IR"*
+
+No alert ID at all (SWEEP mode, alert-agnostic):
+
+- *"Find the MITRE TTPs in my logs from last week"*
+- *"Sweep the last 7 days, no alert ID"*
+- *"What techniques are in my telemetry, and which are just our BAS agent?"*
 
 ### Reporting
 
@@ -373,10 +393,10 @@ Prerequisite: Docker Desktop (macOS/Windows) or Docker Engine (Linux), running. 
 **Step 1: Pull the image (all three MCPs)**
 
 ```bash
-docker pull ghcr.io/pmoses-s1/s1-mcps:1.3.3
+docker pull ghcr.io/pmoses-s1/s1-mcps:latest
 ```
 
-`:1.3.3` is the current pinned release (bundles s1-secops-mcp 1.3.8, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
+`:1.3.3` is the current pinned release (bundles s1-secops-mcp 1.3.9, purple-mcp v0.7.0, virustotal-mcp 1.0.21). `:latest` also works; pin an explicit version for reproducible, forensically consistent installs. About 250 MB compressed.
 
 **Step 2: Configure credentials**
 
@@ -388,11 +408,11 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
     "s1-secops-mcp": {
       "command": "docker",
       "args": [
-        "run", "-i", "--rm", "--pull=missing",
+        "run", "-i", "--rm", "--pull=always",
         "-e", "S1_CONSOLE_URL",
         "-e", "S1_CONSOLE_API_TOKEN",
         "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
-        "ghcr.io/pmoses-s1/s1-mcps:1.3.3",
+        "ghcr.io/pmoses-s1/s1-mcps:latest",
         "s1-secops-mcp"
       ],
       "env": {
@@ -405,10 +425,10 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
     "purple-mcp": {
       "command": "docker",
       "args": [
-        "run", "-i", "--rm", "--pull=missing",
+        "run", "-i", "--rm", "--pull=always",
         "-e", "S1_CONSOLE_URL",
         "-e", "S1_CONSOLE_API_TOKEN",
-        "ghcr.io/pmoses-s1/s1-mcps:1.3.3",
+        "ghcr.io/pmoses-s1/s1-mcps:latest",
         "purple-mcp"
       ],
       "env": {
@@ -419,9 +439,9 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
     "virustotal": {
       "command": "docker",
       "args": [
-        "run", "-i", "--rm", "--pull=missing",
+        "run", "-i", "--rm", "--pull=always",
         "-e", "VIRUSTOTAL_API_KEY",
-        "ghcr.io/pmoses-s1/s1-mcps:1.3.3",
+        "ghcr.io/pmoses-s1/s1-mcps:latest",
         "virustotal-mcp"
       ],
       "env": {
@@ -467,9 +487,9 @@ smoke test s1 secops skills
 Claude checks all three MCPs, confirms each skill is loaded, and reports any missing credential or unreachable endpoint. You can also test the image straight from a terminal, no Claude Desktop required:
 
 ```bash
-docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.3.3 help    # lists the three bundled servers
+docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:latest help    # lists the three bundled servers
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:1.3.3 s1-secops-mcp
+  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:latest s1-secops-mcp
 ```
 
 The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"`, and stderr shows `Tools: 32 registered`.

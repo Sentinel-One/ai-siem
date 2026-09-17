@@ -14,20 +14,31 @@
 #
 set -euo pipefail
 
-# ── Image version ────────────────────────────────────────────────────────────
-# The version of THIS image. Independent of the underlying MCP versions
-# below, bump this when the image content (Dockerfile, dispatcher, bundled
-# CLAUDE.md) changes, even if all three MCP pins stay the same.
-IMAGE_VERSION="${IMAGE_VERSION:-1.3.3}"
-
 # ── Pinned MCP versions ──────────────────────────────────────────────────────
-S1_MCP_VERSION="${S1_MCP_VERSION:-1.3.8}"
+S1_MCP_VERSION="${S1_MCP_VERSION:-1.3.9}"
 VT_MCP_PACKAGE="${VT_MCP_PACKAGE:-@burtthecoder/mcp-virustotal}"
 VT_MCP_VERSION="${VT_MCP_VERSION:-1.0.21}"
 # purple-mcp v0.7.0 (2026-06-26). Pinned to the release commit, not a floating
 # branch, per upstream's security guidance. Bump this to the newest release tag's
 # commit when refreshing; keep it in sync with the GHA workflow env block.
 PURPLE_MCP_REF="${PURPLE_MCP_REF:-07d4992089b10affff6163f296b1f6cb5734539f}"
+
+# ── Image version ────────────────────────────────────────────────────────────
+# The version of THIS image. Its own counter, independent of the MCP pins above:
+# bump it when anything that changes the image bytes changes, which is the
+# Dockerfile, the dispatcher, the bundled CLAUDE.md, or any pin above.
+#
+# TWO RULES, both now enforced in CI:
+#   1. It must STRICTLY INCREASE. It once moved backwards, 1.3.7 to 1.3.3.
+#   2. A published value is never reused. s1-mcps:1.3.3 shipped npm 1.3.3, then
+#      1.3.7, then 1.3.8. With `--pull=missing` against an unchanged tag string
+#      there is nothing for Docker to notice, so whoever pulled it first keeps
+#      those bytes indefinitely while the tag still reads as current. Deleting a
+#      tag from the registry does not make it reusable; someone already has it.
+#
+# Because the number does not encode what is inside, verify rather than infer:
+#   docker run --rm --entrypoint npm <image> ls -g --depth=0
+IMAGE_VERSION="${IMAGE_VERSION:-1.3.5}"
 
 # ── Image identity ───────────────────────────────────────────────────────────
 REGISTRY="${REGISTRY:-ghcr.io/pmoses-s1}"

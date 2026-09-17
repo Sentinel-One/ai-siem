@@ -209,6 +209,41 @@ tgt.file.size = *
 
 Locales supported: `de en es fr ja pt-BR ru zh-CN`.
 
+### Computing a rate from geolocation (impossible travel)
+
+`geo_distance` is a true great-circle on R=6371.0088. Measured: SYD to LHR returned
+16993.957 km against an independent haversine of 16993.957, and the same pair in miles
+returned 10559.555, which is 16993.957 / 1.609344. `geo_ip_location(ip)` returns a
+`"lat,lon"` string that feeds `geo_distance` directly, no parsing needed, and
+`geo_is_point(s)` returns 1.0 for a valid point, which is a better resolution gate than
+a null check.
+
+Two things turn a distance into a speed, and both have a trap.
+
+**`timestamp` is nanoseconds, so the divisor to hours is `3600000000000`.** A 24h window
+measured 23.9546 hours with that divisor.
+
+**Divide by zero returns the STRING `'Infinity'`, not an error and not a number.**
+
+```text
+| let hours = 0
+| let unguarded = km / hours                      # Wrong: returns the string 'Infinity'
+| let guarded   = (hours > 0 ? km / hours : 0)    # Correct: returns 0.0
+```
+
+A string sorts as a string, so `| sort -kmh` puts the broken rows in the wrong place, and
+every numeric threshold such as `| filter kmh >= 900` compares against a string. Nothing
+errors. **The ternary guard is mandatory, not stylistic.**
+
+Related: `max()` over a string column renders `NaN`, which reads as "the function failed"
+when it has not. Inspect string columns with `array_agg_distinct()` or a plain `| columns`
+projection, never `max()`.
+
+`min_by(x, timestamp)` / `max_by(x, timestamp)` and `oldest(timestamp)` / `newest(timestamp)`
+all work inside one `group`, and a `| let` computed before the group composes with them. That
+combination is what lets you compute first and last position without pairing rows. The full
+worked query is in `examples/behavioral-baselines.md`, section "Geo-velocity".
+
 ---
 
 ## 9. Timestamp / time

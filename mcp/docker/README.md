@@ -28,14 +28,22 @@ When bumping a pin, edit both. They are checked once via `grep` in CI; a mismatc
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.3.3` |
-| `@pmoses-s1/s1-secops-mcp` | npm | `1.3.8` |
+| Image version (`IMAGE_VERSION`) | this repo | `1.3.5` |
+| `@pmoses-s1/s1-secops-mcp` | npm | `1.3.9` |
 | `@burtthecoder/mcp-virustotal` | npm | `1.0.21` |
 | `purple-mcp` | git | `07d4992` (Sentinel-One/purple-mcp `v0.7.0`, 2026-06-26) |
 
 `purple-mcp` is pinned to the `v0.7.0` release commit rather than a floating `main`, per upstream's security guidance. When a newer release ships, repin to that tag's commit here, in `docker/build.sh`, and in the workflow env block.
 
-`IMAGE_VERSION` is the tag the image is published under (`ghcr.io/pmoses-s1/s1-mcps:1.3.3`). It is independent of the underlying MCP versions: bump it when the Dockerfile, dispatcher, or bundled CLAUDE.md changes, even if all three MCP pins stay the same.
+`IMAGE_VERSION` is the version tag the image is published under, alongside the moving `latest`. It is its own counter, independent of the MCP versions inside: bump it whenever anything that changes the image bytes changes, which is the Dockerfile, the dispatcher, the bundled `CLAUDE.md`, or any pin above.
+
+**Two rules, both enforced in CI.** It must strictly increase, and a published value is never reused. `s1-mcps:1.3.5` shipped npm 1.3.3, then 1.3.7, then 1.3.8, and the image version once moved backwards from 1.3.7 to 1.3.3. Anyone running `--pull=always` against an unchanged tag string keeps a months-old build indefinitely with nothing to signal it. Deleting a tag from the registry does not make it reusable, because someone already pulled it.
+
+Because the number does not encode what is inside, verify rather than infer:
+
+```bash
+docker run --rm --entrypoint npm ghcr.io/pmoses-s1/s1-mcps:latest ls -g --depth=0
+```
 
 ## Build locally
 
@@ -44,9 +52,9 @@ When bumping a pin, edit both. They are checked once via `grep` in CI; a mismatc
 docker/build.sh
 
 # Smoke test
-docker run -i --rm s1-mcps:1.3.3 help
+docker run -i --rm s1-mcps:latest help
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm s1-mcps:1.3.3 s1-secops-mcp
+  | docker run -i --rm s1-mcps:latest s1-secops-mcp
 ```
 
 The dispatcher accepts `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, or `help`.

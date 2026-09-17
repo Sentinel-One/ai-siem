@@ -298,3 +298,44 @@ Accepts GitHub-flavored Markdown. Good for section headers, links, or explanatio
 ```
 
 ---
+
+## Dashboard JSON structure
+
+A dashboard is a JSON object (SDL also accepts unquoted keys, JavaScript-literal format). Three top-level shapes:
+
+### Single-tab dashboard
+
+```json
+{
+  "duration": "4h",
+  "description": "Optional text shown below the title",
+  "graphs": [ /* array of panel objects */ ]
+}
+```
+
+### Multi-tab dashboard
+
+```json
+{
+  "configType": "TABBED",
+  "duration": "24h",
+  "description": "",
+  "tabs": [
+    { "tabName": "Overview", "graphs": [ /* panels */ ] },
+    { "tabName": "Details",  "graphs": [ /* panels */ ] }
+  ]
+}
+```
+
+### Top-level properties
+
+| Property | Description |
+|---|---|
+| `duration` | Default time range: `"30m"`, `"4h"`, `"1 day"`, `"7 days"` |
+| `description` | Subtitle shown under the dashboard title |
+| `graphs` | Array of panel objects (single-tab) |
+| `tabs` | Array of `{tabName, graphs}` objects when `configType: "TABBED"` |
+| `configType` | Set to `"TABBED"` for multi-tab dashboards |
+| `parameters` | Array of `{name, values, defaultValue}`: creates dropdown/text filters |
+| `options` | `{"layout": {"fixed": 1}}` to lock drag-and-drop |
+| `teamEmails` | Array of account emails whose data is pooled |

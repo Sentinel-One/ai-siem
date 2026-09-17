@@ -33,30 +33,30 @@ Keep them short. The skill carries the constraints, so you do not have to. You n
 **Defaults you apply without being asked**. If you find yourself writing one into a prompt, that is a
 bug in the skill, not a habit to keep.
 
-**Build**
+### Build
 
 - Build a SOC leader alert dashboard.
 - Add an identity tab to `SOC Leader Alert Operations`, with a product-to-verdict sankey and a tactic-by-severity heatmap.
 - Build a vulnerability management dashboard.
 
-**Extend**
+### Extend
 
 - Clone `UQL Query Template Library` and add `misconfigurations` and `metering` patterns.
 - Add MTTA and MTTR panels to the SOC dashboard.
 
-**Debug**
+### Debug
 
 - Fix the broken panels on `<dashboard>`.
 - This panel is blank but the query returns rows.
 - Audit `<dashboard>` for panel titles that overstate what the query measures.
 
-**Query authoring**
+### Query authoring
 
 - UQL query for open Critical alerts older than 14 days, grouped by owner.
 - Exact distinct count of assets with alerts.
 - Convert this query to `| datasource alerts`, or tell me why it cannot be converted.
 
-**Discovery first**
+### Discovery first
 
 - Show me dashboards in this account that already use `| datasource`.
 - Which `where (...)` operators does the `alerts` adapter actually accept?

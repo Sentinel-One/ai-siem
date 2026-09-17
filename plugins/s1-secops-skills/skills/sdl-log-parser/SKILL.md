@@ -3,7 +3,7 @@ name: sdl-log-parser
 author: Prithvi Moses <prithvi.moses@sentinelone.com>
 description: Use whenever the user wants to author, edit, debug, validate, or explain a SentinelOne Singularity Data Lake (SDL) log parser, the augmented-JSON files at /logParsers/ that extract fields from raw log text before ingestion. Trigger on "SDL parser", "Skylight parser", "log parser", "parser editor", "write a parser", "test parser", or any pasted raw log the user wants turned into structured fields. Also trigger on parser-DSL keywords like `formats:`, `patterns:`, `lineGroupers:`, `rewrites:`, `discardAttributes:`, `aliasTo:`, `{parse=...}`, `{regex=...}`. Especially trigger when the user pastes a raw log (CEF, syslog, JSON, key=value, multi-line, CSV) and asks to extract fields, normalize timestamps, or drop noise. If the project is SDL/Singularity/Scalyr and the user says "parse this log", use this skill. Always validates end-to-end via putFile → HEC ingest (parser applied) → query. NOT for PowerQuery (use powerquery), NOT for plain ingest without a parser (use sdl-api).
 ---
-
+# SentinelOne SDL Log Parser Authoring
 
 <!-- CONFIG-FILE-ADDRESSING v1 -->
 > **SDL config files: address by `udoId`, and do not trust a REST listing.**
@@ -16,8 +16,6 @@ description: Use whenever the user wants to author, edit, debug, validate, or ex
 > address dashboards by `udoId` with `expectedVersion`. `content` is HJSON, not JSON. `S1-Scope`
 > changes which files exist as far as the caller can tell.
 > Full detail: [`sdl-api/references/config-file-graphql.md`](../sdl-api/references/config-file-graphql.md)
-
-# SentinelOne SDL Log Parser Authoring
 
 This skill turns raw log samples into deployed, validated SDL parser definitions. A parser is an *augmented-JSON* file at `/logParsers/<name>` on the SDL tenant that extracts fields from each ingested line. The parser editor and the `Test Parser` button in the console run the parser client-side in JavaScript; this skill mirrors that workflow programmatically and finishes by ingesting a sample through the deployed parser to confirm the actual ingest path works.
 
@@ -207,29 +205,7 @@ For the full directive list see `references/syntax.md` and `references/parse-dir
 
 ## Canonical reference parsers by input shape
 
-When you've identified the shape of the source log, jump straight to the canonical catalog parser for that shape and start from it. These are battle-tested in production:
-
-| Input shape | Canonical parser | What to learn from it |
-|---|---|---|
-| Pure JSON-per-line (flat or nested) | `community/abnormal_security_logs-latest/` | `${parse=gron}$` capture, then mappings to OCSF |
-| JSON with envelope (`<ts> <host> <json>`) | `community/json_generic-latest/` (or `examples/02-json-with-envelope.json`) | `dottedJson` on the body |
-| JSON, nested, multi-class | `sentinelone/marketplace-cloudflare-latest/` | gron + format IDs + enum cast + tree ops, all in v1 mappings |
-| Already-OCSF JSON | `community/okta_ocsf_logs-latest/` | Pass-through with light renames |
-| CEF over syslog | `community/generic_access_logs-latest/` (or `examples/01-cef-over-syslog.json`) | Pipe-delimited header + KV extension |
-| LEEF over syslog | `community/leef_template_logs-latest/` | Multi-format header + KV body |
-| Pure key=value freeform | `sentinelone/marketplace-fortinetfortigate-latest/` | `repeat: true` catch-all, attrBlacklist, observables array |
-| Key=value with record-type fan-out to many OCSF classes | `examples/12-linux-auditd-ocsf.json` | `type=`-anchored record-type capture (avoids the `nametype=` collision), KV catch-all, v1 first-match-wins mappings fanning one source to Process 1007 / File 1001 / Auth 3002 / Finding 2004 / Network 4001, EXECVE arg-vector → `process.cmd_line` via `computeFields` `replace()` |
-| Positional CSV (100+ columns) | `sentinelone/marketplace-paloaltonetworksfirewall-latest/` | `commaSeparatedvalues`, `skipNumericConversion`, `attr[N]` indexed access in v1 mappings |
-| Positional space-delimited | `sentinelone/marketplace-awsvpcflowlogs-latest/` | `intermittentTimestamps`, fixed columns |
-| Pipe-delimited (non-CEF) | `sentinelone/marketplace-zscalerinternetaccess-latest/` | `pipeSeparatedValues` parse directive |
-| Multi-line stack / SQL | `community/sql_database_logs-latest/` and `sentinelone/marketplace-awsrdslogs-latest/` | `lineGroupers` start/continueThrough, format-id sentinels for sub-shapes |
-| Windows Event XML | `community/microsoft_windows_eventlog-latest/` | XML with `\\t` / `\\n` escapes, per-EventID sub-parsers (4624, 4625, 4720, 4728, 1102) |
-| HTTP access logs | `community/apache_http_logs-latest/` | Built-in `accessLog` alias-or-extend |
-| pfSense / iptables freeform firewall | `community/pfsense_firewall_logs-latest/` | Frame → subtype → protocol cascade with `discard: true` for IPv6 |
-| Rewrites-only legacy style | `community/okta_logs-latest/` | Minimal-diff edits when you can't migrate to mappings |
-| Gron-capture + everything-in-mappings | `community/PARSER_TEMPLATE/` (and `examples/08-gron-capture-template.json`) | The most general scaffold; use when you want all transformations in one block |
-
-When in doubt, `marketplace-cloudflare-latest/` is the most complete reference for "modern v1 parser doing everything right" (gron, format IDs, enum cast, tree ops, OCSF tagging). Start there if you're not sure.
+Moved to a reference to keep SKILL.md under the 500-line limit. See [`references/canonical-parsers.md`](references/canonical-parsers.md).
 
 ## Strategy decision tree
 
@@ -500,6 +476,6 @@ to `*.sentinelone.net` without proxy interference.
 
 When one parser handles events from many distinct services or applications, each needing its own OCSF class assignment, use the per-app sentinel pattern: extract a discriminator field, add one format-id sentinel per service, list every sentinel field in `discardAttributes`, add one v1 first-match-wins `mappings` block per sentinel (drops duplicated into each block because v1 is first-match-wins), and end with a `predicate: "true"` catch-all placed last. The full pattern overview, the how-to-add-a-new-service checklist, and the periodic audit query for services stuck in the catch-all are in `references/per-app-sentinel.md`.
 
-## Onboarding learnings (tenant-validated 2026-06-13, <console>)
+## Onboarding learnings (tenant-validated 2026-06-13, `<console>`)
 
 Tenant-validated learnings from onboarding new sources through the `sdl-solutions` playbook, JSON-per-line dotted-prefix capture (`$unmapped.=json{parse=dottedJson}$`), the `mappings` `version: 1` plus `transformations` requirement, account-level parser scope, 3 to 5 minute activation latency per deploy, sourcetype-to-parser binding, and IP-keyed network-source enrichment, are in `references/onboarding-learnings.md`.

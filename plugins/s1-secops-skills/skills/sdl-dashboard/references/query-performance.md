@@ -296,3 +296,35 @@ panels. The console calls `removeQuery` ~0.9 times per launch. Programmatically,
 `DELETE /sdl/v2/api/queries/{id}` on every exit path that is not a completion.
 
 ---
+
+## Full-text predicate cost (when to use raw_data string matching)
+
+When a field needed for the panel is buried inside `raw_data` rather than parsed to a structured column, the only filter is a full-text predicate against `raw_data`. Example:
+
+```text
+dataSource.name='<source>' event.type='<type>' '<json-snippet>'
+```
+
+The bare-string token is interpreted as a literal substring search across `raw_data`. It works but the cost is significant: full-text scan reads every event in the time window before applying the predicate, so cost is proportional to total events scanned, not to the matched subset. Combined with `| group` over high-cardinality dimensions, full-text predicates frequently exceed the 60s MCP timeout. Combined with `timebucket + transpose`, they almost always time out.
+
+### Safe full-text patterns
+
+| Use | Example | Why it works |
+|---|---|---|
+| Number panel: simple count | `<src> '<token>' \| group n=count() \| limit 1` | One row, no grouping; fast even at 100k+ events |
+| Number panel: count with structured co-filter | `<src> '<token>' <field>='<value>' \| group n=count() \| limit 1` | Co-filter narrows scan first |
+| Table panel: top-N with restrictive co-filter | `<src> '<token>' <selective-field>='<value>' \| group ... by ... \| sort \| limit 25` | Working set is small after co-filter |
+
+### Risky full-text patterns
+
+| Use | Why it fails |
+|---|---|
+| Stacked-bar timeline with full-text + transpose | Scan + bucket + group + transpose under full-text → timeout |
+| Top-N grouping over the whole source under full-text | High-cardinality grouping under full-text → timeout |
+| Multiple full-text tokens combined (`'<a>' '<b>' \| ...`) | Each token is a separate scan; cost compounds |
+
+### Design rule
+
+If a panel needs a discriminator that lives in `raw_data` only, lobby the parser team to promote it to a top-level structured field. Until then, design the panel to use full-text only where the cost is acceptable (number panels, selective tables) and replace timeline / heavy-grouping panels with structured-field equivalents.
+
+---

@@ -270,6 +270,11 @@ def rule_N02_table_no_limit(panel: Dict[str, Any]) -> Optional[Tuple[str, str]]:
 # and in shareResource's scopeId, and it survives a site rename.
 
 _SITE_ID_RE = re.compile(r"site\.id\s*(?:==?|\bin\b)", re.IGNORECASE)
+# Same predicate, but capturing the value(s) it compares against, so S01 can ask
+# "scoped to WHICH site" rather than "is the id mentioned anywhere in the text".
+_SITE_ID_VALUE_RE = re.compile(
+    r"site\.id\s*(?:==?|\bin\b)\s*(\[[^\]]*\]|'[^']*'|\"[^\"]*\"|[\w-]+)",
+    re.IGNORECASE)
 _SITE_NAME_RE = re.compile(r"site\.name\s*(?:==?|\bin\b|\bcontains\b)", re.IGNORECASE)
 
 
@@ -288,7 +293,13 @@ def rule_S01_site_scope_missing(
     if not site_id or not _is_query_panel(panel):
         return None
     q = panel.get("query") or ""
-    if f"site.id" in q and site_id in q:
+    # Match the id inside a real `site.id = <value>` predicate, not anywhere in the
+    # query text. A plain substring test passed any panel that merely mentioned
+    # `site.id` and happened to contain the id in some other field value, string
+    # literal or comment, and it short-circuited ahead of the structural check, so
+    # a predicate genuinely pointing at a DIFFERENT site was reported as scoped.
+    # That is the exact cross-site read this rule exists to catch.
+    if any(site_id in m for m in _SITE_ID_VALUE_RE.findall(q)):
         return None
     if _SITE_ID_RE.search(q):
         return ("S01", f"Panel filters on site.id but not on the target site id {site_id}. "

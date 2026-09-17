@@ -44,14 +44,27 @@ ASSETS = SKILL_DIR / "assets"
 
 
 def _load_linter():
-    spec = importlib.util.spec_from_file_location(
-        "run_evals", str(ROOT / "tools" / "run_evals.py"))
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    """Import `tools/run_evals.py`, or return None where the repo has no such tree.
+
+    A fixed `ROOT / "tools"` path exists only in this repo. Skills vendored into
+    another repository land several levels deeper, and because this import runs
+    at module scope the resulting FileNotFoundError aborted collection: the whole
+    suite contributed no signal instead of failing anything visibly. Walk up for
+    the linter, and skip only the tests that actually need it.
+    """
+    for base in [SKILL_DIR, *SKILL_DIR.parents]:
+        cand = base / "tools" / "run_evals.py"
+        if cand.is_file():
+            spec = importlib.util.spec_from_file_location("run_evals", str(cand))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+    return None
 
 
 LINTER = _load_linter()
+NEEDS_LINTER = unittest.skipIf(
+    LINTER is None, "tools/run_evals.py not present in this repository layout")
 
 SKILL = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 ONBOARDING = (REFS / "data-source-onboarding.md").read_text(encoding="utf-8")
@@ -79,8 +92,18 @@ class CatalogPlaybookAndTemplateWiring(unittest.TestCase):
         # named bare in prose as "the `references/x.md` there"), so a name
         # resolves against this skill, the repo root, or any sibling skill.
         def resolves(n: str) -> bool:
-            return (SKILL_DIR / n).is_file() or (ROOT / n).is_file() or any(
-                (d / n).is_file() for d in ROOT.iterdir() if d.is_dir())
+            if (SKILL_DIR / n).is_file() or (ROOT / n).is_file():
+                return True
+            if any((d / n).is_file() for d in ROOT.iterdir() if d.is_dir()):
+                return True
+            # A vendoring repo prefixes sibling skill directories, so
+            # `powerquery/references/x.md` lives at `sentinelone-powerquery/...`
+            # there. Accept either spelling.
+            head, _, tail = n.lstrip("./").partition("/")
+            return bool(tail) and any(
+                (ROOT / alt / tail).is_file()
+                for alt in (f"sentinelone-{head}",
+                            head.replace("sentinelone-", "", 1)))
 
         missing = [n for n in sorted(named) if not resolves(n)]
         self.assertEqual([], missing,
@@ -155,6 +178,7 @@ class ParserEligibilityGate(unittest.TestCase):
         gotchas = ONBOARDING[ONBOARDING.index("## Gotchas"):]
         self.assertRegex(gotchas, r"(?i)do not assume the source is editable")
 
+    @NEEDS_LINTER
     def test_absence_probe_uses_the_parenthesised_idiom(self):
         # `!(field = *)`. Bare `!field` matches every row and reports a source
         # as entirely missing a field it has.
@@ -335,6 +359,7 @@ class DocumentedQueriesLintClean(unittest.TestCase):
         for f in sorted(ASSETS.glob("*.pq")):
             yield f, f.read_text(encoding="utf-8")
 
+    @NEEDS_LINTER
     def test_examples_and_pq_assets_pass_the_repo_linter(self):
         failures = []
         for f, body in self._blocks():
@@ -358,6 +383,7 @@ class EvalSuiteIsGradable(unittest.TestCase):
         self.path = SKILL_DIR / "evals" / "evals.json"
         self.suite = json.loads(self.path.read_text(encoding="utf-8"))
 
+    @NEEDS_LINTER
     def test_structure_is_clean(self):
         errs = LINTER.check_structure(self.suite, self.path)
         self.assertEqual([], errs, "\n".join(errs))

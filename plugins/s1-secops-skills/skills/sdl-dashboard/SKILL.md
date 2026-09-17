@@ -4,7 +4,7 @@ author: Prithvi Moses <prithvi.moses@sentinelone.com>
 description: >
   Use this skill any time the user wants to create, edit, design, generate, deploy, or debug a SentinelOne Singularity Data Lake (SDL) dashboard. Triggers include: "build me a dashboard", "create a dashboard panel", "write dashboard JSON", "add a panel to my dashboard", "deploy a dashboard to SDL", "I want a dashboard that shows...", "can you make a dashboard for...", "threat dashboard", "SOC dashboard", "network dashboard", "audit dashboard", "O365 dashboard", "hunting dashboard", or any request that involves SDL/Scalyr dashboard JSON. Also triggers when the user pastes dashboard JSON and wants help fixing, improving, or extending it. Use alongside sdl-api to deploy dashboards, and alongside powerquery to validate or compose the queries inside panels. Always use this skill when dashboards, dashboard panels, or SDL visualization is involved, even if the user just says "show me [metric] over time" in a security/SDL context.
 ---
-
+# SentinelOne SDL Dashboard Skill
 
 <!-- CONFIG-FILE-ADDRESSING v1 -->
 > **SDL config files: address by `udoId`, and do not trust a REST listing.**
@@ -17,8 +17,6 @@ description: >
 > address dashboards by `udoId` with `expectedVersion`. `content` is HJSON, not JSON. `S1-Scope`
 > changes which files exist as far as the caller can tell.
 > Full detail: [`sdl-api/references/config-file-graphql.md`](../sdl-api/references/config-file-graphql.md)
-
-# SentinelOne SDL Dashboard Skill
 
 This skill helps you design, author, and deploy Singularity Data Lake (SDL) dashboards, from a single panel to a full multi-tab SOC dashboard. Dashboards live as configuration files in SDL and are authored as JSON (or a relaxed JavaScript-literal superset of it). You deploy them via the `sdl-api` skill's `put_file` method.
 
@@ -101,137 +99,13 @@ This workflow is mandatory for every new or modified dashboard. Steps 0, 1, and 
 
 8. **Screenshot review with the user (MANDATORY).** API validation proves each panel's query returns rows; it does NOT prove the panel RENDERS. Render-only failures happen in the browser, not the API, so `validate_dashboard.py` cannot see them: a panel showing "Couldn't load content", a markdown tile showing "Untitled", a number reading "34 principals" under a title that already says principals, an empty chart, or a broken legend. After EVERY deploy, ALWAYS ask the user to open the dashboard and send screenshots of each tab, then read them, diagnose each visual defect, fix the JSON, and re-deploy, without waiting to be asked. Prompt explicitly, e.g.: "The dashboard is deployed at `/dashboards/<name>`. Please open it and send screenshots of each tab so I can catch any render-only issues and fix them automatically." Treat this as part of deployment, not optional polish. Fixes for the common render-only defects are in the **Quick triage** table.
 
-## Scope doctrine: where the dashboard lives vs. what its queries read
+## Scope doctrine
 
-**Two independent decisions. Get them both explicitly before authoring a panel.**
-
-1. **Deployment scope**: which scope the dashboard object is filed at (Global, Account, or Site). Set by the `S1-Scope` header on the create call, or by `shareResource` afterwards.
-2. **Query scope**: which data the panels read. Set by what you put in the query.
-
-### The rule
-
-**A dashboard deployed at a SITE must scope its panel queries to that site with an explicit `site.id` predicate.** Add `site.id='<siteId>'` to every query panel.
-
-The single exception: the user explicitly asks for account-scoped (or cross-site) queries on a site-deployed dashboard. That is a legitimate ask, for example an MSSP hub dashboard filed in one site but reporting across the account. When it happens, say so in the dashboard `description` so the next reader is not surprised, and pass `--allow-account-scope-queries` to the safety check.
-
-Do not infer the exception from convenience. If the deployment scope is a site and the user has not said otherwise, scope the queries.
-
-### Use `site.id`, never `site.name`
-
-`site.name` is a lossy scoping filter. Measured on `<console>` 2026-08-17 for one site:
-
-| Filter | Events matched |
-|---|---|
-| `site.id='9876543210987654321'` | 60,410 |
-| of those, rows where `site.name` is null | **510** |
-
-Breakdown of the 510 that a `site.name` filter would silently drop: `ActivityFeed` 172, `asset` 111, unattributed source 99, `SentinelOne` 70, `Windows Event Logs` 48, **`alert` 10**.
-
-So `site.name` drops alert and asset records, which is exactly what a SOC dashboard leans on, with no error and no empty panel to hint at it. `site.id` also:
-
-- is the **same identifier** as the `siteId` in the `S1-Scope` header and `shareResource`'s `scopeId`, so one value threads the whole deployment;
-- survives a site rename.
-
-`site.name` is fine as a display column or a `group by` key. It is not fine as the scoping predicate.
-
-### Enforcement
-
-`scripts/panel_safety_check.py` implements both halves:
-
-```bash
-# Site-deployed dashboard: every query panel must carry site.id='<siteId>'
-python3 scripts/panel_safety_check.py dash.json --site-id 9876543210987654321
-
-# Deliberate account-wide queries on a site-deployed dashboard
-python3 scripts/panel_safety_check.py dash.json --site-id 9876543210987654321 \
-    --allow-account-scope-queries
-```
-
-- **S01** fires when a site-targeted dashboard has a query panel with no `site.id` predicate, or one scoped to a *different* site. Suppressed by `--allow-account-scope-queries`.
-- **S02** fires when `site.name` is used as a scoping filter without a `site.id` predicate alongside it. **Never suppressed by the account-scope flag**, because the substitution is wrong at any scope.
-
-Markdown tiles, `alerts_table` and `distribution` panels are exempt: they have no PQ to scope.
-
-**Two deploy-time traps that mimic failure** (detail in `references/deployment.md`): `createDashboardV2` defaults `public` to false and owns the object as the API service user, so the dashboard is invisible in the console to a human even at the right scope. Pass `isPublic: true`. And dashboard names reject `( ) [ ] { } : , & ' % #` with only `Invalid name` as the error; letters, digits, space, `-`, `_`, `.` and `/` are accepted.
+Deployment scope and query scope are two independent decisions. A site-deployed dashboard scopes its panels with `site.id`, never `site.name`, which silently drops alert and asset rows. See [`references/scope-doctrine.md`](references/scope-doctrine.md).
 
 ## Pre-authoring discovery
 
-Different tenants connect different data sources, and even the same tenant drifts between sessions as parsers are updated. Authoring a panel from a remembered schema is the single most common cause of empty-or-misleading dashboards.
-
-### 1. Enumerate connected data sources every session
-
-```text
-| group UniqueDataSourceNames = array_agg_distinct(dataSource.name)
-| limit 1000
-```
-
-If the source the dashboard is meant to cover does not appear, the dashboard cannot work. Stop and surface this to the user. Do not silently switch to a different source.
-
-### 2. PowerQuery cannot discover a source's schema by itself
-
-`| limit N` against a parser-emitted source returns only `timestamp + message`. PowerQuery has no `| columns *` or wildcard projection. Use the V1 query endpoint (`/api/query`, returns full event JSON) via the SDL client. Force-clear the scoped keys so auth falls through to the console JWT (which has `query` permission):
-
-```python
-from sdl_client import SDLClient
-c = SDLClient()
-
-res = c.query(filter=f"dataSource.name=='{source}'", max_count=50, start_time="7d")
-attrs = sorted({k for m in res["matches"] for k in (m.get("attributes") or {}).keys()})
-```
-
-Persist `attrs` to a per-session JSON and reference it during panel authoring. Do this for every source the dashboard will query.
-
-**SDL operations via s1-secops-mcp tools.**
-
-All SDL operations should use the s1-secops-mcp MCP tools, which run locally and bypass the sandbox proxy:
-
-| Operation | s1-secops-mcp tool |
-|---|---|
-| PowerQuery (enumeration, hunts, panel queries) | `mcp__s1-secops-mcp__powerquery_run` |
-| V1 `query` (full event JSON for schema discovery) | `mcp__s1-secops-mcp__powerquery_schema_discover` |
-| `put_file` / `get_file` / `list_files` (dashboard deploy) | `mcp__s1-secops-mcp__sdl_put_file`, `mcp__s1-secops-mcp__sdl_get_file`, `mcp__s1-secops-mcp__sdl_list_files` |
-
-These tools run on your local machine and make direct HTTPS calls to the console host
-without sandbox proxy interference. No fallback or workaround needed.
-
-### 3. A field visible in `raw_data` may NOT be queryable
-
-Parsers vary in what they extract to top-level OCSF / `unmapped.*` columns. A field plainly visible inside the `raw_data` JSON envelope may not exist as a queryable structured column. Always probe a single sample event with the V1 query to confirm a field is queryable before authoring a panel around it. Both the schema dump and a raw event are ground truth, neither alone is sufficient.
-
-If a field is only present in `raw_data`, it can still be filtered via a full-text predicate but **cannot be grouped or aggregated** efficiently. See **Full-text predicate cost** below.
-
-### 4. Identify the discriminator before counting
-
-A single `event.type` value frequently bundles multiple distinct event kinds (delivery-time vs click-time, scheduled vs on-demand, inbound vs outbound, policy-event vs detection-event). The discriminator field, often named `creationMethod`, `messageType`, `triggerType`, `disposition`, etc., may or may not be promoted to the top level. Run an exploration query before authoring count panels:
-
-```text
-dataSource.name='<source>' event.type='<type>'
-| group hits=count() by <candidate-discriminator>
-| sort -hits
-| limit 50
-```
-
-If the same `event.type` row repeats with different discriminator values, that secondary field is part of the partition key. Panels must filter on both, or split into separate sections per population. Counting "events of type X" without splitting by discriminator gives a number that conflates two semantically different things, which is the highest-cost class of dashboard bug because it looks correct.
-
-### 4b. Null-check every grouping column before including it in a table panel
-
-Before including any field as a grouping column in a table panel, confirm it is non-null for that specific `event.type`. A column that is null for all rows produces an empty column in the rendered table with no error. The check is one query:
-
-```text
-dataSource.name='<source>' event.type='<type>' <field>=*
-| group count=count()
-| limit 1
-```
-
-If this returns 0, that field is null for that event type. Remove it from the panel or replace with the correct field. **This check is mandatory for every column in every table panel, not just fields you suspect might be missing.**
-
-Common trap: `src_endpoint.svc_name` (service name), `src_endpoint.ip`, and `app_name` may be populated for `traffic` events but null for `vpn` or `app-ctrl` events from the same source. Schema discovery on `traffic` events does not transfer to other event types.
-
-### 5. `event.type` is not always the right partition key
-
-Some sources emit multiple log subtypes under the same `event.type` (header logs vs body logs, policy events vs detection events). Run the same exploration query above with `event.type` PLUS a secondary discriminator before assuming `event.type` partitions the source cleanly.
-
----
+Enumerate sources live, discover each source's schema, identify the discriminator before counting, and null-check every grouping column. Mandatory every session; never author a panel from a remembered schema. See [`references/pre-authoring-discovery.md`](references/pre-authoring-discovery.md).
 
 ## PowerQuery feature gaps to design around
 
@@ -352,37 +226,9 @@ Rules:
 
 ---
 
-## Full-text predicate cost (when to use raw_data string matching)
+## Full-text predicate cost
 
-When a field needed for the panel is buried inside `raw_data` rather than parsed to a structured column, the only filter is a full-text predicate against `raw_data`. Example:
-
-```text
-dataSource.name='<source>' event.type='<type>' '<json-snippet>'
-```
-
-The bare-string token is interpreted as a literal substring search across `raw_data`. It works but the cost is significant: full-text scan reads every event in the time window before applying the predicate, so cost is proportional to total events scanned, not to the matched subset. Combined with `| group` over high-cardinality dimensions, full-text predicates frequently exceed the 60s MCP timeout. Combined with `timebucket + transpose`, they almost always time out.
-
-### Safe full-text patterns
-
-| Use | Example | Why it works |
-|---|---|---|
-| Number panel: simple count | `<src> '<token>' \| group n=count() \| limit 1` | One row, no grouping; fast even at 100k+ events |
-| Number panel: count with structured co-filter | `<src> '<token>' <field>='<value>' \| group n=count() \| limit 1` | Co-filter narrows scan first |
-| Table panel: top-N with restrictive co-filter | `<src> '<token>' <selective-field>='<value>' \| group ... by ... \| sort \| limit 25` | Working set is small after co-filter |
-
-### Risky full-text patterns
-
-| Use | Why it fails |
-|---|---|
-| Stacked-bar timeline with full-text + transpose | Scan + bucket + group + transpose under full-text → timeout |
-| Top-N grouping over the whole source under full-text | High-cardinality grouping under full-text → timeout |
-| Multiple full-text tokens combined (`'<a>' '<b>' \| ...`) | Each token is a separate scan; cost compounds |
-
-### Design rule
-
-If a panel needs a discriminator that lives in `raw_data` only, lobby the parser team to promote it to a top-level structured field. Until then, design the panel to use full-text only where the cost is acceptable (number panels, selective tables) and replace timeline / heavy-grouping panels with structured-field equivalents.
-
----
+Full-text `raw_data` matching is the only way to filter a field the parser did not promote, and it scans every event in the window. Safe for number panels and selective tables; it times out with timebucket plus transpose. See [`references/query-performance.md`](references/query-performance.md).
 
 ## Panel naming hygiene
 
@@ -403,44 +249,7 @@ When two semantically distinct event populations exist within the same `event.ty
 
 ## Dashboard JSON structure
 
-A dashboard is a JSON object (SDL also accepts unquoted keys, JavaScript-literal format). Three top-level shapes:
-
-### Single-tab dashboard
-
-```json
-{
-  "duration": "4h",
-  "description": "Optional text shown below the title",
-  "graphs": [ /* array of panel objects */ ]
-}
-```
-
-### Multi-tab dashboard
-
-```json
-{
-  "configType": "TABBED",
-  "duration": "24h",
-  "description": "",
-  "tabs": [
-    { "tabName": "Overview", "graphs": [ /* panels */ ] },
-    { "tabName": "Details",  "graphs": [ /* panels */ ] }
-  ]
-}
-```
-
-### Top-level properties
-
-| Property | Description |
-|---|---|
-| `duration` | Default time range: `"30m"`, `"4h"`, `"1 day"`, `"7 days"` |
-| `description` | Subtitle shown under the dashboard title |
-| `graphs` | Array of panel objects (single-tab) |
-| `tabs` | Array of `{tabName, graphs}` objects when `configType: "TABBED"` |
-| `configType` | Set to `"TABBED"` for multi-tab dashboards |
-| `parameters` | Array of `{name, values, defaultValue}`: creates dropdown/text filters |
-| `options` | `{"layout": {"fixed": 1}}` to lock drag-and-drop |
-| `teamEmails` | Array of account emails whose data is pooled |
+Single-tab, multi-tab and the top-level properties. See [`references/panel-types.md`](references/panel-types.md).
 
 ## Panel types
 
@@ -619,29 +428,7 @@ The browser-renderer execution path, the parallel load test with its acceptance 
 
 ## Field semantics: verify before grouping
 
-Two patterns cause panels to look broken silently:
-
-**Subject vs target in Windows logon events.** For event 4624 on a domain controller, `subjectUserName` is almost always the machine account or `-`. The account that actually logged on is in `targetUserName`. A panel that groups by `subjectUserName` renders mostly empty rows.
-
-**Same field name, different semantic per event ID.** `targetUserName` in 4624 is the human account; in 4771 (Kerberos pre-auth failure) it includes machine accounts (`host123$`). 4625 and 4740 may use `subjectUserName` depending on the failure path.
-
-Always sample 3-5 events per event ID before authoring a grouping query:
-
-```python
-res = c.query(
-    filter=f"dataSource.name=='<source>' <event-id-filter> <host-filter>",
-    max_count=5, start_time="1h",
-)
-for m in res.get("matches") or []:
-    attrs = m.get("attributes", {})
-    for k in sorted(attrs.keys()):
-        if any(s in k.lower() for s in ("user","subject","target","domain","logonid")):
-            print(f"  {k} = {str(attrs[k])[:80]}")
-```
-
-This is the same V1-query schema-discovery pattern from the `sdl-api` skill, apply it per-event-ID, not just per-source.
-
----
+Sample events per event ID before grouping: the same field name carries different meaning across Windows event IDs, and subject vs target is the classic trap. See [`references/pre-authoring-discovery.md`](references/pre-authoring-discovery.md).
 
 ## Escalation ladder when a deployed dashboard hangs
 

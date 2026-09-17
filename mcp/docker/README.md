@@ -37,7 +37,7 @@ When bumping a pin, edit both. They are checked once via `grep` in CI; a mismatc
 
 `IMAGE_VERSION` is the version tag the image is published under, alongside the moving `latest`. It is its own counter, independent of the MCP versions inside: bump it whenever anything that changes the image bytes changes, which is the Dockerfile, the dispatcher, the bundled `CLAUDE.md`, or any pin above.
 
-**Two rules, both enforced in CI.** It must strictly increase, and a published value is never reused. `s1-mcps:1.3.5` shipped npm 1.3.3, then 1.3.7, then 1.3.8, and the image version once moved backwards from 1.3.7 to 1.3.3. Anyone running `--pull=always` against an unchanged tag string keeps a months-old build indefinitely with nothing to signal it. Deleting a tag from the registry does not make it reusable, because someone already pulled it.
+**Two rules, both enforced in CI.** It must strictly increase, and a published value is never reused. `s1-mcps:1.3.5` shipped npm 1.3.3, then 1.3.7, then 1.3.8, and the image version once moved backwards from 1.3.7 to 1.3.3. Anyone running `--pull=missing` against an unchanged tag string keeps a months-old build indefinitely with nothing to signal it. Deleting a tag from the registry does not make it reusable, because someone already pulled it.
 
 Because the number does not encode what is inside, verify rather than infer:
 

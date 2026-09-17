@@ -62,7 +62,7 @@ scanning no complete bucket at all.
 
 Use absolute bounds instead. In Hyperautomation:
 
-```
+```text
 startTime  {{Function.FORMATTED_DATE(Function.DELTA_NOW(24), "%Y-%m-%dT00:00:00Z")}}
 endTime    {{Function.FORMATTED_DATE(Function.DATETIME_NOW(), "%Y-%m-%dT00:00:00Z")}}
 ```
@@ -98,7 +98,7 @@ Guidance: slice narrow, run sequential, retry per slice, and give each slice a w
 
 A query whose read half finishes can still die in the write:
 
-```
+```text
 500 {"code":"internal_server_error",
      "message":"timeout prevented savelookup from completing"}
 ```

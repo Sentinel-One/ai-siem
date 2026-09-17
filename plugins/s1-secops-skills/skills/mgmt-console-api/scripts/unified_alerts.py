@@ -783,10 +783,24 @@ def trigger_actions(
     # `alertAvailableActions` (the authoritative capability query) and attach
     # what it says, rather than letting the caller quote the misleading string.
     if diagnose_failures and _has_failures(resp):
+        # Diagnose the alerts that ACTUALLY failed, not the whole filter.
+        # `alertAvailableActions` is filtered by alert type as well as by the
+        # caller's permissions, so over a filter matching heterogeneous alerts a
+        # single broad capability map would explain one alert's refusal with
+        # another alert's capabilities, confidently and wrongly. The mutation
+        # already hands back the failing ids in `actions[].failure[].id`; narrow
+        # to those. Fall back to the original scope only when the response
+        # carried no ids, which keeps a partial answer better than none.
+        failed_ids = _failed_alert_ids(resp)
+        diag_filter = (or_filter([build_filter(fieldId="id",
+                                               stringIn={"values": failed_ids})])
+                       if failed_ids else filter_input)
         try:
             resp["diagnosis"] = explain_action_failure(
-                client, scope_input=scope_input, filter_input=filter_input,
+                client, scope_input=scope_input, filter_input=diag_filter,
                 action_ids=[a.get("id") for a in actions])
+            if failed_ids:
+                resp["diagnosis"]["diagnosed_alert_ids"] = failed_ids
         except Exception as e:                                  # never mask the
             resp["diagnosis"] = {"error": f"could not query "  # original result
                                           f"alertAvailableActions: {e}"}
@@ -797,6 +811,18 @@ def _has_failures(resp: Dict[str, Any]) -> bool:
     if resp.get("__typename") != "ActionsTriggered":
         return False
     return any(a.get("failure") for a in (resp.get("actions") or []))
+
+
+def _failed_alert_ids(resp: Dict[str, Any]) -> List[str]:
+    """The alert ids the mutation reported as failed, de-duplicated, in order."""
+    seen, out = set(), []
+    for a in (resp.get("actions") or []):
+        for f in (a.get("failure") or []):
+            i = f.get("id")
+            if i and i not in seen:
+                seen.add(i)
+                out.append(i)
+    return out
 
 
 def explain_action_failure(

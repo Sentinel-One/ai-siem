@@ -28,14 +28,27 @@ sys.path.insert(0, str(SKILL_DIR / "scripts"))
 
 
 def _load_linter():
-    spec = importlib.util.spec_from_file_location(
-        "run_evals", str(ROOT / "tools" / "run_evals.py"))
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    """Import `tools/run_evals.py`, or return None where the repo has no such tree.
+
+    A fixed `ROOT / "tools"` path exists only in this repo. Skills vendored into
+    another repository land several levels deeper, and because this import runs
+    at module scope the resulting FileNotFoundError aborted collection: the whole
+    suite contributed no signal instead of failing anything visibly. Walk up for
+    the linter, and skip only the tests that actually need it.
+    """
+    for base in [SKILL_DIR, *SKILL_DIR.parents]:
+        cand = base / "tools" / "run_evals.py"
+        if cand.is_file():
+            spec = importlib.util.spec_from_file_location("run_evals", str(cand))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+    return None
 
 
 LINTER = _load_linter()
+NEEDS_LINTER = unittest.skipIf(
+    LINTER is None, "tools/run_evals.py not present in this repository layout")
 
 FENCE = re.compile(r"^```(\w*)\n(.*?)^```", re.M | re.S)
 PQ_LANGS = {"text", "powerquery", "pq"}
@@ -140,6 +153,7 @@ class RecipeQueriesLintClean(unittest.TestCase):
                     continue
                 yield path, body
 
+    @NEEDS_LINTER
     def test_recipes_pass_the_repo_linter(self):
         failures = []
         for path, body in self._blocks():
@@ -160,6 +174,7 @@ class EvalSuiteIsGradable(unittest.TestCase):
         self.path = SKILL_DIR / "evals" / "evals.json"
         self.suite = json.loads(self.path.read_text(encoding="utf-8"))
 
+    @NEEDS_LINTER
     def test_structure_is_clean(self):
         errs = LINTER.check_structure(self.suite, self.path)
         self.assertEqual([], errs, "\n".join(errs))

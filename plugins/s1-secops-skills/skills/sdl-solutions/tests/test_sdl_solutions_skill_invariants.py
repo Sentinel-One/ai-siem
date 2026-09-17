@@ -138,6 +138,13 @@ class CatalogPlaybookAndTemplateWiring(unittest.TestCase):
         catalog has 7 rows, and a literal 8 failed a skill that was correct.
         Reading the expected count from the description keeps the real invariant,
         that the two agree, without assuming which solutions a given repo ships.
+
+        Equality, not a lower bound. A `>=` here let the catalog grow past what
+        the description advertises, which is the commoner drift of the two: a
+        solution gets a catalog row and the frontmatter is never updated, so the
+        skill stops triggering on it. Both counts are 8 in claude-skills and 7 in
+        the scrubbed guidelines repo, exactly equal in each, so equality is the
+        assertion the docstring was already claiming.
         """
         rows = [r for r in SKILL.splitlines()
                 if r.startswith("|") and "references/" in r]
@@ -146,10 +153,12 @@ class CatalogPlaybookAndTemplateWiring(unittest.TestCase):
         advertised = [int(n) for n in re.findall(r"\((\d+)\)", m.group(1))]
         self.assertTrue(advertised,
                         "the description no longer enumerates its solutions")
-        self.assertGreaterEqual(
-            len(rows), max(advertised),
+        self.assertEqual(
+            max(advertised), len(rows),
             f"the solution catalog has {len(rows)} rows but the frontmatter "
-            f"description advertises {max(advertised)} solutions")
+            f"description advertises {max(advertised)} solutions; a row without "
+            f"a description entry means the skill will not trigger on it, and a "
+            f"description entry without a row points at a playbook that is gone")
 
 
 class ParserEligibilityGate(unittest.TestCase):

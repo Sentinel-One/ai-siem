@@ -110,13 +110,19 @@ that left uncovered. Four new classes:
 
 ### Docker
 
-Bundle image **1.3.5**, pinning npm 1.3.9.
+Bundle image **1.3.6**, pinning npm 1.3.9.
 
-1.3.4 shipped first with the same npm pin. 1.3.5 exists because the bundled
-`CLAUDE.md` changed afterwards, and `CLAUDE.md` is COPY'd into the image, so the
-bytes differ. CI refused to republish 1.3.4 over them, which is the guard doing
-exactly its job: the image number tracks image content, not the MCP version, and
+1.3.4 shipped first with the same npm pin. Two bumps followed, both for the same
+reason and neither for an MCP change: `CLAUDE.md` is COPY'd into the image, so
+editing it changes the image bytes. 1.3.5 came from one such edit, and 1.3.6 from
+a second, a blockquote that was rendering as two stacked quotes because a blank
+line had split it. CI refused to republish over either, which is the guard doing
+exactly its job. The image number tracks image content, not the MCP version, and
 a published tag is never reused.
+
+The npm package, the plugin and the image are three independent streams. Image
+1.3.6 bundles npm 1.3.9 and ships alongside plugin 1.3.7; none of those numbers
+predicts another.
 
 ## 1.3.7
 

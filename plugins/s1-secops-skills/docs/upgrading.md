@@ -81,7 +81,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`.
 |---|---|---|
 | Server key | `"sentinelone-mcp"` | `"s1-secops-mcp"` |
 | Dispatcher argument | `sentinelone-mcp` | `s1-secops-mcp` |
-| Image tag | `s1-mcps:1.2.x` | `s1-mcps:1.3.5` |
+| Image tag | `s1-mcps:1.2.x` | `s1-mcps:1.3.6` |
 | purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` |
 
 ### What to delete outright

@@ -38,7 +38,7 @@ PURPLE_MCP_REF="${PURPLE_MCP_REF:-07d4992089b10affff6163f296b1f6cb5734539f}"
 #
 # Because the number does not encode what is inside, verify rather than infer:
 #   docker run --rm --entrypoint npm <image> ls -g --depth=0
-IMAGE_VERSION="${IMAGE_VERSION:-1.3.5}"
+IMAGE_VERSION="${IMAGE_VERSION:-1.3.6}"
 
 # ── Image identity ───────────────────────────────────────────────────────────
 REGISTRY="${REGISTRY:-ghcr.io/pmoses-s1}"

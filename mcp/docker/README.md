@@ -28,7 +28,7 @@ When bumping a pin, edit both. They are checked once via `grep` in CI; a mismatc
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.3.5` |
+| Image version (`IMAGE_VERSION`) | this repo | `1.3.6` |
 | `@pmoses-s1/s1-secops-mcp` | npm | `1.3.9` |
 | `@burtthecoder/mcp-virustotal` | npm | `1.0.21` |
 | `purple-mcp` | git | `07d4992` (Sentinel-One/purple-mcp `v0.7.0`, 2026-06-26) |
@@ -37,7 +37,8 @@ When bumping a pin, edit both. They are checked once via `grep` in CI; a mismatc
 
 `IMAGE_VERSION` is the version tag the image is published under, alongside the moving `latest`. It is its own counter, independent of the MCP versions inside: bump it whenever anything that changes the image bytes changes, which is the Dockerfile, the dispatcher, the bundled `CLAUDE.md`, or any pin above.
 
-**Two rules, both enforced in CI.** It must strictly increase, and a published value is never reused. `s1-mcps:1.3.5` shipped npm 1.3.3, then 1.3.7, then 1.3.8, and the image version once moved backwards from 1.3.7 to 1.3.3. Anyone running `--pull=missing` against an unchanged tag string keeps a months-old build indefinitely with nothing to signal it. Deleting a tag from the registry does not make it reusable, because someone already pulled it.
+<!-- sync:literal: the version below is history, the tag that was republished -->
+**Two rules, both enforced in CI.** It must strictly increase, and a published value is never reused. `s1-mcps:1.3.3` shipped npm 1.3.3, then 1.3.7, then 1.3.8, and the image version once moved backwards from 1.3.7 to 1.3.3. Anyone running `--pull=missing` against an unchanged tag string keeps a months-old build indefinitely with nothing to signal it. Deleting a tag from the registry does not make it reusable, because someone already pulled it.
 
 Because the number does not encode what is inside, verify rather than infer:
 

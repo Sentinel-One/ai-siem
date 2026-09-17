@@ -26,6 +26,12 @@
 *.sql
 *.sqlite
 
+# Eval sample logs are fixtures, not runtime output. The blanket `*.log` above
+# kept three of them out of the repo while they sat on disk locally, so the
+# sdl-log-parser eval suite passed for anyone who had synced and failed for
+# anyone who cloned. They are small, committed inputs a test reads.
+!plugins/s1-secops-skills/skills/*/evals/samples/*.log
+
 # OS generated files #
 ######################
 .DS_Store

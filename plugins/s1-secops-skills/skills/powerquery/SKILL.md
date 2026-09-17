@@ -4,7 +4,7 @@ author: Prithvi Moses <prithvi.moses@sentinelone.com>
 description: >-
   Use any time the user wants to author, debug, optimize, explain, or run a SentinelOne PowerQuery (PQ): Deep Visibility / Event Search queries, XDR/EDR threat hunting, investigations, STAR / Custom Detection rule bodies, PowerQuery Alerts, or Singularity Data Lake dashboard panels. Trigger on PowerQuery, PQ, pq, query, Event Search, Deep Visibility, S1QL, SDL, STAR rule, Custom Detection rule, PowerQuery Alert; on queries using fields like `event.type`, `src.process.*`, `tgt.file.*`, `indicator.*`, `agent.uuid`; on pipes like `| group`, `| filter`, `| let`, `| join`, `| parse`, `| columns`, `| compare`, `| top`, `| union`, `| lookup`, `| savelookup`, `| dataset`. Also trigger when asked to hunt a TTP, IOC, behaviour, or alert pattern on a SentinelOne tenant, even casually ("find powershell reaching out to the internet", "write a detection for lsass access"). Explicitly NOT Microsoft Power Query / M / Excel and NOT Splunk SPL; this is SentinelOne's pipeline query language for security telemetry.
 ---
-
+# SentinelOne PowerQuery
 
 <!-- CONFIG-FILE-ADDRESSING v1 -->
 > **SDL config files: address by `udoId`, and do not trust a REST listing.**
@@ -17,8 +17,6 @@ description: >-
 > address dashboards by `udoId` with `expectedVersion`. `content` is HJSON, not JSON. `S1-Scope`
 > changes which files exist as far as the caller can tell.
 > Full detail: [`sdl-api/references/config-file-graphql.md`](../sdl-api/references/config-file-graphql.md)
-
-# SentinelOne PowerQuery
 
 PowerQuery (PQ) is SentinelOne's pipeline query language for the Singularity Data Lake. It reads like `filter | command | command | …`, events that match the initial filter flow through a sequence of piped transformations (group, let, join, sort, columns, etc.).
 
@@ -252,7 +250,7 @@ Don't read these upfront. Read the one you need.
 
 - `examples/investigations.md`: ready-to-run investigation queries (PowerShell outbound, suspicious cmdline patterns, lateral movement, LOLBins, credential access, defense evasion, user-activity baselines, endpoint heartbeat, indicator prevalence). Each example includes a brief "what this finds" note and the full PQ.
 - `examples/detection-library.md`: PQ bodies ready to paste into a STAR / Custom Detection / PowerQuery Alert, sized to stay within the 1,000-row/1 MB alert budget. Each entry names the MITRE technique and gives a `threshold` suggestion.
-- `examples/behavioral-baselines.md`: statistical baselining recipes for any data source: per-day count slices, moving-average + stddev, z-score detection, silent-pair detection, day-of-week stratification. Read when the user asks to "baseline X behaviour", "detect anomalies in Y", "find users / hosts / IPs behaving differently than usual", or any equivalent. Source-agnostic, works on EDR, identity, network, cloud, email, or any custom log source.
+- `examples/behavioral-baselines.md`: statistical baselining recipes for any data source: per-day count slices, moving-average + stddev, z-score detection, silent-pair detection, day-of-week stratification, and geo-velocity (impossible travel in km/h). Read when the user asks to "baseline X behaviour", "detect anomalies in Y", "find users / hosts / IPs behaving differently than usual", "impossible travel", "logins from two countries at once", or any equivalent. Source-agnostic, works on EDR, identity, network, cloud, email, or any custom log source.
 - `examples/o365-email-hunting.md`: workflow recipes for the most common M365 audit hunts, covering discovery-first patterns, "did user X send mail" questions, per-day cadence, outbound external mail with recipient extraction, top recipient domains, DLP correlation, "user appears but never as actor" attribution gap, and identity-investigation-noise separation. Use whenever the hunt is against an M365 audit source.
 
 ## When to reach for join vs union vs subquery

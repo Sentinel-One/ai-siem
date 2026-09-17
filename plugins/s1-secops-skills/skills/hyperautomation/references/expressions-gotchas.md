@@ -10,7 +10,7 @@ scheduled data-pipeline workflow.
 The third argument means raw output, so the result is handed on as **text**, not an object. Any
 downstream `Function.JQ` that indexes it fails:
 
-```
+```text
 Couldn't apply jq filter ... Error: Cannot index string with string "rows"
 ```
 
@@ -29,7 +29,7 @@ a materialised object.
 
 A JSON literal built by template interpolation is **already an object**. Passing it to `PARSE_JSON`:
 
-```
+```text
 Object of type 'dict' cannot be converted to JSON, only JSON string is allowed
 ```
 
@@ -39,7 +39,7 @@ place entirely. Pass interpolated JSON straight to `Function.JQ`.
 
 ## 3. A `local_var` cannot be read by the action that defines it
 
-```
+```text
 Local Variable jq_pick couldn't be found. Please make sure the referenced
 variable is defined and executed before this action.
 ```
@@ -52,7 +52,7 @@ not at validation.)
 
 Import succeeds. Activation returns:
 
-```
+```text
 400 {"errors":[{"type":"invalid_references","actions_ids":["<id>"]}]}
 ```
 
@@ -72,7 +72,7 @@ changes how much it scans**, and can leave it scanning no complete bucket at all
 
 Verified working, hour-independent, exactly 24 h:
 
-```
+```text
 startTime  {{Function.FORMATTED_DATE(Function.DELTA_NOW(24), "%Y-%m-%dT00:00:00Z")}}
 endTime    {{Function.FORMATTED_DATE(Function.DATETIME_NOW(), "%Y-%m-%dT00:00:00Z")}}
 ```
@@ -106,7 +106,7 @@ Cheap guard: fail the build on any `Function.<NAME>` not present in `functions-r
 A `variable` action referencing a deliberately non-existent attribute is an intentional way to
 **fail a run**, with the attribute name doubling as the error string:
 
-```
+```text
 {{poll-action.body.LRQ_TERMINATED_see_lrq_http_status_and_lrq_error_body}}
 ```
 
@@ -114,7 +114,7 @@ This reads as a bug on first encounter and is easily misdiagnosed as one. It is 
 improvable. Set the real diagnostics in **preceding** variables in the same action so the execution
 record carries the actual status code and message, then throw last:
 
-```
+```text
 lrq_http_status  {{poll-action.status_code}}
 lrq_error_body   {{Function.JQ(poll-action.body, "(.message // .code // .detail // tostring)", true)}}
 abort            {{poll-action.body.LRQ_TERMINATED_see_lrq_http_status_and_lrq_error_body}}

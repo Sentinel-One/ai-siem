@@ -1,5 +1,129 @@
 # Changelog
 
+## 1.3.9
+
+Three defects from a field smoke test, plus the delivery-channel fault that kept
+the last two releases from reaching the person who reported them. Tool count
+stays 32.
+
+### Image tags are strictly increasing and never reused
+
+The image version stays its own counter, independent of the MCP versions inside
+it. What changes is the discipline around it, because the tag was being reused:
+`s1-mcps:1.3.3` shipped npm 1.3.3, then 1.3.7, then 1.3.8, and the image version
+once moved **backwards**, 1.3.7 to 1.3.3. With the documented `--pull=missing`
+against a tag string that never changes, Docker has nothing to notice, so anyone
+who pulled in August kept an August build while believing they were current. A
+report of "sdl_list_files 500s at default scope" turned out to be exactly that:
+a build from before the 1.3.4 and 1.3.5 scope work.
+
+The documented Docker config moves to `:latest` with **`--pull=always`**. Version
+tags remain available and are now genuinely immutable, for reproducible demos and
+support. Because the image number does not encode what is inside it, verify
+rather than infer:
+
+    docker run --rm --entrypoint npm <image> ls -g --depth=0
+
+The CI bump guard had two holes and both are closed. It tested that the
+`IMAGE_VERSION` line *changed* rather than that the version *increased*, which
+is how the backwards move passed; it now requires a strict semver increase. And
+it permitted a publish whenever the tag was absent from the registry, which made
+"delete the tag, republish different bytes" a supported route; that escape hatch
+is gone. A tag someone already pulled does not become safe to reuse by being
+deleted.
+
+### Fixed
+
+- **`ha_import_workflow` double-wrapped the payload.** The endpoint's body is
+  `{"data": {...}}`, the hyperautomation skill's smoke-test example showed that
+  correctly, and this tool adds the envelope itself, so pasting the documented
+  example sent `{"data":{"data":{...}}}` and the API answered
+  `422 body.data.name Field required`, which reads like a broken workflow rather
+  than one extra level of nesting. Both artifacts were right in isolation and
+  nothing ever executed one against the other.
+
+  The tool now unwraps a wrapped payload when it is unambiguous, a `data` object
+  present and no top-level `name`, and says so in the response rather than
+  silently accepting both shapes. A workflow that legitimately owns a `data` key
+  keeps it. The skill now prints both forms, labelled: Form A the raw API body,
+  Form B the bare object this tool wants.
+
+- **`sdl_list_dashboards` had no limit.** Measured on an MSSP account it returned
+  442,581 characters across 17,111 lines, past any usable context budget. It now
+  takes `limit` (default 100, clamped to 1000), `offset` and `namesOnly`, and
+  reports `totalCount`, `hasMore` and `nextOffset`. `namesOnly` returns `{id,
+  name}` and is about four times smaller, measured, which covers the common case
+  of resolving a name to an id. `sdl_list_files` gets the same treatment,
+  default 500, with `count` still reporting the full post-filter total so
+  existing callers read the number they expect.
+
+- **`ha_export_workflow` could not be scoped.** It sent no scope parameter, while
+  `ha_import_workflow` already documents that an unscoped call on a scoped tenant
+  returns a misleading `403 Insufficient permissions`. It now accepts
+  `accountIds` / `siteIds`, and an unscoped 403 names scope as a possible cause
+  instead of leaving the reader to conclude "missing role" and stop.
+
+### Documented, not fixed here
+
+**Omitted parameters that declare a default are rejected by the client.** Calling
+`powerquery_run`, `uam_list_alerts`, `ha_list_workflows` and four others without
+passing every argument fails with `expected nonoptional, received undefined`
+before the request reaches this server. That is not this package: it has no
+dependencies and does not use zod, those are Zod v4 codes from the host, and the
+error arrives pre-dispatch. The host maps a JSON-Schema property carrying
+`default` to a non-optional field, validating against the schema's output type
+rather than its input type. 7 of 32 tools and 16 parameters are affected, listed
+in the README with the pass-every-parameter workaround. Reported upstream.
+
+**A dashboard `id` is often null, and that is its age, not a fault.** Only
+dashboards created through the `dashboardsV2` surface carry a udoId; ones created
+the older name-addressed way do not. On an established account most predate it,
+measured 397 of 1,555 with an id, and `sdl_list_files` reports exactly the same
+397. Address a legacy dashboard by its `/dashboards/<name>` path. Recorded in the
+`sdl_list_dashboards` description, along with the fact that results are ordered by
+name and that order is stable across calls, so page on `name` and not on `id`.
+
+The `limit`, `offset` and `namesOnly` parameters added above deliberately carry
+no `default` keyword for this reason; their defaults live in the handler and are
+stated in the descriptions. A new test pins the set of default-bearing
+properties so the blast radius cannot grow by accident.
+
+### Tests
+
+132 JS (+14). The 1.3.8 suite asserted structure, tool count, names, description
+keywords, with the HTTP layer mocked, and all four defects lived in the space
+that left uncovered. Four new classes:
+
+- **Executable doc examples.** Both JSON blocks in the hyperautomation skill's
+  smoke-test section are parsed out of the markdown and run through
+  `ha_import_workflow`, asserting the outbound body carries exactly one `data`
+  envelope. A documented payload that cannot survive the tool beside it now fails
+  the build.
+- **Outbound wire shape.** Assert the body that is sent, not merely that a call
+  was made.
+- **Client-parity schema lint.** Every tool must be callable with only its
+  `required` fields; no property may be both required and defaulted; and the set
+  of default-bearing properties is frozen against the known list.
+- **Response budget.** List tools are driven with MSSP-scale fixtures, 1,200
+  dashboards and 2,000 config files, and must stay under 200,000 characters.
+  Cardinality is a property of the tenant, so only a fixture can supply it.
+
+### Docker
+
+Bundle image **1.3.6**, pinning npm 1.3.9.
+
+1.3.4 shipped first with the same npm pin. Two bumps followed, both for the same
+reason and neither for an MCP change: `CLAUDE.md` is COPY'd into the image, so
+editing it changes the image bytes. 1.3.5 came from one such edit, and 1.3.6 from
+a second, a blockquote that was rendering as two stacked quotes because a blank
+line had split it. CI refused to republish over either, which is the guard doing
+exactly its job. The image number tracks image content, not the MCP version, and
+a published tag is never reused.
+
+The npm package, the plugin and the image are three independent streams. Image
+1.3.6 bundles npm 1.3.9 and ships alongside plugin 1.3.7; none of those numbers
+predicts another.
+
 ## 1.3.7
 
 Minor, not patch: a tool is gone and the log-ingest credential changed. Both

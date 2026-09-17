@@ -12,9 +12,9 @@ Supported from platform **S-26.2.6**.
 
 ---
 
-# Part 1: product behaviour
+## Part 1: product behaviour
 
-## Overview
+### Overview
 
 Interaction forms let a workflow collect complex, structured input from a person in the middle of a
 run. The workflow creates a form, shares a link to it (by email, chat message, ticket comment),
@@ -24,7 +24,7 @@ downstream actions.
 Use forms when the existing simple-choice interaction (buttons and option links) is not enough:
 when you need free text, numbers, dates, JSON payloads, or several answers at once.
 
-## Common use cases
+### Common use cases
 
 - **Approval with context**: ask an approver not just to approve or deny but to supply a reason,
   a ticket number, or a scope for the approved action.
@@ -35,7 +35,7 @@ when you need free text, numbers, dates, JSON payloads, or several answers at on
 - **Change requests**: gather parameters for a remediation (maintenance window, target scope)
   before executing it.
 
-## How it works
+### How it works
 
 Two actions, with a delivery action between them:
 
@@ -45,7 +45,7 @@ Two actions, with a delivery action between them:
 3. **Wait for Interaction** pauses the workflow until the form is submitted or the timeout expires,
    and exposes the submitted values as its output.
 
-## Creating a form
+### Creating a form
 
 Add Create Interaction, select the **Form** interaction type, then add fields. Each field defines:
 
@@ -56,13 +56,13 @@ Add Create Interaction, select the **Form** interaction type, then add fields. E
 
 **Preview form** renders the form as the respondent will see it.
 
-## Create Interaction outputs
+### Create Interaction outputs
 
 - `interaction_id`: used by Wait for Interaction to identify which interaction to wait on.
 - `interaction_url`: the shareable form link. Live from the moment the action runs.
 - `interaction_type`: `"Form"`.
 
-## Pausing the workflow
+### Pausing the workflow
 
 Add Wait for Interaction after the link has been delivered. Set its identifier to the
 `interaction_id` output of the Create Interaction action, and configure the timeout in minutes,
@@ -70,7 +70,7 @@ hours or days. If the timeout expires before submission, the workflow continues 
 `timeout: true` so you can branch accordingly. While waiting, the execution shows a **Waiting**
 status.
 
-## Respondent experience
+### Respondent experience
 
 The respondent opens the link and sees the form page, headed "Your input is needed" with the
 subtitle "A workflow requires your response before continuing", showing the fields and helper
@@ -85,7 +85,7 @@ Three page states:
 | Invalid or no longer active | "This interaction can't be displayed." |
 | Already submitted | "This interaction has already been completed." |
 
-## Using the response
+### Using the response
 
 The Wait for Interaction output contains the submitted values keyed by field name:
 
@@ -101,7 +101,7 @@ The Wait for Interaction output contains the submitted values keyed by field nam
 
 Reference these in any downstream action exactly like any other action output.
 
-## Limitations
+### Limitations
 
 - **Respondent permissions**: in the initial release the person filling out the form must have
   view permissions for the origin workflow. Fully public, no-login forms are not available in this
@@ -116,7 +116,7 @@ Reference these in any downstream action exactly like any other action output.
 - **GovCloud**: Create Interaction and Wait for Interaction are not supported in FedRAMP GovCloud
   consoles.
 
-## FAQ
+### FAQ
 
 **How is this different from the existing interactions?** Existing interactions collect a simple
 choice (buttons and option links). Forms collect structured, multi-field input in one submission.
@@ -131,12 +131,12 @@ the workflow continues with `timeout: true`, letting you branch (escalate, send 
 
 ---
 
-# Part 2: JSON and API layer
+## Part 2: JSON and API layer
 
 Everything below was validated against a live tenant on S-26.2.6 (2026-08-18): import, activation,
 run, form render, submission, and downstream resolution.
 
-## Create Interaction: form
+### Create Interaction: form
 
 `form_schema` mirrors the manual trigger's `dynamic_properties` shape exactly, including the same
 seven input types.
@@ -183,13 +183,13 @@ seven input types.
 - Field `type`: `text`, `number`, `json`, `email`, `date`, `time`, `checkbox`.
 - The server normalises each field by adding `"options": null`. Emit it to match canonical shape.
 
-### `options` is a UI gate, not a runtime one
+#### `options` is a UI gate, not a runtime one
 
 A saved form-type action exports with `"options": []` and executes correctly, but the console will
 not enable **Test Action** until at least one option exists. Populate two (for example
 `["Approve", "Dismiss"]`) so the action is testable in the UI.
 
-### Outputs and the interaction URL
+#### Outputs and the interaction URL
 
 `interaction_id`, `interaction_type`, and `interaction_url`, where the URL is
 `{console}/hyperautomation/interactions/{interaction_id}`. The id is a long compressed token that
@@ -198,7 +198,7 @@ encodes the Create action id.
 - **Choice** interaction: one URL per option, `{{create-slug.interaction_url.<option>}}`.
 - **Form** interaction: a single `{{create-slug.interaction_url}}`.
 
-## Wait for Interaction
+### Wait for Interaction
 
 ```json
 {
@@ -231,7 +231,7 @@ References on resume:
 `responder.id` is not in the product doc but is present in the payload. It gives respondent
 attribution for the audit trail at no extra cost.
 
-## HARD RULE: guard every OPTIONAL field with `Function.DEFAULT`
+### HARD RULE: guard every OPTIONAL field with `Function.DEFAULT`
 
 An optional field the respondent leaves blank is **absent from `response.result` entirely**, not
 present-and-null. A bare reference to an absent attribute **errors the whole run**
@@ -255,7 +255,7 @@ Required fields are guaranteed present by form validation and can be referenced 
 Tenant-validated: a build with a bare reference errored on a blank optional time field; the same
 build with the DEFAULT guard completed and returned `"not provided"`.
 
-## Approval gates fail closed
+### Approval gates fail closed
 
 Test for the explicit approval value AND a non-timeout, never `not_equals`:
 
@@ -276,19 +276,19 @@ Test for the explicit approval value AND a non-timeout, never `not_equals`:
 Route the destructive action off the `"true"` branch only. On timeout the value resolves empty,
 which satisfies any `not_equals` test, so a fail-open gate auto-approves on silence.
 
-## Activation enforces the pairing
+### Activation enforces the pairing
 
 A Create Interaction whose `interaction_id` is not referenced by some Wait for Interaction's
 `identifier` will not activate. Import succeeds; activation is where it is caught.
 
-## Canonical placement in a SOC flow
+### Canonical placement in a SOC flow
 
 The form gates the **remediation**, after the AI has done its work. It does not feed the
 investigation. See `autonomous-soc-template.md` for the full shape.
 
 ---
 
-# Part 3: doc-to-JSON parity
+## Part 3: doc-to-JSON parity
 
 | Product doc statement | JSON / API representation | Verified |
 |---|---|---|

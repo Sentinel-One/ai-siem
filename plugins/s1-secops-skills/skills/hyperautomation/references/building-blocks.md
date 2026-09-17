@@ -380,7 +380,7 @@ Also valid but unused in corpus: `"not_contains"`, `"is_empty"`, `"is_not_empty"
 
 > **`condition_type` is universally `"multi"`** in active flows (1,697 of 1,697). Always emit
 > multi, even for a single comparison.
-
+>
 > **For `comparison_operator: "in"`**, encode `compared_value` as a JSON string of an array
 > (e.g. `"[\"HIGH\",\"CRITICAL\"]"`), not a raw array.
 

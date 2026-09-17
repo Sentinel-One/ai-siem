@@ -1,0 +1,3 @@
+2026-04-20T10:25:34.123Z host-7 app:auth {"user":"carol","action":"login","result":"success","meta":{"ip":"10.0.0.5","country":"US","mfa":true}}
+2026-04-20T10:25:35.001Z host-7 app:auth {"user":"alice","action":"login","result":"failed","meta":{"ip":"10.0.0.99","country":"RU","mfa":false}}
+2026-04-20T10:25:36.044Z host-8 app:auth {"user":"bob","action":"logout","result":"success","meta":{"ip":"10.0.0.5","country":"US","mfa":true}}

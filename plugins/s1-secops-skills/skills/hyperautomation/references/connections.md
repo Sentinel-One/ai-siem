@@ -69,6 +69,7 @@ collector needs both bound, one per action.
 
 `POST {HEC_INGEST_URL}/v1/alerts` (UAM alert ingest) is the opposite case on the same host: console
 API token **and** the `S1-Scope` header. Do not conflate the two.
+
 - **Find the `integration_id`** without hard-coding it: `GET /connections/scope?<scope>` on a scope
   that already has the connection and read each connection's `integration_id`, or list the tenant's
   integrations. Reuse that id when creating the same connection type in another scope.

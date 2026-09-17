@@ -20,7 +20,7 @@ Full reference for PowerQuery expression syntax. Read when the query needs anyth
 | Operator | Form |
 |---|---|
 | AND | `a b`, `a and b`, `a AND b`, `a && b` |
-| OR | `a or b`, `a OR b`, `a || b` |
+| OR | `a or b`, `a OR b`, `a \|\| b` |
 | NOT | `not a`, `NOT a`, `!a` |
 | Arithmetic | `+ - * / %` (modulo), unary `-x` |
 | Comparison | `< <= > >= == != =` (= is synonym for ==) |
@@ -114,7 +114,7 @@ When a user describes the search in English, the phrasing usually maps to one of
 | "find the substring, case doesn't matter" | `field contains 'value'` |
 | "find the substring, exact case" | `field contains:matchcase 'Value'` |
 | "OR over several substrings on one field" | `field contains ('a','b','c')` |
-| "all events" / "no filter" | start the query with `|` (empty initial filter); never use `*` alone |
+| "all events" / "no filter" | start the query with `\|` (empty initial filter); never use `*` alone |
 
 Three common mistakes the phrasebook prevents:
 

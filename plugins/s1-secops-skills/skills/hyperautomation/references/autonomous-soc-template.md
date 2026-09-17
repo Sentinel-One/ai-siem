@@ -63,7 +63,7 @@ a snippet whenever you notice the same action graph appearing in more than one w
 Fully autonomous is one end of the spectrum. The far more common ask is **the AI investigates, the
 human adjudicates**. The order matters and is easy to get backwards:
 
-```
+```text
 Alert Trigger (auto)
   → Alert Context (variable)
   → Trigger Agentic Investigation      investigation starts from workflow logic

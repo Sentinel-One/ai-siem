@@ -44,14 +44,27 @@ ASSETS = SKILL_DIR / "assets"
 
 
 def _load_linter():
-    spec = importlib.util.spec_from_file_location(
-        "run_evals", str(ROOT / "tools" / "run_evals.py"))
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    """Import `tools/run_evals.py`, or return None where the repo has no such tree.
+
+    A fixed `ROOT / "tools"` path exists only in this repo. Skills vendored into
+    another repository land several levels deeper, and because this import runs
+    at module scope the resulting FileNotFoundError aborted collection: the whole
+    suite contributed no signal instead of failing anything visibly. Walk up for
+    the linter, and skip only the tests that actually need it.
+    """
+    for base in [SKILL_DIR, *SKILL_DIR.parents]:
+        cand = base / "tools" / "run_evals.py"
+        if cand.is_file():
+            spec = importlib.util.spec_from_file_location("run_evals", str(cand))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+    return None
 
 
 LINTER = _load_linter()
+NEEDS_LINTER = unittest.skipIf(
+    LINTER is None, "tools/run_evals.py not present in this repository layout")
 
 SKILL = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
 ONBOARDING = (REFS / "data-source-onboarding.md").read_text(encoding="utf-8")
@@ -79,8 +92,18 @@ class CatalogPlaybookAndTemplateWiring(unittest.TestCase):
         # named bare in prose as "the `references/x.md` there"), so a name
         # resolves against this skill, the repo root, or any sibling skill.
         def resolves(n: str) -> bool:
-            return (SKILL_DIR / n).is_file() or (ROOT / n).is_file() or any(
-                (d / n).is_file() for d in ROOT.iterdir() if d.is_dir())
+            if (SKILL_DIR / n).is_file() or (ROOT / n).is_file():
+                return True
+            if any((d / n).is_file() for d in ROOT.iterdir() if d.is_dir()):
+                return True
+            # A vendoring repo prefixes sibling skill directories, so
+            # `powerquery/references/x.md` lives at `sentinelone-powerquery/...`
+            # there. Accept either spelling.
+            head, _, tail = n.lstrip("./").partition("/")
+            return bool(tail) and any(
+                (ROOT / alt / tail).is_file()
+                for alt in (f"sentinelone-{head}",
+                            head.replace("sentinelone-", "", 1)))
 
         missing = [n for n in sorted(named) if not resolves(n)]
         self.assertEqual([], missing,
@@ -107,12 +130,35 @@ class CatalogPlaybookAndTemplateWiring(unittest.TestCase):
                          + ", ".join(missing))
 
     def test_catalog_table_has_a_playbook_column_entry_per_row(self):
+        """The catalog must list every solution the description enumerates.
+
+        Derived, not hardcoded. The count was pinned at 8, which broke the
+        moment a repo legitimately carried a different set: the GHE guidelines
+        repo drops Detection-as-Code, so its description enumerates 7 and its
+        catalog has 7 rows, and a literal 8 failed a skill that was correct.
+        Reading the expected count from the description keeps the real invariant,
+        that the two agree, without assuming which solutions a given repo ships.
+
+        Equality, not a lower bound. A `>=` here let the catalog grow past what
+        the description advertises, which is the commoner drift of the two: a
+        solution gets a catalog row and the frontmatter is never updated, so the
+        skill stops triggering on it. Both counts are 8 in claude-skills and 7 in
+        the scrubbed guidelines repo, exactly equal in each, so equality is the
+        assertion the docstring was already claiming.
+        """
         rows = [r for r in SKILL.splitlines()
                 if r.startswith("|") and "references/" in r]
-        self.assertGreaterEqual(
-            len(rows), 8,
-            "the solution catalog has fewer rows than the frontmatter "
-            "description advertises solutions")
+        m = re.search(r'^description:\s*"(.*?)"\s*$', SKILL, re.M | re.S)
+        self.assertIsNotNone(m, "SKILL.md has no quoted description")
+        advertised = [int(n) for n in re.findall(r"\((\d+)\)", m.group(1))]
+        self.assertTrue(advertised,
+                        "the description no longer enumerates its solutions")
+        self.assertEqual(
+            max(advertised), len(rows),
+            f"the solution catalog has {len(rows)} rows but the frontmatter "
+            f"description advertises {max(advertised)} solutions; a row without "
+            f"a description entry means the skill will not trigger on it, and a "
+            f"description entry without a row points at a playbook that is gone")
 
 
 class ParserEligibilityGate(unittest.TestCase):
@@ -155,6 +201,7 @@ class ParserEligibilityGate(unittest.TestCase):
         gotchas = ONBOARDING[ONBOARDING.index("## Gotchas"):]
         self.assertRegex(gotchas, r"(?i)do not assume the source is editable")
 
+    @NEEDS_LINTER
     def test_absence_probe_uses_the_parenthesised_idiom(self):
         # `!(field = *)`. Bare `!field` matches every row and reports a source
         # as entirely missing a field it has.
@@ -335,6 +382,7 @@ class DocumentedQueriesLintClean(unittest.TestCase):
         for f in sorted(ASSETS.glob("*.pq")):
             yield f, f.read_text(encoding="utf-8")
 
+    @NEEDS_LINTER
     def test_examples_and_pq_assets_pass_the_repo_linter(self):
         failures = []
         for f, body in self._blocks():
@@ -358,6 +406,7 @@ class EvalSuiteIsGradable(unittest.TestCase):
         self.path = SKILL_DIR / "evals" / "evals.json"
         self.suite = json.loads(self.path.read_text(encoding="utf-8"))
 
+    @NEEDS_LINTER
     def test_structure_is_clean(self):
         errs = LINTER.check_structure(self.suite, self.path)
         self.assertEqual([], errs, "\n".join(errs))

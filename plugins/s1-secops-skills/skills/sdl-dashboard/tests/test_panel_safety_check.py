@@ -68,6 +68,30 @@ class TestS01SiteScopeMissing(unittest.TestCase):
         self.assertIn("S01", ids(issues))
         self.assertIn("not on the target site id", issues[0][2])
 
+    def test_target_id_outside_the_predicate_does_not_count_as_scoped(self):
+        # Regression: the rule used to pass any query containing the literal
+        # `site.id` AND the target id anywhere in the text, short-circuiting
+        # ahead of the structural check. So a predicate pointing at ANOTHER
+        # site passed as long as the target id appeared in some unrelated
+        # position, which is precisely the cross-site read S01 exists to stop.
+        q = (f"site.id='{OTHER_SITE_ID}' account.name='tenant-{SITE_ID}' "
+             f"| group c=count() | limit 1")
+        issues = psc.check(dash(number(q)), [], site_id=SITE_ID)
+        self.assertIn("S01", ids(issues))
+        self.assertIn("not on the target site id", issues[0][2])
+
+    def test_target_id_only_in_a_comment_does_not_count_as_scoped(self):
+        q = (f"site.id='{OTHER_SITE_ID}' | group c=count() | limit 1 "
+             f"// migrated from {SITE_ID}")
+        self.assertIn("S01", ids(psc.check(dash(number(q)), [], site_id=SITE_ID)))
+
+    def test_target_site_inside_an_in_list_still_passes(self):
+        # `site.id in [a, b]` genuinely includes the target site; it must not
+        # be flagged just because the value is a list rather than a literal.
+        q = (f"site.id in ['{OTHER_SITE_ID}', '{SITE_ID}'] "
+             f"| group c=count() | limit 1")
+        self.assertNotIn("S01", ids(psc.check(dash(number(q)), [], site_id=SITE_ID)))
+
     def test_allow_account_scope_queries_suppresses_S01(self):
         d = dash(number("event.time=* | group c=count() | limit 1"))
         issues = psc.check(d, [], site_id=SITE_ID, allow_account_scope_queries=True)

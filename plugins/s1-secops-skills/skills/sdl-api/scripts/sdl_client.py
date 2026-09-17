@@ -523,6 +523,7 @@ class SDLClient:
         if team_emails:
             body["teamEmails"] = team_emails
         return self._request("POST", "/api/query", json_body=body,
+                             allow_retry=True,  # read-only: no write to re-send
                              extra_headers=self._scope_headers(scope))
 
     def numeric_query(
@@ -555,6 +556,7 @@ class SDLClient:
         if priority:
             body["priority"] = priority
         return self._request("POST", "/api/numericQuery", json_body=body,
+                             allow_retry=True,  # read-only: no write to re-send
                              extra_headers=self._scope_headers(scope))
 
     def facet_query(
@@ -586,6 +588,7 @@ class SDLClient:
         if priority:
             body["priority"] = priority
         return self._request("POST", "/api/facetQuery", json_body=body,
+                             allow_retry=True,  # read-only: no write to re-send
                              extra_headers=self._scope_headers(scope))
 
     def timeseries_query(
@@ -605,6 +608,7 @@ class SDLClient:
             raise ValueError("queries must be a non-empty list")
         return self._request(
             "POST", "/api/timeseriesQuery", json_body={"queries": queries},
+            allow_retry=True,  # read-only: no write to re-send
             extra_headers=self._scope_headers(scope),
         )
 
@@ -633,6 +637,7 @@ class SDLClient:
         if team_emails:
             body["teamEmails"] = team_emails
         return self._request("POST", "/api/powerQuery", json_body=body,
+                             allow_retry=True,  # read-only: no write to re-send
                              extra_headers=self._scope_headers(scope))
 
     # =========================================================================

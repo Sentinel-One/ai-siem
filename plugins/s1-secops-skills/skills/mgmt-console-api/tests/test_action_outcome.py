@@ -228,5 +228,46 @@ class TestTriggerActionsQuery(unittest.TestCase):
             self.assertNotIn(wrong, ref)
 
 
+class FailureDiagnosisIsScopedToTheFailedAlerts(unittest.TestCase):
+    """`alertAvailableActions` is filtered by alert type as well as by the
+    caller's permissions. Diagnosing a failure against the ORIGINAL filter, when
+    that filter matches a mix of alert types, explains one alert's refusal with
+    another alert's capabilities. The mutation already returns the failing ids.
+    """
+
+    OTHER = "02b18c3a-7ff3-814b-c183-4f82bf728c7f"
+
+    def test_collects_failed_ids_in_order_without_duplicates(self):
+        resp = _triggered([
+            {"actionId": "S1/alert/statusUpdate",
+             "success": [{"id": self.OTHER}],
+             "failure": [{"id": ALERT, "errorMessage": "Missing UAM manage permissions"}]},
+            {"actionId": "S1/alert/addNote",
+             "failure": [{"id": ALERT, "errorMessage": "Missing UAM manage permissions"}]},
+        ])
+        self.assertEqual([ALERT], ua._failed_alert_ids(resp))
+
+    def test_succeeding_alert_is_not_diagnosed(self):
+        resp = _triggered([
+            {"actionId": "S1/alert/statusUpdate",
+             "success": [{"id": self.OTHER}],
+             "failure": [{"id": ALERT}]},
+        ])
+        self.assertNotIn(self.OTHER, ua._failed_alert_ids(resp))
+
+    def test_no_ids_present_yields_empty_so_the_caller_can_fall_back(self):
+        self.assertEqual([], ua._failed_alert_ids(
+            _triggered([{"actionId": "x", "failure": [{"errorMessage": "e"}]}])))
+        self.assertEqual([], ua._failed_alert_ids(
+            {"__typename": "TriggerActionsError", "errors": [{"errorMessage": "e"}]}))
+
+    def test_trigger_actions_narrows_the_diagnosis_filter(self):
+        src = (SKILL_DIR / "scripts" / "unified_alerts.py").read_text()
+        self.assertIn("_failed_alert_ids(resp)", src,
+                      "the diagnosis must be scoped to the alerts that actually "
+                      "failed, not to the original filter")
+        self.assertIn("filter_input=diag_filter", src)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

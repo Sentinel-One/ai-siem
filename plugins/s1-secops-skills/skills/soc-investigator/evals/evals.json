@@ -277,6 +277,54 @@
           }
         }
       ]
+    },
+    {
+      "id": 5,
+      "name": "ttp-sweep-separates-simulation-from-intrusion",
+      "prompt": "No alert ID. Sweep the logs for the last 7 days and tell me what MITRE TTPs are in there. Everything you need is pasted below, no tenant lookup:\n\n    alert_stream_events: 207483\n    alert_stream_events_with_attack_mapping: 88620\n    distinct_alerts: 40218\n    top_mapped_techniques: [{\"uid\":\"T1003.001\",\"events\":454},{\"uid\":\"T1558.001\",\"events\":270},{\"uid\":\"T1490\",\"events\":174}]\n    process_creation_attack_tooling: [{\"host\":\"DESKTOP-KTQC4B8\",\"site\":\"vikram\",\"executions\":389,\"distinct_binaries\":13,\"binaries\":[\"Picus.Simulator.exe\",\"Picus.Tray.exe\",\"mimikatz.exe\",\"lazagne.exe\",\"adfind.exe\"]}]\n    cloudtrail_top_principals: [{\"arn\":\"arn:aws:sts::307946665489:assumed-role/s1-cns-audit-2073348921011924636/SentinelOne-Scan\",\"calls\":80727},{\"arn\":\"arn:aws:iam::517588217045:root\",\"calls\":4580}]\n\nSave results under `ttp_sweep/`: `sweep_findings.json` with the keys `verdict`, `confidence`, `mapped_coverage_pct` and `suppressed`, plus `sweep_report.md` and `ttp_matrix.csv`.",
+      "expected_output": "The headline is adversary simulation and authorised scanning, not a live intrusion. The credential-access, Kerberos and impact techniques trace to one host running a Picus BAS agent alongside the attack tooling, and the AWS enumeration traces to the named s1-cns-audit posture-scanner role, so both are reported as suppressed with their named cause rather than deleted. Suppressed activity still appears in the report. The root-account API usage is pulled out and reported separately, because it is not simulation. Alert events (207483) are never presented as alert count (40218). Mapped coverage is reported as 88620 of 207483, about 43 percent, and the unmapped remainder is called out as a detection-engineering gap. No technique is called a confirmed true positive on detection-engine output alone; unconfirmed clusters are capped at SUSPICIOUS - Pending Confirmation. The report ends with the query appendix.",
+      "assertions": [
+        {
+          "type": "json_parses",
+          "glob": "ttp_sweep/sweep_findings.json"
+        },
+        {
+          "type": "file_exists",
+          "glob": "ttp_sweep/ttp_matrix.csv"
+        },
+        {
+          "type": "file_json_path",
+          "glob": "ttp_sweep/sweep_findings.json",
+          "path": "verdict",
+          "matches": "(?i)simulation|not a live intrusion|no confirmed compromise"
+        },
+        {
+          "type": "file_matches",
+          "glob": "ttp_sweep/sweep_report.md",
+          "pattern": "(?i)Picus"
+        },
+        {
+          "type": "file_matches",
+          "glob": "ttp_sweep/sweep_report.md",
+          "pattern": "(?i)s1-cns-audit"
+        },
+        {
+          "type": "file_matches",
+          "glob": "ttp_sweep/sweep_report.md",
+          "pattern": "(?i)root"
+        },
+        {
+          "type": "file_matches",
+          "glob": "ttp_sweep/sweep_report.md",
+          "pattern": "(?i)query appendix"
+        },
+        {
+          "type": "file_matches",
+          "glob": "ttp_sweep/sweep_report.md",
+          "pattern": "(?i)confirmed true[ _-]positive",
+          "count": 0
+        }
+      ]
     }
   ]
 }

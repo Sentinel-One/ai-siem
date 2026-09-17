@@ -4,7 +4,7 @@ author: Prithvi Moses <prithvi.moses@sentinelone.com>
 description: >
   Use this skill any time the user wants to create, edit, design, generate, deploy, or debug a SentinelOne Singularity Data Lake (SDL) dashboard. Triggers include: "build me a dashboard", "create a dashboard panel", "write dashboard JSON", "add a panel to my dashboard", "deploy a dashboard to SDL", "I want a dashboard that shows...", "can you make a dashboard for...", "threat dashboard", "SOC dashboard", "network dashboard", "audit dashboard", "O365 dashboard", "hunting dashboard", or any request that involves SDL/Scalyr dashboard JSON. Also triggers when the user pastes dashboard JSON and wants help fixing, improving, or extending it. Use alongside sdl-api to deploy dashboards, and alongside powerquery to validate or compose the queries inside panels. Always use this skill when dashboards, dashboard panels, or SDL visualization is involved, even if the user just says "show me [metric] over time" in a security/SDL context.
 ---
-
+# SentinelOne SDL Dashboard Skill
 
 <!-- CONFIG-FILE-ADDRESSING v1 -->
 > **SDL config files: address by `udoId`, and do not trust a REST listing.**
@@ -17,8 +17,6 @@ description: >
 > address dashboards by `udoId` with `expectedVersion`. `content` is HJSON, not JSON. `S1-Scope`
 > changes which files exist as far as the caller can tell.
 > Full detail: [`sdl-api/references/config-file-graphql.md`](../sdl-api/references/config-file-graphql.md)
-
-# SentinelOne SDL Dashboard Skill
 
 This skill helps you design, author, and deploy Singularity Data Lake (SDL) dashboards, from a single panel to a full multi-tab SOC dashboard. Dashboards live as configuration files in SDL and are authored as JSON (or a relaxed JavaScript-literal superset of it). You deploy them via the `sdl-api` skill's `put_file` method.
 
@@ -54,6 +52,30 @@ Two things that bite immediately after a successful read:
   site-scoped dashboard is invisible to an account-scoped listing, so "not found" is always
   scope-relative.
 
+## Defaults you apply without being asked
+
+The user should not have to remember any of this. If a prompt has to carry the constraint, the skill
+has failed. "Build a SOC leader dashboard" is a complete instruction; treat every item below as
+already requested.
+
+| Always | Never wait to be told |
+|---|---|
+| Put the initial predicate of a `\| datasource` query inside `where (...)` | Do not write `\| datasource alerts \| filter status = 'NEW'` |
+| Run source enumeration and schema discovery before authoring, and use only fields you confirmed | Do not assume a field exists because it exists on another tenant |
+| Search the account for a deployed dashboard already doing this, and copy its working pattern | Do not theorise about why something cannot work before looking |
+| Lead the dashboard `description` with a bold instruction to set the data selector to **All Data** | Do not ship a `\| datasource` or alert-stream dashboard without it |
+| Validate every panel query against the tenant, then check the visual's column contract | Do not treat an API pass as a render pass |
+| Match the time unit to the surface: `now()` ns, inventory `createdAt` ms, ActivityFeed `time` s | Do not hand-convert without checking the table in the UQL section |
+| Use a chained `group` for exact distinct counts on inventory | Do not quote `estimate_distinct` as exact |
+| Terminate number and table panels with `\| limit` | |
+| Say so plainly when a source is empty on this tenant, and do not ship the panel | Do not ship a panel that renders empty and hope nobody looks |
+| Name a panel after what its query actually measures | Do not let a title overstate the query |
+
+When a request conflicts with one of these, say which constraint applies and what you did instead,
+rather than silently following the prompt into a broken panel.
+
+---
+
 ## Workflow
 
 This workflow is mandatory for every new or modified dashboard. Steps 0, 1, and 7 are non-negotiable: pre-flight discovery, the safety pre-flight check, and the post-deploy log-evidence report. Skipping any of them produces dashboards that look fine in isolation but mislead, hang, or silently drop data.
@@ -77,141 +99,113 @@ This workflow is mandatory for every new or modified dashboard. Steps 0, 1, and 
 
 8. **Screenshot review with the user (MANDATORY).** API validation proves each panel's query returns rows; it does NOT prove the panel RENDERS. Render-only failures happen in the browser, not the API, so `validate_dashboard.py` cannot see them: a panel showing "Couldn't load content", a markdown tile showing "Untitled", a number reading "34 principals" under a title that already says principals, an empty chart, or a broken legend. After EVERY deploy, ALWAYS ask the user to open the dashboard and send screenshots of each tab, then read them, diagnose each visual defect, fix the JSON, and re-deploy, without waiting to be asked. Prompt explicitly, e.g.: "The dashboard is deployed at `/dashboards/<name>`. Please open it and send screenshots of each tab so I can catch any render-only issues and fix them automatically." Treat this as part of deployment, not optional polish. Fixes for the common render-only defects are in the **Quick triage** table.
 
-## Scope doctrine: where the dashboard lives vs. what its queries read
+## Scope doctrine
 
-**Two independent decisions. Get them both explicitly before authoring a panel.**
-
-1. **Deployment scope**: which scope the dashboard object is filed at (Global, Account, or Site). Set by the `S1-Scope` header on the create call, or by `shareResource` afterwards.
-2. **Query scope**: which data the panels read. Set by what you put in the query.
-
-### The rule
-
-**A dashboard deployed at a SITE must scope its panel queries to that site with an explicit `site.id` predicate.** Add `site.id='<siteId>'` to every query panel.
-
-The single exception: the user explicitly asks for account-scoped (or cross-site) queries on a site-deployed dashboard. That is a legitimate ask, for example an MSSP hub dashboard filed in one site but reporting across the account. When it happens, say so in the dashboard `description` so the next reader is not surprised, and pass `--allow-account-scope-queries` to the safety check.
-
-Do not infer the exception from convenience. If the deployment scope is a site and the user has not said otherwise, scope the queries.
-
-### Use `site.id`, never `site.name`
-
-`site.name` is a lossy scoping filter. Measured on `<console>` 2026-08-17 for one site:
-
-| Filter | Events matched |
-|---|---|
-| `site.id='9876543210987654321'` | 60,410 |
-| of those, rows where `site.name` is null | **510** |
-
-Breakdown of the 510 that a `site.name` filter would silently drop: `ActivityFeed` 172, `asset` 111, unattributed source 99, `SentinelOne` 70, `Windows Event Logs` 48, **`alert` 10**.
-
-So `site.name` drops alert and asset records, which is exactly what a SOC dashboard leans on, with no error and no empty panel to hint at it. `site.id` also:
-
-- is the **same identifier** as the `siteId` in the `S1-Scope` header and `shareResource`'s `scopeId`, so one value threads the whole deployment;
-- survives a site rename.
-
-`site.name` is fine as a display column or a `group by` key. It is not fine as the scoping predicate.
-
-### Enforcement
-
-`scripts/panel_safety_check.py` implements both halves:
-
-```bash
-# Site-deployed dashboard: every query panel must carry site.id='<siteId>'
-python3 scripts/panel_safety_check.py dash.json --site-id 9876543210987654321
-
-# Deliberate account-wide queries on a site-deployed dashboard
-python3 scripts/panel_safety_check.py dash.json --site-id 9876543210987654321 \
-    --allow-account-scope-queries
-```
-
-- **S01** fires when a site-targeted dashboard has a query panel with no `site.id` predicate, or one scoped to a *different* site. Suppressed by `--allow-account-scope-queries`.
-- **S02** fires when `site.name` is used as a scoping filter without a `site.id` predicate alongside it. **Never suppressed by the account-scope flag**, because the substitution is wrong at any scope.
-
-Markdown tiles, `alerts_table` and `distribution` panels are exempt: they have no PQ to scope.
-
-**Two deploy-time traps that mimic failure** (detail in `references/deployment.md`): `createDashboardV2` defaults `public` to false and owns the object as the API service user, so the dashboard is invisible in the console to a human even at the right scope. Pass `isPublic: true`. And dashboard names reject `( ) [ ] { } : , & ' % #` with only `Invalid name` as the error; letters, digits, space, `-`, `_`, `.` and `/` are accepted.
+Deployment scope and query scope are two independent decisions. A site-deployed dashboard scopes its panels with `site.id`, never `site.name`, which silently drops alert and asset rows. See [`references/scope-doctrine.md`](references/scope-doctrine.md).
 
 ## Pre-authoring discovery
 
-Different tenants connect different data sources, and even the same tenant drifts between sessions as parsers are updated. Authoring a panel from a remembered schema is the single most common cause of empty-or-misleading dashboards.
-
-### 1. Enumerate connected data sources every session
-
-```text
-| group UniqueDataSourceNames = array_agg_distinct(dataSource.name)
-| limit 1000
-```
-
-If the source the dashboard is meant to cover does not appear, the dashboard cannot work. Stop and surface this to the user. Do not silently switch to a different source.
-
-### 2. PowerQuery cannot discover a source's schema by itself
-
-`| limit N` against a parser-emitted source returns only `timestamp + message`. PowerQuery has no `| columns *` or wildcard projection. Use the V1 query endpoint (`/api/query`, returns full event JSON) via the SDL client. Force-clear the scoped keys so auth falls through to the console JWT (which has `query` permission):
-
-```python
-from sdl_client import SDLClient
-c = SDLClient()
-
-res = c.query(filter=f"dataSource.name=='{source}'", max_count=50, start_time="7d")
-attrs = sorted({k for m in res["matches"] for k in (m.get("attributes") or {}).keys()})
-```
-
-Persist `attrs` to a per-session JSON and reference it during panel authoring. Do this for every source the dashboard will query.
-
-**SDL operations via s1-secops-mcp tools.**
-
-All SDL operations should use the s1-secops-mcp MCP tools, which run locally and bypass the sandbox proxy:
-
-| Operation | s1-secops-mcp tool |
-|---|---|
-| PowerQuery (enumeration, hunts, panel queries) | `mcp__s1-secops-mcp__powerquery_run` |
-| V1 `query` (full event JSON for schema discovery) | `mcp__s1-secops-mcp__powerquery_schema_discover` |
-| `put_file` / `get_file` / `list_files` (dashboard deploy) | `mcp__s1-secops-mcp__sdl_put_file`, `mcp__s1-secops-mcp__sdl_get_file`, `mcp__s1-secops-mcp__sdl_list_files` |
-
-These tools run on your local machine and make direct HTTPS calls to the console host
-without sandbox proxy interference. No fallback or workaround needed.
-
-### 3. A field visible in `raw_data` may NOT be queryable
-
-Parsers vary in what they extract to top-level OCSF / `unmapped.*` columns. A field plainly visible inside the `raw_data` JSON envelope may not exist as a queryable structured column. Always probe a single sample event with the V1 query to confirm a field is queryable before authoring a panel around it. Both the schema dump and a raw event are ground truth, neither alone is sufficient.
-
-If a field is only present in `raw_data`, it can still be filtered via a full-text predicate but **cannot be grouped or aggregated** efficiently. See **Full-text predicate cost** below.
-
-### 4. Identify the discriminator before counting
-
-A single `event.type` value frequently bundles multiple distinct event kinds (delivery-time vs click-time, scheduled vs on-demand, inbound vs outbound, policy-event vs detection-event). The discriminator field, often named `creationMethod`, `messageType`, `triggerType`, `disposition`, etc., may or may not be promoted to the top level. Run an exploration query before authoring count panels:
-
-```text
-dataSource.name='<source>' event.type='<type>'
-| group hits=count() by <candidate-discriminator>
-| sort -hits
-| limit 50
-```
-
-If the same `event.type` row repeats with different discriminator values, that secondary field is part of the partition key. Panels must filter on both, or split into separate sections per population. Counting "events of type X" without splitting by discriminator gives a number that conflates two semantically different things, which is the highest-cost class of dashboard bug because it looks correct.
-
-### 4b. Null-check every grouping column before including it in a table panel
-
-Before including any field as a grouping column in a table panel, confirm it is non-null for that specific `event.type`. A column that is null for all rows produces an empty column in the rendered table with no error. The check is one query:
-
-```text
-dataSource.name='<source>' event.type='<type>' <field>=*
-| group count=count()
-| limit 1
-```
-
-If this returns 0, that field is null for that event type. Remove it from the panel or replace with the correct field. **This check is mandatory for every column in every table panel, not just fields you suspect might be missing.**
-
-Common trap: `src_endpoint.svc_name` (service name), `src_endpoint.ip`, and `app_name` may be populated for `traffic` events but null for `vpn` or `app-ctrl` events from the same source. Schema discovery on `traffic` events does not transfer to other event types.
-
-### 5. `event.type` is not always the right partition key
-
-Some sources emit multiple log subtypes under the same `event.type` (header logs vs body logs, policy events vs detection events). Run the same exploration query above with `event.type` PLUS a secondary discriminator before assuming `event.type` partitions the source cleanly.
-
----
+Enumerate sources live, discover each source's schema, identify the discriminator before counting, and null-check every grouping column. Mandatory every session; never author a panel from a remembered schema. See [`references/pre-authoring-discovery.md`](references/pre-authoring-discovery.md).
 
 ## PowerQuery feature gaps to design around
 
 The catalog of PowerQuery patterns that 500 or render badly inside dashboard JSON, the safe patterns to prefer, the two-pass quoted-KV parse, and the totals-plus-breakdown workaround is in [`references/powerquery-gaps.md`](references/powerquery-gaps.md). `scripts/panel_safety_check.py` scans for the failing patterns automatically.
+
+**`count(<predicate>)` is a conditional count and it works.** `count(severity == 'CRITICAL')` and
+`count(analystVerdict contains 'TRUE_POSITIVE')` are standard in production dashboards. Only
+`count_if(...)` and `sum(if(...))` fail. Read the gap catalog as "these two spellings 500", not as
+"conditional aggregation is unavailable".
+
+---
+
+## UQL adapter queries (`| datasource`)
+
+A second query surface, alongside the event stream. `| datasource <adapter>` reads SentinelOne
+**inventory** (current state) rather than logs, and most alert-operations dashboards want it.
+
+```text
+| datasource <adapter> [from '<subset>'] where (<predicate>)
+| group <aggregates> by <dimension>
+| let <derived>
+| filter <derived-predicate>
+| sort -<field> | limit <n>
+| columns <projection>
+```
+
+**The initial predicate must live inside `where (...)`.** It is an adapter parameter, not a
+PowerQuery command, and `| datasource alerts | filter status = 'NEW'` is the single most common
+failure. Once past the adapter, normal PowerQuery applies, including `| filter` on a *derived*
+field.
+
+Adapters, per-adapter `where (...)` operator support, pushdown limits, the null idioms, ActivityFeed
+type codes and the multi-hop sankey shape are tabulated in
+[`references/uql-datasource.md`](references/uql-datasource.md). Read it while authoring an adapter
+panel; the rules below are the ones that decide whether the panel works at all.
+
+**Two syntax generations are both live.** Adapter parameters
+(`| datasource alerts where (...) count_by status timestamp_field createdAt | group sum(count)`) and
+PowerQuery pushdown (`| datasource alerts | group count() by severity`). Pushdown relays PQ commands
+to the adapter up to the first `group`, or the first command that cannot be pushed. The documented
+minimum is a floor, not a ceiling: one tenant's `alerts` adapter accepted 5 group keys plus
+`percent_of_total` and `max_by`. Test the specific thing you need rather than assuming either way,
+because pushdown support is actively changing.
+
+**`timestamp_field` changes the answer.** `count_by <f> timestamp_field <date>` picks which date the
+time picker filters on, and `createdAt`, `detectedAt` and `lastSeenAt` give materially different
+results. Choose deliberately and state the choice in the panel description.
+
+**Exact distinct beats `estimate_distinct` here.** Chain two groups:
+`| group n = count() by assetName | group total = count()`. Exact, not approximate.
+`estimate_distinct` was observed returning 14,196 against a true 14,043.
+
+**The time picker clips every age metric.** `| datasource alerts` only returns alerts created inside
+the dashboard range, so a derived `age_days` is capped at the picker width, and rows sitting exactly
+at the ceiling mean the real backlog is older. Say so in the panel description.
+
+Two unresolved leads, a possible row cap on grouped adapter queries and facet chips blanking adapter
+panels, are recorded under "Leads, not facts" in the reference. They are worth knowing about when a
+panel is inexplicably empty, and are not established behaviour.
+
+### Inventory or event stream: choosing a source
+
+| Need | Source |
+|---|---|
+| Current state: status, verdict, assignee, MITRE, SLO, AI verdict | `\| datasource alerts` |
+| Per-action history: who or what changed over time | `dataSource.name='ActivityFeed'` |
+| Alert lifecycle counts (Create / Update / Close) | `dataSource.name='alert' class_uid=99602001` |
+
+The inventory holds current state only, so it cannot answer "how many verdicts were rendered on
+Tuesday". The event streams hold actions but not always identity: `data.user_id` and
+`secondary_description` were null on verdict-change events on one tenant, making per-analyst
+attribution impossible from ActivityFeed, so that has to come from the inventory's
+`assigneeFullName`.
+
+ActivityFeed alert activity types: 16000 created, 16001 status changed, 16002 verdict changed,
+16003 severity changed, 16004 assignee changed, 16005 mitigation executed, 16007 note added.
+
+An alert with exactly one ActivityFeed row was created and never touched:
+
+```text
+dataSource.name='ActivityFeed' data.alert.id=* dataSource.category='security'
+| group touches=count() by data.alert.id
+| filter touches == 1
+| group untriaged=count() | limit 1
+```
+
+That cross-validated against the inventory's `status='NEW' and analystVerdict='UNDEFINED'` to within
+1.7% (14,282 against 14,039), which is a useful sanity check when either source is in doubt.
+
+### Time units: three different scales
+
+Getting this wrong by 1000x lands on plausible-looking numbers, which is worse than the obviously
+absurd case.
+
+| Surface | Unit | Age in days |
+|---|---|---|
+| `now()` | nanoseconds | n/a |
+| Inventory `createdAt` / `detectedAt` | milliseconds | `(now() / 1000000 - createdAt) / 86400000` |
+| ActivityFeed `time` | seconds | `(now() / 1000000000 - time) / 86400` |
+| Event-stream `timestamp` | nanoseconds | `(now() - timestamp) / 86400000000000` |
 
 ---
 
@@ -232,37 +226,9 @@ Rules:
 
 ---
 
-## Full-text predicate cost (when to use raw_data string matching)
+## Full-text predicate cost
 
-When a field needed for the panel is buried inside `raw_data` rather than parsed to a structured column, the only filter is a full-text predicate against `raw_data`. Example:
-
-```text
-dataSource.name='<source>' event.type='<type>' '<json-snippet>'
-```
-
-The bare-string token is interpreted as a literal substring search across `raw_data`. It works but the cost is significant: full-text scan reads every event in the time window before applying the predicate, so cost is proportional to total events scanned, not to the matched subset. Combined with `| group` over high-cardinality dimensions, full-text predicates frequently exceed the 60s MCP timeout. Combined with `timebucket + transpose`, they almost always time out.
-
-### Safe full-text patterns
-
-| Use | Example | Why it works |
-|---|---|---|
-| Number panel: simple count | `<src> '<token>' \| group n=count() \| limit 1` | One row, no grouping; fast even at 100k+ events |
-| Number panel: count with structured co-filter | `<src> '<token>' <field>='<value>' \| group n=count() \| limit 1` | Co-filter narrows scan first |
-| Table panel: top-N with restrictive co-filter | `<src> '<token>' <selective-field>='<value>' \| group ... by ... \| sort \| limit 25` | Working set is small after co-filter |
-
-### Risky full-text patterns
-
-| Use | Why it fails |
-|---|---|
-| Stacked-bar timeline with full-text + transpose | Scan + bucket + group + transpose under full-text → timeout |
-| Top-N grouping over the whole source under full-text | High-cardinality grouping under full-text → timeout |
-| Multiple full-text tokens combined (`'<a>' '<b>' \| ...`) | Each token is a separate scan; cost compounds |
-
-### Design rule
-
-If a panel needs a discriminator that lives in `raw_data` only, lobby the parser team to promote it to a top-level structured field. Until then, design the panel to use full-text only where the cost is acceptable (number panels, selective tables) and replace timeline / heavy-grouping panels with structured-field equivalents.
-
----
+Full-text `raw_data` matching is the only way to filter a field the parser did not promote, and it scans every event in the window. Safe for number panels and selective tables; it times out with timebucket plus transpose. See [`references/query-performance.md`](references/query-performance.md).
 
 ## Panel naming hygiene
 
@@ -283,44 +249,7 @@ When two semantically distinct event populations exist within the same `event.ty
 
 ## Dashboard JSON structure
 
-A dashboard is a JSON object (SDL also accepts unquoted keys, JavaScript-literal format). Three top-level shapes:
-
-### Single-tab dashboard
-
-```json
-{
-  "duration": "4h",
-  "description": "Optional text shown below the title",
-  "graphs": [ /* array of panel objects */ ]
-}
-```
-
-### Multi-tab dashboard
-
-```json
-{
-  "configType": "TABBED",
-  "duration": "24h",
-  "description": "",
-  "tabs": [
-    { "tabName": "Overview", "graphs": [ /* panels */ ] },
-    { "tabName": "Details",  "graphs": [ /* panels */ ] }
-  ]
-}
-```
-
-### Top-level properties
-
-| Property | Description |
-|---|---|
-| `duration` | Default time range: `"30m"`, `"4h"`, `"1 day"`, `"7 days"` |
-| `description` | Subtitle shown under the dashboard title |
-| `graphs` | Array of panel objects (single-tab) |
-| `tabs` | Array of `{tabName, graphs}` objects when `configType: "TABBED"` |
-| `configType` | Set to `"TABBED"` for multi-tab dashboards |
-| `parameters` | Array of `{name, values, defaultValue}`: creates dropdown/text filters |
-| `options` | `{"layout": {"fixed": 1}}` to lock drag-and-drop |
-| `teamEmails` | Array of account emails whose data is pooled |
+Single-tab, multi-tab and the top-level properties. See [`references/panel-types.md`](references/panel-types.md).
 
 ## Panel types
 
@@ -338,6 +267,8 @@ preemptively when authoring panels of these shapes.
 
 | Symptom | Root cause | Fix |
 |---|---|---|
+| `Couldn't load content`: `Invalid column 'dataSource.category'` on a `\| datasource` panel | The console data selector is on **XDR**, which injects `preFilter: dataSource.category = 'security'` into every panel query. The inventory has no such column, so the adapter hard-errors. Reproducible from the API: `\| datasource alerts \| filter dataSource.category=*` returns `500 invalid_argument`. | Set the data selector to **All Data**. There is no dashboard-JSON field that pins it, so make the instruction the first sentence of the dashboard `description` (visible on every tab) and repeat it in bold in the first tab's markdown panel. See the scope-trap section below. |
+| Alert-stream or `\| dataset` panels are **silently empty**, while ingested third-party telemetry on the same dashboard renders fine | Same XDR `preFilter`. `dataSource.name='alert'` and `\| dataset 'config://datatables/...'` fall outside `category='security'` and are filtered to nothing with no error. A dashboard looks half-broken while every query is correct. | As above, All Data. Prefer event-stream queries where the data allows, since they survive both scopes. |
 | Markdown panel renders blank, no error | Wrong body field | Use `markdown:` (NOT `content:`): see Markdown panel section above |
 | Markdown panel header shows "Untitled" | No `title` key on the markdown panel (S-26.1) | Add a short plain-text `title`; keep prose (no repeated `##` heading) in `markdown` |
 | Number panel reads the unit twice, e.g. "34 principals" under "Active principals (24h)" | `options.suffix` duplicates a unit already in the `title` | Remove `suffix` (or drop the unit from the title); keep `{format, precision}` only |
@@ -347,7 +278,7 @@ preemptively when authoring panels of these shapes.
 | `Couldn't load content`: `field=[DashboardPlotQuery.plotIndex] error=[Facet for plot at index: 0 is invalid]` | `"facet": "count()"` (with parentheses) is invalid in a `plots` array. Only `"facet": "count"` (no parentheses) is accepted. The community examples in older docs show `count()`; this is wrong. | Use `"facet": "count"` (no parentheses) in every plots entry. |
 | `Couldn't load content`: `"transpose" can only be used as the last command in a query` | `transpose` is the terminal command in the PQ pipeline; nothing can follow it | Remove any `\| limit N` / `\| sort` / `\| filter` placed AFTER `transpose`. If you need a limit, apply it pre-transpose via a subquery or a column-list filter |
 | `Couldn't load content`: `Identifier "x-y" is ambiguous. To subtract, add spaces: "x - y". Otherwise, add backslashes: "x\-y"` | The PQ parser reads hyphenated text as a single identifier, not as subtraction | Add spaces around `-` in arithmetic: `total - min`, `max - min`, `(a - b) / (c - d)`. Same applies to all PQ panels and rule bodies. |
-| `transpose <field> on timestamp` hangs the renderer when field values contain hyphens (e.g. `db-prod-01`, ISO dates, UUIDs, container names) | The renderer must parse the transposed values as column names for the chart legend. The PQ parser reads `db-prod-01` as subtraction and throws `Identifier is ambiguous`, or hangs silently. The V1 API tolerates this; the renderer does not. | **Option A**, pre-process: `\| let host_safe = replace(host_raw, '-', '_')` then transpose on `host_safe`. `replace_all` does NOT exist in SDL PowerQuery (live-verified 2026-07-29); use `replace`. If the tenant's `replace` substitutes only the first occurrence, values with multiple hyphens (`db-prod-01`) still break, so treat Option A as best-effort. **Option B (preferred for by-host charts)**: avoid transpose on hyphenated values entirely and use `"xAxis": "grouped_data"` with a grouping query. Loses time dimension but renders reliably. **Option C**: only use `transpose` on fields whose values are guaranteed free of hyphens (numeric codes, single-token labels like `Success`/`Failure`). |
+| `transpose <field> on timestamp` hangs the renderer when field values contain hyphens (e.g. `db-prod-01`, ISO dates, UUIDs, container names). **Spaces are fine**: `Windows Event Logs`, `Anomaly Detection` and `Proofpoint TAP` all worked as transposed column names, so do not avoid multi-word values on this account. | The renderer must parse the transposed values as column names for the chart legend. The PQ parser reads `db-prod-01` as subtraction and throws `Identifier is ambiguous`, or hangs silently. The V1 API tolerates this; the renderer does not. | **Option A**, pre-process: `\| let host_safe = replace(host_raw, '-', '_')` then transpose on `host_safe`. `replace_all` does NOT exist in SDL PowerQuery (live-verified 2026-07-29); use `replace`. If the tenant's `replace` substitutes only the first occurrence, values with multiple hyphens (`db-prod-01`) still break, so treat Option A as best-effort. **Option B (preferred for by-host charts)**: avoid transpose on hyphenated values entirely and use `"xAxis": "grouped_data"` with a grouping query. Loses time dimension but renders reliably. **Option C**: only use `transpose` on fields whose values are guaranteed free of hyphens (numeric codes, single-token labels like `Success`/`Failure`). |
 | Number panel, table panel, or whole dashboard slow to load on first open | "All API queries pass" ≠ "dashboard loads fast". The browser fires all panel queries in parallel; total load time ≈ slowest single panel. Serial validation in a script wildly overestimates wall-clock load time. | Run a parallel load test before every `put_file`: see **Pre-deploy validation** section below. Acceptance thresholds: slowest single panel ≤ 2s, wall-clock ≤ 5s, zero failures. |
 | `get_file` returns HTTP 404 immediately after a successful `put_file` | `put_file` is synchronous but the file propagates across replicas with eventual consistency (~2-3s). | Always `time.sleep(3)` between `put_file` and the subsequent `get_file` verification call. |
 | Heatmap panel renders blank, no error, data confirmed in PowerQuery | `rangesCreation: "automatic"` requires empty-string middles in `heatmapRangeConfig`. Providing explicit numeric strings (e.g. `"10"`, `"50"`) conflicts with automatic mode and the renderer silently returns a blank panel. | Restore to `["-∞", "", "", "", "", "∞"]`. SDL auto-calculates the middle thresholds from live data. |
@@ -359,8 +290,51 @@ preemptively when authoring panels of these shapes.
 | Number panel slow on a busy index | Engine keeps scanning after the answer is computed | Always terminate number panels with `\| limit 1` after the `\| group` that reduces to one row |
 | Wide range + fine `timebucket` = thousands of points per series | E.g. `timebucket("10m")` over 7d = 1,008 points × N series | Match bucket to duration: 1d → `10m`, 7d → `1h` (minimum), 30d → `1 day` minimum |
 | Two or more near-identical dashboards share a name in *Configuration files* | `/dashboards/id/<udoId>/<name>` is a display string, not a path; writing to it returns `no file exists at path`. Duplicates come from `addConfigFile(name:)` creating a copy instead of updating, so every name-addressed deploy adds one. A name-addressed copy (`udoId: null`) can also coexist with udoId-addressed ones. | Resolve the name with `sdl_list_files` (`pathPrefix: "/dashboards/"`) and address every update by `udoId`. Name-addressed writes are for the first create only; `sdl_put_file` refuses the rest. Delete surplus copies by `udoId`. |
-| `columns resources[0].name` or `vulnerabilities[0].cve.uid` returns HTTP 500 | PowerQuery does not accept bracket-array indexing in `columns`. The V1 query API exposes nested arrays as flattened keys (`resources[0].name`) for display, but those flattened keys are NOT valid PowerQuery field paths. | Use top-level scalar fields only (`severity_id`, `finding_info.title`, `metadata.product.name`, `class_name`, `time`). For first-element access inside a query, use `array_get(resources, 0).name` only inside `let`. For richer drill-down, switch from PowerQuery to the V1 query API (returns full event JSON); see `sdl-api` skill. |
+| `columns resources[0].name` or `group by finding_info.attacks[0].tactic.name` is rejected (HTTP 400, reported as 500 on some versions), **or worse, the escaped form `finding_info.attacks\[0\].tactic.name` parses and returns 0 rows silently** | PowerQuery does not accept bracket-array indexing in any position. The V1 query API exposes nested arrays as flattened display keys (`resources[0].name`), but those are NOT valid PowerQuery field paths. When the field is not present in flattened format there is no error, just no result, and `array_get(finding_info.attacks, 0).tactic.name` is also a parse error. The silent-zero case is the dangerous one: an empty panel that looks like "no such activity". | Prefer top-level scalars (`severity_id`, `finding_info.title`, `metadata.product.name`, `class_name`, `time`), or the **inventory**, which exposes the same data as clean scalars: `\| datasource alerts` has `mitreTactics` / `mitreTechniques`. The `[*]` wildcard accessor does work as a group key on the alert stream where the parser flattened it. Flattening is per-tenant and per-parser, so probe with a small `\| group count() by <field>` before relying on either bracket form. |
 | `\| parse "app=$val$" from message` fails with "Start quote with no matching end quote" when the raw field value is wrapped in double quotes (e.g. `app="HTTPS.BROWSER"`) | The `\| parse` format string uses `"..."` as its outer delimiter. Any `"` character embedded in the format, to match quote-wrapped KV values common in network device logs, is treated as a string terminator. No escape sequence (backslash, single-quote outer, hex) works around this. | Use a two-pass parse: pass 1 captures the entire non-whitespace token including quotes (`{regex=\\S+}`), pass 2 extracts the clean value from that token. See **Two-pass parse for quoted KV values** below. |
+
+---
+
+## The XDR / All Data scope trap
+
+Worth its own section because it presents as a broken dashboard, not as a scope problem, and the
+API cannot reproduce it.
+
+The top-left data selector injects a `preFilter` into every panel query:
+
+```text
+XDR selected      -> preFilter: dataSource.category = 'security'
+All Data selected -> no preFilter
+```
+
+| Panel reads | Result under XDR |
+|---|---|
+| `\| datasource <adapter>` | Hard error, `Invalid column 'dataSource.category'` |
+| `dataSource.name='alert'` | Silently empty |
+| `\| dataset 'config://datatables/...'` | Silently empty |
+| Ingested XDR telemetry (parsed third-party sources) | Works |
+
+So a dashboard can look half-broken while every query is correct, and the broken half is exactly
+the alert and lookup panels.
+
+**There is no dashboard-JSON field that pins the selector.** Mitigations, in order of usefulness:
+
+1. Make **SET THE DATA SELECTOR TO 'All Data'** the first sentence of the dashboard `description`,
+   which shows on every tab.
+2. Repeat it in bold at the top of the first tab's markdown panel.
+3. Prefer event-stream queries where the data allows, since they survive both scopes.
+
+Why data lands outside XDR at all: the category is an assigned attribute. If a parser does not run,
+for example a site-scoped parser with HEC ingestion where account-scope parsers win, events arrive
+unparsed, carry no `dataSource.category`, and appear only under All Data.
+
+**API-passing is not render-passing.** The LRQ API never applies the console `preFilter`, so a panel
+set can validate cleanly through `scripts/validate_dashboard.py` and still fail in the browser.
+Treat them as two separate gates, and do not conclude a query is wrong from a blank panel until the
+selector has been checked.
+
+The underlying mechanism is recorded in [`references/lessons-learned.md`](references/lessons-learned.md)
+section 8.6.
 
 ---
 
@@ -384,6 +358,7 @@ Deployment via the `sdl-api` GraphQL methods (resolve the `udoId`, write with a 
 
 ## Reference files in this skill
 
+- `references/uql-datasource.md`: `| datasource` adapter lookup tables: adapters and their subset selectors, per-adapter `where (...)` operator support, pushdown limits, null idioms, ActivityFeed activity-type codes, the multi-hop sankey shape, and the unresolved leads. Read alongside the UQL section above whenever a panel reads inventory rather than the event stream.
 - `references/panel-types.md`: full per-panel JSON catalog for every `graphStyle` (moved out of this file).
 - `references/panel-type-cheatsheet.md`: one-line summary of every panel type plus gotchas.
 - `references/powerquery-gaps.md`: PowerQuery patterns that fail inside dashboard JSON, safe alternatives, and parse workarounds (moved out of this file).
@@ -398,9 +373,18 @@ Deployment via the `sdl-api` GraphQL methods (resolve the `udoId`, write with a 
 
 Read the community examples before creating a new dashboard, and read `lessons-learned.md` if any of: a panel may legitimately return 0, an `event.type` covers multiple semantic populations, the panel needs a field only present in `raw_data`, or a previous version of this skill produced a 500 error on `count_if`, `sum(if())`, or mid-pipeline `| union`.
 
+Reading only this file is not enough, and that has cost real time: the XDR scope trap was documented in `lessons-learned.md` section 8.6 while a reader working from SKILL.md alone reached several wrong diagnoses. The highest-value fix for that is the one applied above, promoting the decision rules into this file, but the reference detail still matters. Before theorising about why a panel is empty, search the tenant for a deployed dashboard that already does what you are attempting; a working example beats a hypothesis.
+
 ## Skill scripts (in `scripts/`)
 
 These scripts are mandatory parts of the workflow, not optional tooling.
+
+**They live in the installed plugin directory and are not always reachable from a sandbox.** If
+`scripts/panel_safety_check.py` cannot be executed, do not skip the gate: the checks it performs are
+all stated in the **Common rendering pitfalls** table above, so walk the dashboard JSON against that
+table by hand before deploying. The highest-value manual checks are `markdown` rather than `content`,
+no `area` with a `query`, `transpose` last, spaces around `-` in arithmetic, no `count_if` or
+`sum(if())`, `| limit` on every number and table panel, and a `layout` on every panel.
 
 - `scripts/panel_safety_check.py <dashboard.json>`: pre-deploy. Scans dashboard JSON for known-bad patterns (markdown `content` vs `markdown` field, `area` + `query`, transpose-not-terminal, hyphenated arithmetic, `count_if` / `sum(if())` / mid-pipeline `| union` (union-first is allowed) / named subqueries, `\\s`/`\\d` regex escapes inside `matches`, full-text combined with timebucket+transpose, missing layout, missing `| limit` on number/table panels). Exits non-zero on any flag. Run before every `put_file`.
 - `scripts/validate_dashboard.py <dashboard.json> [--start 7d] [--out <dir>]`: post-deploy. Replays every non-markdown panel against the SDL `power_query` API, persists per-panel evidence (style, query, elapsed, rowCount, matchCount, columns, sample rows, error) to a JSON keyed on `tab::title`, and emits a markdown evidence file. Idempotent, resumes cleanly, persists after each panel. Auth falls through to console JWT (force-clears scoped keys). **Always run as a background process** (`... &`); see step 7 in the Workflow section. Do not wait for it inline.
@@ -444,29 +428,7 @@ The browser-renderer execution path, the parallel load test with its acceptance 
 
 ## Field semantics: verify before grouping
 
-Two patterns cause panels to look broken silently:
-
-**Subject vs target in Windows logon events.** For event 4624 on a domain controller, `subjectUserName` is almost always the machine account or `-`. The account that actually logged on is in `targetUserName`. A panel that groups by `subjectUserName` renders mostly empty rows.
-
-**Same field name, different semantic per event ID.** `targetUserName` in 4624 is the human account; in 4771 (Kerberos pre-auth failure) it includes machine accounts (`host123$`). 4625 and 4740 may use `subjectUserName` depending on the failure path.
-
-Always sample 3-5 events per event ID before authoring a grouping query:
-
-```python
-res = c.query(
-    filter=f"dataSource.name=='<source>' <event-id-filter> <host-filter>",
-    max_count=5, start_time="1h",
-)
-for m in res.get("matches") or []:
-    attrs = m.get("attributes", {})
-    for k in sorted(attrs.keys()):
-        if any(s in k.lower() for s in ("user","subject","target","domain","logonid")):
-            print(f"  {k} = {str(attrs[k])[:80]}")
-```
-
-This is the same V1-query schema-discovery pattern from the `sdl-api` skill, apply it per-event-ID, not just per-source.
-
----
+Sample events per event ID before grouping: the same field name carries different meaning across Windows event IDs, and subject vs target is the classic trap. See [`references/pre-authoring-discovery.md`](references/pre-authoring-discovery.md).
 
 ## Escalation ladder when a deployed dashboard hangs
 
@@ -489,7 +451,7 @@ The full pre-deploy checklist (pre-authoring, JSON structure, query hygiene, nam
 - **Use `showBarsColumn: "true"`** on table panels with a count column to get inline bar charts.
 - **Time range**: set `duration` to match how "fresh" the data needs to be. Use `"24h"` for security operations / alert-triage dashboards (the standard for SOC real-time views), `"7 days"` for trend and capacity dashboards. Never default to `"7 days"` for an operations dashboard, analysts lose the short-window density that makes operational dashboards useful.
 - **Test queries first** with the `powerquery` skill before embedding them in dashboard JSON.
-- **Use `estimate_distinct()`** for cardinality counts: exact distinct is expensive on large datasets.
+- **Use `estimate_distinct()`** for cardinality counts on the event stream: exact distinct is expensive on large datasets. It is an approximation, measured at 14,196 against a true 14,043, so do not quote it as an exact figure. On `| datasource` inventory queries the chained-group form is cheap and exact, and is preferred: `| group n = count() by assetName | group total = count()`.
 - **Add a markdown panel** to each tab explaining what it covers: this helps both users and future editors understand the dashboard at a glance.
 
 ## Sandbox proxy blocked? Use Desktop Commander

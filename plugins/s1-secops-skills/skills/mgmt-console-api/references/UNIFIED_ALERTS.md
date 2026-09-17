@@ -115,7 +115,7 @@ Filter syntax: `fieldId=value` (stringEqual), `fieldId=v1,v2` (stringIn), `field
 | `addAlertNote` | Create note | `add_alert_note` | Returns the full note list for the alert (find the new one by matching text or by diffing ids before/after). |
 | `updateAlertNote` | Edit note | `update_alert_note` | Fails for ~30-90s after creation with `mgmt_note_id not set`. Wrapper retries automatically. |
 | `deleteAlertNote` | Remove note | `delete_alert_note` | Same eventual-consistency behaviour; wrapper retries. |
-| `alertTriggerActions` | Bulk actions against a filter | `trigger_actions` + convenience wrappers (`set_alert_status`, `set_analyst_verdict`, `assign_alerts`) | Filter is `OrFilterSelectionInput` (use `or_filter(...)`). Result is a union of `ActionsTriggered | TriggerActionsError | TriggerActionsScheduled`. `ActionsTriggered` is not success, see below. |
+| `alertTriggerActions` | Bulk actions against a filter | `trigger_actions` + convenience wrappers (`set_alert_status`, `set_analyst_verdict`, `assign_alerts`) | Filter is `OrFilterSelectionInput` (use `or_filter(...)`). Result is a union of `ActionsTriggered \| TriggerActionsError \| TriggerActionsScheduled`. `ActionsTriggered` is not success, see below. |
 
 ### `ActionsTriggered` is an acknowledgement, not a result
 

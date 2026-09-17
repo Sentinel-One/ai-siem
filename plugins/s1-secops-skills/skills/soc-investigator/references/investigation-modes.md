@@ -2,6 +2,11 @@
 
 Phase-by-phase run instructions for the SHORT, MEDIUM, and LONG investigation modes. `SKILL.md` loads this file once the operator has chosen a mode in Stage 1. Run the phases for the selected mode in order. The evidence-discipline, verdict-gate, and query-appendix rules stated in `SKILL.md` apply to every phase here. Each mode is cumulative: MEDIUM includes SHORT, and LONG includes MEDIUM.
 
+SWEEP is a peer, not a fourth cumulative step, and its run instructions are not in this file. It
+takes no alert ID and runs none of the phases below; it sweeps a time window for MITRE-mapped TTPs
+across every ingesting source. See `references/ttp-sweep.md`. The cumulative rule above applies only
+to SHORT, MEDIUM and LONG.
+
 ## Workflow: SHORT Mode (5 min)
 
 **Goal**: Fast triage. What happened at a glance.

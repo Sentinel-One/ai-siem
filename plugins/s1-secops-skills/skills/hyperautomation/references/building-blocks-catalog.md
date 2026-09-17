@@ -74,7 +74,7 @@ covered by the table above, so SQL is the single known blind spot.
 
 ---
 
-# Section A, Atomic Blocks
+## Section A, Atomic Blocks
 
 Each block lists: **purpose**, **copy-paste shape** (only the fields you actually need to think
 about, the rest can be defaulted from `building-blocks.md`), **real example from the corpus**,
@@ -82,7 +82,7 @@ and **when to reach for it**.
 
 ---
 
-## A1. Singularity Response Trigger (most common alert-driven entry point)
+### A1. Singularity Response Trigger (most common alert-driven entry point)
 
 **Purpose**: fire a workflow when a SentinelOne alert / misconfiguration / vulnerability /
 activity is created or updated.
@@ -129,7 +129,7 @@ console; set `true` for fully automated response.
 
 ---
 
-## A2. Manual Trigger (analyst-initiated)
+### A2. Manual Trigger (analyst-initiated)
 
 **Purpose**: run-on-demand. Two flavors: static (no input) and dynamic (analyst fills a form).
 
@@ -180,7 +180,7 @@ parameterized hunt that an analyst kicks off from the console.
 
 ---
 
-## A3. Scheduled Trigger
+### A3. Scheduled Trigger
 
 **Purpose**: run on a cadence. Three patterns observed: `daily` (11), `weekly` (7), `interval`
 (6 with units `hours` 3/6/12 and `minutes` 10/15).
@@ -235,7 +235,7 @@ queries that drop results into a ticket.
 
 ---
 
-## A4. HTTP Trigger (Webhook)
+### A4. HTTP Trigger (Webhook)
 
 **Purpose**: expose a public webhook URL that any external system can POST to. The console
 generates a unique `url_identifier` (UUID) baked into the URL.
@@ -276,7 +276,7 @@ a Condition action that checks `{{http-trigger.headers.X-Auth-Token}}` to gate a
 
 ---
 
-## A5. Email Trigger (rare, 1 occurrence)
+### A5. Email Trigger (rare, 1 occurrence)
 
 ```json
 {
@@ -300,7 +300,7 @@ style ingest is preferred.
 
 ---
 
-## A6. Variable (state)
+### A6. Variable (state)
 
 **Purpose**: assign a named value (literal, expression, or JSON object) for downstream reference.
 Most-used pattern is **single-variable per action** (97 of the 100 most-named Variable actions
@@ -363,7 +363,7 @@ this workflow). Reference with `{{local_var.x}}` or `{{global_var.x}}`.
 
 ---
 
-## A7. Condition (branching)
+### A7. Condition (branching)
 
 **Purpose**: split control flow on a comparison. The corpus uses **`condition_type: "multi"`
 universally** (1,697 of 1,697), even for single comparisons. Stick with multi.
@@ -415,7 +415,7 @@ result of an enrichment lookup.
 
 ---
 
-## A8. Loop (iteration)
+### A8. Loop (iteration)
 
 **Purpose**: iterate over an array (`dynamic`), run a fixed N times (`fixed`), or loop until a
 `break_loop` fires (`while`).
@@ -454,7 +454,7 @@ sequential to keep API rate limits sane).
 
 ---
 
-## A9. Break Loop
+### A9. Break Loop
 
 **Purpose**: terminate the enclosing loop. Always sits inside a `condition` branch.
 
@@ -473,7 +473,7 @@ sequential to keep API rate limits sane).
 
 ---
 
-## A10. Delay
+### A10. Delay
 
 **Purpose**: pause N seconds / minutes / hours.
 
@@ -490,7 +490,7 @@ job (RemoteOps, scan) finish before polling its status; staging notifications.
 
 ---
 
-## A11. Data Formation
+### A11. Data Formation
 
 **Purpose**: build a structured object on the fly without using a Variable. Most often used as a
 scratchpad to assemble payloads from multiple sources.
@@ -516,7 +516,7 @@ custom note bodies, normalized event objects for SDL ingest.
 
 ---
 
-## A12. HTTP Request (core, no integration)
+### A12. HTTP Request (core, no integration)
 
 **Purpose**: hit an arbitrary HTTP endpoint with full control over method, URL, headers, body,
 auth, retry, SSL, proxy.
@@ -566,7 +566,7 @@ you want to inline-template the URL with `{{...}}`.
 
 ---
 
-## A13. HTTP Request (integration-backed)
+### A13. HTTP Request (integration-backed)
 
 **Purpose**: same shape, but the URL, base, and authentication come from a connection
 pre-configured in `Hyperautomation → Integrations`. 90% of HTTP requests in active flows.
@@ -614,7 +614,7 @@ official integrations.
 
 ---
 
-## A14. Send Email
+### A14. Send Email
 
 **Purpose**: SMTP-out via the platform mailer. 99% of active uses send to **a single recipient**
 (`list_1`).
@@ -659,7 +659,7 @@ live import API on 2026-06-11:
 
 ---
 
-## A15. Snippet (call a reusable sub-workflow)
+### A15. Snippet (call a reusable sub-workflow)
 
 **Purpose**: invoke a reusable sub-workflow as a single action, so shared logic lives in one place
 instead of being duplicated across flows. Full authoring + calling + lifecycle: `references/snippets.md`.
@@ -693,7 +693,7 @@ instead of being duplicated across flows. Full authoring + calling + lifecycle: 
 
 ---
 
-## A16. Wait for Slack
+### A16. Wait for Slack
 
 **Purpose**: pause until an analyst clicks a Slack interactive button on a previously-posted
 message, or until the timeout elapses.
@@ -722,7 +722,7 @@ request, the wait correlates the analyst's button click back to that specific me
 
 ---
 
-## A17. Create Interaction & Wait for Interaction (in-console approval)
+### A17. Create Interaction & Wait for Interaction (in-console approval)
 
 **Purpose**: built-in approval gate using a Hyperautomation-native interaction (no Slack
 required).
@@ -775,14 +775,14 @@ investigation) is in `autonomous-soc-template.md`.
 
 ---
 
-# Section B, Composite Patterns (multi-action idioms)
+## Section B, Composite Patterns (multi-action idioms)
 
 These are the recurring sub-graphs that show up across many flows. Use them as ready-made
 mini-templates.
 
 ---
 
-## B1. Safe field access with `Function.DEFAULT` chaining
+### B1. Safe field access with `Function.DEFAULT` chaining
 
 **Where**: 305 occurrences of `Function.DEFAULT` in expressions.
 
@@ -803,7 +803,7 @@ Always pair with a Condition that branches on `{{local_var.alert-hash}} != "no-h
 
 ---
 
-## B2. Success / fail branch with status_code (canonical SOAR pattern)
+### B2. Success / fail branch with status_code (canonical SOAR pattern)
 
 **Where**: 79 conditions named "Get Response on Time", 92 named "Is File Suspicious in VT".
 
@@ -825,7 +825,7 @@ after every external API call that the analyst needs receipts for.
 
 ---
 
-## B3. Pagination loop with cursor + break
+### B3. Pagination loop with cursor + break
 
 **Where**: 75 occurrences of "Set Default Cursor" / "Set Filtered Channels" / "Last Page" trio
 across Slack channel-discovery flows.
@@ -863,7 +863,7 @@ Most-used cursor field in the corpus:
 
 ---
 
-## B4. Loop + APPEND to accumulate results
+### B4. Loop + APPEND to accumulate results
 
 **Where**: 126 occurrences of `Function.APPEND`.
 
@@ -884,7 +884,7 @@ APPEND has nothing to append to.
 
 ---
 
-## B5. JQ filter for nested response shaping
+### B5. JQ filter for nested response shaping
 
 **Where**: 186 occurrences of `Function.JQ`. Per `functions-reference.md`, store the JQ
 expression in a Variable first to avoid escaping pain.
@@ -897,7 +897,7 @@ Variable (filtered = "{{Function.JQ(my-pq.body, local_var.jq_filter)}}")
 
 ---
 
-## B6. Add Note to Unified Alert (UAM GraphQL, observed twice in two flavors)
+### B6. Add Note to Unified Alert (UAM GraphQL, observed twice in two flavors)
 
 **Modern flavor (cleaner GraphQL)**:
 
@@ -921,7 +921,7 @@ Method: `POST`. Headers: `{ "Content-Type": "application/json" }`.
 
 ---
 
-## B7. SDL ingest single event (HEC)
+### B7. SDL ingest single event (HEC)
 
 Ingest goes to the **HEC collector on the regional ingest host**, bound to a Bearer connection
 holding an **SDL Log Write Key**:
@@ -955,7 +955,7 @@ a nested `event: {...}` object is dropped because `event` is HEC-reserved.
 
 ---
 
-## B8. PowerQuery from a workflow (LRQ)
+### B8. PowerQuery from a workflow (LRQ)
 
 **Read SDL from a workflow via LRQ, always.** Launch is async, so this is a two-step pattern:
 `POST {{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries` to launch, then a poll loop on
@@ -982,7 +982,7 @@ Build the PQ in a Variable first (multi-line PQ inside a JSON string is awful ot
 
 ---
 
-## B9. Threat Intelligence IOC create
+### B9. Threat Intelligence IOC create
 
 ```json
 {
@@ -997,7 +997,7 @@ Choose `accountIds` for global IOCs, `siteIds` for per-site. Always set `validUn
 
 ---
 
-## B10. VirusTotal hash / IP / URL lookup
+### B10. VirusTotal hash / IP / URL lookup
 
 ```json
 {
@@ -1012,7 +1012,7 @@ Most flows then check `body.data.attributes.last_analysis_stats.malicious > 0` i
 
 ---
 
-## B11. Slack post + interactive wait + branch on choice
+### B11. Slack post + interactive wait + branch on choice
 
 ```text
 HTTP (chat.postMessage with Block Kit buttons) → captures {{post.body.ts}}
@@ -1030,7 +1030,7 @@ The `chat.delete` cleanup is a recurring polish step in mature flows.
 
 ---
 
-## B12. OpenAI summary of tool output
+### B12. OpenAI summary of tool output
 
 ```json
 {
@@ -1046,7 +1046,7 @@ Then assign `{{open-ai.body.choices[0].message.content}}` to a Variable and feed
 
 ---
 
-## B13. Generate UUID for correlation IDs
+### B13. Generate UUID for correlation IDs
 
 ```json
 {
@@ -1063,14 +1063,14 @@ shorter for human-readable channel names (Slack channel-name length cap).
 
 ---
 
-# Section C, End-to-end SOAR Recipes
+## Section C, End-to-end SOAR Recipes
 
 Each recipe is a known-good wiring of the Section A blocks plus Section B idioms. Use as
 starting templates.
 
 ---
 
-## C1. Alert → enrich-with-VT → add-note (the workhorse, ~100 active flows)
+### C1. Alert → enrich-with-VT → add-note (the workhorse, ~100 active flows)
 
 ```text
 Singularity Response Trigger (severity ∈ HIGH/CRITICAL, EDR)
@@ -1087,7 +1087,7 @@ Singularity Response Trigger (severity ∈ HIGH/CRITICAL, EDR)
 
 ---
 
-## C2. Scheduled IOC ingest (TOR / AbuseIPDB / GitHub list → S1 TI)
+### C2. Scheduled IOC ingest (TOR / AbuseIPDB / GitHub list → S1 TI)
 
 ```text
 Scheduled Trigger (daily 08:00)                             [A3]
@@ -1101,7 +1101,7 @@ Scheduled Trigger (daily 08:00)                             [A3]
 
 ---
 
-## C3. Webhook → device-control rule + analyst email
+### C3. Webhook → device-control rule + analyst email
 
 ```text
 HTTP Trigger (POST/GET, dedup 180s)                          [A4]
@@ -1115,7 +1115,7 @@ zero-trigger-input automation.
 
 ---
 
-## C4. Manual investigation playbook (analyst-driven hunt)
+### C4. Manual investigation playbook (analyst-driven hunt)
 
 ```text
 Manual Trigger (dynamic, Hostname text input)               [A2]
@@ -1129,7 +1129,7 @@ Manual Trigger (dynamic, Hostname text input)               [A2]
 
 ---
 
-## C5. Approval gate via Slack (analyst confirms a remediation)
+### C5. Approval gate via Slack (analyst confirms a remediation)
 
 ```text
 Singularity Response Trigger                                  [A1]
@@ -1145,7 +1145,7 @@ Singularity Response Trigger                                  [A1]
 
 ---
 
-## C6. Periodic posture report (UEBA-style)
+### C6. Periodic posture report (UEBA-style)
 
 ```text
 Scheduled Trigger (interval, every 6 hours)                   [A3]
@@ -1159,7 +1159,7 @@ This is the shape of the "UEBA - User Baselines" active flow.
 
 ---
 
-# Section D, Decision Matrix (use case → blocks)
+## Section D, Decision Matrix (use case → blocks)
 
 | Use case | Trigger | Body | Notes |
 |----------|---------|------|-------|
@@ -1176,20 +1176,20 @@ This is the shape of the "UEBA - User Baselines" active flow.
 
 ---
 
-# Section E, Anti-patterns (paid-for in production)
+## Section E, Anti-patterns (paid-for in production)
 
-## E1. Multi-variable with cross-references in one Variable action
+### E1. Multi-variable with cross-references in one Variable action
 
 Already enshrined in `building-blocks.md` and `SKILL.md`. The corpus confirms: every multi-var
 Variable action that *does* work uses **independent** values (literals, trigger fields, or
 external action outputs, never another local_var defined in the same action).
 
-## E2. Forgetting `Function.HTML_ENCODE` on note bodies
+### E2. Forgetting `Function.HTML_ENCODE` on note bodies
 
 110 active flows wrap note text in `HTML_ENCODE`. Flows that don't will silently break the
 moment the note contains a quote, ampersand, or angle bracket. Wrap, always.
 
-## E3. Hard-coding site IDs in IOC create
+### E3. Hard-coding site IDs in IOC create
 
 The corpus has IOC payloads with literal `accountIds: ["<account-id>"]`, fine for
 single-tenant flows, broken on transfer. Prefer:
@@ -1197,13 +1197,13 @@ single-tenant flows, broken on transfer. Prefer:
 - Pull from a Variable (set up-front from a Manual Trigger / Webhook param), or
 - Pull from `singularity-response-trigger.data.scopeId` if the alert carries it.
 
-## E4. `compared_value` shaped wrong for `in` operator
+### E4. `compared_value` shaped wrong for `in` operator
 
 `comparison_operator: "in"` requires `compared_value` to be a **JSON-encoded string of an
 array**, not a raw array. Verified: all 1 in-operator usage in the corpus uses
 `"[\"HIGH\",\"CRITICAL\"]"` style. Don't write `["HIGH","CRITICAL"]` directly.
 
-## E5. Snippet authoring/calling traps (import 422 with no field named)
+### E5. Snippet authoring/calling traps (import 422 with no field named)
 
 - Call a snippet with a **`snippet_20`** node bound via `snippet_workflow_id` + `snippet_version_id`
   (these persist through export). Do NOT use type `"snippet"` and do NOT embed the snippet's inner
@@ -1213,19 +1213,19 @@ array**, not a raw array. Verified: all 1 in-operator usage in the corpus uses
   use a literal or a real `{{slug.field}}`); the workflow name must not contain parentheses `()`.
   Full detail: `references/snippets.md`.
 
-## E6. Forgetting `parent_action` on inner loop steps
+### E6. Forgetting `parent_action` on inner loop steps
 
 Every action inside a loop must set `"parent_action": <loop_export_id>`. The validator catches
 this at import time, but only after the user has gone through the warning dialog. Set it as
 you generate.
 
-## E7. Dropping `retry_on_status_codes` on flaky upstreams
+### E7. Dropping `retry_on_status_codes` on flaky upstreams
 
 The active corpus uses `retry_on_status_codes: [500]` on most integration HTTP requests,
 cheap insurance against transient backend hiccups. Mirror this default for any external API
 call.
 
-## E8. Using a Service User token for import
+### E8. Using a Service User token for import
 
 The Hyperautomation API has no endpoint to transfer or share workflow ownership. A workflow
 imported with a Service User token is invisible to humans in the UI. Always use a personal
@@ -1234,7 +1234,7 @@ of "where did my workflow go?" support tickets.)
 
 ---
 
-# Function frequency cheat-sheet (top 30 from active flows)
+## Function frequency cheat-sheet (top 30 from active flows)
 
 Use this as a hint of which functions you'll *actually* need vs. the long-tail.
 
@@ -1275,7 +1275,7 @@ Anything below count 10 is genuinely long-tail; reach for it only when nothing a
 
 ---
 
-# What's NOT in the corpus (don't invent these)
+## What's NOT in the corpus (don't invent these)
 
 - `loop_type: "fixed"`, exists in the schema, but **0 of 498 active loops** use it. Either the
   pattern is rare or `dynamic` over a literal array is preferred. Use `dynamic`.

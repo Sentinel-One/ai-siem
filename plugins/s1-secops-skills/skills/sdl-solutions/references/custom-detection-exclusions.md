@@ -35,9 +35,9 @@ enough to start:
 
 > "Stop my Akamai DNS failed-lookup detection from alerting on our vulnerability-scanner subnets and
 > our own corporate domains, here's the list."
-
+>
 > "Exclude these allowlisted hosts/domains from the `<source>` detection." *(attach or paste the CSV)*
-
+>
 > "Build a `<source>` detection that ignores anything from assets tagged `scanner`."
 
 Whatever the prompt leaves out, confirm it with the questions below before deploying, do not assume.

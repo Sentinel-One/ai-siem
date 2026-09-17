@@ -213,7 +213,7 @@ export const tools = [
       properties: {
         workflowJson: {
           type: 'string',
-          description: 'Full Hyperautomation workflow JSON as a string. Must be valid Hyperautomation schema. Generate this using the hyperautomation skill.',
+          description: 'The workflow object as a JSON string: {"name": ..., "description": ..., "actions": [...]}. Pass the BARE workflow, not the {"data": {...}} request envelope; this tool adds the envelope itself. A data-wrapped payload is unwrapped automatically and noted in the response, because the raw-API examples in the hyperautomation skill show the on-the-wire body, which already includes that envelope. Generate the workflow using the hyperautomation skill.',
         },
         accountIds: {
           type: 'string',
@@ -233,6 +233,26 @@ export const tools = [
       } catch (e) {
         return JSON.stringify({ error: `Invalid JSON: ${e.message}` });
       }
+      // Accept the wire-shaped payload as well as the bare workflow.
+      //
+      // The import endpoint's body is {"data": {...}} and the skill's raw-API examples
+      // show it that way, correctly. This tool supplies that envelope, so pasting a
+      // documented example sent {"data":{"data":{...}}} and the API answered 422
+      // `body.data.name Field required`, which reads like a schema problem in the
+      // workflow rather than one extra level of nesting.
+      //
+      // Unwrap only when it is unambiguous: a `data` object present AND no top-level
+      // `name`. A bare workflow legitimately carrying its own `data` key keeps it.
+      let unwrapped = false;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          && parsed.data && typeof parsed.data === 'object' && !Array.isArray(parsed.data)
+          && parsed.name === undefined) {
+        parsed = parsed.data;
+        unwrapped = true;
+        process.stderr.write(
+          '[ha_import_workflow] payload arrived wrapped in {"data": ...}; unwrapped before sending. ' +
+          'Pass the bare workflow object to this tool; the "data" envelope is for raw API calls.\n');
+      }
       // Public import endpoint. Append the scope query param: account-level imports use
       // ?accountIds=, site-level use ?siteIds=. A bare import (no scope) returns a misleading
       // 403 on a scoped tenant (validated 2026-06-13).
@@ -240,6 +260,13 @@ export const tools = [
       if (accountIds) qs = `?accountIds=${encodeURIComponent(accountIds)}`;
       else if (siteIds) qs = `?siteIds=${encodeURIComponent(siteIds)}`;
       const result = await apiPost(`${HA_PUBLIC}/workflow-import-export/import${qs}`, { data: parsed });
+      if (unwrapped) {
+        return JSON.stringify({
+          importNote: 'The payload arrived wrapped in {"data": ...} and was unwrapped before sending. ' +
+                      'That envelope belongs to raw API calls; pass the bare workflow object to this tool.',
+          ...result,
+        }, null, 2);
+      }
       return JSON.stringify(result, null, 2);
     },
   },
@@ -247,13 +274,22 @@ export const tools = [
   // ─── ha_export_workflow ───────────────────────────────────────────────────
   {
     name: 'ha_export_workflow',
-    description: `Export all Hyperautomation workflows as a ZIP archive. Returns metadata about the ZIP (size, content-type) plus the first 200 bytes of the base64-encoded content. NOTE: The export API (confirmed via live backtest) returns ALL workflows; there is no per-workflow filter. Use ha_get_workflow to read a specific workflow's JSON definition instead. Export/import endpoints were not captured in the v1 network trace; this tool uses the confirmed /public path.`,
+    description: `Export Hyperautomation workflows as a ZIP archive. Returns metadata about the ZIP (size, content-type) plus the first 200 bytes of the base64-encoded content. NOTE: there is no per-workflow filter; the API returns every workflow in scope. Use ha_get_workflow to read a specific workflow's JSON definition instead. Scope with accountIds or siteIds: on a scoped tenant an unscoped call can return a 403 "Insufficient permissions" that is really a scoping problem, the same misleading failure ha_import_workflow documents. Requires Hyper Automate.view permission.`,
     inputSchema: {
       type: 'object',
-      properties: {},
+      properties: {
+        accountIds: {
+          type: 'string',
+          description: 'Account scope for an account-level export (e.g. "1234567890123456789"). Provide this OR siteIds. Omit to use the token default.',
+        },
+        siteIds: {
+          type: 'string',
+          description: 'Site scope for a site-level export. Provide this OR accountIds.',
+        },
+      },
       required: [],
     },
-    async handler() {
+    async handler({ accountIds, siteIds } = {}) {
       // Export path confirmed working during backtest at /public path.
       // GET returns binary ZIP of ALL workflows; POST returns 405.
       // Per-workflow filter is not supported by this API version.
@@ -261,7 +297,10 @@ export const tools = [
       const creds = getCreds();
       const base = creds.S1_CONSOLE_URL.replace(/\/+$/, '');
       const tok  = creds.S1_CONSOLE_API_TOKEN;
-      const url  = `${base}${HA_PUBLIC}/workflow-import-export/export`;
+      let qs = '';
+      if (accountIds) qs = `?accountIds=${encodeURIComponent(accountIds)}`;
+      else if (siteIds) qs = `?siteIds=${encodeURIComponent(siteIds)}`;
+      const url  = `${base}${HA_PUBLIC}/workflow-import-export/export${qs}`;
 
       const res = await fetch(url, {
         method: 'GET',
@@ -269,7 +308,14 @@ export const tools = [
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(`ha_export_workflow → ${res.status}: ${text}`);
+        // A 403 here has two causes and the message does not distinguish them, so name
+        // both rather than letting the reader assume it is only about roles.
+        const hint = res.status === 403 && !qs
+          ? '. Two possible causes: the token lacks Hyper Automate.view, OR this is a' +
+            ' scoped tenant and the call needs accountIds/siteIds. Retry with a scope' +
+            ' before concluding it is a permission problem.'
+          : '';
+        throw new Error(`ha_export_workflow → ${res.status}: ${text}${hint}`);
       }
       const buf    = await res.arrayBuffer();
       const base64 = Buffer.from(buf).toString('base64');

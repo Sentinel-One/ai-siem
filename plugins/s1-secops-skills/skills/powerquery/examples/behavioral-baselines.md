@@ -253,10 +253,10 @@ deserve different routing:
 
 | Tier | Z threshold | Detector | Routing |
 |---|---|---|---|
-| Hard alert | `|z| >= 3.0` | Pooled or DoW-stratified, whichever is in production | Auto-page; high precision, low recall |
-| Soft alert / triage | `|z| >= 2.0` (DoW-stratified) | DoW-stratified preferred so weekend silences don't ping the queue | Tag for analyst review |
-| Trend tuning | `|z| >= 1.0` | Pooled baseline | Analyst dashboard only: don't make this a rule |
-| Silent-pair detector | `|z| >= 2.5` and `baseline_avg > <floor>` | DoW-stratified silent path | Separate rule; tune `<floor>` per source so noise pairs don't dominate |
+| Hard alert | `\|z\| >= 3.0` | Pooled or DoW-stratified, whichever is in production | Auto-page; high precision, low recall |
+| Soft alert / triage | `\|z\| >= 2.0` (DoW-stratified) | DoW-stratified preferred so weekend silences don't ping the queue | Tag for analyst review |
+| Trend tuning | `\|z\| >= 1.0` | Pooled baseline | Analyst dashboard only: don't make this a rule |
+| Silent-pair detector | `\|z\| >= 2.5` and `baseline_avg > <floor>` | DoW-stratified silent path | Separate rule; tune `<floor>` per source so noise pairs don't dominate |
 | New-behaviour detector | n/a | New-behaviour detector | Separate rule; route to baseline-curation queue rather than alerting outright |
 
 ## Productionising as a STAR / PowerQuery Alert rule
@@ -298,6 +298,66 @@ dataSource.name = '<source>'
    `treatAsThreat: "UNDEFINED"` and `networkQuarantine: false` are
    required. Use the alert severity field, not mitigation actions, to
    surface the verdict.
+
+## Geo-velocity (impossible travel in km/h)
+
+Same genre as the rest of this file: a rate computed from telemetry. The difference is that
+the obvious implementation is wrong on this engine and fails silently, so the shape below is
+not a style preference.
+
+**Never pair rows to find the fastest hop.** `| join` zips the two sides roughly one-to-one
+rather than producing a cross product: two 20-row sides joined on a constant key returned 20
+rows, not 400. A pairwise query therefore reports an arbitrary pair's speed as the maximum,
+with no error. See `references/pitfalls.md`. Compute first and last position inside a single
+`group` instead.
+
+```text
+dataSource.name = 'Windows Event Logs' winEventLog.id=4624 winEventLog.data.event.eventData.targetUserName=* winEventLog.data.event.eventData.ipAddress=*
+| filter endpoint.name != null
+| let loc = geo_ip_location(winEventLog.data.event.eventData.ipAddress)
+| let cc  = geo_ip_country_iso(winEventLog.data.event.eventData.ipAddress)
+| filter geo_is_point(loc)
+| group first_loc = min_by(loc, timestamp), last_loc = max_by(loc, timestamp),
+        first_ip  = min_by(winEventLog.data.event.eventData.ipAddress, timestamp),
+        last_ip   = max_by(winEventLog.data.event.eventData.ipAddress, timestamp),
+        t0 = oldest(timestamp), t1 = newest(timestamp),
+        places = estimate_distinct(loc), logons = count(),
+        countries = array_agg_distinct(cc), hosts = array_agg_distinct(endpoint.name)
+  by principal_v = winEventLog.data.event.eventData.targetUserName, win = timebucket('4h')
+| filter places >= 2
+| let km    = geo_distance(first_loc, last_loc, 'kilometer')
+| let hours = (t1 - t0) / 3600000000000
+| let kmh   = (hours > 0 ? km / hours : 0)
+| filter km >= 100
+| filter kmh >= 900
+| sort -kmh
+| columns principal_v, kmh, km, hours, first_ip, last_ip, first_loc, last_loc, countries, places, logons, hosts
+| limit 200
+```
+
+Verified end to end against a source with routable IPs. One returned row was hand-checked:
+15043.728 km over 0.0019092 h = 7,879,735 km/h, matching the engine to the decimal.
+
+**Three details that are load-bearing.**
+
+- `timestamp` is nanoseconds, so the hours divisor is `3600000000000`.
+- `(hours > 0 ? ... : 0)` is mandatory. An unguarded division by zero returns the **string**
+  `'Infinity'`, which sorts as a string and defeats every numeric threshold downstream,
+  without raising anything.
+- `| filter km >= 100` is not decoration. Without a distance floor, two datacentres in the
+  same metro produce a huge km/h from a tiny distance over a few seconds.
+
+**State the limitation, do not hide it.** This measures the first-to-last leg, not the true
+fastest pair.
+
+- For exactly 2 locations it is exact.
+- For 3 or more it can **understate**, because the fastest hop may be in the middle.
+- It never overstates, so it is a safe lower bound for alerting.
+- Keep `places` and `countries` in the output as the completeness signal, so a responder can
+  see that more locations existed than the two the rate was computed from.
+
+The pairwise alternative is not available on this engine, which is the whole reason for the
+shape above.
 
 ## Summary: when to reach for which tool in this skill family
 

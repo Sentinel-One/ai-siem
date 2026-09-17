@@ -37,14 +37,28 @@ REFS = SKILL_DIR / "references"
 
 
 def _load_linter():
-    spec = importlib.util.spec_from_file_location(
-        "run_evals", str(ROOT / "tools" / "run_evals.py"))
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    """Import `tools/run_evals.py`, or return None where the repo has no such tree.
+
+    The skill is vendored into other repositories, where it lands several levels
+    deep and the linter does not travel with it. A fixed `ROOT / "tools"` path
+    raised FileNotFoundError at import time there, which aborted collection and
+    cost this whole file its CI signal without failing anything visibly. Walk up
+    for the linter instead, and degrade to skipping only the two tests that need
+    it rather than silently losing the other twenty-seven.
+    """
+    for base in [SKILL_DIR, *SKILL_DIR.parents]:
+        cand = base / "tools" / "run_evals.py"
+        if cand.is_file():
+            spec = importlib.util.spec_from_file_location("run_evals", str(cand))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+    return None
 
 
 LINTER = _load_linter()
+NEEDS_LINTER = unittest.skipIf(
+    LINTER is None, "tools/run_evals.py not present in this repository layout")
 
 FENCE = re.compile(r"^```(\w*)\n(.*?)^```", re.M | re.S)
 PQ_LANGS = {"text", "powerquery", "pq"}
@@ -228,8 +242,21 @@ class ReferenceFilesResolve(unittest.TestCase):
         named = set(re.findall(
             r"((?:\.\./)?(?:[A-Za-z0-9._-]+/)?references/[A-Za-z0-9._-]+\.md)", SKILL))
         self.assertTrue(named, "SKILL.md no longer points at any reference file")
-        missing = [n for n in sorted(named)
-                   if not ((SKILL_DIR / n).is_file() or (ROOT / n).is_file())]
+
+        def resolves(n: str) -> bool:
+            if (SKILL_DIR / n).is_file() or (ROOT / n).is_file():
+                return True
+            # A cross-skill pointer such as `sdl-api/references/x.md` resolves
+            # against ROOT here but against a prefixed sibling directory in repos
+            # that vendor these skills. Accept either spelling of the sibling so
+            # the invariant tests the reference, not the host repo's naming.
+            head, _, tail = n.lstrip("./").partition("/")
+            for alt in (f"sentinelone-{head}", head.replace("sentinelone-", "", 1)):
+                if tail and (ROOT / alt / tail).is_file():
+                    return True
+            return False
+
+        missing = [n for n in sorted(named) if not resolves(n)]
         self.assertEqual([], missing,
                          "SKILL.md points at reference files that do not exist: "
                          + ", ".join(missing))
@@ -244,6 +271,7 @@ class DocumentedQueriesLintClean(unittest.TestCase):
                     continue
                 yield f, body
 
+    @NEEDS_LINTER
     def test_examples_pass_the_repo_linter(self):
         failures = []
         for f, body in self._blocks():
@@ -267,6 +295,7 @@ class EvalSuiteIsGradable(unittest.TestCase):
         self.path = SKILL_DIR / "evals" / "evals.json"
         self.suite = json.loads(self.path.read_text(encoding="utf-8"))
 
+    @NEEDS_LINTER
     def test_structure_is_clean(self):
         errs = LINTER.check_structure(self.suite, self.path)
         self.assertEqual([], errs, "\n".join(errs))

@@ -65,13 +65,38 @@ export const tools = [
           description: 'Optional filter, e.g. "/dashboards/" or "/logParsers/". Applied client-side to the full listing.',
         },
         scope: scopeProp,
+        // See the note in sdl_list_dashboards: no `default:` keywords, because the host
+        // currently rejects any omitted property that declares one.
+        limit: {
+          type: 'number',
+          description: 'Maximum files to return. Defaults to 500, clamped to 5000. Narrow with pathPrefix first; paging a filtered list is cheaper than paging everything.',
+        },
+        offset: {
+          type: 'number',
+          description: 'Index to start from. Defaults to 0. Page with offset += limit while offset is less than totalCount.',
+        },
       },
       required: [],
     },
-    async handler({ pathPrefix, scope } = {}) {
+    async handler({ pathPrefix, scope, limit = 500, offset = 0 } = {}) {
       let files = await configFiles({ scope });
       if (pathPrefix) files = files.filter(f => (f.name || '').startsWith(pathPrefix));
-      return JSON.stringify({ count: files.length, scope: scope ?? null, files }, null, 2);
+      const lim = Math.max(1, Math.min(Number(limit) || 500, 5000));
+      const off = Math.max(0, Number(offset) || 0);
+      const page = files.slice(off, off + lim);
+      const returnedEnd = off + page.length;
+      return JSON.stringify({
+        // `count` kept as the full post-filter total so existing callers that read it
+        // still get the number they expect; `returned` is the size of this page.
+        count: files.length,
+        returned: page.length,
+        offset: off,
+        limit: lim,
+        hasMore: returnedEnd < files.length,
+        nextOffset: returnedEnd < files.length ? returnedEnd : null,
+        scope: scope ?? null,
+        files: page,
+      }, null, 2);
     },
   },
 
@@ -172,15 +197,54 @@ export const tools = [
   // ─── sdl_list_dashboards ──────────────────────────────────────────────────
   {
     name: 'sdl_list_dashboards',
-    description: `List dashboards visible at the given scope via the GraphQL dashboardsV2 query, returning {id, name, description, configType, access:{public, users, owner}} each. Prefer this over sdl_list_files when you need the owner or the sharing state; use sdl_list_files when you need the config-file version for optimistic locking. The "id" here IS the "udoId" in sdl_list_files, they address the same object. ${SCOPE_NOTE}`,
+    description: `List dashboards visible at the given scope via the GraphQL dashboardsV2 query, returning {id, name, description, configType, access:{public, users, owner}} each. Prefer this over sdl_list_files when you need the owner or the sharing state; use sdl_list_files when you need the config-file version for optimistic locking. The "id" here IS the "udoId" in sdl_list_files, they address the same object. PAGINATED: the full listing is unbounded and on a large tenant it is enormous (measured on an MSSP account: 442,581 characters, 17,111 lines, far past any usable context budget), so this returns at most "limit" dashboards starting at "offset", newest API order preserved. totalCount always reports the full number so you can tell when you are seeing a page. Use namesOnly to get just {id, name} when you are resolving a name to an id, which is the common case and roughly four times smaller. NOTE that "id" is null for dashboards created the old, name-addressed way, before udoIds existed; only dashboards created through the dashboardsV2 surface carry one. On an established account most predate it: measured 397 of 1,555 with an id, and sdl_list_files reports exactly the same 397, so a null is the object's age and not a gap in this tool. Address a legacy dashboard by its "/dashboards/<name>" path. Results come back ordered by name and that order is stable across calls, so offset paging is safe; page on "name", not on "id". ${SCOPE_NOTE}`,
     inputSchema: {
       type: 'object',
-      properties: { scope: scopeProp },
+      properties: {
+        scope: scopeProp,
+        // No `default:` keywords here deliberately. The Claude Code host currently
+        // converts a JSON-Schema `default` into a non-optional Zod field, so a property
+        // carrying one is REJECTED when omitted ("expected nonoptional, received
+        // undefined") before the call ever reaches this server. Declaring defaults here
+        // would make sdl_list_dashboards unusable without passing every argument, which
+        // is the bug this release documents. Defaults live in the handler signature and
+        // are stated in these descriptions instead.
+        limit: {
+          type: 'number',
+          description: 'Maximum dashboards to return. Defaults to 100, clamped to 1000. The full listing is unbounded; this cap is what stops a large tenant blowing the context budget.',
+        },
+        offset: {
+          type: 'number',
+          description: 'Index to start from. Defaults to 0. Page with offset += limit while offset is less than totalCount.',
+        },
+        namesOnly: {
+          type: 'boolean',
+          description: 'Return only {id, name} per dashboard. Defaults to false. Much smaller; use when resolving a name to an id.',
+        },
+      },
       required: [],
     },
-    async handler({ scope } = {}) {
-      const dashboards = await listDashboards({ scope });
-      return JSON.stringify({ count: dashboards.length, scope: scope ?? null, dashboards }, null, 2);
+    async handler({ scope, limit = 100, offset = 0, namesOnly = false } = {}) {
+      const all = await listDashboards({ scope });
+      // Clamp rather than reject: a caller asking for 100000 wants "all of them", and
+      // failing the call teaches nothing. The cap is what protects the context budget.
+      const lim = Math.max(1, Math.min(Number(limit) || 100, 1000));
+      const off = Math.max(0, Number(offset) || 0);
+      const page = all.slice(off, off + lim);
+      const dashboards = namesOnly
+        ? page.map(d => ({ id: d.id, name: d.name }))
+        : page;
+      const returnedEnd = off + dashboards.length;
+      return JSON.stringify({
+        totalCount: all.length,
+        returned: dashboards.length,
+        offset: off,
+        limit: lim,
+        hasMore: returnedEnd < all.length,
+        nextOffset: returnedEnd < all.length ? returnedEnd : null,
+        scope: scope ?? null,
+        dashboards,
+      }, null, 2);
     },
   },
 

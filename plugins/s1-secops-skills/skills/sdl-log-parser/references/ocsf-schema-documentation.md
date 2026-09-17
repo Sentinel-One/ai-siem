@@ -20,7 +20,7 @@ The documentation is organized into seven subsection topics, each covering one O
 
 1. [System Activity](#system-activity)
 2. [Findings](#findings)
-3. [Identity & Access Management](#identity-access-management)
+3. [Identity & Access Management](#identity--access-management)
 4. [Network Activity](#network-activity)
 5. [Discovery](#discovery)
 6. [Application Activity](#application-activity)

@@ -130,12 +130,26 @@ class CatalogPlaybookAndTemplateWiring(unittest.TestCase):
                          + ", ".join(missing))
 
     def test_catalog_table_has_a_playbook_column_entry_per_row(self):
+        """The catalog must list every solution the description enumerates.
+
+        Derived, not hardcoded. The count was pinned at 8, which broke the
+        moment a repo legitimately carried a different set: the GHE guidelines
+        repo drops Detection-as-Code, so its description enumerates 7 and its
+        catalog has 7 rows, and a literal 8 failed a skill that was correct.
+        Reading the expected count from the description keeps the real invariant,
+        that the two agree, without assuming which solutions a given repo ships.
+        """
         rows = [r for r in SKILL.splitlines()
                 if r.startswith("|") and "references/" in r]
+        m = re.search(r'^description:\s*"(.*?)"\s*$', SKILL, re.M | re.S)
+        self.assertIsNotNone(m, "SKILL.md has no quoted description")
+        advertised = [int(n) for n in re.findall(r"\((\d+)\)", m.group(1))]
+        self.assertTrue(advertised,
+                        "the description no longer enumerates its solutions")
         self.assertGreaterEqual(
-            len(rows), 8,
-            "the solution catalog has fewer rows than the frontmatter "
-            "description advertises solutions")
+            len(rows), max(advertised),
+            f"the solution catalog has {len(rows)} rows but the frontmatter "
+            f"description advertises {max(advertised)} solutions")
 
 
 class ParserEligibilityGate(unittest.TestCase):

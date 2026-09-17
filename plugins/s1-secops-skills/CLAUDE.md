@@ -88,7 +88,7 @@ When reasoning past missing data, mark it and state the falsifier:
 
 > **Assumption:** the affected user `j.doe@...` is a human account, not a service account.
 > **Falsified by:** an `account_status='ServiceAccount'` lookup in Identity, or a `lastInteractiveLogon` value > 30d in the management console.
-
+>
 > **Assumption:** asset criticality is "high" because the hostname matches `*-dc-*` (typical DC naming).
 > **Falsified by:** the asset record's `tags[].S1_Asset_criticality` value, which is authoritative.
 

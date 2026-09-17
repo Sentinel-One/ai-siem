@@ -204,7 +204,7 @@ tgt.file.size = *
 | `geo_ip_continent_code(ip)` | AF / AS / EU / NA / SA / OC / AN |
 | `geo_ip_location(ip)` | "lat,lon" string |
 | `geo_is_point("lat,lon")` | Valid point |
-| `geo_distance(p1, p2[, "kilometer" | "mile"])` | Distance |
+| `geo_distance(p1, p2[, "kilometer" \| "mile"])` | Distance |
 | `geo_point_within_polygon("lat,lon", wkt)` | Polygon membership |
 
 Locales supported: `de en es fr ja pt-BR ru zh-CN`.

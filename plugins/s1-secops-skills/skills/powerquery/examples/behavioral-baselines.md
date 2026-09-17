@@ -253,10 +253,10 @@ deserve different routing:
 
 | Tier | Z threshold | Detector | Routing |
 |---|---|---|---|
-| Hard alert | `|z| >= 3.0` | Pooled or DoW-stratified, whichever is in production | Auto-page; high precision, low recall |
-| Soft alert / triage | `|z| >= 2.0` (DoW-stratified) | DoW-stratified preferred so weekend silences don't ping the queue | Tag for analyst review |
-| Trend tuning | `|z| >= 1.0` | Pooled baseline | Analyst dashboard only: don't make this a rule |
-| Silent-pair detector | `|z| >= 2.5` and `baseline_avg > <floor>` | DoW-stratified silent path | Separate rule; tune `<floor>` per source so noise pairs don't dominate |
+| Hard alert | `\|z\| >= 3.0` | Pooled or DoW-stratified, whichever is in production | Auto-page; high precision, low recall |
+| Soft alert / triage | `\|z\| >= 2.0` (DoW-stratified) | DoW-stratified preferred so weekend silences don't ping the queue | Tag for analyst review |
+| Trend tuning | `\|z\| >= 1.0` | Pooled baseline | Analyst dashboard only: don't make this a rule |
+| Silent-pair detector | `\|z\| >= 2.5` and `baseline_avg > <floor>` | DoW-stratified silent path | Separate rule; tune `<floor>` per source so noise pairs don't dominate |
 | New-behaviour detector | n/a | New-behaviour detector | Separate rule; route to baseline-curation queue rather than alerting outright |
 
 ## Productionising as a STAR / PowerQuery Alert rule

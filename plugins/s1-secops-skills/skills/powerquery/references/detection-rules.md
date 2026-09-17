@@ -421,7 +421,7 @@ between a rule that fires on every evaluation and one that never does:
 | Query shape | Threshold type | Compared against |
 |---|---|---|
 | Simple filter, no `group` | `count` | total number of matching **events** |
-| Contains `| group … by …` | `tableRows` | number of **result rows** |
+| Contains `\| group … by …` | `tableRows` | number of **result rows** |
 
 So `threshold > 500` on a non-aggregating filter means 500 events, while the
 same threshold on a grouped query means 500 rows, which is usually a wildly
@@ -571,7 +571,7 @@ Every option on the rule's Overview page maps to a field in the `POST/PUT /cloud
 |---|---|---|
 | `scheduled` | `"2.0"` | Correct path for PowerQuery (pipe) rules. Body goes in `data.scheduledParams.query`; accepts pipe syntax. |
 | `correlation` | `"2.0"` | Multi-event correlation rules. `s1ql` stays empty; logic goes in `data.correlationParams` (`entity`, `matchInOrder`, `timeWindow.windowMinutes`, and `subQueries[]` each `{matchesRequired, subQuery}` where `subQuery` is boolean S1QL with NO pipes). Tenant-confirmed 2026-06-24. |
-| `events` | `"2.0"` | Correct path for events rules. Body is a boolean S1QL filter with NO pipes, placed in `data.s1ql` (e.g. `dataSource.name='Okta' and unmapped.legacyEventType contains 'token.detect_reuse'`). The `400 Don't understand [|]` happens only when the body contains a pipe; events bodies cannot use PowerQuery pipe syntax. Confirmed: every live events rule on this tenant (Okta, Palo Alto, Windows Event Logs, SentinelOne) uses `queryLang:"2.0"`. |
+| `events` | `"2.0"` | Correct path for events rules. Body is a boolean S1QL filter with NO pipes, placed in `data.s1ql` (e.g. `dataSource.name='Okta' and unmapped.legacyEventType contains 'token.detect_reuse'`). The `400 Don't understand [\|]` happens only when the body contains a pipe; events bodies cannot use PowerQuery pipe syntax. Confirmed: every live events rule on this tenant (Okta, Palo Alto, Windows Event Logs, SentinelOne) uses `queryLang:"2.0"`. |
 | `events` | `"2.1"` | HTTP 400 `queryLang: "2.1" is not a valid choice`; the 2.1 dialect is not in the enum. |
 | `events` | `"1.0"` | Also accepted for events (legacy default), but live rules use `"2.0"`. Boolean S1QL only, no pipes. |
 

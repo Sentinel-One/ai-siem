@@ -577,8 +577,8 @@ indicator.category = 'Persistence'
 
 | Question | Start with |
 |---|---|
-| "Is this host doing X?" | `endpoint.name = '…'` + event-type filter, `| limit 100` |
-| "Who's making the most noise?" | `| group ct = count() by endpoint.name \| sort -ct` |
+| "Is this host doing X?" | `endpoint.name = '…'` + event-type filter, `\| limit 100` |
+| "Who's making the most noise?" | `\| group ct = count() by endpoint.name \| sort -ct` |
 | "How rare is this command line?" | `src.process.cmdline contains '…' \| group by endpoint.name` |
 | "Who runs this binary?" | `src.process.name = '…' \| group by endpoint.name, src.process.user` |
 | "What did this storyline do?" | `#storylineid = '…' \| sort timestamp` |

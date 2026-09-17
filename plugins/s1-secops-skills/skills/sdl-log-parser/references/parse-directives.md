@@ -3,7 +3,7 @@
 A `{parse=X}` directive inside a field matcher runs a secondary parser on the captured value, generating additional fields prefixed with the parent field name. Use `{attrWhitelist=rx}` / `{attrBlacklist=rx}` to filter which generated subfields are kept.
 
 > **NOT a valid directive: `{parse=keyValue}`.** It returns `400: Syntax error: Unknown parser "keyValue"`. The `keyValue` built-in parser exists, but it is only usable as a root-level `aliasTo: "keyValue"` (a one-line alias parser). To extract key=value pairs INSIDE a format string, use the repeating idiom `".*$_=identifier$=$_=quoteOrSpace$"` with `repeat: true`, see SKILL.md decision-tree step 5 and `examples/03-key-value.json`. The leading `.*` is mandatory; without it the format anchors at position 0 of the message and captures nothing on any line that doesn't start with a bare `identifier=`. Tenant-validated 2026-05-26 on FortiGate syslog. **None of the other built-ins** (`accessLog`, `cloudfront`, `json`, `dottedJson`, `dottedEscapedJson`, `elb-access`, `heroku-logplex`, `leveldbLog`, `mysqlGeneralQueryLog`, `mysqlSlowQueryLog`, `postgresLog`, `redshift`, `s3_bucket_access`, `spot_instance_data`, `systemLog`) are accepted as `{parse=...}` directives either, they're root-level parsers only. The valid `{parse=X}` set is the one documented below (URI variants, JSON variants, key=value list, time/byte/syslog parsers).
-
+>
 > **Subfield naming convention (per SDL KB 000006743):** generated fields are named `<parentFieldName><CapitalizedFirstLetterOfKey><restOfKey>`, with the source key's first letter uppercased and concatenated to the parent field name. There is NO underscore, dot, or `Query_` separator between prefix and key. Examples for a field captured as `uri`:
 >
 > - `uriPath` (the parsed URL path component, from `{parse=uri}`)
@@ -12,9 +12,9 @@ A `{parse=X}` directive inside a field matcher runs a secondary parser on the ca
 > - For a field captured as `details`: `detailsApple`, `detailsBanana`, etc.
 >
 > Likewise for `{parse=json}` / `{parse=dottedJson}`: a field captured as `details` parsing `{"foo":"hello"}` generates `detailsFoo` (camelCase) or `details.foo` (dotted), not `details_foo`. Verify the exact field name with a sample query if you are unsure, the obvious-looking `<prefix>_<key>` form does NOT exist on this engine.
-
+>
 > **`attrWhitelist` / `attrBlacklist` scope**; these only filter the SUBFIELDS produced by the `{parse=...}` directive, not top-level fields you captured by name in the format string. To drop a top-level field you named explicitly, use `discardAttributes: ["fieldname"]` at the parser root, NOT a blacklist on the parse directive. Catalog parsers like `cisco_firewall-latest` show liberal use of blacklists to drop noisy nested arrays (`{attrBlacklist=(targetResources)}`, `{attrBlacklist=(threatsInfoMap|messageParts)}`); the same authors use `discardAttributes: ["message"]` separately to drop the raw event body.
-
+>
 > **Pipe vs parenthesized list syntax for `attrBlacklist=`**, both work in the wild:
 >
 > - Parenthesized: `{attrBlacklist=(field1|field2|field3)}`, common in Microsoft Eventhub parsers.
@@ -33,7 +33,7 @@ A `{parse=X}` directive inside a field matcher runs a secondary parser on the ca
 | `uriAttributesMultivalue` / `urlAttributesMultivalue` | Multivalue variants. |
 
 > **Parent capture is consumed, not preserved.** When `{parse=uri}` or `{parse=uriAttributes}` runs, the parent field's captured value disappears from the event after parsing on at least some current tenants (validated April 2026 against a Singularity Data Lake tenant with relative URLs). Only the generated subfields remain. If you need the raw URL/query string in addition to the parsed pieces, capture it twice: once with the parse directive, once into a sibling scratch field that you keep, and `rename` the scratch one to your preferred OCSF target in `mappings`. Equivalent workaround: split path and query in the format string itself (`$path{regex=[^? ]+}$\??$qs{regex=[^ ]*}{parse=uriAttributes}$`) so the path stays as a top-level field.
-
+>
 > **Relative URLs and `{parse=uri}`.** `{parse=uri}` is documented as splitting a "URL" into path + query, and works correctly for absolute URLs (`http://host/path?foo=bar`). For relative URLs (`/path?foo=bar`), behaviour on tested tenants is to emit `<prefix>Path` only and silently drop the query subfields. Prefer `{parse=uriAttributes}` on the query-string portion (split manually with regex), which reliably emits `<prefix><CapitalizedKey>` siblings regardless of whether a scheme/host is present.
 
 ## JSON bodies

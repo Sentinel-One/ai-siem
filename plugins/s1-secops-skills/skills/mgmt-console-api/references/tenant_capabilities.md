@@ -426,7 +426,7 @@
 | GET | `/web/api/v2.1/mobile-integration/provisioning/tenant` | Mobile Integration | 404 | HTTP 404: Tenant not found |
 | GET | `/web/api/v2.1/ranger/enablement` | Network Discovery Self Enablement | 404 | HTTP 404: {"errors":[{"code":4040010,"detail":"","title":"Requested resource was not found"}]}  |
 | GET | `/web/api/v2.1/ranger/enablement/defaults` | Network Discovery Self Enablement | 404 | HTTP 404: {"errors":[{"code":4040010,"detail":"","title":"Requested resource was not found"}]}  |
-| GET | `/web/api/v2.1/remote-ops/forensics/collection-profiles` | RemoteOps Forensics | 429 | HTTP 429: <html>
+| GET | `/web/api/v2.1/remote-ops/forensics/collection-profiles` | RemoteOps Forensics | 429 | HTTP 429: <html> |
 
  <head><title>429 Too Many Requests</title></head>
  <body>

@@ -528,7 +528,7 @@ For npx installs without a CLAUDE.md nearby, set `S1_CLAUDE_MD_PATH` in the `env
 On affected Claude Code / Claude Desktop builds, calling one of the tools below without
 passing **every** parameter fails before the request reaches this server:
 
-```
+```text
 MCP error -32602: Input validation error: Invalid arguments for tool powerquery_run: [
   { "code": "invalid_type", "expected": "nonoptional", "path": ["maxRows"],
     "message": "Invalid input: expected nonoptional, received undefined" } ]

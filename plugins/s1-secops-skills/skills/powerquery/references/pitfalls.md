@@ -699,7 +699,7 @@ The combination that works for any PowerQuery (pipe-syntax) rule body is `queryT
 | `queryType` | `queryLang` | Result |
 |---|---|---|
 | `scheduled` | `"2.0"` | **Correct path for PowerQuery rules.** Body goes in `data.scheduledParams.query`. |
-| `events` | `"2.0"` | HTTP 400 `Don't understand [|]`. PowerQuery pipes rejected. |
+| `events` | `"2.0"` | HTTP 400 `Don't understand [\|]`. PowerQuery pipes rejected. |
 | `events` | `"2.1"` | HTTP 400 `queryLang: "2.1" is not a valid choice`. |
 | `events` | `"1.0"` (default) | S1QL log-search only, no pipes. |
 
@@ -813,7 +813,7 @@ what was sent, so neither the write nor a naive verification catches it.
 
 It surfaces later, on unrelated queries:
 
-```
+```text
 400 {"code":"invalid_argument",
      "message":"Line 12 has 5 columns instead of 4 columns as defined in the CSV headers"}
 ```
@@ -830,7 +830,7 @@ run, fixed, then reintroduced by hand in the same session.
 
 A query whose read half completes can still die in the write:
 
-```
+```text
 500 {"code":"internal_server_error",
      "message":"timeout prevented savelookup from completing"}
 ```

@@ -418,27 +418,47 @@ One image (`sentinelone/secops-skills`) bundles all three MCPs (`s1-secops-mcp`,
 
 Every bundled server is built from a pinned git source. Run `docker run --rm sentinelone/secops-skills:1.4.6 versions` to see the exact repo and commit behind each one.
 
-Prerequisite: Docker Desktop (macOS/Windows) or Docker Engine (Linux), running. Everything else is a credential (see the table in Step 2).
+**Step 1: Install Docker and confirm it is running**
 
-**Step 1: Pull the image (all three MCPs)**
+Docker Desktop (macOS/Windows) or Docker Engine (Linux). Everything else is a credential (see the table in Step 2).
+
+```bash
+docker info | head -3
+```
+
+Expected: a `Server Version:` line. If you see `Cannot connect to the Docker
+daemon`, Docker is not running. Start Docker Desktop and wait until the whale
+icon stops animating. This is the single most common setup failure, and it
+surfaces later as an MCP showing red in Cowork rather than as an obvious
+Docker error.
+
+You do **not** need to pull the image. The config in Step 2 uses
+`--pull=missing`, so the first launch fetches it automatically.
+
+<details>
+<summary>Optional: pre-pull to avoid a slow first launch (~250 MB)</summary>
+
+The first launch downloads the image inside Claude Desktop's MCP startup, which
+can look like a hang. Pulling ahead of time makes that first start immediate:
 
 ```bash
 docker pull sentinelone/secops-skills:1.4.6
 ```
 
+</details>
+
 Pin the exact version. Tags on this repository are **immutable**, so `1.4.6`
 always means the same bytes: there is no `latest`, deliberately, because a
-moving tag makes "which image am I running?" unanswerable. The image tag and
-the bundled MCP version are separate streams, so ask the image rather than
-infer from the tag:
+moving tag makes "which image am I running?" unanswerable. That immutability is
+also why `--pull=missing` is the right setting: re-pulling on every launch buys
+nothing and fails hard when the registry is unreachable.
+
+The image tag and the bundled MCP version are separate streams, so ask the
+image rather than infer from the tag:
 
 ```bash
 docker run --rm sentinelone/secops-skills:1.4.6 versions
 ```
-
-`--pull=missing` is correct here: an immutable tag cannot change, so re-pulling
-on every launch buys nothing and fails hard when the registry is unreachable.
-About 250 MB compressed.
 
 **Step 2: Configure credentials**
 

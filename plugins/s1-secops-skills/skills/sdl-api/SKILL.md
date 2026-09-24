@@ -181,7 +181,10 @@ without sandbox proxy interference. No fallback or workaround needed.
 # Example: use sdl_get_file MCP tool directly instead
 import sys, subprocess, json
 result = subprocess.run(["mdfind", "-name", "sdl_client.py"], capture_output=True, text=True)
-sdk_dir = [p for p in result.stdout.strip().split("\n") if "claude-skills" in p][0].rsplit("/", 1)[0]
+# Match either checkout name: the repo was renamed claude-skills -> s1-secops-skills,
+# and an existing local clone keeps whatever directory name it was cloned under.
+sdk_dir = [p for p in result.stdout.strip().split("\n")
+           if "s1-secops-skills" in p or "claude-skills" in p][0].rsplit("/", 1)[0]
 sys.path.insert(0, sdk_dir)
 from sdl_client import SDLClient
 c = SDLClient()

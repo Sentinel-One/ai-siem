@@ -34,7 +34,7 @@ cp claude_desktop_config.json claude_desktop_config.json.pre-1.3.2
 ## Step 1: the MCP
 
 **Docker (default).** Nothing to install. Bump the tag in your config (step 3);
-`--pull=always` fetches the image on next start.
+`--pull=missing` fetches the image on next start.
 
 **npm.** The package was renamed, so the old one must be removed explicitly or
 you will have two binaries on `PATH`:
@@ -81,7 +81,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`.
 |---|---|---|
 | Server key | `"sentinelone-mcp"` | `"s1-secops-mcp"` |
 | Dispatcher argument | `sentinelone-mcp` | `s1-secops-mcp` |
-| Image tag | `s1-mcps:1.2.x` | `s1-mcps:1.3.6` |
+| Image tag | `s1-mcps:1.2.x` | `s1-mcps:1.4.6` |
 | purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` |
 
 ### What to delete outright
@@ -98,9 +98,9 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=always",
+      "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
-               "ghcr.io/pmoses-s1/s1-mcps:latest", "s1-secops-mcp"],
+               "sentinelone/secops-skills:1.4.6", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
@@ -110,9 +110,9 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
     },
     "purple-mcp": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=always",
+      "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-               "ghcr.io/pmoses-s1/s1-mcps:latest", "purple-mcp"],
+               "sentinelone/secops-skills:1.4.6", "purple-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
@@ -120,9 +120,9 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
     },
     "virustotal": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=always",
+      "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "VIRUSTOTAL_API_KEY",
-               "ghcr.io/pmoses-s1/s1-mcps:latest", "virustotal-mcp"],
+               "sentinelone/secops-skills:1.4.6", "virustotal-mcp"],
       "env": {
         "VIRUSTOTAL_API_KEY": "your-virustotal-key"
       }
@@ -155,7 +155,7 @@ Or from a terminal, without Claude Desktop:
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:latest s1-secops-mcp
+  | docker run -i --rm sentinelone/secops-skills:1.4.6 s1-secops-mcp
 ```
 
 Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.3.9"`, and

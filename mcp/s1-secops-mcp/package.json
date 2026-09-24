@@ -28,11 +28,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pmoses-s1/claude-skills.git",
+    "url": "git+https://github.com/pmoses-s1/s1-secops-skills.git",
     "directory": "s1-secops-mcp"
   },
-  "homepage": "https://github.com/pmoses-s1/claude-skills/tree/main/s1-secops-mcp#readme",
-  "bugs": "https://github.com/pmoses-s1/claude-skills/issues",
+  "homepage": "https://github.com/pmoses-s1/s1-secops-skills/tree/main/s1-secops-mcp#readme",
+  "bugs": "https://github.com/pmoses-s1/s1-secops-skills/issues",
   "keywords": [
     "mcp",
     "sentinelone",

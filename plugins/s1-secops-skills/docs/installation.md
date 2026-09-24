@@ -41,11 +41,11 @@ All three servers run from public package registries: `s1-secops-mcp` and `@burt
     "s1-secops-mcp": {
       "command": "docker",
       "args": [
-        "run", "-i", "--rm", "--pull=always",
+        "run", "-i", "--rm", "--pull=missing",
         "-e", "S1_CONSOLE_URL",
         "-e", "S1_CONSOLE_API_TOKEN",
         "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
-        "ghcr.io/pmoses-s1/s1-mcps:latest",
+        "sentinelone/secops-skills:1.4.6",
         "s1-secops-mcp"
       ],
       "env": {

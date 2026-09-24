@@ -1,6 +1,6 @@
 # Credentials
 
-This is the canonical credentials reference for every install path (Docker quick start, npx/uvx, and team VM). It covers every key, where to find each one, the two token types, and the resolution order. The ready-to-paste `claude_desktop_config.json` block lives with each install path: follow your path in the [README Installation section](../README.md#installation) and fill in the keys documented here.
+This is the canonical credentials reference for both install paths (the Docker quick start and the individual MCP install). It covers every key, where to find each one, the two token types, and the resolution order. The ready-to-paste `claude_desktop_config.json` block lives with each install path: follow your path in the [README Installation section](../README.md#installation) and fill in the keys documented here.
 
 ---
 
@@ -18,13 +18,15 @@ This is the canonical credentials reference for every install path (Docker quick
 | Key | Required for | How to get it |
 |---|---|---|
 | `S1_CONSOLE_URL` | Everything | Your console URL, e.g. `https://usea1-acme.sentinelone.net`. No trailing slash. |
-| `S1_CONSOLE_API_TOKEN` | Mgmt Console REST, PowerQuery LRQ, UAM GraphQL, Purple AI GraphQL, SDL config ops (Management Z SP5+) | Settings → Users → Service Users → Create Service User → copy the API token. |
-| `S1_HEC_INGEST_URL` | UAM alert/indicator ingest, SDL log ingest | Region-specific HEC host, e.g. `https://ingest.us1.sentinelone.net`. Look up yours at [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961). |
-| `S1_HEC_TOKEN` | Raw log ingest over the event collector (`hec_ingest`) only | An **SDL Log Write Key**, minted per account or site: Console → Singularity Data Lake → API Keys → Log Write Key. Optional to set, but **`hec_ingest` now needs it**: the collector no longer accepts the console API token. |
+| `S1_CONSOLE_API_TOKEN` | Mgmt Console REST, PowerQuery LRQ, UAM GraphQL, Purple AI GraphQL, SDL config ops (Management Z SP5+), UAM alert ingest, IOCs | Settings → Users → Service Users → Create Service User → copy the API token. |
+| `S1_HEC_INGEST_URL` | UAM alert ingest, raw log ingest | Region-specific ingest host, e.g. `https://ingest.us1.sentinelone.net`. Look up yours at [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961). |
+| `S1_HEC_TOKEN` | Optional. **Raw log ingest over the event collector now needs it**, because the collector no longer accepts the console API token. Nothing else uses it. | Console → Singularity Data Lake → API Keys → Log Write Key. No API mints one. |
 
-`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are the minimum required, and between them they authorise every SDL operation including parser and dashboard deployment. Add `S1_HEC_INGEST_URL` only when you need HEC log or alert ingest, and `S1_HEC_TOKEN` when that includes **raw log** ingest.
+`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are the minimum required, and between them they authorise every SDL query and configuration operation including parser and dashboard deployment. Add `S1_HEC_INGEST_URL` only when you need log or alert ingest.
 
-The two ingest paths do not share a credential. UAM alert ingest (`POST /v1/alerts`) authenticates with `S1_CONSOLE_API_TOKEN` and requires an `S1-Scope` header. Raw log ingest over the event collector requires `S1_HEC_TOKEN`, an SDL Log Write Key, and sends **no** scope header, because the key is minted against a fixed account or site. The collector rejects the console token outright. The scoped SDL keys (`SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`, `SDL_XDR_URL`) are retired and are no longer read.
+Raw log ingest is the one path the console API token does not cover. `/services/collector/raw` and `/event` take an SDL Log Write Key in `S1_HEC_TOKEN`: on identical requests the write key returns `HTTP 200 {"text":"Success","code":0}` and the console token returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}`. A key is minted for exactly one account or site and writes only there, so the key fixes the ingest destination; no `S1-Scope` header is sent and sending one has no effect. To write elsewhere, use a key minted for that scope. UAM alert ingest and IOCs are unaffected and still use `S1_CONSOLE_API_TOKEN`.
+
+The scoped SDL keys (`SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`, `SDL_XDR_URL`) are retired and are no longer read.
 
 ```python
 ```
@@ -58,7 +60,7 @@ The skills auto-detect and fall back to this key when the primary token is rejec
 
 Credentials are resolved in this priority order (highest wins):
 
-1. Environment variables (`S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `S1_HEC_INGEST_URL`)
+1. Environment variables (`S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `S1_HEC_INGEST_URL`, `S1_HEC_TOKEN`)
 2. `credentials.json` in the Cowork project folder (auto-discovered by the plugin's SessionStart hook, and by s1-secops-mcp walking up the directory tree)
 3. `~/.config/sentinelone/credentials.json` (fallback for terminal/Claude Code sessions)
 
@@ -80,7 +82,7 @@ JSON
 ${EDITOR:-nano} "$PROJECT_DIR/credentials.json"
 ```
 
-Add `S1_HEC_INGEST_URL` alongside these if you need HEC ingest (full list in the [keys table](#credentialsjson-keys) above).
+Add `S1_HEC_INGEST_URL` alongside these if you need alert or log ingest, plus `S1_HEC_TOKEN` if that includes raw log ingest (full list in the [keys table](#credentialsjson-keys) above).
 
 When creating the project in Cowork, add `credentials.json` and `CLAUDE.md` under **Add files** so Claude has access to both in every session.
 
@@ -90,18 +92,16 @@ When creating the project in Cowork, add `credentials.json` and `CLAUDE.md` unde
 
 The MCP servers receive these credentials as environment variables in `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows). The ready-to-paste config block differs by install path, so copy it from the path you are following rather than duplicating it here:
 
-- **Docker (recommended):** [README → Quick start (Docker), Step 2](../README.md#1-quick-start-docker)
-- **npx/uvx (host runtime):** [docs/installation.md → Step 1: Configure MCP servers](./installation.md#step-1-configure-mcp-servers)
-- **Team VM (shared server):** [docs/vm-deployment.md](./vm-deployment.md)
+- **Docker (recommended):** [README → Quick start (Docker), Step 2](../README.md#1-quick-start-docker), or the full walkthrough at [docs/installation.md → Step 1: Configure MCP servers](./installation.md#step-1-configure-mcp-servers)
 
 Whichever block you paste, fill in the same keys from the tables above. Two things apply to every path:
 
 > **Threat intel MCP:** Replace `virustotal` with your organisation's approved threat intelligence MCP if different. Any MCP that provides file hash, IP, domain, and URL lookup tools works. The CLAUDE.md operating instructions require multi-source confirmation before a TRUE POSITIVE or CRITICAL verdict: they do not mandate a specific provider.
 
-**Host-runtime prerequisites (npx/uvx path only, not needed for Docker):**
-- Node.js 18+ for `s1-secops-mcp` and `@burtthecoder/mcp-virustotal` via `npx` (`node --version`)
-- `uv` for `purple-mcp`: `curl -LsSf https://astral.sh/uv/install.sh | sh`, then open a new terminal and run `uvx --version`
-- A VirusTotal API key (free tier is fine) from [virustotal.com](https://virustotal.com)
+**Host prerequisites:**
+
+- Docker running on the host (`docker --version`). All three MCPs ship in `sentinelone/secops-skills`, so nothing else is required.
+- A VirusTotal API key (free tier is fine) from [virustotal.com](https://virustotal.com), passed as `VIRUSTOTAL_API_KEY`.
 
 Restart Claude Desktop after editing the config. All servers then appear under connected MCP tools.
 
@@ -112,7 +112,7 @@ Restart Claude Desktop after editing the config. All servers then appear under c
 After setup, run the quick test:
 
 ```bash
-cd ai-siem/plugins/s1-secops-skills/skills/mgmt-console-api
+cd s1-secops-skills/mgmt-console-api
 pip install requests
 python scripts/s1_client.py
 ```

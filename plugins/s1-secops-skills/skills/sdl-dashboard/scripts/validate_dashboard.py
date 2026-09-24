@@ -59,7 +59,7 @@ def _import_sdl_client():
     except Exception as e:
         print(
             "ERROR: could not import sdl_client. Add sdl-api/scripts "
-            "to PYTHONPATH or run this script from inside the claude-skills repo.",
+            "to PYTHONPATH or run this script from inside the s1-secops-skills repo.",
             file=sys.stderr,
         )
         print(f"underlying error: {e}", file=sys.stderr)

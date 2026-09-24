@@ -1,42 +1,75 @@
 [Unit]
 Description=SentinelOne MCP server (Streamable HTTP, team-shared)
-Documentation=https://github.com/pmoses-s1/claude-skills/tree/main/s1-secops-mcp
-After=network-online.target
+Documentation=https://github.com/pmoses-s1/s1-secops-skills/tree/main/s1-secops-mcp
+After=network-online.target docker.service
 Wants=network-online.target
+Requires=docker.service
 
 [Service]
 Type=simple
-User=mcp
-Group=mcp
+
+# Pinned image. This is the one place the version is stated in the unit; the
+# installer states it once as IMAGE_REF in deploy/install.sh and the two are
+# kept in sync. To move versions: change the tag here, `docker pull` it, then
+# `systemctl daemon-reload && systemctl restart s1-secops-mcp`.
+Environment=S1_MCP_IMAGE=sentinelone/secops-skills:1.4.6
 
 # Server credentials (the S1 service-user token + SDL keys) and bearer tokens.
-# Both are written by deploy/install.sh. Bearer tokens rotate via
-# `systemctl reload` (SIGHUP, no dropped connections). credentials.json is
-# read once at startup, so changes to it require `systemctl restart`.
+# Both are written by deploy/install.sh into /etc/s1-secops-mcp, which is bind
+# mounted read-only into the container. Bearer tokens rotate via
+# `systemctl reload` (SIGHUP, no dropped connections). credentials.json is read
+# once at startup, so changes to it require `systemctl restart`.
+#
+# server.env is read by systemd, not by the container. Set S1_MCP_IMAGE there
+# to override the tag above without editing this unit.
 EnvironmentFile=/etc/s1-secops-mcp/server.env
-Environment=MCP_BEARER_TOKENS_FILE=/etc/s1-secops-mcp/bearer-tokens.json
-Environment=S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json
 
-ExecStart=/usr/bin/env node %h/.npm-global/lib/node_modules/@pmoses-s1/s1-secops-mcp/index.js \
+# The unit runs as root because the docker client needs the daemon socket, and
+# membership of the `docker` group is equivalent to root anyway. The workload
+# itself is confined by the container: no capabilities, no privilege gain, and
+# one read-only mount. Credential files stay owned by `mcp` mode 0600, so no
+# host account other than root and `mcp` can read them.
+
+# A container left behind by an unclean shutdown would make `--name` collide.
+# The leading `-` lets the removal be a no-op on a clean start.
+ExecStartPre=-/usr/bin/docker rm -f s1-secops-mcp
+
+# The server binds 0.0.0.0 inside the container's own network namespace, and
+# the port is published only to host loopback, so the listener is still not
+# reachable off the box. Caddy terminates TLS in front of 127.0.0.1:8765.
+ExecStart=/usr/bin/docker run --rm --name s1-secops-mcp \
+  --cap-drop ALL \
+  --security-opt no-new-privileges \
+  -v /etc/s1-secops-mcp:/etc/s1-secops-mcp:ro \
+  -e MCP_BEARER_TOKENS_FILE=/etc/s1-secops-mcp/bearer-tokens.json \
+  -e S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json \
+  -p 127.0.0.1:8765:8765 \
+  ${S1_MCP_IMAGE} \
+  s1-secops-mcp \
   --transport http \
-  --host 127.0.0.1 \
+  --host 0.0.0.0 \
   --port 8765 \
   --path /mcp
 
-# SIGHUP reloads the bearer token file without restart.
-ExecReload=/bin/kill -HUP $MAINPID
+# SIGHUP reloads the bearer token file without a restart. Signal the container,
+# not $MAINPID: the unit's main process is the docker client, and the server is
+# PID 1 inside the container.
+ExecReload=/usr/bin/docker kill --signal=HUP s1-secops-mcp
+
+# Stop the container explicitly so it gets SIGTERM and its 10 s grace period
+# rather than having the client killed out from under the daemon.
+ExecStop=-/usr/bin/docker stop --time=10 s1-secops-mcp
 
 Restart=on-failure
 RestartSec=5
 
-# Hardening
-# NOTE: MemoryDenyWriteExecute=true and LockPersonality=true are incompatible
-# with Node.js V8 JIT (W+X mappings). Including them causes a silent SIGTRAP
-# at startup with no useful log output. Leave them off for Node services.
+# Hardening for the docker client process. Directives that only make sense for
+# a workload process are set on the container instead (--cap-drop ALL,
+# --security-opt no-new-privileges, the read-only mount).
+# ProtectSystem and ProtectHome are deliberately absent: both can cut the
+# client off from /run/docker.sock and /root/.docker/config.json.
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
@@ -44,7 +77,6 @@ RestrictNamespaces=true
 RestrictRealtime=true
 RestrictSUIDSGID=true
 SystemCallArchitectures=native
-ReadWritePaths=
 
 # Resource limits
 LimitNOFILE=4096

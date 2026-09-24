@@ -130,7 +130,7 @@ fi
 # ─── pull image ──────────────────────────────────────────────────────────────
 
 step "Pulling $IMAGE_REF"
-docker pull "$IMAGE_REF" >/dev/null || die "docker pull $IMAGE_REF failed. Check network access to ghcr.io, or run 'docker login ghcr.io'."
+docker pull "$IMAGE_REF" >/dev/null || die "docker pull $IMAGE_REF failed. The image is public on Docker Hub and needs no login, so check network access to docker.io and the tag spelling."
 ok "$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE_REF" 2>/dev/null || echo "$IMAGE_REF")"
 
 # ─── credentials skeleton ────────────────────────────────────────────────────

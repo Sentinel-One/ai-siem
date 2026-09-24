@@ -537,7 +537,7 @@ The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-
 |---|---|
 | MCP shows red in Cowork → MCP Servers | Confirm Docker is running: `docker info \| head -3`. Start Docker Desktop, then restart Claude Desktop. |
 | `Cannot connect to the Docker daemon` in the logs | Docker Desktop is not running. |
-| `denied: permission_denied` from ghcr.io | Image is private or your network blocks ghcr.io: `docker login ghcr.io`, or check VPN/proxy. |
+| `denied` or `manifest unknown` from docker.io | The repository is public and needs no login, so this is normally a typo in the image name or tag, or a proxy intercepting Docker Hub. Only `1.4.5` and `1.4.6` exist. |
 | `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The value did not reach the container. Check each `-e VAR` name has a matching key in the same block's `env`. |
 | `S1 Mgmt API: NOT configured` | No console token reached the container; check `S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN`. |
 

@@ -32,7 +32,7 @@ For SentinelOne specifically: the Management Console exposes 781 operations acro
 
 Three pieces work together in every session:
 
-```
+```text
 CLAUDE.md            SOC Analyst persona, evidence rules, session protocol
        |
        v
@@ -97,7 +97,7 @@ There are three ways to interact with the skills once they're installed:
 
 **1. Inside the Cowork project (the main path).** Open the `PrincipalSOCAnalyst` project in Claude Desktop and start a new chat. `CLAUDE.md` loads automatically, the session protocol runs (data source enumeration, alert triage in parallel), and every skill is one prompt away. This is where you'll spend almost all your time.
 
-**2. From the terminal via Claude Code.** `cd` into the `ai-siem` repo folder and run `claude`. The CLI reads `CLAUDE.md` on startup and the same skills are available. Useful for scripting, batch jobs, and CI hooks.
+**2. From the terminal via Claude Code.** `cd` into the `s1-secops-skills` folder and run `claude`. The CLI reads `CLAUDE.md` on startup and the same skills are available. Useful for scripting, batch jobs, and CI hooks.
 
 **3. From any Claude session with the plugin installed.** Copy the contents of `CLAUDE.md` into Settings, Custom Instructions (or the equivalent system prompt field) of any Claude session that has the `s1-secops-skills` plugin installed. Useful when you want the SOC Analyst persona somewhere outside Cowork.
 
@@ -107,27 +107,29 @@ Continue to [Section 3: Install](#3-install-in-30-minutes) to set this up.
 
 ## 3. Install in 30 minutes
 
-The recommended install is the Docker quick start: one image bundles all three MCPs, so the only host dependency is Docker (no Node, Python, or `uv`). Rather than repeat it here, follow the three steps in the **[README Quick start (Docker)](../README.md#1-quick-start-docker)**:
+The install is a Docker quick start: one image bundles all three MCPs, so the only host dependency is Docker. Rather than repeat it here, follow the three steps in the **[README Quick start (Docker)](../README.md#1-quick-start-docker)**:
 
 1. **Pull the image** (all three MCPs in one).
 2. **Configure credentials** in `claude_desktop_config.json`. The README has the copy-paste config block and a table of where to get each token/key; the full key reference is [`docs/credentials.md`](./credentials.md).
-3. **Install the plugin** (`s1-secops-skills-v1.3.2.plugin`) via Cowork → Customize → Browse plugins.
+3. **Install the plugin** (the latest `s1-secops-skills-v*.plugin` in the `dist/` folder) via Cowork → Customize → Browse plugins.
 
-Then create a Cowork project named `PrincipalSOCAnalyst`, select a folder for it, and (optionally) drop your own [`CLAUDE.md`](https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/plugins/s1-secops-skills/CLAUDE.md) into the folder to customise the persona; the Docker image ships a default, so this is optional (to override it, mount the folder read-only and set `S1_CLAUDE_MD_PATH`, see [`docs/docker.md`](./docker.md#claudemd-customization)).
+Then create a Cowork project named `PrincipalSOCAnalyst`, select a folder for it, and (optionally) drop your own [`CLAUDE.md`](https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/CLAUDE.md) into the folder to customise the persona; the Docker image ships a default, so this is optional (to override it, mount the folder read-only and set `S1_CLAUDE_MD_PATH`, see [`docs/docker.md`](./docker.md#claudemd-customization)).
 
-Prefer to run the MCPs on the host without Docker? Use the npx/uvx path in [`docs/installation.md`](./installation.md). Either way the credential keys are identical and are documented in [`docs/credentials.md`](./credentials.md).
+For the same three steps at full length, with project creation and the upgrade path, see [`docs/installation.md`](./installation.md). Every credential key is documented in [`docs/credentials.md`](./credentials.md).
 
 ### Verify
 
 Open the **PrincipalSOCAnalyst** project, start a new session, and run:
 
-```
+```text
 smoke test s1 secops skills
 ```
 
 Claude verifies connectivity to every MCP, confirms each skill is loaded, and reports missing credentials or unreachable endpoints. To check the version, ask: `which version of s1-secops-skills is installed?`
 
 If anything fails, jump to [Section 6: When things don't work](#6-when-things-dont-work).
+
+---
 
 ## 4. Your first session
 
@@ -146,23 +148,29 @@ This isn't filler. It's why the answers you get later are correct: Claude never 
 Pick whichever feels most useful and run it:
 
 **Triage**
-```
+
+```text
 Triage today's open alerts and flag anything requiring immediate action.
 ```
+
 Expect a ranked list with verdicts, IOCs, threat-intel enrichment, MITRE mapping, and recommended response actions.
 
 **Hunt**
-```
+
+```text
 Hunt for any process that opened a connection to a non-RFC1918 IP in the last 7 days, show me the top endpoints by hit count.
 ```
+
 Expect a PowerQuery, validated against your data sources, executed, and a ranked endpoint table summarised in chat.
 
 **Build**
-```
+
+```text
 Build me a SOC overview dashboard with a threat timeline by confidence,
 top 10 noisiest endpoints, failed logins over time, and an outbound
 connection breakdown by direction. Deploy it to /dashboards/soc-overview.
 ```
+
 Expect dashboard JSON authored, queries validated against your tenant, the dashboard deployed to SDL, and a confirmation back.
 
 ### How to read what Claude is doing
@@ -195,7 +203,7 @@ Each subsection has a sample prompt and what to expect. Run them in your `Princi
 
 Skill: `powerquery` (plus `mgmt-console-api` for execution).
 
-```
+```text
 Find PowerShell scripts that encoded a Base64 command, group by endpoint,
 and rank by hit count over the last 7 days.
 ```
@@ -206,7 +214,7 @@ What you'll get: a PowerQuery using `event.type`, `src.process.cmdline`, and `ar
 
 Skills: `mgmt-console-api`, plus `purple-mcp` for richer GraphQL fields.
 
-```
+```text
 Triage alert ID abc123: get full details, check notes and history, enrich
 any IOCs through the threat-intel MCP, and give me a verdict.
 ```
@@ -217,7 +225,7 @@ What you'll get: the full alert payload, prior analyst notes, MDR verdict, asset
 
 Skill: `mgmt-console-api` (the `baseline_anomaly.py` pipeline) plus `powerquery` for the rule body.
 
-```
+```text
 Build a 30-day behavioural baseline for Okta and show me anomalies for today.
 Use day-of-week stratification.
 ```
@@ -230,7 +238,7 @@ For a recurring detection, ask Claude to productionise it as a PowerQuery Alert 
 
 Skill: `sdl-dashboard` (plus `sdl-api` for deploy and `powerquery` for panel queries).
 
-```
+```text
 Create a Purple AI usage dashboard showing queries by analyst over time
 and a timeline of usage. Deploy it to /dashboards/purple-ai-usage.
 ```
@@ -241,7 +249,7 @@ What you'll get: dashboard JSON with the right panel types (timeseries, table, s
 
 Skill: `sdl-log-parser` (plus `sdl-api` for end-to-end validation).
 
-```
+```text
 Write an SDL parser for this Palo Alto syslog sample, with OCSF field
 mapping:
 
@@ -254,7 +262,7 @@ What you'll get: a complete parser definition (`formats`, `patterns`, `lineGroup
 
 Skill: `hyperautomation`.
 
-```
+```text
 Build a workflow that, when a Ransomware indicator fires, isolates the
 affected endpoint, creates an IOC for the SHA1 hash, and sends a Slack
 notification to #soc-alerts.
@@ -264,7 +272,7 @@ What you'll get: workflow JSON ready to import. If you ask Claude to import it, 
 
 ### SOC reporting
 
-```
+```text
 Write a SOC Leader report for this investigation as a Word document:
 executive summary, incident timeline, IOC table with VT verdicts, MITRE
 mapping, root cause, and recommendations.
@@ -284,7 +292,7 @@ If a skill should have triggered and didn't, ask Claude `which skills are loaded
 
 ### MCP server not connecting (red dot in Cowork)
 
-Most first-run failures are Docker not running or a token that didn't propagate. Work through the troubleshooting table in the [README Quick start (Docker)](../README.md#1-quick-start-docker) first (Docker running, ghcr.io reachable, env values propagated, restart Claude Desktop). For the full flowchart, per-MCP log tailing, and hand-testing the container with credentials, see [`docs/docker.md`](./docker.md#troubleshooting). On the npx/uvx path the same checks apply minus Docker: confirm `node --version` and `uvx --version`, then restart Claude Desktop.
+Most first-run failures are Docker not running or a token that didn't propagate. Work through the troubleshooting table in the [README Quick start (Docker)](../README.md#1-quick-start-docker) first (Docker running, Docker Hub reachable, env values propagated, restart Claude Desktop). For the full flowchart, per-MCP log tailing, and hand-testing the container with credentials, see [`docs/docker.md`](./docker.md#troubleshooting).
 
 ### 401 / 403 errors
 
@@ -292,7 +300,7 @@ Most first-run failures are Docker not running or a token that didn't propagate.
 
 ### Plugin upload failed
 
-Fall back to per-skill `.skill` files in [`dist/`](../dist/). Double-click each `.skill` file to install, or upload one at a time via Browse plugins. The seven files are: `mgmt-console-api.skill`, `powerquery.skill`, `sdl-api.skill`, `sdl-dashboard.skill`, `sdl-log-parser.skill`, `hyperautomation.skill`, `sdl-solutions.skill`.
+Fall back to per-skill `.skill` files in [`s1-secops-skills-plugin/dist/`](../dist/). Double-click each `.skill` file to install, or upload one at a time via Browse plugins. The eight files are: `mgmt-console-api.skill`, `powerquery.skill`, `sdl-api.skill`, `sdl-dashboard.skill`, `sdl-log-parser.skill`, `hyperautomation.skill`, `sdl-solutions.skill`, `soc-investigator.skill`.
 
 ### "I imported a workflow but I can't see it in the console UI"
 
@@ -309,7 +317,7 @@ Push back. Tell Claude you don't believe a specific claim and ask it to recheck 
 
 Ask Claude:
 
-```
+```text
 smoke test s1 secops skills
 ```
 
@@ -324,7 +332,7 @@ It runs through every MCP and skill, reports what's healthy, and gives a precise
 | Doc | When to read it |
 |---|---|
 | [`docs/docker.md`](./docker.md) | Full Docker install reference: image tags, troubleshooting, upgrade, CLAUDE.md mount |
-| [`docs/installation.md`](./installation.md) | npx/uvx install reference, including upgrade and credentials.json fallback |
+| [`docs/installation.md`](./installation.md) | Full four-step install walkthrough, including upgrade and the credentials.json fallback |
 | [`docs/architecture.md`](./architecture.md) | Data flow, auth model, sandbox proxy explanation |
 | [`docs/skills.md`](./skills.md) | Per-skill capability reference |
 | [`docs/mcp-tools.md`](./mcp-tools.md) | Every MCP tool with usage notes |

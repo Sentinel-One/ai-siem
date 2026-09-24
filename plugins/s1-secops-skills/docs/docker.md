@@ -1,24 +1,74 @@
 # Docker reference
 
-The **3-step Docker quick start** (pull the image, paste the config, install the plugin, verify) lives in the [README → Quick start (Docker)](../README.md#1-quick-start-docker). That is the path to follow for a normal install.
+The **3-step Docker quick start** (pull the image, paste the config, install the plugin), plus a verify step, lives in the [README → Quick start (Docker)](../README.md#1-quick-start-docker). That is the path to follow for a normal install.
 
-This page is the full Docker reference for everything beyond those three steps: prerequisites, the troubleshooting flowchart, hand-testing the container with credentials, overriding CLAUDE.md, upgrading, trade-offs vs the npx path, and building the image from source.
+This page is the full Docker reference for everything beyond those three steps: prerequisites, the troubleshooting flowchart, hand-testing the container with credentials, overriding CLAUDE.md, upgrading, and building the image from source.
 
-One Docker image bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`) so you only need Docker on the host: no Node, Python, or `uv`. This is the recommended path for most users, and the only option on machines where IT policy blocks `npm install -g` or `pip install`.
+One Docker image bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`) so you only need Docker on the host: no Node, Python, or `uv`. It is the only supported install path, and it works on machines where IT policy blocks host-level package installs.
 
 Image: `sentinelone/secops-skills`
-Tags: `latest` (newest published), `1` / `1.3` / `1.3.2` (pinned semver, current), `sha-<short>` (any commit). Pin an explicit version for reproducible, forensically consistent installs.
+Tags: full semver only. `1.4.6` is current; `1.4.5` is the previous release. There is no `latest`, no rolling `1` or `1.4`, and no `sha-<short>`: the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. Every install is therefore pinned and reproducible by construction, and an upgrade is something you do deliberately.
+
+From `1.4.0` the image is built entirely from pinned git sources. Nothing in the build resolves a package from the npm registry, and `npm` and `npx` are not present in the image. This matters if you are reviewing the supply chain of what runs in your environment, or running builds somewhere the npm registry is unreachable. One registry dependency does remain: purple-mcp's Python packages still come from PyPI at build time.
+
+**The image moved registries at 1.4.5.** Earlier releases were published to `ghcr.io/pmoses-s1/s1-mcps`, which is being made private; those tags are gone and are not recoverable. Docker Hub carries `1.4.5` and `1.4.6` only. If a config still references a `ghcr.io` image, update it to `sentinelone/secops-skills:1.4.6`.
+
+The image version is its own counter and does not encode the versions inside it: image `1.4.6` bundles s1-secops-mcp 1.3.9. From 1.3.4 onward a version tag strictly increases and is never republished, so a pin is stable. Tags at or below `1.3.3` were republished with different contents and do not reliably identify what is inside. To know what you have, ask the image:
+
+```bash
+docker run --rm sentinelone/secops-skills:1.4.6 versions
+```
 
 - [Prerequisites](#prerequisites)
 - [Troubleshooting](#troubleshooting)
 - [CLAUDE.md customization](#claudemd-customization)
 - [Upgrading](#upgrading)
-- [Trade-offs vs the npx path](#trade-offs-vs-the-npx-path)
 - [Building from source](#building-from-source)
 
 Credential keys and where to get each one: [credentials.md](./credentials.md).
 
 ---
+
+## Shared credentials across the bundled servers
+
+All three servers ship in the same image and run through the same entrypoint, so
+the console URL and token only need to be supplied once. The entrypoint maps the
+canonical names onto each server's own variables:
+
+| You set | Mapped to | Used by |
+|---|---|---|
+| `S1_CONSOLE_URL` | `PURPLEMCP_CONSOLE_BASE_URL` | purple-mcp |
+| `S1_CONSOLE_API_TOKEN` | `PURPLEMCP_CONSOLE_TOKEN` | purple-mcp |
+
+A server-specific variable that is already set always wins, so existing
+configurations keep working unchanged.
+
+This means every server entry can pass the same `-e` flags:
+
+```json
+"s1-secops-mcp": {
+  "command": "docker",
+  "args": ["run", "-i", "--rm", "--pull=missing",
+           "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
+           "sentinelone/secops-skills:1.4.6", "s1-secops-mcp"],
+  "env": {
+    "S1_CONSOLE_URL":       "https://usea1-acme.sentinelone.net",
+    "S1_CONSOLE_API_TOKEN": "eyJ...",
+    "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
+    "S1_HEC_TOKEN":         "<SDL Log Write Key, optional; hec_ingest needs it>"
+  }
+},
+"purple-mcp": {
+  "command": "docker",
+  "args": ["run", "-i", "--rm", "--pull=missing",
+           "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
+           "sentinelone/secops-skills:1.4.6", "purple-mcp"],
+  "env": {
+    "S1_CONSOLE_URL":       "https://usea1-acme.sentinelone.net",
+    "S1_CONSOLE_API_TOKEN": "eyJ..."
+  }
+}
+```
 
 ## Prerequisites
 
@@ -62,8 +112,8 @@ Common signatures:
 | Log line | Meaning |
 |---|---|
 | `Cannot connect to the Docker daemon` | Docker Desktop is not running, see step 1 |
-| `Unable to find image ... pulling from ghcr.io` | First-launch pull, normal, takes 30 to 90 s |
-| `denied: permission_denied` from ghcr.io | Image is private or your network blocks ghcr.io. Run `docker login ghcr.io` if you have a token, or check VPN/proxy. |
+| `Unable to find image ... pulling from docker.io` | First-launch pull, normal, takes 30 to 90 s |
+| `denied` or `manifest unknown` from docker.io | The repository is public and needs no login, so this is normally a typo in the image name or tag, or a proxy intercepting Docker Hub. Only `1.4.5` and `1.4.6` exist. Check with `docker manifest inspect sentinelone/secops-skills:1.4.6`. |
 | `VIRUSTOTAL_API_KEY environment variable is required` | The env value did not propagate. Re-check the `env` block in `claude_desktop_config.json` and that the `-e VAR` arg matches the key name. |
 | `pydantic_core.ValidationError ... PURPLEMCP_*` | Same root cause for purple-mcp. |
 | `S1 Mgmt API: NOT configured` | s1-secops-mcp boots but no console token reached it; check `S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN` in the config. |
@@ -80,16 +130,7 @@ docker run -i --rm --pull=missing \
   sentinelone/secops-skills:1.4.6 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
 ```
 
-Expected: a single JSON line back on stdout with `serverInfo.name = "s1-secops-mcp-server"`. Stderr should show `Tools: 32 registered` and one of the `configured`/`NOT configured` summaries per API surface.
-
-For a less verbose env-source pattern, put the values in a `.env` file and pass it with `--env-file`:
-
-```bash
-docker run -i --rm --pull=missing --env-file ~/.config/sentinelone/s1-mcp.env \
-  sentinelone/secops-skills:1.4.6 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
-```
-
-The `.env` file is plain `KEY=value` per line. Keep its mode 0600 and out of any repo.
+Expected: a single JSON line back on stdout with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.3.9"`, the bundled MCP version, not the `1.3.6` image tag. Stderr should show `Tools: 32 registered` and one of the `configured`/`NOT configured` summaries per API surface.
 
 ### 4. Force a fresh pull
 
@@ -99,17 +140,6 @@ If you suspect a corrupted local image:
 docker rmi sentinelone/secops-skills:1.4.6
 docker pull sentinelone/secops-skills:1.4.6
 ```
-
-### 5. Roll back to the npx path
-
-If the Docker path is misbehaving and you want to get working again immediately, switch that MCP entry to the [npx/uvx config](./installation.md#step-1-configure-mcp-servers) and restart Claude Desktop. If a backup of the previous config was written before the swap, restore it:
-
-```bash
-LATEST=$(ls -1t ~/Library/Application\ Support/Claude/claude_desktop_config.json.pre-docker-bak-* 2>/dev/null | head -1)
-[ -n "$LATEST" ] && cp "$LATEST" ~/Library/Application\ Support/Claude/claude_desktop_config.json
-```
-
-Restart Claude Desktop. The npx-based config takes over, no other changes needed.
 
 ---
 
@@ -140,9 +170,13 @@ Only the `s1-secops-mcp` entry reads CLAUDE.md; you don't need the volume mount 
 
 ## Upgrading
 
-Bump the tag in your `claude_desktop_config.json` (e.g. `:1.3.1` to `:1.3.2`), save, and restart Claude Desktop. The new image is pulled on first launch (`--pull=missing` ensures this).
+Upgrading is deliberate: edit the tag in `claude_desktop_config.json` and restart Claude Desktop.
 
-To force a fresh pull mid-tag (e.g. `:latest` moved):
+The documented config pins `:1.4.6` with `--pull=missing`, so restarting does **not** move you to a newer image, by design. An immutable tag cannot change underneath you, which is what makes a pin forensically meaningful: the bytes you validated are the bytes you keep running. The trade is that nothing upgrades on its own, so watch the releases rather than expecting a restart to do it.
+
+Replace the tag in all three MCP entries at once. They share one image, and leaving them on different tags is the one way to get the three servers out of lockstep.
+
+To pre-pull the new version before editing the config:
 
 ```bash
 docker pull sentinelone/secops-skills:1.4.6
@@ -156,39 +190,21 @@ docker image prune -a --filter "until=168h"
 
 ---
 
-## Trade-offs vs the npx path
-
-| Concern | npx/uvx | Docker (this path) |
-|---|---|---|
-| Host runtime deps | Node 18+, `uv`, `npm` | Docker only |
-| First-launch latency | ~1-2 s npm fetch + cache | ~1-2 s container start |
-| Per-session overhead | ~50 ms | ~200-500 ms |
-| Cross-host portability | Same Node version assumed | Identical bytes everywhere |
-| Auto-updates | `npx -y` re-resolves on each launch | Pinned to tag; explicit `docker pull` |
-| Apple Silicon | Native | Native (multi-arch image) |
-| Image size on disk | ~80 MB cache total | ~600 MB unpacked |
-| Logs | `~/Library/Logs/Claude/mcp-server-*.log` | Same (Claude Desktop captures container stderr) |
-| Token handling | Env vars in `claude_desktop_config.json` | Same (env vars passed to `docker run`) |
-
-The Docker path is the default recommendation because it needs nothing on the host but Docker and version-locks all three MCPs together. The [npx/uvx path](./installation.md) is lighter on disk and slightly faster per session when Node 18+ and `uv` are installable.
-
----
-
 ## Building from source
 
 For maintainers who want to rebuild the image locally:
 
 ```bash
-git clone https://github.com/Sentinel-One/ai-siem.git
-cd ai-siem
+git clone https://github.com/pmoses-s1/s1-secops-skills.git
+cd s1-secops-skills
 
 # Single-arch build for the host architecture
-mcp/docker/build.sh
+docker/build.sh
 
-# Multi-arch build + push to ghcr.io (requires `docker login ghcr.io` first)
-PUSH=true mcp/docker/build.sh
+# Multi-arch build + push to Docker Hub (requires `docker login docker.io` first)
+PUSH=true docker/build.sh
 ```
 
-All version pins live in [`mcp/docker/build.sh`](../../../mcp/docker/build.sh); keep them in sync with `mcp/docker/README.md`.
+All version pins live in [`docker/build.sh`](../../../mcp/docker/build.sh) and the matching CI workflow `.github/workflows/docker-publish.yml` in the upstream `s1-secops-skills` repo. They are checked for sync at CI build time.
 
-Maintainer reference (pinned versions, publishing, bumping a pin): [`mcp/docker/README.md`](../../../mcp/docker/README.md).
+Maintainer reference (pinned versions, publishing, bumping a pin): [`docker/README.md`](../../../mcp/docker/README.md).

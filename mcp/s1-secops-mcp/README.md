@@ -60,7 +60,7 @@ See **[deploy/README.md](./deploy/README.md)** for the full deployment walkthrou
 
 ## Quick install
 
-For the end-user install paths (Docker quick start and individual MCP install), see the canonical **[README Installation section](../../plugins/s1-secops-skills/README.md#installation)**; credential keys and where to get them are in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section is the MCP-server-specific reference: the pinned image, the reproducible install script, and the Claude Desktop stdio bridge for a shared team VM. Two paths, pick the one that matches your setup:
+For the end-user install paths (Docker quick start and individual MCP install), see the canonical **[README Installation section](../../README.md#installation)**; credential keys and where to get them are in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section is the MCP-server-specific reference: the pinned image, the reproducible install script, and the Claude Desktop stdio bridge for a shared team VM. Two paths, pick the one that matches your setup:
 
 ### A. Local single-user via Docker (Claude Desktop / Claude Code / Cowork)
 

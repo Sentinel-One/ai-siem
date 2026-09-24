@@ -634,10 +634,13 @@ class S1:
 
     def find_rule_by_name(self, name: str, scope: dict) -> str | None:
         params = {"isLegacy": "false", "name__contains": name, "limit": 200}
+        # str() every element: the natural TOML form is site_ids = [1234567890]
+        # and the parser hands back ints, so a bare join raises TypeError here,
+        # after validation has already passed.
         if "siteIds" in scope:
-            params["siteIds"] = ",".join(scope["siteIds"])
+            params["siteIds"] = ",".join(str(x) for x in scope["siteIds"])
         elif "accountIds" in scope:
-            params["accountIds"] = ",".join(scope["accountIds"])
+            params["accountIds"] = ",".join(str(x) for x in scope["accountIds"])
         r = self.get(API_PATH, params)
         rules = r.get("data", []) or []
         for rule in rules:
@@ -664,6 +667,12 @@ def _materialise_scope(client: S1 | None, envelope: dict, cache: dict) -> tuple[
     return {"siteIds": [site_id]}, acct
 
 
+class RuleDeployError(RuntimeError):
+    """A write whose outcome the response does not prove, e.g. a create that
+    came back without a rule id. Kept distinct from the transport RuntimeError
+    so the "name already exists" retry below cannot swallow it."""
+
+
 def sync_rules(envelopes: list[tuple[Path, dict]], client: S1, status_override: str | None) -> list[dict]:
     manifest, cache = [], {}
     for path, env in envelopes:
@@ -684,12 +693,22 @@ def sync_rules(envelopes: list[tuple[Path, dict]], client: S1, status_override: 
                 resp = client.post(API_PATH, env)
                 rid = (resp.get("data") or {}).get("id")
                 action = "created"
+                # A create with no id in the response leaves a rule that may be
+                # live on the tenant and cannot be rolled back, because
+                # rollback() skips manifest entries with ruleId null. Fail here
+                # rather than write a manifest that lies about what is deployed.
+                if not rid:
+                    raise RuleDeployError(
+                        f"create returned no rule id for {name!r}: {str(resp)[:300]}. "
+                        "A rule may be live and is NOT in the rollback manifest; "
+                        "check the console before re-running.")
             print(f"  {action}: {name} -> {rid}")
             manifest.append({"name": name, "ruleId": rid, "queryType": env["data"]["queryType"],
                              "action": action, "scope": scope, "accountId": acct, "file": str(path)})
         except RuntimeError as e:
             # If create failed because the name already exists (race or stale lookup), retry as update.
-            if "already" in str(e).lower() and not existing:
+            if ("already" in str(e).lower() and not existing
+                    and not isinstance(e, RuleDeployError)):
                 rid2 = client.find_rule_by_name(name, scope)
                 if rid2:
                     env["data"].setdefault("status", "Active")
@@ -703,19 +722,35 @@ def sync_rules(envelopes: list[tuple[Path, dict]], client: S1, status_override: 
     return manifest
 
 
-def rollback(manifest_path: str, client: S1) -> None:
+def rollback(manifest_path: str, client: S1) -> int:
+    """Delete every rule in a manifest. Returns the number that did NOT delete.
+
+    The delete response carries an `affected` count. Printing "deleted" without
+    reading it tells an operator an armed rule is gone when it is not.
+    """
+    failed = 0
     items = json.loads(Path(manifest_path).read_text())
     for it in items:
         rid, scope = it.get("ruleId"), it.get("scope", {})
         if not rid:
+            failed += 1
+            print(f"  SKIPPED (no ruleId in manifest): {it.get('name')}", file=sys.stderr)
             continue
         flt = {"ids": [rid]}
         if "siteIds" in scope:
             flt["siteIds"] = scope["siteIds"]
         elif "accountIds" in scope:
             flt["accountIds"] = scope["accountIds"]
-        client.delete(API_PATH, {"filter": flt})
+        resp = client.delete(API_PATH, {"filter": flt})
+        affected = (resp.get("data") or {}).get("affected", 0) if isinstance(resp, dict) else 0
+        if affected < 1:
+            failed += 1
+            print(f"  DELETE DID NOT APPLY: {it.get('name')} ({rid}) affected="
+                  f"{affected}. The rule may still be armed: {str(resp)[:200]}",
+                  file=sys.stderr)
+            continue
         print(f"  deleted: {it.get('name')} ({rid})")
+    return failed
 
 
 # ---------------------------------------------------------------------------
@@ -737,6 +772,9 @@ def main(argv=None) -> int:
     ap.add_argument("--account-id", help="scope override: accountId")
     ap.add_argument("--status", choices=sorted(STATUSES), help="override status on every rule")
     ap.add_argument("--manifest", default="deployed_rules.json", help="where to write the deploy manifest")
+    ap.add_argument("--allow-empty", action="store_true",
+                    help="exit 0 when no rule files are found (default: exit 1, "
+                         "so a path typo fails CI instead of passing it)")
     args = ap.parse_args(argv)
 
     scope_override = None
@@ -750,7 +788,11 @@ def main(argv=None) -> int:
     # rollback short-circuits
     if args.rollback:
         client = _client_from_env()
-        rollback(args.rollback, client)
+        failed = rollback(args.rollback, client)
+        if failed:
+            print(f"Rollback incomplete: {failed} rule(s) may still be armed.",
+                  file=sys.stderr)
+            return 1
         return 0
 
     # pick files
@@ -763,8 +805,17 @@ def main(argv=None) -> int:
         files = discover_rule_files(args.paths or ["detections"])
 
     if not files:
-        print("No rule files found. Nothing to do.")
-        return 0
+        # Finding nothing is almost always a renamed detections/ directory or a
+        # path typo, and exiting 0 makes the CI gate pass while grading nothing.
+        # --allow-empty is the escape hatch for the genuine no-op case, such as
+        # a --changed-only run on a commit that touched no rule files.
+        if args.allow_empty:
+            print("No rule files found. Nothing to do (--allow-empty).")
+            return 0
+        print(f"No rule files found in {', '.join(str(p) for p in (args.paths or ['detections']))}. "
+              "Check the path; pass --allow-empty if an empty set is expected.",
+              file=sys.stderr)
+        return 1
 
     # validate + convert
     envelopes, errors = [], []

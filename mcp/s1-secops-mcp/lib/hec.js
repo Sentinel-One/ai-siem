@@ -154,6 +154,26 @@ export async function hecIngest(logContent, { parser, fields = {}, scope, endpoi
     if (!res.ok) {
       throw new Error(`HEC POST /services/collector/${endpoint} -> ${res.status}: ${JSON.stringify(data)}`);
     }
+
+    // The collector is Splunk-HEC-compatible: it reports the per-batch outcome
+    // in the BODY, not the status line. A rejected batch still answers 200.
+    // Measured on a live tenant: an SDL Log Write Key returns
+    // {"text":"Success","code":0}; a Management Console token returns
+    // {"text":"Missing S1-Scope header","code":5}, also with HTTP 200. A key
+    // minted for a different account or site likewise returns success and then
+    // discards every event, which is the case that looks healthy and is not.
+    // Without this check a caller reports a successful ingest of data that was
+    // dropped, and the follow-up investigation is misdirected at the parser or
+    // the detection rule.
+    if (data && typeof data === 'object' && data.code !== undefined && Number(data.code) !== 0) {
+      throw new Error(
+        `HEC POST /services/collector/${endpoint} -> ${res.status} but the collector rejected the batch: ` +
+        `code=${data.code} text=${JSON.stringify(data.text ?? null)}. ` +
+        `No events were ingested. Check that S1_HEC_TOKEN is an SDL Log Write Key ` +
+        `minted for the intended account or site.`
+      );
+    }
+
     return { status: res.status, endpoint, url, body: data };
   }
   throw lastErr;

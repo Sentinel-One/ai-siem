@@ -60,13 +60,8 @@ fi
 # bump it when anything that changes the image bytes changes, which is the
 # Dockerfile, the dispatcher, the bundled CLAUDE.md, or any pin above.
 #
-# TWO RULES, both now enforced in CI:
-#   1. It must STRICTLY INCREASE. It once moved backwards, 1.3.7 to 1.3.3.
-#   2. A published value is never reused. s1-mcps:1.3.3 shipped npm 1.3.3, then
-#      1.3.7, then 1.3.8. With `--pull=missing` against an unchanged tag string
-#      there is nothing for Docker to notice, so whoever pulled it first keeps
-#      those bytes indefinitely while the tag still reads as current. Deleting a
-#      tag from the registry does not make it reusable; someone already has it.
+# TWO RULES, both enforced in CI: it must strictly increase, and a published
+# value is never reused. Rationale and the incident behind it: docker/README.md.
 #
 # Because the number does not encode what is inside, verify rather than infer:
 #   docker run --rm <image> versions

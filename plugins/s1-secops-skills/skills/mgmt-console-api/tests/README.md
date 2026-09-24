@@ -15,7 +15,7 @@ every GET + curated safe POSTs.
 
 | Area | How it's tested | Script | Reversible? |
 |---|---|---|---|
-| Every GET + safe read-only POST | Non-destructive sweep across all 113 tags | `scripts/smoke_test_queries.py` | N/A (read-only) |
+| Every GET + safe read-only POST | Non-destructive sweep across all 111 tags | `scripts/smoke_test_queries.py` | N/A (read-only) |
 | Threat Intelligence IOCs | CREATE → LIST → DELETE → VERIFY | `tests/test_ioc_lifecycle.py` | Yes (requires single-scope token) |
 | Unified Alerts (UAM) GraphQL + REST | list → detail → addNote → list-notes → deleteNote → verify, plus parallel REST `/cloud-detection/alerts` read | `tests/test_alerts_dual_api.py` | Yes |
 | Saved filters (REST) | CREATE → LIST → UPDATE → DELETE → VERIFY | `tests/test_saved_filter_lifecycle.py` | Yes (needs token scope) |

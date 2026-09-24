@@ -1,6 +1,6 @@
 # mgmt-console-api (Claude skill)
 
-A Claude skill wrapping the SentinelOne Management Console API (Swagger 2.1, 781 operations, 113 tags) plus two GraphQL surfaces: **Unified Alert Management** (modern multi-source alert triage and bulk actions) and **Purple AI** (natural-language SDL queries).
+A Claude skill wrapping the SentinelOne Management Console API (Swagger 2.1, 781 operations, 111 tags) plus two GraphQL surfaces: **Unified Alert Management** (modern multi-source alert triage and bulk actions) and **Purple AI** (natural-language SDL queries).
 
 ## Install
 

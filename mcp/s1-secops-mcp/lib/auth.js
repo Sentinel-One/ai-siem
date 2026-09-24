@@ -38,6 +38,16 @@ function parseFileTokens(path) {
     }
     m.set(token, name);
   }
+  // An empty object parses fine and would yield zero tokens, which makes
+  // isAuthConfigured() false and drops the HTTP transport onto its no-auth
+  // path. That turns a truncated or mis-edited token file into an
+  // unauthenticated server, so refuse it here rather than failing open.
+  if (m.size === 0) {
+    throw new Error(
+      `MCP_BEARER_TOKENS_FILE (${path}) contains no tokens. ` +
+      `Refusing to start unauthenticated. Remove the variable to run without auth deliberately.`
+    );
+  }
   return m;
 }
 
@@ -151,8 +161,28 @@ export function authSourceForLogging() {
  */
 export function installSighupReload() {
   process.on('SIGHUP', () => {
+    const wasAuthenticated = _tokens.size > 0;
+    const previous = _tokens;
     try {
       const n = loadTokens();
+      // A reload that empties the token set silently converts an
+      // authenticated server into an open one, and the startup warning has
+      // already latched via _warnedNoAuth so nothing would say so. Refuse it
+      // and keep serving with the tokens we had.
+      if (wasAuthenticated && n === 0) {
+        _tokens = previous;
+        process.stderr.write(
+          `[auth] SIGHUP: reload produced 0 tokens for a server that was authenticated. ` +
+          `REFUSED, keeping the previous ${previous.size} token(s). Fix the token source and re-send SIGHUP.\n`
+        );
+        return;
+      }
+      if (n === 0) {
+        // Still unauthenticated after a reload: re-arm the warning so the
+        // banner can fire again rather than staying silent for the process
+        // lifetime.
+        _warnedNoAuth = false;
+      }
       process.stderr.write(`[auth] SIGHUP: reloaded, ${n} token(s) active\n`);
     } catch (e) {
       process.stderr.write(`[auth] SIGHUP: reload FAILED, keeping previous tokens: ${e.message}\n`);

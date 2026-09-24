@@ -2,7 +2,7 @@
 
 Single image bundling all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`) so end users only need Docker installed. No Node, no Python, no `uv`, no `npm install`. Alternative to the npx/uvx install path.
 
-End-user reference: [`docs/docker.md`](../../plugins/s1-secops-skills/docs/docker.md). This file is for image maintainers.
+End-user reference: [`docs/docker.md`](../docs/docker.md). This file is for image maintainers.
 
 ## No npm
 
@@ -25,7 +25,7 @@ docker/
 
 The Dockerfile is two stages. The **fetch** stage holds everything needing git or network; the **runtime** stage copies the results, so neither `git` nor any clone metadata ships in the published image.
 
-The image is published to `sentinelone/secops-skills`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. The matching CI workflow is at `.github/workflows/docker-publish.yml` in the upstream `s1-secops-skills` repo.
+The image is published to `sentinelone/secops-skills`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. The matching CI workflow is at [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml).
 
 ## Pinned sources
 
@@ -47,7 +47,7 @@ When bumping a pin, edit both. They are checked via `grep` in CI; a mismatch fai
 
 Two consequences of that switch, both handled in the workflow: a commit under `s1-secops-mcp/` now changes the image (so it is in the build-trigger path list and the `IMAGE_VERSION` bump guard), and the Dockerfile `COPY`s path by path rather than copying the directory. The directory also contains a 17 MB `data/` tree holding `data/credentials.json`, which is absent from the package's `files` allowlist and referenced by no code. It is excluded in `.dockerignore` as well, so two independent barriers keep it out of a published layer.
 
-**`virustotal-mcp` needs a vendored fork.** Upstream `w0h1v/mcp-virustotal` publishes only to npm: `main` is `build/index.js`, `build/` is not committed, and the build runs under `prepublishOnly` rather than `prepare`. npm runs `prepare` on git installs, so installing upstream from git fetches TypeScript, compiles nothing, and installs a bin pointing at a missing file. The fork fixes this by committing its compiled `build/` and its production `node_modules/`, which is what lets this image install it with `git clone` alone. Run `scripts/vendor-vt-fork.sh` (upstream repo) against the fork to produce that state; it prints the SHA to pin. The Dockerfile asserts both `build/index.js` and `node_modules/` are present and fails the build with a pointer to that script if not, rather than shipping a container that dies on its first JSON-RPC call.
+**`virustotal-mcp` needs a vendored fork.** Upstream `w0h1v/mcp-virustotal` publishes only to npm: `main` is `build/index.js`, `build/` is not committed, and the build runs under `prepublishOnly` rather than `prepare`. npm runs `prepare` on git installs, so installing upstream from git fetches TypeScript, compiles nothing, and installs a bin pointing at a missing file. The fork fixes this by committing its compiled `build/` and its production `node_modules/`, which is what lets this image install it with `git clone` alone. Run [`scripts/vendor-vt-fork.sh`](../scripts/vendor-vt-fork.sh) against the fork to produce that state; it prints the SHA to pin. The Dockerfile asserts both `build/index.js` and `node_modules/` are present and fails the build with a pointer to that script if not, rather than shipping a container that dies on its first JSON-RPC call.
 
 `VT_MCP_REF` must be a full 40-character SHA. A branch name would look fine and silently un-pin every subsequent build, so `build.sh` and CI both reject anything else.
 
@@ -141,7 +141,7 @@ Three entries in `claude_desktop_config.json` (one per MCP) all reference the sa
 
 ## Why install pip-style for purple-mcp instead of via uv?
 
-`uv tool install` puts the binary at a path that depends on internal layout decisions and varies by uv version. A simple `python3 -m venv /opt/purple-mcp && pip install` gives a deterministic binary location at `/opt/purple-mcp/bin/purple-mcp` and the venv is fully self-contained. End users who run `purple-mcp` outside the container still get the uvx path documented in [`docs/installation.md`](../../plugins/s1-secops-skills/docs/installation.md).
+`uv tool install` puts the binary at a path that depends on internal layout decisions and varies by uv version. A simple `python3 -m venv /opt/purple-mcp && pip install` gives a deterministic binary location at `/opt/purple-mcp/bin/purple-mcp` and the venv is fully self-contained. End users who run `purple-mcp` outside the container still get the uvx path documented in [`docs/installation.md`](../docs/installation.md).
 
 The venv is created in the fetch stage at the same absolute path it occupies at runtime, then copied wholesale. Same path and same base image means the paths baked into the venv stay valid, and the runtime stage needs only `python3` (no `pip`, no `python3-venv`).
 

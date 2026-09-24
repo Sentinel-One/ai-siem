@@ -173,18 +173,49 @@ def cmd_update_note(c, args):
         if n.get("id") == args.note_id:
             print(f"updated {n.get('id')}: {(n.get('text') or '')[:120]}")
             return 0
-    print("update ok but note not found in response")
-    return 0
+    # The response is the note list after the write. If the target id is not
+    # in it, there is no evidence the update applied, so do not claim it did.
+    print(f"update NOT confirmed: {args.note_id} absent from the "
+          f"{len(data)} note(s) returned", file=sys.stderr)
+    return 1
 
 
 def cmd_delete_note(c, args):
-    uam.delete_alert_note(c, args.note_id)
-    print(f"deleted {args.note_id}")
+    # deleteAlertNote returns the SURVIVING notes. The note still being in
+    # that list means the delete did not take, whatever the HTTP status said.
+    data = uam.delete_alert_note(c, args.note_id)
+    if any(n.get("id") == args.note_id for n in data):
+        print(f"delete NOT applied: {args.note_id} still present in the "
+              f"{len(data)} note(s) returned", file=sys.stderr)
+        return 1
+    print(f"deleted {args.note_id} ({len(data)} note(s) remain)")
     return 0
 
 
 def _build_scope(args):
     return uam.scope(args.scope, scope_type=args.scope_type)
+
+
+def _report_outcome(r) -> int:
+    """Print an alertTriggerActions payload and its pass/fail reduction.
+
+    The mutation returns an `ActionsTriggered` typename whether or not the
+    write applied and buries the refusal in `actions[].failure[]`, so the
+    payload alone is not evidence of success. `uam.action_outcome` is the
+    reducer written for exactly this; treating "no exception" as success is
+    how a still-NEW alert got reported as resolved.
+    """
+    print(json.dumps(r, indent=2))
+    outcome = uam.action_outcome(r)
+    if outcome.get("applied"):
+        print("applied: yes")
+        return 0
+    print(f"applied: NO (typename={outcome.get('typename')})", file=sys.stderr)
+    for e in outcome.get("errors") or []:
+        print(f"  {e}", file=sys.stderr)
+    if not (outcome.get("errors") or outcome.get("actions")):
+        print("  no action results in the response", file=sys.stderr)
+    return 1
 
 
 def cmd_actions(c, args):
@@ -218,8 +249,7 @@ def cmd_trigger(c, args):
         c, scope_input=_build_scope(args), actions=actions,
         filter_input=filt, view_type=args.view_type,
     )
-    print(json.dumps(r, indent=2))
-    return 0
+    return _report_outcome(r)
 
 
 def cmd_set_status(c, args):
@@ -227,8 +257,7 @@ def cmd_set_status(c, args):
         c, scope_input=_build_scope(args),
         alert_ids=args.alert_id, status=args.status, note=args.note,
     )
-    print(json.dumps(r, indent=2))
-    return 0
+    return _report_outcome(r)
 
 
 def cmd_set_verdict(c, args):
@@ -236,8 +265,7 @@ def cmd_set_verdict(c, args):
         c, scope_input=_build_scope(args),
         alert_ids=args.alert_id, verdict=args.verdict, note=args.note,
     )
-    print(json.dumps(r, indent=2))
-    return 0
+    return _report_outcome(r)
 
 
 def cmd_assign(c, args):
@@ -245,8 +273,7 @@ def cmd_assign(c, args):
         c, scope_input=_build_scope(args),
         alert_ids=args.alert_id, user_email=args.user_email,
     )
-    print(json.dumps(r, indent=2))
-    return 0
+    return _report_outcome(r)
 
 
 def cmd_group_by(c, args):

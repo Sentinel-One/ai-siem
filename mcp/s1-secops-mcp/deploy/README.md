@@ -57,7 +57,7 @@ Add the server to Claude Desktop (`~/Library/Application Support/Claude/claude_d
 
 The path must be absolute; `~` does not expand inside the `-v` argument. `whoami` prints the value for `<you>`.
 
-To pass credentials as environment variables instead of mounting a file, use the `-e` form documented in [docs/docker.md](../../../plugins/s1-secops-skills/docs/docker.md), which also covers the `purple-mcp` and `virustotal` entries from the same image.
+To pass credentials as environment variables instead of mounting a file, use the `-e` form documented in [docs/docker.md](../../docs/docker.md), which also covers the `purple-mcp` and `virustotal` entries from the same image.
 
 Restart Claude Desktop.
 
@@ -383,7 +383,7 @@ If you see ACME succeed in milliseconds rather than ~10-30 seconds, look at the 
 | Start fails with `manifest unknown` or `denied` from docker.io | Tag typo in `S1_MCP_IMAGE`, or no network route to Docker Hub. The repository is public, so no login is needed. | `sudo docker pull <the tag>` by hand to see the real error. |
 | 401 on every request | No bearer token, or wrong one | Confirm `Authorization: Bearer <token>` is set; confirm the token is in `/etc/s1-secops-mcp/bearer-tokens.json`. |
 | `tools/call` returns `Error: connect ECONNREFUSED` to `*.sentinelone.net` | S1 creds missing or VM has no outbound to console | `curl -v https://$YOUR_CONSOLE_URL`; check `/etc/s1-secops-mcp/credentials.json`. |
-| Service starts but `Tools: 0 registered` | Code/import error | `journalctl -u s1-secops-mcp -n 100` for the import stack trace. |
+| Service starts but `Tools: 32 registered` | Code/import error | `journalctl -u s1-secops-mcp -n 100` for the import stack trace. |
 | `502 Bad Gateway` from Caddy | Backend died between Caddy reload and proxy attempt | `systemctl status s1-secops-mcp`. |
 | `[credentials] S1_CREDS_FILE set but unreadable` | The `/etc/s1-secops-mcp` mount is missing from the unit, or the file is not there | `docker inspect --format '{{json .Mounts}}' s1-secops-mcp`; confirm `credentials.json` exists on the host. |
 

@@ -615,7 +615,7 @@ Notes on the shape:
 
 If `POST /web/api/v2.1/cloud-detection/rules` returns an error indicating Scheduled Detections / PowerQuery Alerts are not licensed or not turned on for the tenant, do not retry, do not silently downgrade to S1QL. **Stop and tell the user to enable the Scheduled Detections feature on the tenant before deploying.** Common surface for this in the console: *Settings → Account → Detection / SDL Add-Ons → Scheduled Detections* (exact path varies by platform version). The user needs to enable it (or have their CS/SE enable it) and then the same POST will succeed.
 
-Do not use Hyperautomation workflows to schedule PQ detections. `cloud-detection/rules` is the correct mechanism. HA is for SOAR-style response playbooks.
+If the feature cannot be enabled, or the query is one the scheduled evaluator rejects, build it as an HA watchdog instead. See "The fourth rule type: the HA watchdog" below.
 
 ### Updating and enabling a rule
 

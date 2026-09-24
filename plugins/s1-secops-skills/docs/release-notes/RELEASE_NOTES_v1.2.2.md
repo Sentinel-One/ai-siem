@@ -38,5 +38,5 @@ Tool count is unchanged at 26.
   `ha_delete_workflow` (same arguments, plus an explicit scope).
 - Long-running MCP processes (a VM systemd service, or an open Claude session)
   keep serving the previous version until restarted; upgrade with
-  `npm install -g @pmoses-s1/s1-secops-mcp@1.3.1` and restart, or repull the
+  `npm install -g @pmoses-s1/s1-secops-mcp@1.2.2` and restart, or repull the
   Docker image.

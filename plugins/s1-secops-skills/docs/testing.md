@@ -20,8 +20,8 @@ Full test scripts live in `mgmt-console-api/tests/`. All lifecycle tests are rev
 | Alert status and verdict mutations | pick alert → status round-trip → verdict round-trip → history check | `tests/test_alert_mutation_lifecycle.py` | Yes (auto-restores to starting state) | PASSED |
 | Scheduled default-report tasks | CREATE → LIST → UPDATE → DELETE → VERIFY | `tests/test_scheduled_report_lifecycle.py` | Yes | PASSED |
 | Alert → Indicator pivot | read alert.rawIndicators → pin to TI IOC → verify link → delete | `tests/test_alert_indicator_pivot.py` | Yes (single-scope token) | PASSED |
-| UAM Alert Interface (single) | POST 1 OCSF indicator + 1 alert → poll UAM → verify link → close | `tests/test_uam_alert_interface_single.py` | Semi (alert closed; ingested events not hard-deletable) | PASSED |
-| UAM Alert Interface (batch) | POST 3 indicators (file/process/network) + 1 alert → poll UAM → verify all observable links → close | `tests/test_uam_alert_interface_batch.py` | Semi | PARTIAL: multi-indicator stitching flaky on-tenant |
+| UAM Alert Interface (single) | one `POST /v1/alerts` carrying 1 OCSF indicator inline → assert exactly one request was made → poll UAM → verify the indicator surfaced → close | `tests/test_uam_alert_interface_single.py` | Semi (alert closed; ingested events not hard-deletable) | PASSED |
+| UAM Alert Interface (batch) | one `POST /v1/alerts` carrying 3 indicators inline (file/process/network, OCSF 1001/1007/4001) with 3+ observables each → poll UAM → verify all indicator and observable links → close | `tests/test_uam_alert_interface_batch.py` | Semi | PASSED |
 | Unified Exclusions v2.1 | CREATE (EDR path, site scope) → LIST → DELETE → VERIFY | `tests/test_unified_exclusion_lifecycle.py` | Yes | PASSED |
 | Hyperautomation workflow lifecycle | IMPORT (minimal manual-trigger workflow) → LIST → DELETE → VERIFY | `tests/test_hyperautomation_import_lifecycle.py` | Yes (REST DELETE, 204) | PASSED |
 | Detection rule ENABLE/DISABLE | CREATE (disabled) → ENABLE → VERIFY_ON → DISABLE → VERIFY_OFF → DELETE → VERIFY (scheduled + events) | `tests/test_detection_rule_activate_lifecycle.py` | Yes (demo site; 24h window prevents real firing) | PASSED |
@@ -33,7 +33,7 @@ Full test scripts live in `mgmt-console-api/tests/`. All lifecycle tests are rev
 
 ## MCP tools validated (s1-secops-mcp)
 
-All 26 s1-secops-mcp tools were exercised against the live demo tenant:
+The s1-secops-mcp tools were exercised against the live demo tenant:
 
 | Tool | Tested operation | Result |
 |---|---|---|
@@ -50,7 +50,7 @@ All 26 s1-secops-mcp tools were exercised against the live demo tenant:
 | `uam_add_note` | Add text note to alert | PASSED |
 | `uam_set_status` | Set status to NEW / IN_PROGRESS / RESOLVED | PASSED |
 | `purple_ai_alert_summary` | Generate natural-language summary of a UAM alert | PASSED |
-| `uam_ingest_alert` | POST OCSF alert via HEC | PASSED |
+| `uam_ingest_alert` | POST one OCSF alert carrying its indicator inline | PASSED |
 | `uam_post_alert` | POST OCSF alert envelope | PASSED |
 | `uam_available_actions` | List actions triggerable on an alert | PASSED |
 | `sdl_list_files` | List `/logParsers/` and `/dashboards/` | PASSED |
@@ -95,10 +95,14 @@ Field schemas and usage patterns confirmed through live testing that are essenti
 - POST returns `data` as a list, not a single object; parse as `items[0]`
 - DELETE body: `{"data": {"exclusions": [{"id": ..., "type": "path"}]}}`
 
-### UAM Alert Interface (HEC ingest)
+### UAM Alert Interface and raw log ingest
 
-- HEC ingest uses the console JWT (`S1_CONSOLE_API_TOKEN`) as the Bearer, posted to `S1_HEC_INGEST_URL`; the `S1-Scope` header (accountId or accountId:siteId) is required
-- Multi-indicator stitching (3+ indicators linked to one alert) requires up to a 2-minute grace window; typically 2 of 3 indicators land in time
+Two paths share the ingest host and take different credentials.
+
+- **UAM alert ingest** (`POST /v1/alerts`) uses the console JWT (`S1_CONSOLE_API_TOKEN`) as the Bearer, posted to `S1_HEC_INGEST_URL`, with the `S1-Scope` header (accountId or accountId:siteId). Unchanged.
+- **Raw log ingest** over the event collector (`/services/collector/raw` and `/event`) uses an SDL Log Write Key, carried in `S1_HEC_TOKEN`. The console API token is refused: on identical requests the write key returns `HTTP 200 {"text":"Success","code":0}` and the console token returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}`. Mint the key at Console > Singularity Data Lake > API Keys > Log Write Key; no API creates one.
+- **The ingest scope cannot be overridden.** A Log Write Key is minted for one account or site and writes only there. No `S1-Scope` header is sent for log ingest, and sending one has no effect. To write elsewhere, use a key minted for that scope.
+- **Indicators cannot be ingested separately.** `POST /v1/indicators` refuses the console user token and the SDL Log Write Key alike, so no credential can drive it. Carry indicators inline in the alert, in `finding_info.related_events[]`, in a single `POST /v1/alerts`. That inline copy populates `alert.indicators`, the field the console Indicators tab renders, so the sleep and ordering contract of the old two-call flow are gone. `tests/test_uam_alert_interface_single.py` and `tests/test_uam_alert_interface_batch.py` both drive the single POST, and each asserts that exactly one request went out so a regression back to the two-call flow fails the test.
 - Ingested alerts do not populate `assets[].agentUuid`; real agent linkage comes from S1 agent detections, not synthetic ingest
 - The `metadata.product.name` + `metadata.product.vendor_name` envelope controls alert categorization
 
@@ -171,8 +175,8 @@ python tests/test_custom_rule_lifecycle.py               # Custom Detection Rule
 python tests/test_alert_mutation_lifecycle.py            # status + verdict round-trip
 python tests/test_scheduled_report_lifecycle.py          # default-report tasks
 python tests/test_alert_indicator_pivot.py               # alert→IOC pivot (single-scope)
-python tests/test_uam_alert_interface_single.py          # POST 1 OCSF indicator + 1 alert
-python tests/test_uam_alert_interface_batch.py           # batched POST 3 indicators + 1 alert
+python tests/test_uam_alert_interface_single.py          # 1 alert, 1 inline indicator, single POST /v1/alerts
+python tests/test_uam_alert_interface_batch.py           # 1 alert, 3 inline indicators, single POST /v1/alerts
 python tests/test_unified_exclusion_lifecycle.py         # EDR path exclusion CRUD
 python tests/test_hyperautomation_import_lifecycle.py    # workflow IMPORT/LIST/DELETE
 python tests/test_detection_rule_activate_lifecycle.py   # ENABLE/DISABLE scheduled + events
@@ -187,7 +191,7 @@ All tests exit 0 on success. Run with `--keep` to skip cleanup and inspect what 
 ## Known limitations
 
 - **HA delete:** delete a workflow with `DELETE /api/v1/workflows/{id}?accountIds=<acct>` (204, soft/recoverable). The older `POST /workflows/archive` returns 500 on this tenant; do not use it.
-- **UAM batch indicator stitching:** Multi-indicator-to-alert stitching requires a grace window of up to 2 minutes. 2 of 3 indicators typically land within this window.
+- **UAM indicator ingest:** there is no separate indicator POST. `/v1/indicators` refuses the console user token and the SDL Log Write Key alike, so indicators must ride inline in the alert's `finding_info.related_events[]`. Both UAM Alert Interface tests were rewritten onto the single-call shape: each makes one `post_alerts([alert], scope=...)` call with the indicators inline, and asserts that exactly one request went out.
 - **XDR graph query format:** The format is proprietary and server-validated. The test discovers it by reading an existing saved query. If no saved queries exist on the tenant, the test skips gracefully. Save one query via the XDR Graph Explorer UI to enable the test.
 - **Purple AI NLQ via API token:** `purpleLaunchQuery NATURAL_LANGUAGE` requires a browser-session `teamToken`; service-account tokens are not supported. Use purple-mcp for NLQ.
 

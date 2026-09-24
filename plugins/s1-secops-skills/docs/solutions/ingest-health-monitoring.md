@@ -7,10 +7,10 @@ detection on a 7-day hour-of-day seasonal baseline that is rebuilt daily. When a
 spikes, drops, lags, or goes silent, or a parser stops normalising, a detection fires and an email
 goes out.
 
-This is part of the `sentinelone-sdl-solutions` skill. It orchestrates the primitive skills
-(`sentinelone-powerquery` for the baseline and detection bodies, `sentinelone-mgmt-console-api` for
-the scheduled rules, `sentinelone-hyperautomation` for the baseline-builder, notifier, and watchdog
-flows, `sentinelone-sdl-dashboard` for the dashboard); it does not reimplement them.
+This is part of the `sdl-solutions` skill. It orchestrates the primitive skills
+(`powerquery` for the baseline and detection bodies, `mgmt-console-api` for
+the scheduled rules, `hyperautomation` for the baseline-builder, notifier, and watchdog
+flows, `sdl-dashboard` for the dashboard); it does not reimplement them.
 
 ## Features
 

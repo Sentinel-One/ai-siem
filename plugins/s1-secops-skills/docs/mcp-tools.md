@@ -64,7 +64,7 @@ Ingest a synthetic alert via the UAM Alert Interface (HEC). For creating test/sy
 Post an OCSF-formatted alert to the HEC ingest endpoint.
 
 **`uam_available_actions`**
-List the actions this caller may trigger on an alert, with `isDisabled` and `disabledReason` per action. Availability is filtered by the caller's permissions and by the alert type, so query this before concluding that a write is impossible.
+Ask the API which actions can be triggered on a given UAM alert. Read-only: it changes nothing. Returns each action with `isDisabled` and, when disabled, a `disabledReason`. This is the authoritative way to explain a refused write, because availability is filtered by the caller's permissions AND the alert type AND the scope: `statusUpdate` is offered on a native STAR alert but not on an alert ingested via the UAM Alert Interface, and the `S1/incident/*` actions report `INCIDENT_ACTIONS_ONLY_AVAILABLE_FROM_SITE_VIEW` under ACCOUNT scope. An action missing from the list means this identity lacks what this alert needs, never that the action is impossible. Call it before concluding that a UAM write cannot be done.
 
 Indicators are no longer posted separately: `/v1/indicators` is unreachable, so they are created inline with the alert in a single `POST /v1/alerts` (see `uam_post_alert`).
 
@@ -83,11 +83,15 @@ Upload or update a configuration file on SDL. Used for deploying parsers and das
 Delete a configuration file from SDL by `path` or `udoId`. The tool verifies removal by re-reading and returns `{status, deleted, raw}`.
 
 **`hec_ingest`**
-Ingest raw logs/events into SDL via the HEC (HTTP Event Collector) endpoint. Applies a named parser via `?sourcetype` and lands the data for Event Search, PowerQuery, and detection rules. Posts to `S1_HEC_INGEST_URL` with `Authorization: Bearer <S1_CONSOLE_API_TOKEN>`; the `S1-Scope` header (accountId or accountId:siteId) is required. Replaces the removed `sdl_upload_logs`. Used for ingesting custom telemetry or test events during parser development.
+Ingest raw logs/events into SDL via the event collector (`/services/collector/raw` and `/event`). Applies a named parser via `?sourcetype` and lands the data for Event Search, PowerQuery, and detection rules. Posts to `S1_HEC_INGEST_URL`. Replaces the removed `sdl_upload_logs`. Used for ingesting custom telemetry or test events during parser development.
+
+Raw log ingest authenticates with an **SDL Log Write Key**, carried in `S1_HEC_TOKEN`. The Management Console API token is refused: on identical requests the write key returns `HTTP 200 {"text":"Success","code":0}` while the console token returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}`. Mint the key at Console > Singularity Data Lake > API Keys > Log Write Key; no API creates one. It is optional in config because only log ingest needs it.
+
+**The ingest scope cannot be overridden.** A Log Write Key is minted for exactly one account or site and writes only there, so the key itself fixes the destination. `hec_ingest` sends no `S1-Scope` header, and sending one has no effect. To write elsewhere, use a key minted for that scope.
 
 When ingesting pre-structured / OCSF JSON with `?isParsed=true` (no parser), every event MUST also include the SentinelOne source-attribution fields `dataSource.name`, `dataSource.vendor`, `dataSource.category` (set to `security`; other categories ingest but do not process correctly for custom OCSF sources), `event.type`, and `site_id`. OCSF does not define these; without them events land with a null source (no attribution, degraded console rendering, and any `dataSource.name`-based filter or detection will not match). Emit `event.type` as a FLAT dotted key (e.g. `"event.type": "DNS Activity"`); a nested `event:{...}` object is silently dropped because `event` is a HEC-reserved key.
 
-All SDL tools take an optional `scope` argument, `"<accountId>"` or `"<accountId>:<siteId>"`, sent as the `S1-Scope` header. **Reads are scope-FILTERED, not merely scope-tagged**: measured live on one tenant, the same dashboard listing returned 1,515 at account scope and 7 at a single site scope. An object created at site scope is invisible to an account-scoped listing, so every "not found" is scope-relative. `scope` falls back to `S1_SCOPE` in credentials and omitting it uses the token default.
+The SDL config-file and dashboard tools take an optional `scope` argument, `"<accountId>"` or `"<accountId>:<siteId>"`, sent as the `S1-Scope` header. (`hec_ingest` is the exception: its destination comes from the Log Write Key, not from a header.) **Reads are scope-FILTERED, not merely scope-tagged**: measured live on one tenant, the same dashboard listing returned 1,515 at account scope and 7 at a single site scope. An object created at site scope is invisible to an account-scoped listing, so every "not found" is scope-relative. `scope` falls back to `S1_SCOPE` in credentials and omitting it uses the token default.
 
 ### SDL dashboard lifecycle tools
 

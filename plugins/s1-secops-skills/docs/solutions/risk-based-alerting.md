@@ -7,10 +7,10 @@ privileged, watchlist). A single high-fidelity alert fires only when a risk obje
 cumulative-score or distinct-MITRE-tactic threshold, so the analyst sees a contextualised story (a
 timeline of connected behaviour across tactics) rather than a flood of disconnected alerts.
 
-This is part of the `sentinelone-sdl-solutions` skill. It orchestrates the primitive skills
-(`sentinelone-powerquery` for the contributor and incident queries, `sentinelone-sdl-api` for the
-risk index and the factor table, `sentinelone-hyperautomation` for the collector flow,
-`sentinelone-mgmt-console-api` for the incident rules, `sentinelone-sdl-dashboard` for the
+This is part of the `sdl-solutions` skill. It orchestrates the primitive skills
+(`powerquery` for the contributor and incident queries, `sdl-api` for the
+risk index and the factor table, `hyperautomation` for the collector flow,
+`mgmt-console-api` for the incident rules, `sdl-dashboard` for the
 dashboard); it does not reimplement them.
 
 Every mechanic here is tenant-validated end to end (2026-06-25), including a real fired alert.

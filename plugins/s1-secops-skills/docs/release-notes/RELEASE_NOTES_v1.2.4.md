@@ -16,6 +16,7 @@ Versioning: npm package **1.2.4** (from 1.2.3). Docker bundle image **1.2.5**
   success.
 - LRQ polling tolerates transient 429/5xx poll responses with backoff until
   the 5-minute deadline; other 4xx remain fatal.
+- `hasSdlCreds` accepts read-only key setups (`SDL_LOG_READ_KEY` /
   `SDL_CONFIG_READ_KEY`).
 - HTTP transport returns a proper 413 for oversized bodies (was a connection
   reset) and exits non-zero on any listen failure so systemd restarts apply.

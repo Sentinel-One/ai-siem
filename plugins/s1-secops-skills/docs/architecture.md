@@ -52,21 +52,23 @@ MCP Servers                     Live API access, outside the Cowork sandbox prox
 - Alert classification rules (no CRITICAL verdict without independent threat intel confirmation)
 - Anomaly detection checklist (frequency, timing, geolocation, privilege, chain anomalies)
 
-`s1-secops-mcp` exposes `CLAUDE.md` as an MCP resource (`sentinelone://soc-context`) and prompt (`soc_analyst`). Claude reads it at session start. The file lives in `claude-skills/CLAUDE.md`; editing it and restarting the MCP server immediately changes Claude's operating behaviour.
+`s1-secops-mcp` exposes `CLAUDE.md` as an MCP resource (`sentinelone://soc-context`) and prompt (`soc_analyst`). Claude reads it at session start. The file lives in `s1-secops-skills/CLAUDE.md`; editing it and restarting the MCP server immediately changes Claude's operating behaviour.
 
 ### s1-secops-mcp
 
 A local Node.js process that runs outside the Cowork sandbox. Because the Cowork sandbox proxy blocks outbound HTTPS to `*.sentinelone.net` by default, all API calls go through this server instead, bypassing the sandbox proxy entirely.
 
-It exposes 26 MCP tools across five groups:
+It exposes 32 MCP tools across five groups:
 
 | Group | Tools | API surface |
 |---|---|---|
 | PowerQuery | `powerquery_enumerate_sources`, `powerquery_run`, `powerquery_schema_discover` | SDL LRQ API |
-| Mgmt Console | `s1_api_get`, `s1_api_post`, `s1_api_put`, `s1_api_patch`, `s1_api_delete` | S1 REST API v2.1 |
-| UAM | `uam_list_alerts`, `uam_get_alert`, `uam_add_note`, `uam_set_status`, `uam_ingest_alert`, `uam_post_alert`, `uam_available_actions`, `purple_ai_alert_summary` | UAM GraphQL + HEC ingest |
-| SDL | `sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`, `hec_ingest` | SDL config + HEC log ingest API |
+| Mgmt Console | `s1_api_get`, `s1_api_post`, `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_list_alerts`, `uam_get_alert`, `uam_add_note`, `uam_available_actions`, `uam_set_status`, `purple_ai_alert_summary` | S1 REST API v2.1 + UAM GraphQL |
+| SDL | `sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `hec_ingest` | SDL config + dashboards + event collector |
 | Hyperautomation | `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, `ha_export_workflow`, `ha_delete_workflow` | HA public + v1 API |
+| UAM Ingest | `uam_ingest_alert`, `uam_post_alert` | UAM Alert Interface (`/v1/alerts`) |
+
+Two credentials split the ingest surface. `hec_ingest` posts raw logs to the event collector and authenticates with an SDL Log Write Key (`S1_HEC_TOKEN`); the console API token is refused there, returning `HTTP 400 {"text":"Missing S1-Scope header","code":5}` where the write key returns `HTTP 200 {"text":"Success","code":0}`. The UAM Ingest tools post alerts to `/v1/alerts` and keep using the console API token (`S1_CONSOLE_API_TOKEN`). Indicators have no separate ingest path: they ride inside the alert, in `finding_info.related_events[]`.
 
 Full tool reference: [mcp-tools.md](./mcp-tools.md)
 
@@ -110,7 +112,7 @@ The skills are read-only procedural knowledge. They do not execute API calls dir
 
 ## Authentication flow
 
-All four API surfaces use a single service user token (`S1_CONSOLE_API_TOKEN`), including every SDL read and write operation.
+Two credentials cover the API surfaces. The console service-user token (`S1_CONSOLE_API_TOKEN`) authorises the management, SDL and UAM surfaces. Raw log ingest to the event collector is the exception: it authorises with the SDL Log Write Key (`S1_HEC_TOKEN`).
 
 ```
 S1_CONSOLE_API_TOKEN  ──► S1 Mgmt REST API    (Authorization: ApiToken <jwt>)
@@ -118,12 +120,12 @@ S1_CONSOLE_API_TOKEN  ──► S1 Mgmt REST API    (Authorization: ApiToken <jw
                       ──► UAM GraphQL          (Authorization: ApiToken <jwt>)
                       ──► Purple AI GraphQL    (Authorization: ApiToken <jwt>)
                       ──► LRQ PowerQuery       (Authorization: Bearer <jwt>)
-                      ──► HEC log ingest       (Authorization: Bearer <jwt>, host S1_HEC_INGEST_URL)
+                      ──► UAM alert ingest     (Authorization: Bearer <jwt>, POST /v1/alerts, S1-Scope required)
 
-S1_CONSOLE_API_TOKEN  ──► SDL putFile          (Authorization: Bearer <token>)
+S1_HEC_TOKEN          ──► HEC log ingest       (Authorization: Bearer <write-key>, host S1_HEC_INGEST_URL, no S1-Scope)
 ```
 
-`S1_CONSOLE_API_TOKEN` authorises every SDL operation, config read, config write and log read, and is also the Bearer used for HEC log ingest.
+`S1_CONSOLE_API_TOKEN` authorises every SDL config read, config write and log read, plus UAM alert ingest on `/v1/alerts` (which additionally requires an `S1-Scope` header) and the IOC endpoints. `hec_ingest` is the one surface it does not cover: raw log ingest to the event collector (`/services/collector/raw` and `/event`) needs the SDL Log Write Key (`S1_HEC_TOKEN`) and sends no `S1-Scope` header. Passing the console token there returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` where the write key returns `HTTP 200 {"text":"Success","code":0}`. The key is minted for exactly one account or site and writes only there, so the key itself fixes the ingest destination. The two ingest paths are separate; do not substitute one credential for the other.
 
 Credential resolution order (highest priority first):
 
@@ -182,7 +184,7 @@ Claude reads powerquery SKILL.md → writes hunt query
 ## Directory layout
 
 ```
-claude-skills/
+s1-secops-skills/
   CLAUDE.md                     SOC Analyst persona and operating instructions
   README.md                     High-level overview (this project)
   credentials.json              Your credentials (gitignored; not in repo)
@@ -201,6 +203,6 @@ claude-skills/
   sdl-solutions/    Skill: repeatable SDL solution deployment (onboarding, enrichment)
   soc-investigator/ Skill: autonomous DFIR alert investigation and correlation
   s1-secops-mcp/              MCP server (Node.js): 32 tools, stdio or HTTP
-  skills-plugin/    Distributable plugin bundle (all 8 skills)
+  s1-secops-skills-plugin/    Distributable plugin bundle (all 8 skills)
   assets/                       Screenshots and images for documentation
 ```

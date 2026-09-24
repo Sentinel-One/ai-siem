@@ -9,13 +9,9 @@ stays 32.
 ### Image tags are strictly increasing and never reused
 
 The image version stays its own counter, independent of the MCP versions inside
-it. What changes is the discipline around it, because the tag was being reused:
-`s1-mcps:1.3.3` shipped npm 1.3.3, then 1.3.7, then 1.3.8, and the image version
-once moved **backwards**, 1.3.7 to 1.3.3. With the documented `--pull=missing`
-against a tag string that never changes, Docker has nothing to notice, so anyone
-who pulled in August kept an August build while believing they were current. A
-report of "sdl_list_files 500s at default scope" turned out to be exactly that:
-a build from before the 1.3.4 and 1.3.5 scope work.
+it. What changes is the discipline around it: an image tag now strictly
+increases and is never republished. Rationale and the incident behind it:
+[docker/README.md](../docker/README.md).
 
 The documented Docker config moves to `:latest` with **`--pull=always`**. Version
 tags remain available and are now genuinely immutable, for reproducible demos and

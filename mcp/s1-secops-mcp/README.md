@@ -2,7 +2,7 @@
 
 Model Context Protocol server orchestrating the SentinelOne Management Console, Singularity Data Lake, UAM Alert Interface, and Hyperautomation APIs. Pure Node.js 18+, zero external dependencies. Supports both stdio (for Claude Desktop / Cowork / Claude Code) and Streamable HTTP (for team-shared VM deployments) transports.
 
-- **Single-user, local:** install with `npx`, plug into Claude Desktop in 30 seconds.
+- **Single-user, local:** run the Docker image, plug into Claude Desktop in 30 seconds.
 - **Team, VM-hosted:** install on one Linux box, per-user bearer tokens, audit logs, SIGHUP-reloadable rotation.
 
 See **[deploy/README.md](./deploy/README.md)** for the full deployment walkthrough across all three topologies.
@@ -60,11 +60,11 @@ See **[deploy/README.md](./deploy/README.md)** for the full deployment walkthrou
 
 ## Quick install
 
-For the end-user install paths (Docker quick start, npx/uvx, and team VM), see the canonical **[README Installation section](../../README.md#installation)**; credential keys and where to get them are in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section is the MCP-server-specific reference: the exact npm package and pin, the reproducible install script, and the Claude Desktop stdio bridge for a shared team VM. Three paths, pick the one that matches your setup:
+For the end-user install paths (Docker quick start and individual MCP install), see the canonical **[README Installation section](../../README.md#installation)**; credential keys and where to get them are in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section is the MCP-server-specific reference: the pinned image, the reproducible install script, and the Claude Desktop stdio bridge for a shared team VM. Two paths, pick the one that matches your setup:
 
-### A. Local single-user via `npx` (Claude Desktop / Claude Code / Cowork)
+### A. Local single-user via Docker (Claude Desktop / Claude Code / Cowork)
 
-MCP runs as a subprocess on your machine, talking SentinelOne APIs directly. Credentials live in the Claude config `env` block.
+The server runs in a container on your machine, talking to SentinelOne APIs directly. Credentials live in the Claude config `env` block and are passed through with `-e`.
 
 Add this to `claude_desktop_config.json` (or `.mcp.json` for Claude Code):
 
@@ -72,8 +72,11 @@ Add this to `claude_desktop_config.json` (or `.mcp.json` for Claude Code):
 {
   "mcpServers": {
     "s1-secops-mcp": {
-      "command": "npx",
-      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.3.9"],
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "--pull=missing",
+               "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
+               "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
+               "sentinelone/secops-skills:1.4.6", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...",
@@ -85,15 +88,15 @@ Add this to `claude_desktop_config.json` (or `.mcp.json` for Claude Code):
 }
 ```
 
-Restart Claude Desktop. `npx -y` caches the package on first launch.
+Restart Claude Desktop. The same image serves `purple-mcp` and `virustotal-mcp`; the final argument selects which one runs.
 
 ### B. Reproducible: install script
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pmoses-s1/claude-skills/main/s1-secops-mcp/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/install.sh | bash
 ```
 
-Sets up a per-user npm prefix if needed, installs the package, drops a credentials skeleton at `~/.config/sentinelone/credentials.json` (mode 0600), and prints the wiring instructions for Claude Desktop.
+Checks for Docker, pulls the pinned image, drops a credentials skeleton at `~/.config/sentinelone/credentials.json` (mode 0600), and prints the wiring instructions for Claude Desktop.
 
 For VM deployments, the same script in `--server` mode does everything (system user, systemd unit, initial bearer token, service start). See [deploy/README.md](./deploy/README.md).
 
@@ -107,7 +110,7 @@ Each team member installs the script once:
 
 ```bash
 mkdir -p ~/.local/bin
-curl -fsSL https://raw.githubusercontent.com/pmoses-s1/claude-skills/main/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
+curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
   -o ~/.local/bin/s1-secops-mcp-bridge.mjs
 chmod +x ~/.local/bin/s1-secops-mcp-bridge.mjs
 ```
@@ -135,7 +138,7 @@ Cmd+Q and reopen Claude Desktop. SentinelOne credentials live on the VM in `/etc
 
 Credential keys, where to get each one, and the two token types are documented canonically in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section adds the MCP-server-specific detail: which tools each key gates, and the server's full credential-resolution order.
 
-`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are sufficient for the PowerQuery, Mgmt Console REST, Purple AI summary, UAM, Hyperautomation, and SDL config-file tools (22 of the 26).
+`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are sufficient for the PowerQuery, Mgmt Console REST, Purple AI summary, UAM, Hyperautomation, and SDL config-file tools (most of the 32).
 
 `S1_HEC_INGEST_URL` is **required** for the two UAM Ingest tools (`uam_ingest_alert`, `uam_post_alert`) and for `hec_ingest`, the only three tools that need it. Without it those tools error at call time; the rest still work.
 
@@ -166,7 +169,7 @@ The server logs the resolved credential source at startup so you can diagnose su
 
 ### stdio (default)
 
-The transport used by Claude Desktop, Claude Code, Claude Cowork, and any other client launched via `npx` / `node index.js`.
+The transport used by Claude Desktop, Claude Code, Claude Cowork, and any other client that launches the server as a subprocess.
 
 ```bash
 s1-secops-mcp                          # auto-discovers credentials
@@ -521,7 +524,7 @@ The `sentinelone://soc-context` resource and `soc_analyst` prompt load `CLAUDE.m
 2. `<cwd>/CLAUDE.md`: your Cowork project folder, when launched from there.
 3. Same-dir / parent / grandparent of the server's `index.js`: when running from a git clone.
 
-For npx installs without a CLAUDE.md nearby, set `S1_CLAUDE_MD_PATH` in the `env` block of `claude_desktop_config.json` to point at the one in your Cowork project folder. Restart Claude Desktop to pick up edits.
+Without a CLAUDE.md nearby, set `S1_CLAUDE_MD_PATH` in the `env` block of `claude_desktop_config.json` to point at the one in your Cowork project folder. Restart Claude Desktop to pick up edits.
 
 ## Known client issue: omitted parameters that declare a default are rejected
 

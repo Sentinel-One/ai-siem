@@ -32,7 +32,7 @@ function loadSocContext() {
   const candidates = [
     process.env.S1_CLAUDE_MD_PATH,
     process.cwd() ? join(process.cwd(), 'CLAUDE.md') : null,
-    join(__dir, '..', '..', 'CLAUDE.md'),    // claude-skills/CLAUDE.md (git clone)
+    join(__dir, '..', '..', 'CLAUDE.md'),    // s1-secops-skills/CLAUDE.md (git clone)
     join(__dir, '..', '..', '..', 'CLAUDE.md'),
     join(__dir, '..', 'CLAUDE.md'),
   ].filter(Boolean);

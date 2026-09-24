@@ -142,7 +142,7 @@ class CatalogPlaybookAndTemplateWiring(unittest.TestCase):
         Equality, not a lower bound. A `>=` here let the catalog grow past what
         the description advertises, which is the commoner drift of the two: a
         solution gets a catalog row and the frontmatter is never updated, so the
-        skill stops triggering on it. Both counts are 8 in claude-skills and 7 in
+        skill stops triggering on it. Both counts are 8 in s1-secops-skills and 7 in
         the scrubbed guidelines repo, exactly equal in each, so equality is the
         assertion the docstring was already claiming.
         """

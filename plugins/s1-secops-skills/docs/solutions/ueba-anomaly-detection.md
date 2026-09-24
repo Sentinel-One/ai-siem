@@ -323,7 +323,7 @@ clear once the data is present:
 ## The baseline_anomaly.py pipeline (interactive / CLI)
 
 The interactive mode is a source-agnostic pipeline at
-`sentinelone-mgmt-console-api/scripts/baseline_anomaly.py`. For any `dataSource.name` it:
+`mgmt-console-api/scripts/baseline_anomaly.py`. For any `dataSource.name` it:
 
 1. **Auto-discovers the schema** via `inspect_source.discover_schema()` and picks `principal_field` (user / host / IP / role) and `action_field` (event.type / activity_name / action) from what the source actually carries, with no per-source hardcoding.
 2. **Slices the baseline window into N daily LRQ queries** (default 30 days), running 3 in parallel under the per-user 3 rps cap. Daily slicing avoids the LRQ per-call deadline that single 7d/30d aggregates routinely exceed.
@@ -335,17 +335,17 @@ CLI:
 
 ```bash
 # Auto-discover principal/action, 30-day DoW-stratified baseline
-python sentinelone-mgmt-console-api/scripts/baseline_anomaly.py --source "Okta"
+python mgmt-console-api/scripts/baseline_anomaly.py --source "Okta"
 
 # Network source: auto-discover picks device.name + event.type
-python sentinelone-mgmt-console-api/scripts/baseline_anomaly.py --source "FortiGate" --days 14
+python mgmt-console-api/scripts/baseline_anomaly.py --source "FortiGate" --days 14
 
 # Override fields if you know better
-python sentinelone-mgmt-console-api/scripts/baseline_anomaly.py --source "Zscaler Internet Access" \
+python mgmt-console-api/scripts/baseline_anomaly.py --source "Zscaler Internet Access" \
     --principal src.ip.address --action unmapped.action
 
 # Pooled (no DoW stratification) and a tighter threshold
-python sentinelone-mgmt-console-api/scripts/baseline_anomaly.py --source "CloudTrail" \
+python mgmt-console-api/scripts/baseline_anomaly.py --source "CloudTrail" \
     --stratify pooled --z 3.0
 ```
 

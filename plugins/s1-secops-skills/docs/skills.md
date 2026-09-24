@@ -63,7 +63,7 @@ Full field reference: `mgmt-console-api/SKILL.md`
 
 **What it provides:**
 
-- SDL log ingest via HEC (`hec_ingest`), uses the console JWT (`S1_CONSOLE_API_TOKEN`) posted to `S1_HEC_INGEST_URL`
+- SDL log ingest via the event collector (`hec_ingest`), posted to `S1_HEC_INGEST_URL` with an SDL Log Write Key (`S1_HEC_TOKEN`). The console API token is refused there, and the key's own account or site scope fixes where the data lands
 - SDL config file CRUD over `POST <console>/sdl/v2/graphql` (`sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`; Python client `config_files`, `config_file`, `put_config_file`, `delete_config_file`). Dashboards are addressed by `udoId`, every other namespace by name
 - SDL V1 query (full-event JSON, used for schema discovery)
 
@@ -132,6 +132,7 @@ Full field reference: `mgmt-console-api/SKILL.md`
   - **Custom detection exclusions**: suppress known-good noise in a STAR Custom Detection rule for all three rule types. Single-event (`events`) and correlation (`correlation`) rules carry the exclusion as an inline `AND NOT (<field> in:anycase (...))` negative list in the boolean S1QL body (correlation appends it to each sub-query in `correlationParams`). Scheduled (`scheduled`) rules key against a CSV exclusion list (assets by IP/CIDR/host, or custom domains/users/values) loaded as an SDL lookup and applied with a lookup anti-join (`| lookup ... | filter excl = null`); the scheduled path deploys the lookup table, the rule, an exclusion-effectiveness dashboard, and (for `=:cidr`/`=:wildcard`, which the STAR validator rejects) a Hyperautomation detection flow that posts a UAM alert, plus an optional source-of-truth refresh.
   - **Risk-Based Alerting (RBA)**: publish noisy-but-interesting observations as low-noise risk events into a `risk` index, accumulate risk per user/host object (amplified by asset risk factors), and fire one high-fidelity alert only when a 24h cumulative-score or 7d multi-MITRE-tactic threshold is crossed; deploys contributors, a risk-factor table, a scheduled collector flow, four incident rules, and a dashboard.
   - **Detection as Code (DaC)**: stand up a Git + CI pipeline where detection engineers author rules as TOML, a pull request triggers validation and four-eyes review, and a merge syncs the changed rules to the Custom Detection Rule API; covers single-event, correlation, and scheduled rule types, with a zero-dependency TOML-to-API sync engine and lint-on-PR / sync-on-merge CI for GitHub, GitLab, and Azure.
+  - **Alert noise reduction**: find the (source, signature) pairs dominating the alert queue and classify each as ingested-vs-S1-native, already-actioned (block/drop/sinkhole/reset), by severity, and signal-worth-keeping; then recommend an ingestion-severity filter (a console setting on the connector), deploy an auto-resolve Hyperautomation flow that closes already-mitigated alerts with a note, optionally preserve signal-worthy categories (e.g. C2/DGA) as one correlation rule, and ship a noise-vs-signal dashboard. Every product/source/signature/action value is discovered live; nothing is hardcoded.
 - Parameterized templates under `assets/` (savelookup queries, enrichment parser, dashboard skeleton, STAR detection envelope, threat-response and refresh workflows) driven by tokens such as `{{PREFIX}}`, `{{DATASOURCE_NAME}}`, `{{PARSER_NAME}}`, `{{SITE_ID}}`, `{{ACCOUNT_ID}}`.
 
 **Depends on:** `sdl-log-parser` (parser/OCSF), `powerquery` (datasource + savelookup), `sdl-dashboard` (dashboard), `mgmt-console-api` (STAR rules, site/scope), `sdl-api` (deploy config, ingest), `hyperautomation` (response/refresh flows).
@@ -171,4 +172,4 @@ It defines:
 - **Confidence language:** "confirmed" / "consistent with" / "suggests" / "possible", calibrated to evidence weight
 - **Investigation workflow:** triage → enrichment → infrastructure pivot → cross-source correlation → MITRE mapping → composite risk score → report
 
-`s1-secops-mcp` exposes it as an MCP resource (`sentinelone://soc-context`) and prompt (`soc_analyst`). Edit `claude-skills/CLAUDE.md` and restart the MCP server to change Claude's operating behaviour.
+`s1-secops-mcp` exposes it as an MCP resource (`sentinelone://soc-context`) and prompt (`soc_analyst`). Edit `s1-secops-skills/CLAUDE.md` and restart the MCP server to change Claude's operating behaviour.

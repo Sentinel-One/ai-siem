@@ -57,11 +57,34 @@ def sdl(ep, body, key):
     )
     try:
         with urllib.request.urlopen(req, timeout=90) as r:
-            return r.status, r.read()
+            return _sdl_status(r.status, r.read())
     except urllib.error.HTTPError as e:
-        return e.code, e.read()
+        return _sdl_status(e.code, e.read())
     except Exception as e:
         return 502, json.dumps({"error": str(e)}).encode()
+
+
+def _sdl_status(http_status, raw):
+    """Map an SDL response onto an honest HTTP status for the browser.
+
+    SDL signals failure as HTTP 200 with a body carrying status "error/...".
+    Proxying the transport status alone renders a rejected putFile as a
+    successful save in the editor, which is silent data loss. sdl_client.py
+    applies the same rule: a body status starting with "error/" is a failure
+    whatever the HTTP code says.
+    """
+    try:
+        parsed = json.loads(raw) if raw else {}
+    except (ValueError, TypeError):
+        return http_status, raw
+    sdl_state = parsed.get("status") if isinstance(parsed, dict) else None
+    if http_status < 400 and isinstance(sdl_state, str) and sdl_state.startswith("error/"):
+        # The UI reads `error` first, so surface SDL's own wording rather than
+        # leaving it to render a bare "HTTP 502".
+        out = dict(parsed)
+        out.setdefault("error", parsed.get("message") or sdl_state)
+        return 502, json.dumps(out).encode()
+    return http_status, raw
 
 
 class H(http.server.BaseHTTPRequestHandler):

@@ -686,11 +686,15 @@ Stage 1 deduplicates by grouping on the value you want to count; stage 2 counts 
 
 ## Deploying PQ detections
 
-### Using Hyperautomation instead of cloud-detection/rules
+### Choosing between a scheduled rule and an HA watchdog
 
-Hyperautomation (HA) workflows are for SOAR-style response playbooks: conditional branching, external webhooks, multi-step actions triggered by an event. They are not the right mechanism for scheduled PowerQuery detections.
+For a PowerQuery detection the scheduled rule is the usual home: `POST /web/api/v2.1/cloud-detection/rules` with `queryType: "scheduled"` + `queryLang: "2.0"`, the query in `data.scheduledParams.query`.
 
-The correct API is `POST /web/api/v2.1/cloud-detection/rules` with `queryType: "scheduled"` + `queryLang: "2.0"`, and the PowerQuery goes in `data.scheduledParams.query`. HA adds unnecessary complexity, requires workarounds for LRQ poll headers, and puts detection logic in a workflow engine rather than the detection engine where it belongs.
+The scheduled evaluator runs on a pre-aggregated layer and rejects a set of PowerQuery features: `datasource`, `dataset`, `savelookup`, `now()`, `querystart` / `queryend` / `queryspan`, `topK`, CIDR and wildcard `lookup`, `lookup` over a table above 10,000 rows, time-shifted `timebucket`, and `timebucket` under 30s. It also caps intermediate results near 1,000 rows and cannot build the alert title or description from the result.
+
+When the detection needs any of those, the **HA watchdog** is the supported answer: a scheduled Hyperautomation workflow that runs the query as an ordinary LRQ and posts the alert itself. It carries none of the evaluator's restrictions. The template is `sdl-solutions/assets/ha_watchdog.workflow.template.json`, and the UEBA SILENT / DORMANT detections and ingest-health monitoring are all built this way because the anti-join they need cannot run in a scheduled rule.
+
+See [detection-rules.md](./detection-rules.md) for the full four-way comparison.
 
 ### Always use `queryType: "scheduled"` for PowerQuery rule bodies
 

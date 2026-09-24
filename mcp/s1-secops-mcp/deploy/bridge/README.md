@@ -17,7 +17,7 @@ Claude Cowork and Claude Code don't need this, both support `type: "http"` nativ
 ```bash
 # Download the script
 mkdir -p ~/.local/bin
-curl -fsSL https://raw.githubusercontent.com/pmoses-s1/claude-skills/main/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
+curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
   -o ~/.local/bin/s1-secops-mcp-bridge.mjs
 chmod +x ~/.local/bin/s1-secops-mcp-bridge.mjs
 

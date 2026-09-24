@@ -2,13 +2,16 @@
 #
 # s1-secops-mcp installer for macOS and Linux.
 #
+# The server runs from the published Docker image, so the only host runtime
+# requirement is Docker.
+#
 # Modes:
 #   --user      (default) Install for the current user only.
-#                Writes credentials to ~/.config/sentinelone/credentials.json,
-#                installs the npm package globally via the current Node toolchain.
+#                Pulls the image and writes credentials to
+#                ~/.config/sentinelone/credentials.json.
 #
-#   --server    Linux VM deployment. Creates a system `mcp` user, installs the
-#                npm package globally, writes credentials and bearer tokens to
+#   --server    Linux VM deployment. Pulls the image, creates a system `mcp`
+#                user, writes credentials and bearer tokens to
 #                /etc/s1-secops-mcp/, drops the systemd unit, enables and
 #                starts the service.
 #
@@ -37,8 +40,16 @@ die() {
   exit 1
 }
 
-PKG="@pmoses-s1/s1-secops-mcp"
+# Pinned image. Single source of truth for this script; the systemd unit at
+# deploy/systemd/s1-secops-mcp.service states the same pin in its
+# Environment=S1_MCP_IMAGE line and the two are kept in sync (the server-mode
+# install re-reads the installed unit and pulls whatever it pins).
+IMAGE_REF="sentinelone/secops-skills:1.4.6"
+CONTAINER_NAME="s1-secops-mcp"
 MODE="user"
+
+# Directory this script was run from, empty when piped in from curl.
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || true)"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -62,6 +73,8 @@ Usage: $0 [--user|--server]
               System path: /etc/s1-secops-mcp/
               systemd unit: s1-secops-mcp.service
               Requires sudo.
+
+  Image:      $IMAGE_REF
 
 EOF
       exit 0
@@ -88,23 +101,23 @@ fi
 
 step "Checking prerequisites"
 
-if ! command -v node >/dev/null 2>&1; then
-  c_red "Node.js is required but not found on PATH."
-  c_red "Install Node 18+:"
-  c_red "  macOS:  brew install node@20"
-  c_red "  Linux:  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt install -y nodejs"
+if ! command -v docker >/dev/null 2>&1; then
+  c_red "Docker is required but not found on PATH."
+  c_red "Install it:"
+  c_red "  macOS:  https://www.docker.com/get-started/ (Docker Desktop)"
+  c_red "  Linux:  curl -fsSL https://get.docker.com | sudo sh"
   exit 3
 fi
-NODE_MAJOR="$(node --version | sed 's/^v\([0-9]*\).*/\1/')"
-if [[ "$NODE_MAJOR" -lt 18 ]]; then
-  die "Node $(node --version) is too old. Need Node 18+."
-fi
-ok "node $(node --version)"
+ok "$(docker --version)"
 
-if ! command -v npm >/dev/null 2>&1; then
-  die "npm not found alongside node; please install Node 18+ from nodejs.org or your package manager."
+if ! docker info >/dev/null 2>&1; then
+  c_red "The Docker daemon is not reachable."
+  c_red "  macOS:  start Docker Desktop and wait for the whale icon to settle."
+  c_red "  Linux:  sudo systemctl start docker"
+  c_red "If you are not root, your user must be in the 'docker' group."
+  exit 3
 fi
-ok "npm $(npm --version)"
+ok "docker daemon reachable"
 
 if [[ "$MODE" == "server" ]]; then
   if [[ "$EUID" -ne 0 ]]; then
@@ -114,23 +127,11 @@ if [[ "$MODE" == "server" ]]; then
   ok "running as root, systemd present"
 fi
 
-# ─── install package ─────────────────────────────────────────────────────────
+# ─── pull image ──────────────────────────────────────────────────────────────
 
-step "Installing $PKG globally"
-if [[ "$MODE" == "server" ]]; then
-  npm install -g "$PKG" >/dev/null
-else
-  # Avoid sudo on Mac/personal Linux: use a per-user npm prefix if not already.
-  if ! npm config get prefix --location=user 2>/dev/null | grep -qE '^/'; then
-    npm config set prefix "$HOME/.npm-global"
-    case ":$PATH:" in
-      *":$HOME/.npm-global/bin:"*) ;;
-      *) warn "Add $HOME/.npm-global/bin to your PATH (currently missing)." ;;
-    esac
-  fi
-  npm install -g "$PKG" >/dev/null
-fi
-ok "$(npm ls -g --depth=0 "$PKG" 2>/dev/null | grep "$PKG" | head -1 | sed 's/.*-> //' || echo installed)"
+step "Pulling $IMAGE_REF"
+docker pull "$IMAGE_REF" >/dev/null || die "docker pull $IMAGE_REF failed. The image is public on Docker Hub and needs no login, so check network access to docker.io and the tag spelling."
+ok "$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE_REF" 2>/dev/null || echo "$IMAGE_REF")"
 
 # ─── credentials skeleton ────────────────────────────────────────────────────
 
@@ -180,8 +181,11 @@ if [[ "$MODE" == "server" ]]; then
     if command -v openssl >/dev/null 2>&1; then
       TOKEN_ADMIN="$(openssl rand -hex 32)"
     else
-      TOKEN_ADMIN="$(node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))')"
+      # No openssl on the box: same 32 bytes of kernel entropy, hex-encoded
+      # with coreutils only.
+      TOKEN_ADMIN="$(head -c 32 /dev/urandom | od -An -v -tx1 | tr -d ' \n')"
     fi
+    [[ ${#TOKEN_ADMIN} -eq 64 ]] || die "bearer token generation produced ${#TOKEN_ADMIN} chars, expected 64."
     cat >"$TOKEN_PATH" <<EOF
 {
   "admin": "$TOKEN_ADMIN"
@@ -199,9 +203,12 @@ EOF
 
   if [[ ! -f "$ENV_PATH" ]]; then
     cat >"$ENV_PATH" <<EOF
-# Environment file for s1-secops-mcp.service.
-# Adjust LOG_LEVEL or override anything here; apply with: systemctl restart s1-secops-mcp
-# (systemd only re-reads EnvironmentFile on restart; reload/SIGHUP re-reads bearer tokens only.)
+# Environment file for s1-secops-mcp.service, read by systemd.
+# Set S1_MCP_IMAGE here to override the image tag pinned in the unit, e.g.
+#   S1_MCP_IMAGE=sentinelone/secops-skills:1.4.6
+# Apply any change here with: systemctl restart s1-secops-mcp
+# (systemd only re-reads EnvironmentFile on restart; reload/SIGHUP re-reads
+#  bearer tokens only.)
 EOF
     chmod 600 "$ENV_PATH"
     chown "$OWNER":"$OWNER" "$ENV_PATH"
@@ -211,31 +218,115 @@ EOF
   fi
 
   step "Installing systemd unit"
-  SVC_PATH="/etc/systemd/system/s1-secops-mcp.service"
-  GLOBAL_NODE_MODULES="$(npm root -g)"
-  SCRIPT_DIR="$GLOBAL_NODE_MODULES/$PKG"
-  # Rewrite the ExecStart path to point at the resolved global install,
-  # since the bundled unit uses %h which assumes per-user install.
-  sed "s|%h/.npm-global/lib/node_modules/@pmoses-s1/s1-secops-mcp|$SCRIPT_DIR|g" \
-    "$SCRIPT_DIR/deploy/systemd/s1-secops-mcp.service" >"$SVC_PATH"
+  SVC_PATH="/etc/systemd/system/$CONTAINER_NAME.service"
+  UNIT_SRC="$SELF_DIR/systemd/$CONTAINER_NAME.service"
+  if [[ -n "$SELF_DIR" && -f "$UNIT_SRC" ]]; then
+    # Running from a checkout: the repo copy wins.
+    install -m 0644 "$UNIT_SRC" "$SVC_PATH"
+    ok "installed $SVC_PATH from $UNIT_SRC"
+  else
+    # Piped in from curl: write the equivalent unit inline. Keep this in sync
+    # with deploy/systemd/s1-secops-mcp.service.
+    cat >"$SVC_PATH" <<EOF
+[Unit]
+Description=SentinelOne MCP server (Streamable HTTP, team-shared)
+Documentation=https://github.com/pmoses-s1/s1-secops-skills/tree/main/s1-secops-mcp
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+
+# Pinned image. Override S1_MCP_IMAGE in server.env to move versions without
+# editing this unit.
+Environment=S1_MCP_IMAGE=$IMAGE_REF
+
+# Credentials and bearer tokens live in /etc/s1-secops-mcp, bind mounted
+# read-only into the container. Bearer tokens rotate via \`systemctl reload\`
+# (SIGHUP, no dropped connections); credentials.json is read once at startup
+# so changes to it require \`systemctl restart\`.
+EnvironmentFile=/etc/s1-secops-mcp/server.env
+
+# A container left behind by an unclean shutdown would make \`--name\` collide.
+ExecStartPre=-/usr/bin/docker rm -f $CONTAINER_NAME
+
+# The server binds 0.0.0.0 inside the container's own network namespace, and
+# the port is published only to host loopback.
+ExecStart=/usr/bin/docker run --rm --name $CONTAINER_NAME \\
+  --cap-drop ALL \\
+  --security-opt no-new-privileges \\
+  -v /etc/s1-secops-mcp:/etc/s1-secops-mcp:ro \\
+  -e MCP_BEARER_TOKENS_FILE=/etc/s1-secops-mcp/bearer-tokens.json \\
+  -e S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json \\
+  -p 127.0.0.1:8765:8765 \\
+  \${S1_MCP_IMAGE} \\
+  s1-secops-mcp \\
+  --transport http \\
+  --host 0.0.0.0 \\
+  --port 8765 \\
+  --path /mcp
+
+# Signal the container, not \$MAINPID: the unit's main process is the docker
+# client and the server is PID 1 inside the container.
+ExecReload=/usr/bin/docker kill --signal=HUP $CONTAINER_NAME
+ExecStop=-/usr/bin/docker stop --time=10 $CONTAINER_NAME
+
+Restart=on-failure
+RestartSec=5
+
+# Hardening for the docker client process. The workload is confined by the
+# container flags above. ProtectSystem and ProtectHome are deliberately absent:
+# both can cut the client off from /run/docker.sock and /root/.docker.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+
+LimitNOFILE=4096
+TasksMax=64
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=s1-secops-mcp
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    chmod 644 "$SVC_PATH"
+    ok "wrote $SVC_PATH"
+  fi
+
+  # The unit is what actually runs, so make sure the image it pins is present.
+  UNIT_IMAGE="$(sed -n 's/^Environment=S1_MCP_IMAGE=//p' "$SVC_PATH" | tail -n1)"
+  if [[ -n "$UNIT_IMAGE" && "$UNIT_IMAGE" != "$IMAGE_REF" ]]; then
+    warn "unit pins $UNIT_IMAGE, installer pins $IMAGE_REF; pulling the unit's image as well"
+    docker pull "$UNIT_IMAGE" >/dev/null || die "docker pull $UNIT_IMAGE failed."
+  fi
+
   systemctl daemon-reload
-  systemctl enable s1-secops-mcp >/dev/null 2>&1
-  ok "wrote $SVC_PATH and enabled the service"
+  systemctl enable "$CONTAINER_NAME" >/dev/null 2>&1
+  ok "enabled the service"
 
   step "Starting the service"
-  if systemctl is-active s1-secops-mcp >/dev/null 2>&1; then
-    systemctl restart s1-secops-mcp
+  if systemctl is-active "$CONTAINER_NAME" >/dev/null 2>&1; then
+    systemctl restart "$CONTAINER_NAME"
     ok "restarted"
   else
-    systemctl start s1-secops-mcp
+    systemctl start "$CONTAINER_NAME"
     ok "started"
   fi
-  sleep 1
-  if systemctl is-active --quiet s1-secops-mcp; then
+  sleep 2
+  if systemctl is-active --quiet "$CONTAINER_NAME"; then
     ok "service is active"
   else
     c_red "service failed to start. Recent log lines:"
-    journalctl -u s1-secops-mcp -n 30 --no-pager | sed 's/^/   /'
+    journalctl -u "$CONTAINER_NAME" -n 30 --no-pager | sed 's/^/   /'
     exit 1
   fi
 fi
@@ -248,9 +339,13 @@ if [[ "$MODE" == "user" ]]; then
 
    1. Edit $CRED_PATH with your real SentinelOne values.
    2. Try the server:
-        s1-secops-mcp --version
-        s1-secops-mcp --help
-   3. Wire it into Claude Cowork / Claude Desktop / Claude Code via stdio
+        docker run --rm $IMAGE_REF versions
+        docker run -i --rm \\
+          -v $CONF_DIR:/etc/s1-secops-mcp:ro \\
+          -e S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json \\
+          $IMAGE_REF s1-secops-mcp <<< \\
+          '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
+   3. Wire it into Claude Cowork / Claude Desktop / Claude Code over stdio
       (no HTTP needed for single-user local). See deploy/README.md for the
       exact config block.
 
@@ -264,11 +359,15 @@ elif [[ "$MODE" == "server" ]]; then
        bearer tokens, so credential changes need a full restart.)
    2. Verify the server is up:
         curl -s http://127.0.0.1:8765/healthz
-   3. Put TLS in front (Caddy template at $SCRIPT_DIR/deploy/caddy/Caddyfile.example).
+   3. Put TLS in front:
+        sudo curl -fsSL -o /etc/caddy/Caddyfile \\
+          https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/caddy/Caddyfile.example
+        sudo vim /etc/caddy/Caddyfile   # set your DNS name
+        sudo systemctl reload caddy
    4. Add team members by editing $TOKEN_PATH and reloading:
         echo '{"admin":"...", "alice":"...", "bob":"..."}' > $TOKEN_PATH
         sudo systemctl reload s1-secops-mcp
-      (Reload sends SIGHUP; no connection drops.)
+      (Reload sends SIGHUP into the container; no connection drops.)
    5. Tail the audit log:
         sudo journalctl -u s1-secops-mcp -f | grep '\[audit\]'
 

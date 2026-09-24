@@ -38,7 +38,7 @@ const SERVER = process.env.E2E_SERVER
 // so the container can be tested as shipped rather than the source it was built from.
 // The image is what users actually run, and a build can differ from its inputs.
 //   E2E_SERVER_CMD='docker run -i --rm -e S1_CONSOLE_URL -e S1_CONSOLE_API_TOKEN \
-//     ghcr.io/pmoses-s1/s1-mcps:<tag> s1-secops-mcp'
+//     sentinelone/secops-skills:<tag> s1-secops-mcp'
 const SERVER_CMD = process.env.E2E_SERVER_CMD;
 const SITE = process.env.E2E_SITE_ID;
 const ACCOUNT = process.env.E2E_ACCOUNT_ID;

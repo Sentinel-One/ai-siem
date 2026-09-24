@@ -1,6 +1,7 @@
 # Deployment guide
 
-The canonical team-VM walkthrough for most users is **[docs/vm-deployment.md](../../docs/vm-deployment.md)** (one-line install, per-user bearer tokens, Caddy TLS, client config, day-2 ops). This file is the full deployment reference behind it: all three topologies below, plus the AWS-specific gotchas and internals the walkthrough links to. Credential keys are in [docs/credentials.md](../../docs/credentials.md).
+This is the reference manual for the shared-VM deployment. The end-user
+install path is Docker on the laptop; see the repo README.
 
 Three supported topologies, in order of complexity.
 
@@ -15,18 +16,17 @@ Three supported topologies, in order of complexity.
 Download the installer, review it, then run it (avoid piping a remote script straight into a shell). For production, pin the URL to a tagged release commit instead of `main`:
 
 ```bash
-curl -fsSL -o /tmp/s1-mcp-install.sh https://raw.githubusercontent.com/pmoses-s1/claude-skills/main/s1-secops-mcp/deploy/install.sh
+curl -fsSL -o /tmp/s1-mcp-install.sh https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/install.sh
 # review /tmp/s1-mcp-install.sh, then:
 bash /tmp/s1-mcp-install.sh --user
 ```
 
 That runs `install.sh --user`, which:
 
-1. Confirms Node 18+ is present (errors out with install hints if not).
-2. Sets up a per-user npm prefix at `~/.npm-global` if one isn't configured.
-3. Installs `@pmoses-s1/s1-secops-mcp` globally for your user.
-4. Writes a credentials skeleton to `~/.config/sentinelone/credentials.json` (mode 0600).
-5. Prints the next steps.
+1. Confirms Docker is installed and the daemon is reachable (errors out with install hints if not).
+2. Pulls `sentinelone/secops-skills:1.4.6`.
+3. Writes a credentials skeleton to `~/.config/sentinelone/credentials.json` (mode 0600).
+4. Prints the next steps.
 
 Then edit `~/.config/sentinelone/credentials.json` with your real values:
 
@@ -39,42 +39,42 @@ Then edit `~/.config/sentinelone/credentials.json` with your real values:
 }
 ```
 
-Add the server to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json` on Mac, or `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+Add the server to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json` on Mac, or `%APPDATA%\Claude\claude_desktop_config.json` on Windows). Mount the credentials directory read-only and point `S1_CREDS_FILE` at it:
 
 ```json
 {
   "mcpServers": {
     "s1-secops-mcp": {
-      "command": "s1-secops-mcp"
+      "command": "docker",
+      "args": ["run", "-i", "--rm",
+               "-v", "/Users/<you>/.config/sentinelone:/etc/s1-secops-mcp:ro",
+               "-e", "S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json",
+               "sentinelone/secops-skills:1.4.6", "s1-secops-mcp"]
     }
   }
 }
 ```
 
-Or, equivalently, by package name without the install:
+The path must be absolute; `~` does not expand inside the `-v` argument. `whoami` prints the value for `<you>`.
 
-```json
-{
-  "mcpServers": {
-    "s1-secops-mcp": {
-      "command": "npx",
-      "args": ["-y", "@pmoses-s1/s1-secops-mcp@1.3.9"]
-    }
-  }
-}
-```
+To pass credentials as environment variables instead of mounting a file, use the `-e` form documented in [docs/docker.md](../../docs/docker.md), which also covers the `purple-mcp` and `virustotal` entries from the same image.
 
-Restart Claude Desktop. The server picks credentials up from `~/.config/sentinelone/credentials.json` automatically.
+Restart Claude Desktop.
 
 ## B. Single user, HTTP
 
 Same `install.sh --user`, then start the server in HTTP mode:
 
 ```bash
-s1-secops-mcp --transport http
+docker run --rm --name s1-secops-mcp \
+  -v ~/.config/sentinelone:/etc/s1-secops-mcp:ro \
+  -e S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json \
+  -p 127.0.0.1:8765:8765 \
+  sentinelone/secops-skills:1.4.6 \
+  s1-secops-mcp --transport http --host 0.0.0.0 --port 8765
 ```
 
-It binds to `127.0.0.1:8765` and runs with no auth (which is fine when the bind address is loopback and you're the only user on the box). Hit it with curl:
+The server binds `0.0.0.0` inside the container's own network namespace; `-p 127.0.0.1:8765:8765` publishes it to host loopback only, so nothing off the box can reach it. It runs with no auth, which is fine when the published address is loopback and you're the only user on the box. Hit it with curl:
 
 ```bash
 curl -s http://127.0.0.1:8765/healthz
@@ -109,7 +109,7 @@ This is the topology to use when more than one person should have access to the 
 - One `mcp` system user owning `/etc/s1-secops-mcp/`.
 - One `credentials.json` containing the S1 service-user token + SDL keys. Mode 0600, never copied off the box.
 - One `bearer-tokens.json` listing per-user tokens, one per team member: `{"alice": "...", "bob": "...", "claire": "..."}`. Mode 0600. SIGHUP-reloadable.
-- One systemd service running the MCP on `127.0.0.1:8765` with auth enforced.
+- One systemd service running the MCP container, published on `127.0.0.1:8765` with auth enforced.
 - Caddy in front terminating TLS and forwarding to the backend.
 
 Team members connect from their Claude clients with their own bearer token. Audit log identifies them by name. Revocation is one file edit + `systemctl reload`.
@@ -118,27 +118,21 @@ Team members connect from their Claude clients with their own bearer token. Audi
 
 1. **Provision the VM.** Anything that runs systemd is fine: Ubuntu 22.04 LTS, Debian 12, Rocky/Alma 9, etc.
 
-2. **Install Node 18+.** Pick one:
+2. **Install Docker.** The convenience script covers Ubuntu, Debian, Rocky and Alma:
 
    ```bash
-   # Ubuntu / Debian
-   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-   sudo apt install -y nodejs
-   ```
-
-   ```bash
-   # Rocky / Alma
-   curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
-   sudo dnf install -y nodejs
+   curl -fsSL https://get.docker.com | sudo sh
+   sudo systemctl enable --now docker
+   docker --version
    ```
 
 3. **Run the installer in server mode:**
 
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/pmoses-s1/claude-skills/main/s1-secops-mcp/deploy/install.sh | sudo bash -s -- --server
+   curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/install.sh | sudo bash -s -- --server
    ```
 
-   It creates the `mcp` user, drops `/etc/s1-secops-mcp/credentials.json` (placeholder) and `/etc/s1-secops-mcp/bearer-tokens.json` (one freshly-generated admin token, printed once to stdout), installs the systemd unit, and starts the service.
+   It pulls `sentinelone/secops-skills:1.4.6`, creates the `mcp` user, drops `/etc/s1-secops-mcp/credentials.json` (placeholder) and `/etc/s1-secops-mcp/bearer-tokens.json` (one freshly-generated admin token, printed once to stdout), installs the systemd unit, and starts the service.
 
 4. **Fill in real SentinelOne credentials:**
 
@@ -152,7 +146,8 @@ Team members connect from their Claude clients with their own bearer token. Audi
 
    ```bash
    sudo apt install -y caddy
-   sudo cp /usr/lib/node_modules/@pmoses-s1/s1-secops-mcp/deploy/caddy/Caddyfile.example /etc/caddy/Caddyfile
+   sudo curl -fsSL -o /etc/caddy/Caddyfile \
+     https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/caddy/Caddyfile.example
    sudo vim /etc/caddy/Caddyfile   # change mcp.s1.internal to your DNS name
    sudo systemctl reload caddy
    ```
@@ -211,6 +206,17 @@ Team members connect from their Claude clients with their own bearer token. Audi
    # [audit] 2026-05-28T15:01:34.221Z | bob   | tools/list | -                  | 200 ok
    ```
 
+### How the unit drives the container
+
+The unit at [`systemd/s1-secops-mcp.service`](./systemd/s1-secops-mcp.service) supervises a `docker run --rm` client in the foreground. Four consequences worth knowing before you customise it:
+
+- **The image tag is pinned in one line**, `Environment=S1_MCP_IMAGE=...`. `EnvironmentFile=/etc/s1-secops-mcp/server.env` is read after it, so setting `S1_MCP_IMAGE` there overrides the tag without editing the unit.
+- **`ExecReload` signals the container, not `$MAINPID`.** The unit's main process is the docker client; the server is PID 1 inside the container. Reload runs `docker kill --signal=HUP s1-secops-mcp`, which is what keeps bearer-token rotation drop-free.
+- **`ExecStartPre=-/usr/bin/docker rm -f s1-secops-mcp` clears a container left behind by an unclean shutdown**, which would otherwise make `--name` collide and the start fail.
+- **`ProtectSystem` and `ProtectHome` are deliberately absent.** Both can cut the client off from `/run/docker.sock` and `/root/.docker/config.json`. The workload is confined by the container flags instead: `--cap-drop ALL`, `--security-opt no-new-privileges`, and `/etc/s1-secops-mcp` mounted read-only.
+
+The unit runs as root because the docker client needs the daemon socket, and membership of the `docker` group is equivalent to root anyway. Credential files stay owned by `mcp` mode 0600, so no host account other than root and `mcp` can read them.
+
 ## Day-2 operations
 
 ### Adding a team member
@@ -236,10 +242,24 @@ sudo systemctl restart s1-secops-mcp             # full restart needed for creds
 
 ### Upgrading the MCP server
 
+Pull the new tag, point the service at it, restart:
+
 ```bash
-sudo npm install -g @pmoses-s1/s1-secops-mcp@<new-version>
+sudo docker pull sentinelone/secops-skills:<new-version>
+sudo vim /etc/s1-secops-mcp/server.env    # S1_MCP_IMAGE=sentinelone/secops-skills:<new-version>
 sudo systemctl restart s1-secops-mcp
 ```
+
+Confirm what is actually running:
+
+```bash
+docker inspect --format '{{.Config.Image}}' s1-secops-mcp
+docker run --rm sentinelone/secops-skills:<new-version> versions
+```
+
+The image version is its own counter and does not encode the MCP versions inside it, so read the manifest rather than infer it from the tag. To make the new tag the permanent default rather than a `server.env` override, edit `Environment=S1_MCP_IMAGE=` in `/etc/systemd/system/s1-secops-mcp.service` and run `sudo systemctl daemon-reload` before restarting.
+
+Old layers accumulate across upgrades. Reclaim them with `docker image prune -a --filter "until=168h"`.
 
 ### Reading the audit log
 
@@ -298,7 +318,7 @@ Then Cmd+Q and reopen Claude Desktop. See [`bridge/README.md`](./bridge/README.m
 
 ## AWS-specific gotchas
 
-Five things that bit during real deployment to an EC2 instance. None are blockers, but knowing them up front saves hours.
+Four things that bit during real deployment to an EC2 instance. None are blockers, but knowing them up front saves hours.
 
 ### EC2 public DNS is unstable without an Elastic IP
 
@@ -354,31 +374,23 @@ tls {
 
 If you see ACME succeed in milliseconds rather than ~10-30 seconds, look at the cert: it was likely issued by Caddy's local CA, not by an external ACME server. The give-aways are an instant log line and `no OCSP server specified in certificate` warnings (public CAs always embed OCSP URLs). `tls internal` is fine for private-network deployments with cert distribution to clients, but doesn't help when you want public trust.
 
-### systemd hardening that breaks Node V8 JIT
-
-The hardened service file we ship omits two systemd directives that would otherwise be useful:
-
-- `MemoryDenyWriteExecute=true`
-- `LockPersonality=true`
-
-Both block the W+X memory mappings V8 needs to JIT JavaScript. Adding them causes the service to silently SIGTRAP at startup with `Result: core-dump` and ~5 MB peak memory; no useful log output. If you customize the unit, leave both off.
-
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `Connection refused` on `127.0.0.1:8765` | Service not running | `sudo systemctl status s1-secops-mcp`; check `journalctl -u s1-secops-mcp -n 50`. |
+| `docker: Error response from daemon: Conflict ... name "s1-secops-mcp"` | A container survived an unclean shutdown and `ExecStartPre` did not clear it | `sudo docker rm -f s1-secops-mcp` then `sudo systemctl start s1-secops-mcp`. |
+| Start fails with `manifest unknown` or `denied` from docker.io | Tag typo in `S1_MCP_IMAGE`, or no network route to Docker Hub. The repository is public, so no login is needed. | `sudo docker pull <the tag>` by hand to see the real error. |
 | 401 on every request | No bearer token, or wrong one | Confirm `Authorization: Bearer <token>` is set; confirm the token is in `/etc/s1-secops-mcp/bearer-tokens.json`. |
 | `tools/call` returns `Error: connect ECONNREFUSED` to `*.sentinelone.net` | S1 creds missing or VM has no outbound to console | `curl -v https://$YOUR_CONSOLE_URL`; check `/etc/s1-secops-mcp/credentials.json`. |
 | Service starts but `Tools: 32 registered` | Code/import error | `journalctl -u s1-secops-mcp -n 100` for the import stack trace. |
 | `502 Bad Gateway` from Caddy | Backend died between Caddy reload and proxy attempt | `systemctl status s1-secops-mcp`. |
+| `[credentials] S1_CREDS_FILE set but unreadable` | The `/etc/s1-secops-mcp` mount is missing from the unit, or the file is not there | `docker inspect --format '{{json .Mounts}}' s1-secops-mcp`; confirm `credentials.json` exists on the host. |
 
 ## Alternative deployments
 
 These are supported but not first-class:
 
-- **Docker / docker-compose.** Not shipped in this version. The single-file Node binary doesn't need it. If you want a container, the install is `FROM node:20-alpine` + `RUN npm install -g @pmoses-s1/s1-secops-mcp@1.3.9` + `CMD ["s1-secops-mcp", "--transport", "http", "--host", "0.0.0.0"]`. Mount creds at `/etc/s1-secops-mcp/credentials.json` and tokens at `/etc/s1-secops-mcp/bearer-tokens.json`.
+- **External bridge (`supergateway`, `mcp-proxy`).** These wrap a stdio-only server in HTTP. They still work; this server's native HTTP mode is functionally equivalent and removes the extra process. Prefer native unless you have a specific reason.
 
-- **External bridge (`supergateway`, `mcp-proxy`).** Pre-1.1.0 deployments used these to wrap the stdio-only server. They still work; this server's native HTTP mode is functionally equivalent and removes the extra process. Prefer native unless you have a specific reason.
-
-- **No-auth HTTP on a non-loopback bind.** Possible (set `--host 0.0.0.0` and omit `MCP_BEARER_TOKENS*`) but the server logs a loud warning at startup. Only use if the network itself is trusted (e.g. a Tailscale-only LAN where every node is authenticated upstream).
+- **No-auth HTTP reachable off the box.** Possible (publish with `-p 8765:8765` instead of `-p 127.0.0.1:8765:8765`, and drop `MCP_BEARER_TOKENS_FILE`) but the server logs a loud warning at startup. Only use if the network itself is trusted, for example a Tailscale-only LAN where every node is authenticated upstream.

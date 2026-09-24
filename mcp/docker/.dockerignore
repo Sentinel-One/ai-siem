@@ -1,6 +1,8 @@
 # Build context allowlist via deny-everything-then-include is awkward in
 # Dockerfile syntax, so keep the context lean by excluding the obvious bulk.
-# The Dockerfile only needs CLAUDE.md and docker/entrypoint.sh.
+# The Dockerfile needs CLAUDE.md, docker/entrypoint.sh, and the files listed in
+# the "files" allowlist of s1-secops-mcp/package.json, which is now COPY'd from
+# source instead of installed from npm.
 
 .git
 .github
@@ -9,6 +11,14 @@ node_modules
 **/__pycache__
 **/.venv
 **/.pytest_cache
+
+# s1-secops-mcp ships from local source now, so what sits beside it in the
+# build context matters. data/ is 17 MB, is absent from the package's "files"
+# allowlist, is referenced by no code, and holds data/credentials.json. The
+# Dockerfile COPYs path by path and never names it, but exclude it here too:
+# two independent barriers, because the cost of this one leaking is a
+# credential baked into a published image layer.
+s1-secops-mcp/data/
 
 # Build artefacts
 s1-secops-skills-plugin/dist/

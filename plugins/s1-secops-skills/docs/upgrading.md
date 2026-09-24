@@ -1,4 +1,4 @@
-# Upgrading to 1.3.x
+# Upgrading
 
 Three things move independently: the **MCP image**, the **skills plugin**, and your
 **Claude Desktop config**. Do them in that order. Budget five minutes.
@@ -26,24 +26,38 @@ Back the file up:
 
 ```bash
 cd ~/Library/Application\ Support/Claude
-cp claude_desktop_config.json claude_desktop_config.json.pre-1.3.2
+cp claude_desktop_config.json claude_desktop_config.json.bak
 ```
 
 ---
 
-## Step 1: the MCP
+## Step 1: the MCP image
 
-**Docker (default).** Nothing to install. Bump the tag in your config (step 3);
-`--pull=always` fetches the image on next start.
-
-**npm.** The package was renamed, so the old one must be removed explicitly or
-you will have two binaries on `PATH`:
+All three MCPs ship in one image, `sentinelone/secops-skills`. The config pins
+an exact version, so upgrading means editing that tag in all three MCP entries
+and restarting. Nothing moves on its own: the tags are immutable, which is what
+makes a pin worth having. To pre-pull the new version first:
 
 ```bash
-npm uninstall -g @pmoses-s1/sentinelone-mcp
-npm install  -g @pmoses-s1/s1-secops-mcp@1.3.9
-s1-secops-mcp --version     # expect 1.3.3
+docker pull sentinelone/secops-skills:1.4.6
 ```
+
+If you pinned a version tag, bump it to the current release, `1.4.5`, and
+restart Claude Desktop.
+
+Two version streams run independently and are easy to conflate. The skills
+plugin is at **1.3.7** and the image at **1.4.5** (which bundles MCP 1.3.9). The
+server always reports its own MCP version, so a `--version` line reads `1.3.9`
+while the image you pulled is tagged `1.4.5`. Never read an image tag off a
+`--version` line, or a `--version` off an image tag. To see exactly what is
+inside an image, ask it:
+
+```bash
+docker run --rm sentinelone/secops-skills:1.4.6 versions
+```
+
+An image version strictly increases and is never republished, so a pinned tag
+stays put. Tags at or below `1.3.3` were reused and do not.
 
 ---
 
@@ -81,7 +95,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`.
 |---|---|---|
 | Server key | `"sentinelone-mcp"` | `"s1-secops-mcp"` |
 | Dispatcher argument | `sentinelone-mcp` | `s1-secops-mcp` |
-| Image tag | `s1-mcps:1.2.x` | `s1-mcps:1.3.6` |
+| Image tag | `s1-mcps:1.2.x` | `s1-mcps:latest` |
 | purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` |
 
 ### What to delete outright
@@ -98,9 +112,9 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=always",
+      "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
-               "ghcr.io/pmoses-s1/s1-mcps:latest", "s1-secops-mcp"],
+               "sentinelone/secops-skills:1.4.6", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
@@ -110,9 +124,9 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
     },
     "purple-mcp": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=always",
+      "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-               "ghcr.io/pmoses-s1/s1-mcps:latest", "purple-mcp"],
+               "sentinelone/secops-skills:1.4.6", "purple-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
@@ -120,9 +134,9 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
     },
     "virustotal": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=always",
+      "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "VIRUSTOTAL_API_KEY",
-               "ghcr.io/pmoses-s1/s1-mcps:latest", "virustotal-mcp"],
+               "sentinelone/secops-skills:1.4.6", "virustotal-mcp"],
       "env": {
         "VIRUSTOTAL_API_KEY": "your-virustotal-key"
       }
@@ -136,9 +150,6 @@ derives `PURPLEMCP_CONSOLE_BASE_URL` and `PURPLEMCP_CONSOLE_TOKEN` from them. A
 `PURPLEMCP_*` variable you set explicitly still wins, so leaving them in place
 also works.
 
-> Running purple-mcp directly via `uvx` bypasses the entrypoint. That path still
-> needs `PURPLEMCP_CONSOLE_BASE_URL` and `PURPLEMCP_CONSOLE_TOKEN`.
-
 Then **restart Claude Desktop**.
 
 ---
@@ -147,7 +158,7 @@ Then **restart Claude Desktop**.
 
 In a Claude session:
 
-```
+```text
 smoke test s1 secops skills
 ```
 
@@ -155,11 +166,13 @@ Or from a terminal, without Claude Desktop:
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm ghcr.io/pmoses-s1/s1-mcps:latest s1-secops-mcp
+  | docker run -i --rm sentinelone/secops-skills:1.4.6 s1-secops-mcp
 ```
 
 Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.3.9"`, and
-`Tools: 32 registered` on stderr.
+`Tools: 32 registered` on stderr. The `version` here is the bundled MCP's, not
+the `1.4.5` image tag you pulled. An older number means you are on a cached
+image; `--pull=missing` in the config is what prevents that.
 
 ---
 
@@ -187,13 +200,13 @@ absent, rather than failing later on the first request.
 
 | Symptom | Cause and fix |
 |---|---|
-| `manifest unknown` / image pull fails | Tag typo. The tag is `1.3.2`, not `1.3.1`. |
+| `manifest unknown` / image pull fails | Tag typo, or an MCP version used as an image tag. The current image tag is `1.4.5`; `1.3.9` is the MCP version inside it and is not a published image tag. |
+| Tools behave like an older release | A cached image under a reused tag. Tags `1.3.3` and earlier were republished with different contents. Switch to `:latest` with `--pull=missing`, or `docker pull` explicitly, then check `docker image inspect sentinelone/secops-skills:1.4.6 --format '{{.Created}}'`. |
 | `entrypoint: unknown command 'sentinelone-mcp'` | The dispatcher argument still says the old name. Change it to `s1-secops-mcp`. |
 | MCP red in Cowork, `Cannot connect to the Docker daemon` | Docker Desktop is not running. |
 | Skills still mention `SDL_XDR_URL` or `c.keys[...]` | An old plugin cache. Re-check with the command in step 2. |
 | `S1 Mgmt API: NOT configured` | No console token reached the container. Each `-e VAR` needs a matching key in that block's `env`. |
 | `AttributeError: 'SDLClient' object has no attribute 'keys'` | A script still force-clears scoped keys. See above. |
-| purple-mcp fails to start | If you run it via `uvx` rather than Docker, set `PURPLEMCP_*` explicitly. |
 
 Per-MCP logs: `~/Library/Logs/Claude/mcp-server-<name>.log`.
 
@@ -203,8 +216,9 @@ Per-MCP logs: `~/Library/Logs/Claude/mcp-server-<name>.log`.
 
 ```bash
 cd ~/Library/Application\ Support/Claude
-cp claude_desktop_config.json.pre-1.3.2 claude_desktop_config.json
+cp claude_desktop_config.json.bak claude_desktop_config.json
 ```
 
-Then reinstall the old plugin and restart. The 1.2.x images remain on ghcr.io;
-npm `@pmoses-s1/sentinelone-mcp@1.2.4` is still published.
+Then reinstall the old plugin and restart.
+
+**Rolling back the image is limited.** Only `1.4.5` and `1.4.6` exist on Docker Hub. Everything earlier was published to `ghcr.io/pmoses-s1/s1-mcps`, which is being made private, and those tags were deleted and are not recoverable. If you need an older image, you need a copy you already pulled; `docker image ls` will show what is still on the machine.

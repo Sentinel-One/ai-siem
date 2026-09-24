@@ -10,7 +10,7 @@
 #
 # Run this from the s1-secops-mcp/ directory on your Mac:
 #
-#   cd ~/path/to/claude-skills/s1-secops-mcp
+#   cd ~/path/to/s1-secops-skills/s1-secops-mcp
 #   bash scripts/test-mac.sh
 #
 # All checks should pass with green PASS markers. Any FAIL line should be
@@ -53,7 +53,7 @@ fi
 pass "Node $(node --version) on $(uname -srm)"
 
 if [[ ! -f "index.js" ]]; then
-  fail "Not in the s1-secops-mcp directory" "cd to .../claude-skills/s1-secops-mcp first"
+  fail "Not in the s1-secops-mcp directory" "cd to .../s1-secops-skills/s1-secops-mcp first"
   exit 1
 fi
 pass "running from s1-secops-mcp directory"

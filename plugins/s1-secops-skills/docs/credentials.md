@@ -94,7 +94,18 @@ The MCP servers receive these credentials as environment variables in `~/Library
 
 - **Docker (recommended):** [README → Quick start (Docker), Step 2](../README.md#1-quick-start-docker), or the full walkthrough at [docs/installation.md → Step 1: Configure MCP servers](./installation.md#step-1-configure-mcp-servers)
 
-Whichever block you paste, fill in the same keys from the tables above. Two things apply to every path:
+Whichever block you paste, fill in the same keys from the tables above.
+
+**All three MCPs take the same four variable names.** You never set a server-specific variable. `purple-mcp` uses its own names internally, and the image entrypoint derives them:
+
+| You set | Derived for purple-mcp |
+|---|---|
+| `S1_CONSOLE_URL` | `PURPLEMCP_CONSOLE_BASE_URL` |
+| `S1_CONSOLE_API_TOKEN` | `PURPLEMCP_CONSOLE_TOKEN` |
+
+A server-specific variable that is already set always wins, so an older config naming `PURPLEMCP_*` explicitly keeps working.
+
+Two more things apply to every path:
 
 > **Threat intel MCP:** Replace `virustotal` with your organisation's approved threat intelligence MCP if different. Any MCP that provides file hash, IP, domain, and URL lookup tools works. The CLAUDE.md operating instructions require multi-source confirmation before a TRUE POSITIVE or CRITICAL verdict: they do not mandate a specific provider.
 

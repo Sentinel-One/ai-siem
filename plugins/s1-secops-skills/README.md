@@ -420,45 +420,15 @@ Every bundled server is built from a pinned git source. Run `docker run --rm sen
 
 **Step 1: Install Docker and confirm it is running**
 
-Docker Desktop (macOS/Windows) or Docker Engine (Linux). Everything else is a credential (see the table in Step 2).
+Docker Desktop (macOS/Windows) or Docker Engine (Linux).
 
 ```bash
 docker info | head -3
 ```
 
-Expected: a `Server Version:` line. If you see `Cannot connect to the Docker
-daemon`, Docker is not running. Start Docker Desktop and wait until the whale
-icon stops animating. This is the single most common setup failure, and it
-surfaces later as an MCP showing red in Cowork rather than as an obvious
-Docker error.
+Expect a `Server Version:` line. If you get `Cannot connect to the Docker daemon`, start Docker Desktop and run it again.
 
-You do **not** need to pull the image. The config in Step 2 uses
-`--pull=missing`, so the first launch fetches it automatically.
-
-<details>
-<summary>Optional: pre-pull to avoid a slow first launch (~250 MB)</summary>
-
-The first launch downloads the image inside Claude Desktop's MCP startup, which
-can look like a hang. Pulling ahead of time makes that first start immediate:
-
-```bash
-docker pull sentinelone/secops-skills:1.4.6
-```
-
-</details>
-
-Pin the exact version. Tags on this repository are **immutable**, so `1.4.6`
-always means the same bytes: there is no `latest`, deliberately, because a
-moving tag makes "which image am I running?" unanswerable. That immutability is
-also why `--pull=missing` is the right setting: re-pulling on every launch buys
-nothing and fails hard when the registry is unreachable.
-
-The image tag and the bundled MCP version are separate streams, so ask the
-image rather than infer from the tag:
-
-```bash
-docker run --rm sentinelone/secops-skills:1.4.6 versions
-```
+You do not need to pull the image. Step 2 uses `--pull=missing`, so the first launch fetches it.
 
 **Step 2: Configure credentials**
 
@@ -503,17 +473,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 }
 ```
 
-Only four variable names exist. purple-mcp and virustotal use the same
-canonical names as `s1-secops-mcp`, because the image entrypoint maps them onto
-each server's own variables:
-
-| You set | Derived for |
-|---|---|
-| `S1_CONSOLE_URL` | `PURPLEMCP_CONSOLE_BASE_URL` |
-| `S1_CONSOLE_API_TOKEN` | `PURPLEMCP_CONSOLE_TOKEN` |
-
-A server-specific variable that is already set always wins, so a configuration
-that names `PURPLEMCP_*` explicitly keeps working.
+Only four variable names exist, and all three MCPs use the same ones.
 
 Where to get each value:
 
@@ -522,7 +482,7 @@ Where to get each value:
 | `S1_CONSOLE_URL` | Your console URL | e.g. `https://usea1-yourorg.sentinelone.net` |
 | `S1_CONSOLE_API_TOKEN` | Mgmt Console API token | Settings → Users → Service Users → Create New Service User ([guide](https://community.sentinelone.com/s/article/000005291)) |
 | `S1_HEC_INGEST_URL` | Ingest host for your region | [Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) |
-| `S1_HEC_TOKEN` | SDL Log Write Key. Optional: only raw log ingest needs it, and the console API token does not work there | Console → Singularity Data Lake → API Keys → Log Write Key. No API mints one |
+| `S1_HEC_TOKEN` | SDL Log Write Key. Optional: only raw log ingest needs it, and the console API token does not work there. The key is bound to one account or site. A key minted for a different scope still returns `200 Success` and then discards every event, so read an event back before trusting an ingest | Console → Singularity Data Lake → API Keys → Log Write Key. No API mints one |
 | `VIRUSTOTAL_API_KEY` | VirusTotal API key (free tier is fine) | [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) |
 
 Full key reference, token types, and resolution order: **[docs/credentials.md](./docs/credentials.md)**. **Restart Claude Desktop** after saving.

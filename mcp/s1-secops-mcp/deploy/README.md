@@ -57,7 +57,7 @@ Add the server to Claude Desktop (`~/Library/Application Support/Claude/claude_d
 
 The path must be absolute; `~` does not expand inside the `-v` argument. `whoami` prints the value for `<you>`.
 
-To pass credentials as environment variables instead of mounting a file, use the `-e` form documented in [docs/docker.md](../../docs/docker.md), which also covers the `purple-mcp` and `virustotal` entries from the same image.
+To pass credentials as environment variables instead of mounting a file, use the `-e` form documented in [docs/docker.md](../../../plugins/s1-secops-skills/docs/docker.md), which also covers the `purple-mcp` and `virustotal` entries from the same image.
 
 Restart Claude Desktop.
 

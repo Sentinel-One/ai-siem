@@ -221,4 +221,4 @@ cp claude_desktop_config.json.bak claude_desktop_config.json
 
 Then reinstall the old plugin and restart.
 
-**Rolling back the image is limited.** `sentinelone/secops-mcps` carries `1.4.8` only. The previous name, `sentinelone/secops-skills`, still carries `1.4.5` and `1.4.6` and is the rollback target for those versions. Everything earlier was published to `ghcr.io/pmoses-s1/s1-mcps`, which is being made private, and those tags were deleted and are not recoverable. If you need an older image than 1.4.5, you need a copy you already pulled; `docker image ls` will show what is still on the machine.
+**There is no rollback target.** `sentinelone/secops-mcps` carries `1.4.8` only. If you need an older image, you need a copy you already pulled; `docker image ls` will show what is still on the machine.

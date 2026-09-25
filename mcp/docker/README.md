@@ -38,7 +38,7 @@ When bumping a pin, edit both. They are checked via `grep` in CI; a mismatch fai
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.4.6` |
+| Image version (`IMAGE_VERSION`) | this repo | `1.4.8` |
 | `s1-secops-mcp` | local `COPY` from this repo | whatever commit you build |
 | `virustotal-mcp` | git, `pmoses-s1/mcp-virustotal` | `b3d8474` (vendored fork of `w0h1v/mcp-virustotal` v1.0.28) |
 | `purple-mcp` | git, `pmoses-s1/purple-mcp` | `b8a200d` (fork of `Sentinel-One/purple-mcp` v0.7.0, pandas made optional) |
@@ -71,7 +71,7 @@ docker run --rm sentinelone/secops-mcps:1.4.8 versions
 docker/build.sh
 
 # Full smoke suite: 20 assertions, exit code is the failure count.
-docker/smoke-test.sh sentinelone/secops-mcps:1.4.8 --expect-version 1.4.6
+docker/smoke-test.sh sentinelone/secops-mcps:1.4.8 --expect-version 1.4.8
 
 # Or spot-check by hand:
 docker run -i --rm sentinelone/secops-mcps:1.4.8 help
@@ -106,7 +106,7 @@ On a slow or unreliable link, push with `skopeo copy --all --retry-times 20` fro
 # Then:
 docker/build.sh                                            # verify locally
 git push                                                   # no build, by design
-git tag -a s1-mcps-v1.4.6 -m "..." && git push origin s1-mcps-v1.4.6
+git tag -a s1-mcps-v1.4.8 -m "..." && git push origin s1-mcps-v1.4.8
 ```
 
 **Only a release tag builds an image.** A push to `main` does not, however much

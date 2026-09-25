@@ -3,7 +3,7 @@
 # Build (and optionally push) the SentinelOne Claude Skills MCP Stack image.
 #
 # Usage:
-#   docker/build.sh                   # local single-arch build, tag secops-skills:<version>
+#   docker/build.sh                   # local single-arch build, tag secops-mcps:<version>
 #   PUSH=true docker/build.sh         # multi-arch build + push to Docker Hub
 #   TAG=dev docker/build.sh           # override tag
 #   VT_MCP_REF=<sha> docker/build.sh  # override a pin

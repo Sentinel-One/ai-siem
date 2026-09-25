@@ -11,8 +11,6 @@ Tags: full semver only. `1.4.6` is current; `1.4.5` is the previous release. The
 
 From `1.4.0` the image is built entirely from pinned git sources. Nothing in the build resolves a package from the npm registry, and `npm` and `npx` are not present in the image. This matters if you are reviewing the supply chain of what runs in your environment, or running builds somewhere the npm registry is unreachable. One registry dependency does remain: purple-mcp's Python packages still come from PyPI at build time.
 
-**The image was renamed at 1.4.8.** It is now `sentinelone/secops-mcps`. The previous name, `sentinelone/secops-skills`, carries `1.4.5` and `1.4.6` and receives no further releases. Before that, releases went to `ghcr.io/pmoses-s1/s1-mcps`, which is being made private; those tags are gone and are not recoverable.
-
 The new repository carries `1.4.8` only. Update any config referencing either older name to `sentinelone/secops-mcps:1.4.8`.
 
 The image version is its own counter and does not encode the versions inside it: image `1.4.6` bundles s1-secops-mcp 1.3.9. From 1.3.4 onward a version tag strictly increases and is never republished, so a pin is stable. Tags at or below `1.3.3` were republished with different contents and do not reliably identify what is inside. To know what you have, ask the image:
@@ -115,7 +113,7 @@ Common signatures:
 |---|---|
 | `Cannot connect to the Docker daemon` | Docker Desktop is not running, see step 1 |
 | `Unable to find image ... pulling from docker.io` | First-launch pull, normal, takes 30 to 90 s |
-| `denied` or `manifest unknown` from docker.io | The repository is public and needs no login, so this is normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The image was renamed at 1.4.8: `sentinelone/secops-mcps` carries `1.4.8`, and the old `sentinelone/secops-skills` carries `1.4.5` and `1.4.6`. Check with `docker manifest inspect sentinelone/secops-mcps:1.4.8`. |
+| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.4.8`. Check with `docker manifest inspect sentinelone/secops-mcps:1.4.8`. |
 | `VIRUSTOTAL_API_KEY environment variable is required` | The env value did not propagate. Re-check the `env` block in `claude_desktop_config.json` and that the `-e VAR` arg matches the key name. |
 | `pydantic_core.ValidationError ... PURPLEMCP_*` | Same root cause for purple-mcp. |
 | `S1 Mgmt API: NOT configured` | s1-secops-mcp boots but no console token reached it; check `S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN` in the config. |

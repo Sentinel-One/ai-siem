@@ -20,7 +20,7 @@
     "start": "node index.js",
     "start:http": "node index.js --transport http",
     "dev": "node --watch index.js",
-    "test": "node --test tests/smoke.test.mjs tests/stdio-transport.test.mjs tests/http-transport.test.mjs tests/ssrf-path.test.mjs tests/http-origin-guard.test.mjs tests/sdl-graphql.test.mjs tests/regressions-2026-07-29.test.mjs tests/regressions-2026-07-31.test.mjs tests/contracts-1.3.9.test.mjs",
+    "test": "node --test tests/smoke.test.mjs tests/stdio-transport.test.mjs tests/http-transport.test.mjs tests/ssrf-path.test.mjs tests/http-origin-guard.test.mjs tests/sdl-graphql.test.mjs tests/regressions-2026-07-29.test.mjs tests/regressions-2026-07-31.test.mjs tests/contracts-1.3.9.test.mjs tests/regressions-2026-09-25.test.mjs",
     "regen:readme": "node scripts/regen-readme-tools-table.mjs"
   },
   "engines": {

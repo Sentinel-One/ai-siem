@@ -3,7 +3,7 @@
 # Build (and optionally push) the SentinelOne Claude Skills MCP Stack image.
 #
 # Usage:
-#   docker/build.sh                   # local single-arch build, tag secops-skills:<version>
+#   docker/build.sh                   # local single-arch build, tag secops-mcps:<version>
 #   PUSH=true docker/build.sh         # multi-arch build + push to Docker Hub
 #   TAG=dev docker/build.sh           # override tag
 #   VT_MCP_REF=<sha> docker/build.sh  # override a pin
@@ -67,11 +67,11 @@ fi
 #   docker run --rm <image> versions
 # (That replaces the old `--entrypoint npm <image> ls -g --depth=0`. There is
 # no npm in the image any more, so that command now fails with "not found".)
-IMAGE_VERSION="${IMAGE_VERSION:-1.4.6}"
+IMAGE_VERSION="${IMAGE_VERSION:-1.4.8}"
 
 # ── Image identity ───────────────────────────────────────────────────────────
 REGISTRY="${REGISTRY:-docker.io/sentinelone}"
-IMAGE_NAME="${IMAGE_NAME:-secops-skills}"
+IMAGE_NAME="${IMAGE_NAME:-secops-mcps}"
 TAG="${TAG:-${IMAGE_VERSION}}"
 
 # ── Build options ────────────────────────────────────────────────────────────

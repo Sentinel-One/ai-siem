@@ -6,17 +6,17 @@ This page is the full Docker reference for everything beyond those three steps: 
 
 One Docker image bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`) so you only need Docker on the host: no Node, Python, or `uv`. It is the only supported install path, and it works on machines where IT policy blocks host-level package installs.
 
-Image: `sentinelone/secops-skills`
+Image: `sentinelone/secops-mcps`
 Tags: full semver only. `1.4.6` is current; `1.4.5` is the previous release. There is no `latest`, no rolling `1` or `1.4`, and no `sha-<short>`: the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. Every install is therefore pinned and reproducible by construction, and an upgrade is something you do deliberately.
 
 From `1.4.0` the image is built entirely from pinned git sources. Nothing in the build resolves a package from the npm registry, and `npm` and `npx` are not present in the image. This matters if you are reviewing the supply chain of what runs in your environment, or running builds somewhere the npm registry is unreachable. One registry dependency does remain: purple-mcp's Python packages still come from PyPI at build time.
 
-**The image moved registries at 1.4.5.** Earlier releases were published to `ghcr.io/pmoses-s1/s1-mcps`, which is being made private; those tags are gone and are not recoverable. Docker Hub carries `1.4.5` and `1.4.6` only. If a config still references a `ghcr.io` image, update it to `sentinelone/secops-skills:1.4.6`.
+The new repository carries `1.4.8` only. Update any config referencing either older name to `sentinelone/secops-mcps:1.4.8`.
 
 The image version is its own counter and does not encode the versions inside it: image `1.4.6` bundles s1-secops-mcp 1.3.9. From 1.3.4 onward a version tag strictly increases and is never republished, so a pin is stable. Tags at or below `1.3.3` were republished with different contents and do not reliably identify what is inside. To know what you have, ask the image:
 
 ```bash
-docker run --rm sentinelone/secops-skills:1.4.6 versions
+docker run --rm sentinelone/secops-mcps:1.4.8 versions
 ```
 
 - [Prerequisites](#prerequisites)
@@ -50,7 +50,7 @@ This means every server entry can pass the same `-e` flags:
   "command": "docker",
   "args": ["run", "-i", "--rm", "--pull=missing",
            "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
-           "sentinelone/secops-skills:1.4.6", "s1-secops-mcp"],
+           "sentinelone/secops-mcps:1.4.8", "s1-secops-mcp"],
   "env": {
     "S1_CONSOLE_URL":       "https://usea1-acme.sentinelone.net",
     "S1_CONSOLE_API_TOKEN": "eyJ...",
@@ -62,7 +62,7 @@ This means every server entry can pass the same `-e` flags:
   "command": "docker",
   "args": ["run", "-i", "--rm", "--pull=missing",
            "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-           "sentinelone/secops-skills:1.4.6", "purple-mcp"],
+           "sentinelone/secops-mcps:1.4.8", "purple-mcp"],
   "env": {
     "S1_CONSOLE_URL":       "https://usea1-acme.sentinelone.net",
     "S1_CONSOLE_API_TOKEN": "eyJ..."
@@ -113,7 +113,7 @@ Common signatures:
 |---|---|
 | `Cannot connect to the Docker daemon` | Docker Desktop is not running, see step 1 |
 | `Unable to find image ... pulling from docker.io` | First-launch pull, normal, takes 30 to 90 s |
-| `denied` or `manifest unknown` from docker.io | The repository is public and needs no login, so this is normally a typo in the image name or tag, or a proxy intercepting Docker Hub. Only `1.4.5` and `1.4.6` exist. Check with `docker manifest inspect sentinelone/secops-skills:1.4.6`. |
+| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.4.8`. Check with `docker manifest inspect sentinelone/secops-mcps:1.4.8`. |
 | `VIRUSTOTAL_API_KEY environment variable is required` | The env value did not propagate. Re-check the `env` block in `claude_desktop_config.json` and that the `-e VAR` arg matches the key name. |
 | `pydantic_core.ValidationError ... PURPLEMCP_*` | Same root cause for purple-mcp. |
 | `S1 Mgmt API: NOT configured` | s1-secops-mcp boots but no console token reached it; check `S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN` in the config. |
@@ -127,7 +127,7 @@ This bypasses Claude Desktop entirely and confirms the image and credentials wor
 docker run -i --rm --pull=missing \
   -e S1_CONSOLE_URL='https://usea1-yourorg.sentinelone.net' \
   -e S1_CONSOLE_API_TOKEN='eyJ...' \
-  sentinelone/secops-skills:1.4.6 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
+  sentinelone/secops-mcps:1.4.8 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
 ```
 
 Expected: a single JSON line back on stdout with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.3.9"`, the bundled MCP version, not the `1.3.6` image tag. Stderr should show `Tools: 32 registered` and one of the `configured`/`NOT configured` summaries per API surface.
@@ -137,8 +137,8 @@ Expected: a single JSON line back on stdout with `serverInfo.name = "s1-secops-m
 If you suspect a corrupted local image:
 
 ```bash
-docker rmi sentinelone/secops-skills:1.4.6
-docker pull sentinelone/secops-skills:1.4.6
+docker rmi sentinelone/secops-mcps:1.4.8
+docker pull sentinelone/secops-mcps:1.4.8
 ```
 
 ---
@@ -157,7 +157,7 @@ To use your own copy, mount your Cowork project folder read-only and point the e
     "-v", "/Users/yourname/Documents/Claude/Projects/PrincipalSOCAnalyst:/workspace:ro",
     "-e", "S1_CLAUDE_MD_PATH=/workspace/CLAUDE.md",
     "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-    "sentinelone/secops-skills:1.4.6",
+    "sentinelone/secops-mcps:1.4.8",
     "s1-secops-mcp"
   ],
   "env": { "...": "..." }
@@ -179,7 +179,7 @@ Replace the tag in all three MCP entries at once. They share one image, and leav
 To pre-pull the new version before editing the config:
 
 ```bash
-docker pull sentinelone/secops-skills:1.4.6
+docker pull sentinelone/secops-mcps:1.4.8
 ```
 
 To prune old image layers after a few upgrades:

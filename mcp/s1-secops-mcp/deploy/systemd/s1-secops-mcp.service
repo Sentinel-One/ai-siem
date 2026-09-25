@@ -12,7 +12,7 @@ Type=simple
 # installer states it once as IMAGE_REF in deploy/install.sh and the two are
 # kept in sync. To move versions: change the tag here, `docker pull` it, then
 # `systemctl daemon-reload && systemctl restart s1-secops-mcp`.
-Environment=S1_MCP_IMAGE=sentinelone/secops-skills:1.4.6
+Environment=S1_MCP_IMAGE=sentinelone/secops-mcps:1.4.8
 
 # Server credentials (the S1 service-user token + SDL keys) and bearer tokens.
 # Both are written by deploy/install.sh into /etc/s1-secops-mcp, which is bind

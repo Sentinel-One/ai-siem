@@ -76,7 +76,7 @@ Add this to `claude_desktop_config.json` (or `.mcp.json` for Claude Code):
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
                "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
-               "sentinelone/secops-skills:1.4.6", "s1-secops-mcp"],
+               "sentinelone/secops-mcps:1.4.8", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...",

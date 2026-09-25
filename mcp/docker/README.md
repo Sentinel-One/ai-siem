@@ -25,7 +25,7 @@ docker/
 
 The Dockerfile is two stages. The **fetch** stage holds everything needing git or network; the **runtime** stage copies the results, so neither `git` nor any clone metadata ships in the published image.
 
-The image is published to `sentinelone/secops-skills`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. The matching CI workflow is at [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml).
+The image is published to `sentinelone/secops-mcps`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. The matching CI workflow is at [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml).
 
 ## Pinned sources
 
@@ -38,7 +38,7 @@ When bumping a pin, edit both. They are checked via `grep` in CI; a mismatch fai
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.4.6` |
+| Image version (`IMAGE_VERSION`) | this repo | `1.4.8` |
 | `s1-secops-mcp` | local `COPY` from this repo | whatever commit you build |
 | `virustotal-mcp` | git, `pmoses-s1/mcp-virustotal` | `b3d8474` (vendored fork of `w0h1v/mcp-virustotal` v1.0.28) |
 | `purple-mcp` | git, `pmoses-s1/purple-mcp` | `b8a200d` (fork of `Sentinel-One/purple-mcp` v0.7.0, pandas made optional) |
@@ -61,24 +61,24 @@ Two consequences of that switch, both handled in the workflow: a commit under `s
 Because the number does not encode what is inside, verify rather than infer:
 
 ```bash
-docker run --rm sentinelone/secops-skills:1.4.6 versions
+docker run --rm sentinelone/secops-mcps:1.4.8 versions
 ```
 
 ## Build locally
 
 ```bash
-# Single-arch (matches your machine), tags sentinelone/secops-skills:<IMAGE_VERSION>
+# Single-arch (matches your machine), tags sentinelone/secops-mcps:<IMAGE_VERSION>
 docker/build.sh
 
 # Full smoke suite: 20 assertions, exit code is the failure count.
-docker/smoke-test.sh sentinelone/secops-skills:1.4.6 --expect-version 1.4.6
+docker/smoke-test.sh sentinelone/secops-mcps:1.4.8 --expect-version 1.4.8
 
 # Or spot-check by hand:
-docker run -i --rm sentinelone/secops-skills:1.4.6 help
-docker run -i --rm sentinelone/secops-skills:1.4.6 versions
+docker run -i --rm sentinelone/secops-mcps:1.4.8 help
+docker run -i --rm sentinelone/secops-mcps:1.4.8 versions
 
 # There should be no npm in here. This must print "absent".
-docker run --rm --entrypoint sh sentinelone/secops-skills:1.4.6 -c 'command -v npm || echo absent'
+docker run --rm --entrypoint sh sentinelone/secops-mcps:1.4.8 -c 'command -v npm || echo absent'
 ```
 
 The dispatcher accepts `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, `versions`, or `help`.
@@ -106,7 +106,7 @@ On a slow or unreliable link, push with `skopeo copy --all --retry-times 20` fro
 # Then:
 docker/build.sh                                            # verify locally
 git push                                                   # no build, by design
-git tag -a s1-mcps-v1.4.6 -m "..." && git push origin s1-mcps-v1.4.6
+git tag -a s1-mcps-v1.4.8 -m "..." && git push origin s1-mcps-v1.4.8
 ```
 
 **Only a release tag builds an image.** A push to `main` does not, however much

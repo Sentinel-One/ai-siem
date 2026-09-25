@@ -414,9 +414,9 @@ Credentials are identical across both paths. What each key is and where to get i
 
 ### 1. Quick start (Docker)
 
-One image (`sentinelone/secops-skills`) bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`), version-locked together. Docker is the only thing you need on the host. It works the same on macOS, Windows, and Linux, including machines where IT policy blocks host-level package installs.
+One image (`sentinelone/secops-mcps`) bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`), version-locked together. Docker is the only thing you need on the host. It works the same on macOS, Windows, and Linux, including machines where IT policy blocks host-level package installs.
 
-Every bundled server is built from a pinned git source. Run `docker run --rm sentinelone/secops-skills:1.4.6 versions` to see the exact repo and commit behind each one.
+Every bundled server is built from a pinned git source. Run `docker run --rm sentinelone/secops-mcps:1.4.8 versions` to see the exact repo and commit behind each one.
 
 **Step 1: Install Docker and confirm it is running**
 
@@ -442,7 +442,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL",
                "-e", "S1_HEC_TOKEN",
-               "sentinelone/secops-skills:1.4.6", "s1-secops-mcp"],
+               "sentinelone/secops-mcps:1.4.8", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
@@ -454,7 +454,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-               "sentinelone/secops-skills:1.4.6", "purple-mcp"],
+               "sentinelone/secops-mcps:1.4.8", "purple-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
@@ -464,7 +464,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "VIRUSTOTAL_API_KEY",
-               "sentinelone/secops-skills:1.4.6", "virustotal-mcp"],
+               "sentinelone/secops-mcps:1.4.8", "virustotal-mcp"],
       "env": {
         "VIRUSTOTAL_API_KEY": "your-virustotal-key"
       }
@@ -504,9 +504,9 @@ smoke test s1 secops skills
 Claude checks all three MCPs, confirms each skill is loaded, and reports any missing credential or unreachable endpoint. You can also test the image straight from a terminal, no Claude Desktop required:
 
 ```bash
-docker run -i --rm sentinelone/secops-skills:1.4.6 help    # lists the three bundled servers
+docker run -i --rm sentinelone/secops-mcps:1.4.8 help    # lists the three bundled servers
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm sentinelone/secops-skills:1.4.6 s1-secops-mcp
+  | docker run -i --rm sentinelone/secops-mcps:1.4.8 s1-secops-mcp
 ```
 
 The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.3.9"`, the bundled MCP version rather than the `1.4.5` image tag, and stderr shows `Tools: 32 registered`.
@@ -517,7 +517,7 @@ The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-
 |---|---|
 | MCP shows red in Cowork → MCP Servers | Confirm Docker is running: `docker info \| head -3`. Start Docker Desktop, then restart Claude Desktop. |
 | `Cannot connect to the Docker daemon` in the logs | Docker Desktop is not running. |
-| `denied` or `manifest unknown` from docker.io | The repository is public and needs no login, so this is normally a typo in the image name or tag, or a proxy intercepting Docker Hub. Only `1.4.5` and `1.4.6` exist. |
+| `denied` or `manifest unknown` from docker.io | The repository is public and needs no login, so this is normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The image was renamed at 1.4.8: use `sentinelone/secops-mcps:1.4.8`. The old `sentinelone/secops-skills` carries `1.4.5` and `1.4.6` only. |
 | `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The value did not reach the container. Check each `-e VAR` name has a matching key in the same block's `env`. |
 | `S1 Mgmt API: NOT configured` | No console token reached the container; check `S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN`. |
 
@@ -539,7 +539,7 @@ Full walkthrough (config block, prerequisites, project setup, upgrading): **[doc
 
 ### Upgrading
 
-- **MCPs**: bump the pinned tag in `claude_desktop_config.json` to the current release (`:1.4.6`), run `docker pull sentinelone/secops-skills:1.4.6`, and restart Claude Desktop. There is no moving tag to drift onto, so an upgrade is always an explicit, reviewable edit.
+- **MCPs**: bump the pinned tag in `claude_desktop_config.json` to the current release (`:1.4.6`), run `docker pull sentinelone/secops-mcps:1.4.8`, and restart Claude Desktop. There is no moving tag to drift onto, so an upgrade is always an explicit, reviewable edit.
 - **Plugin**: download the newer `.plugin` from [`dist/`](./dist/), then Cowork → Customize → Browse plugins, upload, and click **Replace**.
 
 Step-by-step, including what to delete from an older config: **[docs/upgrading.md](./docs/upgrading.md)**.

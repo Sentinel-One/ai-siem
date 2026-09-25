@@ -111,7 +111,7 @@ Two more things apply to every path:
 
 **Host prerequisites:**
 
-- Docker running on the host (`docker --version`). All three MCPs ship in `sentinelone/secops-skills`, so nothing else is required.
+- Docker running on the host (`docker --version`). All three MCPs ship in `sentinelone/secops-mcps`, so nothing else is required.
 - A VirusTotal API key (free tier is fine) from [virustotal.com](https://virustotal.com), passed as `VIRUSTOTAL_API_KEY`.
 
 Restart Claude Desktop after editing the config. All servers then appear under connected MCP tools.

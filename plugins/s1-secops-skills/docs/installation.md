@@ -2,7 +2,7 @@
 
 Four steps from zero to a working PrincipalSOCAnalyst session: configure MCP servers, install the plugin, create the Cowork project, verify.
 
-All three MCP servers (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`) ship in one Docker image, `sentinelone/secops-skills`, version-locked together. Docker is the only thing you need on the host. There is no git clone and no absolute path to manage. New machine: paste the config, paste the tokens, restart Claude Desktop.
+All three MCP servers (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`) ship in one Docker image, `sentinelone/secops-mcps`, version-locked together. Docker is the only thing you need on the host. There is no git clone and no absolute path to manage. New machine: paste the config, paste the tokens, restart Claude Desktop.
 
 The same three steps in condensed form are in the [README Quick start (Docker)](../README.md#1-quick-start-docker). The full Docker reference (tags, troubleshooting flowchart, CLAUDE.md override, building from source) is [`docker.md`](./docker.md).
 
@@ -31,7 +31,7 @@ Nothing else is needed on the host: no Node, no Python, no `uv`. The image is mu
 Pull the image once before you start:
 
 ```bash
-docker pull sentinelone/secops-skills:1.4.6
+docker pull sentinelone/secops-mcps:1.4.8
 ```
 
 ---
@@ -49,7 +49,7 @@ All three entries run the same image with a different dispatcher argument. `--pu
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
-               "sentinelone/secops-skills:1.4.6", "s1-secops-mcp"],
+               "sentinelone/secops-mcps:1.4.8", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
@@ -61,7 +61,7 @@ All three entries run the same image with a different dispatcher argument. `--pu
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-               "sentinelone/secops-skills:1.4.6", "purple-mcp"],
+               "sentinelone/secops-mcps:1.4.8", "purple-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
@@ -71,7 +71,7 @@ All three entries run the same image with a different dispatcher argument. `--pu
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "VIRUSTOTAL_API_KEY",
-               "sentinelone/secops-skills:1.4.6", "virustotal-mcp"],
+               "sentinelone/secops-mcps:1.4.8", "virustotal-mcp"],
       "env": {
         "VIRUSTOTAL_API_KEY": "your-virustotal-key"
       }
@@ -154,9 +154,9 @@ Claude verifies connectivity to `s1-secops-mcp`, `purple-mcp`, and the threat in
 You can also test the image straight from a terminal, with no Claude Desktop involved:
 
 ```bash
-docker run --rm sentinelone/secops-skills:1.4.6 versions   # what is inside the image
+docker run --rm sentinelone/secops-mcps:1.4.8 versions   # what is inside the image
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm sentinelone/secops-skills:1.4.6 s1-secops-mcp
+  | docker run -i --rm sentinelone/secops-mcps:1.4.8 s1-secops-mcp
 ```
 
 The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"`, and stderr shows `Tools: 32 registered`. The `version` it reports is the bundled MCP's own version, not the image tag.
@@ -178,7 +178,7 @@ To confirm the active plugin version: `which version of s1-secops-skills is inst
 **MCP servers** (`s1-secops-mcp`, `purple-mcp`, `virustotal`): the config above pins `:1.4.6`, so restarting Claude Desktop keeps that exact image. Upgrading means editing the tag in all three entries. To pre-pull a version before switching to it:
 
 ```bash
-docker pull sentinelone/secops-skills:1.4.6
+docker pull sentinelone/secops-mcps:1.4.8
 ```
 
 If you pinned a version tag, bump it to the current release (`1.4.5`) and restart Claude Desktop.

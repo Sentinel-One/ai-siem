@@ -44,7 +44,7 @@ die() {
 # deploy/systemd/s1-secops-mcp.service states the same pin in its
 # Environment=S1_MCP_IMAGE line and the two are kept in sync (the server-mode
 # install re-reads the installed unit and pulls whatever it pins).
-IMAGE_REF="sentinelone/secops-skills:1.4.6"
+IMAGE_REF="sentinelone/secops-mcps:1.4.8"
 CONTAINER_NAME="s1-secops-mcp"
 MODE="user"
 
@@ -205,7 +205,7 @@ EOF
     cat >"$ENV_PATH" <<EOF
 # Environment file for s1-secops-mcp.service, read by systemd.
 # Set S1_MCP_IMAGE here to override the image tag pinned in the unit, e.g.
-#   S1_MCP_IMAGE=sentinelone/secops-skills:1.4.6
+#   S1_MCP_IMAGE=sentinelone/secops-mcps:1.4.8
 # Apply any change here with: systemctl restart s1-secops-mcp
 # (systemd only re-reads EnvironmentFile on restart; reload/SIGHUP re-reads
 #  bearer tokens only.)

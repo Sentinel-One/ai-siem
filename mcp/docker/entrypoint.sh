@@ -69,7 +69,7 @@ Other commands:
 
 Usage:
   docker run -i --rm -e S1_CONSOLE_URL -e S1_CONSOLE_API_TOKEN ... \
-    sentinelone/secops-skills:1.4.6 s1-secops-mcp
+    sentinelone/secops-mcps:1.4.8 s1-secops-mcp
 
 Every server is built from a pinned git source. This image contains no npm.
 

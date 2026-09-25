@@ -25,7 +25,7 @@ docker/
 
 The Dockerfile is two stages. The **fetch** stage holds everything needing git or network; the **runtime** stage copies the results, so neither `git` nor any clone metadata ships in the published image.
 
-The image is published to `sentinelone/secops-skills`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. The matching CI workflow is at [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml).
+The image is published to `sentinelone/secops-mcps`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. The matching CI workflow is at [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml).
 
 ## Pinned sources
 
@@ -61,24 +61,24 @@ Two consequences of that switch, both handled in the workflow: a commit under `s
 Because the number does not encode what is inside, verify rather than infer:
 
 ```bash
-docker run --rm sentinelone/secops-skills:1.4.6 versions
+docker run --rm sentinelone/secops-mcps:1.4.8 versions
 ```
 
 ## Build locally
 
 ```bash
-# Single-arch (matches your machine), tags sentinelone/secops-skills:<IMAGE_VERSION>
+# Single-arch (matches your machine), tags sentinelone/secops-mcps:<IMAGE_VERSION>
 docker/build.sh
 
 # Full smoke suite: 20 assertions, exit code is the failure count.
-docker/smoke-test.sh sentinelone/secops-skills:1.4.6 --expect-version 1.4.6
+docker/smoke-test.sh sentinelone/secops-mcps:1.4.8 --expect-version 1.4.6
 
 # Or spot-check by hand:
-docker run -i --rm sentinelone/secops-skills:1.4.6 help
-docker run -i --rm sentinelone/secops-skills:1.4.6 versions
+docker run -i --rm sentinelone/secops-mcps:1.4.8 help
+docker run -i --rm sentinelone/secops-mcps:1.4.8 versions
 
 # There should be no npm in here. This must print "absent".
-docker run --rm --entrypoint sh sentinelone/secops-skills:1.4.6 -c 'command -v npm || echo absent'
+docker run --rm --entrypoint sh sentinelone/secops-mcps:1.4.8 -c 'command -v npm || echo absent'
 ```
 
 The dispatcher accepts `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, `versions`, or `help`.

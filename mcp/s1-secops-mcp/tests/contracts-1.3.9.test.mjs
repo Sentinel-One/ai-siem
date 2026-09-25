@@ -57,7 +57,10 @@ function stubFetch(responses) {
 // answered 422. Both artifacts were individually right; nothing executed one against
 // the other. This test does.
 
-const SKILL_MD = new URL('../../hyperautomation/SKILL.md', import.meta.url);
+const SKILL_MD = new URL(
+  '../../../plugins/s1-secops-skills/skills/hyperautomation/SKILL.md',
+  import.meta.url,
+);
 
 /** Every ```json block under the smoke-test heading, in document order. */
 function smokeTestExamples() {

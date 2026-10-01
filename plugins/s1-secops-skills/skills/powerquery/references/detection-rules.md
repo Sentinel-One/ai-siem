@@ -11,7 +11,7 @@ Three are Custom Detection (STAR) rule types, created at `POST /web/api/v2.1/clo
 | **STAR single-event** | `events` | `data.s1ql` | boolean S1QL, NO pipes | per matching event, streaming at ingest | automatic, from the matched event | inline Active Response (`treatAsThreat` Suspicious/Malicious, `networkQuarantine`) or HA flow | deterministic single-event signatures (a process + cmdline, a registry write, one log line) |
 | **STAR multi-event (correlation)** | `correlation` | `data.correlationParams` (`s1ql` stays `""`) | each sub-query is boolean S1QL, NO pipes | when sub-query match thresholds are met inside a time window, grouped by an entity | automatic, from the matched events; `entityMappings` optional | inline Active Response (`treatAsThreat`) or HA flow | thresholds (N of X), multi-stage chains, ordered sequences (A then B) |
 | **Scheduled (PowerQuery)** | `scheduled` | `data.scheduledParams.query` (`s1ql` stays `""`) | PowerQuery, pipes allowed | on a schedule (`runIntervalMinutes`) over a lookback window | NOT automatic, set `entityMappings` on the projected columns | via HA flow off the alert (`treatAsThreat` must be `UNDEFINED`, `networkQuarantine` false; no inline Active Response) | aggregation, statistics/baselines, cross-field grouping, lookup/anti-join exclusions |
-| **HA watchdog** | not a rule | a Hyperautomation workflow | full PowerQuery via the LRQ API, no evaluator restrictions | on the workflow's own `scheduled_trigger` | you compose the alert, so any field can carry the asset | any HTTP call the flow can make | a query the scheduled evaluator rejects: `datasource`, `savelookup`, `now()`, `timebucket`, unrestricted joins, results past the 1,000-row cap, or an alert whose title and description must come from the result |
+| **HA watchdog** | not a rule | a Hyperautomation workflow | full PowerQuery via the LRQ API, no evaluator restrictions | on the workflow's own `scheduled_trigger` | you compose the alert, so any field can carry the asset | any HTTP call the flow can make | a query the scheduled evaluator rejects (`dataset` or `datasource` as the source, `savelookup`, or the pre-`group` restrictions under "Scheduled-rule limits"), results past the 1,000-row cap, or an alert whose title and description must come from the result |
 
 Decision guide:
 
@@ -59,10 +59,10 @@ There is no `lookup` in a single-event body (no pipes). To exclude known-good ac
 
 `s1ql` stays empty; the logic lives in `data.correlationParams`:
 
-- `entity`: the correlation key. `user` and `ip` are tenant-confirmed built-ins; device/endpoint-style entities also exist. Set `custom` to key on an arbitrary field path, see "Custom correlation key" below.
-- `matchInOrder`: `false` = sub-queries may match in any order; `true` = ordered sequence (sub-query 1, then 2, and so on).
+- `entity`: the correlation key. `user` and `ip` are tenant-confirmed built-ins; device/endpoint-style entities also exist. Set `custom` to key on an arbitrary field path, see "Custom correlation key" below. The field is required: omitting it, `""` and `null` are all HTTP 400. `entity: "none"` correlates across the whole rule scope with no key, so N matching events from unrelated hosts or users still fire (live-verified 2026-10: two events with different hosts fired one alert).
+- `matchInOrder`: `false` = sub-queries may match in any order; `true` = ordered sequence (sub-query 1, then 2, and so on). The order is the order events **reach the engine**, not their event timestamps: a stage-1 event that arrives after its stage-2 event does not complete the sequence even when its event time is earlier (live-verified 2026-10: 0 alerts for late-arriving stage 1, 1 alert for the in-order control). Back-filled or lagging sources break ordered rules silently; use `matchInOrder: false` for them.
 - `timeWindow.windowMinutes`: the correlation window.
-- `subQueries[]`: each `{ "matchesRequired": N, "subQuery": "<boolean S1QL, no pipes>" }`. One sub-query with `matchesRequired: N` is a threshold detection (N of the same event by entity in the window). Multiple sub-queries form a multi-stage / sequence detection.
+- `subQueries[]`: each `{ "matchesRequired": N, "subQuery": "<boolean S1QL, no pipes>" }`. A rule needs at least two sub-queries, or one with `matchesRequired` above 1: a single sub-query with `matchesRequired: 1` is HTTP 400 `must have at least 2 subqueries or 1 subquery with matches required > 1`, for any `entity` (use an events rule for a single-event match). `matchesRequired` must be 1 to 1000; 1001 is HTTP 400 `The number of matches must be between 1 and 1000`. For larger thresholds use a scheduled rule (`| group n=count() by <key> | filter n > N`). One sub-query with `matchesRequired: N` is a threshold detection (N of the same event by entity in the window). Multiple sub-queries form a multi-stage / sequence detection.
 
 ```json
 {
@@ -440,15 +440,27 @@ Starting points, to be tuned rather than copied:
 | Brute force on one account (low and slow) | `tableRows`, group by user + host | 24 hours | 1 hour |
 | Password spraying (one source, many accounts) | `tableRows`, `estimate_distinct` per source IP | 1 hour | 15 min |
 | Two behaviours on one host (`join`) | `tableRows`, each side grouped | 1 hour | 15 min |
-| Activity absent from an allow-list (anti-join) | `tableRows`, `dataset` + null marker | 1 hour | 15 min |
+| Activity absent from an allow-list (anti-join) | `tableRows`, exact-match `lookup` then keep rows where the looked-up column is null | 1 hour | 15 min |
 
 ### Scheduled-rule limits that are not obvious from Event Search
 
 Anything expressible in Event Search is **not** automatically valid in a
 scheduled rule:
 
-- `| datasource` is not supported.
-- `savelookup` is not supported. CSV lookups use `dataset '/datatables/<file>.csv'`, are **exact-match only** (no CIDR, no wildcard), and the file must stay valid or the rule auto-disables.
+- **The restrictions apply to the part of the body BEFORE the first `| group`.** That part is evaluated on pre-aggregated data; everything after the first `group` runs as ordinary PowerQuery over the grouped rows. Measured at create time (live-verified 2026-10, re-run with `tools/pq_detection_rule_probe.py --api-only`):
+
+  | Rejected with HTTP 400 `Trigger expression does not match any supported pattern` | Detail (table-rows mode) |
+  |---|---|
+  | `\| dataset ...` as the source | `loading lookup table via dataset command is not supported` |
+  | `\| datasource ...` as the source | `datasource command is not supported` |
+  | `savelookup` anywhere | `'savelookup' is not supported` |
+  | `now()`, `querystart()`, `queryend()`, `queryspan()` before the first `group` | `'now' is not supported` (and so on) |
+  | `lookup ... =:cidr` / `=:wildcard` before the first `group` | `'###lookup' with lookupType 'CIDR' is not supported` / `'WILDCARD'` |
+  | exact `lookup` against a table over 10,000 rows, before the first `group` | `'###lookup' with 10001 rows is not supported` |
+  | `timebucket` under 30 seconds | `'timebucket' size must be at least 30 seconds` |
+  | pipe commands with no `group` at all (e.g. `<filter> \| let x = ...`) | `must include a 'group' command` |
+
+  Accepted at create: all of the above **after** the first `group` (`now()`, `querystart()`, `=:cidr` and `=:wildcard` lookups, a 10,001-row exact lookup), exact lookups before `group`, `timebucket('30s')` and longer, `top`, a `join` of two grouped sides, `union`, `compare`, and a bare filter with no pipes. Accepted rules also fire: armed at 10 / 10 and fed a probe event, post-group `now()`, `querystart()`, `top`, `join`, `union`, a 10,001-row exact lookup, a `=:wildcard` lookup and a `=:cidr` lookup each raised a real alert, an out-of-range IP raised none from the CIDR rule, and an allow-list anti-join (`| group ... by s | lookup v from <allow> by k = s | filter !(v = *)`) fired for an unlisted value and stayed silent for a listed one (live-verified 2026-10; `compare` was checked at create only). The detail of the count mode in the same error (`Expected ")"`, `Can't search for []`) is a side effect and can be ignored.
 - **Lookup tables are per-account.** A global rule referencing one fails evaluation in any account missing the table, sits in *Activating* and retries each cycle, recovering once the table appears. Ensure the CSV exists in every targeted account.
 - Intermediate result tables are capped (~1,000 rows in optimized mode), so results can be silently incomplete. Filter as early as possible and `limit` intermediate results.
 - Alert title, description and target name **cannot** be set dynamically from the query result. The target asset comes from `entityMappings` only.
@@ -558,7 +570,7 @@ Every option on the rule's Overview page maps to a field in the `POST/PUT /cloud
 | Threshold | `data.scheduledParams.threshold.value` | |
 | Generate alert per row | `data.scheduledParams.alertPerRow` | bool |
 | Deduplication logic | `data.scheduledParams.disableStreaksLogic` | inverse: dedup ON ⇔ `disableStreaksLogic:false` |
-| Cool off period | `data.scheduledParams` cool-off settings | suppression window; only present in the payload when enabled (exact key not captured here because it was disabled) |
+| Cool off period | `data.coolOffSettings.renotifyMinutes` | top level of `data`, not inside `scheduledParams` (there it is HTTP 400 `Unknown field`); live-verified 2026-10 by create and read-back |
 | Hide logic | `data.hideLogic` | bool |
 | Treat as threat (Active Response) | `data.treatAsThreat` | `UNDEFINED` / `Suspicious` / `Malicious`. Scheduled rules must use `UNDEFINED`: no inline active-response on the rule itself. Drive mitigation from a Hyperautomation flow triggered by the alert instead (any alert can trigger an HA flow) |
 | Network quarantine | `data.networkQuarantine` | bool; not supported on scheduled rules |
@@ -604,10 +616,18 @@ Notes on the shape:
 
 - **Scope:** `filter` accepts `accountIds` or `siteIds`. Pick the layer the rule should fire at. Account-level rules cover all sites under the account.
 - **Threshold:** the trigger threshold is the alert-firing threshold (`scheduledParams.threshold`), not the internal `| filter` inside the PowerQuery. `{value: 0, operator: "Greater"}` means "alert if the PQ returns any rows at all", combined with an internal `| filter hits >= N`, you get N as the effective threshold.
-- **Run interval and lookback:** match these (e.g. 60 / 60) for non-overlapping evaluation. Setting `lookbackWindowMinutes` higher than `runIntervalMinutes` causes overlap and duplicate alerts.
+- **Run interval and lookback:** match these (e.g. 60 / 60) for non-overlapping evaluation. The interval is honoured whether or not the body has a `| group`. Measured with an ungrouped body (a bare filter, no pipes) at 10 / 10 and one probe event per cycle: three alerts on three consecutive runs, `detectedAt` exactly 10 minutes apart, each carrying the single "created for the full PowerQuery result table" indicator, and no alert on the next run when nothing was ingested (live-verified 2026-10; re-run with `tools/pq_scheduled_cadence_probe.py`). A grouped body additionally gets one indicator per result row. Each rule keeps its own run phase: two rules created seconds apart evaluated at :x0 and :x6. Setting `lookbackWindowMinutes` higher than `runIntervalMinutes` causes overlap and duplicate alerts.
+- **Deduplication (`disableStreaksLogic`) suppresses repeated result rows, so a quiet rule is not proof of quiet data.** With dedup on (`disableStreaksLogic: false`, the default), a run whose result row was already alerted on in an earlier run raises no alert. Measured at 10 / 10 with the matching data present in every window (live-verified 2026-10, re-run with `tools/pq_scheduled_cadence_probe.py`):
+  - a grouped body returning the same row every run (`| group n=count()` with `n=1`; also a post-group `top`, `union`, `join` or lookup with an unchanged result) alerted on the first run only, then stayed silent;
+  - the same row came back after a run with a different result and was still suppressed (`n=1`, then `n=2`, then `n=1`: the third run raised nothing);
+  - over 70 minutes with two probe events in every window, the grouped body with dedup on alerted twice (`n=1`, then `n=2`) and then stayed silent for the next five runs, each of which returned `n=2` when its exact window was re-queried through LRQ;
+  - the identical body with `disableStreaksLogic: true` alerted on all seven runs;
+  - results that change every run alerted every run with dedup on: a new group key per run, a computed column such as `now()`, or an ungrouped body (each run returns different events).
+
+  Turn dedup off for "alert every time this condition holds" (heartbeat, threshold-still-exceeded) rules, and keep it on when one alert per distinct finding is the goal.
 - **Hard cap: `lookbackWindowMinutes / runIntervalMinutes` must be <= 96.** Above that the create returns `HTTP 400 "Validation Error"` naming NEITHER field, so it reads as a malformed body. Probed at the boundary (2026-08-09): lookback 1440 accepts cadence 15 (ratio 96.0) and rejects 14 (102.9), 12, 10 and 5; lookback 60 accepts 5 and 10. A daily-baseline rule therefore cannot evaluate more often than every 15 minutes. If a UI or config offers a faster cadence (a 5-minute "demo" option is a common trap), clamp it: raise the requested interval to `ceil(lookback / 96)` rather than letting the whole deploy fail.
 - **The cadence is also the floor on any end-to-end test.** There is no run-now for a scheduled rule, so validating that one fires costs at least one interval (15 min on a daily lookback). No amount of parallelism removes it; budget for it.
-- **`status`:** new rules land as `Draft` on creation regardless of the requested status. Enable separately with `PUT /web/api/v2.1/cloud-detection/rules/enable` (body `{"filter": {"ids": [...], "accountIds": [...]}}`).
+- **`status`:** the requested status is honoured. `status: "Active"` returns `Activating` at once (the `statusReason` says it "will become Active within an hour") and the rule reaches `Active` on its own with no separate enable call. Observed times ranged from about 1 to 14 minutes, with ungrouped bodies the slowest (live-verified 2026-10 across 20 rules). Poll `status` before ingesting test events; `status: "Disabled"` lands as `Draft` (live-verified 2026-10). To enable a Draft later, `PUT /web/api/v2.1/cloud-detection/rules/enable` (body `{"filter": {"ids": [...], "accountIds": [...]}}`).
 - **No `disableAgentMitigation` field:** that property is not part of the scheduled-rule schema. Including it returns HTTP 400 `Unknown field`. Cloud-source PQ rules do not need it.
 - **No `treatAsThreat: "Malicious"`:** scheduled rules accept `treatAsThreat: "UNDEFINED"` (or omit) and `networkQuarantine: false`. Inline (on-rule) mitigation is not supported on scheduled rules; drive mitigation from a Hyperautomation flow triggered by the alert instead.
 

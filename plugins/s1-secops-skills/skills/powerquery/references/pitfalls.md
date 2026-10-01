@@ -147,12 +147,27 @@ Fix: move `sort` before `compare`. The display ordering is applied to the main r
 | filter user in (role='admin' | columns user)     ← invalid
 ```
 
-Fix: move the subquery into the initial filter position.
+The error is HTTP 400 `subqueries can't be used after group, sort, or limit`. The restriction is on the outer pipeline only; the inner query may use `sort`, `limit` and `top`. Fix: move the subquery ahead of the `group`.
 
 ```text
 user in (role='admin' | columns user)
 | group count() by user
 ```
+
+### Subquery on a `let` field silently returns 0 rows
+
+A subquery filters the stored field at scan time, wherever it appears in the query. On a field created by `let` it matches nothing and returns 0 rows with HTTP 200; on a field overwritten by `let` it tests the original stored value.
+
+```text
+| let p = src.process.name
+| filter p in (| limit 1 | columns p='svchost.exe')     ← 0 rows, no error
+```
+
+Fix: subquery the raw field (`src.process.name in (...)`), or use a literal list (`| filter p in ('svchost.exe')`) for a computed value. Regression case `sq-on-let-field-silently-empty`.
+
+### An empty allowlist subquery excludes nothing
+
+`!(x in (<inner>))` returns **every** row when the inner returns nothing: a wrong inner filter, a misspelled datatable column, or an empty datatable all turn the exclusion into a no-op, and the result looks like "nothing matched the allowlist". Run the inner on its own (or count it) before trusting a zero-exclusion result. Regression case `sq-empty-inner-negated-returns-everything`.
 
 ### Subquery doesn't define the filter column
 
@@ -160,6 +175,8 @@ user in (role='admin' | columns user)
 user in (action='login')                                                     ← fails
 user in (action='login' | group count() by ip)                               ← fails ("user" column not produced)
 ```
+
+The error is HTTP 400 `Explicit column(s) 'user' must be defined for subquery, via columns or group command`. An alias satisfies it, which is also how you match against a differently named field: `user in (... | group 1 by user=actor.user.name)`.
 
 Fix: produce the column.
 
@@ -430,8 +447,8 @@ EDR / Identity / CWS / EPP). The alert entity (user or host) is only usable as a
 key via the wildcard form `resources[*].name` (and `resources[*].type` for the asset type). The
 first-element forms do NOT work as a grouping key here: `resources[0].name` returns HTTP 400 in
 `group`/`columns`, `resources.name` returns null, and even `array_get(resources,0).name` cannot be a
-group key on this stream. Wildcard values come back JSON-array-wrapped, e.g. `["j.doe@corp.com"]` or
-`["DESKTOP-GDIA5I7"]`, so strip the `[` `]` `"` wrapping when post-processing. The same wildcard form
+group key on this stream. Wildcard values come back JSON-array-wrapped, e.g. `["<user>"]` or
+`["<host>"]`, so strip the `[` `]` `"` wrapping when post-processing. The same wildcard form
 reads optional MITRE on custom alerts: `finding_info.attacks[*].tactic.uid` / `.name`.
 
 ```text
@@ -439,6 +456,22 @@ dataSource.name='alert' class_uid=99602001
 | filter finding_info.title contains:anycase("SPIKE")
 | group hits = count() by entity = resources[*].name, tactic = finding_info.attacks[*].tactic.uid
 ```
+
+**Probe the shape first: on some tenants `resources` is a JSON string, and then `[*]` silently returns `[]`.**
+Run `| let t = type(resources) | group n=count() by t`. When it says `string`, every
+`resources[*].name` is the literal `[]` (one group holding every alert, no error), and
+the working accessor is a JSON parse:
+
+```text
+dataSource.name='alert' class_uid=99602001
+| let entity = json_object_value(array_get(array_from_json(resources), 0), 'name')
+| group hits = count() by entity
+```
+
+That `let` value is a normal scalar and can be a `group by` key. Regression cases
+`alert-resources-string-json-fallback`, `alert-resources-string-wildcard-empty`. The wildcard
+accessor also resolves only before the first `group`: after it, `resources[*].name` is
+HTTP 400 `undefined field` (regression case `wildcard-accessor-only-before-group`).
 
 For analytics over array fields, prefer top-level scalar fields
 (`severity_id`, `finding_info.title`, `metadata.product.name`, `class_name`),
@@ -480,6 +513,12 @@ If a query "misses" something you can see in the data, check whether case was th
 - `!(field = *)` → field is null / missing.
 - `field = null`: only valid as a boolean test *after* the field has been computed by a preceding command (e.g., a left join or a `let`).
 - `in (…)` cannot match null. If null should count as a match, use `OR !(field = *)`.
+
+### `NOT f contains 'x'` without parentheses silently returns 0 rows
+
+The negation applies to the bare field before the comparison, so `NOT src.process.name contains 'svchost.exe'`, `!src.process.name contains '...'`, and `| filter NOT src.process.name = '...'` all return 0 rows with no error. Write `!(src.process.name contains 'svchost.exe')`. Regression cases `not-without-parens-is-silent-zero`, `bang-without-parens-is-silent-zero`.
+
+A related trap: a bare field or variable used as the whole predicate (`| filter x`) is read as a text search for that value, not as a truthiness test, and returns 0 rows. Use `| filter bool(x)` (regression case `bare-variable-filter-is-message-contains`).
 
 ### `x not in (...)` parses without error and silently returns 0 rows
 
@@ -539,6 +578,13 @@ source A then source B to the same table left only B's rows. Any design where N 
 `savelookup` into a shared table silently keeps only whichever ran last. If you need N producers,
 give each its own table and add a merge pass that `| dataset`-unions them into the canonical table
 (the merge is cheap, it reads datatables rather than raw events).
+
+`savelookup '<table>', 'merge'` is the in-place alternative (live-verified 2026-10):
+
+- **Ungrouped input** is appended: the result holds the new rows first, then the old rows, the columns are the union of both, and a column missing on one side is null. A key present in both appears twice.
+- **Input from `group ... by key`** is merged on the group-by columns: existing keys are updated, new keys are added, and keys absent from the new input are kept.
+
+So a table built only by repeated ungrouped merges grows without bound; group the producer's output by its key if you want upsert behaviour.
 
 ### A wide `| union` is what gets a query killed, not the time window
 
@@ -615,6 +661,10 @@ Two ways this silently returns nothing:
 
 `dataset` is a pipeline source command and MUST start with a leading `|`: `| dataset 'config://datatables/<name>'`. Without the leading `|`, `dataset '...'` is parsed as an initial text filter and returns **0 rows**.
 
+### `| dataset` errors: 500 for a bad scheme, 400 for a missing table
+
+Only `config://datatables/<name>` is a valid `dataset` source. Any other scheme, or a bare table name, returns HTTP **500** `No datasets matched the lookup`, which looks like a backend fault but is a query error: do not retry it. A missing table under the right scheme returns HTTP 400 `Lookup table /datatables/<name> does not exist`. Regression cases `dataset-unknown-scheme`, `dataset-missing-table`.
+
 ### Automatic lookup deploy fails: "Output value fields are not unique"
 
 When editing `/automaticLookups`, every output value field name must be unique across ALL `lookupSpecs`. Two specs writing the same output field (even keyed on different event fields) returns HTTP 400 `Output value fields are not unique`. Rename the outputs or consolidate to one spec. See `references/automatic-lookups.md`.
@@ -690,7 +740,7 @@ Stage 1 deduplicates by grouping on the value you want to count; stage 2 counts 
 
 For a PowerQuery detection the scheduled rule is the usual home: `POST /web/api/v2.1/cloud-detection/rules` with `queryType: "scheduled"` + `queryLang: "2.0"`, the query in `data.scheduledParams.query`.
 
-The scheduled evaluator runs on a pre-aggregated layer and rejects a set of PowerQuery features: `datasource`, `dataset`, `savelookup`, `now()`, `querystart` / `queryend` / `queryspan`, `topK`, CIDR and wildcard `lookup`, `lookup` over a table above 10,000 rows, time-shifted `timebucket`, and `timebucket` under 30s. It also caps intermediate results near 1,000 rows and cannot build the alert title or description from the result.
+The scheduled evaluator runs the part of the body before the first `| group` on a pre-aggregated layer and rejects, at create: `dataset` or `datasource` as the source, `savelookup` anywhere, and before the first `group` `now()` / `querystart()` / `queryend()` / `queryspan()`, CIDR and wildcard `lookup`, and an exact `lookup` over a table above 10,000 rows; plus `timebucket` under 30s and a piped body with no `group` at all. The same functions and lookups are accepted after the first `group` (full table and error texts in [detection-rules.md](./detection-rules.md), "Scheduled-rule limits"). It also caps intermediate results near 1,000 rows and cannot build the alert title or description from the result.
 
 When the detection needs any of those, the **HA watchdog** is the supported answer: a scheduled Hyperautomation workflow that runs the query as an ordinary LRQ and posts the alert itself. It carries none of the evaluator's restrictions. The template is `sdl-solutions/assets/ha_watchdog.workflow.template.json`, and the UEBA SILENT / DORMANT detections and ingest-health monitoring are all built this way because the anti-join they need cannot run in a scheduled rule.
 
@@ -808,6 +858,10 @@ Common cause: grouping dropped a field you assumed was still present, or duplica
 - A second `group` cannot reference a field renamed in the first group: after `group ... by source = dataSource.name`, key the next group on `by source`, not `by source = dataSource.name` ("undefined field 'dataSource.name'").
 - Do not transpose on `dataSource.name` or a device key (values contain spaces); use honeycomb, single-series time charts, or `grouped_data`.
 - `avg()`, `stddev()`, `pct(N, x)` and `p10/p90/p999` all work in `group` (do not treat them as missing).
+
+### A space after a comma in a CSV header becomes part of the column name
+
+A header written `a, b` produces a second column whose name is `b` with a leading space, and its values keep the leading space too. The bare name then fails silently or loudly depending on where it is used: `| dataset ... | columns a, b` returns `b` as null with no error, while `| lookup b from <table> ...` is HTTP 400 `Column "b" not found in table`. Write CSV headers and values with no padding (`a,b`). Regression cases `lk-csv-header-space-dataset`, `lk-csv-header-space-lookup`.
 
 ### A comma in a CSV datatable breaks every query that joins it
 

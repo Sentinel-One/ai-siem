@@ -39,21 +39,21 @@ and restarting. Nothing moves on its own: the tags are immutable, which is what
 makes a pin worth having. To pre-pull the new version first:
 
 ```bash
-docker pull sentinelone/secops-mcps:1.4.8
+docker pull sentinelone/secops-mcps:1.4.9
 ```
 
-If you pinned a version tag, bump it to the current release, `1.4.5`, and
+If you pinned a version tag, bump it to the current release, `1.4.9`, and
 restart Claude Desktop.
 
 Two version streams run independently and are easy to conflate. The skills
-plugin is at **1.3.7** and the image at **1.4.5** (which bundles MCP 1.3.9). The
-server always reports its own MCP version, so a `--version` line reads `1.3.9`
-while the image you pulled is tagged `1.4.5`. Never read an image tag off a
+plugin is at **1.3.10** and the image at **1.4.9** (which bundles MCP 1.3.10). The
+server always reports its own MCP version, so a `--version` line reads `1.3.10`
+while the image you pulled is tagged `1.4.9`. Never read an image tag off a
 `--version` line, or a `--version` off an image tag. To see exactly what is
 inside an image, ask it:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.4.8 versions
+docker run --rm sentinelone/secops-mcps:1.4.9 versions
 ```
 
 An image version strictly increases and is never republished, so a pinned tag
@@ -95,7 +95,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`.
 |---|---|---|
 | Server key | `"sentinelone-mcp"` | `"s1-secops-mcp"` |
 | Dispatcher argument | `sentinelone-mcp` | `s1-secops-mcp` |
-| Image tag | `s1-mcps:1.2.x` | `s1-mcps:latest` |
+| Image tag | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.4.9` |
 | purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` |
 
 ### What to delete outright
@@ -114,7 +114,7 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
-               "sentinelone/secops-mcps:1.4.8", "s1-secops-mcp"],
+               "sentinelone/secops-mcps:1.4.9", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
@@ -126,7 +126,7 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-               "sentinelone/secops-mcps:1.4.8", "purple-mcp"],
+               "sentinelone/secops-mcps:1.4.9", "purple-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
@@ -136,7 +136,7 @@ every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "VIRUSTOTAL_API_KEY",
-               "sentinelone/secops-mcps:1.4.8", "virustotal-mcp"],
+               "sentinelone/secops-mcps:1.4.9", "virustotal-mcp"],
       "env": {
         "VIRUSTOTAL_API_KEY": "your-virustotal-key"
       }
@@ -166,12 +166,12 @@ Or from a terminal, without Claude Desktop:
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm sentinelone/secops-mcps:1.4.8 s1-secops-mcp
+  | docker run -i --rm sentinelone/secops-mcps:1.4.9 s1-secops-mcp
 ```
 
 Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.3.10"`, and
 `Tools: 32 registered` on stderr. The `version` here is the bundled MCP's, not
-the `1.4.5` image tag you pulled. An older number means you are on a cached
+the `1.4.9` image tag you pulled. An older number means you are on a cached
 image; `--pull=missing` in the config is what prevents that.
 
 ---
@@ -200,8 +200,8 @@ absent, rather than failing later on the first request.
 
 | Symptom | Cause and fix |
 |---|---|
-| `manifest unknown` / image pull fails | Tag typo, or an MCP version used as an image tag. The current image tag is `1.4.5`; `1.3.9` is the MCP version inside it and is not a published image tag. |
-| Tools behave like an older release | A cached image under a reused tag. Tags `1.3.3` and earlier were republished with different contents. Switch to `:latest` with `--pull=missing`, or `docker pull` explicitly, then check `docker image inspect sentinelone/secops-mcps:1.4.8 --format '{{.Created}}'`. |
+| `manifest unknown` / image pull fails | Tag typo, or an MCP version used as an image tag. The current image tag is `1.4.9`; `1.3.10` is the MCP version inside it and is not a published image tag. |
+| Tools behave like an older release | A cached image. Pin `sentinelone/secops-mcps:1.4.9` with `--pull=missing`, or `docker pull` it explicitly, then check `docker image inspect sentinelone/secops-mcps:1.4.9 --format '{{.Created}}'`. |
 | `entrypoint: unknown command 'sentinelone-mcp'` | The dispatcher argument still says the old name. Change it to `s1-secops-mcp`. |
 | MCP red in Cowork, `Cannot connect to the Docker daemon` | Docker Desktop is not running. |
 | Skills still mention `SDL_XDR_URL` or `c.keys[...]` | An old plugin cache. Re-check with the command in step 2. |
@@ -221,4 +221,4 @@ cp claude_desktop_config.json.bak claude_desktop_config.json
 
 Then reinstall the old plugin and restart.
 
-**There is no rollback target.** `sentinelone/secops-mcps` carries `1.4.8` only. If you need an older image, you need a copy you already pulled; `docker image ls` will show what is still on the machine.
+**Rollback target: `1.4.8`.** `sentinelone/secops-mcps` carries `1.4.9` and `1.4.8`; to roll back, pin `:1.4.8` (immutable, so it is the exact earlier build). `docker image ls` shows what is already on the machine.

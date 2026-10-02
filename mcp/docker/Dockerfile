@@ -249,7 +249,10 @@ ENV S1_CLAUDE_MD_PATH=/etc/sentinelone/CLAUDE.md
 
 # ─── Dispatcher ───────────────────────────────────────────────────────────────
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+# 755, not +x: sh must READ the script, and +x on a 0700/0711 checkout copy leaves
+# it unreadable to USER node ("cannot open /usr/local/bin/entrypoint.sh:
+# Permission denied", every command fails). Seen 2026-10-03 on a local 1.4.9 build.
+RUN chmod 755 /usr/local/bin/entrypoint.sh
 
 # ─── Run as a non-root user ──────────────────────────────────────────────────
 # The node base image already ships an unprivileged `node` user (uid 1000), so

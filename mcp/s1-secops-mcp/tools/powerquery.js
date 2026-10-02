@@ -43,7 +43,7 @@ export const tools = [
   // ─── powerquery_run ────────────────────────────────────────────────────────
   {
     name: 'powerquery_run',
-    description: `Run a SentinelOne PowerQuery against the Singularity Data Lake using the LRQ API. The LRQ API is async; this tool handles the full launch-poll-cancel lifecycle and returns results. Use for threat hunting, telemetry analysis, dashboard panel validation, and STAR rule testing. Auth: Bearer <jwt> (same token as mgmt API). Time range defaults to last 24 hours if startTime/endTime are omitted.`,
+    description: `Run a SentinelOne PowerQuery against the Singularity Data Lake using the LRQ API. The LRQ API is async; this tool handles the full launch-poll-cancel lifecycle and returns results. Use for threat hunting, telemetry analysis, dashboard panel validation, and STAR rule testing. Auth: Bearer <jwt> (same token as mgmt API). Time range defaults to last 24 hours if startTime/endTime are omitted. SDL INGEST-METERING ROWS ARE EXCLUDED BY DEFAULT: every ingest writes receive-time accounting rows (tag='logVolume', fields metric/value/path1) under the source's own dataSource.name, which inflate per-source counts and make a silent source look live. The tool ANDs \`tag != 'logVolume'\` into the initial filter (rows with no tag are kept) and returns effectiveQuery. It is not added when the query mentions logVolume, or opens with | datasource, | dataset, | join or | union. Set includeMetering true to send the query unchanged, e.g. for ingest-volume or licence analysis. The console's XDR view already hides these rows; All Data does not.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -73,11 +73,15 @@ export const tools = [
           type: 'string',
           description: 'Optional S1-Scope, "<accountId>" or "<accountId>:<siteId>". LOG READS ARE SCOPE-FILTERED just like config reads, so this changes which events the query can see. Use it to hunt within one site, and to validate a site-scoped dashboard panel against the same boundary the dashboard will see. Omit to use S1_SCOPE from credentials.json, or the token default when that is unset.',
         },
+        includeMetering: {
+          type: 'boolean',
+          description: 'Send the query unchanged, including SDL ingest-metering rows (tag=\'logVolume\'). Omit, or false, to exclude them (the normal case). Set true only for ingest-volume, data-usage or licence questions.',
+        },
       },
       required: ['query'],
     },
-    async handler({ query, startTime, endTime, hours = 24, maxRows = 1000, scope }) {
-      const result = await lrqRun(query, { startTime, endTime, hours, maxRows, scope });
+    async handler({ query, startTime, endTime, hours = 24, maxRows = 1000, scope, includeMetering }) {
+      const result = await lrqRun(query, { startTime, endTime, hours, maxRows, scope, includeMetering: includeMetering === true });
       return JSON.stringify(result, null, 2);
     },
   },
@@ -85,7 +89,7 @@ export const tools = [
   // ─── powerquery_schema_discover ────────────────────────────────────────────
   {
     name: 'powerquery_schema_discover',
-    description: `Discover the field schema for a specific SDL data source by fetching raw event JSON via the V1 query endpoint. PowerQuery's default projection only returns timestamp+message; V1 query returns full event attributes so you can see what field names are actually present. Use this before authoring any hunt query or dashboard panel against a non-OCSF source. The V1 endpoint is deprecated (sunset Feb 2027) but is still the only way to get full event JSON per-source. Auth tries each configured SDL key in scope order and falls through to the console JWT on 401/403.`,
+    description: `Discover the field schema for a specific SDL data source by fetching raw event JSON via the V1 query endpoint. PowerQuery's default projection only returns timestamp+message; V1 query returns full event attributes so you can see what field names are actually present. Use this before authoring any hunt query or dashboard panel against a non-OCSF source. The V1 endpoint is deprecated (sunset Feb 2027) but is still the only way to get full event JSON per-source. SDL ingest-metering rows (tag='logVolume', fields metric/path1/value) share the source's dataSource.name and are excluded from the sample; excludedMeteringRows reports how many were dropped. Auth tries each configured SDL key in scope order and falls through to the console JWT on 401/403.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -117,11 +121,23 @@ export const tools = [
       // escape (e.g. name\' -> \\' which re-opens the string).
       const safeName = String(dataSourceName).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const filter = `dataSource.name=='${safeName}'`;
-      const result = await v1Query(filter, { maxCount: Math.min(maxEvents, 50), startTime, scope });
+      const wanted = Math.max(1, Math.min(maxEvents, 50));
+      // Over-fetch, then drop SDL ingest-metering rows (tag='logVolume': metric,
+      // path1, value) client-side. They share the source's dataSource.name, so an
+      // unfiltered sample can be partly or wholly metering and report a schema the
+      // source does not have. Measured 2026-10-03: 42-64% of rows on 4 sources.
+      // Done client-side so no V1 filter syntax is assumed.
+      const result = await v1Query(filter, { maxCount: Math.min(wanted * 10, 500), startTime, scope });
 
-      const matches = result.matches || [];
+      const all = result.matches || [];
+      const isMetering = m => m?.attributes?.tag === 'logVolume';
+      const excludedMeteringRows = all.filter(isMetering).length;
+      const matches = all.filter(m => !isMetering(m)).slice(0, wanted);
       if (matches.length === 0) {
-        return JSON.stringify({ dataSourceName, message: 'No events found in the specified time range. Try a longer startTime like "7d".', result }, null, 2);
+        const message = excludedMeteringRows > 0
+          ? `Only ingest-metering rows (tag='logVolume') were found for this source in the window (${excludedMeteringRows} excluded), so no event schema could be sampled. Try a longer startTime like "7d".`
+          : 'No events found in the specified time range. Try a longer startTime like "7d".';
+        return JSON.stringify({ dataSourceName, message, excludedMeteringRows }, null, 2);
       }
 
       // Extract field names from first event
@@ -132,6 +148,7 @@ export const tools = [
       return JSON.stringify({
         dataSourceName,
         sampleEventCount: matches.length,
+        excludedMeteringRows,
         confirmedFields: Array.from(allFields).sort(),
         firstEventAttributes: firstAttrs,
         allSampleAttributes: matches.map(m => m.attributes),

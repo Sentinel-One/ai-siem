@@ -460,13 +460,16 @@ Key points:
 
 ### ALWAYS exclude `tag='logVolume'` from discovery samples
 
-Many SentinelOne parsers emit metric events alongside real data, tagged `tag='logVolume'`. They have `metric`, `value`, `path1` fields and nothing else useful. If you don't exclude them, they crowd out real events in a sample window and the classifier picks `severity` as the action key because it's the only field at 100% populated. Pass:
+SDL writes ingest-metering rows alongside real data, tagged `tag='logVolume'`, under the source's own `dataSource.name`. They have `metric`, `value`, `path1` fields and nothing else useful. If you don't exclude them, they crowd out real events in a sample window and the classifier picks `severity` as the action key because it's the only field at 100% populated. Pass:
 
 ```python
 extra_filter="(tag != 'logVolume' OR !(tag = *))"
 ```
 
-The `OR !(tag = *)` half keeps sources that don't emit `tag` at all (rather than excluding them as null). `build_source_report.py` always passes this filter. Do the same in any new caller.
+Both are now the default, so you rarely need to pass it:
+
+- **PowerQuery (`scripts/pq.py` `run_pq()`, and the `s1-secops-mcp` `powerquery_run` tool):** `tag != 'logVolume'` is ANDed into the initial filter of every query. In PowerQuery `!=` already keeps rows with no `tag`, so the `OR !(tag = *)` half is redundant there: live-verified 2026-10-03 over a fixed 12h window, both forms returned 375,654, and unfiltered 383,044 minus 7,390 metering rows reconciles exactly. `include_metering=True` (MCP: `includeMetering`) opts out. Queries that mention `logVolume`, or open with `| datasource`, `| dataset`, `| join` or `| union`, are passed through unchanged.
+- **Schema discovery (`inspect_source.discover_schema`, V1 / LOG backends):** the explicit `(tag != 'logVolume' OR !(tag = *))` form is applied by default, because absent-field `!=` semantics have not been verified on those backends. `include_metering=True` opts out. Passing it as `extra_filter` still works and is not doubled.
 
 ### Benchmarked results (5 sources, your-tenant, 24h ceiling)
 
@@ -485,7 +488,7 @@ Zscaler returning `prim_key=None` is a real classifier gap: its user-ish fields 
 ### Using the discovered schema in code
 
 ```python
-base = f"dataSource.name = '{source}' (tag != 'logVolume' OR !(tag = *))"
+base = f"dataSource.name = '{source}' tag != 'logVolume'"
 
 # volume-by-action breakdown (always safe; default to count() if no action key)
 if action_key:

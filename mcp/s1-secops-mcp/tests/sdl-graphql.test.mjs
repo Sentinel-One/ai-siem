@@ -510,10 +510,14 @@ test('saveDashboardLayout requires the {"graphs":[...]} wrapper', async () => {
 
 test('saveDashboardLayout passes the wrapped graphs string and tab name through', async () => {
   const graphs = JSON.stringify({ graphs: [{ title: 'p' }] });
-  const calls = stubFetchH([gql({ saveDashboardLayout: { graphs: '[{"title":"p"}]', options: '{}' } })]);
+  // 1.3.10: the tab is read first so a panel-count change can be refused.
+  const calls = stubFetchH([
+    gql({ getDashboardV2: { id: '1', name: 'd', tabs: [{ tabName: '2. Metacortex operations', graphs: '[{"title":"p"}]' }] } }),
+    gql({ saveDashboardLayout: { graphs: '[{"title":"p"}]', options: '{}' } }),
+  ]);
   await saveDashboardLayout({ id: '1', tabName: '2. Metacortex operations', graphs });
-  assert.equal(calls[0].body.variables.graphs, graphs);
-  assert.equal(calls[0].body.variables.tabName, '2. Metacortex operations');
+  assert.equal(calls[1].body.variables.graphs, graphs);
+  assert.equal(calls[1].body.variables.tabName, '2. Metacortex operations');
 });
 
 // ─── listDashboards ───

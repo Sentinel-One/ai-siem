@@ -19,7 +19,7 @@ description: Use whenever the user wants to author, edit, debug, validate, or ex
 
 This skill turns raw log samples into deployed, validated SDL parser definitions. A parser is an *augmented-JSON* file at `/logParsers/<name>` on the SDL tenant that extracts fields from each ingested line. The parser editor and the `Test Parser` button in the console run the parser client-side in JavaScript; this skill mirrors that workflow programmatically and finishes by ingesting a sample through the deployed parser to confirm the actual ingest path works.
 
-> **Sandbox proxy blocked?** If `putFile` or HEC ingest calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). Use `sdl_put_file` to deploy the parser and `hec_ingest` to run the ingest validation step, both execute from your machine, not the sandbox.
+> **Sandbox proxy blocked?** If `putFile` or HEC ingest calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see the s1-secops-mcp README: `s1-secops-mcp/README.md` in the s1-secops-skills repo, `mcp/s1-secops-mcp/README.md` in ai-siem; it is not shipped inside the plugin). Use `sdl_put_file` to deploy the parser and `hec_ingest` to run the ingest validation step, both execute from your machine, not the sandbox.
 
 ## Gate 0: can an SDL parser run on this source at all? (check this first)
 

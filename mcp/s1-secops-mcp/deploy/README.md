@@ -24,7 +24,7 @@ bash /tmp/s1-mcp-install.sh --user
 That runs `install.sh --user`, which:
 
 1. Confirms Docker is installed and the daemon is reachable (errors out with install hints if not).
-2. Pulls `sentinelone/secops-mcps:1.4.8`.
+2. Pulls `sentinelone/secops-mcps:1.4.9`.
 3. Writes a credentials skeleton to `~/.config/sentinelone/credentials.json` (mode 0600).
 4. Prints the next steps.
 
@@ -49,7 +49,7 @@ Add the server to Claude Desktop (`~/Library/Application Support/Claude/claude_d
       "args": ["run", "-i", "--rm",
                "-v", "/Users/<you>/.config/sentinelone:/etc/s1-secops-mcp:ro",
                "-e", "S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json",
-               "sentinelone/secops-mcps:1.4.8", "s1-secops-mcp"]
+               "sentinelone/secops-mcps:1.4.9", "s1-secops-mcp"]
     }
   }
 }
@@ -70,7 +70,7 @@ docker run --rm --name s1-secops-mcp \
   -v ~/.config/sentinelone:/etc/s1-secops-mcp:ro \
   -e S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json \
   -p 127.0.0.1:8765:8765 \
-  sentinelone/secops-mcps:1.4.8 \
+  sentinelone/secops-mcps:1.4.9 \
   s1-secops-mcp --transport http --host 0.0.0.0 --port 8765
 ```
 
@@ -132,7 +132,7 @@ Team members connect from their Claude clients with their own bearer token. Audi
    curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/install.sh | sudo bash -s -- --server
    ```
 
-   It pulls `sentinelone/secops-mcps:1.4.8`, creates the `mcp` user, drops `/etc/s1-secops-mcp/credentials.json` (placeholder) and `/etc/s1-secops-mcp/bearer-tokens.json` (one freshly-generated admin token, printed once to stdout), installs the systemd unit, and starts the service.
+   It pulls `sentinelone/secops-mcps:1.4.9`, creates the `mcp` user, drops `/etc/s1-secops-mcp/credentials.json` (placeholder) and `/etc/s1-secops-mcp/bearer-tokens.json` (one freshly-generated admin token, printed once to stdout), installs the systemd unit, and starts the service.
 
 4. **Fill in real SentinelOne credentials:**
 

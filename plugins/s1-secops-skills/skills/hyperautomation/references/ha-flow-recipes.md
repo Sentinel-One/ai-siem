@@ -143,7 +143,7 @@ Log Write Key is `401` on both, being a key for the event collector rather than 
 `CompletedWithErrors` with `error_actions` empty, which reads as a broken flow and is not one.
 Delete the action.
 
-Reference builder: `s1-secops-mcp/lib/uam-ingest.js` `buildSecurityAlert({inline:true})`. The alert
+Reference builder (s1-secops-mcp server source, not shipped in the plugin): `s1-secops-mcp/lib/uam-ingest.js` `buildSecurityAlert({inline:true})`. The alert
 surfaces in UAM ~30-60s after the POST; poll `uam_list_alerts`.
 
 - **Attribution:** for alerts a flow itself raises (e.g. the UEBA SILENT / DORMANT watchdogs), set

@@ -22,7 +22,7 @@ PowerQuery (PQ) is SentinelOne's pipeline query language for the Singularity Dat
 
 Use this skill to write correct, efficient, runnable PowerQueries for threat hunting, investigations, detection rule bodies, and dashboards.
 
-> **Sandbox proxy blocked?** If the LRQ API at `POST /sdl/v2/api/queries` on your console host fails with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). The MCP server exposes `powerquery_run`, `powerquery_enumerate_sources`, and `powerquery_schema_discover`, all running through the LRQ API on your machine.
+> **Sandbox proxy blocked?** If the LRQ API at `POST /sdl/v2/api/queries` on your console host fails with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see the s1-secops-mcp README: `s1-secops-mcp/README.md` in the s1-secops-skills repo, `mcp/s1-secops-mcp/README.md` in ai-siem; it is not shipped inside the plugin). The MCP server exposes `powerquery_run`, `powerquery_enumerate_sources`, and `powerquery_schema_discover`, all running through the LRQ API on your machine.
 
 ## Workflow
 
@@ -137,7 +137,7 @@ These are where queries go wrong. Internalize them before writing.
     ```
 
     The `(field = *) ? a : b` form (i.e. wrapping the field-presence test in parens before the ternary) **returns HTTP 500 inside `let`** on this engine, `field = *` is a filter operator, not a boolean expression usable in computed columns. Bare-field truthy is the only working coalesce idiom in PQ.
-17. **`if(...)` is not a function in aggregates.** `sum(if(cond, 1, 0))` returns 500. Use `count(<predicate>)` instead, `count(severity_id == 5)` evaluates the predicate per row and sums the truthy ones. Same for any "count where X" semantic.
+17. **`if(...)` is not a function in aggregates.** `sum(if(cond, 1, 0))` returns 500. Use `count(<predicate>)` instead, `count(severity_id == 5)` evaluates the predicate per row and sums the truthy ones. Same for any "count where X" semantic. **Field-presence counting uses `!= null`, not `= *`:** `count(user.name=*)` returns 400 "Don't understand [*]" because `= *` is a filter operator, while `count(user.name != null)` works (live-verified 2026-10-03: 1,000 of 1,016 Okta events).
 18. **Always filter `field=*` before projecting or inspecting any field.** `| limit N | columns field` returns the first N events regardless of whether the field is populated, most rows will be null. Add `field=*` to the initial filter to scope to events that actually carry the field:
 
     ```text
@@ -154,6 +154,8 @@ These are where queries go wrong. Internalize them before writing.
 
 20. **Parenthesise every negation.** `NOT src.process.name contains 'x'` and `NOT src.process.name = 'x'` apply the negation to the bare field and silently return 0 rows. Write `!(src.process.name contains 'x')`. Likewise `| filter x` on a bare field or variable is a text search, not a truthiness test; use `| filter bool(x)`.
 
+21. **Exclude SDL ingest-metering rows: `tag != 'logVolume'` in the initial filter.** Every ingest writes receive-time accounting rows (`tag='logVolume'`, fields `metric` / `value` / `path1`, plus `sca:bytesToCharge` and `sca:ingestTime`) under the source's own `dataSource.name`. Any query anchored only on `dataSource.name`, `dataSource.vendor`, `site.id` or `sca:*` counts them, and a silent source looks live (measured 2026-10-03: 7,390 of 383,044 rows in 12h, all carrying `sca:bytesToCharge`). Queries anchored on an event field (`class_uid`, `event.type`, a principal `=*`) are already immune. `powerquery_run` and `pq.run_pq()` add the predicate automatically (opt out with `includeMetering` / `include_metering=True`). For persisted queries (dashboard panels, STAR / scheduled rule bodies) write it yourself, in the initial filter where it is cheapest: `dataSource.name='X' tag != 'logVolume' | ...`. `!=` keeps rows that have no `tag`, so `OR !(tag = *)` is not needed in PowerQuery. Omit it only when the question is ingest volume or data usage. The console's XDR view already hides these rows; All Data does not.
+
 ## When to delegate baselining + anomaly detection to the mgmt-console-api skill
 
 If the user asks for any of the following, you need MORE than this skill, load the `mgmt-console-api` skill alongside, because the runner, the schema discovery, and the source-agnostic key picker live there:
@@ -166,9 +168,9 @@ If the user asks for any of the following, you need MORE than this skill, load t
 
 What `mgmt-console-api` adds:
 
-- `scripts/inspect_source.py`, auto-discovers field schema for any `dataSource.name` and classifies fields into `principal_user` / `principal_host` / `principal_ip` / `action` etc. via `pick_keys(schema)` → returns `(prim_key, action_key)`. This means you don't hand-hardcode `actor.user.email_addr` for every source, the right principal field is picked from whatever the source actually carries (Okta uses email, FortiGate uses IP, SentinelOne uses process user, etc.).
-- `scripts/pq.py`: `run_pq()` LRQ runner that handles auth, forward-tag, polling, slicing.
-- `scripts/baseline_anomaly.py`: source-agnostic 30-day-DoW-stratified baseliner that takes a `dataSource.name`, discovers the schema, and produces anomalies. Read its source for the canonical end-to-end pattern.
+- `mgmt-console-api` `scripts/inspect_source.py`, auto-discovers field schema for any `dataSource.name` and classifies fields into `principal_user` / `principal_host` / `principal_ip` / `action` etc. via `pick_keys(schema)` → returns `(prim_key, action_key)`. This means you don't hand-hardcode `actor.user.email_addr` for every source, the right principal field is picked from whatever the source actually carries (Okta uses email, FortiGate uses IP, SentinelOne uses process user, etc.).
+- `mgmt-console-api` `scripts/pq.py`: `run_pq()` LRQ runner that handles auth, forward-tag, polling, slicing.
+- `mgmt-console-api` `scripts/baseline_anomaly.py`: source-agnostic 30-day-DoW-stratified baseliner that takes a `dataSource.name`, discovers the schema, and produces anomalies. Read its source for the canonical end-to-end pattern.
 
 Use `examples/behavioral-baselines.md` in THIS skill for the PQ building blocks (per-day slice, live slice, z-score math, silent-pair detector). Use the mgmt-console-api skill for the runner, schema discovery, and the productionised baseliner script. Don't reinvent the schema-discovery or the daily-slice runner, both already exist there.
 
@@ -320,8 +322,9 @@ Measured end to end on one tenant, same ingested events, two rules firing off th
 | `scheduled` with `entityMappings: [{"columnName": "probe_host"}]` | the real hostnames |
 
 That is the whole argument for preferring `scheduled` on non-EDR sources: it is
-the only type where you can make the alert name the asset. `tools/e2e_detection_rules.py`
-reproduces this.
+the only type where you can make the alert name the asset. The reproduction is
+`tools/e2e_detection_rules.py` at the root of the s1-secops-skills source repo; it is a
+maintainer harness and is not shipped inside the plugin.
 
 ### Correlation keys, including a custom one
 

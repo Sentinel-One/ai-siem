@@ -32,7 +32,7 @@ Set credentials as environment variables in `claude_desktop_config.json` inside 
 
 ### Without s1-secops-mcp (direct skill use)
 
-Drop a `credentials.json` file into your Cowork project folder (see the **Credentials** section of `s1-secops-mcp/README.md` for all available keys). The plugin's SessionStart hook auto-discovers it. To trigger a manual refresh: `bash scripts/bootstrap_creds.sh`.
+Drop a `credentials.json` file into your Cowork project folder (see the **Credentials** section of the s1-secops-mcp README (`s1-secops-mcp/README.md` in the s1-secops-skills repo, `mcp/s1-secops-mcp/README.md` in ai-siem; not shipped in the plugin) for all available keys). The plugin's SessionStart hook auto-discovers it. To trigger a manual refresh: `bash scripts/bootstrap_creds.sh`.
 
 ```json
 {

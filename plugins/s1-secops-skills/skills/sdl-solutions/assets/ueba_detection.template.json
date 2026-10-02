@@ -15,7 +15,7 @@
       { "columnName": "principal_v" }
     ],
     "scheduledParams": {
-      "query": "dataSource.name = '{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}} = * AND {{ACTION}} = * | group live_count = count() by action_v = {{ACTION}}, principal_v = {{PRINCIPAL}} | lookup baseline_avg = baseline_avg, baseline_stddev = baseline_stddev, n_days = n_days, is_constant = is_constant from {{BASELINE_TABLE}} by action_v = action_v, principal_v = principal_v | filter baseline_avg = * | let sd = number(baseline_stddev) | let z = (sd > 0 ? (live_count - baseline_avg) / sd : (live_count == baseline_avg ? 0 : (live_count > baseline_avg ? 999 : -999))) | filter z >= {{Z_HARD}} OR z <= -{{Z_HARD}} | let direction = (z >= 0 ? 'SPIKE' : 'DROP') | sort -z | columns principal_v, action_v, live_count, baseline_avg, baseline_stddev, is_constant, z, direction | limit 100",
+      "query": "dataSource.name = '{{SOURCE}}' {{NOISE_FILTER}} tag != 'logVolume' | filter {{PRINCIPAL}} = * AND {{ACTION}} = * | group live_count = count() by action_v = {{ACTION}}, principal_v = {{PRINCIPAL}} | lookup baseline_avg = baseline_avg, baseline_stddev = baseline_stddev, n_days = n_days, is_constant = is_constant from {{BASELINE_TABLE}} by action_v = action_v, principal_v = principal_v | filter baseline_avg = * | let sd = number(baseline_stddev) | let z = (sd > 0 ? (live_count - baseline_avg) / sd : (live_count == baseline_avg ? 0 : (live_count > baseline_avg ? 999 : -999))) | filter z >= {{Z_HARD}} OR z <= -{{Z_HARD}} | let direction = (z >= 0 ? 'SPIKE' : 'DROP') | sort -z | columns principal_v, action_v, live_count, baseline_avg, baseline_stddev, is_constant, z, direction | limit 100",
       "runIntervalMinutes": 1440,
       "lookbackWindowMinutes": 1440,
       "alertPerRow": true,

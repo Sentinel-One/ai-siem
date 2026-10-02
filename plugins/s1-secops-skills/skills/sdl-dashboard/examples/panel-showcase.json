@@ -18,7 +18,7 @@
         {
           "graphStyle": "number",
           "title": "Total Alerts [number]",
-          "query": "dataSource.name='alert'\n| group count=count()\n| limit 1",
+          "query": "dataSource.name='alert' tag != 'logVolume'\n| group count=count()\n| limit 1",
           "options": { "format": "commas", "suffix": " alerts" },
           "sparklineConfig": { "enabled": true },
           "layout": { "h": 10, "w": 15, "x": 0, "y": 5 }
@@ -42,14 +42,14 @@
         {
           "graphStyle": "number",
           "title": "Active EDR Endpoints [number]",
-          "query": "dataSource.name='SentinelOne' | group agents=estimate_distinct(endpoint.name) | limit 1",
+          "query": "dataSource.name='SentinelOne' tag != 'logVolume' | group agents=estimate_distinct(endpoint.name) | limit 1",
           "options": { "format": "commas", "suffix": " endpoints" },
           "layout": { "h": 10, "w": 15, "x": 30, "y": 5 }
         },
         {
           "graphStyle": "gauge",
           "title": "Open Alert Queue [gauge]",
-          "query": "dataSource.name='alert'\n| group value=count()",
+          "query": "dataSource.name='alert' tag != 'logVolume'\n| group value=count()",
           "colorRangeConfig": {
             "ranges": [
               { "color": "#1CAA5D", "range": { "min": 0, "max": 500 } },
@@ -80,7 +80,7 @@
           "xAxis": "time",
           "yScale": "linear",
           "title": "EDR Event Categories Over Time [stacked bar]",
-          "query": "dataSource.name='SentinelOne'\n| filter event.category in ('process', 'file', 'dns', 'ip', 'indicators', 'logins')\n| group count=count() by category=event.category, timestamp=timebucket('1h')\n| transpose category on timestamp",
+          "query": "dataSource.name='SentinelOne' tag != 'logVolume'\n| filter event.category in ('process', 'file', 'dns', 'ip', 'indicators', 'logins')\n| group count=count() by category=event.category, timestamp=timebucket('1h')\n| transpose category on timestamp",
           "layout": { "h": 22, "w": 20, "x": 40, "y": 15 }
         },
         {
@@ -205,7 +205,7 @@
         {
           "graphStyle": "stacked",
           "title": "EDR Event Volume Over Time [stacked area]",
-          "query": "dataSource.name='SentinelOne'\n| filter event.category in ('process', 'file', 'dns', 'ip', 'indicators', 'logins', 'registry')\n| group count=count() by category=event.category, timestamp=timebucket('1h')\n| transpose category on timestamp",
+          "query": "dataSource.name='SentinelOne' tag != 'logVolume'\n| filter event.category in ('process', 'file', 'dns', 'ip', 'indicators', 'logins', 'registry')\n| group count=count() by category=event.category, timestamp=timebucket('1h')\n| transpose category on timestamp",
           "layout": { "h": 22, "w": 60, "x": 0, "y": 71 }
         }
       ]

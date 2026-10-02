@@ -12,7 +12,7 @@
  *   sdl_get_dashboard         Read one dashboard including its tabs
  *   sdl_create_dashboard      Create from a full dashboard-JSON config
  *   sdl_share_dashboard       Share to a site / account / global scope
- *   sdl_save_dashboard_layout Replace the panel layout of one tab
+ *   sdl_save_dashboard_layout Save panel positions (layout only) of one tab
  *   sdl_delete_dashboard      Delete a dashboard
  *
  * Ingest:
@@ -282,7 +282,7 @@ export const tools = [
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Dashboard display name, e.g. "Metacortex Site Replica".' },
-        config: { type: 'string', description: 'The full dashboard JSON document as a string: {"configType":"TABBED","duration":"24h","description":"...","tabs":[...]}. Validated as JSON before the mutation is sent.' },
+        config: { type: 'string', description: 'The full dashboard JSON document as a string: {"configType":"TABBED","duration":"24h","description":"...","tabs":[{"tabName":"Overview","graphs":[{"title":"Events","graphStyle":"number","query":"...","layout":{"x":0,"y":0,"w":20,"h":10}}]}]}. Each tab label key is "tabName", NOT "name" (a tab with only "name" is refused as "one of the tabs in dashboard has a blank name"). Panel layout is a 60-column grid: w=60 is full width, w=30 half, w=20 a third. Validated as JSON, and every tab checked for a non-empty tabName, before the mutation is sent.' },
         isPublic: { type: 'boolean', default: true, description: 'Share with all users in scope (the console\'s "Public" badge). DEFAULTS TO TRUE, unlike the raw API. access.owner is the calling identity, so with a service-account token a private dashboard is readable via API but INVISIBLE in the console to the human operator at any scope, which looks exactly like a failed deploy. Set false only if the dashboard should stay private to the service account.' },
         failIfNameExists: { type: 'boolean', description: 'Refuse if a dashboard of this name already exists at this scope. Default false, which permits siblings. Costs one extra listing call.' },
         scope: scopeProp,
@@ -330,7 +330,7 @@ export const tools = [
   // ─── sdl_save_dashboard_layout ────────────────────────────────────────────
   {
     name: 'sdl_save_dashboard_layout',
-    description: 'Replace the panel layout of ONE tab of a dashboard via saveDashboardLayout. Use for incremental panel edits (repositioning, adding or removing a panel on a single tab); use sdl_create_dashboard for a whole new document, or sdl_put_file with expectedVersion to rewrite an existing dashboard\'s full config. The graphs argument is a JSON string shaped {"graphs":[...]} including the wrapper key, even though the response echoes a bare array.',
+    description: 'Save panel POSITIONS (layout x/y/w/h) for ONE tab via saveDashboardLayout, the console\'s drag/resize save. LAYOUT ONLY, matched by array index: titles, markdown and queries in the payload are ignored, and the panel count must equal the tab\'s current count (the API silently ignores a shorter payload and refuses a longer one). The tool reads the tab first, refuses a count mismatch, and returns a warning naming any panel whose content changes were dropped. To edit panel content or add or remove panels, use sdl_put_file with expectedVersion; for a new dashboard use sdl_create_dashboard. The graphs argument is a JSON string shaped {"graphs":[...]} including the wrapper key, even though the response echoes a bare array.',
     inputSchema: {
       type: 'object',
       properties: {

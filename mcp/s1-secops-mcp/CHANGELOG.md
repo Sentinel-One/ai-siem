@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.3.10
+
+Fixes from a field smoke test (2026-10-02), each reproduced and verified on a live
+tenant on 2026-10-03. Tool count stays 32.
+
+### SDL ingest-metering rows are excluded by default
+
+Every ingest writes receive-time accounting rows under the source's own
+`dataSource.name`: `tag='logVolume'`, with `metric` / `value` / `path1`, and they also
+carry `sca:bytesToCharge` and `sca:ingestTime`. They inflated per-source counts and
+made a silent source look live. Over a fixed 12h window they were 7,390 of 383,044 rows.
+
+- `powerquery_run` and `powerquery_enumerate_sources` add `tag != 'logVolume'` to the
+  initial filter (new `lib/metering.js`), where dropping rows costs least, and return
+  `effectiveQuery`. `!=` keeps rows that have no `tag`; the older
+  `(tag != 'logVolume' OR !(tag = *))` form returned the same 375,654 rows. The filter
+  is not added when the query mentions `logVolume` or starts with `| datasource`,
+  `| dataset`, `| join` or `| union`. `includeMetering: true` opts out.
+- `powerquery_schema_discover` over-fetches and drops metering rows client-side, and
+  reports `excludedMeteringRows`. Before this, a sample could be partly or entirely
+  metering (42 to 64% of rows on 4 sources), so the reported schema included fields
+  the source doesn't have.
+
+### `sdl_create_dashboard`: tab label key is `tabName`
+
+A tab labelled with `name` was refused by the API as "one of the tabs in dashboard
+has a blank name", which doesn't say which key it wanted. The tool now catches this
+before sending and names the key. The description shows the `tabName` shape and the
+60-column panel grid.
+
+### `sdl_save_dashboard_layout` only moves and resizes panels
+
+Tested live on four dashboards: titles, markdown and queries in the payload were
+ignored, and only the layouts were applied, matched by position in the array. A
+shorter payload changed nothing, and a longer one was refused ("Index 4 out of bounds
+for length 4"). The tool now reads the tab first and refuses a payload whose panel
+count differs. It also warns when content changes would be dropped. The description
+no longer says the tool can add or remove panels.
+
 ## 1.3.9
 
 Three defects from a field smoke test, plus the delivery-channel fault that kept

@@ -10,6 +10,7 @@
 
 import { getCreds } from './credentials.js';
 import { scopeHeaders } from './sdl.js';
+import { excludeMetering } from './metering.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -192,9 +193,15 @@ export function pickMatchCount(result) {
 }
 
 /** Run a full LRQ PowerQuery lifecycle. Returns { columns, rows, rowCount, matchCount }. */
-export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 5000, scope } = {}) {
+export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 5000, scope, includeMetering = false } = {}) {
   const b = base();
   const tok = jwt();
+
+  // Exclude SDL ingest-metering rows (tag='logVolume') unless asked not to; see lib/metering.js.
+  const metering = includeMetering
+    ? { query, applied: false, reason: 'includeMetering=true' }
+    : excludeMetering(query);
+  query = metering.query;
 
   ({ startTime, endTime } = resolveLrqWindow({ startTime, endTime, hours }));
 
@@ -313,6 +320,8 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
     totalRows: rawRows.length,
     matchCount: pickMatchCount(result),
     queryId,
+    meteringExcluded: metering.applied,
+    ...(metering.applied ? { effectiveQuery: query } : { meteringNote: metering.reason }),
   };
 }
 

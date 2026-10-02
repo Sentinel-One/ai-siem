@@ -13,7 +13,7 @@ From `1.4.0` the image is built entirely from pinned git sources. Nothing in the
 
 The new repository carries `1.4.8` only. Update any config referencing either older name to `sentinelone/secops-mcps:1.4.8`.
 
-The image version is its own counter and does not encode the versions inside it: image `1.4.6` bundles s1-secops-mcp 1.3.9. From 1.3.4 onward a version tag strictly increases and is never republished, so a pin is stable. Tags at or below `1.3.3` were republished with different contents and do not reliably identify what is inside. To know what you have, ask the image:
+The image version is its own counter and does not encode the versions inside it: image `1.4.6` bundles s1-secops-mcp 1.3.10. From 1.3.4 onward a version tag strictly increases and is never republished, so a pin is stable. Tags at or below `1.3.3` were republished with different contents and do not reliably identify what is inside. To know what you have, ask the image:
 
 ```bash
 docker run --rm sentinelone/secops-mcps:1.4.8 versions
@@ -130,7 +130,7 @@ docker run -i --rm --pull=missing \
   sentinelone/secops-mcps:1.4.8 s1-secops-mcp <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
 ```
 
-Expected: a single JSON line back on stdout with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.3.9"`, the bundled MCP version, not the `1.3.6` image tag. Stderr should show `Tools: 32 registered` and one of the `configured`/`NOT configured` summaries per API surface.
+Expected: a single JSON line back on stdout with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.3.10"`, the bundled MCP version, not the `1.3.6` image tag. Stderr should show `Tools: 32 registered` and one of the `configured`/`NOT configured` summaries per API surface.
 
 ### 4. Force a fresh pull
 

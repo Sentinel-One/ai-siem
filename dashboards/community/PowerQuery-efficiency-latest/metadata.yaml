@@ -1,0 +1,9 @@
+metadata_details:
+  data_dependencies: "SDL query-audit telemetry in All Data: tag='queryOutcome' (emitted by the data lake itself, no connector or parser required)"
+  required_fields: "tag, lrqToken, filter, queryPurpose, userEmail, elapsedTimeMs, cpuUsageMs, coverBytes, matchCount, outcome, success, timeSpanMins"
+  description: "Monitors the efficiency of a single PowerQuery. Takes a PowerQuery identifier as input (an lrqToken for one execution, or a marker comment / text substring to track the same query across runs) and exposes execution time, CPU, bytes scanned, selectivity and errors."
+  usecase_type: "Operational"
+  usecase_action: "Dashboard"
+  tags: dashboard, powerquery, performance, audit, self-monitoring
+  version: latest
+  author: Marco Rottigni

@@ -38,7 +38,8 @@ These are element-wise; don't confuse with the `min()` / `max()` aggregation fun
 | `isempty(x)` | True if null or `""` |
 | `isblank(x)` | True if null, `""`, or only whitespace |
 | `bool(x)` | Coerce to boolean. `0`, `null`, `""` → false |
-| `string(x)` | Stringify (useful for large numbers) |
+| `string(x)` | Stringify (useful for large numbers). Use this, not `.to_string()`, on scalars: `n.to_string()` returns null for a number (`to_string` is the array method) |
+| `type(x)` | Type name of a value: `int`, `string`, `array`, `bool`, `none`. Use it to probe a field whose shape you are unsure of before writing accessors (regression case `type-and-to-string`) |
 | `number(x)` | Parse to number. Null / missing → 0; unparseable → NaN |
 | `pad_version(x)` | Zero-pad each dotted segment to 5 digits: enables lexicographic version sort |
 | `replace(x, y, z)` | Regex replace in `x`. `y` is a regex (case-insensitive). Use `$1` / `$2` for capture references, `\$` for a literal `$` |
@@ -120,6 +121,17 @@ See [commands-reference §4](commands-reference.md#4-group) for the full list. T
 
 **Confirmed working** (tested live): `count()`, `sum(x)`, `avg(x)`, `stddev(x)`, `min(x)`, `max(x)`, `any(x)`, `estimate_distinct(x)`, `median(x)`, `p10(x)` / `p50(x)` / `p90(x)` / `p95(x)` / `p99(x)` / `p999(x)`, `pct(N, x)`, `array_agg(x[, N])`, `array_agg_distinct(x[, N])`, `oldest(ts)`, `newest(ts)`, `min_by(x, ord)`, `max_by(x, ord)`.
 
+`intersect_estimate_distinct(a, b[, c ...])` (used after the `group`, in `let`) estimates how many distinct keys two or more `estimate_distinct` sketches share. Build each sketch with a `where` clause in one `group`, then intersect: the cheap alternative to joining two key sets just to count the overlap.
+
+```text
+event.type in ('Process Creation','DNS Resolved')
+| group a = estimate_distinct(src.process.name where event.type='Process Creation'),
+        b = estimate_distinct(src.process.name where event.type='DNS Resolved')
+| let shared = intersect_estimate_distinct(a, b)
+```
+
+The result is an estimate that never exceeds either input (regression case `intersect-estimate-distinct`).
+
 `avg(x)` is the group mean and `stddev(x)` is the sample standard deviation; percentiles support `p10/p50/p90/p95/p99/p999` and the general `pct(N, x)`. Tenant-validated.
 
 **Avoid** on general tenants (return 500 error on this deployment even though docs list them):
@@ -165,7 +177,7 @@ Array functions are only in PowerQueries (not alerts). Arrays cap at 8 MB. Creat
 |---|---|
 | `concat(arr)` | Append elements |
 | `distinct()` | Unique (numbers and strings are distinct: `5 != "5"`) |
-| `expand()` | Explode: one row per element |
+| `expand()` | Explode: one row per element. It is a method used in `let` (`let e = arr.expand()`). Every later `count()` counts the multiplied rows (a 3-element array triples it), and an empty array drops the row entirely (regression cases `expand-*`) |
 | `filter(func)` | Keep elements where lambda returns truthy |
 | `intersect(arr)` | Elements present in both |
 | `map(func)` | Transform each element |

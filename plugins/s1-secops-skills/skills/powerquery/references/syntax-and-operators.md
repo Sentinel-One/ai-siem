@@ -21,12 +21,16 @@ Full reference for PowerQuery expression syntax. Read when the query needs anyth
 |---|---|
 | AND | `a b`, `a and b`, `a AND b`, `a && b` |
 | OR | `a or b`, `a OR b`, `a \|\| b` |
-| NOT | `not a`, `NOT a`, `!a` |
+| NOT | `!(a)`, `NOT (a)`: always parenthesise a negated comparison (see below) |
 | Arithmetic | `+ - * / %` (modulo), unary `-x` |
 | Comparison | `< <= > >= == != =` (= is synonym for ==) |
 | Ternary | `cond ? then : else` (put spaces around the `:`: it can be parsed as an identifier character otherwise) |
 
 Parentheses work as expected: `a AND (b OR c)`.
+
+**Negation binds tighter than the comparison, so a negated predicate needs parentheses.** `NOT src.process.name contains 'svchost.exe'` and `!src.process.name contains 'svchost.exe'` do not mean "name does not contain": the negation applies to the bare field first, and the query silently returns 0 rows with no error. `!(src.process.name contains 'svchost.exe')` is the correct form. The same applies to `=` and `in` (regression cases `not-without-parens-is-silent-zero`, `bang-without-parens-is-silent-zero`).
+
+**A bare field or variable is not a truthiness test in `filter`.** `| filter x` is read as a text search for the value, not "x is truthy", and returned 0 rows where `| filter bool(x)` returned every row (regression case `bare-variable-filter-is-message-contains`). Use `bool(x)`, `x = *`, or an explicit comparison.
 
 ---
 
@@ -54,6 +58,16 @@ src.process.cmdline matches:matchcase 'CaseSensitive'
 
 Case-insensitive by default. Regex has a 1,000-byte ceiling. Double-escape special characters (`\\d`, `\\s`, `\\\\` for a literal backslash). See §5 for escaping levels.
 
+### `starts_with` / `ends_with`: prefix and suffix
+
+```text
+src.process.name starts_with 'svc'
+src.process.name ends_with '.exe'
+src.process.name starts_with:matchcase('Svc')                 // case-sensitive
+```
+
+Case-insensitive by default; `:matchcase` makes them case-sensitive. Valid in the initial filter and in `filter` / `let`. They return exactly the same rows as the anchored regex (`matches '^svc'`, `matches '\\.exe$'`) and read more clearly (regression cases `starts-with-*`, `ends-with-*`).
+
 ### `in`: exact equals any of
 
 ```text
@@ -63,6 +77,10 @@ event.login.type in:anycase ('network')  // case-insensitive variant
 ```
 
 Default is case-sensitive (opposite of `contains`). Cannot match null. Quote strings; leave numbers and booleans bare.
+
+`any(f1, f2, ...) in (...)` tests several fields against one list and is true when any of them matches: `any(src.process.name, tgt.process.name) in ('svchost.exe')` returns the same rows as the OR of the two single-field tests (regression case `any-in-literal-list`).
+
+The list can also come from a query: `field in (inner query)`. That is a subquery, with its own rules (one field only, raw fields only, null and empty-inner behaviour); see `commands-reference.md` §14.
 
 ### Equality and inequality
 
@@ -121,6 +139,21 @@ Three common mistakes the phrasebook prevents:
 - "Search all data" sounds like a scope instruction (every site, all time) but is almost always a field-coverage instruction (every column). Map to `* contains`, not to a wider time range or `tenant=true` request body.
 - Reaching for `message contains 'value'` for value-anywhere lookups is a performance cliff on JSON-blob sources. `* contains 'value'` indexes across parsed fields and is dramatically faster. See `references/pitfalls.md` → "Reaching for `message contains` on a JSON-blob source".
 - Confusing `field=*` (attribute wildcard / field-is-present check) with `* contains 'value'` (all-column text search). They are different operators: `dataSource.name=*` is a null check on one field; `* contains 'value'` searches all fields for a substring.
+
+---
+
+### `any()` / `all()`: one predicate across several fields
+
+```text
+| filter any(src.process.name, tgt.process.name) = 'svchost.exe'      // true if either field matches
+| filter all(src.process.name, tgt.process.name) contains '.exe'      // true only if both match
+```
+
+They return the same rows as the explicit OR / AND (regression cases `any-fieldset-predicate`, `all-fieldset-predicate`). Use them in the initial filter or a `filter` before the first `group`. They are not expressions: inside `let` they are read as the `any()` aggregate and fail with HTTP 400 `'any' is a grouping function` (regression case `any-not-allowed-in-let`).
+
+### Triple-quoted strings
+
+`"""..."""` holds single and double quotes without escaping: `let t = """it's "both" quotes"""` (regression case `triple-quoted-string`). Useful for regexes and command lines full of quotes.
 
 ---
 
@@ -228,3 +261,5 @@ The engine works with booleans, 64-bit floats, UTF-8 strings, and null.
 - **Boolean context**: `null`, `0`, `""` → false. Everything else → true. Use `bool()` to be explicit.
 
 In `group` and `let`, a reference to a field not present in an event yields `null` (not an error).
+
+**String-to-number comparison is lenient on raw fields and strict after `group`.** In the initial filter and in `filter` on a raw field, `dst.port.number = '443'` matches the same rows as `dst.port.number = 443` (regression case `scan-phase-coerces-string-number`). After `group` (or on a computed value) the comparison is strict: `| group n=count() by p=dst.port.number | filter p='443'` returns 0 rows with no error while `filter p=443` returns the row (regression case `post-group-comparison-is-strict`). Compare with matching types after aggregation: numeric literal, or `number(x)`.

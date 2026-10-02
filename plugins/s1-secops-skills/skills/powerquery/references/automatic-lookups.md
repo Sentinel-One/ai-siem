@@ -67,11 +67,24 @@ These were verified live while building the Windows Event Logs SID enrichment (<
 
 4. **Output fields overwrite on name collision.** If a `values` output name equals an existing event field, the lookup value replaces the native value. Namespace your outputs (e.g. `sid_username`, `sid_domain`) when you want enrichment *alongside* the native fields rather than on top of them.
 
-### Size limits (combined across all lookup tables referenced by automatic lookups)
+### Limits (live-verified 2026-10, enforced when `/automaticLookups` is written)
 
-- Combined size must not exceed **5 MB**.
-- Combined total must not exceed **100,000 rows** (unvalidated; the earlier "100 rows" figure was internally impossible against the 5 MB limit and the worked example below).
-- Combined total of columns referenced by `values` must not exceed **50 columns**.
+Every limit below is checked when the config file is written: an over-limit spec is rejected with HTTP 400 and nothing is applied, so a deploy that returns success is within limits. Re-test with `tools/pq_autolookup_probe.py`.
+
+| Limit | Value | Rejection text |
+|---|---|---|
+| Rows in one referenced table | 200 | `The number of rows (201) in the lookup table '<t>' exceed the maximum of 200.` |
+| Rows across all referenced tables | 200 | `The number of rows (300) across all lookup tables exceeds the maximum of 200.` (a table referenced by two specs counts twice) |
+| Size of one referenced table | 1,000,000 bytes | `Automatic lookup size 1300000 bytes exceeds maximum 1000000` |
+| Size across all referenced tables | 5,000,000 bytes | `The size (5148540 bytes) of all lookup tables exceeds the maximum of 5000000 bytes.` |
+| Output fields (`values`) in one spec | 10 | `Automatic lookup '<name>' cannot have more than 10 values` |
+| Output fields across all specs | 50 | `Automatic lookups cannot have more than 50 values` |
+
+Automatic lookups are therefore for small, curated tables (well-known SIDs, a few hundred asset tags at most). For anything larger use an explicit `| lookup` in the query.
+
+Enrichment is applied at query time, not at ingest: events ingested before the spec existed were enriched within seconds of the write, and the output field works as a filter (`<output_field>='value'`) as well as a column.
+
+Separately, the config-file write API (`/api/putFile`) refuses any single file over 1,600,000 bytes with HTTP 413 `file content is too large`.
 
 ### Automatic lookups do NOT apply to
 

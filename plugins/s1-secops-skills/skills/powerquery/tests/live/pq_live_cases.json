@@ -1,0 +1,719 @@
+{
+  "about": "Live regression cases for the powerquery skill. Every case pins one documented behaviour. Run with tools/pq_live_regression.py. Queries are portable: they use only SentinelOne EDR fields and common Windows binary names, never tenant-specific values.",
+  "requires": "A tenant ingesting SentinelOne EDR telemetry from Windows endpoints (Process Creation, File Creation, File Modification, DNS Resolved, IP Connect). Cases with \"fixtures\" need the listed datatables; the runner writes them before the run and deletes them afterwards.",
+  "fixtures": [
+    {
+      "path": "/datatables/zz_pqreg_probe.csv",
+      "content": "k,ip\nhost-a,10.1.2.3\nhost-b,not-an-ip\nhost-,192.0.2.10\nuser-a,198.51.100.7\nuser-ab,10.9.9.9\nuser-,203.0.113.5\na%,10.1.2.3\nhost-c,10.1.2.3\n"
+    },
+    {
+      "path": "/datatables/zz_pqreg_dup2.csv",
+      "content": "k,v\nhost-a,zeta\nhost-a,alpha\n"
+    },
+    {
+      "path": "/datatables/zz_pqreg_wild.csv",
+      "content": "pat,label\nhost-%,pct\nuser-_,one\nabc,exact\n"
+    },
+    {
+      "path": "/datatables/zz_pqreg_cidr_a.csv",
+      "content": "net,label\n10.0.0.0/8,wide\n10.1.0.0/16,narrow\n"
+    },
+    {
+      "path": "/datatables/zz_pqreg_cidr_b.csv",
+      "content": "net,label\n10.1.0.0/16,narrow\n10.0.0.0/8,wide\n"
+    },
+    {
+      "path": "/datatables/zz_pqreg_cidrkey.csv",
+      "content": "host,net,label\nhost-a,10.1.0.0/16,a-match\nhost-c,192.0.2.0/24,c-wrongnet\n"
+    },
+    {
+      "path": "/datatables/zz_pqreg_space.csv",
+      "content": "a, b\nx, y\n"
+    },
+    {
+      "path": "/datatables/zz-pqreg-hyphen.csv",
+      "content": "k,v\nhost-a,1\n"
+    },
+    {
+      "path": "/datatables/zz_pqreg_empty.csv",
+      "content": "k,v\n"
+    }
+  ],
+  "cases": [
+    {
+      "id": "sq-single-field-matches-literal",
+      "doc": "commands-reference.md 14",
+      "query": "event.type='Process Creation' src.process.name in (event.type='Process Creation' src.process.name='svchost.exe' | group 1 by src.process.name) | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' src.process.name='svchost.exe' | group n=count()"
+      }
+    },
+    {
+      "id": "sq-independent-fields-cross-product",
+      "doc": "commands-reference.md 14",
+      "query": "event.type in ('Process Creation','File Creation') src.process.name in ('svchost.exe','explorer.exe') !(event.type in (event.type in ('Process Creation','File Creation') ((event.type='Process Creation' src.process.name='svchost.exe') or (event.type='File Creation' src.process.name='explorer.exe')) | group 1 by event.type)) !(src.process.name in (event.type in ('Process Creation','File Creation') ((event.type='Process Creation' src.process.name='svchost.exe') or (event.type='File Creation' src.process.name='explorer.exe')) | group 1 by src.process.name)) | group n=count() by event.type, src.process.name",
+      "expect": {
+        "compare": "rows_lt",
+        "with": "event.type in ('Process Creation','File Creation') src.process.name in ('svchost.exe','explorer.exe') !((event.type='Process Creation' && src.process.name='svchost.exe') || (event.type='File Creation' && src.process.name='explorer.exe')) | group n=count() by event.type, src.process.name"
+      }
+    },
+    {
+      "id": "or-of-ands-keeps-cross-pairs",
+      "doc": "commands-reference.md 14",
+      "query": "event.type in ('Process Creation','File Creation') src.process.name in ('svchost.exe','explorer.exe') !((event.type='Process Creation' && src.process.name='svchost.exe') || (event.type='File Creation' && src.process.name='explorer.exe')) | group n=count() by event.type, src.process.name",
+      "expect": {
+        "min_rows": 1
+      }
+    },
+    {
+      "id": "sq-inner-alias-cross-field",
+      "doc": "commands-reference.md 14",
+      "query": "event.type='Process Creation' src.process.name in (event.type='Process Creation' tgt.process.name='svchost.exe' | group 1 by src.process.name=tgt.process.name) | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' src.process.name='svchost.exe' | group n=count()"
+      }
+    },
+    {
+      "id": "sq-inner-column-must-match",
+      "doc": "pitfalls.md subquery column",
+      "query": "event.type='Process Creation' src.process.name in (event.type='Process Creation' | group 1 by x2=src.process.name) | group n=count()",
+      "expect": {
+        "error_contains": "must be defined for subquery"
+      }
+    },
+    {
+      "id": "sq-after-group-rejected",
+      "doc": "pitfalls.md subquery after group",
+      "query": "event.type='Process Creation' | group n=count() by src.process.name | filter src.process.name in (| limit 1 | columns src.process.name='svchost.exe')",
+      "expect": {
+        "error_contains": "subqueries can't be used after group, sort, or limit"
+      }
+    },
+    {
+      "id": "sq-inner-may-sort-and-limit",
+      "doc": "commands-reference.md 14",
+      "query": "event.type='Process Creation' src.process.name in (event.type='Process Creation' | group c=count() by src.process.name | sort -c | limit 3) | group n=count() by src.process.name",
+      "expect": {
+        "exact_rows": 3
+      }
+    },
+    {
+      "id": "sq-midpipe-on-raw-field",
+      "doc": "commands-reference.md 14",
+      "query": "event.type='Process Creation' | filter src.process.name in (| limit 1 | columns src.process.name='svchost.exe') | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' src.process.name='svchost.exe' | group n=count()"
+      }
+    },
+    {
+      "id": "sq-on-let-field-silently-empty",
+      "doc": "pitfalls.md subquery on let field",
+      "query": "event.type='Process Creation' | let p = src.process.name | filter p in (| limit 1 | columns p='svchost.exe') | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "event.type='Process Creation' | let p = src.process.name | filter p in ('svchost.exe') | group n=count()"
+      }
+    },
+    {
+      "id": "sq-empty-inner-positive-returns-nothing",
+      "doc": "commands-reference.md 14",
+      "query": "event.type='Process Creation' src.process.name in (event.type='Process Creation' src.process.name='zz_no_such_proc_zz.exe' | group 1 by src.process.name) | group n=count()",
+      "expect": {
+        "max_rows": 0
+      }
+    },
+    {
+      "id": "sq-empty-inner-negated-returns-everything",
+      "doc": "pitfalls.md empty allowlist",
+      "query": "event.type='Process Creation' !(src.process.name in (event.type='Process Creation' src.process.name='zz_no_such_proc_zz.exe' | group 1 by src.process.name)) | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' | group n=count()"
+      }
+    },
+    {
+      "id": "sq-never-matches-null",
+      "doc": "commands-reference.md 14",
+      "query": "event.type='DNS Resolved' tgt.process.name in (event.type='DNS Resolved' | group 1 by tgt.process.name) | group n=count()",
+      "expect": {
+        "max_rows": 0
+      }
+    },
+    {
+      "id": "join-matches-null-keys",
+      "doc": "commands-reference.md 14",
+      "query": "| join a=(event.type='DNS Resolved' | group 1 by tgt.process.name), b=(event.type='DNS Resolved' | group n=count() by tgt.process.name) on tgt.process.name | group n=sum(n)",
+      "expect": {
+        "min_rows": 1
+      }
+    },
+    {
+      "id": "sq-negation-keeps-absent-field",
+      "doc": "commands-reference.md 14",
+      "query": "event.type in ('Process Creation','DNS Resolved') tgt.process.name=* !(tgt.process.name in (| limit 1 | columns tgt.process.name='svchost.exe')) | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "event.type in ('Process Creation','DNS Resolved') !(tgt.process.name in (| limit 1 | columns tgt.process.name='svchost.exe')) | group n=count()"
+      }
+    },
+    {
+      "id": "sq-any-on-left-rejected",
+      "doc": "commands-reference.md 14",
+      "query": "event.type='Process Creation' any(src.process.name, tgt.process.name) in (| limit 1 | columns src.process.name='svchost.exe') | group n=count()",
+      "expect": {
+        "error_contains": "Subquery requires a literal field name"
+      }
+    },
+    {
+      "id": "sq-case-sensitive",
+      "doc": "commands-reference.md 14",
+      "query": "event.type='Process Creation' src.process.name in (| limit 1 | columns src.process.name='SVCHOST.EXE') | group n=count()",
+      "expect": {
+        "max_rows": 0
+      }
+    },
+    {
+      "id": "sq-in-anycase",
+      "doc": "commands-reference.md 14",
+      "query": "event.type='Process Creation' src.process.name in:anycase (| limit 1 | columns src.process.name='SVCHOST.EXE') | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' src.process.name='svchost.exe' | group n=count()"
+      }
+    },
+    {
+      "id": "sq-inside-join-branch",
+      "doc": "commands-reference.md 14",
+      "query": "| join a=(event.type='Process Creation' src.process.name in (| limit 1 | columns src.process.name='svchost.exe') | group n=count() by src.process.name), b=(event.type='Process Creation' | group m=count() by src.process.name) on src.process.name",
+      "expect": {
+        "exact_rows": 1
+      }
+    },
+    {
+      "id": "sq-inner-columns-not-row-capped",
+      "doc": "commands-reference.md 14",
+      "query": "event.type='File Modification' tgt.file.path in (event.type='File Creation' | columns tgt.file.path) | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='File Modification' tgt.file.path in (event.type='File Creation' | group 1 by tgt.file.path) | group n=count()"
+      }
+    },
+    {
+      "id": "sq-high-cardinality-exact",
+      "doc": "commands-reference.md 14",
+      "query": "event.type='File Modification' tgt.file.path in (event.type='File Modification' | group 1 by tgt.file.path) | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='File Modification' tgt.file.path=* | group n=count()"
+      }
+    },
+    {
+      "id": "in-literal-case-sensitive",
+      "doc": "syntax-and-operators.md in",
+      "query": "event.type='Process Creation' src.process.name in ('SVCHOST.EXE') | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "event.type='Process Creation' src.process.name in:anycase ('SVCHOST.EXE') | group n=count()"
+      }
+    },
+    {
+      "id": "any-in-literal-list",
+      "doc": "syntax-and-operators.md in",
+      "query": "event.type='Process Creation' any(src.process.name, tgt.process.name) in ('svchost.exe') | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' (src.process.name='svchost.exe' or tgt.process.name='svchost.exe') | group n=count()"
+      }
+    },
+    {
+      "id": "sq-matchcount-includes-inner-scan",
+      "doc": "lrq-api.md matchCount",
+      "query": "event.type='Process Creation' src.process.name in (event.type='Process Creation' src.process.name='svchost.exe' | group 1 by src.process.name) | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "left": "match",
+        "with": "event.type='Process Creation' src.process.name='svchost.exe' | group n=count()",
+        "factor": 2
+      }
+    },
+    {
+      "id": "any-fieldset-predicate",
+      "doc": "syntax-and-operators.md any/all",
+      "query": "event.type='Process Creation' | filter any(src.process.name, tgt.process.name) = 'svchost.exe' | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' | filter src.process.name = 'svchost.exe' or tgt.process.name = 'svchost.exe' | group n=count()"
+      }
+    },
+    {
+      "id": "all-fieldset-predicate",
+      "doc": "syntax-and-operators.md any/all",
+      "query": "event.type='Process Creation' | filter all(src.process.name, tgt.process.name) contains '.exe' | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' | filter src.process.name contains '.exe' and tgt.process.name contains '.exe' | group n=count()"
+      }
+    },
+    {
+      "id": "any-not-allowed-in-let",
+      "doc": "syntax-and-operators.md any/all",
+      "query": "event.type='Process Creation' | let x = any(src.process.name, tgt.process.name) = 'svchost.exe' | group n=count()",
+      "expect": {
+        "error_contains": "grouping function"
+      }
+    },
+    {
+      "id": "not-without-parens-is-silent-zero",
+      "doc": "pitfalls.md NOT needs parentheses",
+      "query": "event.type='Process Creation' | filter NOT src.process.name contains 'svchost.exe' | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "event.type='Process Creation' | filter !(src.process.name contains 'svchost.exe') | group n=count()"
+      }
+    },
+    {
+      "id": "bang-without-parens-is-silent-zero",
+      "doc": "pitfalls.md NOT needs parentheses",
+      "query": "event.type='Process Creation' | filter !src.process.name contains 'svchost.exe' | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "event.type='Process Creation' | filter !(src.process.name contains 'svchost.exe') | group n=count()"
+      }
+    },
+    {
+      "id": "not-equals-without-parens-is-silent-zero",
+      "doc": "pitfalls.md NOT needs parentheses",
+      "query": "event.type='Process Creation' | filter NOT src.process.name = 'svchost.exe' | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "event.type='Process Creation' | filter !(src.process.name = 'svchost.exe') | group n=count()"
+      }
+    },
+    {
+      "id": "bare-variable-filter-is-message-contains",
+      "doc": "pitfalls.md bare filter",
+      "query": "event.type='Process Creation' | let x = src.process.name | filter x | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "event.type='Process Creation' | let x = src.process.name | filter bool(x) | group n=count()"
+      }
+    },
+    {
+      "id": "starts-with-equals-anchored-regex",
+      "doc": "syntax-and-operators.md starts_with",
+      "query": "event.type='Process Creation' src.process.name starts_with 'svc' | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' src.process.name matches '^svc' | group n=count()"
+      }
+    },
+    {
+      "id": "ends-with-equals-anchored-regex",
+      "doc": "syntax-and-operators.md starts_with",
+      "query": "event.type='Process Creation' src.process.name ends_with '.exe' | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' src.process.name matches '\\\\.exe$' | group n=count()"
+      }
+    },
+    {
+      "id": "starts-with-case-modes",
+      "doc": "syntax-and-operators.md starts_with",
+      "query": "event.type='Process Creation' | limit 1 | let s = 'svchost.exe' | filter s starts_with 'SVC' and s ends_with '.EXE' and !(s starts_with:matchcase('SVC')) | columns s",
+      "expect": {
+        "exact_rows": 1
+      }
+    },
+    {
+      "id": "triple-quoted-string",
+      "doc": "syntax-and-operators.md strings",
+      "query": "event.type='Process Creation' | limit 1 | let t = \"\"\"it's \"both\" quotes\"\"\" | filter t contains:matchcase(\"'s \\\"both\\\"\") | columns t",
+      "expect": {
+        "exact_rows": 1
+      }
+    },
+    {
+      "id": "scan-phase-coerces-string-number",
+      "doc": "syntax-and-operators.md types",
+      "query": "event.type='IP Connect' dst.port.number='443' | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='IP Connect' dst.port.number=443 | group n=count()"
+      }
+    },
+    {
+      "id": "post-group-comparison-is-strict",
+      "doc": "syntax-and-operators.md types",
+      "query": "event.type='IP Connect' | group n=count() by p=dst.port.number | filter p='443'",
+      "expect": {
+        "compare": "rows_lt",
+        "with": "event.type='IP Connect' | group n=count() by p=dst.port.number | filter p=443"
+      }
+    },
+    {
+      "id": "count-presence-predicate-rejected",
+      "doc": "pitfalls.md count(field=*)",
+      "query": "event.type='Process Creation' | group n=count(tgt.process.user=*)",
+      "expect": {
+        "error_contains": "Don't understand [*]"
+      }
+    },
+    {
+      "id": "intersect-estimate-distinct",
+      "doc": "functions-reference.md intersect_estimate_distinct",
+      "query": "event.type in ('Process Creation','DNS Resolved') | group a=estimate_distinct(src.process.name where event.type='Process Creation'), b=estimate_distinct(src.process.name where event.type='DNS Resolved') | let i = intersect_estimate_distinct(a, b) | filter i >= 0 && i <= a && i <= b",
+      "expect": {
+        "exact_rows": 1
+      }
+    },
+    {
+      "id": "expand-multiplies-rows",
+      "doc": "functions-reference.md expand",
+      "query": "event.type='Process Creation' | let e = array(1,2,3).expand() | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' | group n=count()",
+        "factor": 3
+      }
+    },
+    {
+      "id": "expand-empty-array-drops-row",
+      "doc": "functions-reference.md expand",
+      "query": "event.type='Process Creation' | let e = array_from_json('[]').expand() | group n=count()",
+      "expect": {
+        "max_rows": 0
+      }
+    },
+    {
+      "id": "type-and-to-string",
+      "doc": "functions-reference.md type",
+      "query": "event.type='Process Creation' | limit 1 | let n = 55 | columns t = type(n), a = n.to_string(), s = string(n)",
+      "expect": {
+        "first_row": {
+          "t": "int",
+          "a": null,
+          "s": "55"
+        }
+      }
+    },
+    {
+      "id": "wildcard-accessor-only-before-group",
+      "doc": "pitfalls.md wildcard accessor",
+      "query": "event.type='Process Creation' | group n=count() by event.type | let x = resources[*].name",
+      "expect": {
+        "error_contains": "undefined field"
+      }
+    },
+    {
+      "id": "top-rejects-percentile-scorer",
+      "doc": "commands-reference.md top",
+      "query": "event.type='IP Connect' | top 5 p95(dst.port.number) by src.process.name",
+      "expect": {
+        "error_contains": "only supports count/min/max/sum"
+      }
+    },
+    {
+      "id": "top-rank-is-reserved",
+      "doc": "commands-reference.md top",
+      "query": "event.type='Process Creation' | let rank = src.process.name | top 3 count() by rank",
+      "expect": {
+        "error_contains": "reserved"
+      }
+    },
+    {
+      "id": "top-feeds-subquery",
+      "doc": "commands-reference.md top",
+      "query": "event.type='Process Creation' src.process.name in (event.type='Process Creation' | top 3 count() by src.process.name) | group n=count() by src.process.name",
+      "expect": {
+        "exact_rows": 3
+      }
+    },
+    {
+      "id": "compare-column-suffix",
+      "doc": "commands-reference.md compare",
+      "query": "event.type='Process Creation' | group n=count() | compare prev=timeshift('1h')",
+      "expect": {
+        "columns_include": [
+          "n (prev)"
+        ]
+      }
+    },
+    {
+      "id": "dataset-unknown-scheme",
+      "doc": "pitfalls.md dataset errors",
+      "query": "| dataset 'nosuchscheme://zz_pqreg_missing' | limit 1",
+      "expect": {
+        "error_contains": "No datasets matched"
+      }
+    },
+    {
+      "id": "dataset-bare-name-no-scheme",
+      "doc": "pitfalls.md dataset errors",
+      "query": "| dataset 'zz_pqreg_missing' | limit 1",
+      "expect": {
+        "error_contains": "No datasets matched"
+      }
+    },
+    {
+      "id": "dataset-missing-table",
+      "doc": "pitfalls.md dataset errors",
+      "query": "| dataset 'config://datatables/zz_pqreg_missing' | limit 1",
+      "expect": {
+        "error_contains": "does not exist"
+      }
+    },
+    {
+      "id": "not-in-silent-zero",
+      "doc": "pitfalls.md not in",
+      "query": "event.type='Process Creation' src.process.name not in ('svchost.exe') | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "event.type='Process Creation' !(src.process.name in ('svchost.exe')) | group n=count()"
+      }
+    },
+    {
+      "id": "compare-unsigned-shift-goes-back",
+      "doc": "commands-reference.md compare",
+      "query": "event.type='Process Creation' | group n=count() | compare p=timeshift('1h')",
+      "expect": {
+        "compare": "count_eq",
+        "left": {
+          "column": "n (p)"
+        },
+        "with": "event.type='Process Creation' | group n=count() | compare p=timeshift('-1h')",
+        "right": {
+          "column": "n (p)"
+        }
+      }
+    },
+    {
+      "id": "alert-resources-string-json-fallback",
+      "doc": "pitfalls.md wildcard accessor",
+      "skip_if_no_rows": true,
+      "query": "dataSource.name='alert' class_uid=99602001 | let t = type(resources) | filter t = 'string' | let nm = json_object_value(array_get(array_from_json(resources), 0), 'name') | group n=count(), has=count(nm != null)",
+      "expect": {
+        "compare": "count_eq",
+        "left": {
+          "column": "has"
+        },
+        "with": "dataSource.name='alert' class_uid=99602001 | let t = type(resources) | filter t = 'string' | let nm = json_object_value(array_get(array_from_json(resources), 0), 'name') | group n=count(), has=count(nm != null)",
+        "right": {
+          "column": "n"
+        }
+      }
+    },
+    {
+      "id": "alert-resources-string-wildcard-empty",
+      "doc": "pitfalls.md wildcard accessor",
+      "skip_if_no_rows": true,
+      "query": "dataSource.name='alert' class_uid=99602001 | let t = type(resources) | filter t = 'string' | group n=count() by e = resources[*].name",
+      "expect": {
+        "first_row": {
+          "e": "[]"
+        }
+      }
+    },
+    {
+      "id": "lk-dup-key-first-row-wins",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv",
+        "/datatables/zz_pqreg_dup2.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_probe.csv' | lookup v from zz_pqreg_dup2.csv by k = k | filter k='host-a' | columns k, v",
+      "expect": {
+        "first_row": {
+          "v": "zeta"
+        }
+      }
+    },
+    {
+      "id": "lk-dup-key-no-row-fanout",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv",
+        "/datatables/zz_pqreg_dup2.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_probe.csv' | lookup v from zz_pqreg_dup2.csv by k = k | columns k, v",
+      "expect": {
+        "exact_rows": 8
+      }
+    },
+    {
+      "id": "lk-wildcard-match-count",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv",
+        "/datatables/zz_pqreg_wild.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_probe.csv' | lookup label from zz_pqreg_wild.csv by pat =:wildcard k | filter label=* | group n=count()",
+      "expect": {
+        "first_row": {
+          "n": 5
+        }
+      }
+    },
+    {
+      "id": "lk-wildcard-percent-matches-empty",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv",
+        "/datatables/zz_pqreg_wild.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_probe.csv' | lookup label from zz_pqreg_wild.csv by pat =:wildcard k | filter k='host-' | columns k, label",
+      "expect": {
+        "first_row": {
+          "label": "pct"
+        }
+      }
+    },
+    {
+      "id": "lk-wildcard-event-side-literal",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv",
+        "/datatables/zz_pqreg_wild.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_probe.csv' | lookup label from zz_pqreg_wild.csv by pat =:wildcard k | filter k='a%' | columns k, label",
+      "expect": {
+        "first_row": {
+          "label": null
+        }
+      }
+    },
+    {
+      "id": "lk-by-table-column-on-left",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv",
+        "/datatables/zz_pqreg_wild.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_probe.csv' | lookup label from zz_pqreg_wild.csv by k =:wildcard pat",
+      "expect": {
+        "error_contains": "not found in table"
+      }
+    },
+    {
+      "id": "lk-cidr-most-specific-a",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv",
+        "/datatables/zz_pqreg_cidr_a.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_probe.csv' | lookup label from zz_pqreg_cidr_a.csv by net =:cidr ip | filter k='host-a' | columns k, label",
+      "expect": {
+        "first_row": {
+          "label": "narrow"
+        }
+      }
+    },
+    {
+      "id": "lk-cidr-most-specific-b",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv",
+        "/datatables/zz_pqreg_cidr_b.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_probe.csv' | lookup label from zz_pqreg_cidr_b.csv by net =:cidr ip | filter k='host-a' | columns k, label",
+      "expect": {
+        "first_row": {
+          "label": "narrow"
+        }
+      }
+    },
+    {
+      "id": "lk-cidr-non-ip-is-null",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv",
+        "/datatables/zz_pqreg_cidr_a.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_probe.csv' | lookup label from zz_pqreg_cidr_a.csv by net =:cidr ip | filter k='host-b' | columns k, label",
+      "expect": {
+        "first_row": {
+          "label": null
+        }
+      }
+    },
+    {
+      "id": "lk-cidr-combined-with-exact-key",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv",
+        "/datatables/zz_pqreg_cidrkey.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_probe.csv' | lookup label from zz_pqreg_cidrkey.csv by host = k, net =:cidr ip | filter label=* | group n=count()",
+      "expect": {
+        "first_row": {
+          "n": 1
+        }
+      }
+    },
+    {
+      "id": "lk-hyphen-table-name-unquoted",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv",
+        "/datatables/zz-pqreg-hyphen.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_probe.csv' | lookup v from zz-pqreg-hyphen.csv by k = k | filter k='host-a' | columns k, v",
+      "expect": {
+        "first_row": {
+          "v": "1"
+        }
+      }
+    },
+    {
+      "id": "lk-dataset-pipeline-commands",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_probe.csv"
+      ],
+      "query": "| dataset \"config://datatables/zz_pqreg_probe.csv\" | sort -k | columns k, ip | limit 3",
+      "expect": {
+        "first_row": {
+          "k": "user-ab"
+        }
+      }
+    },
+    {
+      "id": "lk-csv-header-space-dataset",
+      "doc": "pitfalls.md CSV header spaces",
+      "fixtures": [
+        "/datatables/zz_pqreg_space.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_space.csv' | columns a, b",
+      "expect": {
+        "first_row": {
+          "a": "x",
+          "b": null
+        }
+      }
+    },
+    {
+      "id": "lk-csv-header-space-lookup",
+      "doc": "pitfalls.md CSV header spaces",
+      "fixtures": [
+        "/datatables/zz_pqreg_space.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_space.csv' | let k='x' | lookup b from zz_pqreg_space.csv by a = k",
+      "expect": {
+        "error_contains": "Column \"b\" not found"
+      }
+    },
+    {
+      "id": "lk-empty-table-count-no-row",
+      "doc": "commands-reference.md 8",
+      "fixtures": [
+        "/datatables/zz_pqreg_empty.csv"
+      ],
+      "query": "| dataset 'config://datatables/zz_pqreg_empty.csv' | group n=count()",
+      "expect": {
+        "max_rows": 0
+      }
+    }
+  ]
+}

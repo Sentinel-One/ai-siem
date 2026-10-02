@@ -74,6 +74,9 @@ initial-filter-expression
 | `x matches 'regex'` | regex (case-insensitive, double-escape): `matches ('a','b')` for OR |
 | `x matches:matchcase '…'` | case-sensitive regex |
 | `x in ('a','b',123,true)` | exact equals any; case-sensitive; `in:anycase` for case-insensitive; does NOT match null |
+| `any(a, b) in ('x')` / `any(a, b) = 'x'` / `all(a, b) contains 'x'` | one predicate across several fields (filter stage only, not in `let`) |
+| `x starts_with 'p'` / `x ends_with 's'` | prefix / suffix (case-insensitive; `:matchcase('P')` for case-sensitive) |
+| `!(x contains 'y')` | negation: ALWAYS parenthesise; `NOT x contains 'y'` silently returns 0 rows |
 | `x = *` | field is present/non-null |
 | `!(x = *)` | field is null/missing |
 | `$"regex"` | shorthand for `message matches "regex"` (initial filter only) |
@@ -114,7 +117,7 @@ These are where queries go wrong. Internalize them before writing.
 2. **Double-escape regex almost everywhere.** `src.process.cmdline matches "\\d+"`, `tgt.file.path matches '^C:\\\\Windows\\\\Temp\\\\[a-z]{8}\\.tmp$'`. The only place you don't double-escape is the `$"…"` shorthand (searches `message`).
 3. **Regex lazy quantifiers (`?`) are not supported.** The SDL regex engine does not support lazy (non-greedy) quantifiers: `.*?`, `.+?`, `[^x]*?` etc. all return HTTP 500 "Dangling meta character '?'". Use a negated character class instead: `[^"]*` in place of `.*?"`, `[^ ]*` in place of `.*?`, etc.
 4. **After `columns` or `group`, previous fields are gone.** These commands create an entirely new record set. If you'll need a field later, carry it through: `group ct=count(), host=any(endpoint.name) by src.process.storyline.id`; don't expect `endpoint.name` to still be addressable after that `group` unless you aggregate it.
-5. **Subqueries can't go after `group`, `sort`, or `limit`.** And the subquery must itself produce the column named in the `in (...)` expression (via `columns` or `group`). `user in (action='login' | group 1 by user)` is valid; `user in (action='login')` is not.
+5. **Subqueries can't go after `group`, `sort`, or `limit`.** And the subquery must itself produce the column named in the `in (...)` expression (via `columns` or `group`, an alias counts). `user in (action='login' | group 1 by user)` is valid; `user in (action='login')` is not. Subqueries match one raw field only (`any(a, b) in (subquery)` is HTTP 400 `Subquery requires a literal field name`): on a `let` field they silently return 0 rows, they never match null, and `!(x in (<empty inner>))` returns every row. Details in `references/commands-reference.md` §14.
 6. **`compare` and `transpose` must be the LAST command.** Put `sort` before `compare` if you want to order the non-shifted side.
 7. **`join` must start with a pipe.** `| join (…), (…) on x`, without the `|`, "join" is interpreted as a search term. Inner/left joins allow up to 10 subqueries; `sql inner` and `sql left` allow only 2.
 8. **`null` behaves like false in boolean context.** `filter x = null` works after the field is defined by a prior command; before then, use `!(x = *)` for is-null and `x = *` for is-not-null.
@@ -147,7 +150,9 @@ These are where queries go wrong. Internalize them before writing.
 
     This applies to every field, not just `message`. Any time you want to sample, inspect, or aggregate a field, include `field=*` in the initial filter.
 
-19. **Statistical baselining is two queries plus a client-side merge, not one inline join.** Subqueries inside a single `| join` share the parent query's time range. To compare a 24h live window against a 7d/30d baseline, run them as separate LRQs (or as separate `savelookup`+`lookup` rounds) and merge; there is no single-pass form. Pattern in `examples/behavioral-baselines.md`.
+19. **Statistical baselining is two queries plus a client-side merge, not one inline join.** Subqueries inside a single `| join`, and `in (...)` subqueries, share the parent query's time range. To compare a 24h live window against a 7d/30d baseline, run them as separate LRQs (or as separate `savelookup`+`lookup` rounds) and merge; there is no single-pass form. Pattern in `examples/behavioral-baselines.md`.
+
+20. **Parenthesise every negation.** `NOT src.process.name contains 'x'` and `NOT src.process.name = 'x'` apply the negation to the bare field and silently return 0 rows. Write `!(src.process.name contains 'x')`. Likewise `| filter x` on a bare field or variable is a text search, not a truthiness test; use `| filter bool(x)`.
 
 ## When to delegate baselining + anomaly detection to the mgmt-console-api skill
 
@@ -243,7 +248,7 @@ Don't read these upfront. Read the one you need.
 - `references/detection-rules.md`: how to author PowerQuery Alerts / STAR / Custom Detection rule bodies, including the 1,000-row / 1 MB alert constraints and which PQ features are supported in alert context.
 - `references/query-cost.md`: where query time actually goes. The cost hierarchy (datatable vs entity datasource vs event lake), why a `lookup` AFTER `group` can beat one before it (118s -> 40s measured, faster while scanning 4.8x more events), why a rolling window couples scan size to the run hour, slice width and why parallel slices measured SLOWER than sequential, `savelookup`'s separate timeout budget, abandoned-query cleanup, and how to benchmark without fooling yourself (cache-order artifacts, poll-interval floors, tenant variance). Read before optimising anything or quoting a timing.
 - `references/pitfalls.md`: curated list of common failures and their fixes (the `*`-as-filter trap, forgetting `|` before `join`, subquery position errors, memory-limit messages, `message contains` vs `* contains` on JSON-blob sources, and more).
-- `references/automatic-lookups.md`: tenant-wide `/automaticLookups` enrichment that applies to every search and PowerQuery with no `| lookup` typed: config schema, the "output value fields must be unique across all specs" rule, the 100,000-row (unvalidated) / 5 MB / 50-column limits, deploy-via-SDL-API flow, verified `lookup`/`dataset` gotchas, and a full Windows Event Logs SID-to-username worked example. Read when the user wants to add a lookup for SID/username (or any key) that everyone should see automatically, or asks about `/automaticLookups`.
+- `references/automatic-lookups.md`: tenant-wide `/automaticLookups` enrichment that applies to every search and PowerQuery with no `| lookup` typed: config schema, the "output value fields must be unique across all specs" rule, the write-time limits (200 rows, 1 MB per table, 5 MB total, 10 output fields per spec, 50 total), deploy-via-SDL-API flow, verified `lookup`/`dataset` gotchas, and a full Windows Event Logs SID-to-username worked example. Read when the user wants to add a lookup for SID/username (or any key) that everyone should see automatically, or asks about `/automaticLookups`.
 - `references/datasource-command.md`: the `| datasource <name> [from <dataset>]` command for querying SentinelOne-managed inventory (Asset Inventory, Alerts, Vulnerabilities, Misconfigurations, Metering, SDL retention) that lives outside the event store. Covers datasource names, the `assets`/`metering` datasets, column discovery, time-series via `*_aggregated_snapshots`, and the tenant-validated specifics for asset enrichment: `from 'surface/identity'` vs sparse `from identity`, `from 'surface/endpoint'` vs sparse `from device`, single-quoting slash dataset names, empty-`riskFactors` (`"[]"`) suppression, and the `datasource ... | savelookup` pattern for building enrichment lookup tables. Read whenever the user asks about assets, identities, vulnerabilities, alerts inventory, or building an asset-enrichment lookup.
 
 ## Examples library: read when a hunt matches
@@ -257,7 +262,7 @@ Don't read these upfront. Read the one you need.
 
 These three blur together. Quick rules:
 
-- **Subquery** (`field in (inner | columns field)`): single-field "is this value in that set" filtering. Simplest and usually fastest. Use for allowlist / denylist / top-N-and-pivot patterns.
+- **Subquery** (`field in (inner | group 1 by field)`): single-field "is this value in that set" filtering. Simplest and usually fastest. Use for allowlist / denylist / top-N-and-pivot patterns. Two single-field subqueries are independent, so they cannot allowlist *pairs* (they also exclude cross combinations that were never listed); for a few fixed pairs write `!((a='x' && b='y') || (a='z' && b='w'))`, otherwise use `join`. A subquery never matches a null key while `join` does, so the two differ when the key can be absent.
 - **Join**: multi-field correlation where columns from both sides of a row must match each other (`on a.user = b.user, a.host = b.host`) *or* you need to bring extra columns from the second query into your output.
 - **Union**: heterogeneous result sets that you want stacked as rows, possibly with rename/unification. Handy when the same logical event lives in two different log sources with different field names.
 

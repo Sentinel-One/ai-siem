@@ -509,7 +509,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
   | docker run -i --rm sentinelone/secops-mcps:1.4.8 s1-secops-mcp
 ```
 
-The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.3.9"`, the bundled MCP version rather than the `1.4.5` image tag, and stderr shows `Tools: 32 registered`.
+The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.3.10"`, the bundled MCP version rather than the `1.4.5` image tag, and stderr shows `Tools: 32 registered`.
 
 **Troubleshooting**
 

@@ -541,14 +541,32 @@ export async function createDashboard({ name, config, isPublic = true, scope, fa
   }
   // Fail before the mutation rather than filing a broken dashboard the console
   // then renders as an empty shell.
+  let doc;
   try {
-    JSON.parse(config);
+    doc = JSON.parse(config);
   } catch (e) {
     throw new Error(
       `createDashboard: config is not valid JSON (${e.message}). ` +
       'If this came from the console\'s JSON editor, check for a leading "{graphs: []}" stub: ' +
       'the new document must REPLACE it, not follow it.'
     );
+  }
+  // The tab label key is `tabName`. A tab carrying `name` instead is refused by
+  // the API with only "one of the tabs in dashboard has a blank name", which does
+  // not say which key it wanted. Catch it here and name the key.
+  if (doc && Array.isArray(doc.tabs)) {
+    const bad = doc.tabs
+      .map((t, i) => ({ i, t }))
+      .filter(({ t }) => !t || typeof t.tabName !== 'string' || !t.tabName.trim());
+    if (bad.length) {
+      const detail = bad.map(({ i, t }) =>
+        t && typeof t.name === 'string' ? `tabs[${i}] has "name":"${t.name}", rename it to "tabName"` : `tabs[${i}] has no "tabName"`
+      ).join('; ');
+      throw new Error(
+        `createDashboard: every tab needs a non-empty "tabName" (the API reads that key, not "name"). ${detail}. ` +
+        'Shape: {"configType":"TABBED","tabs":[{"tabName":"Overview","graphs":[...]}]}.'
+      );
+    }
   }
 
   if (failIfNameExists) {
@@ -632,9 +650,19 @@ export async function shareDashboard({ id, scopes = [], users = [], scope }) {
 }
 
 /**
- * Replace the panel layout of ONE tab. `graphs` is a JSON string shaped
- * `{"graphs":[...]}` (note the wrapper key; the response echoes a bare array).
- * Use this for incremental panel edits; use createDashboard for a whole document.
+ * Save panel POSITIONS (layout x/y/w/h) for ONE tab. `graphs` is a JSON string
+ * shaped `{"graphs":[...]}` (note the wrapper key; the response echoes a bare array).
+ *
+ * LAYOUT ONLY, matched by array index. Live-verified 2026-10-03 on four test
+ * dashboards: new titles, markdown and queries in the payload were ignored and
+ * only the layouts were applied, by position in the array; a payload with fewer
+ * panels changed nothing (the dropped panel stayed, updatedAt still moved); a
+ * payload with more panels was refused as "Index 4 out of bounds for length 4".
+ * This is the console's drag/resize save. To change panel content or add or
+ * remove panels, rewrite the config with sdl_put_file (read the version first).
+ *
+ * So this reads the tab first and refuses a payload whose panel count differs,
+ * and reports which panels carried content changes the API will drop.
  */
 export async function saveDashboardLayout({ id, name, tabName, graphs, options, scope }) {
   if (!id && !name) throw new Error('saveDashboardLayout requires either id or name');
@@ -649,6 +677,26 @@ export async function saveDashboardLayout({ id, name, tabName, graphs, options, 
   } catch (e) {
     throw new Error(`saveDashboardLayout: graphs is not a valid {"graphs":[...]} JSON string (${e.message}).`);
   }
+  const sent = JSON.parse(graphs).graphs;
+  const current = await getDashboard({ id, name, scope });
+  if (!current) throw new Error('saveDashboardLayout: dashboard not found at this scope.');
+  const tab = (current.tabs || []).find(t => t.tabName === tabName);
+  if (!tab) {
+    throw new Error(`saveDashboardLayout: no tab named "${tabName}". Tabs: ${(current.tabs || []).map(t => `"${t.tabName}"`).join(', ')}.`);
+  }
+  let existing = [];
+  try { existing = JSON.parse(tab.graphs || '[]'); } catch { existing = []; }
+  if (sent.length !== existing.length) {
+    throw new Error(
+      `saveDashboardLayout: tab "${tabName}" has ${existing.length} panel(s) and the payload has ${sent.length}. ` +
+      'This mutation saves positions only, matched by index: it cannot add or remove panels (fewer is silently ignored, ' +
+      'more is refused by the API). Use sdl_put_file to change the set of panels.'
+    );
+  }
+  const CONTENT_KEYS = ['title', 'graphStyle', 'query', 'markdown', 'plots', 'options'];
+  const contentIgnored = sent
+    .map((g, i) => ({ i, keys: CONTENT_KEYS.filter(k => g?.[k] !== undefined && JSON.stringify(g[k]) !== JSON.stringify(existing[i]?.[k])) }))
+    .filter(x => x.keys.length);
   const data = await sdlGraphql(
     'SaveDashboardLayout',
     `mutation SaveDashboardLayout($id: ID, $dashboardName: String, $graphs: String, $options: String, $tabName: String) {
@@ -657,7 +705,12 @@ export async function saveDashboardLayout({ id, name, tabName, graphs, options, 
     { id: id ? assertSafeUdoId(id) : undefined, dashboardName: name, graphs, options, tabName },
     { scope }
   );
-  return data?.saveDashboardLayout ?? null;
+  const saved = data?.saveDashboardLayout ?? null;
+  if (contentIgnored.length && saved) {
+    saved.warning = 'Only positions were saved. These panels carried content changes that saveDashboardLayout does not apply; use sdl_put_file for them: ' +
+      contentIgnored.map(x => `graphs[${x.i}] (${x.keys.join(', ')})`).join('; ') + '.';
+  }
+  return saved;
 }
 
 /**

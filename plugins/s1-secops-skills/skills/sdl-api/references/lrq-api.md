@@ -214,7 +214,7 @@ The implementation is built from these key pieces, in order of importance:
 
 ## LOG queries are a separate primitive
 
-`scripts/pq.py` runs `queryType: "PQ"` only. For workflows that need every parsed field on every matching row (identity investigations, all-attribute hunts, evidence-grade exports), the right primitive is `queryType: "LOG"`, which has a different body shape and different failure modes from PQ.
+`mgmt-console-api`'s `scripts/pq.py` runs `queryType: "PQ"` only. For workflows that need every parsed field on every matching row (identity investigations, all-attribute hunts, evidence-grade exports), the right primitive is `queryType: "LOG"`, which has a different body shape and different failure modes from PQ.
 
 ### Body shape
 

@@ -69,7 +69,7 @@ These were verified live while building the Windows Event Logs SID enrichment (<
 
 ### Limits (live-verified 2026-10, enforced when `/automaticLookups` is written)
 
-Every limit below is checked when the config file is written: an over-limit spec is rejected with HTTP 400 and nothing is applied, so a deploy that returns success is within limits. Re-test with `tools/pq_autolookup_probe.py`.
+Every limit below is checked when the config file is written: an over-limit spec is rejected with HTTP 400 and nothing is applied, so a deploy that returns success is within limits. Re-test with `tools/pq_autolookup_probe.py` (a maintainer harness at the root of the s1-secops-skills source repo, not shipped in the plugin).
 
 | Limit | Value | Rejection text |
 |---|---|---|

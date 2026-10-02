@@ -219,7 +219,7 @@ The same `POST /sdl/v2/graphql` endpoint carries a second, higher-level surface 
 | `dashboardsV2` | query | List dashboards with `access { public users owner }` |
 | `getDashboardV2(id, dashboardName, resolveParameters)` | query | One dashboard incl. tabs, duration, authorship |
 | `createDashboardV2(dashboardName, config, public)` | mutation | Create from a full dashboard-JSON string |
-| `saveDashboardLayout(id, dashboardName, graphs, options, tabName)` | mutation | Replace the panels of ONE tab |
+| `saveDashboardLayout(id, dashboardName, graphs, options, tabName)` | mutation | Save panel POSITIONS of ONE tab (layout only, matched by index; content ignored, panel count must match) |
 | `shareResource(id, users, scopes)` | mutation | Share to scopes and/or users |
 | `deleteDashboard(id, dashboardName)` | mutation | Delete; returns a bare boolean |
 
@@ -229,7 +229,7 @@ The same `POST /sdl/v2/graphql` endpoint carries a second, higher-level surface 
 
 - **Creating a dashboard** → `createDashboardV2`. It takes the whole document (`configType`, `duration`, `description`, `tabs[]`) as one `config` string.
 - **Updating a whole dashboard** → `addConfigFile(udoId:, expectedVersion:)`. Only the config-file layer exposes the numeric CAS token.
-- **Nudging panels on one tab** → `saveDashboardLayout`.
+- **Moving or resizing panels on one tab** → `saveDashboardLayout`. It saves layout only, matched by array index: titles, markdown and queries in the payload are ignored, a shorter payload changes nothing, and a longer one is refused ("Index 4 out of bounds for length 4"). Live-verified 2026-10-03. To change panel content or add or remove panels, use `addConfigFile` with `expectedVersion`.
 - **Anything about sharing or ownership** → `dashboardsV2` / `shareResource`. The config-file layer has no concept of either.
 
 ### Two version fields, do not cross them

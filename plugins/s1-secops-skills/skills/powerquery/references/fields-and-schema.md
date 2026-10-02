@@ -206,10 +206,10 @@ dataSource.name='Windows Event Logs' endpoint.name='D01-QCDC01'
 
 Works for any source / endpoint combination. Divide by `1024 / 1024 / 1024` for GiB (binary) or by `1_000_000_000` for GB (decimal), depending on preference. The `number()` cast keeps the sum safe against string-typed columns, per the warning above.
 
-Per-source volume leaderboard:
+Per-source volume leaderboard. `tag != 'logVolume'` drops SDL ingest-metering rows, which also carry `sca:bytesToCharge` and `sca:ingestTime` and would otherwise inflate `events` (measured 2026-10-03: 7,390 of 383,044 rows in 12h; their bytes were 0.06% of the total):
 
 ```text
-sca:bytesToCharge=* dataSource.name=*
+sca:bytesToCharge=* dataSource.name=* tag != 'logVolume'
 | let gib = number(sca:bytesToCharge) / 1024 / 1024 / 1024
 | group GiB = sum(gib), events = count() by source = dataSource.name
 | sort -GiB
@@ -221,7 +221,7 @@ sca:bytesToCharge=* dataSource.name=*
 `sca:ingestTime` is in seconds; `timestamp` is in nanoseconds. Convert before subtracting:
 
 ```text
-sca:ingestTime=* dataSource.name=*
+sca:ingestTime=* dataSource.name=* tag != 'logVolume'
 | let ingest_ts = number(sca:ingestTime)
 | let evt_ts = number(timestamp) / 1000000000
 | let lag_min = (ingest_ts - evt_ts) / 60

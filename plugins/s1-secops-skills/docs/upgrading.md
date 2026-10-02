@@ -169,7 +169,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
   | docker run -i --rm sentinelone/secops-mcps:1.4.8 s1-secops-mcp
 ```
 
-Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.3.9"`, and
+Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.3.10"`, and
 `Tools: 32 registered` on stderr. The `version` here is the bundled MCP's, not
 the `1.4.5` image tag you pulled. An older number means you are on a cached
 image; `--pull=missing` in the config is what prevents that.

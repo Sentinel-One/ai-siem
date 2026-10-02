@@ -118,7 +118,7 @@ def _build_count_pq(source: str, principal: str, action: str, count_alias: str) 
     # inspect_source.py).
     safe = source.replace("'", "''")
     return (
-        f"dataSource.name = '{safe}' (tag != 'logVolume' OR !(tag = *))\n"
+        f"dataSource.name = '{safe}' tag != 'logVolume'\n"
         f"| filter {principal} = * AND {action} = *\n"
         f"| group {count_alias} = count() by action_v = {action}, principal_v = {principal}\n"
         "| sort -" + count_alias + "\n"

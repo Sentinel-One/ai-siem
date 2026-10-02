@@ -130,7 +130,7 @@ def probe_dimensions(client: S1Client, source: str,
     # Escape single quotes for the PQ string literal (same pattern as
     # inspect_source.py).
     safe = source.replace("'", "''")
-    BASE = f"dataSource.name = '{safe}' (tag != 'logVolume' OR !(tag = *))"
+    BASE = f"dataSource.name = '{safe}' tag != 'logVolume'"
     probes = {
         "user":  BASE + " | group n=count() by user | sort -n | limit 3",
         "action": BASE + " | group n=count() by action | sort -n | limit 6",
@@ -204,7 +204,7 @@ def build_jobs(source: str, dims: Dict[str, bool]) -> List[Tuple[str, str]]:
     """
     # Escape single quotes for the PQ string literal.
     safe = source.replace("'", "''")
-    BASE = f"dataSource.name = '{safe}' (tag != 'logVolume' OR !(tag = *))"
+    BASE = f"dataSource.name = '{safe}' tag != 'logVolume'"
     jobs: List[Tuple[str, str]] = []
 
     if dims.get("action"):
@@ -398,7 +398,7 @@ def collect_all(client: S1Client, source: str, days: float,
         "window_start": start.isoformat(),
         "window_end": end.isoformat(),
         "base_filter": f"dataSource.name = '{safe}' "
-                       "(tag != 'logVolume' OR !(tag = *))",
+                       "tag != 'logVolume'",
         "dims": dims,
         "strategy": strategy,
         "tenant_24h_row": tenant_row,
@@ -412,7 +412,7 @@ def collect_all(client: S1Client, source: str, days: float,
     # (~5-15s each) fill the third pool slot while the aggregates run,
     # so they're effectively free. Pool cap = MAX_WORKERS per the 3 rps
     # user-token cap.
-    BASE = f"dataSource.name = '{safe}' (tag != 'logVolume' OR !(tag = *))"
+    BASE = f"dataSource.name = '{safe}' tag != 'logVolume'"
     sec_dim = "action" if dims.get("action") else (
         "event.type" if dims.get("event_type") else None)
 

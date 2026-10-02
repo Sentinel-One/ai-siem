@@ -41,15 +41,17 @@
 // scripts/baseline_anomaly.py (3 slices in parallel, under the per-user 3 rps cap). Do not just
 // widen this savelookup in that case.
 //
-// {{NOISE_FILTER}} drops volume-accounting noise on sources that carry it,
-// e.g. "(tag != 'logVolume' OR !(tag = *))" for Google Workspace; leave empty otherwise.
+// tag != 'logVolume' drops SDL ingest-metering rows, which every source carries
+// (receive-time accounting rows under the source's own dataSource.name). It is in the
+// template by default. {{NOISE_FILTER}} is for any OTHER source-specific noise; leave
+// it empty otherwise.
 //
 // DoW note: for day-of-week stratification add  dow = strftime(timestamp, '%a')
 // to BOTH group-by clauses and key the table on (action_v, principal_v, dow).
 // The server-side stddev is then over active days only; for the zero-padded DoW
 // stddev (the most accurate form) run scripts/baseline_anomaly.py --stratify dow.
 
-dataSource.name = '{{SOURCE}}' {{NOISE_FILTER}}
+dataSource.name = '{{SOURCE}}' tag != 'logVolume' {{NOISE_FILTER}}
 | filter {{PRINCIPAL}} = * AND {{ACTION}} = *
 | group day_count = count() by day = timebucket('1d'), action_v = {{ACTION}}, principal_v = {{PRINCIPAL}}
 | let dmin = overall_min(day), dmax = overall_max(day)

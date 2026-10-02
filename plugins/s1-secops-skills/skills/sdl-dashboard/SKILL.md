@@ -20,7 +20,7 @@ description: >
 
 This skill helps you design, author, and deploy Singularity Data Lake (SDL) dashboards, from a single panel to a full multi-tab SOC dashboard. Dashboards live as configuration files in SDL and are authored as JSON (or a relaxed JavaScript-literal superset of it). You deploy them via the `sdl-api` skill's `put_file` method.
 
-> **Sandbox proxy blocked?** If `put_file` or SDL API calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). Use the `sdl_put_file` tool to deploy dashboards and `sdl_get_file` / `sdl_list_files` to inspect what's already deployed.
+> **Sandbox proxy blocked?** If `put_file` or SDL API calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see the s1-secops-mcp README: `s1-secops-mcp/README.md` in the s1-secops-skills repo, `mcp/s1-secops-mcp/README.md` in ai-siem; it is not shipped inside the plugin). Use the `sdl_put_file` tool to deploy dashboards and `sdl_get_file` / `sdl_list_files` to inspect what's already deployed.
 
 ## Before you start: REST cannot SEE most dashboards
 
@@ -253,7 +253,7 @@ Single-tab, multi-tab and the top-level properties. See [`references/panel-types
 
 ## Panel types
 
-Every panel is an object inside `graphs`; the `graphStyle` property picks the panel type. Every panel also needs an explicit `layout` object with `x`, `y`, `w`, `h` (omitting them can hang the renderer).
+Every panel is an object inside `graphs`; the `graphStyle` property picks the panel type. Every panel also needs an explicit `layout` object with `x`, `y`, `w`, `h` (omitting them can hang the renderer). The grid is **60 columns wide**: `w: 60` is full width, `30` half, `20` a third. A layout authored for a 12-column grid renders as a strip in the left fifth of the page. In a `TABBED` document each tab's label key is **`tabName`**, not `name`; a tab with only `name` is refused as "one of the tabs in dashboard has a blank name".
 
 The full per-panel JSON catalog (layout helper, line/area, stacked bar, pie/donut, table, number/gauge, honeycomb, heatmap, distribution, and markdown panels) is in [`references/panel-types.md`](references/panel-types.md), with a one-line-per-panel summary in [`references/panel-type-cheatsheet.md`](references/panel-type-cheatsheet.md).
 

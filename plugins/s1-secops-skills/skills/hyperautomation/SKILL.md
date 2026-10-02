@@ -32,7 +32,7 @@ description: >-
 This skill enables Claude to design and generate valid SentinelOne Hyperautomation workflow
 JSON, explain the logic behind workflows, and optionally submit them to a live console via API.
 
-> **Sandbox proxy blocked?** If import/export API calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). The MCP server exposes `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, and `ha_export_workflow`, all running from your machine against the Hyperautomation API.
+> **Sandbox proxy blocked?** If import/export API calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see the s1-secops-mcp README: `s1-secops-mcp/README.md` in the s1-secops-skills repo, `mcp/s1-secops-mcp/README.md` in ai-siem; it is not shipped inside the plugin). The MCP server exposes `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, and `ha_export_workflow`, all running from your machine against the Hyperautomation API.
 
 ## Minimum viable workflow JSON (smoke test)
 

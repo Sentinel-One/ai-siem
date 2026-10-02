@@ -1179,12 +1179,16 @@ class SDLClient:
         options: Optional[str] = None,
         scope: Any = _UNSET,
     ) -> Optional[Dict[str, Any]]:
-        """Replace the panel layout of ONE tab.
+        """Save panel POSITIONS (layout x/y/w/h) for ONE tab.
+
+        LAYOUT ONLY, matched by array index (live-verified 2026-10-03): titles,
+        markdown and queries in the payload are ignored, a shorter payload changes
+        nothing, and a longer one is refused by the API. So this reads the tab
+        first and raises ValueError on a panel-count mismatch. To change content
+        or add or remove panels, use put_config_file with expected_version.
 
         `graphs` is a JSON string shaped {"graphs": [...]}, INCLUDING the wrapper
-        key, even though the response echoes a bare array. Use create_dashboard
-        for a whole document, or put_config_file with expected_version to rewrite
-        an existing dashboard's full config.
+        key, even though the response echoes a bare array.
         """
         if not dashboard_id and not name:
             raise ValueError("save_dashboard_layout requires either dashboard_id or name")
@@ -1200,6 +1204,21 @@ class SDLClient:
             raise ValueError(
                 f'save_dashboard_layout: graphs is not a valid {{"graphs":[...]}} JSON string ({exc}).'
             ) from exc
+
+        current = self.get_dashboard(dashboard_id=dashboard_id, name=name, scope=scope)
+        tab = next((t for t in ((current or {}).get("tabs") or []) if t.get("tabName") == tab_name), None)
+        if tab is None:
+            raise ValueError(f'save_dashboard_layout: no tab named "{tab_name}" on this dashboard at this scope.')
+        try:
+            existing = json.loads(tab.get("graphs") or "[]")
+        except ValueError:
+            existing = []
+        if len(parsed["graphs"]) != len(existing):
+            raise ValueError(
+                f'save_dashboard_layout: tab "{tab_name}" has {len(existing)} panel(s) and the payload has '
+                f'{len(parsed["graphs"])}. This mutation saves positions only, matched by index; it cannot add '
+                "or remove panels. Use put_config_file to change the set of panels."
+            )
 
         data = self._graphql(
             "SaveDashboardLayout",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Render the "custom rule with MITRE mapping" Hyperautomation watchdog.
+"""Render the "custom detection with MITRE mapping" Hyperautomation watchdog.
 
-Solution for custom rules to carry MITRE mapping. A Custom Detection (STAR) rule
+Solution for custom detections to carry MITRE mapping. A Custom Detection (STAR) rule
 cannot carry MITRE ATT&CK: POST /cloud-detection/rules rejects `mitre` and
 `mitreTechniques` with HTTP 400 "Unknown field", and STAR alerts reach UAM with
 `mitreTactics` / `mitreTechniques` empty. The supported path is to run the same
@@ -105,7 +105,7 @@ def render(spec, prefix, account_id, site_id, hec_url, sdl_integration_id):
     t = t.replace("{{MITRE_ATTACKS_JSON}}", esc_in_json_string(json.dumps(attacks, separators=(",", ":"))))
     for tok, val in {
         "{{RULE_NAME}}": spec["name"], "{{RULE_DESCRIPTION}}": spec["description"],
-        "{{PRODUCT_NAME}}": spec.get("product_name") or f"{prefix} Custom Rule (MITRE)",
+        "{{PRODUCT_NAME}}": spec.get("product_name") or f"{prefix} Custom Detection (MITRE)",
     }.items():
         # These sit both inside the alert JSON string (two escaping levels) and in plain
         # fields such as the workflow name (one level). Rejecting the characters that need

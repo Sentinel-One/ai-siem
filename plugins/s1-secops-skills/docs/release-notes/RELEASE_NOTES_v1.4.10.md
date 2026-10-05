@@ -22,7 +22,7 @@ do not pull `:1.4.0` expecting it.
 
 Everything below was measured on a live S-26.3.4 tenant on 2026-10-05.
 
-- **Custom rules with MITRE mapping** (new sdl-solutions solution). STAR rules cannot carry MITRE
+- **Custom detections with MITRE mapping** (new sdl-solutions solution). STAR rules cannot carry MITRE
   ATT&CK and their alerts reach UAM with none. The solution renders a rule spec into a Hyperautomation
   watchdog that posts the alert with `attacks[]` on `finding_info.related_events[]`, so
   `mitreTactics` / `mitreTechniques` are populated. Tested end to end.

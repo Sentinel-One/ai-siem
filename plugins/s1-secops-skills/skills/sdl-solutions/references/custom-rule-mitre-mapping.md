@@ -1,10 +1,10 @@
-# Playbook: Custom Rules with MITRE Mapping
+# Playbook: Custom Detections with MITRE Mapping
 
-Solution for custom rules to carry MITRE mapping. Give a custom detection a MITRE ATT&CK tactic and
+Solution for custom detections to carry MITRE mapping. Give a custom detection a MITRE ATT&CK tactic and
 technique that shows up on the alert in Unified Alert Management (UAM), in `| datasource alerts`
 (`mitreTactics`, `mitreTechniques`) and in every downstream consumer that reads them (dashboards,
-RBA multi-tactic scoring, reports). Triggers: "map my custom rule to MITRE", "custom detection
-MITRE tactic", "STAR rule MITRE", "my custom alerts have no MITRE", "add ATT&CK to a custom rule".
+RBA multi-tactic scoring, reports). Triggers: "map my custom detection to MITRE", "custom detection
+MITRE tactic", "STAR rule MITRE", "my custom alerts have no MITRE", "add ATT&CK to a custom detection".
 Orchestration only; drives powerquery, hyperautomation, mgmt-console-api and sdl-api.
 
 ## Why this is needed (measured, S-26.3.4)
@@ -141,7 +141,7 @@ MITRE list in place.
 2. Confirm the alert carries the mapping:
 
    ```text
-   | datasource alerts | filter detectionProduct = '<PREFIX> Custom Rule (MITRE)' | columns externalId, mitreTactics, mitreTechniques
+   | datasource alerts | filter detectionProduct = '<PREFIX> Custom Detection (MITRE)' | columns externalId, mitreTactics, mitreTechniques
    ```
 
    or, per alert, UAM GraphQL `alert(id){ indicators { attacks { tactic { uid name } technique { uid name } } } }`.

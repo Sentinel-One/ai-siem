@@ -64,7 +64,7 @@ New snapshot fields for trend panels (S-26.3.4): `analystVerdict`, `mitigationRe
 `mitreTactics` / `mitreTechniques` on `alerts` are populated for library-rule alerts and for
 ingested alerts that carry `attacks[]` on their indicators, and are empty for every Custom
 Detection (STAR) alert. A MITRE panel undercounts custom detections unless they are deployed with
-the sdl-solutions "Custom rules with MITRE mapping" solution.
+the sdl-solutions "Custom detections with MITRE mapping" solution.
 
 ## Pushdown, the documented floor
 

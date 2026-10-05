@@ -196,7 +196,7 @@ Eight Claude skills for SentinelOne SecOps, bundled in `plugins/s1-secops-skills
   - [Risk-Based Alerting](plugins/s1-secops-skills/docs/solutions/risk-based-alerting.md): accumulate risk per user or host and alert on thresholds.
   - [Detection as Code](plugins/s1-secops-skills/docs/solutions/detection-as-code.md): rules as TOML in Git, synced to the Custom Detection API by CI.
   - [Alert noise reduction](plugins/s1-secops-skills/docs/solutions/alert-noise-reduction.md): find noisy sources, filter ingestion, auto-resolve actioned noise.
-  - [Custom rules with MITRE mapping](plugins/s1-secops-skills/docs/solutions/custom-rule-mitre-mapping.md): STAR rules cannot carry ATT&CK, so an HA watchdog raises the alert with tactics and techniques attached.
+  - [Custom detections with MITRE mapping](plugins/s1-secops-skills/docs/solutions/custom-rule-mitre-mapping.md): STAR rules cannot carry ATT&CK, so an HA watchdog raises the alert with tactics and techniques attached.
   - [Query slicing](plugins/s1-secops-skills/docs/solutions/query-slicing.md): run a long-window PowerQuery as parallel time slices (a 30-day aggregate in about 5 s instead of 21 to 40 s).
 - **hyperautomation**: build and export Hyperautomation (SOAR) workflow JSON.
 - **soc-investigator**: autonomous DFIR investigation over S1 alerts and third-party sources.

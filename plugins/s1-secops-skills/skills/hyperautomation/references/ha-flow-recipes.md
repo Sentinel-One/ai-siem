@@ -127,7 +127,7 @@ populated from `finding_info.related_events[]` with nothing sent to `/v1/indicat
 UAM then shows `mitreTactics ["Execution"]` and `mitreTechniques ["T1059.001 PowerShell"]`. The
 same array on `finding_info.attacks` is ignored (tested side by side, 2026-10-05, S-26.3.4). This is
 the only way a custom detection's alert carries MITRE, because STAR rules have no MITRE field. The
-packaged version, with a renderer and example specs, is the sdl-solutions "Custom rules with MITRE
+packaged version, with a renderer and example specs, is the sdl-solutions "Custom detections with MITRE
 mapping" solution. UAM renders TA0005 as "Stealth" (ATT&CK v18); match on tactic ids.
 
 **`confidence_id` on the alert envelope** sets UAM `confidenceLevel`: 1 SUSPICIOUS, 3 MALICIOUS,

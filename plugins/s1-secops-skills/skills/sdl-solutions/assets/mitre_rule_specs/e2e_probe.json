@@ -1,6 +1,6 @@
 {
   "name": "MITRE watchdog E2E probe",
-  "description": "End-to-end test of the custom-rule MITRE solution. Matches only the synthetic ZZ_MITRE_PROBE source.",
+  "description": "End-to-end test of the custom-detection MITRE solution. Matches only the synthetic ZZ_MITRE_PROBE source.",
   "severity": "Low",
   "lookback_minutes": 60,
   "interval_minutes": 60,

@@ -1,6 +1,6 @@
-# Solution: Custom Rules with MITRE Mapping
+# Solution: Custom Detections with MITRE Mapping
 
-Solution for custom rules to carry MITRE mapping. SentinelOne library (platform) rules arrive in
+Solution for custom detections to carry MITRE mapping. SentinelOne library (platform) rules arrive in
 Unified Alert Management with MITRE ATT&CK tactics and techniques. Custom Detection (STAR) rules do
 not: the rule API has no MITRE field, so every custom alert shows an empty MITRE column, MITRE
 dashboards undercount, and multi-tactic risk scoring ignores your own detections.
@@ -19,8 +19,8 @@ Tested on a live tenant on platform version S-26.3.4:
 
 | Check | Result |
 |---|---|
-| Create a custom rule with a `mitre` field | HTTP 400 `Unknown field` |
-| Create a custom rule with a `mitreTechniques` field | HTTP 400 `Unknown field` |
+| Create a custom detection rule with a `mitre` field | HTTP 400 `Unknown field` |
+| Create a custom detection rule with a `mitreTechniques` field | HTTP 400 `Unknown field` |
 | MITRE on existing STAR alerts | empty on all 3,602 |
 | MITRE on library rules | present (`mitre[]` with tactic, technique, sub-technique) |
 | Ingested alert with `finding_info.attacks` | no MITRE in UAM |
@@ -50,7 +50,7 @@ evaluator's limits: `datasource`, `savelookup`, joins and large intermediate res
 
 Ask the skill, for example:
 
-- "Map my encoded PowerShell custom rule to T1059.001 and T1027"
+- "Map my encoded PowerShell custom detection to T1059.001 and T1027"
 - "Convert the scheduled rule 'Windows logon brute force' into a MITRE-mapped watchdog, T1110"
 - "Our custom alerts have no MITRE, fix that for these three rules"
 
@@ -94,5 +94,5 @@ Put the entity (host or user) in the first column: it names the alert's resource
 ## Verify
 
 ```text
-| datasource alerts | filter detectionProduct = '<PREFIX> Custom Rule (MITRE)' | columns externalId, mitreTactics, mitreTechniques
+| datasource alerts | filter detectionProduct = '<PREFIX> Custom Detection (MITRE)' | columns externalId, mitreTactics, mitreTechniques
 ```

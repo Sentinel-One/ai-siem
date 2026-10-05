@@ -1,4 +1,4 @@
-"""Tests for the custom-rule MITRE solution (render_mitre_watchdog.py + template).
+"""Tests for the custom-detection MITRE solution (render_mitre_watchdog.py + template).
 
 Zero dependencies: run with `python3 -m unittest discover -s tests`.
 """

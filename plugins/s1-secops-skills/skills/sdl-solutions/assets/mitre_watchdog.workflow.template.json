@@ -1,6 +1,6 @@
 {
   "name": "{{PREFIX}} - {{RULE_NAME}}",
-  "description": "Solution for custom rules to carry MITRE mapping. Runs the custom detection PowerQuery on a schedule through the LRQ API and, when it returns rows, raises a UAM alert whose indicator carries the MITRE ATT&CK tactics and techniques in finding_info.related_events[].attacks[], so the alert shows mitreTactics and mitreTechniques. Custom STAR rules cannot carry MITRE (the rule API rejects a mitre field). Rendered by sdl-solutions/scripts/render_mitre_watchdog.py.",
+  "description": "Solution for custom detections to carry MITRE mapping. Runs the custom detection PowerQuery on a schedule through the LRQ API and, when it returns rows, raises a UAM alert whose indicator carries the MITRE ATT&CK tactics and techniques in finding_info.related_events[].attacks[], so the alert shows mitreTactics and mitreTechniques. Custom STAR rules cannot carry MITRE (the rule API rejects a mitre field). Rendered by sdl-solutions/scripts/render_mitre_watchdog.py.",
   "actions": [
     {
       "action": {

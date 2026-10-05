@@ -389,7 +389,7 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 - *"Scaffold a DaC repo with GitHub Actions and sync the example rules"*
 - *"Automate our detections as code: author in TOML, validate on PR, deploy on merge"*
 
-**Custom rules with MITRE mapping** (solution for custom rules to carry MITRE mapping: STAR rules have no MITRE field, so the detection runs as a scheduled Hyperautomation watchdog that posts the UAM alert with ATT&CK tactics and techniques attached; render from a small JSON rule spec or convert an existing scheduled rule). Full guide: [docs/solutions/custom-rule-mitre-mapping.md](./docs/solutions/custom-rule-mitre-mapping.md).
+**Custom detections with MITRE mapping** (solution for custom detections to carry MITRE mapping: STAR rules have no MITRE field, so the detection runs as a scheduled Hyperautomation watchdog that posts the UAM alert with ATT&CK tactics and techniques attached; render from a small JSON rule spec or convert an existing scheduled rule). Full guide: [docs/solutions/custom-rule-mitre-mapping.md](./docs/solutions/custom-rule-mitre-mapping.md).
 
 **Query slicing** (run a long-window PowerQuery as parallel time slices through the LRQ API and merge the results: a 30-day aggregate in about 5 s instead of 21 to 40 s; zero-dependency runner). Full guide: [docs/solutions/query-slicing.md](./docs/solutions/query-slicing.md).
 

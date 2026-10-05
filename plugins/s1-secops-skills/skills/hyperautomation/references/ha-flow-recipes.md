@@ -120,6 +120,20 @@ populated from `finding_info.related_events[]` with nothing sent to `/v1/indicat
 | `message` | `Indicator.message` |
 | `severity_id` | `Indicator.severity`, resolved PER INDICATOR, independent of the alert envelope |
 | `observables[]` | `Indicator.observables`, `type_id` mapped to the UI enum (1 HOSTNAME, 2 IP, 4 USER_NAME, 5 EMAIL, 9 PROCESS_NAME, 10 RESOURCE_UID) |
+| `attacks[]` | `Indicator.attacks` (`tactic {uid name}`, `technique {uid name}`, `version`), and the alert's `mitreTactics` / `mitreTechniques` in `\| datasource alerts` |
+
+**MITRE ATT&CK on an HA alert.** Put the mapping on each related_events entry:
+`"attacks":[{"tactic":{"uid":"TA0002","name":"Execution"},"technique":{"uid":"T1059.001","name":"PowerShell"},"version":"18"}]`.
+UAM then shows `mitreTactics ["Execution"]` and `mitreTechniques ["T1059.001 PowerShell"]`. The
+same array on `finding_info.attacks` is ignored (tested side by side, 2026-10-05, S-26.3.4). This is
+the only way a custom detection's alert carries MITRE, because STAR rules have no MITRE field. The
+packaged version, with a renderer and example specs, is the sdl-solutions "Custom detections with MITRE
+mapping" solution. UAM renders TA0005 as "Stealth" (ATT&CK v18); match on tactic ids.
+
+**`confidence_id` on the alert envelope** sets UAM `confidenceLevel`: 1 SUSPICIOUS, 3 MALICIOUS,
+99 INFORMATIONAL, 0 or absent none. 2 and 4 were silently dropped (202, no alert). INFORMATIONAL
+alerts are hidden from unfiltered `alerts` queries and `| datasource alerts`; they appear only when
+you filter on `confidenceLevel` explicitly.
 
 Add `title` and `desc`: without them the indicator renders with a null title and description.
 Multiple entries give multiple indicators on one alert. Inline `device` / `actor.user` /

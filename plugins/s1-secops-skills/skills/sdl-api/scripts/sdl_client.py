@@ -620,14 +620,23 @@ class SDLClient:
         priority: Optional[str] = None,
         team_emails: Optional[List[str]] = None,
         scope: Any = _UNSET,
+        recurring: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """POST /api/powerQuery: full pipeline query language.
 
         `query` is limited to 10,000 chars; escape " in strings. Omit
         times for default 24h. Response has matchingEvents, omittedEvents,
         columns, values (array of rows).
+
+        `recurring=True` (platform S-26.2.6) enables precomputation and
+        continuous updates of the query summary, so later calls with the same
+        query run faster and cheaper even when startTime / endTime differ.
+        Use it for queries you run repeatedly (dashboard panels, scheduled
+        checks, polling loops). Omitted by default (server default false).
         """
         body: Dict[str, Any] = {"query": query}
+        if recurring is not None:
+            body["recurring"] = bool(recurring)
         if start_time is not None:
             body["startTime"] = start_time
         if end_time is not None:

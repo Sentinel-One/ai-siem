@@ -24,7 +24,7 @@ The JWT is the **same** console service-user token used by the Mgmt API; only th
 "Header must start with Bearer, but actually starts with \"ApiTok\""
 ```
 
-Service user tokens are preferred over personal user tokens because the per-user rate cap of 3 rps applies to the user identity embedded in the JWT. See "Rate limits" below.
+Service user tokens are preferred over personal user tokens: they do not expire with an SSO session and they are not shared with a person's interactive use of the console. See "Rate limits" below for what one token can do.
 
 ## Required body fields for a PQ
 
@@ -53,6 +53,7 @@ Service user tokens are preferred over personal user tokens because the per-user
 | `queryPriority` | no | `"LOW"` / `"HIGH"`. Use `HIGH` for interactive work. |
 | `pq.query` | yes (for PQ) | The PowerQuery string. |
 | `pq.resultType` | yes (for PQ) | `"TABLE"` for tabular output. |
+| `scheme` | no | Top level, `"edr"`. Validates field names against the EDR schema: a wrongly cased or unknown field returns HTTP 400 `Unknown EDR field: 'Endpoint.name'. Check the spelling and casing. Field names are case-sensitive.` instead of a silent `matchCount=0`. Correct casing returns the same rows as without it. Must be top level: inside `pq` it is HTTP 400 `Invalid JSON`. Platform S-26.2.6; measured 2026-10-05. |
 
 ### Response to POST
 
@@ -77,7 +78,7 @@ Headers:
   X-Dataset-Query-Forward-Tag: <from POST response>
 ```
 
-Done when `stepsCompleted >= stepsTotal` and `stepsTotal > 0`. `data.values` is a 2D array `[[row1col1, row1col2, ...], [row2col1, ...], ...]` whose columns are listed in `data.columns[]`.
+Done when `stepsCompleted >= stepsTotal` and `stepsTotal > 0`. **Check the POST response first:** most small queries come back already complete from the launch (measured 2026-10-05: of 348 one-day slices launched at 40 calls/s, only 9 needed a GET), so a runner that always sleeps before its first poll wastes a second per slice. `data.values` is a 2D array `[[row1col1, row1col2, ...], [row2col1, ...], ...]` whose columns are listed in `data.columns[]`.
 
 **Poll every 1-2 seconds.** The query **expires 30 seconds after launch or 30 seconds after the last poll.** If you poll slower than that, you get a dead query and have to relaunch.
 
@@ -94,12 +95,30 @@ Always cancel when you're done, even after a successful completion. It releases 
 
 ## Rate limits
 
-- **100 req/sec per account** (loose)
-- **3 req/sec per user identity** (tight - this is what you'll hit first)
+Measured 2026-10-05 on S-26.3.4 with **one service-user token from one egress IP**, pacing every
+call (launch, poll and cancel) through a token bucket and keeping 1.5x the rate in slices in flight:
 
-Each API call (POST, GET, DELETE) counts as one request. A single slice with 5s server runtime and 1-second polling costs roughly 1 POST + 5 GET + 1 DELETE = 7 calls. Staying under 3 rps per user means a token-bucket limiter at ~2.5 rps with 3 slices in flight is the steady-state sweet spot. Exceed it and you get HTTP 429; exponential backoff recovers but steals your wall-clock budget.
+| Target rate | Achieved | 429s | Which calls |
+|---|---|---|---|
+| 2.5 to 20 calls/s | up to 8.6 calls/s (latency-bound) | 0 | none |
+| 40 calls/s | 29.4 calls/s | 0 of 705 | none |
+| 60 calls/s | 35.3 calls/s | 1 of 1,080 | launch (POST) |
+| 100 calls/s | 48.7 calls/s | 17 of 1,991 | launch (POST) |
+| 150 calls/s | 51.9 calls/s | 107 of 3,626 | launch (POST) |
+| 120 launches at once, unthrottled | n/a | 7 of 127 launches | launch (POST) |
 
-**Trick to double the budget:** create two service users with different identities (different `sub` claims in their JWTs). Each user has its own 3 rps cap. Instantiate two clients, bind each slice to one client for its full launch-poll-cancel lifecycle (the `X-Dataset-Query-Forward-Tag` is session-scoped), and round-robin slices across them. Combined budget = ~5-6 rps.
+What that means:
+
+- **The old "3 requests/s per user" cap is not what you hit.** One token sustained about 30 calls/s
+  with zero 429s. The two-token round-robin trick is no longer needed for speed.
+- **Only launches are throttled.** GET (poll) and DELETE (cancel) never returned 429. The throttle
+  behaves like a cap on new or concurrent queries, not a request-rate cap.
+- **Safe defaults:** a token bucket at about 25 calls/s, 15 to 20 slices in flight, retry a 429 on
+  launch with exponential backoff plus jitter (0.5 s doubling, 8 tries). Do not retry a 400.
+- The SDL per-IP limit published for 2026-09-10 (60 burst / 30 req/s) also covers this host; it was
+  not enforced at measurement time, which is one more reason to stay at or below 30 calls/s per IP.
+- Each API call (POST, GET, DELETE) counts. A slice that completes on launch costs 2 calls (POST,
+  DELETE); one that runs for a few seconds adds one GET per poll.
 
 ## EDR filter - make sure you actually query EDR data
 
@@ -132,7 +151,9 @@ LRQ returning `matchCount=0` with HTTP 200 is the most common silent-failure mod
 
 4. **For SentinelOne EDR data, confirm the EDR prefix.** `dataSource.name='SentinelOne' dataSource.category='security'` (or `i.scheme="edr"`) is required to surface EDR telemetry. Without it the query may match only Scalyr/infra logs.
 
-5. **Only after the above** widen the time range. A correct query running against an empty data source still returns zero, no matter how long the window.
+5. **For EDR queries, relaunch with top-level `"scheme": "edr"`.** A field-name typo or wrong casing (`Endpoint.name` for `endpoint.name`) is otherwise indistinguishable from "no data": both return `matchCount=0` with HTTP 200, including when the query itself contains `i.scheme="edr"`. With the body flag the typo returns HTTP 400 `Unknown EDR field: ...` and names the field.
+
+6. **Only after the above** widen the time range. A correct query running against an empty data source still returns zero, no matter how long the window.
 
 ## PQ functions that fail on the LRQ engine
 
@@ -143,53 +164,42 @@ LRQ returning `matchCount=0` with HTTP 200 is the most common silent-failure mod
 
 ## Slicing & parallelism
 
-For long windows, split the time range into slices and run them in parallel, then merge client-side.
+For long windows, split the time range into slices, run them in parallel, then merge client-side.
+On a 30-day window this is the single biggest speed-up available.
 
-**Two bottlenecks, in order.** At small parallelism the per-user 3 rps rate cap is the ceiling. Once you beat that (two tokens, lower rps-per-token), the new ceiling becomes the slowest slice's **server-side runtime** (each slice still takes 6 to 17 seconds on the backend depending on slice size). Adding pool width past that point doesn't help.
+### Measured on S-26.3.4 (2026-10-05)
 
-**Slice sizing.** Each slice costs launch + N polls + cancel against your rate budget. Fewer, larger slices beats many small ones when you are rate-capped. Once you are runtime-capped, medium slices (2-3 days) win because they parallelize cleanly without each one becoming a long tail.
+Query: `| group n=count() by dataSource.name` (and `by dataSource.vendor` for the cache-free
+re-run), 30-day window, about 14.1 million events, one token, paced at 25 calls/s:
 
-### Measured on `your-tenant`
+| Shape | In flight | Wall clock | Merged total vs single query |
+|---|---|---|---|
+| 1 x 30d | 1 | 20.9 s to 40.0 s | baseline |
+| 7 x ~4.3d | 7 | 4.7 s to 5.0 s | matches (within 0.01%) |
+| 15 x 2d | 15 | 4.9 s to 5.2 s | matches |
+| 30 x 1d | 30 | 10.2 s | matches |
 
-Query: `dataSource.name='SentinelOne' dataSource.category='security' event.type=* | group ct=count(), first_seen=min(timestamp), last_seen=max(timestamp) by event.type | sort -ct | limit 50`. 30-day window, 574M events aggregated.
+The cache-free re-run launched the 15 slices first and the single query last, so the slice timings
+are not riding on cached results. Small differences in the merged totals are the window moving
+while the runs execute.
 
-**Single user token, 2.5 rps:**
-
-| Shape               | Pool | Wall clock | vs serial |
-|---------------------|------|------------|-----------|
-| 30d serial          | 1    | 166.35s    | 1.00x     |
-| 30 x 1d             | 3    | 86.96s     | 1.91x     |
-| 6 x 5d              | 3    | 66.25s     | 2.51x (best 1-token) |
-
-**Two distinct service-user JWTs, 2.5 rps each (~5 rps combined), round-robin across clients:**
-
-| Shape               | Pool | Wall clock | vs 1-tok best | vs serial |
-|---------------------|------|------------|---------------|-----------|
-| 30 x 1d             | 6    | 34.77s     | 1.91x         | 4.78x     |
-| 15 x 2d             | 6    | 28.56s     | 2.32x         | 5.83x (best 2-token) |
-| 10 x 3d             | 6    | 28.52s     | 2.32x         | 5.83x     |
-
-Per-slice latencies in the 2-token runs: p50 = 6-14s, p95 = 9-17s, max = 10-17s. The wall-clock floor around 28.5s is the tail of the slowest slice plus merge, not a rate-limit artefact.
-
-### Pushing below 20s
-
-The rate budget is no longer the bottleneck at 2 tokens. To go faster:
-
-1. **Add a third service-user JWT** and bump pool to 9. Combined budget ~7.5 rps, backend parallelism lets 9 slices overlap. Expected wall clock: 18-22s for this workload.
-2. **Use `| top K`** instead of `| group` for long-range aggregates. It is probabilistic (counts are marked estimated) but runs orders of magnitude faster on huge ranges because it doesn't keep the full per-key state.
-3. **Narrow the initial filter.** `event.type in ('Process Creation','File Creation','Module Load')` instead of `event.type=*` cuts scanned volume roughly in half on this tenant and drops each slice's backend runtime proportionally.
-4. **Go smaller slices, higher pool.** 30 x 1d at pool=9 with 3 tokens would likely land around the same 20s as 15 x 2d at pool=6 with 3 tokens, because the long tail dominates.
+- **15 x 2d with 15 in flight is the sweet spot:** 4x to 8x faster than one query.
+- **Past about 15 to 20 in flight it gets slower again.** 30 slices took twice as long as 15: more
+  launches hit the launch throttle and each slice still pays its fixed backend cost.
+- One 1-day query over the same data typically completes in the launch call itself, so for 24 hours
+  or less a single query is already fast.
 
 ### Recommended defaults
 
-| Window    | Shape             | Clients | Pool | Expected wall |
-|-----------|-------------------|---------|------|---------------|
-| 24h       | 1 slice           | 1       | 1    | <10s          |
-| 7d        | 1 slice or 7x1d   | 1       | 3    | 10-20s        |
-| 30d       | 15x2d or 10x3d    | 2       | 6    | 28-35s        |
-| 30d fast  | 15x2d             | 3       | 9    | 18-22s        |
+| Window | Shape | In flight | Expected wall |
+|---|---|---|---|
+| 24h | 1 slice | 1 | under 5 s |
+| 7d | 7 x 1d | 7 | about 5 s |
+| 30d | 15 x 2d | 15 | about 5 s |
+| 90d | 30 x 3d, two waves of 15 | 15 | about 10 to 15 s |
 
-For anything longer than 30 days, or workloads that need aggregate accuracy across hundreds of millions of events, expect to lean on `| top K` or a narrower filter rather than raw parallelism.
+Prefer `| top K` or a narrower initial filter over more slices once a single slice's own runtime
+dominates.
 
 ## Merging aggregate results across slices
 
@@ -206,10 +216,10 @@ The reference implementation (`merge_aggregate` in the runner) handles sum/min/m
 
 The implementation is built from these key pieces, in order of importance:
 
-1. **RateLimiter** - token bucket with `rps` and `burst`, acquire before every API call. One per client.
+1. **RateLimiter** - token bucket with `rps` and `burst` (about 25 rps per token), acquire before every API call. One per client.
 2. **LRQClient** - wraps one `requests.Session()` with `HTTPAdapter(pool_maxsize=N)` and `Authorization: Bearer <jwt>`. Exposes `launch(body)`, `poll(qid, forward_tag, last_seen)`, `cancel(qid, forward_tag)`. Auto-retries 429 with exponential backoff.
 3. **run_lrq_pq(client, query, start_iso, end_iso)** - launches, captures `forward_tag` from response headers, polls every 1s, cancels on finish or failure, returns `{elapsed_s, columns, values, row_count, matchCount, ...}`.
-4. **parallel_run_roundrobin(clients, query, spans, max_workers)** - binds each span to `clients[i % len(clients)]` and runs each slice's full lifecycle on its bound client.
+4. **parallel_run_roundrobin(clients, query, spans, max_workers)** - binds each span to `clients[i % len(clients)]` and runs each slice's full lifecycle on its bound client. One client is enough at about 15 in flight; extra tokens only help past the launch throttle.
 5. **merge_aggregate(results, key_cols, sum_cols, min_cols, max_cols)** - client-side post-aggregation.
 
 ## LOG queries are a separate primitive
@@ -304,7 +314,7 @@ audit   = [r for r in matches if not r.get("dataSource.name")]
 - [ ] Query / filter starts with the EDR filter (for SentinelOne EDR data)
 - [ ] Grab `X-Dataset-Query-Forward-Tag` from POST response, echo on every GET and DELETE
 - [ ] Poll every 1-2s (query expires 30s after last poll)
-- [ ] Token-bucket at ~2.5 rps per user (under the 3 rps cap)
+- [ ] Token-bucket at about 25 calls/s per token, 15 to 20 slices in flight; retry launch 429s with backoff
 - [ ] Cancel on success and on every error path
 - [ ] PQ: merge slice results client-side (sum counts, min-of-mins, max-of-maxes)
 - [ ] LOG: detect cap-hit (`len(matches) == log.limit`) and subdivide; checkpoint per slice for long runs

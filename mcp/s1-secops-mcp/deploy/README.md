@@ -16,7 +16,7 @@ Three supported topologies, in order of complexity.
 Download the installer, review it, then run it (avoid piping a remote script straight into a shell). For production, pin the URL to a tagged release commit instead of `main`:
 
 ```bash
-curl -fsSL -o /tmp/s1-mcp-install.sh https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/install.sh
+curl -fsSL -o /tmp/s1-mcp-install.sh https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/install.sh
 # review /tmp/s1-mcp-install.sh, then:
 bash /tmp/s1-mcp-install.sh --user
 ```
@@ -24,7 +24,7 @@ bash /tmp/s1-mcp-install.sh --user
 That runs `install.sh --user`, which:
 
 1. Confirms Docker is installed and the daemon is reachable (errors out with install hints if not).
-2. Pulls `sentinelone/secops-mcps:1.4.9`.
+2. Pulls `sentinelone/secops-mcps:1.4.10`.
 3. Writes a credentials skeleton to `~/.config/sentinelone/credentials.json` (mode 0600).
 4. Prints the next steps.
 
@@ -49,7 +49,7 @@ Add the server to Claude Desktop (`~/Library/Application Support/Claude/claude_d
       "args": ["run", "-i", "--rm",
                "-v", "/Users/<you>/.config/sentinelone:/etc/s1-secops-mcp:ro",
                "-e", "S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json",
-               "sentinelone/secops-mcps:1.4.9", "s1-secops-mcp"]
+               "sentinelone/secops-mcps:1.4.10", "s1-secops-mcp"]
     }
   }
 }
@@ -57,7 +57,7 @@ Add the server to Claude Desktop (`~/Library/Application Support/Claude/claude_d
 
 The path must be absolute; `~` does not expand inside the `-v` argument. `whoami` prints the value for `<you>`.
 
-To pass credentials as environment variables instead of mounting a file, use the `-e` form documented in [docs/docker.md](../../docs/docker.md), which also covers the `purple-mcp` and `virustotal` entries from the same image.
+To pass credentials as environment variables instead of mounting a file, use the `-e` form documented in [docs/docker.md](../../../plugins/s1-secops-skills/docs/docker.md), which also covers the `purple-mcp` and `virustotal` entries from the same image.
 
 Restart Claude Desktop.
 
@@ -70,7 +70,7 @@ docker run --rm --name s1-secops-mcp \
   -v ~/.config/sentinelone:/etc/s1-secops-mcp:ro \
   -e S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json \
   -p 127.0.0.1:8765:8765 \
-  sentinelone/secops-mcps:1.4.9 \
+  sentinelone/secops-mcps:1.4.10 \
   s1-secops-mcp --transport http --host 0.0.0.0 --port 8765
 ```
 
@@ -129,10 +129,10 @@ Team members connect from their Claude clients with their own bearer token. Audi
 3. **Run the installer in server mode:**
 
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/install.sh | sudo bash -s -- --server
+   curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/install.sh | sudo bash -s -- --server
    ```
 
-   It pulls `sentinelone/secops-mcps:1.4.9`, creates the `mcp` user, drops `/etc/s1-secops-mcp/credentials.json` (placeholder) and `/etc/s1-secops-mcp/bearer-tokens.json` (one freshly-generated admin token, printed once to stdout), installs the systemd unit, and starts the service.
+   It pulls `sentinelone/secops-mcps:1.4.10`, creates the `mcp` user, drops `/etc/s1-secops-mcp/credentials.json` (placeholder) and `/etc/s1-secops-mcp/bearer-tokens.json` (one freshly-generated admin token, printed once to stdout), installs the systemd unit, and starts the service.
 
 4. **Fill in real SentinelOne credentials:**
 
@@ -147,7 +147,7 @@ Team members connect from their Claude clients with their own bearer token. Audi
    ```bash
    sudo apt install -y caddy
    sudo curl -fsSL -o /etc/caddy/Caddyfile \
-     https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/caddy/Caddyfile.example
+     https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/caddy/Caddyfile.example
    sudo vim /etc/caddy/Caddyfile   # change mcp.s1.internal to your DNS name
    sudo systemctl reload caddy
    ```

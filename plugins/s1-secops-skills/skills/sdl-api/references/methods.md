@@ -67,6 +67,11 @@ Full pipeline query language (S1QL-style). `query` is limited to 10K chars; esca
 
 Times default to past 24h if both omitted.
 
+`recurring` (optional, default `false`, platform S-26.2.6): set `True` (`--recurring` on the CLI) to
+enable precomputation and continuous updates of the query summary. Later calls with the same query
+then run faster and cheaper, even when `startTime` / `endTime` differ between calls. Use it for
+queries you run repeatedly: dashboard panels, scheduled checks, polling loops.
+
 Response:
 
 ```json

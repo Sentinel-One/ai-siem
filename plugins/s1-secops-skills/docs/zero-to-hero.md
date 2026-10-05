@@ -113,7 +113,7 @@ The install is a Docker quick start: one image bundles all three MCPs, so the on
 2. **Configure credentials** in `claude_desktop_config.json`. The README has the copy-paste config block and a table of where to get each token/key; the full key reference is [`docs/credentials.md`](./credentials.md).
 3. **Install the plugin** (the latest `s1-secops-skills-v*.plugin` in the `dist/` folder) via Cowork → Customize → Browse plugins.
 
-Then create a Cowork project named `PrincipalSOCAnalyst`, select a folder for it, and (optionally) drop your own [`CLAUDE.md`](https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/CLAUDE.md) into the folder to customise the persona; the Docker image ships a default, so this is optional (to override it, mount the folder read-only and set `S1_CLAUDE_MD_PATH`, see [`docs/docker.md`](./docker.md#claudemd-customization)).
+Then create a Cowork project named `PrincipalSOCAnalyst`, select a folder for it, and (optionally) drop your own [`CLAUDE.md`](https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/plugins/s1-secops-skills/CLAUDE.md) into the folder to customise the persona; the Docker image ships a default, so this is optional (to override it, mount the folder read-only and set `S1_CLAUDE_MD_PATH`, see [`docs/docker.md`](./docker.md#claudemd-customization)).
 
 For the same three steps at full length, with project creation and the upgrade path, see [`docs/installation.md`](./installation.md). Every credential key is documented in [`docs/credentials.md`](./credentials.md).
 
@@ -230,7 +230,7 @@ Build a 30-day behavioural baseline for Okta and show me anomalies for today.
 Use day-of-week stratification.
 ```
 
-What you'll get: schema auto-discovery to pick the right `principal_field` (e.g. `actor.user.email_addr` for Okta) and `action_field`, 30 daily slices run in parallel under the per-user 3 rps cap, a 24-hour live slice, and three anomaly classes returned: matched z-score deviations (spike or drop), silent pairs (active in baseline, zero today), and new-behaviour pairs (active today, no baseline at all).
+What you'll get: schema auto-discovery to pick the right `principal_field` (e.g. `actor.user.email_addr` for Okta) and `action_field`, 30 daily slices run in parallel, a 24-hour live slice, and three anomaly classes returned: matched z-score deviations (spike or drop), silent pairs (active in baseline, zero today), and new-behaviour pairs (active today, no baseline at all).
 
 For a recurring detection, ask Claude to productionise it as a PowerQuery Alert rule with a `| savelookup` baseline and `| lookup` join.
 

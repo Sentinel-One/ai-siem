@@ -151,8 +151,8 @@ ARG VCS_REF
 # image label itself with the MCP's number instead of its own.
 LABEL org.opencontainers.image.title="SentinelOne Claude Skills MCP Stack" \
       org.opencontainers.image.description="s1-secops-mcp + purple-mcp + virustotal MCP, single image, no npm" \
-      org.opencontainers.image.source="https://github.com/pmoses-s1/s1-secops-skills" \
-      org.opencontainers.image.documentation="https://github.com/pmoses-s1/s1-secops-skills/blob/main/docs/docker.md" \
+      org.opencontainers.image.source="https://github.com/Sentinel-One/ai-siem" \
+      org.opencontainers.image.documentation="https://github.com/Sentinel-One/ai-siem/blob/main/plugins/s1-secops-skills/docs/docker.md" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.revision="${VCS_REF}" \
@@ -163,7 +163,12 @@ LABEL org.opencontainers.image.title="SentinelOne Claude Skills MCP Stack" \
 #   tini            : forwards SIGTERM cleanly to the MCP child process
 #   ca-certificates : TLS for outbound calls to *.sentinelone.net etc.
 # Deliberately absent: git (fetch-stage only), python3-pip, python3-venv.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# `apt-get upgrade` applies Debian security fixes published after the base image
+# was built. The base tag lags: on 2026-10-05 node:24-trixie-slim still carried
+# libpcre2-8-0 10.46-1~deb13u2 (CVE-2026-103111, HIGH) when u3 was available,
+# which fails the Trivy fixable-HIGH gate on an otherwise clean build.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
       python3 ca-certificates tini \
     && rm -rf /var/lib/apt/lists/*
 
@@ -234,7 +239,7 @@ RUN test -n "${IMAGE_VERSION}" || (echo "ERROR: IMAGE_VERSION build-arg is requi
   '  "build_date": "'"${BUILD_DATE}"'",' \
   '  "vcs_ref": "'"${VCS_REF}"'",' \
   '  "servers": {' \
-  '    "s1-secops-mcp": { "source": "git", "repo": "https://github.com/pmoses-s1/s1-secops-skills", "ref": "'"${VCS_REF}"'", "path": "s1-secops-mcp", "version": "'"${S1_MCP_VERSION}"'" },' \
+  '    "s1-secops-mcp": { "source": "git", "repo": "https://github.com/Sentinel-One/ai-siem", "ref": "'"${VCS_REF}"'", "path": "mcp/s1-secops-mcp", "version": "'"${S1_MCP_VERSION}"'" },' \
   '    "virustotal-mcp": { "source": "git", "repo": "'"${VT_MCP_REPO}"'", "ref": "'"${VT_MCP_REF}"'" },' \
   '    "purple-mcp": { "source": "git", "repo": "'"${PURPLE_MCP_REPO}"'", "ref": "'"${PURPLE_MCP_REF}"'" }' \
   '  },' \

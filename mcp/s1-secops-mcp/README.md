@@ -60,7 +60,7 @@ See **[deploy/README.md](./deploy/README.md)** for the full deployment walkthrou
 
 ## Quick install
 
-For the end-user install paths (Docker quick start and individual MCP install), see the canonical **[README Installation section](../../README.md#installation)**; credential keys and where to get them are in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section is the MCP-server-specific reference: the pinned image, the reproducible install script, and the Claude Desktop stdio bridge for a shared team VM. Two paths, pick the one that matches your setup:
+For the end-user install paths (Docker quick start and individual MCP install), see the canonical **[README Installation section](../../plugins/s1-secops-skills/README.md#installation)**; credential keys and where to get them are in **[docs/credentials.md](../../plugins/s1-secops-skills/docs/credentials.md)**. This section is the MCP-server-specific reference: the pinned image, the reproducible install script, and the Claude Desktop stdio bridge for a shared team VM. Two paths, pick the one that matches your setup:
 
 ### A. Local single-user via Docker (Claude Desktop / Claude Code / Cowork)
 
@@ -76,7 +76,7 @@ Add this to `claude_desktop_config.json` (or `.mcp.json` for Claude Code):
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
                "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
-               "sentinelone/secops-mcps:1.4.9", "s1-secops-mcp"],
+               "sentinelone/secops-mcps:1.4.10", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...",
@@ -93,7 +93,7 @@ Restart Claude Desktop. The same image serves `purple-mcp` and `virustotal-mcp`;
 ### B. Reproducible: install script
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/install.sh | bash
 ```
 
 Checks for Docker, pulls the pinned image, drops a credentials skeleton at `~/.config/sentinelone/credentials.json` (mode 0600), and prints the wiring instructions for Claude Desktop.
@@ -110,7 +110,7 @@ Each team member installs the script once:
 
 ```bash
 mkdir -p ~/.local/bin
-curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
+curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
   -o ~/.local/bin/s1-secops-mcp-bridge.mjs
 chmod +x ~/.local/bin/s1-secops-mcp-bridge.mjs
 ```

@@ -16,7 +16,10 @@ Same 24-hour window, same tenant, same day:
 | An entity datasource with `count_by` pushdown | 10^1 pre-aggregated | ~1.3 s |
 | `datasource metering` | 10^2 | ~6 s |
 | Raw event lake, one day | ~9x10^8 | 5-18 s |
-| Raw event lake, 15-30 days | ~10^10 | does not complete |
+| Raw event lake, 15-30 days, one query | ~10^10 (documented, high-volume tenant) | documented as not completing; not reproduced |
+| Raw event lake, 90 days, `\| group count()`, 15 slices | ~4.4x10^7 (measured) | 12 s (one query: 18 s) |
+
+The 15-30 day row was inferred from row counts on a high-volume tenant and never measured end to end. Re-measured 2026-10-05 on S-26.3.4 with a broad count and no source filter: 15, 30 and 90 days all completed, 3 to 12 s as 15 parallel slices and 5 to 18 s as one query. Long windows are a cost to warn about, not a hard limit; scan cost grows with tenant volume. Slice mergeable aggregates (see sdl-solutions `references/query-slicing.md`); never slice a `savelookup`.
 
 **Before optimising a lake query, check whether the answer already exists pre-aggregated.** A real
 example: a dashboard was scanning ~9x10^8 events five times per tab load to compute numbers that

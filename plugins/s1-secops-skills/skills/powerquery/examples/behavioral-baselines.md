@@ -60,7 +60,7 @@ dataSource.name = '<source>'
 
 Set `startTime` / `endTime` on the LRQ call to a single 24h window.
 For a 7-day baseline run this 7 times; for 30-day, 30 times. Run up to
-3 in parallel, per-user 3 req/sec rate cap is the binding constraint.
+15 in parallel through a token bucket at 25 calls/s (see sdl-solutions `references/query-slicing.md`).
 See `references/lrq-api.md` in this skill for the slicing strategy.
 
 **Why slice rather than aggregate inside the query:** a single 7d (let

@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.4.0
+
+From the S-26.2.x / S-26.3.x release-note review, each verified on a live S-26.3.4 tenant on
+2026-10-05. Tool count stays 32.
+
+### `powerquery_run`: optional `edrStrict`
+
+`edrStrict: true` sends the LRQ launch with a top-level `scheme: "edr"`. An unknown or wrongly
+cased EDR field (for example `Endpoint.name`) then fails with HTTP 400 `Unknown EDR field: ...`
+instead of silently returning 0 rows; correct fields return the same rows (6,709 with or without
+it on the test query). Without it, and with an `i.scheme="edr"` filter inside the query, a typo
+still returns 0 rows. The parameter must be top level: inside `pq` the API answers 400
+`Invalid JSON`. Default off, so existing calls are unchanged.
+
+### `engines.node` is `>=24`
+
+Node 18 and 20 are end of life. CI and the image already run Node 24.
+
 ## 1.3.10
 
 Fixes from a field smoke test (2026-10-02), each reproduced and verified on a live

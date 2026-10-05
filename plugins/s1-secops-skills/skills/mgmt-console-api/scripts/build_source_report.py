@@ -33,10 +33,10 @@ Slicing strategy (see SKILL.md Step 3a/3b)
 - 1h-24h  : single call for aggregates, hourly slicing for timeline
 - 24h-7d  : single call for aggregates, daily slicing for timeline
 - 7d-30d  : single call (longer deadline) for aggregates, daily slicing
-- >30d    : reject and point at the two-JWT runner in the powerquery skill
+- >30d    : reject and point at query slicing (sdl-solutions scripts/lrq_sliced.py)
 
-All parallelism is capped at 3 workers to respect the per-user 3 rps
-LRQ rate limit.
+All parallelism is capped at 3 workers. This script has no rate bucket, so the
+worker cap is what keeps its call rate modest.
 """
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ from pq import run_pq, list_data_sources, PQError  # noqa: E402
 
 SKILL_ROOT = _THIS_DIR.parent
 REPORTS_DIR = SKILL_ROOT / "reports"
-MAX_WORKERS = 3  # per-user 3 rps cap
+MAX_WORKERS = 3  # no rate bucket here; the worker cap bounds the call rate
 
 
 def slugify(name: str) -> str:

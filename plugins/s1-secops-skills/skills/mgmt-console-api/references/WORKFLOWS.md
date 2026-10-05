@@ -22,6 +22,8 @@ agents = list(c.iter_items(
 
 Key params: `createdAt__gte` (ISO-8601), `resolved=false`, `incidentStatuses=unresolved`, `confidenceLevels=malicious,suspicious`, `mitigationStatuses=not_mitigated`.
 
+UAM alerts have a third confidence level, `INFORMATIONAL` (S-26.2.6): detections from pre-production or suppressed logic that never trigger automatic mitigation. They are **hidden from unfiltered UAM alert lists and from `| datasource alerts`**; filter `confidenceLevel` for `INFORMATIONAL` explicitly to see them. Include them in a full sweep and when explaining "why didn't this mitigate"; leave them out of an escalation queue unless corroborated. See `UNIFIED_ALERTS.md`, "Schema quirks".
+
 ---
 
 ## 2. Endpoint inventory: what's deployed, by site, with health?
@@ -127,7 +129,7 @@ Key points:
 
 - `queryType: "PQ"` runs a PowerQuery; `queryType: "LOG"` runs S1QL log search. Both replace the old `/dv/*` endpoints.
 - The `X-Dataset-Query-Forward-Tag` response header from the launch must be echoed on every subsequent GET/DELETE. GET/DELETE without it is rejected.
-- Per-user rate cap is 3 rps. For multi-slice parallel runs over long windows (7d+), see the `powerquery` skill's `references/lrq-api.md` for slicing, two-JWT round-robin, and merge patterns.
+- One token sustains about 30 calls/s; only launches are throttled (measured 2026-10-05). For multi-slice parallel runs over long windows (7d+), see the `powerquery` skill's `references/lrq-api.md` for slicing (15 x 2d with 15 in flight for 30 days) and merge patterns.
 - For interactive hunts over short windows, the Purple MCP `powerquery` tool is simpler; fall back to this LRQ pattern when the MCP times out or the window is longer than a few days.
 - **LOG queries have a different body shape than PQ.** A `LOG` body is `{queryType: "LOG", log: {filter, limit}}`, NOT `{pq: {query, resultType: "LOG"}}` (the latter returns HTTP 400). LOG also has a server-side `log.limit` cap (typically 5000) that silently truncates; detect cap-hit (`len(matches) == log.limit`) and subdivide the slice. For multi-slice or long-running LOG investigations, use the per-slice checkpoint pattern. Full LOG-specific guidance, including the investigation-noise separator (partition on `dataSource.name` presence) for identity hunts, is in `references/lrq-api.md`.
 

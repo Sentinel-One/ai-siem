@@ -44,7 +44,7 @@ die() {
 # deploy/systemd/s1-secops-mcp.service states the same pin in its
 # Environment=S1_MCP_IMAGE line and the two are kept in sync (the server-mode
 # install re-reads the installed unit and pulls whatever it pins).
-IMAGE_REF="sentinelone/secops-mcps:1.4.9"
+IMAGE_REF="sentinelone/secops-mcps:1.4.10"
 CONTAINER_NAME="s1-secops-mcp"
 MODE="user"
 
@@ -205,7 +205,7 @@ EOF
     cat >"$ENV_PATH" <<EOF
 # Environment file for s1-secops-mcp.service, read by systemd.
 # Set S1_MCP_IMAGE here to override the image tag pinned in the unit, e.g.
-#   S1_MCP_IMAGE=sentinelone/secops-mcps:1.4.9
+#   S1_MCP_IMAGE=sentinelone/secops-mcps:1.4.10
 # Apply any change here with: systemctl restart s1-secops-mcp
 # (systemd only re-reads EnvironmentFile on restart; reload/SIGHUP re-reads
 #  bearer tokens only.)
@@ -230,7 +230,7 @@ EOF
     cat >"$SVC_PATH" <<EOF
 [Unit]
 Description=SentinelOne MCP server (Streamable HTTP, team-shared)
-Documentation=https://github.com/pmoses-s1/s1-secops-skills/tree/main/s1-secops-mcp
+Documentation=https://github.com/Sentinel-One/ai-siem/tree/main/mcp/s1-secops-mcp
 After=network-online.target docker.service
 Wants=network-online.target
 Requires=docker.service
@@ -361,7 +361,7 @@ elif [[ "$MODE" == "server" ]]; then
         curl -s http://127.0.0.1:8765/healthz
    3. Put TLS in front:
         sudo curl -fsSL -o /etc/caddy/Caddyfile \\
-          https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/caddy/Caddyfile.example
+          https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/caddy/Caddyfile.example
         sudo vim /etc/caddy/Caddyfile   # set your DNS name
         sudo systemctl reload caddy
    4. Add team members by editing $TOKEN_PATH and reloading:

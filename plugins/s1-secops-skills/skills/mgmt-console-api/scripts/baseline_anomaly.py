@@ -12,7 +12,7 @@ Pipeline:
      and ``action_key`` (action / event.type / activity_name) from what the
      source actually carries. Caller can override either.
   2. N daily count slices (default 30) over the baseline window via LRQ,
-     run 3 concurrent (per-user 3 rps cap). Daily slicing keeps each call
+     run 3 concurrent by default (--max-workers). Daily slicing keeps each call
      under the LRQ per-call deadline.
   3. One 24h live slice.
   4. Client-side merge with two baseline strategies:
@@ -490,7 +490,7 @@ def setup(client: Any, source: str, days: int, principal: Optional[str],
 def step(client: Any, state: Dict[str, Any], max_workers: int = 3) -> int:
     """Run up to max_workers pending phases in parallel. Returns number of phases run.
 
-    Stays under the per-user 3 rps cap with default max_workers=3. State is
+    Default max_workers=3. This script has no rate bucket, so raise it with care. State is
     persisted after the batch.
     """
     pending = [p for p in state["phases"] if p["label"] not in state["completed"]]
@@ -574,7 +574,7 @@ def main() -> int:
                    help="Baseline strategy: pooled (one bucket) or dow (one bucket per day-of-week)")
     p.add_argument("--z", type=float, default=2.0, help="Z-score threshold for anomaly (default 2.0)")
     p.add_argument("--max-workers", type=int, default=3,
-                   help="Parallel LRQ slices per invocation (default 3, per-user 3 rps cap)")
+                   help="Parallel LRQ slices per invocation (default 3; no rate bucket, so raise with care)")
     p.add_argument("command", nargs="?", default="run",
                    help="run | reset | report (default run)")
     args = p.parse_args()

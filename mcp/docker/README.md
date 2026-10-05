@@ -2,7 +2,7 @@
 
 Single image bundling all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`) so end users only need Docker installed. No Node, no Python, no `uv`, no `npm install`. Alternative to the npx/uvx install path.
 
-End-user reference: [`docs/docker.md`](../docs/docker.md). This file is for image maintainers.
+End-user reference: [`docs/docker.md`](../../plugins/s1-secops-skills/docs/docker.md). This file is for image maintainers.
 
 ## No npm
 
@@ -25,7 +25,7 @@ docker/
 
 The Dockerfile is two stages. The **fetch** stage holds everything needing git or network; the **runtime** stage copies the results, so neither `git` nor any clone metadata ships in the published image.
 
-The image is published to `sentinelone/secops-mcps`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. The matching CI workflow is at [`.github/workflows/docker-publish.yml`](../.github/workflows/docker-publish.yml).
+The image is published to `sentinelone/secops-mcps`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. Images are built and published by the maintainers' release pipeline.
 
 ## Pinned sources
 
@@ -38,7 +38,7 @@ When bumping a pin, edit both. They are checked via `grep` in CI; a mismatch fai
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.4.9` |
+| Image version (`IMAGE_VERSION`) | this repo | `1.4.10` |
 | `s1-secops-mcp` | local `COPY` from this repo | whatever commit you build |
 | `virustotal-mcp` | git, `pmoses-s1/mcp-virustotal` | `b3d8474` (vendored fork of `w0h1v/mcp-virustotal` v1.0.28) |
 | `purple-mcp` | git, `pmoses-s1/purple-mcp` | `b8a200d` (fork of `Sentinel-One/purple-mcp` v0.7.0, pandas made optional) |
@@ -47,7 +47,7 @@ When bumping a pin, edit both. They are checked via `grep` in CI; a mismatch fai
 
 Two consequences of that switch, both handled in the workflow: a commit under `s1-secops-mcp/` now changes the image (so it is in the build-trigger path list and the `IMAGE_VERSION` bump guard), and the Dockerfile `COPY`s path by path rather than copying the directory. The directory also contains a 17 MB `data/` tree holding `data/credentials.json`, which is absent from the package's `files` allowlist and referenced by no code. It is excluded in `.dockerignore` as well, so two independent barriers keep it out of a published layer.
 
-**`virustotal-mcp` needs a vendored fork.** Upstream `w0h1v/mcp-virustotal` publishes only to npm: `main` is `build/index.js`, `build/` is not committed, and the build runs under `prepublishOnly` rather than `prepare`. npm runs `prepare` on git installs, so installing upstream from git fetches TypeScript, compiles nothing, and installs a bin pointing at a missing file. The fork fixes this by committing its compiled `build/` and its production `node_modules/`, which is what lets this image install it with `git clone` alone. Run [`scripts/vendor-vt-fork.sh`](../scripts/vendor-vt-fork.sh) against the fork to produce that state; it prints the SHA to pin. The Dockerfile asserts both `build/index.js` and `node_modules/` are present and fails the build with a pointer to that script if not, rather than shipping a container that dies on its first JSON-RPC call.
+**`virustotal-mcp` needs a vendored fork.** Upstream `w0h1v/mcp-virustotal` publishes only to npm: `main` is `build/index.js`, `build/` is not committed, and the build runs under `prepublishOnly` rather than `prepare`. npm runs `prepare` on git installs, so installing upstream from git fetches TypeScript, compiles nothing, and installs a bin pointing at a missing file. The fork fixes this by committing its compiled `build/` and its production `node_modules/`, which is what lets this image install it with `git clone` alone. The maintainers produce that state with a vendoring script that prints the SHA to pin. The Dockerfile asserts both `build/index.js` and `node_modules/` are present and fails the build with a pointer to that script if not, rather than shipping a container that dies on its first JSON-RPC call.
 
 `VT_MCP_REF` must be a full 40-character SHA. A branch name would look fine and silently un-pin every subsequent build, so `build.sh` and CI both reject anything else.
 
@@ -61,7 +61,7 @@ Two consequences of that switch, both handled in the workflow: a commit under `s
 Because the number does not encode what is inside, verify rather than infer:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.4.9 versions
+docker run --rm sentinelone/secops-mcps:1.4.10 versions
 ```
 
 ## Build locally
@@ -71,14 +71,14 @@ docker run --rm sentinelone/secops-mcps:1.4.9 versions
 docker/build.sh
 
 # Full smoke suite: 20 assertions, exit code is the failure count.
-docker/smoke-test.sh sentinelone/secops-mcps:1.4.9 --expect-version 1.4.9
+docker/smoke-test.sh sentinelone/secops-mcps:1.4.10 --expect-version 1.4.10
 
 # Or spot-check by hand:
-docker run -i --rm sentinelone/secops-mcps:1.4.9 help
-docker run -i --rm sentinelone/secops-mcps:1.4.9 versions
+docker run -i --rm sentinelone/secops-mcps:1.4.10 help
+docker run -i --rm sentinelone/secops-mcps:1.4.10 versions
 
 # There should be no npm in here. This must print "absent".
-docker run --rm --entrypoint sh sentinelone/secops-mcps:1.4.9 -c 'command -v npm || echo absent'
+docker run --rm --entrypoint sh sentinelone/secops-mcps:1.4.10 -c 'command -v npm || echo absent'
 ```
 
 The dispatcher accepts `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, `versions`, or `help`.
@@ -106,7 +106,7 @@ On a slow or unreliable link, push with `skopeo copy --all --retry-times 20` fro
 # Then:
 docker/build.sh                                            # verify locally
 git push                                                   # no build, by design
-git tag -a s1-mcps-v1.4.9 -m "..." && git push origin s1-mcps-v1.4.9
+git tag -a s1-mcps-v1.4.10 -m "..." && git push origin s1-mcps-v1.4.10
 ```
 
 **Only a release tag builds an image.** A push to `main` does not, however much
@@ -141,7 +141,7 @@ Three entries in `claude_desktop_config.json` (one per MCP) all reference the sa
 
 ## Why install pip-style for purple-mcp instead of via uv?
 
-`uv tool install` puts the binary at a path that depends on internal layout decisions and varies by uv version. A simple `python3 -m venv /opt/purple-mcp && pip install` gives a deterministic binary location at `/opt/purple-mcp/bin/purple-mcp` and the venv is fully self-contained. End users who run `purple-mcp` outside the container still get the uvx path documented in [`docs/installation.md`](../docs/installation.md).
+`uv tool install` puts the binary at a path that depends on internal layout decisions and varies by uv version. A simple `python3 -m venv /opt/purple-mcp && pip install` gives a deterministic binary location at `/opt/purple-mcp/bin/purple-mcp` and the venv is fully self-contained. End users who run `purple-mcp` outside the container still get the uvx path documented in [`docs/installation.md`](../../plugins/s1-secops-skills/docs/installation.md).
 
 The venv is created in the fetch stage at the same absolute path it occupies at runtime, then copied wholesale. Same path and same base image means the paths baked into the venv stay valid, and the runtime stage needs only `python3` (no `pip`, no `python3-venv`).
 

@@ -1,6 +1,6 @@
 [Unit]
 Description=SentinelOne MCP server (Streamable HTTP, team-shared)
-Documentation=https://github.com/pmoses-s1/s1-secops-skills/tree/main/s1-secops-mcp
+Documentation=https://github.com/Sentinel-One/ai-siem/tree/main/mcp/s1-secops-mcp
 After=network-online.target docker.service
 Wants=network-online.target
 Requires=docker.service
@@ -12,7 +12,7 @@ Type=simple
 # installer states it once as IMAGE_REF in deploy/install.sh and the two are
 # kept in sync. To move versions: change the tag here, `docker pull` it, then
 # `systemctl daemon-reload && systemctl restart s1-secops-mcp`.
-Environment=S1_MCP_IMAGE=sentinelone/secops-mcps:1.4.9
+Environment=S1_MCP_IMAGE=sentinelone/secops-mcps:1.4.10
 
 # Server credentials (the S1 service-user token + SDL keys) and bearer tokens.
 # Both are written by deploy/install.sh into /etc/s1-secops-mcp, which is bind

@@ -142,6 +142,29 @@ Use the aggregated-snapshot datasources, which carry a `snapshotDate`:
 | transpose severity
 ```
 
+**Daily and weekly alert snapshots (platform S-26.3.4).** `alert_aggregated_snapshots` now keeps
+daily rows for the last 30 days and weekly rows for up to 1 year, told apart by `timeRangeType`
+(`DAILY` / `WEEKLY`). A weekly row covers `snapshotDate` to `snapshotDateTo`.
+
+- **An unfiltered query returns only the daily rows.** Measured 2026-10-05: `group ... by
+  timeRangeType` with no filter returned 970 `DAILY` rows; the same source held 31 `WEEKLY` rows
+  that appeared only with an explicit `filter timeRangeType='WEEKLY'` (or `in ('DAILY','WEEKLY')`).
+  Filter explicitly whenever you need more than 30 days, and never sum daily and weekly rows
+  together (they overlap).
+- Fields per row: `snapshotDate`, `snapshotDateTo`, `timeRangeType`, `accountId`, `siteId`,
+  `groupId`, `alertType`, `severity`, `status`, `resolutionSloStatus`, `resolutionSumSec`,
+  `findingCount`, plus the S-26.3.4 additions `analystVerdict`, `mitigationResult`,
+  `confidenceLevel`, `analyticsCategory`, `detectionProduct`, `classification`, `analyticsName`.
+
+One-year weekly trend by severity:
+
+```text
+| datasource alert_aggregated_snapshots
+| filter timeRangeType = 'WEEKLY'
+| group count=sum(findingCount) by severity, timestamp=snapshotDate
+| transpose severity
+```
+
 ## Usage Metering specifics
 
 The `metering` datasource exposes Usage Metering reports for cost, usage, and (for MSSPs) chargeback analytics. It behaves like the other datasources but has its own access rules. Source: SentinelOne Community article 000010750, supported from S-24.2.6.

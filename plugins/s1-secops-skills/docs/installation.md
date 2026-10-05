@@ -31,7 +31,7 @@ Nothing else is needed on the host: no Node, no Python, no `uv`. The image is mu
 Pull the image once before you start:
 
 ```bash
-docker pull sentinelone/secops-mcps:1.4.9
+docker pull sentinelone/secops-mcps:1.4.10
 ```
 
 ---
@@ -40,7 +40,7 @@ docker pull sentinelone/secops-mcps:1.4.9
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS, or `%APPDATA%\Claude\claude_desktop_config.json` on Windows. Paste in the three MCP servers below and replace every placeholder with your real values.
 
-All three entries run the same image with a different dispatcher argument. `--pull=missing` fetches the image only if it is not already present locally. Because `1.4.9` is an immutable tag it cannot change underneath you, so there is nothing to re-check on later launches.
+All three entries run the same image with a different dispatcher argument. `--pull=missing` fetches the image only if it is not already present locally. Because `1.4.10` is an immutable tag it cannot change underneath you, so there is nothing to re-check on later launches.
 
 ```json
 {
@@ -49,7 +49,7 @@ All three entries run the same image with a different dispatcher argument. `--pu
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
-               "sentinelone/secops-mcps:1.4.9", "s1-secops-mcp"],
+               "sentinelone/secops-mcps:1.4.10", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
@@ -61,7 +61,7 @@ All three entries run the same image with a different dispatcher argument. `--pu
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-               "sentinelone/secops-mcps:1.4.9", "purple-mcp"],
+               "sentinelone/secops-mcps:1.4.10", "purple-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
@@ -71,7 +71,7 @@ All three entries run the same image with a different dispatcher argument. `--pu
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "VIRUSTOTAL_API_KEY",
-               "sentinelone/secops-mcps:1.4.9", "virustotal-mcp"],
+               "sentinelone/secops-mcps:1.4.10", "virustotal-mcp"],
       "env": {
         "VIRUSTOTAL_API_KEY": "your-virustotal-key"
       }
@@ -97,7 +97,7 @@ that names `PURPLEMCP_*` explicitly keeps working.
 - Both `S1_CONSOLE_API_TOKEN` and `PURPLEMCP_CONSOLE_TOKEN` are the same Management Console API token. Generate one under Settings → Users → Service Users.
 - Region URLs vary. Look up your region in the [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) article.
 - The VirusTotal MCP shown is one example. Replace it with your organisation's approved threat intel MCP if different.
-- Every install is pinned by default. There is no `:latest`, and the repository has immutable tags enabled, so `1.4.9` always means the same bytes.
+- Every install is pinned by default. There is no `:latest`, and the repository has immutable tags enabled, so `1.4.10` always means the same bytes.
 
 **Restart Claude Desktop** after saving.
 
@@ -154,9 +154,9 @@ Claude verifies connectivity to `s1-secops-mcp`, `purple-mcp`, and the threat in
 You can also test the image straight from a terminal, with no Claude Desktop involved:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.4.9 versions   # what is inside the image
+docker run --rm sentinelone/secops-mcps:1.4.10 versions   # what is inside the image
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm sentinelone/secops-mcps:1.4.9 s1-secops-mcp
+  | docker run -i --rm sentinelone/secops-mcps:1.4.10 s1-secops-mcp
 ```
 
 The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"`, and stderr shows `Tools: 32 registered`. The `version` it reports is the bundled MCP's own version, not the image tag.
@@ -175,13 +175,13 @@ To confirm the active plugin version: `which version of s1-secops-skills is inst
 
 ## Upgrading
 
-**MCP servers** (`s1-secops-mcp`, `purple-mcp`, `virustotal`): the config above pins `:1.4.9`, so restarting Claude Desktop keeps that exact image. Upgrading means editing the tag in all three entries. To pre-pull a version before switching to it:
+**MCP servers** (`s1-secops-mcp`, `purple-mcp`, `virustotal`): the config above pins `:1.4.10`, so restarting Claude Desktop keeps that exact image. Upgrading means editing the tag in all three entries. To pre-pull a version before switching to it:
 
 ```bash
-docker pull sentinelone/secops-mcps:1.4.9
+docker pull sentinelone/secops-mcps:1.4.10
 ```
 
-If you pinned a version tag, bump it to the current release (`1.4.9`) and restart Claude Desktop.
+If you pinned a version tag, bump it to the current release (`1.4.10`) and restart Claude Desktop.
 
 **Plugin**: download the new `.plugin` from [`s1-secops-skills-plugin/dist/`](../dist/), open Cowork → Customize → Browse plugins, upload, click **Replace** when prompted.
 
@@ -221,20 +221,16 @@ Every credential key, where to get it, the two token types, and the resolution o
 
 ## Building from source
 
-Only needed when developing the MCP server or rebuilding the plugin. End users do not need this.
+Only needed when changing the skills. End users do not need this.
 
 ```bash
-git clone https://github.com/pmoses-s1/s1-secops-skills.git
-cd s1-secops-skills
+git clone https://github.com/Sentinel-One/ai-siem.git
+cd ai-siem/plugins/s1-secops-skills
 
-# Rebuild the image from pinned sources (single-arch, host architecture)
-docker/build.sh
-
-# Rebuild the plugin
-cd s1-secops-skills-plugin && bash scripts/build.sh         # incremental
-cd s1-secops-skills-plugin && bash scripts/build.sh --clean # clean
+# Rebuild the plugin and the per-skill .skill files into dist/
+bash scripts/build.sh         # incremental
+bash scripts/build.sh --clean # clean
 ```
 
-Version pins, multi-arch builds, and publishing are covered in [docker.md → Building from source](./docker.md#building-from-source).
+The Docker image is built and published by the maintainers; see [docker.md → Building from source](./docker.md#building-from-source) for how to review and verify it.
 
-To point Claude Desktop at a locally built image instead of the published one, change the image reference in the Step 1 config to the tag you built, for example `secops-skills:dev`.

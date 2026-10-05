@@ -319,6 +319,7 @@ def run_pq(
     poll_deadline_s: float = 180.0,
     request_timeout_s: float = 30.0,
     include_metering: bool = False,
+    edr_strict: bool = False,
 ) -> Dict[str, Any]:
     """Run one PowerQuery via the LRQ API and return the result.
 
@@ -360,6 +361,12 @@ def run_pq(
         Wall-clock cap on how long to wait for completion.
     request_timeout_s : float, default 30.0
         Per-HTTP-call socket timeout.
+    edr_strict : bool, default False
+        Send top-level `scheme: "edr"` (platform S-26.2.6). An unknown or
+        wrongly cased EDR field then fails with HTTP 400 "Unknown EDR
+        field" (raised as PQError) instead of a silent matchCount=0.
+        Correct fields return the same rows. Use for SentinelOne EDR
+        queries only.
 
     Returns
     -------
@@ -401,6 +408,8 @@ def run_pq(
         "queryPriority": priority,
         "pq": {"query": query, "resultType": result_type},
     }
+    if edr_strict:
+        body["scheme"] = "edr"
     if account_ids:
         body["accountIds"] = list(account_ids)
         body["tenant"] = False

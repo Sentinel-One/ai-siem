@@ -9,14 +9,14 @@ Ready-to-paste queries for common security dashboard use cases. All work as `que
 **Active threats by severity (pie/donut)**
 
 ```text
-index = "activities" activity_type in ("18","19","20","2016","4003","4009","4108","4100","4109","4110","4111","4112")
+dataSource.name = 'ActivityFeed' activity_type in ("18","19","20","2016","4003","4009","4108","4100","4109","4110","4111","4112")
 | group count=count() by data.confidence_level
 ```
 
 **Threat timeline by status (stacked bar, daily)**
 
 ```text
-index = "activities" activity_type in ("18","19","20","2016","4003","4009","4108","4100","4109","4110","4111","4112","2028")
+dataSource.name = 'ActivityFeed' activity_type in ("18","19","20","2016","4003","4009","4108","4100","4109","4110","4111","4112","2028")
 | let status = (activity_type = 2028 ? data.new_incident_status_title : "Unresolved")
 | group newest_status = newest(status) by threat_id, timestamp = timebucket("1 day")
 | group count = count() by timestamp, newest_status
@@ -26,7 +26,7 @@ index = "activities" activity_type in ("18","19","20","2016","4003","4009","4108
 **Top noisiest endpoints by threat count (table)**
 
 ```text
-index = "activities" activity_type in ("18","19","20","2016","4003","4009","4108","4100","4109","4110","4111","4112")
+dataSource.name = 'ActivityFeed' activity_type in ("18","19","20","2016","4003","4009","4108","4100","4109","4110","4111","4112")
 | group count = count() by Computer_Name=data.computer_name
 | sort -count
 | limit 20
@@ -35,9 +35,30 @@ index = "activities" activity_type in ("18","19","20","2016","4003","4009","4108
 **Custom STAR rule alert timeline (stacked bar)**
 
 ```text
-index = "activities" activity_type = 3608 dataSource.category = 'security'
+dataSource.name = 'ActivityFeed' activity_type in ('3608', '3757')
 | group count = count() by RuleName=data.ruleName, timestamp = timebucket("1 day")
 | transpose RuleName on timestamp
+```
+
+Activities land in SDL as `dataSource.name = 'ActivityFeed'` with `activity_type` as a **string**.
+On S-26.3.4 the older `index = "activities"` form returned no rows. 3608 is a custom-rule alert on
+EDR data, 3757 on XDR (third-party) data.
+
+**Custom-rule alerts linked to threats (table)**
+
+From S-26.2.3 the custom/platform rule alert activities (3608, 3757, 3784, 3785) and the
+mark-as-threat / mark-as-suspicious activities (4104 to 4109) **no longer carry the threat id**. The
+link is a separate activity, **4114 "Alert linked to threat"**, written a few seconds after the alert
+activity. Its `data` keys are snake_case (`rule_name`, `alert_id`, `threat_id`), unlike the camelCase
+`data.ruleName` / `data.alertId` on 3608 / 3757. Verified 2026-10-05: a treat-as-threat rule fired
+3608 with no threat id, then 4114 six seconds later with `threat_id` set. A treat-as-threat rule on
+non-EDR (XDR) data raised the alert (3757) but no threat and no 4114.
+
+```text
+dataSource.name = 'ActivityFeed' activity_type = '4114'
+| columns timestamp, data.rule_name, data.alert_id, data.threat_id, data.computerName
+| sort -timestamp
+| limit 100
 ```
 
 **HIFI indicator hits (table)**

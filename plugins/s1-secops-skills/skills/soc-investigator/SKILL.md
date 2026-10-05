@@ -38,6 +38,7 @@ Inherited from the Purple SOC Analyst operating standard and the SDL threat-hunt
   bucket before reporting a technique count; never silently drop them, and never report their output
   as adversary activity.
 - Apply the anomaly checklist to every log result: frequency, timing, geolocation, baseline deviation, volume, new entity, privilege, chain.
+- See Informational alerts on purpose. UAM `confidenceLevel` can be `INFORMATIONAL` (S-26.2.6): detections from pre-production or suppressed logic that never auto-mitigate. They are hidden from unfiltered alert lists and `| datasource alerts`, so when correlating alerts around a host, user or storyline, run one extra query filtered to `confidenceLevel = INFORMATIONAL` and report what it returned (including zero). Treat them as leads, like any other alert.
 - Hold findings until the end and do not over-correlate: a shared time window is not causation; assert a link only when an entity or artifact bridges the clusters. Map every finding to MITRE ATT&CK and lead each conclusion with verdict, confidence, and evidence count.
 - Query appendix, mandatory in every report. Always append an appendix listing every PowerQuery run during the investigation, each with its evidence (see the "Query appendix" section below). Never present a query result without also showing the query and a raw-telemetry excerpt.
 

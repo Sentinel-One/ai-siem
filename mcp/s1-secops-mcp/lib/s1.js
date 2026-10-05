@@ -193,7 +193,7 @@ export function pickMatchCount(result) {
 }
 
 /** Run a full LRQ PowerQuery lifecycle. Returns { columns, rows, rowCount, matchCount }. */
-export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 5000, scope, includeMetering = false } = {}) {
+export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 5000, scope, includeMetering = false, edrStrict = false } = {}) {
   const b = base();
   const tok = jwt();
 
@@ -214,6 +214,10 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
     queryPriority: 'HIGH',
     pq: { query, resultType: 'TABLE' },
   };
+  // Top-level scheme=edr (platform S-26.2.6): an unknown or wrongly cased EDR field is
+  // HTTP 400 "Unknown EDR field" instead of a silent matchCount=0. It must be top level;
+  // inside pq it is HTTP 400 "Invalid JSON". Correct fields return the same rows.
+  if (edrStrict) launchBody.scheme = 'edr';
 
   // S1-Scope applies to log reads exactly as it does to config reads: an LRQ
   // run without the intended scope silently answers for the token default.

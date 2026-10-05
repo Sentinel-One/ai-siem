@@ -69,13 +69,28 @@ CPU cost scales with: time range, data volume in that range, number of fields sc
 
 ## Other rate limits
 
-From **2026-03-19**, all SDL query methods cap at **8 queries/sec** per tenant.
+Published limits:
 
-Non-query operations:
-
+- From **2026-03-19**, all SDL query methods cap at **8 queries/sec** per tenant.
 - Per-operation, per-account: starting budget **200 requests**, refill **100 req/s**.
-- Per IP address: starting budget **1,600 requests**, refill **800 req/s**.
+- Per IP address, all SDL API endpoints: starting budget **60 requests**, refill **30 req/s**, from
+  **2026-09-10** (platform S-26.2.3 / S-26.2.6 release notes). Before that it was 1,600 / 800.
 - Aggregate request bytes per operation: starting budget **30 MB**, refill **4 MB/s**.
+
+**Measured 2026-10-05 (S-26.3.4, one console token, one egress IP), the published per-IP and
+per-tenant query caps were not being enforced:**
+
+| Endpoint | Load | Result |
+|---|---|---|
+| `POST /api/listFiles` | 500-call burst at about 137 req/s; 60 req/s and 100 req/s paced for 10 s | all 200 |
+| `POST /api/query` (V1) | 40 req/s paced for 10 s | all 200 |
+| `POST /api/query` (V1) | 200 calls from 100 parallel workers | 6 x 429 `Too many concurrent requests` |
+
+So the limit you actually hit first is **concurrency**, not request rate. Design for the published
+numbers anyway, because enforcement can be switched on without notice: throttle a client to
+**30 req/s or less per egress IP**, cap parallel requests (see the 12-per-key cap below), and treat
+a 429 as "back off and retry", whatever its body says. The LRQ API has its own, measured behaviour,
+see `powerquery/references/lrq-api.md`.
 
 Usage Metering datasource calls (`| datasource "metering"` for `tenants` / `reports` / `report_name`) have their own cap: **50 requests/sec with a 100-request burst**, and require the `Metering Reports - View` permission. See `methods.md` → Usage Metering reports.
 

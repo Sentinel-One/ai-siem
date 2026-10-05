@@ -1,0 +1,812 @@
+{
+  "name": "{{PREFIX}} - {{RULE_NAME}}",
+  "description": "Solution for custom rules to carry MITRE mapping. Runs the custom detection PowerQuery on a schedule through the LRQ API and, when it returns rows, raises a UAM alert whose indicator carries the MITRE ATT&CK tactics and techniques in finding_info.related_events[].attacks[], so the alert shows mitreTactics and mitreTechniques. Custom STAR rules cannot carry MITRE (the rule API rejects a mitre field). Rendered by sdl-solutions/scripts/render_mitre_watchdog.py.",
+  "actions": [
+    {
+      "action": {
+        "type": "scheduled_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Scheduled Trigger",
+          "action_type": "scheduled_trigger",
+          "schedule_method": "interval",
+          "until": null,
+          "max_runs": 0,
+          "schedule_value": [
+            {
+              "schedule_method": "interval",
+              "interval_unit": "minutes",
+              "interval_value": {{INTERVAL_MINUTES}}
+            }
+          ],
+          "start_at": null,
+          "start_at_method": "immediately",
+          "ends_on": "never"
+        },
+        "state": "active",
+        "description": "Run every {{INTERVAL_MINUTES}} min.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 8,
+      "connected_to": [
+        {
+          "target": 4,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "{{SDL_INTEGRATION_ID}}",
+        "data": {
+          "name": "Launch LRQ",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{\n  \"queryType\": \"PQ\",\n  \"tenant\": true,\n  \"startTime\": \"{{Function.DELTA_NOW({{LOOKBACK_HOURS}})}}\",\n  \"endTime\": \"{{Function.DATETIME_NOW()}}\",\n  \"queryPriority\": \"HIGH\",\n  \"pq\": {\n    \"query\": \"{{PQ_QUERY}}\",\n    \"resultType\": \"TABLE\"\n  }\n}",
+          "parameters": [],
+          "retry_on_status_codes": [
+            500,
+            502,
+            503,
+            504
+          ],
+          "ssl_verification": true,
+          "timeout": 90,
+          "headers": {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": "json"
+        },
+        "state": "active",
+        "description": "Launch the custom detection query (SDL connection).",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 190
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "connected_to": [
+        {
+          "target": 9,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set LRQ Refs",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "query_id",
+              "value": "{{launch-lrq.body.id}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "forward_tag",
+              "value": "{{Function.JQ(launch-lrq.headers, \"to_entries | map(select(.key|ascii_downcase==\\\"x-dataset-query-forward-tag\\\")) | .[0].value // \\\"\\\"\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Capture LRQ id + forward tag.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 380
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 9,
+      "connected_to": [
+        {
+          "target": 6,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Poll Until Done",
+          "action_type": "loop",
+          "loop_type": "while",
+          "number_of_iterations": "60",
+          "object_to_iterate": "",
+          "is_parallel": false
+        },
+        "state": "active",
+        "description": "Poll until done.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 570
+          },
+          "dimensions": {
+            "width": 620,
+            "height": 720
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 6,
+      "connected_to": [
+        {
+          "target": 5,
+          "custom_handle": "inner"
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "{{SDL_INTEGRATION_ID}}",
+        "data": {
+          "name": "Poll LRQ",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "get",
+          "url": "{{Connection.protocol}}{{Connection.url}}/sdl/v2/api/queries/{{local_var.query_id}}?lastStepSeen=0",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": null,
+          "parameters": [],
+          "retry_on_status_codes": [
+            500,
+            502,
+            503,
+            504
+          ],
+          "ssl_verification": true,
+          "timeout": 90,
+          "headers": {
+            "Accept": "application/json",
+            "X-Dataset-Query-Forward-Tag": "{{local_var.forward_tag}}"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": false,
+          "body_type": "json"
+        },
+        "state": "active",
+        "description": "Poll LRQ.",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 60
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 5,
+      "connected_to": [
+        {
+          "target": 40,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "LRQ terminated",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{poll-lrq.status_code}}",
+              "compared_value": "400",
+              "comparison_operator": "greater_than_or_equals"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "Did the backend kill the query? 4xx means the token is gone.",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 240
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 40,
+      "connected_to": [
+        {
+          "target": 41,
+          "custom_handle": "true"
+        },
+        {
+          "target": 2,
+          "custom_handle": "false"
+        }
+      ],
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "LRQ terminated by backend",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "lrq_error",
+              "value": "{{poll-lrq.body.LRQ_TERMINATED_BY_BACKEND_query_killed_see_status_code}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Fail the run rather than post an alert built from an empty result.",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 420
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 41,
+      "connected_to": [],
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Query Done",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{Function.JQ(poll-lrq.body, \"(.stepsCompleted // -1)\", true)}}",
+              "compared_value": "{{Function.JQ(poll-lrq.body, \"(.stepsTotal // .totalSteps // 0)\", true)}}",
+              "comparison_operator": "equals"
+            },
+            {
+              "input_value": "{{Function.JQ(poll-lrq.body, \"(.stepsTotal // .totalSteps // 0)\", true)}}",
+              "compared_value": "0",
+              "comparison_operator": "greater_than"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "Done?",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 600
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 10,
+          "custom_handle": "true"
+        },
+        {
+          "target": 7,
+          "custom_handle": "false"
+        }
+      ],
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "type": "delay",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Retry Delay",
+          "action_type": "delay",
+          "time_unit": "seconds",
+          "value": 5
+        },
+        "state": "active",
+        "description": "Wait, then re-poll.",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 780
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 7,
+      "connected_to": [],
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set Row Count",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "rowcount",
+              "value": "{{Function.JQ(poll-lrq.body.data.values, \"length\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "top_entity",
+              "value": "{{Function.JQ(poll-lrq.body.data.values, \"((.[0][0] // \\\"-\\\") | tostring)\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "top_detail",
+              "value": "{{Function.JQ(poll-lrq.body.data.values, \"((.[0][1] // \\\"-\\\") | tostring)\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "summary",
+              "value": "{{Function.JQ(poll-lrq.body.data.values, \"(.[0:10] | map(map(tostring) | join(\\\" / \\\")) | join(\\\"; \\\"))\", true)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Count rows + build summary.",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 960
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 10,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "type": "condition",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Any Query Results",
+          "action_type": "condition",
+          "condition_type": "multi",
+          "condition": null,
+          "conditions": [
+            {
+              "input_value": "{{local_var.rowcount}}",
+              "compared_value": "0",
+              "comparison_operator": "greater_than"
+            }
+          ],
+          "conditions_relationship": "and"
+        },
+        "state": "active",
+        "description": "Alert when the query returned rows.",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 1140
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [
+        {
+          "target": 14,
+          "custom_handle": "true"
+        },
+        {
+          "target": 1,
+          "custom_handle": "false"
+        }
+      ],
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set UIDs",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "ind_uid",
+              "value": "{{Function.GENERATE_UUID4()}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "alert_uid",
+              "value": "{{Function.GENERATE_UUID4()}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "device_uid",
+              "value": "{{Function.GENERATE_UUID4()}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Per-run UIDs. ind_uid is the related_events[].uid carried inline on the alert; device.uid = UUID (NOT the principal string).",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 1320
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 14,
+      "connected_to": [
+        {
+          "target": 12,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Set MITRE Alert",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "MitreAlert",
+              "value": "{\"finding_info\":{\"uid\":\"{{local_var.alert_uid}}\",\"title\":\"{{RULE_NAME}}\",\"desc\":\"{{RULE_DESCRIPTION}} Matches ({{local_var.rowcount}}): {{local_var.summary}}\",\"related_events\":[{\"title\":\"{{RULE_NAME}}\",\"desc\":\"{{RULE_DESCRIPTION}}\",\"message\":\"{{local_var.rowcount}} row(s). Top: {{local_var.top_entity}} / {{local_var.top_detail}}\",\"time\":{{Function.DATETIME_TO_MS(Function.DATETIME_NOW())}},\"uid\":\"{{local_var.ind_uid}}\",\"severity_id\":{{SEVERITY_ID}},\"class_uid\":1001,\"type_uid\":100101,\"category_uid\":1,\"activity_id\":1,\"attacks\":{{MITRE_ATTACKS_JSON}},\"observables\":[{\"name\":\"device.hostname\",\"type_id\":1,\"type\":\"string\",\"typeName\":\"Hostname\",\"value\":\"{{local_var.top_entity}}\"},{\"name\":\"actor.user.name\",\"type_id\":4,\"type\":\"string\",\"typeName\":\"User Name\",\"value\":\"{{local_var.top_entity}}\"}]}]},\"resources\":[{\"uid\":\"{{local_var.device_uid}}\",\"name\":\"{{local_var.top_entity}}\",\"type_id\":1,\"type\":\"host\"}],\"category_uid\":2,\"category_name\":\"Findings\",\"class_uid\":99602001,\"class_name\":\"S1 Security Alert\",\"type_uid\":9960200101,\"type_name\":\"S1 Security Alert: Create\",\"activity_id\":1,\"metadata\":{\"version\":\"1.6.0-dev\",\"extension\":{\"name\":\"s1\",\"uid\":\"998\",\"version\":\"0.1.0\"},\"product\":{\"name\":\"{{PRODUCT_NAME}}\",\"vendor_name\":\"SentinelOne\"},\"logged_time\":{{Function.DATETIME_TO_MS(Function.DATETIME_NOW())}},\"modified_time\":{{Function.DATETIME_TO_MS(Function.DATETIME_NOW())}}},\"time\":{{Function.DATETIME_TO_MS(Function.DATETIME_NOW())}},\"attack_surface_ids\":[1],\"severity_id\":{{SEVERITY_ID}},\"state_id\":1,\"s1_classification_id\":1}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Resolve the OCSF S1 Security Alert JSON into a string var.",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 1500
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 12,
+      "connected_to": [
+        {
+          "target": 13,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "CreateAlertFile",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "alertfile",
+              "value": "{\"file\":[{\"name\":\"Alert.json\",\"data\": {{Function.STRING(local_var.MitreAlert)}} }]}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local"
+        },
+        "state": "active",
+        "description": "Stage alert as a files-array (name+data) so COMPRESS gets a real file object.",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 1680
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 13,
+      "connected_to": [
+        {
+          "target": 11,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "type": "http_request",
+        "tag": "integration",
+        "connection_id": null,
+        "connection_name": "",
+        "use_connection_name": false,
+        "integration_id": "{{SDL_INTEGRATION_ID}}",
+        "data": {
+          "name": "Create MITRE Alert",
+          "action_type": "http_request",
+          "public_action_id": null,
+          "method": "post",
+          "url": "{{HEC_URL}}/v1/alerts",
+          "url_path": null,
+          "url_prefix": null,
+          "payload": "{{Function.BASE64_DECODE_AS_BYTES(Function.COMPRESS(local_var.alertfile.file, \"gzip\"))}}",
+          "parameters": [],
+          "retry_on_status_codes": [
+            500,
+            502,
+            503,
+            504
+          ],
+          "ssl_verification": true,
+          "timeout": 90,
+          "headers": {
+            "Content-Type": "application/json",
+            "Content-Encoding": "gzip",
+            "S1-Scope": "{{ACCOUNT_ID}}:{{SITE_ID}}"
+          },
+          "use_authentication_data": true,
+          "use_proxy": false,
+          "redirect_follow": true,
+          "continue_on_fail": true,
+          "body_type": "json"
+        },
+        "state": "active",
+        "description": "gzip + POST S1 Security Alert to UAM /v1/alerts (matches working Test_PQ_Detection recipe).",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 1860
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 11,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null
+        }
+      ],
+      "parent_action": 6
+    },
+    {
+      "action": {
+        "type": "break_loop",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Break When Done",
+          "action_type": "break_loop"
+        },
+        "state": "active",
+        "description": "Exit loop.",
+        "client_data": {
+          "position": {
+            "x": 210,
+            "y": 2040
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [],
+      "parent_action": 6
+    }
+  ]
+}

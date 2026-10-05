@@ -164,6 +164,22 @@ Deploy in this order through the primitive skills. Every artifact is prefixed wi
    `dataSource.name='<<NOISY_SOURCE>>' <<ALERT_FILTER>> | group n = count() by <<ACTION_FIELD>> | sort -n | limit 10`.
    Any non-`<<MITIGATED_VALUE>>` rows mean the source has started passing the signature: re-triage it
    and update or retire the auto-resolve flow.
+   **Native alternative: Automatic alert actions (platform S-26.3.4).** The console now has rules
+   that run actions on alerts matching your conditions, at site, account or global scope, with a
+   preview of the historical alerts a rule would have matched. Ranked rules (only the
+   highest-ranked match runs, for mitigation-type actions) and Independent rules (run on every
+   match, for assign / add-note / status actions). For a simple "resolve with a note when product =
+   X and signature = Y and action = blocked" condition, offer this as the lower-maintenance option.
+   It is **console-only**: no API was found for it (not in the UAM GraphQL schema or the REST spec,
+   checked 2026-10-05), so the skill cannot create or verify the rule. Recommend the conditions,
+   let the user create it in the console, and keep the HA flow for anything the console conditions
+   cannot express, for the mandatory mitigation guard, or when the deployment must be automated.
+
+   **One-off clean-up of an existing backlog.** Bulk actions now take up to 10,000 alerts per
+   selection (S-26.3.4). A filter-based `alertTriggerActions` call returns
+   `TriggerActionsScheduled` and runs asynchronously; re-read the alerts to confirm (verified
+   2026-10-05: a note added to 3,657 alerts in one call). Same mitigation-guard rule applies: the
+   filter must include the action/disposition condition.
 3. **Optional exclusion lookup / correlation rule.** Use the `custom-detection-exclusions` solution
    for a maintainable CSV anti-join, or a scheduled PowerQuery detection for the preserve-as-signal
    correlation.

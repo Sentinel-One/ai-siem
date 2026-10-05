@@ -78,7 +78,7 @@ For ranges past 2-3 days with `event.type=*`-scale aggregates, slice the window 
 
 The bare positional form (no alias) and references inside `let` / `filter` are unreliable across tenant versions and have historically returned HTTP 500 `"undefined field 'timebucket'"`. Even when `timebucket` does work, a single 7d / 30d aggregate against a busy source frequently exceeds the LRQ per-call deadline (~38s observed), a 7d aggregate that finishes in 60s on the older `/api/powerQuery` endpoint will time out on LRQ.
 
-**Default to client-side day slicing for any window > 24h.** It's faster, avoids the deadline budget, respects the per-user 3 rps cap cleanly, and produces the same end result. The named-form `day = timebucket('1d')` is fine inside a single 24h-or-less slice when you really do need per-hour or per-15-min buckets:
+**Default to client-side day slicing for any window > 24h.** It's faster, avoids the deadline budget, and produces the same end result. The named-form `day = timebucket('1d')` is fine inside a single 24h-or-less slice when you really do need per-hour or per-15-min buckets:
 
 ```python
 from datetime import datetime, timedelta, timezone
@@ -96,7 +96,7 @@ with cf.ThreadPoolExecutor(max_workers=3) as ex:   # 3rps user cap
     results = list(ex.map(lambda se: slice_day(c, base, *se), days))
 ```
 
-7 daily slices run in ~20s wall-clock (vs ~2 min for a 7d aggregate) and respect the per-user 3 rps cap. For hourly buckets over a 24h window use 24 slices at the same concurrency; for 30d use hourly slicing with 2 JWTs (see `powerquery` skill).
+7 daily slices run in ~20s wall-clock (vs ~2 min for a 7d aggregate) run all 7 in parallel. For hourly buckets over a 24h window use 24 slices; for 30d use 15 x 2d slices with 15 in flight (see `powerquery` skill, `references/lrq-api.md`).
 
 ### Step 3b: window-scaling playbook (performance by period)
 
@@ -512,7 +512,7 @@ elif prim_key:
 What it does:
 
 1. Calls `inspect_source.discover_schema()` for the named source and `pick_keys(schema)` to choose `prim_key` (principal: user / host / IP / role) and `action_key` (event.type / activity_name / action). Honors per-source overrides if the caller knows better.
-2. Runs N daily count slices (default 30) via `pq.run_pq()` over the baseline window. Daily slicing avoids the LRQ per-call deadline; `max_workers=3` respects the per-user 3 rps cap.
+2. Runs N daily count slices (default 30) via `pq.run_pq()` over the baseline window. Daily slicing avoids the LRQ per-call deadline; `max_workers=3` is conservative; one token sustains about 30 calls/s, so up to 15 workers is safe.
 3. Runs one 24h live slice.
 4. Merges slices client-side. Supports two baseline strategies: pooled (all daily samples in one bucket) and DoW-stratified (one bucket per day-of-week, eliminates weekday/weekend false-positives).
 5. Surfaces three anomaly classes on every run: matched-pair z-score deviations (SPIKE/DROP), silent pairs (baseline → live=0), and new-behaviour pairs (live with no baseline).

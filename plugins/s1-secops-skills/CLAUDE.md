@@ -675,9 +675,9 @@ Query string goes inside `pq.query`, NOT top level. `queryType` must be uppercas
 
 **Results:** `data.columns` (list of dicts with `.name`), `data.values` (2D array), `data.matchCount`.
 
-### Rate limiting and two-token round-robin
+### Rate limiting and slicing
 
-Per-service-user cap ~2.5 rps. One token over 30 days serially: ~166s; 6×5d slices at pool=3: ~66s. To exceed the cap: create two service users (different `sub` claims), each with its own 3 rps budget. Bind each time slice to one client for its full launch-poll-cancel lifecycle (forward tag is session-scoped); round-robin slices across clients. Combined ~5-6 rps; best observed 30d wall time ~28.5s (10×3d slices, pool=6 each). Three JWTs reaches 18-22s.
+Measured 2026-10-05 on S-26.3.4, one service-user token, one egress IP: about 30 calls/s sustained with zero 429s; 429s start around 35 calls/s and hit only launches (POST), never polls or cancels. Use a token bucket at about 25 calls/s and retry launch 429s with backoff. A 30-day aggregate: one query 21 to 40 s; 15 x 2d slices with 15 in flight about 5 s (merged totals match); 30 slices in flight is slower (10 s). Bind each slice to one client for its full launch-poll-cancel lifecycle (the forward tag is session-scoped). A second token is not needed for speed.
 
 ### `tenant: true` multi-account scoping gotcha
 

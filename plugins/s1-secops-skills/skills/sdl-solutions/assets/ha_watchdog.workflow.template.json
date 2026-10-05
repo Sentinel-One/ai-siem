@@ -61,7 +61,7 @@
     "use_connection_name": false,
     "integration_id": "{{SDL_INTEGRATION_ID}}",
     "data": {
-     "name": "Find Query Results",
+     "name": "Launch LRQ",
      "action_type": "http_request",
      "public_action_id": null,
      "method": "post",
@@ -127,13 +127,13 @@
      "variables": [
       {
        "name": "query_id",
-       "value": "{{find-silent-pairs.body.id}}",
+       "value": "{{launch-lrq.body.id}}",
        "should_use_as_output": false,
        "is_secret": false
       },
       {
        "name": "forward_tag",
-       "value": "{{Function.JQ(find-silent-pairs.headers, \"to_entries | map(select(.key|ascii_downcase==\\\"x-dataset-query-forward-tag\\\")) | .[0].value // \\\"\\\"\", true)}}",
+       "value": "{{Function.JQ(launch-lrq.headers, \"to_entries | map(select(.key|ascii_downcase==\\\"x-dataset-query-forward-tag\\\")) | .[0].value // \\\"\\\"\", true)}}",
        "should_use_as_output": false,
        "is_secret": false
       }
@@ -215,7 +215,7 @@
     "use_connection_name": false,
     "integration_id": "{{SDL_INTEGRATION_ID}}",
     "data": {
-     "name": "Poll Query Results",
+     "name": "Poll LRQ",
      "action_type": "http_request",
      "public_action_id": null,
      "method": "get",
@@ -282,7 +282,7 @@
      "condition": null,
      "conditions": [
       {
-       "input_value": "{{poll-silent-pairs.status_code}}",
+       "input_value": "{{poll-lrq.status_code}}",
        "compared_value": "400",
        "comparison_operator": "greater_than_or_equals"
       }
@@ -332,7 +332,7 @@
      "variables": [
       {
        "name": "lrq_error",
-       "value": "{{poll-silent-pairs.body.LRQ_TERMINATED_BY_BACKEND_query_killed_see_status_code}}",
+       "value": "{{poll-lrq.body.LRQ_TERMINATED_BY_BACKEND_query_killed_see_status_code}}",
        "should_use_as_output": false,
        "is_secret": false
       }
@@ -374,12 +374,12 @@
      "condition": null,
      "conditions": [
       {
-       "input_value": "{{Function.JQ(poll-silent-pairs.body, \"(.stepsCompleted // -1)\", true)}}",
-       "compared_value": "{{Function.JQ(poll-silent-pairs.body, \"(.totalSteps // 0)\", true)}}",
+       "input_value": "{{Function.JQ(poll-lrq.body, \"(.stepsCompleted // -1)\", true)}}",
+       "compared_value": "{{Function.JQ(poll-lrq.body, \"(.stepsTotal // .totalSteps // 0)\", true)}}",
        "comparison_operator": "equals"
       },
       {
-       "input_value": "{{Function.JQ(poll-silent-pairs.body, \"(.totalSteps // 0)\", true)}}",
+       "input_value": "{{Function.JQ(poll-lrq.body, \"(.stepsTotal // .totalSteps // 0)\", true)}}",
        "compared_value": "0",
        "comparison_operator": "greater_than"
       }
@@ -463,25 +463,25 @@
      "variables": [
       {
        "name": "rowcount",
-       "value": "{{Function.JQ(poll-silent-pairs.body.data.values, \"length\", true)}}",
+       "value": "{{Function.JQ(poll-lrq.body.data.values, \"length\", true)}}",
        "should_use_as_output": false,
        "is_secret": false
       },
       {
        "name": "top_principal",
-       "value": "{{Function.JQ(poll-silent-pairs.body.data.values, \"((.[0][0] // \\\"-\\\") | tostring | (if startswith(\\\"[\\\") then (try (fromjson | if type == \\\"array\\\" then (.[0] // \\\"-\\\") else . end) catch \\\"-\\\") else . end) | tostring)\", true)}}",
+       "value": "{{Function.JQ(poll-lrq.body.data.values, \"((.[0][0] // \\\"-\\\") | tostring | (if startswith(\\\"[\\\") then (try (fromjson | if type == \\\"array\\\" then (.[0] // \\\"-\\\") else . end) catch \\\"-\\\") else . end) | tostring)\", true)}}",
        "should_use_as_output": false,
        "is_secret": false
       },
       {
        "name": "top_action",
-       "value": "{{Function.JQ(poll-silent-pairs.body.data.values, \"(.[0][1] // \\\"-\\\")\", true)}}",
+       "value": "{{Function.JQ(poll-lrq.body.data.values, \"(.[0][1] // \\\"-\\\")\", true)}}",
        "should_use_as_output": false,
        "is_secret": false
       },
       {
        "name": "silent_summary",
-       "value": "{{Function.JQ(poll-silent-pairs.body.data.values, \"map(((.[0] | tostring | (if startswith(\\\"[\\\") then (try (fromjson | if type == \\\"array\\\" then (.[0] // \\\"-\\\") else . end) catch \\\"-\\\") else . end) | tostring)) + \\\"/\\\" + (.[1] | tostring)) | join(\\\", \\\")\", true)}}",
+       "value": "{{Function.JQ(poll-lrq.body.data.values, \"map(((.[0] | tostring | (if startswith(\\\"[\\\") then (try (fromjson | if type == \\\"array\\\" then (.[0] // \\\"-\\\") else . end) catch \\\"-\\\") else . end) | tostring)) + \\\"/\\\" + (.[1] | tostring)) | join(\\\", \\\")\", true)}}",
        "should_use_as_output": false,
        "is_secret": false
       }

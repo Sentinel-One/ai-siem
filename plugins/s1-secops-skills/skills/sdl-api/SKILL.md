@@ -293,7 +293,8 @@ The client retries automatically on HTTP 429, 5xx, and SDL `status: error/server
 
 - **Query budget is a leaky bucket of CPU seconds.** When `cpuUsageSecondsToWait` shows in a 429, back off by that many seconds. `priority: "low"` (the default) gets a more generous bucket than `"high"`. See `references/auth_and_limits.md` for the bucket model.
 - **From 19 March 2026, all query methods cap at 8 queries/sec per tenant.**
-- **Concurrency cap:** 12 simultaneous requests per API key (non-query). For loops, throttle in code.
+- **Per-IP cap, all SDL endpoints, from 10 September 2026: 60-request burst, 30 req/s refill** (was 1,600 / 800). Measured 2026-10-05 it was not yet enforced (40 req/s sustained on `/api/query`, 137 req/s bursts on `/api/listFiles`, all 200), but throttle to 30 req/s per egress IP anyway.
+- **Concurrency cap:** 12 simultaneous requests per API key (non-query). This is what actually returns 429 today (`Too many concurrent requests` at 100 parallel calls). For loops, throttle in code.
 
 For long-running ingest, use the binary truncated exponential backoff loop in `references/integration_patterns.md` rather than the client's default retries; it is designed to stop on `discardBuffer` and to slowly relax wait times after success.
 

@@ -34,6 +34,8 @@ entity, waits for the configured behaviours to accumulate, and fires. Scheduled
 is a query run on a timer over a lookback window. That difference decides which
 one can see your pattern at all, before any question of convenience.
 
+**MITRE mapping.** None of the three STAR rule types can carry MITRE ATT&CK: `POST /cloud-detection/rules` rejects `mitre` and `mitreTechniques` with HTTP 400 `Unknown field`, and STAR alerts reach UAM with `mitreTactics` / `mitreTechniques` empty (MITRE IDs written into the description stay text). Library (platform) rules do carry `mitre[]`. When a custom detection must carry a queryable mapping, build it as an HA watchdog and put `attacks[]` on each `finding_info.related_events[]` entry of the alert it posts (`finding_info.attacks` is ignored). The packaged, tested version is the sdl-solutions "Custom rules with MITRE mapping" solution: `sdl-solutions/references/custom-rule-mitre-mapping.md`. Measured 2026-10-05 on S-26.3.4.
+
 The "Hard limits" below and the "Scheduled detection rule, full option set" section apply to the scheduled (PowerQuery-body) type. Single-event and correlation bodies are boolean S1QL and are not bound by the 1,000-row / 1 MB PowerQuery limits.
 
 ### Single-event (`queryType: "events"`)
@@ -178,14 +180,24 @@ The built-in Storyline and Process presets support both actions unconditionally.
 #### Custom correlation key (`entity: "custom"`)
 
 When no built-in entity fits, correlate on a field path of your choosing.
-`entitiesAndFields` is a **list of lists, one inner list per sub-query, matched
-positionally**:
+`entitiesAndFields` is a **list of entity groups**, not one list per sub-query
+(platform S-26.2.6 "custom entity type"):
+
+- **Fields inside one group are OR'd.** Use a group when the same identity value
+  appears under different field names, across sources or across sub-queries.
+- **Groups are AND'd.** The entity is the combination of one value from each
+  group, so every event that counts toward the rule must carry a value for every
+  group.
+- **The number of groups is independent of the number of sub-queries.** One group
+  with two sub-queries and two groups with one sub-query are both accepted.
+
+Join two sub-queries that name the same identity differently (one group, two
+alternative fields):
 
 ```json
 "correlationParams": {
   "entity": "custom",
-  "entitiesAndFields": [ ["src.process.parent.storyline.id"],
-                         ["tgt.process.storyline.id"] ],
+  "entitiesAndFields": [ ["src.process.parent.storyline.id", "tgt.process.storyline.id"] ],
   "matchInOrder": false,
   "timeWindow": {"windowMinutes": 10},
   "subQueries": [
@@ -195,8 +207,27 @@ positionally**:
 }
 ```
 
-Sub-query 1 is keyed on the first inner list, sub-query 2 on the second, so this
-joins two different field paths that hold the same identity.
+Key on a compound identity, for example a process on an endpoint (two groups, AND):
+
+```json
+"entitiesAndFields": [ ["agent.uuid"], ["src.process.uid"] ]
+```
+
+Live-validated 2026-10-05 on S-26.3.4 by creating each rule, ingesting synthetic
+events over HEC and reading the resulting alerts and their raw indicators:
+
+| Rule shape | Events | Alert |
+|---|---|---|
+| `[["ua","ub"]]`, one sub-query, `matchesRequired: 2` | one event with `ua=K`, one with `ub=K` | fired (OR within a group) |
+| `[["user"],["host"]]`, one sub-query, `matchesRequired: 2` | same user, same host | fired |
+| same rule | same user, two different hosts | no alert (AND across groups) |
+| `[["actor"],["target"]]`, two sub-queries | stage a has only `actor=K`, stage b has only `target=K` | **no alert** |
+| same rule | both stages carry `actor=K2` and `target=T2` | fired |
+
+The fourth row is the shape this file previously documented as "one inner list
+per sub-query, matched positionally". It is accepted by the API and never fires
+for split identities. To join `actor` in one sub-query to `target` in another,
+put both fields in one group (the first example above).
 
 Rejections, each quoted from the API response that produced it:
 
@@ -208,10 +239,8 @@ Rejections, each quoted from the API response that produced it:
 | an object instead of a list, per element | `entitiesAndFields: 0: Not a valid list` |
 | the same path in two inner lists | `entityFields contains duplicate alias(es): '<path>'` |
 
-The duplicate-alias rule is the surprising one: two sub-queries correlating on
-the same logical identity must reference it by two **different** field paths.
-Tenant-validated: the block above was accepted, created, read back with
-`entitiesAndFields` intact, and deleted.
+The duplicate-alias rule follows from the group model: a field path may appear in
+only one group, because a path in two groups would be AND'd with itself.
 
 Scope note: an account-scoped token creating with `filter.tenant` returns
 `User <id>:account can not create rule with higher scope None:tenant`. Pass
@@ -505,7 +534,10 @@ scheduled rule that fits within the limits is less code to keep alive.
    `variable` wrapping it as a files-array, and an `http_request` POST to
    `/v1/alerts` on the ingest host. Indicators ride inline in
    `finding_info.related_events[]` (`/v1/indicators` is unreachable, so they
-   must be in the same POST).
+   must be in the same POST). To give the alert a MITRE ATT&CK mapping, add
+   `attacks: [{tactic:{uid,name}, technique:{uid,name}, version}]` to each
+   related_events entry; UAM reads it into `mitreTactics` / `mitreTechniques`.
+   The same array on `finding_info.attacks` is ignored.
 
 **Use the template, do not hand-assemble one.** The action envelope has about
 twenty-five required `data` keys per `http_request` plus `state`, `client_data`
@@ -513,7 +545,13 @@ and `snippet_*` on every action; omitting any of them imports cleanly and then
 fails at runtime with no error the API will show you. Ship-ready template:
 `sdl-solutions/assets/ha_watchdog.workflow.template.json`. Fill in
 `{{PQ_QUERY}}`, `{{ACCOUNT_ID}}`, `{{SITE_ID}}`, `{{SDL_INTEGRATION_ID}}`,
-`{{HEC_URL}}`, `{{HEC_TOKEN}}` and `{{PREFIX}}`, then import. It is generated by
+`{{HEC_URL}}`, `{{HEC_TOKEN}}` and `{{PREFIX}}`, then import. For a
+watchdog whose alert must carry MITRE, use the MITRE variant instead:
+`sdl-solutions/assets/mitre_watchdog.workflow.template.json`, rendered from a
+small JSON rule spec by `sdl-solutions/scripts/render_mitre_watchdog.py` (see
+`sdl-solutions/references/custom-rule-mitre-mapping.md`). In both templates the
+action names "Launch LRQ" and "Poll LRQ" are load-bearing: HA resolves
+`{{launch-lrq...}}` and `{{poll-lrq...}}` from them. It is generated by
 the SecOps deployer's own `watchdog_workflow` builder, and was validated end to
 end on a live tenant: imported, activated, run, `Completed` in 10.5s across 14
 actions, with the resulting UAM alert carrying the query's own result rows in

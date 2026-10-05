@@ -389,6 +389,10 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 - *"Scaffold a DaC repo with GitHub Actions and sync the example rules"*
 - *"Automate our detections as code: author in TOML, validate on PR, deploy on merge"*
 
+**Custom rules with MITRE mapping** (solution for custom rules to carry MITRE mapping: STAR rules have no MITRE field, so the detection runs as a scheduled Hyperautomation watchdog that posts the UAM alert with ATT&CK tactics and techniques attached; render from a small JSON rule spec or convert an existing scheduled rule). Full guide: [docs/solutions/custom-rule-mitre-mapping.md](./docs/solutions/custom-rule-mitre-mapping.md).
+
+**Query slicing** (run a long-window PowerQuery as parallel time slices through the LRQ API and merge the results: a 30-day aggregate in about 5 s instead of 21 to 40 s; zero-dependency runner). Full guide: [docs/solutions/query-slicing.md](./docs/solutions/query-slicing.md).
+
 **Alert noise reduction** (find the sources and signatures flooding the alert queue, separate ingested and already-actioned noise from real detections, recommend an ingestion-severity filter, auto-resolve already-mitigated alerts with a note, and ship a noise-vs-signal dashboard; everything discovered live, nothing hardcoded). Full guide: [docs/solutions/alert-noise-reduction.md](./docs/solutions/alert-noise-reduction.md).
 
 - *"My alert queue is flooded, reduce the noise"*
@@ -416,7 +420,7 @@ Credentials are identical across both paths. What each key is and where to get i
 
 One image (`sentinelone/secops-mcps`) bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`), version-locked together. Docker is the only thing you need on the host. It works the same on macOS, Windows, and Linux, including machines where IT policy blocks host-level package installs.
 
-Every bundled server is built from a pinned git source. Run `docker run --rm sentinelone/secops-mcps:1.4.9 versions` to see the exact repo and commit behind each one.
+Every bundled server is built from a pinned git source. Run `docker run --rm sentinelone/secops-mcps:1.4.10 versions` to see the exact repo and commit behind each one.
 
 **Step 1: Install Docker and confirm it is running**
 
@@ -442,7 +446,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL",
                "-e", "S1_HEC_TOKEN",
-               "sentinelone/secops-mcps:1.4.9", "s1-secops-mcp"],
+               "sentinelone/secops-mcps:1.4.10", "s1-secops-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
@@ -454,7 +458,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-               "sentinelone/secops-mcps:1.4.9", "purple-mcp"],
+               "sentinelone/secops-mcps:1.4.10", "purple-mcp"],
       "env": {
         "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
         "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
@@ -464,7 +468,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "command": "docker",
       "args": ["run", "-i", "--rm", "--pull=missing",
                "-e", "VIRUSTOTAL_API_KEY",
-               "sentinelone/secops-mcps:1.4.9", "virustotal-mcp"],
+               "sentinelone/secops-mcps:1.4.10", "virustotal-mcp"],
       "env": {
         "VIRUSTOTAL_API_KEY": "your-virustotal-key"
       }
@@ -504,12 +508,12 @@ smoke test s1 secops skills
 Claude checks all three MCPs, confirms each skill is loaded, and reports any missing credential or unreachable endpoint. You can also test the image straight from a terminal, no Claude Desktop required:
 
 ```bash
-docker run -i --rm sentinelone/secops-mcps:1.4.9 help    # lists the three bundled servers
+docker run -i --rm sentinelone/secops-mcps:1.4.10 help    # lists the three bundled servers
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm sentinelone/secops-mcps:1.4.9 s1-secops-mcp
+  | docker run -i --rm sentinelone/secops-mcps:1.4.10 s1-secops-mcp
 ```
 
-The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.3.10"`, the bundled MCP version rather than the `1.4.9` image tag, and stderr shows `Tools: 32 registered`.
+The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.4.0"`, the bundled MCP version rather than the `1.4.10` image tag, and stderr shows `Tools: 32 registered`.
 
 **Troubleshooting**
 
@@ -517,7 +521,7 @@ The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-
 |---|---|
 | MCP shows red in Cowork → MCP Servers | Confirm Docker is running: `docker info \| head -3`. Start Docker Desktop, then restart Claude Desktop. |
 | `Cannot connect to the Docker daemon` in the logs | Docker Desktop is not running. |
-| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.4.9`. |
+| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.4.10`. |
 | `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The value did not reach the container. Check each `-e VAR` name has a matching key in the same block's `env`. |
 | `S1 Mgmt API: NOT configured` | No console token reached the container; check `S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN`. |
 
@@ -539,7 +543,7 @@ Full walkthrough (config block, prerequisites, project setup, upgrading): **[doc
 
 ### Upgrading
 
-- **MCPs**: bump the pinned tag in `claude_desktop_config.json` to the current release (`:1.4.9`), run `docker pull sentinelone/secops-mcps:1.4.9`, and restart Claude Desktop. There is no moving tag to drift onto, so an upgrade is always an explicit, reviewable edit.
+- **MCPs**: bump the pinned tag in `claude_desktop_config.json` to the current release (`:1.4.10`), run `docker pull sentinelone/secops-mcps:1.4.10`, and restart Claude Desktop. There is no moving tag to drift onto, so an upgrade is always an explicit, reviewable edit.
 - **Plugin**: download the newer `.plugin` from [`dist/`](./dist/), then Cowork → Customize → Browse plugins, upload, and click **Replace**.
 
 Step-by-step, including what to delete from an older config: **[docs/upgrading.md](./docs/upgrading.md)**.

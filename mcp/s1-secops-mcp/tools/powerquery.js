@@ -77,11 +77,15 @@ export const tools = [
           type: 'boolean',
           description: 'Send the query unchanged, including SDL ingest-metering rows (tag=\'logVolume\'). Omit, or false, to exclude them (the normal case). Set true only for ingest-volume, data-usage or licence questions.',
         },
+        edrStrict: {
+          type: 'boolean',
+          description: 'For SentinelOne EDR queries: send scheme=edr so an unknown or wrongly cased field (e.g. Endpoint.name) fails with HTTP 400 "Unknown EDR field" instead of silently returning 0 rows. Correct fields return the same rows. A 400 here means fix the field name, not retry. Leave unset for non-EDR sources.',
+        },
       },
       required: ['query'],
     },
-    async handler({ query, startTime, endTime, hours = 24, maxRows = 1000, scope, includeMetering }) {
-      const result = await lrqRun(query, { startTime, endTime, hours, maxRows, scope, includeMetering: includeMetering === true });
+    async handler({ query, startTime, endTime, hours = 24, maxRows = 1000, scope, includeMetering, edrStrict }) {
+      const result = await lrqRun(query, { startTime, endTime, hours, maxRows, scope, includeMetering: includeMetering === true, edrStrict: edrStrict === true });
       return JSON.stringify(result, null, 2);
     },
   },

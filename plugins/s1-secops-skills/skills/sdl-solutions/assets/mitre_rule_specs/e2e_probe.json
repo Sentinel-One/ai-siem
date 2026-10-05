@@ -1,0 +1,12 @@
+{
+  "name": "MITRE watchdog E2E probe",
+  "description": "End-to-end test of the custom-rule MITRE solution. Matches only the synthetic ZZ_MITRE_PROBE source.",
+  "severity": "Low",
+  "lookback_minutes": 60,
+  "interval_minutes": 60,
+  "query": "dataSource.name='ZZ_MITRE_PROBE' tag != 'logVolume' | group hits=count() by probe_host, probe_tag | sort -hits | limit 10",
+  "mitre": [
+    {"tactic": "TA0002", "technique": "T1059.001", "technique_name": "PowerShell"},
+    {"tactic": "TA0005", "technique": "T1027", "technique_name": "Obfuscated Files or Information"}
+  ]
+}

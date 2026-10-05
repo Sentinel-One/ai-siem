@@ -23,7 +23,7 @@ set -euo pipefail
 # commit you are building. S1_MCP_VERSION below is therefore a LABEL, not an
 # install target: keep it equal to the version in s1-secops-mcp/package.json so
 # the image label does not lie about what it carries.
-S1_MCP_VERSION="${S1_MCP_VERSION:-1.3.10}"
+S1_MCP_VERSION="${S1_MCP_VERSION:-1.4.0}"
 
 # virustotal-mcp: our fork of w0h1v/mcp-virustotal. The fork exists
 # because upstream publishes only to npm: it has a `prepublishOnly` build and
@@ -35,7 +35,7 @@ S1_MCP_VERSION="${S1_MCP_VERSION:-1.3.10}"
 # Must be a FULL 40-character commit SHA: the Dockerfile fetches the object by
 # id, and a branch name would silently un-pin the build.
 VT_MCP_REPO="${VT_MCP_REPO:-https://github.com/pmoses-s1/mcp-virustotal.git}"
-VT_MCP_REF="${VT_MCP_REF:-b3d847443f08c0a3fb1d5f34dc29770f6cec4d25}"
+VT_MCP_REF="${VT_MCP_REF:-0305f3d218518e46b8e6939676815bbd56db1c7b}"
 
 # purple-mcp: our fork of Sentinel-One/purple-mcp at the v0.7.0 release commit,
 # plus one change. Upstream requires pandas, but imports it in exactly one place
@@ -45,7 +45,7 @@ VT_MCP_REF="${VT_MCP_REF:-b3d847443f08c0a3fb1d5f34dc29770f6cec4d25}"
 # optional `dataframe` extra, changing no behaviour. Upstream PR pending; repin
 # to Sentinel-One once it merges.
 PURPLE_MCP_REPO="${PURPLE_MCP_REPO:-https://github.com/pmoses-s1/purple-mcp.git}"
-PURPLE_MCP_REF="${PURPLE_MCP_REF:-b8a200d3ad3e52df9c349f427faa344cdc3a8470}"
+PURPLE_MCP_REF="${PURPLE_MCP_REF:-1390b8c00a8af847605739248b0b4514713298c4}"
 
 # Fail before a 4-minute build rather than after it.
 if ! echo "${VT_MCP_REF}" | grep -qE '^[0-9a-f]{40}$'; then
@@ -67,7 +67,7 @@ fi
 #   docker run --rm <image> versions
 # (That replaces the old `--entrypoint npm <image> ls -g --depth=0`. There is
 # no npm in the image any more, so that command now fails with "not found".)
-IMAGE_VERSION="${IMAGE_VERSION:-1.4.9}"
+IMAGE_VERSION="${IMAGE_VERSION:-1.4.10}"
 
 # ── Image identity ───────────────────────────────────────────────────────────
 REGISTRY="${REGISTRY:-docker.io/sentinelone}"

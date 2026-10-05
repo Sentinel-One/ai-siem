@@ -207,6 +207,10 @@ The `alerts` query takes `filters: [FilterInput!]`, a flat AND-joined list. Muta
 
 **`alertGroupByCount` takes `limit`, not `first`.** The rest of the group-by / connection family uses `first` / `after`. This one is an outlier (and the schema marks it deprecated in favour of `alertGroups`).
 
+**`ConfidenceLevel` has three values: `INFORMATIONAL`, `MALICIOUS`, `SUSPICIOUS`.** `INFORMATIONAL` is new in S-26.2.6 (detections from pre-production or suppressed logic, never auto-mitigated, 4 per agent per day by default). **Informational alerts are hidden from an unfiltered `alerts` query and from `| datasource alerts`.** Measured 2026-10-05 on S-26.3.4: a `detectedAt` window holding one alert of each level returned 2 unfiltered, and the Informational one appeared only with `{fieldId:"confidenceLevel", stringEqual:{value:"INFORMATIONAL"}}` (or a `stringIn` that names it). A triage sweep that must see everything has to ask for Informational explicitly. Many alerts have no confidence level at all (`---` in PowerQuery, `null` in GraphQL), so a `confidenceLevel` filter also drops those.
+
+**Bulk actions: up to 10,000 alerts per selection (S-26.3.4).** A filter-based `alertTriggerActions` over a large set returns `TriggerActionsScheduled { bulkActionTriggerId }`, not `ActionsTriggered`: the work runs asynchronously. Measured: `S1/alert/addNote` over 3,657 STAR alerts was scheduled and every alert sampled afterwards had `noteExists: true`. Re-read the alerts to confirm; the console's Action Logs view (last 30 days) records the batch, but no API for it was found. Automatic alert actions (S-26.3.4 rules that act on matching alerts) are also console-only: neither the UAM GraphQL schema nor the REST spec exposes them.
+
 ---
 
 ## Scope and view

@@ -37,6 +37,35 @@ from `where` and handle it after the pipe.
 | `createdAt != null` | **rejected** | `detectedAt != null` works |
 | `mitreTactics != null` | **rejected** | not tested |
 
+## Hidden-by-default rows (measured 2026-10-05, S-26.3.4)
+
+Two adapters return a subset unless you filter for the rest explicitly. Panels that look complete
+can be silently short.
+
+| Adapter | Hidden unless filtered | Filter that shows them |
+|---|---|---|
+| `alert_aggregated_snapshots` | weekly rows (up to 1 year); unfiltered returns only the last-30-day daily rows | `filter timeRangeType = 'WEEKLY'` (never sum DAILY and WEEKLY together, they overlap) |
+| `alerts` | `confidenceLevel = 'INFORMATIONAL'` alerts (new in S-26.2.6) | `filter confidenceLevel = 'INFORMATIONAL'` |
+
+The UAM GraphQL `alerts` query behaves the same way for Informational alerts: an unfiltered list
+omits them and a `confidenceLevel` filter returns them.
+
+New snapshot fields for trend panels (S-26.3.4): `analystVerdict`, `mitigationResult`,
+`confidenceLevel`, `analyticsCategory`, `detectionProduct`, `classification`, `analyticsName`,
+`snapshotDateTo`. Weekly trend panel body:
+
+```text
+| datasource alert_aggregated_snapshots
+| filter timeRangeType = 'WEEKLY'
+| group count=sum(findingCount) by detectionProduct, timestamp=snapshotDate
+| transpose detectionProduct
+```
+
+`mitreTactics` / `mitreTechniques` on `alerts` are populated for library-rule alerts and for
+ingested alerts that carry `attacks[]` on their indicators, and are empty for every Custom
+Detection (STAR) alert. A MITRE panel undercounts custom detections unless they are deployed with
+the sdl-solutions "Custom rules with MITRE mapping" solution.
+
 ## Pushdown, the documented floor
 
 PowerQuery pushdown relays commands to the adapter up to the first `group`, or the first command

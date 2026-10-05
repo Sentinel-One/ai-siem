@@ -24,7 +24,7 @@ bash /tmp/s1-mcp-install.sh --user
 That runs `install.sh --user`, which:
 
 1. Confirms Docker is installed and the daemon is reachable (errors out with install hints if not).
-2. Pulls `sentinelone/secops-mcps:1.4.9`.
+2. Pulls `sentinelone/secops-mcps:1.4.10`.
 3. Writes a credentials skeleton to `~/.config/sentinelone/credentials.json` (mode 0600).
 4. Prints the next steps.
 
@@ -49,7 +49,7 @@ Add the server to Claude Desktop (`~/Library/Application Support/Claude/claude_d
       "args": ["run", "-i", "--rm",
                "-v", "/Users/<you>/.config/sentinelone:/etc/s1-secops-mcp:ro",
                "-e", "S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json",
-               "sentinelone/secops-mcps:1.4.9", "s1-secops-mcp"]
+               "sentinelone/secops-mcps:1.4.10", "s1-secops-mcp"]
     }
   }
 }
@@ -57,7 +57,7 @@ Add the server to Claude Desktop (`~/Library/Application Support/Claude/claude_d
 
 The path must be absolute; `~` does not expand inside the `-v` argument. `whoami` prints the value for `<you>`.
 
-To pass credentials as environment variables instead of mounting a file, use the `-e` form documented in [docs/docker.md](../../docs/docker.md), which also covers the `purple-mcp` and `virustotal` entries from the same image.
+To pass credentials as environment variables instead of mounting a file, use the `-e` form documented in [docs/docker.md](../../../plugins/s1-secops-skills/docs/docker.md), which also covers the `purple-mcp` and `virustotal` entries from the same image.
 
 Restart Claude Desktop.
 
@@ -70,7 +70,7 @@ docker run --rm --name s1-secops-mcp \
   -v ~/.config/sentinelone:/etc/s1-secops-mcp:ro \
   -e S1_CREDS_FILE=/etc/s1-secops-mcp/credentials.json \
   -p 127.0.0.1:8765:8765 \
-  sentinelone/secops-mcps:1.4.9 \
+  sentinelone/secops-mcps:1.4.10 \
   s1-secops-mcp --transport http --host 0.0.0.0 --port 8765
 ```
 
@@ -132,7 +132,7 @@ Team members connect from their Claude clients with their own bearer token. Audi
    curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/install.sh | sudo bash -s -- --server
    ```
 
-   It pulls `sentinelone/secops-mcps:1.4.9`, creates the `mcp` user, drops `/etc/s1-secops-mcp/credentials.json` (placeholder) and `/etc/s1-secops-mcp/bearer-tokens.json` (one freshly-generated admin token, printed once to stdout), installs the systemd unit, and starts the service.
+   It pulls `sentinelone/secops-mcps:1.4.10`, creates the `mcp` user, drops `/etc/s1-secops-mcp/credentials.json` (placeholder) and `/etc/s1-secops-mcp/bearer-tokens.json` (one freshly-generated admin token, printed once to stdout), installs the systemd unit, and starts the service.
 
 4. **Fill in real SentinelOne credentials:**
 
@@ -383,7 +383,7 @@ If you see ACME succeed in milliseconds rather than ~10-30 seconds, look at the 
 | Start fails with `manifest unknown` or `denied` from docker.io | Tag typo in `S1_MCP_IMAGE`, or no network route to Docker Hub. The repository is public, so no login is needed. | `sudo docker pull <the tag>` by hand to see the real error. |
 | 401 on every request | No bearer token, or wrong one | Confirm `Authorization: Bearer <token>` is set; confirm the token is in `/etc/s1-secops-mcp/bearer-tokens.json`. |
 | `tools/call` returns `Error: connect ECONNREFUSED` to `*.sentinelone.net` | S1 creds missing or VM has no outbound to console | `curl -v https://$YOUR_CONSOLE_URL`; check `/etc/s1-secops-mcp/credentials.json`. |
-| Service starts but `Tools: 32 registered` | Code/import error | `journalctl -u s1-secops-mcp -n 100` for the import stack trace. |
+| Service starts but `Tools: 0 registered` | Code/import error | `journalctl -u s1-secops-mcp -n 100` for the import stack trace. |
 | `502 Bad Gateway` from Caddy | Backend died between Caddy reload and proxy attempt | `systemctl status s1-secops-mcp`. |
 | `[credentials] S1_CREDS_FILE set but unreadable` | The `/etc/s1-secops-mcp` mount is missing from the unit, or the file is not there | `docker inspect --format '{{json .Mounts}}' s1-secops-mcp`; confirm `credentials.json` exists on the host. |
 

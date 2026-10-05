@@ -163,7 +163,12 @@ LABEL org.opencontainers.image.title="SentinelOne Claude Skills MCP Stack" \
 #   tini            : forwards SIGTERM cleanly to the MCP child process
 #   ca-certificates : TLS for outbound calls to *.sentinelone.net etc.
 # Deliberately absent: git (fetch-stage only), python3-pip, python3-venv.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# `apt-get upgrade` applies Debian security fixes published after the base image
+# was built. The base tag lags: on 2026-10-05 node:24-trixie-slim still carried
+# libpcre2-8-0 10.46-1~deb13u2 (CVE-2026-103111, HIGH) when u3 was available,
+# which fails the Trivy fixable-HIGH gate on an otherwise clean build.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
       python3 ca-certificates tini \
     && rm -rf /var/lib/apt/lists/*
 

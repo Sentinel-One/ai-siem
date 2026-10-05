@@ -206,19 +206,15 @@ DELETE https://<console>.sentinelone.net/sdl/v2/api/queries/{id}     -> cancel w
 3. **`tenant: true` is required** unless you pass `accountIds`. Without either, the query runs against a near-empty default scope and returns `matchCount=0`.
 4. **Echo `X-Dataset-Query-Forward-Tag`** from the POST response header on every poll and the cancel. GET/DELETE without it is rejected.
 5. **EDR filter for SentinelOne telemetry:** prepend `dataSource.name='SentinelOne' dataSource.category='security'` (or `i.scheme="edr"`) to your query. Without it you get Scalyr / infra logs mixed with everything, and on some tenants you get only infra.
+6. **Fail loud on EDR field typos:** add top-level `"scheme": "edr"` to the launch body for EDR queries. A wrongly cased or unknown field then returns HTTP 400 `Unknown EDR field: ...` instead of a silent `matchCount=0` (the `i.scheme` query filter does not do this). Correct fields return the same rows. Treat that 400 as "fix the query", never as "retry".
 
-**Rate limits:** 100 req/sec per account, **3 req/sec per user** (the tight one). A user token capped at 3 rps means a token-bucket limiter at ~2.5 rps with a pool of 3 parallel slices is the sweet spot. To push further, use two distinct service user JWTs and round-robin slices across them - each user identity has its own 3 rps budget.
+**Rate limits (measured 2026-10-05, S-26.3.4, one token, one IP):** about 30 calls/s sustained with zero 429s; 429s start around 35 calls/s and hit **only launches** (POST), never polls or cancels. The old "3 req/sec per user" figure is stale, and a second token is not needed for speed. Default to a token bucket at about 25 calls/s with 15 to 20 slices in flight, and retry a launch 429 with exponential backoff.
 
 **Query expires 30s after launch or 30s after the last poll.** Poll every 1-2s; don't let the deadline slip.
 
-**Sizing & parallelism.** Two bottlenecks stack: per-user rate cap first, then slowest-slice server runtime. Measured on `your-tenant` for a 30d count-by-event.type over 574M events:
+**Sizing & parallelism.** Time-slice long windows and run the slices in parallel, then merge. Measured 2026-10-05 for a 30d `| group n=count() by dataSource.name` over 14.1M events, one token at 25 calls/s: 1 x 30d **21 to 40 s**; 7 x ~4d in parallel **4.7 to 5.0 s**; 15 x 2d in parallel **4.9 to 5.2 s** (the sweet spot); 30 x 1d in parallel **10.2 s** (past about 15 to 20 in flight it slows down again). Merged totals matched the single query every time. Defaults table and the full benchmark live in `references/lrq-api.md`.
 
-- **1 token, 2.5 rps:** 30d serial 166s | 30x1d pool=3 87s | 6x5d pool=3 **66s** (best 1-token)
-- **2 tokens, ~5 rps combined, round-robin:** 30x1d pool=6 35s | 15x2d pool=6 **29s** | 10x3d pool=6 **29s** (best 2-token)
-
-Once two tokens are in play the per-user rate cap stops being the bottleneck and the slowest slice's backend runtime (p95 ~9-17s) becomes the floor. Push further by adding a third service-user JWT (pool=9, ~7.5 rps budget, expected 18-22s), swapping `| group` for `| top K` on huge ranges, or narrowing the initial filter. Defaults table and the full benchmark live in `references/lrq-api.md`.
-
-**Canonical runner.** The full Python implementation (rate limiter, two-token round-robin, aggregate merge across slices) is documented in `references/lrq-api.md`. Read that file before writing a new runner from scratch.
+**Canonical runner.** The full Python implementation (rate limiter, slice runner, aggregate merge across slices) is documented in `references/lrq-api.md`. Read that file before writing a new runner from scratch.
 
 **Quick one-shot exploration** (no API client wired up): the Purple MCP `mcp__purple-mcp__powerquery` tool is fine for an interactive 24h hunt. It wraps the same engine but with lower limits, tighter timeouts, and no parallelism. Pair it with `mcp__purple-mcp__get_timestamp_range(hours=24)` for ISO-8601 ranges, and `mcp__purple-mcp__purple_ai` when you need a starting-point query draft from natural language. Prefer LRQ for anything programmatic, multi-slice, over long windows, or producing results the user will use downstream.
 
@@ -339,14 +335,14 @@ maintainer harness and is not shipped inside the plugin.
   by that identity.
 
 For a key the built-ins do not cover, set `entity: "custom"` and supply
-`entitiesAndFields`, **a list of lists, one inner list per sub-query, matched
-positionally**:
+`entitiesAndFields`, **a list of entity groups**: fields inside a group are OR'd
+(alternative names for the same identity), groups are AND'd (a compound key), and
+the number of groups does not depend on the number of sub-queries:
 
 ```json
 "correlationParams": {
   "entity": "custom",
-  "entitiesAndFields": [ ["src.process.parent.storyline.id"],
-                         ["tgt.process.storyline.id"] ],
+  "entitiesAndFields": [ ["src.process.parent.storyline.id", "tgt.process.storyline.id"] ],
   "matchInOrder": false,
   "timeWindow": {"windowMinutes": 10},
   "subQueries": [
@@ -356,18 +352,19 @@ positionally**:
 }
 ```
 
-That reads as "correlate sub-query 1's `src.process.parent.storyline.id` against
-sub-query 2's `tgt.process.storyline.id`", which is how you join two different
-field paths that hold the same identity.
+That reads as "the entity is the storyline id, whichever of the two fields holds
+it", which is how you join two different field paths that hold the same identity.
+**Do not split them into two groups** (`[["src..."], ["tgt..."]]`): that means
+"both fields, AND'd", the API accepts it, and it never fires when each event carries
+only one of the fields (live-validated 2026-10-05, see
+`references/detection-rules.md`, "Custom correlation key").
 
 Three things the API rejects, each confirmed by the error it returns:
 
 - the field is `entitiesAndFields`, not `customEntityKey` (`Unknown field`)
 - it is a list of lists; a flat list of strings fails with `Not a valid list` on element 0
-- **aliases must be unique across the whole structure.** Repeating the same field
-  path in two inner lists gives `entityFields contains duplicate alias(es)`. Two
-  sub-queries correlating on the same logical identity must name it by two
-  different field paths.
+- **a field path may appear in only one group.** Repeating it gives
+  `entityFields contains duplicate alias(es)`.
 
 Creating a rule at a scope above your token's returns
 `can not create rule with higher scope`; pass `filter.accountIds` rather than

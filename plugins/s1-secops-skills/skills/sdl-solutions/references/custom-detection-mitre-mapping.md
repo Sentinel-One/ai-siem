@@ -7,23 +7,9 @@ RBA multi-tactic scoring, reports). Triggers: "map my custom detection to MITRE"
 MITRE tactic", "STAR rule MITRE", "my custom alerts have no MITRE", "add ATT&CK to a custom detection".
 Orchestration only; drives powerquery, hyperautomation, mgmt-console-api and sdl-api.
 
-## Why this is needed (measured, S-26.3.4)
-
-- **A Custom Detection (STAR) rule cannot carry MITRE.** `POST /web/api/v2.1/cloud-detection/rules`
-  rejects a `mitre` field and a `mitreTechniques` field with HTTP 400 `data: ... Unknown field`.
-  Only library (platform) rules carry `mitre[]` (`GET /detection-library/platform-rules`).
-- **STAR alerts reach UAM with no MITRE.** On the validation tenant every STAR alert (3,602) and
-  every Hyperautomation alert (1,088) had `mitreTactics` empty. Writing "MITRE: T1059.001" in the
-  rule description does not populate anything.
-- **UAM does read MITRE from an ingested alert, from one place only.** An alert posted to the ingest
-  host `/v1/alerts` with `attacks[]` on each `finding_info.related_events[]` entry populates the
-  indicator's `attacks` and the alert's `mitreTactics` / `mitreTechniques`. The same array on
-  `finding_info.attacks` is **ignored** (tested side by side: v1 with `finding_info.attacks` only had
-  no MITRE, v2 with the per-indicator copy showed `["Execution","Stealth"]` and
-  `["T1059.001 PowerShell","T1027 Obfuscated Files or Information"]`).
-
-So the solution runs the custom detection's query from a Hyperautomation watchdog and has the
-watchdog raise the alert itself, with the MITRE mapping attached where UAM reads it.
+A Custom Detection (STAR) rule has no MITRE field, so the solution runs the custom detection's query
+from a Hyperautomation watchdog and has the watchdog raise the alert itself, with the MITRE mapping
+attached where UAM reads it.
 
 ## What gets deployed
 

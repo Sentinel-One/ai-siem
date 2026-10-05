@@ -11,7 +11,7 @@ ATT&CK tactic and technique attached where UAM reads them. The result is an aler
 `mitreTactics` and `mitreTechniques` are populated, exactly like a library-rule alert.
 
 This is part of the `sdl-solutions` skill. Playbook:
-[`sdl-solutions/references/custom-rule-mitre-mapping.md`](../../skills/sdl-solutions/references/custom-rule-mitre-mapping.md).
+[`sdl-solutions/references/custom-detection-mitre-mapping.md`](../../skills/sdl-solutions/references/custom-detection-mitre-mapping.md).
 
 ## The problem, measured
 

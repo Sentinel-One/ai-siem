@@ -13,19 +13,6 @@ ATT&CK tactic and technique attached where UAM reads them. The result is an aler
 This is part of the `sdl-solutions` skill. Playbook:
 [`sdl-solutions/references/custom-detection-mitre-mapping.md`](../../skills/sdl-solutions/references/custom-detection-mitre-mapping.md).
 
-## The problem, measured
-
-Tested on a live tenant on platform version S-26.3.4:
-
-| Check | Result |
-|---|---|
-| Create a custom detection rule with a `mitre` field | HTTP 400 `Unknown field` |
-| Create a custom detection rule with a `mitreTechniques` field | HTTP 400 `Unknown field` |
-| MITRE on existing STAR alerts | empty on all 3,602 |
-| MITRE on library rules | present (`mitre[]` with tactic, technique, sub-technique) |
-| Ingested alert with `finding_info.attacks` | no MITRE in UAM |
-| Ingested alert with `attacks[]` on each `finding_info.related_events[]` entry | MITRE populated: `mitreTactics ["Execution","Stealth"]`, `mitreTechniques ["T1059.001 PowerShell","T1027 Obfuscated Files or Information"]` |
-
 ## How it works
 
 ```text

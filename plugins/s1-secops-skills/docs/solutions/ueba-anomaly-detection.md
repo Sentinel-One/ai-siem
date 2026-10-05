@@ -326,7 +326,7 @@ The interactive mode is a source-agnostic pipeline at
 `mgmt-console-api/scripts/baseline_anomaly.py`. For any `dataSource.name` it:
 
 1. **Auto-discovers the schema** via `inspect_source.discover_schema()` and picks `principal_field` (user / host / IP / role) and `action_field` (event.type / activity_name / action) from what the source actually carries, with no per-source hardcoding.
-2. **Slices the baseline window into N daily LRQ queries** (default 30 days), running 3 in parallel under the per-user 3 rps cap. Daily slicing avoids the LRQ per-call deadline that single 7d/30d aggregates routinely exceed.
+2. **Slices the baseline window into N daily LRQ queries** (default 30 days), running 3 in parallel by default (`--max-workers`). Daily slicing avoids the LRQ per-call deadline that single 7d/30d aggregates routinely exceed.
 3. **Runs one 24h live slice** in the same shape.
 4. **Merges client-side** with one of two strategies: `pooled` (all daily samples in one bucket per pair) or `dow` (a separate bucket per pair per day-of-week, which removes the weekday/weekend false positive and is the production tier).
 5. **Surfaces the anomaly classes** every run: matched deviations (SPIKE/DROP), silent pairs, and new-behaviour pairs.

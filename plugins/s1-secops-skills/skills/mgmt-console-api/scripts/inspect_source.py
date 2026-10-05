@@ -261,7 +261,7 @@ def _run_lrq_log_query(client: Any, log_filter: str, *,
 
     # Fast-poll schedule: most LOG queries finish in <2s, so tight
     # initial intervals shave latency. Fall back to 1s steady-state.
-    # Respects the per-user 3 rps rate cap (first 3 polls take 0.9s).
+    # The first 3 polls take 0.9s in total, so a single query stays well under the LRQ limit.
     poll_schedule = [0.25, 0.35, 0.5, 0.75, 1.0]
     deadline = time.time() + poll_deadline_s
     last_seen = 0

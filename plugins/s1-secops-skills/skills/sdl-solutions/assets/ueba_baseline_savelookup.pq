@@ -38,7 +38,7 @@
 // interior days, so expect n_days <= 7. The nightly refresh workflow only launches this LRQ, so 7 to 30-day windows build
 // fine. Split ONLY if a single windowed query exceeds the LRQ max runtime on a very busy /
 // high-cardinality source: run per-day LRQ slices and merge client-side with
-// scripts/baseline_anomaly.py (3 slices in parallel, under the per-user 3 rps cap). Do not just
+// scripts/baseline_anomaly.py (3 slices in parallel by default). Do not just
 // widen this savelookup in that case.
 //
 // tag != 'logVolume' drops SDL ingest-metering rows, which every source carries

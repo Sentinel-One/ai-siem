@@ -74,7 +74,7 @@ Usage:
 Every server is built from a pinned git source. This image contains no npm.
 
 Reference:
-  https://github.com/pmoses-s1/s1-secops-skills/blob/main/docs/docker.md
+  https://github.com/Sentinel-One/ai-siem/blob/main/plugins/s1-secops-skills/docs/docker.md
 EOF
     ;;
   *)

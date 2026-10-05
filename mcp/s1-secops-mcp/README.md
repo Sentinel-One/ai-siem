@@ -93,7 +93,7 @@ Restart Claude Desktop. The same image serves `purple-mcp` and `virustotal-mcp`;
 ### B. Reproducible: install script
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/install.sh | bash
 ```
 
 Checks for Docker, pulls the pinned image, drops a credentials skeleton at `~/.config/sentinelone/credentials.json` (mode 0600), and prints the wiring instructions for Claude Desktop.
@@ -110,7 +110,7 @@ Each team member installs the script once:
 
 ```bash
 mkdir -p ~/.local/bin
-curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
+curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/bridge/s1-secops-mcp-bridge.mjs \
   -o ~/.local/bin/s1-secops-mcp-bridge.mjs
 chmod +x ~/.local/bin/s1-secops-mcp-bridge.mjs
 ```

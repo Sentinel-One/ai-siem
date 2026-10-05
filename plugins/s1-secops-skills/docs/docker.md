@@ -192,19 +192,12 @@ docker image prune -a --filter "until=168h"
 
 ## Building from source
 
-For maintainers who want to rebuild the image locally:
+The image is built and published by the maintainers; end users never need to build it. This repo carries the exact [`Dockerfile`](../../../mcp/docker/Dockerfile), [`build.sh`](../../../mcp/docker/build.sh) and [`entrypoint.sh`](../../../mcp/docker/entrypoint.sh) used for each release, so the build is reviewable, and every version pin lives in `build.sh`.
+
+To confirm what a published image contains, ask the image itself. It reports the exact repository and commit behind each bundled server:
 
 ```bash
-git clone https://github.com/pmoses-s1/s1-secops-skills.git
-cd s1-secops-skills
-
-# Single-arch build for the host architecture
-docker/build.sh
-
-# Multi-arch build + push to Docker Hub (requires `docker login docker.io` first)
-PUSH=true docker/build.sh
+docker run --rm sentinelone/secops-mcps:1.4.10 versions
 ```
-
-All version pins live in [`docker/build.sh`](../../../mcp/docker/build.sh) and the matching CI workflow `.github/workflows/docker-publish.yml` in the upstream `s1-secops-skills` repo. They are checked for sync at CI build time.
 
 Maintainer reference (pinned versions, publishing, bumping a pin): [`docker/README.md`](../../../mcp/docker/README.md).

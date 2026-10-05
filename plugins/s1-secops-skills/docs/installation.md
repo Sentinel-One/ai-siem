@@ -221,20 +221,16 @@ Every credential key, where to get it, the two token types, and the resolution o
 
 ## Building from source
 
-Only needed when developing the MCP server or rebuilding the plugin. End users do not need this.
+Only needed when changing the skills. End users do not need this.
 
 ```bash
-git clone https://github.com/pmoses-s1/s1-secops-skills.git
-cd s1-secops-skills
+git clone https://github.com/Sentinel-One/ai-siem.git
+cd ai-siem/plugins/s1-secops-skills
 
-# Rebuild the image from pinned sources (single-arch, host architecture)
-docker/build.sh
-
-# Rebuild the plugin
-cd s1-secops-skills-plugin && bash scripts/build.sh         # incremental
-cd s1-secops-skills-plugin && bash scripts/build.sh --clean # clean
+# Rebuild the plugin and the per-skill .skill files into dist/
+bash scripts/build.sh         # incremental
+bash scripts/build.sh --clean # clean
 ```
 
-Version pins, multi-arch builds, and publishing are covered in [docker.md → Building from source](./docker.md#building-from-source).
+The Docker image is built and published by the maintainers; see [docker.md → Building from source](./docker.md#building-from-source) for how to review and verify it.
 
-To point Claude Desktop at a locally built image instead of the published one, change the image reference in the Step 1 config to the tag you built, for example `secops-skills:dev`.

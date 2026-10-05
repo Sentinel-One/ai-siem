@@ -16,7 +16,7 @@ Three supported topologies, in order of complexity.
 Download the installer, review it, then run it (avoid piping a remote script straight into a shell). For production, pin the URL to a tagged release commit instead of `main`:
 
 ```bash
-curl -fsSL -o /tmp/s1-mcp-install.sh https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/install.sh
+curl -fsSL -o /tmp/s1-mcp-install.sh https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/install.sh
 # review /tmp/s1-mcp-install.sh, then:
 bash /tmp/s1-mcp-install.sh --user
 ```
@@ -129,7 +129,7 @@ Team members connect from their Claude clients with their own bearer token. Audi
 3. **Run the installer in server mode:**
 
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/install.sh | sudo bash -s -- --server
+   curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/install.sh | sudo bash -s -- --server
    ```
 
    It pulls `sentinelone/secops-mcps:1.4.10`, creates the `mcp` user, drops `/etc/s1-secops-mcp/credentials.json` (placeholder) and `/etc/s1-secops-mcp/bearer-tokens.json` (one freshly-generated admin token, printed once to stdout), installs the systemd unit, and starts the service.
@@ -147,7 +147,7 @@ Team members connect from their Claude clients with their own bearer token. Audi
    ```bash
    sudo apt install -y caddy
    sudo curl -fsSL -o /etc/caddy/Caddyfile \
-     https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/caddy/Caddyfile.example
+     https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/caddy/Caddyfile.example
    sudo vim /etc/caddy/Caddyfile   # change mcp.s1.internal to your DNS name
    sudo systemctl reload caddy
    ```
@@ -383,7 +383,7 @@ If you see ACME succeed in milliseconds rather than ~10-30 seconds, look at the 
 | Start fails with `manifest unknown` or `denied` from docker.io | Tag typo in `S1_MCP_IMAGE`, or no network route to Docker Hub. The repository is public, so no login is needed. | `sudo docker pull <the tag>` by hand to see the real error. |
 | 401 on every request | No bearer token, or wrong one | Confirm `Authorization: Bearer <token>` is set; confirm the token is in `/etc/s1-secops-mcp/bearer-tokens.json`. |
 | `tools/call` returns `Error: connect ECONNREFUSED` to `*.sentinelone.net` | S1 creds missing or VM has no outbound to console | `curl -v https://$YOUR_CONSOLE_URL`; check `/etc/s1-secops-mcp/credentials.json`. |
-| Service starts but `Tools: 0 registered` | Code/import error | `journalctl -u s1-secops-mcp -n 100` for the import stack trace. |
+| Service starts but `Tools: 32 registered` | Code/import error | `journalctl -u s1-secops-mcp -n 100` for the import stack trace. |
 | `502 Bad Gateway` from Caddy | Backend died between Caddy reload and proxy attempt | `systemctl status s1-secops-mcp`. |
 | `[credentials] S1_CREDS_FILE set but unreadable` | The `/etc/s1-secops-mcp` mount is missing from the unit, or the file is not there | `docker inspect --format '{{json .Mounts}}' s1-secops-mcp`; confirm `credentials.json` exists on the host. |
 

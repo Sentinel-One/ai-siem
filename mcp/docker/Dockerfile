@@ -151,8 +151,8 @@ ARG VCS_REF
 # image label itself with the MCP's number instead of its own.
 LABEL org.opencontainers.image.title="SentinelOne Claude Skills MCP Stack" \
       org.opencontainers.image.description="s1-secops-mcp + purple-mcp + virustotal MCP, single image, no npm" \
-      org.opencontainers.image.source="https://github.com/pmoses-s1/s1-secops-skills" \
-      org.opencontainers.image.documentation="https://github.com/pmoses-s1/s1-secops-skills/blob/main/docs/docker.md" \
+      org.opencontainers.image.source="https://github.com/Sentinel-One/ai-siem" \
+      org.opencontainers.image.documentation="https://github.com/Sentinel-One/ai-siem/blob/main/plugins/s1-secops-skills/docs/docker.md" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.revision="${VCS_REF}" \
@@ -239,7 +239,7 @@ RUN test -n "${IMAGE_VERSION}" || (echo "ERROR: IMAGE_VERSION build-arg is requi
   '  "build_date": "'"${BUILD_DATE}"'",' \
   '  "vcs_ref": "'"${VCS_REF}"'",' \
   '  "servers": {' \
-  '    "s1-secops-mcp": { "source": "git", "repo": "https://github.com/pmoses-s1/s1-secops-skills", "ref": "'"${VCS_REF}"'", "path": "s1-secops-mcp", "version": "'"${S1_MCP_VERSION}"'" },' \
+  '    "s1-secops-mcp": { "source": "git", "repo": "https://github.com/Sentinel-One/ai-siem", "ref": "'"${VCS_REF}"'", "path": "mcp/s1-secops-mcp", "version": "'"${S1_MCP_VERSION}"'" },' \
   '    "virustotal-mcp": { "source": "git", "repo": "'"${VT_MCP_REPO}"'", "ref": "'"${VT_MCP_REF}"'" },' \
   '    "purple-mcp": { "source": "git", "repo": "'"${PURPLE_MCP_REPO}"'", "ref": "'"${PURPLE_MCP_REF}"'" }' \
   '  },' \

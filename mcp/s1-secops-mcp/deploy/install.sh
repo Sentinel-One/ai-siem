@@ -230,7 +230,7 @@ EOF
     cat >"$SVC_PATH" <<EOF
 [Unit]
 Description=SentinelOne MCP server (Streamable HTTP, team-shared)
-Documentation=https://github.com/pmoses-s1/s1-secops-skills/tree/main/s1-secops-mcp
+Documentation=https://github.com/Sentinel-One/ai-siem/tree/main/mcp/s1-secops-mcp
 After=network-online.target docker.service
 Wants=network-online.target
 Requires=docker.service
@@ -361,7 +361,7 @@ elif [[ "$MODE" == "server" ]]; then
         curl -s http://127.0.0.1:8765/healthz
    3. Put TLS in front:
         sudo curl -fsSL -o /etc/caddy/Caddyfile \\
-          https://raw.githubusercontent.com/pmoses-s1/s1-secops-skills/main/s1-secops-mcp/deploy/caddy/Caddyfile.example
+          https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/s1-secops-mcp/deploy/caddy/Caddyfile.example
         sudo vim /etc/caddy/Caddyfile   # set your DNS name
         sudo systemctl reload caddy
    4. Add team members by editing $TOKEN_PATH and reloading:

@@ -25,7 +25,7 @@ docker/
 
 The Dockerfile is two stages. The **fetch** stage holds everything needing git or network; the **runtime** stage copies the results, so neither `git` nor any clone metadata ships in the published image.
 
-The image is published to `sentinelone/secops-mcps`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. The matching CI workflow is at `.github/workflows/docker-publish.yml` in the upstream `s1-secops-skills` repo.
+The image is published to `sentinelone/secops-mcps`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. Images are built and published by the maintainers' release pipeline.
 
 ## Pinned sources
 
@@ -47,7 +47,7 @@ When bumping a pin, edit both. They are checked via `grep` in CI; a mismatch fai
 
 Two consequences of that switch, both handled in the workflow: a commit under `s1-secops-mcp/` now changes the image (so it is in the build-trigger path list and the `IMAGE_VERSION` bump guard), and the Dockerfile `COPY`s path by path rather than copying the directory. The directory also contains a 17 MB `data/` tree holding `data/credentials.json`, which is absent from the package's `files` allowlist and referenced by no code. It is excluded in `.dockerignore` as well, so two independent barriers keep it out of a published layer.
 
-**`virustotal-mcp` needs a vendored fork.** Upstream `w0h1v/mcp-virustotal` publishes only to npm: `main` is `build/index.js`, `build/` is not committed, and the build runs under `prepublishOnly` rather than `prepare`. npm runs `prepare` on git installs, so installing upstream from git fetches TypeScript, compiles nothing, and installs a bin pointing at a missing file. The fork fixes this by committing its compiled `build/` and its production `node_modules/`, which is what lets this image install it with `git clone` alone. Run `scripts/vendor-vt-fork.sh` in the upstream `s1-secops-skills` repo against the fork to produce that state; it prints the SHA to pin. The Dockerfile asserts both `build/index.js` and `node_modules/` are present and fails the build with a pointer to that script if not, rather than shipping a container that dies on its first JSON-RPC call.
+**`virustotal-mcp` needs a vendored fork.** Upstream `w0h1v/mcp-virustotal` publishes only to npm: `main` is `build/index.js`, `build/` is not committed, and the build runs under `prepublishOnly` rather than `prepare`. npm runs `prepare` on git installs, so installing upstream from git fetches TypeScript, compiles nothing, and installs a bin pointing at a missing file. The fork fixes this by committing its compiled `build/` and its production `node_modules/`, which is what lets this image install it with `git clone` alone. The maintainers produce that state with a vendoring script that prints the SHA to pin. The Dockerfile asserts both `build/index.js` and `node_modules/` are present and fails the build with a pointer to that script if not, rather than shipping a container that dies on its first JSON-RPC call.
 
 `VT_MCP_REF` must be a full 40-character SHA. A branch name would look fine and silently un-pin every subsequent build, so `build.sh` and CI both reject anything else.
 

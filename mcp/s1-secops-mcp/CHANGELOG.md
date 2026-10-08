@@ -24,6 +24,9 @@ stays 35.
   `cli.js` now builds its alias map from `credentials.js`.
 - Docker: `docker/.dockerignore` was never read (the build context is the repo root). It is now
   `docker/Dockerfile.dockerignore`, with root-relative patterns.
+- **Licence: AGPL-3.0** (was MIT), matching ai-siem: the repo `LICENSE`, `package.json`, the
+  `.mcpb` manifest, the plugin and marketplace entries, and the image label
+  `org.opencontainers.image.licenses`.
 
 ### Docs
 

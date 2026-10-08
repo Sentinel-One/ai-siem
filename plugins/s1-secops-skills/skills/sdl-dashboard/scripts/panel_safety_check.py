@@ -258,7 +258,7 @@ def rule_N02_table_no_limit(panel: Dict[str, Any]) -> Optional[Tuple[str, str]]:
 # an explicit `site.id` predicate. Two independent reasons:
 #
 #   1. Portability. A panel with no site predicate silently changes meaning when
-#      the dashboard is copied, shared to another scope, or promoted to Account.
+#      the dashboard is copied to another scope or promoted to Account.
 #   2. `site.name` is NOT a safe substitute. Measured on <console> 2026-08-17
 #      for one site: `site.id='<id>'` matched 60,410 events, of which 510 carried
 #      the site id but a NULL `site.name`. Those 510 included 10 `alert` records,
@@ -266,8 +266,8 @@ def rule_N02_table_no_limit(panel: Dict[str, Any]) -> Optional[Tuple[str, str]]:
 #      `site.name` filter drops exactly the record types a SOC dashboard cares
 #      about most, with no error and no empty panel to hint at it.
 #
-# `site.id` is also the same identifier as the `siteId` in the S1-Scope header
-# and in shareResource's scopeId, and it survives a site rename.
+# `site.id` is also the same identifier as the `siteId` in the S1-Scope header,
+# and it survives a site rename.
 
 _SITE_ID_RE = re.compile(r"site\.id\s*(?:==?|\bin\b)", re.IGNORECASE)
 # Same predicate, but capturing the value(s) it compares against, so S01 can ask

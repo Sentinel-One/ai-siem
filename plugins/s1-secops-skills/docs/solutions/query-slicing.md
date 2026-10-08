@@ -7,7 +7,9 @@ client. The same 30-day aggregate comes back in about 5 seconds with identical t
 
 This is part of the `sdl-solutions` skill. Playbook:
 [`sdl-solutions/references/query-slicing.md`](../../skills/sdl-solutions/references/query-slicing.md).
-Runner: `sdl-solutions/scripts/lrq_sliced.py` (Python standard library only).
+Runner: the `powerquery_run` MCP tool with `slices` (2-15) and `merge`, which works from Cowork.
+A host-only Python runner, `sdl-solutions/scripts/lrq_sliced.py` (standard library only), does the
+same from a terminal.
 
 ## Measured (platform S-26.3.4, 2026-10-05, one token)
 
@@ -36,8 +38,21 @@ with the run statistics.
 
 ## Run it yourself
 
+Through the MCP server (any MCP client):
+
+```json
+{
+  "query": "dataSource.name='FortiGate' | group n=count() by src_ip",
+  "hours": 720,
+  "slices": 15,
+  "merge": { "keys": ["src_ip"], "sum": ["n"] }
+}
+```
+
+From a terminal on your machine, with `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` in the OS keychain
+(`s1-secops-mcp setup`) or the environment:
+
 ```bash
-export S1_CONSOLE_URL=https://<console>.sentinelone.net S1_CONSOLE_API_TOKEN=<token>
 python3 sdl-solutions/scripts/lrq_sliced.py \
   --query "dataSource.name='FortiGate' | group n=count() by src_ip" \
   --days 30 --keys src_ip --sum n --limit 100
@@ -52,4 +67,4 @@ python3 sdl-solutions/scripts/lrq_sliced.py \
 | raw rows | append |
 | `estimate_distinct`, `avg`, percentiles, `top` | not mergeable: run unsliced, or rebuild from mergeable parts (`avg = sum / count`) |
 
-The runner refuses a column with no merge rule, so a distinct count is never summed by accident.
+Both runners refuse a non-additive aggregate, so a distinct count is never summed by accident.

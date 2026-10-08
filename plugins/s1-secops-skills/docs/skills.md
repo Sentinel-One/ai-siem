@@ -1,6 +1,8 @@
 # Skills Reference
 
-Each skill is a folder containing a `SKILL.md` that Claude reads when a relevant request triggers it. The SKILL.md encodes confirmed API schemas, field requirements, and procedural knowledge. All eight skills are bundled in the `skills` plugin.
+Each skill is a folder containing a `SKILL.md` that Claude reads when a relevant request triggers it. The SKILL.md encodes confirmed API schemas, field requirements, and procedural knowledge. All eight skills are bundled in the `s1-secops-skills` plugin.
+
+Every skill reaches the tenant through the `s1-secops-mcp` MCP tools first. They run on the user's machine and read credentials from environment variables or the OS keychain, so they work from Cowork, whose sandbox cannot reach `*.sentinelone.net`. The Python scripts listed below are host-only: they run from Claude Code or a terminal and read the same environment variables or keychain entries. No skill reads or writes a credentials file, and when a value is missing the skills ask the user to run `s1-secops-mcp setup` rather than ask for a token in chat.
 
 ---
 
@@ -10,20 +12,20 @@ Each skill is a folder containing a `SKILL.md` that Claude reads when a relevant
 
 **What it provides:**
 
-- Generic REST wrapper (`s1_api_get/post/put/patch/delete`) over 781 Management Console operations across 113 API tags
+- Generic REST wrapper (`s1_api_get/post/put/patch/delete`, plus `s1_api_download` for binary responses) over 781 Management Console operations across 113 API tags. Endpoints that refuse a multi-account token (IOC writes, error 4030010) need a token minted at a single account or site, run from a second MCP entry with `S1_PROFILE=<name>`
 - Unified Alert Management (UAM): GraphQL-based multi-source alert inbox with filter, triage, note, status, and verdict mutations
 - Purple AI: natural-language query interface over SDL telemetry (NLQ → PowerQuery → results)
 - Hyperautomation: workflow list/get/import/export/delete
-- UAM Alert Interface: OCSF-format alert and indicator ingest via HEC
+- UAM Alert Interface: OCSF-format alert ingest via `POST /v1/alerts`, with indicators carried inline in `finding_info.related_events[]`. There is no separate indicator endpoint
 - Behavioural baselining + anomaly detection pipeline (`baseline_anomaly.py`): source-agnostic, auto-discovers principal/action fields, day-of-week stratification, three anomaly classes (spike, drop, silent pair, new behaviour)
 
-**Key scripts:**
+**Key scripts (host-only):**
 
 | Script | Purpose |
 |---|---|
-| `scripts/s1_client.py` | REST client: auth, pooled HTTP, retries, cursor pagination, parallel `get_many()` |
+| `scripts/s1_client.py` | REST client: auth from env or keychain, pooled HTTP, retries, cursor pagination, parallel `get_many()` |
 | `scripts/smoke_test_queries.py` | Non-destructive sweep of all GETs; outputs `tenant_capabilities.md` |
-| `scripts/search_endpoints.py` | Ranked keyword search over endpoint index (`--only-works` filter) |
+| `scripts/search_endpoints.py` | Ranked keyword search over endpoint index (`--only-works` filter); local, no network, runs anywhere |
 | `scripts/unified_alerts.py` | UAM GraphQL wrapper (queries, mutations, triage helpers) |
 | `scripts/purple_ai.py` | Purple AI GraphQL wrapper |
 | `scripts/baseline_anomaly.py` | Behavioural baselining + anomaly detection |
@@ -31,6 +33,7 @@ Each skill is a folder containing a `SKILL.md` that Claude reads when a relevant
 **Test coverage:** 15 lifecycle test scripts covering IOCs, UAM alerts, exclusions, detection rules (scheduled + events / STAR), Hyperautomation import, XDR graph queries, and more. See [testing.md](./testing.md).
 
 **API field requirements validated through live testing (examples):**
+
 - `queryType=scheduled` detection rules require `isLegacy=false` on GET
 - Unified Exclusions POST requires 7 fields including `modeType`, `type`, `engines`, `scopeLevel`, `scopeLevelId`, `value`, and `recommendation`; returns `data` as a list
 - Hyperautomation: list response uses nested `workflow.id`, `nextCursor` returns string `"null"` (truthy in Python)
@@ -64,11 +67,8 @@ Full field reference: `mgmt-console-api/SKILL.md`
 **What it provides:**
 
 - SDL log ingest via the event collector (`hec_ingest`), posted to `S1_HEC_INGEST_URL` with an SDL Log Write Key (`S1_HEC_TOKEN`). The console API token is refused there, and the key's own account or site scope fixes where the data lands
-- SDL config file CRUD over `POST <console>/sdl/v2/graphql` (`sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`; Python client `config_files`, `config_file`, `put_config_file`, `delete_config_file`). Dashboards are addressed by `udoId`, every other namespace by name
-- SDL V1 query (full-event JSON, used for schema discovery)
-
-```python
-```
+- SDL config file CRUD over `POST <console>/sdl/v2/graphql` (`sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`; host-only Python client `config_files`, `config_file`, `put_config_file`, `delete_config_file`). Dashboards are addressed by `udoId`, every other namespace by name
+- Queries through LRQ with `powerquery_run`, and schema discovery with `powerquery_schema_discover` (full-event JSON per source); the deprecated V1 query methods remain on the host-only Python client until 2027-02-15
 
 ---
 
@@ -81,9 +81,9 @@ Full field reference: `mgmt-console-api/SKILL.md`
 - Complete SDL dashboard JSON schema: tabs, panels, parameters, time range controls
 - Panel type reference: timeseries, count, table, honeycomb, pie, bar, single value
 - PowerQuery integration: panel query validation against tenant sources before deployment
-- Dashboard deployment via `sdl_put_file`: create by name at `/dashboards/<name>` once, then update by `udoId` forever after, since a name-addressed write to an existing dashboard creates a duplicate
+- Dashboard deployment: create once with `sdl_create_dashboard {name, config, isPublic: true, scope}` (the default, and the only way to deploy to a site), then update by `udoId` forever after with `sdl_get_file` and `sdl_put_file {udoId, content, expectedVersion}`, since a name-addressed write to an existing dashboard creates a duplicate
 
-**Workflow:** Author dashboard JSON → validate queries against live tenant sources → deploy via the SDL config-file GraphQL surface → confirm via `sdl_list_files` with `pathPrefix` `/dashboards/` and record the returned `udoId`.
+**Workflow:** Author dashboard JSON → validate queries against live tenant sources → create with `sdl_create_dashboard` and record the returned `udoId` → update by `udoId` with `expectedVersion` → confirm via `sdl_get_file` by `udoId`.
 
 ---
 
@@ -113,13 +113,13 @@ Full field reference: `mgmt-console-api/SKILL.md`
 - Action types: HTTP request, S1 isolate/remediate, send email, Slack/Teams, condition branch, loop, wait
 - Workflow import via `ha_import_workflow` (requires `Hyper Automate.write` permission)
 
-**Token note:** Workflows imported with a service user token are invisible to human users in the console UI. Use a personal console user token if the workflow needs to be visible and editable in the UI.
+**Token note:** Workflows imported with a service user token are invisible to human users in the console UI. Use a personal console user token if the workflow needs to be visible and editable in the UI; store it under its own keychain profile (`s1-secops-mcp setup --profile personal`) and run the server with `S1_PROFILE=personal`. `ha_export_workflow` takes `outputFile` to save the ZIP.
 
 ---
 
 ## sdl-solutions
 
-**Triggers on:** deploying a packaged, repeatable SDL solution into a specific customer environment from one short prompt, rather than authoring a single query, parser, or workflow. Onboarding: "onboard cisco_meraki logs", "bring our FortiGate source into AI SIEM and build detections", "set up detections and a dashboard for <source>". Asset enrichment: "deploy the asset enrichment solution", "enrich logs with device/user info for <customer>", "set up SDL asset enrichment on <site>". UEBA: "run a behavioural baseline on <source>", "deploy UEBA anomaly detection for <source>", "flag users whose activity is off their 30-day normal". Ingest health: "deploy ingest health monitoring", "monitor ingest per device/firewall/endpoint", "alert me when a source or device stops sending logs", "detect ingest spikes/drops/lag", "find parser drift". Detection exclusions: "add a detection exclusion for <source> logs", "exclude these assets/domains from a detection", "stop my detection alerting on our scanner subnets/corporate domains, here's the list", "allowlist these hosts". Risk-Based Alerting: "deploy RBA", "score noisy observations and alert when a user crosses a risk threshold". Detection as Code: "set up detection as code", "scaffold a DaC repo", "automate our detections as code".
+**Triggers on:** deploying a packaged, repeatable SDL solution into a specific customer environment from one short prompt, rather than authoring a single query, parser, or workflow. Onboarding: "onboard cisco_meraki logs", "bring our FortiGate source into AI SIEM and build detections", "set up detections and a dashboard for <source>". Asset enrichment: "deploy the asset enrichment solution", "enrich logs with device/user info for <customer>", "set up SDL asset enrichment on <site>". UEBA: "run a behavioural baseline on <source>", "deploy UEBA anomaly detection for <source>", "flag users whose activity is off their 30-day normal". Ingest health: "deploy ingest health monitoring", "monitor ingest per device/firewall/endpoint", "alert me when a source or device stops sending logs", "detect ingest spikes/drops/lag", "find parser drift". Detection exclusions: "add a detection exclusion for <source> logs", "exclude these assets/domains from a detection", "stop my detection alerting on our scanner subnets/corporate domains, here's the list", "allowlist these hosts". Risk-Based Alerting: "deploy RBA", "score noisy observations and alert when a user crosses a risk threshold". Detection as Code: "set up detection as code", "scaffold a DaC repo", "automate our detections as code". Alert noise reduction: "reduce alert noise", "my alert queue is flooded", "tune alert ingestion", "auto-close already-blocked firewall alerts", "alert optimization". Custom detections with MITRE mapping: "map my custom detection to MITRE", "custom alerts have no MITRE". Query slicing: "this query is slow", "run this over 30 days".
 
 **What it provides:**
 
@@ -133,11 +133,13 @@ Full field reference: `mgmt-console-api/SKILL.md`
   - **Risk-Based Alerting (RBA)**: publish noisy-but-interesting observations as low-noise risk events into a `risk` index, accumulate risk per user/host object (amplified by asset risk factors), and fire one high-fidelity alert only when a 24h cumulative-score or 7d multi-MITRE-tactic threshold is crossed; deploys contributors, a risk-factor table, a scheduled collector flow, four incident rules, and a dashboard.
   - **Detection as Code (DaC)**: stand up a Git + CI pipeline where detection engineers author rules as TOML, a pull request triggers validation and four-eyes review, and a merge syncs the changed rules to the Custom Detection Rule API; covers single-event, correlation, and scheduled rule types, with a zero-dependency TOML-to-API sync engine and lint-on-PR / sync-on-merge CI for GitHub, GitLab, and Azure.
   - **Alert noise reduction**: find the (source, signature) pairs dominating the alert queue and classify each as ingested-vs-S1-native, already-actioned (block/drop/sinkhole/reset), by severity, and signal-worth-keeping; then recommend an ingestion-severity filter (a console setting on the connector), deploy an auto-resolve Hyperautomation flow that closes already-mitigated alerts with a note, optionally preserve signal-worthy categories (e.g. C2/DGA) as one correlation rule, and ship a noise-vs-signal dashboard. Every product/source/signature/action value is discovered live; nothing is hardcoded.
+  - **Custom detections with MITRE mapping**: a STAR rule has no MITRE field and its UAM alerts arrive without ATT&CK. A small JSON rule spec (name, severity, PowerQuery, lookback, interval, tactic/technique list) renders into a scheduled Hyperautomation watchdog that runs the query and posts the UAM alert with `attacks[]` on each `finding_info.related_events[]` entry, so the alert carries `mitreTactics` / `mitreTechniques`. Converts an existing scheduled STAR rule with `--from-rule`.
+  - **Query slicing**: run a long-window PowerQuery as parallel time slices through the LRQ API and merge the results client-side with explicit sum / min / max rules that refuse non-additive columns. Primary path: `powerquery_run` with `slices` and `merge`; `scripts/lrq_sliced.py` is the host-only runner.
 - Parameterized templates under `assets/` (savelookup queries, enrichment parser, dashboard skeleton, STAR detection envelope, threat-response and refresh workflows) driven by tokens such as `{{PREFIX}}`, `{{DATASOURCE_NAME}}`, `{{PARSER_NAME}}`, `{{SITE_ID}}`, `{{ACCOUNT_ID}}`.
 
 **Depends on:** `sdl-log-parser` (parser/OCSF), `powerquery` (datasource + savelookup), `sdl-dashboard` (dashboard), `mgmt-console-api` (STAR rules, site/scope), `sdl-api` (deploy config, ingest), `hyperautomation` (response/refresh flows).
 
-**Playbooks:** `references/data-source-onboarding.md`, `references/asset-enrichment.md`, `references/ueba-anomaly-detection.md`, `references/ingest-health-monitoring.md`, `references/custom-detection-exclusions.md`, `references/risk-based-alerting.md`, `references/detection-as-code.md`, `references/alert-noise-reduction.md`. Add new solutions as `references/<solution>.md` plus templates, and name them in the skill description so they trigger.
+**Playbooks:** `references/data-source-onboarding.md`, `references/asset-enrichment.md`, `references/ueba-anomaly-detection.md`, `references/ingest-health-monitoring.md`, `references/custom-detection-exclusions.md`, `references/risk-based-alerting.md`, `references/detection-as-code.md`, `references/alert-noise-reduction.md`, `references/custom-detection-mitre-mapping.md`, `references/query-slicing.md` (long-window queries with `powerquery_run` `slices` + `merge`). Add new solutions as `references/<solution>.md` plus templates, and name them in the skill description so they trigger.
 
 Full reference: `sdl-solutions/SKILL.md`
 
@@ -153,9 +155,9 @@ Full reference: `sdl-solutions/SKILL.md`
 - Non-negotiable evidence discipline and verdict gates inherited from the Purple SOC Analyst standard and the SDL threat-hunt-and-correlation method: reconcile to ground truth, enrich every external IOC before a verdict, no CRITICAL / TRUE POSITIVE without threat-intel or MDR confirmation, calibrated confidence, and MITRE mapping. Detail in `references/evidence-and-verdict-discipline.md` and `references/correlation-and-hunt-methodology.md`.
 - Structured, file-based outputs per investigation (entities, timelines, threat intel, enriched and forensic timelines, and reports).
 
-**Depends on:** `mgmt-console-api`, `powerquery`, `sdl-api`, `sdl-log-parser`, `sdl-dashboard`, `hyperautomation`, and the purple / VirusTotal threat-intel MCP. Authored by Joel Mora (joelm@sentinelone.com).
+**Depends on:** `mgmt-console-api`, `powerquery`, `sdl-api`, `sdl-log-parser`, `sdl-dashboard`, `hyperautomation`, and the purple / VirusTotal threat-intel MCP. Authored by Joel Mora (<joelm@sentinelone.com>).
 
-Full reference: `skills/soc-investigator/SKILL.md`
+Full reference: `soc-investigator/SKILL.md`
 
 ---
 

@@ -1,71 +1,165 @@
 # Upgrading
 
-Three things move independently: the **MCP image**, the **skills plugin**, and your
-**Claude Desktop config**. Do them in that order. Budget five minutes.
+Three things move independently: the **MCP image** (or npm install), the **skills plugin**, and
+your **MCP client config**. Do them in that order.
 
-Nothing here needs a credential you do not already have. The upgrade removes
-five environment variables and adds none.
-
----
-
-## Before you start
-
-Note your console URL and API token from the current config, you will reuse both:
-
-```bash
-python3 -c "
-import json, pathlib
-p = pathlib.Path.home()/'Library/Application Support/Claude/claude_desktop_config.json'
-s = json.load(open(p))['mcpServers']
-for name, body in s.items():
-    print(name, sorted((body.get('env') or {}).keys()))
-"
-```
-
-Back the file up:
-
-```bash
-cd ~/Library/Application\ Support/Claude
-cp claude_desktop_config.json claude_desktop_config.json.bak
-```
+- [1.5.0 or 1.5.1 to 1.5.2](#150-or-151-to-152) (current release: image and MCP `1.5.2`, plugin `1.3.12`)
+- [1.4.x to 1.5.0](#14x-to-150)
+- [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
+- [Rolling back](#rolling-back)
 
 ---
 
-## Step 1: the MCP image
+## 1.5.0 or 1.5.1 to 1.5.2
 
-All three MCPs ship in one image, `sentinelone/secops-mcps`. The config pins
-an exact version, so upgrading means editing that tag in all three MCP entries
-and restarting. Nothing moves on its own: the tags are immutable, which is what
-makes a pin worth having. To pre-pull the new version first:
+No config changes beyond the image tag, with two exceptions noted below. What changed:
 
-```bash
-docker pull sentinelone/secops-mcps:1.4.10
-```
-
-If you pinned a version tag, bump it to the current release, `1.4.10`, and
-restart Claude Desktop.
-
-Two version streams run independently and are easy to conflate. The skills
-plugin is at **1.3.11** and the image at **1.4.10** (which bundles MCP 1.4.0). The
-server always reports its own MCP version, so a `--version` line reads `1.4.0`
-while the image you pulled is tagged `1.4.10`. Never read an image tag off a
-`--version` line, or a `--version` off an image tag. To see exactly what is
-inside an image, ask it:
+- **Security (from 1.5.1):** the VirusTotal MCP inside the image ships `proxy-addr` 2.0.8
+  (CVE-2026-90711, critical) and `@modelcontextprotocol/sdk` 1.32.1 (CVE-2026-104850, high). Neither
+  was reachable in the stdio server, but both cleared image scans.
+- **One console token:** the optional second token `S1_CONSOLE_API_TOKEN_SINGLE_SCOPE` and the
+  `tokenKind` parameter of the `s1_api_*` tools are removed. An endpoint that refuses a token whose
+  user spans several accounts (error 4030010, e.g. IOC writes) now returns a hint: use a token minted
+  at a single account or site, in its own keychain profile (`s1-secops-mcp setup --profile <name>`),
+  and run a second MCP entry with `S1_PROFILE=<name>`.
+- **`S1_SCOPE` is `<accountId>` or `<accountId>:<siteId>`:** setup refuses a group part, which every
+  SDL and PowerQuery tool rejected anyway.
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.4.10 versions
+docker pull sentinelone/secops-mcps:1.5.2
+docker run --rm sentinelone/secops-mcps:1.5.2 versions
 ```
 
-An image version strictly increases and is never republished, so a pinned tag
-stays put. Tags at or below `1.3.3` were reused and do not.
+Replace the installed launcher with the 1.5.2 copy (its default image is now `1.5.2`), or change
+`--image sentinelone/secops-mcps:1.5.x` to `:1.5.2` in every MCP entry of your client config, then
+restart the client.
+
+If you stored a single-scope token, it stays in the keychain but nothing reads it, and `status` and
+`forget` no longer list it. Delete it by hand: macOS
+`security delete-generic-password -s sentinelone-mcp -a <profile>:S1_CONSOLE_API_TOKEN_SINGLE_SCOPE`,
+Linux `secret-tool clear service sentinelone-mcp username <profile>:S1_CONSOLE_API_TOKEN_SINGLE_SCOPE`,
+Windows `cmdkey /delete:<profile>:S1_CONSOLE_API_TOKEN_SINGLE_SCOPE.sentinelone-mcp`. A stored
+`S1_SCOPE` with a group part is refused at the next `setup`; re-enter it as `<accountId>:<siteId>`.
 
 ---
 
-## Step 2: the skills plugin
+## 1.4.x to 1.5.0
 
-The plugin was renamed from `sentinelone-skills` to `s1-secops-skills`. A
-plugin's name is its installed identity, so this reads as a **different plugin**:
-the old one will not update in place.
+1.5.0 is a breaking release. Budget ten minutes.
+
+### Breaking changes
+
+| Change | What breaks | What to do |
+|---|---|---|
+| **No `credentials.json`** | Every file location is gone: `S1_CREDS_FILE`, `COWORK_WORKSPACE`, the working-directory walk-up, `~/mnt/*`, `CLAUDE_CONFIG_DIR`, `~/.config/sentinelone`, `~/.claude/sentinelone`. The plugin's SessionStart hook (`bootstrap_creds.sh`) and both `scripts/bootstrap_creds.sh` copies are deleted. | Move the values into the OS keychain with `s1-secops-mcp setup --import-json <file>`, then delete the file. |
+| **Credentials resolve from env, then the OS keychain** | Nothing reads a file any more. | `s1-secops-mcp setup` stores values (service `sentinelone-mcp`, account `<profile>:<NAME>`); `s1-secops-mcp status` shows where each resolves from. |
+| **No HTTP transport** | `--transport http`, bearer tokens (`MCP_BEARER_TOKENS*`), the team VM deployment (`mcp/s1-secops-mcp/deploy/`: `install.sh`, systemd, Caddy, the bridge) and its guide are removed. The server speaks stdio only. | Each user runs their own server (Docker launcher or Node) with their own credentials. Decommission any shared VM. |
+| **Docker launcher instead of `-e`** | Configs that pass tokens with `docker run -e` and an `env` block still start, but they keep tokens in plaintext and in `docker inspect`. The documented configs no longer do this. | Copy `mcp/docker/s1-secops-mcp-launch.sh` to `~/.local/bin/` (macOS, Linux) and point each server entry at that copy, or at `s1-secops-mcp-launch.ps1` on Windows. |
+
+### Step 1: move credentials into the keychain
+
+If you used a `credentials.json`:
+
+```bash
+s1-secops-mcp setup --import-json /path/to/credentials.json
+s1-secops-mcp status          # every value should read "keychain"
+rm /path/to/credentials.json
+```
+
+Also delete the copies the old hook made (`~/.claude/sentinelone/credentials.json`, `~/.config/sentinelone/credentials.json`, any `.sentinelone/credentials.json` in a project) and remove the file from Cowork projects' **Add files** lists.
+
+If your tokens were in the `env` blocks of `claude_desktop_config.json` instead, run `s1-secops-mcp setup` (or, Docker-only, `s1-secops-mcp-launch.sh setup`) and enter the same values when prompted. Back up the config first (`cp claude_desktop_config.json claude_desktop_config.json.bak`), and delete the backup once the new setup works, because it still holds the tokens.
+
+No Node on the machine? `s1-secops-mcp-launch.sh setup` (macOS, Linux), `s1-secops-mcp-launch.ps1 setup` (Windows), or `python3 mgmt-console-api/scripts/s1_keystore.py setup` from a skills checkout (macOS, Linux) store the same entries.
+
+### Step 2: the image
+
+```bash
+docker pull sentinelone/secops-mcps:1.5.2
+docker run --rm sentinelone/secops-mcps:1.5.2 versions
+```
+
+Get the launcher from this repo: `mcp/docker/s1-secops-mcp-launch.sh` for macOS and Linux, `mcp/docker/s1-secops-mcp-launch.ps1` for Windows (put the Windows script somewhere stable such as `C:\Users\you\bin\`). On macOS and Linux, install it from the repo root:
+
+```bash
+mkdir -p ~/.local/bin && cp -X mcp/docker/s1-secops-mcp-launch.sh ~/.local/bin/ && chmod 755 ~/.local/bin/s1-secops-mcp-launch.sh
+```
+
+On macOS, do not point the config at a copy under `~/Documents`, `~/Desktop` or `~/Downloads` (including a repo clone there): macOS blocks Claude Desktop's `/bin/sh` from running scripts in those folders, and the MCP log shows `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted`.
+
+### Step 3: the plugin
+
+Install plugin `1.3.12` (Cowork → Customize → Browse plugins → upload → **Replace**). It drops the SessionStart hook and rewrites every skill to use the MCP tools as the primary path, with the Python clients documented as host-only.
+
+### Step 4: the config
+
+Replace each Docker entry with the launcher and delete every token from the file:
+
+```json
+{
+  "mcpServers": {
+    "s1-secops-mcp":  { "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.2", "s1-secops-mcp"] },
+    "purple-mcp":     { "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.2", "purple-mcp"] },
+    "virustotal":     { "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.2", "virustotal-mcp"] }
+  }
+}
+```
+
+Keep `--image` before the server name: anything after the server name is passed to the server inside the container, which rejects it. On Windows the command is `powershell.exe` with `-NoProfile -ExecutionPolicy Bypass -File <path>\s1-secops-mcp-launch.ps1 -Image sentinelone/secops-mcps:1.5.2 <server>` as the args.
+
+Node installs: `"command": "s1-secops-mcp"` (or `node /path/to/s1-secops-mcp/index.js`) with no `env` block. Remove any `--transport http` argument and any `MCP_BEARER_TOKENS*` variable. Claude Code users: re-register without `--env` (`claude mcp add s1-secops-mcp -- s1-secops-mcp`) and remove tokens from `~/.claude.json` and project `.mcp.json` files.
+
+Then **restart Claude Desktop**.
+
+### Step 5: verify
+
+```text
+smoke test s1 secops skills
+```
+
+Or from a terminal:
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
+  | ~/.local/bin/s1-secops-mcp-launch.sh s1-secops-mcp
+```
+
+Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.5.2"`, `Tools: 35 registered` on stderr, and `configured` for each surface whose values you stored. Confirm no token remains in your client config:
+
+```bash
+grep -E 'eyJ|S1_CONSOLE_API_TOKEN|S1_HEC_TOKEN|VIRUSTOTAL_API_KEY' ~/Library/Application\ Support/Claude/claude_desktop_config.json || echo "clean"
+```
+
+### New in 1.5.0 worth using
+
+- `powerquery_run` takes `queryType: "LOG"` (every parsed field per event, server cap 5000 per query or slice), `slices` (2-15) with a `merge` spec for long windows, and `outputFile` for bulk results.
+- `s1_api_download` saves binary responses (RemoteOps fetch-files, threat file fetch, exports) to disk and returns size, sha256 and content type.
+- `ha_export_workflow` and `s1_api_get` take `outputFile`.
+- Token values are masked in all tool output and logs.
+
+Full tool reference: [mcp-tools.md](./mcp-tools.md).
+
+### Troubleshooting 1.5.0
+
+| Symptom | Cause and fix |
+|---|---|
+| `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` in the MCP log (macOS) | The launcher is stored under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Copy it to `~/.local/bin/` (Step 2) and update `command` in the config. |
+| `S1 Mgmt API: NOT configured` | No value reached the server. `s1-secops-mcp status` shows what resolves; check `S1_PROFILE` if you stored values under a named profile. |
+| `OS keychain unavailable: secret-tool not found` | Linux without libsecret tools. Install `libsecret-tools` / `libsecret`, or use environment variables from a secret manager. |
+| D-Bus or `locked collection` errors on Linux | No unlocked Secret Service in this session (common on headless hosts and over SSH). Unlock the keyring or use environment variables. |
+| `optional dependency @napi-rs/keyring is not installed` | Windows Node install: `npm install @napi-rs/keyring`, or use the Docker launcher. |
+| `outputFile ... is outside the allowed output directories` | Write inside your home or temp directory, or set `S1_OUTPUT_DIRS`. Under Docker, set `S1_OUTPUT_DIR` so the launcher mounts the directory. |
+| A skill asks you to run `s1-secops-mcp setup` | That is the intended behaviour when a value is missing. Do not paste tokens into the chat. |
+
+---
+
+## Older: 1.2.x / 1.3.x to 1.4.x
+
+Keep this section only if you are coming from a release older than 1.4.0. Apply these changes, then continue with [1.4.x to 1.5.0](#14x-to-150) for the credential and config steps; do not stop at the 1.4.x `env`-block config.
+
+### The plugin
+
+The plugin was renamed from `sentinelone-skills` to `s1-secops-skills`. A plugin's name is its installed identity, so this reads as a **different plugin**: the old one will not update in place.
 
 1. Remove the old `sentinelone-skills` plugin.
 2. Install `s1-secops-skills` from the marketplace.
@@ -80,106 +174,22 @@ for f in /var/folders/*/*/T/claude-hostloop-plugins/*/skills/sdl-api/SKILL.md; d
 done
 ```
 
-`stale-markers=0` means you are on the new skills. Anything above zero is an old
-cache still in place.
+`stale-markers=0` means you are on the new skills. Anything above zero is an old cache still in place.
 
----
-
-## Step 3: the config
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json`.
-
-### What changes
+### The config
 
 | Change | From | To |
 |---|---|---|
 | Server key | `"sentinelone-mcp"` | `"s1-secops-mcp"` |
 | Dispatcher argument | `sentinelone-mcp` | `s1-secops-mcp` |
-| Image tag | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.4.10` |
-| purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` |
+| Image | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.5.2` via the launcher |
+| purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` (the entrypoint derives the purple names) |
 
-### What to delete outright
+Delete outright: `SDL_XDR_URL`, `SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`. Nothing replaces them. The console API token authorises every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as `<console>/sdl`.
 
-`SDL_XDR_URL`, `SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`,
-`SDL_LOG_WRITE_KEY`. Nothing replaces them. The console API token authorises
-every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as
-`<console>/sdl`.
+### Scripts of your own
 
-### Result
-
-```json
-{
-  "mcpServers": {
-    "s1-secops-mcp": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=missing",
-               "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL", "-e", "S1_HEC_TOKEN",
-               "sentinelone/secops-mcps:1.4.10", "s1-secops-mcp"],
-      "env": {
-        "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
-        "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
-        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
-        "S1_HEC_TOKEN":         "<SDL Log Write Key, optional; hec_ingest needs it>"
-      }
-    },
-    "purple-mcp": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=missing",
-               "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-               "sentinelone/secops-mcps:1.4.10", "purple-mcp"],
-      "env": {
-        "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
-        "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
-      }
-    },
-    "virustotal": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=missing",
-               "-e", "VIRUSTOTAL_API_KEY",
-               "sentinelone/secops-mcps:1.4.10", "virustotal-mcp"],
-      "env": {
-        "VIRUSTOTAL_API_KEY": "your-virustotal-key"
-      }
-    }
-  }
-}
-```
-
-purple-mcp takes the same two variables as `s1-secops-mcp`: the image entrypoint
-derives `PURPLEMCP_CONSOLE_BASE_URL` and `PURPLEMCP_CONSOLE_TOKEN` from them. A
-`PURPLEMCP_*` variable you set explicitly still wins, so leaving them in place
-also works.
-
-Then **restart Claude Desktop**.
-
----
-
-## Step 4: verify
-
-In a Claude session:
-
-```text
-smoke test s1 secops skills
-```
-
-Or from a terminal, without Claude Desktop:
-
-```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm sentinelone/secops-mcps:1.4.10 s1-secops-mcp
-```
-
-Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.4.0"`, and
-`Tools: 32 registered` on stderr. The `version` here is the bundled MCP's, not
-the `1.4.10` image tag you pulled. An older number means you are on a cached
-image; `--pull=missing` in the config is what prevents that.
-
----
-
-## If you have scripts of your own
-
-One change breaks copied snippets. `SDLClient.keys` no longer exists, so this
-raises `AttributeError`:
+`SDLClient.keys` no longer exists, so this raises `AttributeError`:
 
 ```python
 c = SDLClient()
@@ -188,24 +198,13 @@ c.keys["config_read_key"] = ""     # remove
 c.keys["config_write_key"] = ""    # remove
 ```
 
-Delete those lines. Nothing replaces them; the client uses the console token for
-every method.
-
-`SDLClient` now also fails fast at construction when `S1_CONSOLE_API_TOKEN` is
-absent, rather than failing later on the first request.
-
----
-
-## Troubleshooting
+Delete those lines. Nothing replaces them; the client uses the console token for every method. `SDLClient` also fails fast at construction when `S1_CONSOLE_API_TOKEN` is absent from both the environment and the keychain.
 
 | Symptom | Cause and fix |
 |---|---|
-| `manifest unknown` / image pull fails | Tag typo, or an MCP version used as an image tag. The current image tag is `1.4.10`; `1.4.0` is the MCP version inside it. Do not pull `sentinelone/secops-mcps:1.4.0`: that tag is an older image from a different release and bundles an older MCP. |
-| Tools behave like an older release | A cached image. Pin `sentinelone/secops-mcps:1.4.10` with `--pull=missing`, or `docker pull` it explicitly, then check `docker image inspect sentinelone/secops-mcps:1.4.10 --format '{{.Created}}'`. |
+| `manifest unknown` / image pull fails | Tag typo, or an MCP version used as an image tag. Use the exact image tag (`1.5.2`). |
 | `entrypoint: unknown command 'sentinelone-mcp'` | The dispatcher argument still says the old name. Change it to `s1-secops-mcp`. |
-| MCP red in Cowork, `Cannot connect to the Docker daemon` | Docker Desktop is not running. |
-| Skills still mention `SDL_XDR_URL` or `c.keys[...]` | An old plugin cache. Re-check with the command in step 2. |
-| `S1 Mgmt API: NOT configured` | No console token reached the container. Each `-e VAR` needs a matching key in that block's `env`. |
+| Skills still mention `SDL_XDR_URL` or `c.keys[...]` | An old plugin cache. Re-check with the loop above. |
 | `AttributeError: 'SDLClient' object has no attribute 'keys'` | A script still force-clears scoped keys. See above. |
 
 Per-MCP logs: `~/Library/Logs/Claude/mcp-server-<name>.log`.
@@ -214,11 +213,11 @@ Per-MCP logs: `~/Library/Logs/Claude/mcp-server-<name>.log`.
 
 ## Rolling back
 
+Restore the config backup and reinstall the previous plugin:
+
 ```bash
 cd ~/Library/Application\ Support/Claude
 cp claude_desktop_config.json.bak claude_desktop_config.json
 ```
 
-Then reinstall the old plugin and restart.
-
-**Rollback target: `1.4.9`.** `sentinelone/secops-mcps` carries `1.4.10` and `1.4.9`; to roll back, pin `:1.4.9` (immutable, so it is the exact earlier build). `docker image ls` shows what is already on the machine.
+**Rollback target: `1.4.10`.** `sentinelone/secops-mcps` carries `1.5.2`, `1.5.1`, `1.5.0` and `1.4.10`; tags are immutable, so `:1.4.10` is the exact earlier build. Note that 1.4.10 reads tokens from the config `env` block or a `credentials.json`, so rolling back puts plaintext tokens back on disk. Once you return to 1.5.x, delete the backup and run `s1-secops-mcp forget` only if you also want the keychain entries gone.

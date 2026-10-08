@@ -152,14 +152,19 @@ endpoint.name = *
 Notes: `now()` returns a ms-epoch timestamp, so divide by 1000 to
 report seconds. A gap > 3600 is worth investigating.
 
-## Using these from Python
+## Running these recipes
 
-All four recipes run against the `powerQuery` SDL endpoint. With the
-`sdl-api` skill's client:
+Run any recipe with the `powerquery_run` MCP tool from `s1-secops-mcp`
+(pass the recipe as `query` and a window with `hours`, or `startTime` /
+`endTime`). The tool runs on the user's machine, so it works from Cowork.
+
+On the user's host (Claude Code or a terminal), the `sdl-api` skill's
+Python client is an alternative. It reads `S1_CONSOLE_API_TOKEN` from the
+environment or the OS keychain:
 
 ```python
 from sdl_client import SDLClient
-c = SDLClient()  # picks up S1_CONSOLE_API_TOKEN from credentials.json
+c = SDLClient()
 r = c.powerQuery(
     query="src.process.name contains 'powershell' dst.ip.address = * "
           "| let is_private = net_rfc1918(dst.ip.address) "

@@ -31,7 +31,7 @@
 
 import { gzipSync } from 'zlib';
 import { randomUUID } from 'crypto';
-import { getCreds } from './credentials.js';
+import { getCreds, setupHint } from './credentials.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,8 +39,8 @@ function hecBase() {
   const url = (getCreds().S1_HEC_INGEST_URL || '').replace(/\/+$/, '');
   if (!url) {
     throw new Error(
-      'S1_HEC_INGEST_URL not configured. Add it to credentials.json ' +
-      '(e.g. "S1_HEC_INGEST_URL": "https://ingest.us1.sentinelone.net"). ' +
+      'S1_HEC_INGEST_URL not configured (e.g. https://ingest.us1.sentinelone.net). ' +
+      setupHint() + ' ' +
       'Find the correct URL for your region at: ' +
       'https://community.sentinelone.com/s/article/000004961'
     );
@@ -50,7 +50,7 @@ function hecBase() {
 
 function bearerJwt() {
   const tok = getCreds().S1_CONSOLE_API_TOKEN;
-  if (!tok) throw new Error('S1_CONSOLE_API_TOKEN not configured.');
+  if (!tok) throw new Error('S1_CONSOLE_API_TOKEN not configured. ' + setupHint());
   return tok;
 }
 

@@ -201,7 +201,7 @@ Eight Claude skills for SentinelOne SecOps, bundled in `plugins/s1-secops-skills
 - **hyperautomation**: build and export Hyperautomation (SOAR) workflow JSON.
 - **soc-investigator**: autonomous DFIR investigation over S1 alerts and third-party sources.
 
-**Current release:** plugin **1.3.11**, Docker image **`sentinelone/secops-mcps:1.4.10`** (bundles `s1-secops-mcp` 1.4.0, purple-mcp and VirusTotal). What changed: [release notes 1.4.10](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.4.10.md). Install and upgrade: [plugin README](plugins/s1-secops-skills/README.md), [docs/installation.md](plugins/s1-secops-skills/docs/installation.md), [docs/upgrading.md](plugins/s1-secops-skills/docs/upgrading.md).
+**Current release:** plugin **1.3.12**, Docker image **`sentinelone/secops-mcps:1.5.2`** (bundles `s1-secops-mcp` 1.5.2, purple-mcp and VirusTotal). Credentials now live in the OS keychain; coming from 1.4.x, follow the [1.4.x to 1.5.0 upgrade guide](plugins/s1-secops-skills/docs/upgrading.md#14x-to-150). What changed: [release notes 1.5.2](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.5.2.md). Install and upgrade: [plugin README](plugins/s1-secops-skills/README.md), [docs/installation.md](plugins/s1-secops-skills/docs/installation.md), [docs/upgrading.md](plugins/s1-secops-skills/docs/upgrading.md).
 
 See [`plugins/s1-secops-skills/docs/skills.md`](plugins/s1-secops-skills/docs/skills.md) for details.
 

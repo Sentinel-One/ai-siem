@@ -1,9 +1,14 @@
 # STAR / Custom Detection rule types
 
-SentinelOne Custom Detection (STAR) rules come in three types. All three are created at the same
-endpoint, `POST /web/api/v2.1/cloud-detection/rules`, with `queryLang: "2.0"`, and are listed with
-`isLegacy=false` (omit that param and scheduled and correlation rules are silently dropped from the
-list). The three differ in where the detection logic lives and what language it uses.
+There are four ways to build a detection. Three are Custom Detection (STAR) rule types, created at
+the same endpoint, `POST /web/api/v2.1/cloud-detection/rules`, with `queryLang: "2.0"`, and listed
+with `isLegacy=false` (omit that param and scheduled and correlation rules are silently dropped from
+the list). They differ in where the detection logic lives and what language it uses.
+
+The fourth, the **HA watchdog**, is not a rule. It is a Hyperautomation workflow that runs the query
+itself and raises the alert itself, and it exists for the PowerQuery a scheduled rule will not
+accept. It is a fully supported option, not a workaround: the UEBA SILENT and DORMANT detections and
+ingest-health monitoring all ship as watchdogs.
 
 Everything here is tenant-validated (2026-06-24). The
 authoring reference with full request bodies and gotchas is in the PowerQuery skill:
@@ -38,6 +43,7 @@ matrix in [detection-asset-binding.md](./detection-asset-binding.md).
 | STAR single-event | `events` | `data.s1ql` | boolean S1QL, no pipes | per matching event, streaming at ingest | automatic from the matched event | inline Active Response (`treatAsThreat`/`networkQuarantine`) or HA flow | deterministic single-event signatures |
 | STAR multi-event (correlation) | `correlation` | `data.correlationParams` | boolean S1QL per sub-query, no pipes | when sub-query thresholds are met in a time window, grouped by an entity | automatic; `entityMappings` optional | inline Active Response (`treatAsThreat`) or HA flow | thresholds (N of X) and A-then-B sequences |
 | Scheduled (PowerQuery) | `scheduled` | `data.scheduledParams.query` | PowerQuery, pipes allowed | on a schedule over a lookback window | set `entityMappings` on projected columns | via HA flow off the alert (`treatAsThreat` = `UNDEFINED`, no inline Active Response) | aggregation, baselines, lookup/anti-join exclusions |
+| HA watchdog | not a rule | a Hyperautomation workflow | full PowerQuery via the LRQ API, no evaluator restrictions | on the workflow's own `scheduled_trigger` | you compose the alert, so any field can carry the asset | any HTTP call the flow can make | a query the scheduled evaluator rejects, or an alert body built from the result |
 
 **Mitigation is possible for all three types.** Single-event and correlation rules support inline Active Response on the rule itself (`treatAsThreat` = `Suspicious`/`Malicious`, `networkQuarantine`). Scheduled rules require `treatAsThreat` = `UNDEFINED`, so they have no inline Active Response, but their alerts, like any alert from any rule type, can trigger a Hyperautomation flow that performs the mitigation (isolate endpoint, block IOC, disable account, and so on). `treatAsThreat` = `UNDEFINED` does not mean mitigation is impossible, only that the rule does not act inline.
 
@@ -46,6 +52,14 @@ Decision guide:
 - One event you can describe with a boolean filter, use **single-event**.
 - "N occurrences" or "A then B" across several events correlated by a user/host/IP, use **correlation**.
 - Anything needing `group`, `estimate_distinct`, `sum`, a `lookup`/anti-join, or any pipe, use **scheduled**.
+- The scheduled evaluator rejects the query, or the alert title and description must be built from the result, use an **HA watchdog**.
+
+The scheduled evaluator runs on a pre-aggregated layer and does not support `datasource`, `dataset`,
+`savelookup`, `now()`, `querystart` / `queryend` / `queryspan`, `topK`, CIDR or wildcard `lookup`,
+`lookup` over a table above 10,000 rows, time-shifted `timebucket`, or `timebucket` under 30s. It
+also caps intermediate results near 1,000 rows. A watchdog runs the same query as an ordinary LRQ and
+has none of those limits. Template: `sdl-solutions/assets/ha_watchdog.workflow.template.json`.
+Full comparison: [`powerquery/references/detection-rules.md`](../skills/powerquery/references/detection-rules.md).
 
 ## 1. STAR single-event (`queryType: "events"`)
 

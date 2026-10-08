@@ -24,8 +24,10 @@ seen in live but never in the baseline window (new behaviour).
 The "principal" is whoever the events are attributed to, user, host,
 IP, role, account. The "action" is what they did, event type, API
 call, command, status. Both vary per source. Pick from what the source
-actually carries, schema discovery via `inspect_source.discover_schema()`
-in the mgmt-console-api skill picks these for you. Common defaults:
+actually carries: run `powerquery_schema_discover` (s1-secops-mcp) on the
+source and pick from the populated fields. On the user's host, the
+mgmt-console-api skill's `inspect_source.discover_schema()` picks these for
+you. Common defaults:
 
 | Source category | Typical principal | Typical action | Coalesce-style fallback |
 |---|---|---|---|
@@ -38,9 +40,15 @@ in the mgmt-console-api skill picks these for you. Common defaults:
 | Web proxy (Zscaler, Cloudflare) | `actor.user.email_addr` or `src.ip.address` | category / action | source-specific |
 | AI security (Example Source, etc.) | `user` | `action` | source-specific (run schema discovery) |
 
-When in doubt, run `python scripts/inspect_source.py --source "<name>" --window 24h`
-from the mgmt-console-api skill. It returns `prim_key` and `action_key`
-based on what the source actually populates.
+When in doubt, call `powerquery_schema_discover` with the source name as
+`dataSourceName` and `maxEvents` of 20 to 50. On the user's host (Claude Code or a terminal),
+`python scripts/inspect_source.py --source "<name>" --window 24h` from the
+mgmt-console-api skill returns `prim_key` and `action_key` based on what the
+source actually populates.
+
+To run the per-day slices below, issue one `powerquery_run` call per day in
+parallel (each with its own `startTime` / `endTime`), or one call with
+`slices` and a `merge` spec when a summed baseline is enough.
 
 ## Building block 1: per-day count slice
 
@@ -364,7 +372,7 @@ shape above.
 | User asks for... | Use |
 |---|---|
 | "Write a baseline detection PQ" | This file (building blocks 1-5): paste the placeholders into PQ templates |
-| "Run a 30-day baseline for `<source>` end-to-end" | `mgmt-console-api` skill, `scripts/baseline_anomaly.py` |
-| "What field should I baseline on?" | `mgmt-console-api`, `scripts/inspect_source.py --source "<name>"` |
+| "Run a 30-day baseline for `<source>` end-to-end" | Parallel per-day `powerquery_run` calls plus the math in this file; on the host, `mgmt-console-api` skill, `scripts/baseline_anomaly.py` |
+| "What field should I baseline on?" | `powerquery_schema_discover`; on the host, `mgmt-console-api`, `scripts/inspect_source.py --source "<name>"` |
 | "Why does my baseline flag every Sunday?" | DoW stratification: section above |
 | "Author this as a STAR rule body" | `references/detection-rules.md` in this skill, plus the lookup pattern in section "Productionising" |

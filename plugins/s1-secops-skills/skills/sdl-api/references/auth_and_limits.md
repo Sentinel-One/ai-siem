@@ -38,7 +38,7 @@ Because a dropped header changes results rather than erroring, three call sites 
 - the `/dashboards/` duplicate guard must list at the scope of the write;
 - delete verification must re-read at the scope of the delete.
 
-`SDLClient` sets `S1-Scope` from the per-call `scope` argument, falling back to `s1_scope` in config / `SDL_S1_SCOPE`. Pass `scope=None` to suppress the default and send no header.
+The `sdl_*` MCP tools and the host-only `SDLClient` set `S1-Scope` from the per-call `scope` argument, falling back to `S1_SCOPE` from the environment or the OS keychain. Pass `scope=None` (MCP: `scope: null`) to suppress the default and send no header.
 
 ## Query rate limiting (CPU leaky bucket)
 
@@ -102,7 +102,7 @@ Raw-log/event ingestion is not part of the SDL query client; use the event colle
 
 ## Retry strategy
 
-The SDLClient retries automatically on:
+The `s1-secops-mcp` server and the host-only `SDLClient` retry automatically on:
 
 - HTTP 429
 - HTTP 5xx

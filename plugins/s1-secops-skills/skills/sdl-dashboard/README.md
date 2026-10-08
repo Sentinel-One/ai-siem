@@ -20,10 +20,10 @@ Or install the full plugin (recommended) to get all the SentinelOne SecOps skill
 
 ## Usage
 
-This skill has no Python client of its own: dashboards are authored as JSON and deployed via the `sdl-api` skill's `put_file` method. Use alongside:
+Dashboards are authored as JSON and deployed through the `s1-secops-mcp` MCP server (`sdl_create_dashboard` on first create, then `sdl_put_file` by `udoId` with `expectedVersion`; see `s1-secops-mcp/README.md` in the s1-secops-skills source repo, not shipped in the plugin). The server runs on your machine and reads credentials from environment variables or the OS keychain (`s1-secops-mcp setup`), so it works from Cowork. Use alongside:
 
-- **`sdl-api`**: to deploy the dashboard JSON to your SDL tenant (`put_config_file`, by name on first create, by `udo_id` thereafter)
-- **`powerquery`**: to validate and compose the queries inside panels before embedding them
+- **`sdl-api`**: config-file addressing rules (udoId, CAS guard) for the deploy
+- **`powerquery`**: to validate and compose the queries inside panels before embedding them (`powerquery_run`)
 
 ## Example prompts
 
@@ -73,7 +73,7 @@ does not, rather than shipping empty panels.
 - Authors both query surfaces: the event stream, and UQL `| datasource` adapter queries against SentinelOne inventory (alerts, assets, vulnerabilities, misconfigurations, metering)
 - Applies query performance rules: `net_rfc1918()`, `| limit 1` on number panels, explicit limits on tables, `timebucket` granularity matched to duration, early filter placement, `estimate_distinct()` for cardinality on the event stream and chained `group` for exact distinct on inventory
 - Adds markdown descriptor panels to each tab
-- Deploys to SDL via `sdl-api`
+- Deploys to SDL via the `sdl_*` MCP tools
 
 ## Layout
 
@@ -83,10 +83,10 @@ does not, rather than shipping empty panels.
 - `references/community-examples.md`: full dashboard JSON examples from the SentinelOne community.
 - `references/lessons-learned.md`: source-agnostic patterns and field requirements from production engagements (PowerQuery feature gaps, full-text cost, naming hygiene, discriminator handling, mandatory validation runner).
 - `references/evidence-report-template.md`: required schema for the per-panel JSON, markdown, and PDF the validation runner produces.
-- `scripts/panel_safety_check.py`: pre-deploy linter for known-bad panel patterns. Run before every `put_file`.
-- `scripts/validate_dashboard.py`: post-deploy panel replay; persists per-panel evidence (sample rows, row count, matchCount, elapsed, errors) and emits a markdown report.
-- `scripts/render_validation_pdf.py`: renders the evidence JSON into a leadership-ready PDF with cover, per-tab sections, sample-data tables, and an empty-result appendix.
+- `scripts/panel_safety_check.py`: pre-deploy linter for known-bad panel patterns (local, no network). Run before every deploy.
+- `scripts/validate_dashboard.py`: host-only post-deploy panel replay (it calls the tenant, so it does not run in the Cowork sandbox); persists per-panel evidence (sample rows, row count, matchCount, elapsed, errors) and emits a markdown report. In Cowork the same evidence comes from one `powerquery_run` call per panel.
+- `scripts/render_validation_pdf.py`: renders the evidence JSON (local, no network) into a leadership-ready PDF with cover, per-tab sections, sample-data tables, and an empty-result appendix.
 
 ## Mandatory log-evidence report
 
-Every dashboard delivered with this skill ships with a log-evidence report produced by `scripts/validate_dashboard.py` plus `scripts/render_validation_pdf.py`. The PDF is the leadership deliverable, the markdown stays in version control. See `references/evidence-report-template.md` for the full schema and what a passing dashboard's report looks like.
+Every dashboard delivered with this skill ships with a log-evidence report: per-panel replay through `powerquery_run` (or `scripts/validate_dashboard.py` on the host), then `scripts/render_validation_pdf.py`. The PDF is the leadership deliverable, the markdown stays in version control. See `references/evidence-report-template.md` for the full schema and what a passing dashboard's report looks like.

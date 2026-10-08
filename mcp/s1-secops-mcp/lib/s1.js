@@ -8,22 +8,41 @@
  *   UAM GraphQL     → Authorization: ApiToken <jwt>   (POST /web/api/v2.1/unifiedalerts/graphql)
  */
 
-import { getCreds } from './credentials.js';
+import { getCreds, setupHint } from './credentials.js';
+import { parseJsonExact } from './json.js';
 import { scopeHeaders } from './sdl.js';
-import { excludeMetering } from './metering.js';
+import { excludeMetering, firstTopLevelPipe } from './metering.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function base() {
+export function base() {
   const url = getCreds().S1_CONSOLE_URL.replace(/\/+$/, '');
-  if (!url) throw new Error('S1_CONSOLE_URL not configured. Drop credentials.json into your project folder.');
+  if (!url) throw new Error('S1_CONSOLE_URL not configured. ' + setupHint());
   return url;
 }
 
-function jwt() {
+/** The console token (S1_CONSOLE_API_TOKEN). */
+export function jwt() {
   const tok = getCreds().S1_CONSOLE_API_TOKEN;
-  if (!tok) throw new Error('S1_CONSOLE_API_TOKEN not configured. Drop credentials.json into your project folder.');
+  if (!tok) throw new Error('S1_CONSOLE_API_TOKEN not configured. ' + setupHint());
   return tok;
+}
+
+/**
+ * Some endpoints (e.g. POST/DELETE /web/api/v2.1/threat-intelligence/iocs)
+ * refuse a token whose user spans several accounts with HTTP 403, code
+ * 4030010 "This page doesn't support multi-scopes users yet".
+ */
+export const MULTI_SCOPE_HINT =
+  'Hint: error 4030010 means this endpoint refuses a token whose user spans several accounts. ' +
+  'Use a console API token minted at a single account or site; store it in its own keychain profile ' +
+  '(`s1-secops-mcp setup --profile <name>`) and run a second MCP entry with `S1_PROFILE=<name>` ' +
+  '(or make that token your default).';
+
+/** True when a parsed error body carries errors[].code 4030010. */
+export function isMultiScopeError(data) {
+  return !!(data && typeof data === 'object' && Array.isArray(data.errors) &&
+    data.errors.some((e) => Number(e?.code) === 4030010));
 }
 
 /**
@@ -85,11 +104,12 @@ async function doFetch(url, opts, retries = 3, { allowRetry = null } = {}) {
 
     const text = await res.text();
     let data;
-    try { data = JSON.parse(text); } catch { data = text; }
+    try { data = parseJsonExact(text); } catch { data = text; }
 
     if (!res.ok) {
       const msg = typeof data === 'object' ? (data?.errors?.[0]?.detail || data?.errors?.[0]?.message || JSON.stringify(data)) : text;
-      throw new Error(`S1 API ${opts.method || 'GET'} ${url} → ${res.status}: ${msg}`);
+      const hint = res.status === 403 && isMultiScopeError(data) ? ` ${MULTI_SCOPE_HINT}` : '';
+      throw new Error(`S1 API ${opts.method || 'GET'} ${url} → ${res.status}: ${msg}${hint}`);
     }
     return data;
   }
@@ -166,6 +186,67 @@ export async function apiPatch(path, body = {}) {
   });
 }
 
+const DOWNLOAD_TIMEOUT_MS = Math.max(1000, Number(process.env.S1_DOWNLOAD_TIMEOUT_MS) || 10 * 60 * 1000);
+const DOWNLOAD_MAX_BYTES = Math.max(1, Number(process.env.S1_DOWNLOAD_MAX_BYTES) || 1024 * 1024 * 1024);
+
+/**
+ * GET a binary resource (file fetch, export ZIP, etc). Returns
+ * { buffer, contentType, contentDisposition, status }. Same origin pinning as
+ * every other call; GET is retried on 429/5xx.
+ */
+export async function apiGetBinary(path, params = {}) {
+  const u = safeUrl(path);
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null) u.searchParams.set(k, String(v));
+  }
+  let delay = 500;
+  for (let attempt = 0; attempt <= 3; attempt++) {
+    let res;
+    try {
+      res = await fetch(u.toString(), {
+        method: 'GET',
+        headers: { Authorization: `ApiToken ${jwt()}` },
+        signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+      });
+    } catch (e) {
+      if (e?.name === 'TimeoutError') throw new Error(`S1 API GET ${u.pathname} timed out after ${DOWNLOAD_TIMEOUT_MS / 1000} s`);
+      if (attempt === 3) throw e;
+      await sleep(delay); delay = Math.min(delay * 2, 8000); continue;
+    }
+    if ((res.status === 429 || res.status >= 500) && attempt < 3) {
+      await sleep(delay); delay = Math.min(delay * 2, 8000); continue;
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      let parsed = null;
+      try { parsed = JSON.parse(text); } catch { /* not JSON */ }
+      const hint = res.status === 403 && isMultiScopeError(parsed) ? ` ${MULTI_SCOPE_HINT}` : '';
+      throw new Error(`S1 API GET ${u.pathname} → ${res.status}: ${text.slice(0, 500)}${hint}`);
+    }
+    const declared = Number(res.headers.get('Content-Length'));
+    if (Number.isFinite(declared) && declared > DOWNLOAD_MAX_BYTES) {
+      await res.body?.cancel().catch(() => {});
+      throw new Error(`S1 API GET ${u.pathname}: response is ${declared} bytes, over the ${DOWNLOAD_MAX_BYTES}-byte limit (S1_DOWNLOAD_MAX_BYTES)`);
+    }
+    // Read with a running cap so a server that omits Content-Length cannot
+    // exhaust memory.
+    const chunks = [];
+    let total = 0;
+    for await (const chunk of res.body) {
+      total += chunk.length;
+      if (total > DOWNLOAD_MAX_BYTES) throw new Error(`S1 API GET ${u.pathname}: response exceeded the ${DOWNLOAD_MAX_BYTES}-byte limit (S1_DOWNLOAD_MAX_BYTES)`);
+      chunks.push(Buffer.from(chunk));
+    }
+    const buffer = Buffer.concat(chunks, total);
+    return {
+      buffer,
+      status: res.status,
+      contentType: res.headers.get('Content-Type') || '',
+      contentDisposition: res.headers.get('Content-Disposition') || '',
+    };
+  }
+}
+
 // ─── LRQ PowerQuery ───────────────────────────────────────────────────────────
 // POST <console>/sdl/v2/api/queries with Bearer auth (same JWT, different prefix)
 // Must echo X-Dataset-Query-Forward-Tag on every subsequent GET/DELETE.
@@ -193,68 +274,108 @@ export function pickMatchCount(result) {
 }
 
 /** Run a full LRQ PowerQuery lifecycle. Returns { columns, rows, rowCount, matchCount }. */
-export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 5000, scope, includeMetering = false, edrStrict = false } = {}) {
+export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 5000, scope, includeMetering = false, edrStrict = false, queryType = 'PQ', logLimit = 5000 } = {}) {
   const b = base();
   const tok = jwt();
+  if (!['PQ', 'LOG'].includes(queryType)) throw new Error(`queryType must be "PQ" or "LOG" (got ${queryType})`);
+  const isLog = queryType === 'LOG';
+  if (isLog && firstTopLevelPipe(String(query)) !== -1) {
+    throw new Error('queryType "LOG" takes a filter expression only (no pipes or commands), e.g. dataSource.name=\'X\' * contains \'evil.com\'. Use queryType "PQ" for pipelines.');
+  }
 
   // Exclude SDL ingest-metering rows (tag='logVolume') unless asked not to; see lib/metering.js.
+  // Not with edrStrict: scheme=edr validates every field against the EDR schema,
+  // `tag` is not an EDR field (HTTP 400 "Unknown EDR field 'tag'"), and EDR
+  // events carry no metering rows anyway.
   const metering = includeMetering
     ? { query, applied: false, reason: 'includeMetering=true' }
-    : excludeMetering(query);
+    : (edrStrict && !isLog)
+      ? { query, applied: false, reason: 'edrStrict=true: EDR events have no metering rows, and tag is not an EDR field' }
+      : excludeMetering(query);
   query = metering.query;
 
   ({ startTime, endTime } = resolveLrqWindow({ startTime, endTime, hours }));
 
   const launchUrl = `${b}/sdl/v2/api/queries`;
-  const launchBody = {
-    queryType: 'PQ',
-    tenant: true,
-    startTime,
-    endTime,
-    queryPriority: 'HIGH',
-    pq: { query, resultType: 'TABLE' },
-  };
+  const launchBody = isLog
+    ? {
+        queryType: 'LOG', tenant: true, startTime, endTime, queryPriority: 'HIGH',
+        // log.limit is the server-side row cap (typically max 5000). A result that
+        // returns exactly this many rows was truncated; there is no page 2.
+        log: { filter: query, limit: Math.max(1, Math.min(Number(logLimit) || 5000, 5000)) },
+      }
+    : {
+        queryType: 'PQ', tenant: true, startTime, endTime, queryPriority: 'HIGH',
+        pq: { query, resultType: 'TABLE' },
+      };
   // Top-level scheme=edr (platform S-26.2.6): an unknown or wrongly cased EDR field is
   // HTTP 400 "Unknown EDR field" instead of a silent matchCount=0. It must be top level;
   // inside pq it is HTTP 400 "Invalid JSON". Correct fields return the same rows.
-  if (edrStrict) launchBody.scheme = 'edr';
+  if (edrStrict && !isLog) launchBody.scheme = 'edr';
 
   // S1-Scope applies to log reads exactly as it does to config reads: an LRQ
   // run without the intended scope silently answers for the token default.
   const scopeHdrs = scopeHeaders(scope);
 
-  // Launch
-  const launchRes = await fetch(launchUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${tok}`,
-      'Content-Type': 'application/json',
-      ...scopeHdrs,
-    },
-    body: JSON.stringify(launchBody),
-  });
+  // Launch. A launch only creates a read-only query, so retrying a 429/5xx is
+  // safe; measured limits put 429s on launches only (never polls or cancels).
+  async function launch() {
+    let launchRes;
+    let backoff = 1000;
+    for (let attempt = 0; ; attempt++) {
+      launchRes = await fetch(launchUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tok}`,
+          'Content-Type': 'application/json',
+          ...scopeHdrs,
+        },
+        body: JSON.stringify(launchBody),
+      });
+      // Not a plain 500: SDL answers some invalid queries (e.g. `field == null`)
+      // with HTTP 500, and retrying those only turns a 0.5 s error into 18 s.
+      if ([429, 502, 503, 504].includes(launchRes.status) && attempt < 4) {
+        await launchRes.text().catch(() => '');
+        await sleep(backoff + Math.floor(Math.random() * 250));
+        backoff = Math.min(backoff * 2, 8000);
+        continue;
+      }
+      break;
+    }
 
-  if (!launchRes.ok) {
-    const body = await launchRes.text();
-    throw new Error(`LRQ launch failed (${launchRes.status}): ${body}`);
+    if (!launchRes.ok) {
+      const body = await launchRes.text();
+      throw new Error(`LRQ launch failed (${launchRes.status}): ${body}`);
+    }
+
+    const forwardTag = launchRes.headers.get('X-Dataset-Query-Forward-Tag');
+    const launched = parseJsonExact(await launchRes.text());
+    const id = launched.id;
+    if (!id) throw new Error(`LRQ launch returned no id: ${JSON.stringify(launched)}`);
+    return {
+      queryId: id,
+      pollHeaders: {
+        Authorization: `Bearer ${tok}`,
+        'Content-Type': 'application/json',
+        ...scopeHdrs,
+        ...(forwardTag ? { 'X-Dataset-Query-Forward-Tag': forwardTag } : {}),
+      },
+    };
   }
 
-  const forwardTag = launchRes.headers.get('X-Dataset-Query-Forward-Tag');
-  const launched = await launchRes.json();
-  const queryId = launched.id;
-  if (!queryId) throw new Error(`LRQ launch returned no id: ${JSON.stringify(launched)}`);
-
-  const pollHeaders = {
-    Authorization: `Bearer ${tok}`,
-    'Content-Type': 'application/json',
-    ...scopeHdrs,
-    ...(forwardTag ? { 'X-Dataset-Query-Forward-Tag': forwardTag } : {}),
+  const cancel = async (id, headers) => {
+    try {
+      await fetch(`${b}/sdl/v2/api/queries/${id}`, { method: 'DELETE', headers });
+    } catch { /* best effort */ }
   };
+
+  let { queryId, pollHeaders } = await launch();
 
   // Poll until done (30s expiry, poll every 1s)
   let lastStepSeen = 0;
   let result = null;
   let pollDelay = 1000;
+  let relaunched = false;
   const deadline = Date.now() + 5 * 60 * 1000; // 5 min hard timeout
 
   try {
@@ -274,16 +395,29 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
         // A transient 429/5xx on a single poll must not cancel a running
         // query: keep polling (doubling the interval up to 5s, still well
         // under the 30s poll-expiry window) until the 5-minute deadline.
-        // Other 4xx responses are permanent and remain fatal.
         if (pollRes.status === 429 || pollRes.status >= 500) {
           pollDelay = Math.min(pollDelay * 2, 5000);
           continue;
         }
-        throw new Error(`LRQ poll failed (${pollRes.status}): ${body}`);
+        // A 404 "Requested token=... not found" means the backend lost the
+        // query (observed live in three A/B regression runs, 2026-10-07/08;
+        // relaunching the same query succeeded 3/3). The query is read-only,
+        // so relaunch it once and poll the new id. A second 404 is fatal.
+        if (pollRes.status === 404 && !relaunched && /not found/i.test(body)) {
+          relaunched = true;
+          await cancel(queryId, pollHeaders);
+          ({ queryId, pollHeaders } = await launch());
+          lastStepSeen = 0;
+          pollDelay = 1000;
+          continue;
+        }
+        // Other 4xx responses are permanent and remain fatal.
+        throw new Error(`LRQ poll failed (${pollRes.status}): ${body}${relaunched ? ' (after one relaunch)' : ''}`);
       }
       pollDelay = 1000; // healthy poll: restore the normal interval
 
-      const state = await pollRes.json();
+      // Exact parse: PQ results can carry ids and nanosecond timestamps beyond 2^53.
+      const state = parseJsonExact(await pollRes.text());
       lastStepSeen = state.stepsCompleted ?? lastStepSeen;
 
       const done = state.stepsTotal > 0 && state.stepsCompleted >= state.stepsTotal;
@@ -294,17 +428,32 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
     }
   } finally {
     // Always cancel to release quota
-    try {
-      await fetch(`${b}/sdl/v2/api/queries/${queryId}`, {
-        method: 'DELETE',
-        headers: pollHeaders,
-      });
-    } catch { /* best effort */ }
+    await cancel(queryId, pollHeaders);
   }
 
   if (!result) throw new Error('LRQ timed out after 5 minutes');
 
   const data = result.data || {};
+
+  if (isLog) {
+    const all = data.matches || [];
+    const cap = launchBody.log.limit;
+    return {
+      queryType: 'LOG',
+      matches: all.slice(0, maxRows),
+      rowCount: Math.min(all.length, maxRows),
+      totalRows: all.length,
+      logLimit: cap,
+      // Exactly `limit` rows means the server cap truncated the window.
+      truncatedByServerCap: all.length >= cap,
+      estimatedMatchCount: data.estimatedMatchCount ?? null,
+      matchCount: pickMatchCount(result),
+      queryId,
+      startTime, endTime,
+      meteringExcluded: metering.applied,
+      ...(metering.applied ? { effectiveQuery: query } : { meteringNote: metering.reason }),
+    };
+  }
   const columns = data.columns || [];
   const rawRows = data.values || [];
 
@@ -396,12 +545,17 @@ export async function purpleAlertSummary(alertOcsfJson, { userDetails = null } =
 // ─── UAM GraphQL ─────────────────────────────────────────────────────────────
 
 /** Execute a raw UAM GraphQL operation. */
-export async function uamGraphql(query, variables = {}, operationName, { readOnly = false } = {}) {
-  const body = { query, variables };
-  if (operationName) body.operationName = operationName;
+export async function uamGraphql(query, variables = {}, operationName, { readOnly = false, opname = false } = {}) {
+  const body = { operationName, variables, query };
+  if (!operationName) delete body.operationName;
+  // opname=true appends ?opname=<operationName>, as the console does on every
+  // UAM call (HAR 2026-10-07). The server does not require it; it only labels
+  // the request.
+  const path = '/web/api/v2.1/unifiedalerts/graphql'
+    + (opname && operationName ? `?opname=${encodeURIComponent(operationName)}` : '');
   // readOnly=true (list/get queries) re-enables 429/5xx retry, which is safe
-  // for GraphQL reads; mutations (addNote, setStatus) must not auto-retry.
-  const data = await apiPost('/web/api/v2.1/unifiedalerts/graphql', body, { allowRetry: readOnly });
+  // for GraphQL reads; mutations (addNote, alertTriggerActions) must not auto-retry.
+  const data = await apiPost(path, body, { allowRetry: readOnly });
   if (data.errors?.length) {
     throw new Error(`UAM GraphQL error: ${data.errors[0].message}`);
   }
@@ -457,7 +611,7 @@ export async function uamListAlerts({
       builtFilters.push({ fieldId: 'detectionProduct', stringEqual: { value: detectionProduct } });
     }
     if (searchText) {
-      builtFilters.push({ fieldId: '*', match: { value: [searchText] } });
+      builtFilters.push({ fieldId: 'alertName', match: { value: [searchText] } }); // fieldId '*' is rejected live; alertName verified 2026-10-08
     }
     if (startTime !== null) {
       // Convert ISO string to epoch ms if needed
@@ -524,19 +678,19 @@ export async function uamGetAlert(alertId) {
         alert(id: $id) {
           id severity status createdAt updatedAt detectedAt
           name description externalId storylineId noteExists
-          confidenceLevel primaryIndicatorType analystVerdict result
-          assignee { fullName email }
+          confidenceLevel primaryIndicatorType analystVerdict result ticketId
+          assignee { userId fullName email }
           detectionSource { product vendor }
         }
       }
-    `, { id: alertId }),
+    `, { id: alertId }, undefined, { readOnly: true }),
     uamGraphql(`
       query GetAlertNotes($id: ID!) {
         alertNotes(alertId: $id) {
           data { id text type createdAt updatedAt author { fullName email } }
         }
       }
-    `, { id: alertId }),
+    `, { id: alertId }, undefined, { readOnly: true }),
   ]);
   const alert = alertData?.alert || null;
   if (alert) {
@@ -609,85 +763,437 @@ export async function uamAvailableActions(alertId, scope) {
   return data?.alertAvailableActions?.data || [];
 }
 
+// ─── UAM alert management: status, analyst verdict, assignee ────────────────
+//
+// Every write goes through alertTriggerActions exactly as the console sends it
+// (captured from a console HAR on 2026-10-07, S-26.3.x): operationName
+// "AlertTriggerActions", ?opname= on the URL, variables
+// {scope: {scopeIds:[<alert's account id>], scopeType:"ACCOUNT"},
+//  filter: {or:[{and:[{fieldId:"id", stringEqual:{value:<alertId>}}]}]},
+//  viewType: "ALL", actions: [{id, payload}]}, one action per call.
+//
+// ActionsTriggered is an acknowledgement, not a result: a refused write comes
+// back with the alert id under actions[].failure[] and the same __typename.
+// So every write here (1) reads the alert first (state + scope), (2) inspects
+// success/skip/failure, and (3) re-reads the alert until the field shows the
+// requested value, failing loudly if it never does.
+
+/** Status enum (introspected 2026-10-08: enum Status). */
+export const UAM_STATUSES = Object.freeze(['NEW', 'IN_PROGRESS', 'RESOLVED']);
+
 /**
- * Update the status of a UAM alert via alertTriggerActions.
- * Valid status values (confirmed via Status enum introspection): NEW | IN_PROGRESS | RESOLVED
- * Note: FALSE_POSITIVE is not a status; it is an analystVerdict value.
- * To mark false positive: there is no dedicated tool. POST the raw
- * alertTriggerActions mutation with the S1/alert/analystVerdictUpdate action
- * via s1_api_post to /web/api/v2.1/unifiedalerts/graphql.
- *
- * The mutation result is verified: a __typename-only selection previously
- * reported success even when the backend skipped or failed the action
- * (observed live: status stayed unchanged). Fixed 2026-07-31.
+ * AnalystVerdict enum (introspected 2026-10-08; identical to the
+ * S1/alert/analystVerdictUpdate tree the console renders from
+ * alertAvailableActions). TRUE_POSITIVE and FALSE_POSITIVE are tree group
+ * headers in the console, not values, and SUSPICIOUS does not exist.
  */
-export async function uamSetStatus(alertId, status) {
-  const query = `
-    mutation SetStatus($filter: OrFilterSelectionInput, $actions: [TriggerActionInput!]) {
-      alertTriggerActions(filter: $filter, actions: $actions) {
-        ... on ActionsTriggered {
-          actions { actionId skip { id } failure { id errorMessage errorType } success { id } }
-        }
-        ... on TriggerActionsError {
-          errors { errorMessage }
-        }
-      }
+export const UAM_ANALYST_VERDICTS = Object.freeze([
+  'UNDEFINED',
+  'TRUE_POSITIVE_MALWARE',
+  'TRUE_POSITIVE_UNAUTHORIZED_ACCESS',
+  'TRUE_POSITIVE_DATA_EXFILTRATION',
+  'TRUE_POSITIVE_INSIDER_THREAT',
+  'TRUE_POSITIVE_PHISHING_ATTACK',
+  'TRUE_POSITIVE_ADVANCED_PERSISTENT_THREAT',
+  'TRUE_POSITIVE_DENIAL_OF_SERVICE',
+  'TRUE_POSITIVE_RANSOMWARE',
+  'TRUE_POSITIVE_POLICY_VIOLATION',
+  'TRUE_POSITIVE_BENIGN_BUT_SUSPICIOUS',
+  'TRUE_POSITIVE_BENIGN',
+  'TRUE_POSITIVE_UNDEFINED',
+  'TRUE_POSITIVE_EXPLOITATION_TOOLS',
+  'TRUE_POSITIVE_PUA_ADWARE',
+  'FALSE_POSITIVE_BENIGN',
+  'FALSE_POSITIVE_BENIGN_BUT_SUSPICIOUS',
+  'FALSE_POSITIVE_SYSTEM_ERROR',
+  'FALSE_POSITIVE_USER_ERROR',
+  'FALSE_POSITIVE_UNDEFINED',
+]);
+
+export const UAM_ACTIONS = Object.freeze({
+  status: 'S1/alert/statusUpdate',
+  verdict: 'S1/alert/analystVerdictUpdate',
+  assign: 'S1/alert/assignUser',
+});
+
+/** The console's alertTriggerActions document, verbatim (HAR 2026-10-07). */
+export const ALERT_TRIGGER_ACTIONS_MUTATION = `fragment TriggeredActionSkipDetail on TriggeredActionSkipDetail {
+  id
+  __typename
+}
+
+fragment TriggeredActionFailureDetail on TriggeredActionFailureDetail {
+  id
+  errorMessage
+  errorType
+  __typename
+}
+
+fragment TriggeredActionSuccessDetail on TriggeredActionSuccessDetail {
+  id
+  __typename
+}
+
+fragment ActionsTriggered on ActionsTriggered {
+  actions {
+    actionId
+    skip {
+      ...TriggeredActionSkipDetail
+      __typename
     }
-  `;
-  const variables = {
-    filter: {
-      or: [{ and: [{ fieldId: 'id', stringEqual: { value: alertId } }] }],
-    },
-    actions: [{ id: 'S1/alert/statusUpdate', payload: { status: { value: status } } }],
+    failure {
+      ...TriggeredActionFailureDetail
+      __typename
+    }
+    success {
+      ...TriggeredActionSuccessDetail
+      __typename
+    }
+    __typename
+  }
+  __typename
+}
+
+fragment ActionsErrorLimitPayload on ActionsErrorLimitPayload {
+  limit
+  __typename
+}
+
+fragment ActionsErrorPayload on ActionsErrorPayload {
+  ...ActionsErrorLimitPayload
+  __typename
+}
+
+fragment TriggerActionsError on TriggerActionsError {
+  errors {
+    errorMessage
+    errorPayload {
+      ...ActionsErrorPayload
+      __typename
+    }
+    __typename
+  }
+  __typename
+}
+
+fragment TriggerActionsScheduled on TriggerActionsScheduled {
+  bulkActionTriggerId
+  __typename
+}
+
+mutation AlertTriggerActions($scope: ScopeSelectorInput, $filter: OrFilterSelectionInput, $actions: [TriggerActionInput!]!, $viewType: ViewType) {
+  alertTriggerActions(
+    filter: $filter
+    scope: $scope
+    actions: $actions
+    viewType: $viewType
+  ) {
+    ...ActionsTriggered
+    ...TriggerActionsError
+    ...TriggerActionsScheduled
+    __typename
+  }
+}`;
+
+/**
+ * Variables for one alertTriggerActions call, in the console's key order:
+ * scope, filter, viewType, actions. Exported so tests and the lifecycle
+ * script can compare them with the HAR.
+ */
+export function buildAlertTriggerActionsVariables(alertId, actionId, payload, scope) {
+  return {
+    scope,
+    filter: { or: [{ and: [{ fieldId: 'id', stringEqual: { value: alertId } }] }] },
+    viewType: 'ALL',
+    actions: [{ id: actionId, payload }],
   };
-  const data = await uamGraphql(query, variables);
-  const result = data?.alertTriggerActions || null;
-  if (result?.errors?.length) {
-    throw new Error(`uamSetStatus trigger error: ${result.errors[0].errorMessage}`);
-  }
-  const action = result?.actions?.[0];
-  if (!action) {
-    // Empty actions array: the backend applied nothing (e.g. the filter matched
-    // no alert). Same silent-success class as skip-without-success; fail loudly.
-    throw new Error(
-      `uamSetStatus applied no action for alert ${alertId}: the backend returned an empty actions list. ` +
-      'Verify the alert id, then re-check with uam_get_alert.'
-    );
-  }
-  if (action.failure?.length) {
-    const f = action.failure[0];
-    // errorMessage names the failure, not the cause. Ask alertAvailableActions,
-    // which is filtered by the caller's permissions AND the alert type.
-    let hint = '';
-    try {
-      const avail = await uamAvailableActions(alertId);
-      const ids = avail.map((a) => a.id);
-      if (!ids.includes('S1/alert/statusUpdate')) {
-        hint = ' | alertAvailableActions: statusUpdate is NOT OFFERED to this '
-             + `caller for this alert (available: ${ids.join(', ') || 'none'}). `
-             + 'Availability is filtered by the caller\'s permissions and the '
-             + 'alert type: check the service user\'s UAM permissions. A '
-             + 'console user session may still be able to perform it.';
-      } else {
-        const a = avail.find((x) => x.id === 'S1/alert/statusUpdate');
-        hint = a?.isDisabled
-          ? ` | alertAvailableActions: offered but DISABLED (${a.disabledReason || 'no reason given'}).`
-          : ' | alertAvailableActions: statusUpdate IS available here, so the '
-            + 'refusal is not availability. Escalate as a genuine permission '
-            + 'or state problem.';
+}
+
+/** The fields the write path reads and verifies, plus the alert's own scope. */
+export async function uamAlertState(alertId) {
+  const data = await uamGraphql(`
+    query AlertState($id: ID!) {
+      alert(id: $id) {
+        id name status analystVerdict
+        assignee { userId email fullName }
+        detectionSource { product vendor }
+        realTime { scope { account { id } site { id } } }
       }
-    } catch (e) {
-      hint = ` | could not query alertAvailableActions to diagnose: ${e.message}`;
     }
+  `, { id: alertId }, 'AlertState', { readOnly: true });
+  return data?.alert || null;
+}
+
+async function allAccountsScope() {
+  const accts = await apiGet('/web/api/v2.1/accounts', { limit: 100 });
+  const ids = (accts?.data || []).map((a) => a.id).filter(Boolean);
+  if (!ids.length) throw new Error('no accounts visible to this token');
+  return { scopeIds: ids, scopeType: 'ACCOUNT' };
+}
+
+/**
+ * Which "Unified Alerts > <group>: Manage" permission an alert type needs.
+ * STAR is certain (console RBAC: "STAR Alerts: Manage = Run actions on custom
+ * rule alerts"); the others follow the same RBAC table by detection product.
+ */
+export function uamManageGroupFor(product) {
+  const p = String(product || '');
+  if (/^STAR$/i.test(p)) return 'STAR Alerts';
+  if (/^EDR$|endpoint/i.test(p)) return 'Endpoint Alerts';
+  if (/identity|ranger/i.test(p)) return 'Identity Alerts';
+  if (/mobile/i.test(p)) return 'Mobile Alerts';
+  return 'Generic Alerts';
+}
+
+/**
+ * Best effort: read the calling user's role and list the Unified Alerts
+ * Manage permissions it lacks. Needs Roles/Users view; returns '' if not.
+ */
+async function uamRoleDiagnosis(accountId) {
+  try {
+    const me = (await apiGet('/web/api/v2.1/user'))?.data || {};
+    const roles = (me.scopeRoles || []).filter((r) => !accountId || String(r.id) === String(accountId));
+    const parts = [];
+    for (const r of roles.length ? roles : (me.scopeRoles || [])) {
+      if (!r.roleId) continue;
+      const role = (await apiGet(`/web/api/v2.1/rbac/role/${encodeURIComponent(r.roleId)}`, { accountIds: r.id }))?.data;
+      const page = (role?.pages || []).find((p) => p.identifier === 'unifiedAlerts');
+      if (!page) continue;
+      const missing = (page.permissions || [])
+        .filter((p) => p.title === 'Manage' && p.value !== true)
+        .map((p) => `${p.groupName || 'Unified Alerts'}: Manage`);
+      parts.push(`role "${r.roleName || role.name}" (id ${r.roleId}) on scope "${r.name || r.id}" ` +
+        (missing.length ? `lacks ${missing.join(', ')}` : 'has every Unified Alerts Manage permission'));
+    }
+    return parts.length ? ` Role check: ${parts.join('; ')}.` : '';
+  } catch {
+    return '';
+  }
+}
+
+/** Ask alertAvailableActions why a non-permission failure happened. */
+async function uamAvailabilityHint(alertId, actionId, scope) {
+  try {
+    const avail = await uamAvailableActions(alertId, scope);
+    const ids = avail.map((a) => a.id);
+    const short = actionId.split('/').pop();
+    if (!ids.includes(actionId)) {
+      return ` | alertAvailableActions: ${short} is NOT OFFERED to this caller for this alert `
+        + `(available: ${ids.join(', ') || 'none'}). Availability is filtered by the caller's `
+        + 'permissions and the alert type: check the service user\'s UAM permissions.';
+    }
+    const a = avail.find((x) => x.id === actionId);
+    return a?.isDisabled
+      ? ` | alertAvailableActions: offered but DISABLED (${a.disabledReason || 'no reason given'}).`
+      : ` | alertAvailableActions: ${short} IS available here, so the refusal is not `
+        + 'availability. Escalate as a genuine permission or state problem.';
+  } catch (e) {
+    return ` | could not query alertAvailableActions to diagnose: ${e.message}`;
+  }
+}
+
+const pickState = (a) => a && ({
+  status: a.status ?? null,
+  analystVerdict: a.analystVerdict ?? null,
+  assignee: a.assignee ? { userId: a.assignee.userId ?? null, email: a.assignee.email ?? null } : null,
+});
+
+/**
+ * Run one alertTriggerActions action on one alert and verify it took effect.
+ *
+ * @param {string} alertId
+ * @param {string} actionId   e.g. 'S1/alert/statusUpdate'
+ * @param {object} payload    TriggerPayloadInput, e.g. {status:{value:'RESOLVED'}}
+ * @param {object} o
+ * @param {string} o.label    caller name for messages, e.g. 'uamSetStatus'
+ * @param {string} o.field    human field name, e.g. 'status'
+ * @param {(alert:object)=>boolean} o.isApplied  true when the re-read shows the requested value
+ * @param {string} o.wanted   requested value, for messages
+ * @param {object} [o.scope]  ScopeSelectorInput override; default = the alert's account
+ * @param {number} [o.verifyAttempts=8] re-reads before giving up
+ * @param {number} [o.verifyDelayMs=1000] delay between re-reads
+ */
+export async function uamTriggerAlertAction(alertId, actionId, payload, {
+  label, field, isApplied, wanted, scope, verifyAttempts = 8, verifyDelayMs = 1000,
+} = {}) {
+  if (typeof alertId !== 'string' || !alertId.trim()) throw new Error(`${label}: alertId is required`);
+
+  const before = await uamAlertState(alertId);
+  if (!before) {
+    throw new Error(`${label}: alert ${alertId} was not found or is not visible to this token (alert(id) returned null).`);
+  }
+  const accountId = before.realTime?.scope?.account?.id || null;
+  const effectiveScope = scope || (accountId ? { scopeIds: [String(accountId)], scopeType: 'ACCOUNT' } : await allAccountsScope());
+  const variables = buildAlertTriggerActionsVariables(alertId, actionId, payload, effectiveScope);
+
+  const data = await uamGraphql(ALERT_TRIGGER_ACTIONS_MUTATION, variables, 'AlertTriggerActions', { opname: true });
+  const result = data?.alertTriggerActions || null;
+  const typename = result?.__typename;
+
+  if (typename === 'TriggerActionsError' || result?.errors?.length) {
+    const e = result?.errors?.[0] || {};
+    const limit = e.errorPayload?.limit;
+    throw new Error(`${label} trigger error for alert ${alertId}: ${e.errorMessage || 'unknown error'}${limit != null ? ` (limit ${limit})` : ''}`);
+  }
+
+  let outcome = 'applied';
+  if (typename === 'TriggerActionsScheduled' || result?.bulkActionTriggerId) {
+    outcome = 'scheduled'; // asynchronous bulk job; the re-read below decides
+  } else {
+    const action = result?.actions?.[0];
+    if (!action) {
+      // Empty actions array: the backend applied nothing (e.g. the filter matched
+      // no alert). Same silent-success class as skip-without-success; fail loudly.
+      throw new Error(
+        `${label} applied no action for alert ${alertId}: the backend returned an empty actions list. ` +
+        'Verify the alert id, then re-check with uam_get_alert.'
+      );
+    }
+    if (action.failure?.length) {
+      const f = action.failure[0];
+      if (f.errorType === 'MISSING_PERMISSION') {
+        // Verified live 2026-10-08: "Missing UAM manage permissions". The role
+        // lacks "Unified Alerts > <alert type>: Manage" (custom roles created
+        // before those permissions existed do not have them). Not a tool fault.
+        const group = uamManageGroupFor(before.detectionSource?.product);
+        const roleCheck = await uamRoleDiagnosis(accountId);
+        const now = await uamAlertState(alertId).catch(() => null);
+        const unchanged = now
+          ? `A re-read shows ${field} is ${JSON.stringify(pickState(now)[field] ?? null)} (was ${JSON.stringify(pickState(before)[field] ?? null)} before the call).`
+          : `${field} was ${JSON.stringify(pickState(before)[field] ?? null)} before the call (re-read failed).`;
+        throw new Error(
+          `${label} failed for alert ${alertId}: ${f.errorMessage || 'missing permission'} (errorType MISSING_PERMISSION). ` +
+          `The calling user's role needs "Unified Alerts > ${group}: Manage" for this alert type ` +
+          `(detectionSource.product=${before.detectionSource?.product ?? 'unknown'})` +
+          (group === 'STAR Alerts'
+            ? ' or the legacy "STAR Rule Alerts > Update Incident Status / Update Analyst Verdict"'
+            : '') +
+          '. Grant it in the console at ' +
+          'Policies and settings > User management > Console users > Roles > <the role> > Unified Alerts ' +
+          '(for a service user, edit the role shown on its Service users row), or use a token whose role has it.' +
+          `${roleCheck} ${unchanged}`
+        );
+      }
+      const hint = await uamAvailabilityHint(alertId, actionId, effectiveScope);
+      throw new Error(`${label} failed for alert ${alertId}: ${f.errorMessage || f.errorType || 'unknown error'}${hint}`);
+    }
+    if (!(action.success?.length)) {
+      // skip with no success: the backend did not apply it. Usually a no-op
+      // (the value was already set); the re-read below tells the two apart.
+      outcome = action.skip?.length ? 'skipped' : 'unknown';
+    }
+  }
+
+  // Verify by re-reading the alert.
+  let after = null;
+  for (let i = 0; i < Math.max(1, verifyAttempts); i++) {
+    if (i > 0 || outcome !== 'skipped') await sleep(i === 0 ? Math.min(verifyDelayMs, 250) : verifyDelayMs);
+    after = await uamAlertState(alertId);
+    if (after && isApplied(after)) {
+      return {
+        alertId,
+        actionId,
+        requested: wanted,
+        outcome: outcome === 'skipped' || outcome === 'unknown' ? 'already_set' : outcome,
+        verified: true,
+        before: pickState(before),
+        after: pickState(after),
+        scope: effectiveScope,
+        response: result,
+      };
+    }
+    if (outcome === 'skipped' || outcome === 'unknown') break; // nothing is coming
+  }
+  if (outcome === 'skipped' || outcome === 'unknown') {
     throw new Error(
-      `uamSetStatus failed for alert ${alertId}: ${f.errorMessage || f.errorType || 'unknown error'}${hint}`
+      `${label} skipped for alert ${alertId}: the backend did not apply the ${field} update ` +
+      `(requested ${JSON.stringify(wanted)}, ${field} is ${JSON.stringify(pickState(after || before)[field] ?? null)}). ` +
+      'Verify the alert id and that the change is valid, then re-check with uam_get_alert.'
     );
   }
-  if (!(action.success?.length) && action.skip?.length) {
+  throw new Error(
+    `${label}: the backend reported ${outcome} for alert ${alertId} but a re-read ${Math.max(1, verifyAttempts)} time(s) ` +
+    `still shows ${field}=${JSON.stringify(pickState(after || before)[field] ?? null)} (requested ${JSON.stringify(wanted)}). ` +
+    'Re-check with uam_get_alert; the change may be delayed or silently rejected.'
+  );
+}
+
+function scopeFromArgs(scopeIds, scopeType) {
+  if (!Array.isArray(scopeIds) || !scopeIds.length) return undefined;
+  const t = scopeType || 'ACCOUNT';
+  if (!['ACCOUNT', 'SITE', 'GROUP'].includes(t)) throw new Error(`scopeType must be ACCOUNT, SITE or GROUP (got ${JSON.stringify(t)})`);
+  return { scopeIds: scopeIds.map(String), scopeType: t };
+}
+
+/**
+ * Update the status of a UAM alert (NEW | IN_PROGRESS | RESOLVED), the same
+ * request the console sends, verified by re-reading the alert.
+ * FALSE_POSITIVE is not a status; it is an analyst verdict (uamSetVerdict).
+ */
+export async function uamSetStatus(alertId, status, { scopeIds, scopeType, ...opts } = {}) {
+  if (!UAM_STATUSES.includes(status)) {
+    throw new Error(`uamSetStatus: invalid status ${JSON.stringify(status)}. Valid: ${UAM_STATUSES.join(', ')}. ` +
+      '(FALSE_POSITIVE etc. are analyst verdicts: use uam_set_verdict.)');
+  }
+  return uamTriggerAlertAction(alertId, UAM_ACTIONS.status, { status: { value: status } }, {
+    label: 'uamSetStatus', field: 'status', wanted: status,
+    isApplied: (a) => a.status === status,
+    scope: scopeFromArgs(scopeIds, scopeType), ...opts,
+  });
+}
+
+/** Set the analyst verdict of a UAM alert, verified by re-reading the alert. */
+export async function uamSetVerdict(alertId, verdict, { scopeIds, scopeType, ...opts } = {}) {
+  if (!UAM_ANALYST_VERDICTS.includes(verdict)) {
+    throw new Error(`uamSetVerdict: invalid analyst verdict ${JSON.stringify(verdict)}. Valid: ${UAM_ANALYST_VERDICTS.join(', ')}. ` +
+      'TRUE_POSITIVE and FALSE_POSITIVE alone are console group headers, not values; pick a sub-verdict.');
+  }
+  return uamTriggerAlertAction(alertId, UAM_ACTIONS.verdict, { analystVerdict: { value: verdict } }, {
+    label: 'uamSetVerdict', field: 'analystVerdict', wanted: verdict,
+    isApplied: (a) => a.analystVerdict === verdict,
+    scope: scopeFromArgs(scopeIds, scopeType), ...opts,
+  });
+}
+
+/**
+ * Resolve a console user for assignment. The console sends the numeric user id
+ * (AssignUserInput.value: Long, sent as a string). An email is looked up with
+ * GET /web/api/v2.1/users?email= and must match exactly one user.
+ */
+export async function uamResolveUser({ userId, email } = {}) {
+  if (userId != null && userId !== '') {
+    const id = String(userId).trim();
+    if (!/^\d{1,20}$/.test(id)) throw new Error(`userId must be a numeric console user id (got ${JSON.stringify(userId)})`);
+    return { userId: id, email: email || null };
+  }
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    throw new Error('Pass userId (numeric console user id) or email of the user to assign.');
+  }
+  const res = await apiGet('/web/api/v2.1/users', { email: email.trim(), limit: 10 });
+  const matches = (res?.data || []).filter((u) => String(u.email || '').toLowerCase() === email.trim().toLowerCase());
+  if (matches.length !== 1) {
     throw new Error(
-      `uamSetStatus skipped for alert ${alertId}: the backend did not apply the status update. ` +
-      'Verify the alert id and that the transition is valid, then re-check with uam_get_alert.'
+      `No unique console user with email ${email} is visible to this token (found ${matches.length}). ` +
+      'Pass userId instead (GET /web/api/v2.1/users lists ids).'
     );
   }
-  return result;
+  return { userId: String(matches[0].id), email: matches[0].email };
+}
+
+/**
+ * Assign a UAM alert to a console user, or unassign it (unassign: true sends
+ * {assignUser:{value:null}}, which the schema documents as "user will be
+ * unassigned"). Verified by re-reading the alert's assignee.
+ */
+export async function uamAssignAlert(alertId, { userId, email, unassign = false, scopeIds, scopeType, ...opts } = {}) {
+  const given = [userId != null && userId !== '', !!email, unassign === true].filter(Boolean).length;
+  if (given !== 1) throw new Error('uamAssignAlert: pass exactly one of userId, email, or unassign: true.');
+  let user = null;
+  if (!unassign) user = await uamResolveUser({ userId, email });
+  const value = unassign ? null : user.userId;
+  return uamTriggerAlertAction(alertId, UAM_ACTIONS.assign, { assignUser: { value } }, {
+    label: 'uamAssignAlert', field: 'assignee', wanted: unassign ? null : (user.email || user.userId),
+    isApplied: (a) => (unassign ? a.assignee == null || a.assignee.userId == null : String(a.assignee?.userId ?? '') === user.userId),
+    scope: scopeFromArgs(scopeIds, scopeType), ...opts,
+  });
 }

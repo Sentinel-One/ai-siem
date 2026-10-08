@@ -4,7 +4,14 @@ Deploy ingest health for an SDL tenant at per-device granularity (per firewall, 
 anomaly detection on a 7-day hour-of-day seasonal baseline refreshed daily, plus dashboard,
 detections, and email on every failure. Triggers: "deploy ingest health", "monitor ingest per
 device/firewall/endpoint", "ingest loss/lag", "parser drift". Orchestration only; drives powerquery,
-sdl-dashboard, hyperautomation, sdl-api, mgmt-console-api. Full queries + deploy record: `SOLUTION.md`.
+sdl-dashboard, hyperautomation, sdl-api, mgmt-console-api. Full queries: the ingest-health templates in
+`assets/`: `assets/ingesthealth_detections.template.json` (plus the optional
+`assets/ingesthealth_detections_parser_drift_optional.template.json`),
+`assets/ingesthealth_dashboard.template.json`, the workflows
+`assets/ingesthealth_baseline_builder.workflow.template.json`,
+`assets/ingesthealth_watchdog.workflow.template.json` and
+`assets/ingesthealth_alert_notifier.workflow.template.json`, and the CSV lookups
+`assets/ingesthealth_devicelevel.csv.template` and `assets/ingesthealth_exclusions.csv.template`.
 
 ## Model
 

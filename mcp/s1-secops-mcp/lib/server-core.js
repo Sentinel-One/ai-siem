@@ -7,9 +7,8 @@
  *   - TOOL_DEFS:                        for diagnostics / introspection
  *   - ALL_TOOLS:                        for tests
  *
- * Both stdio-transport and http-transport import dispatch() and feed it
- * parsed JSON-RPC envelopes. They are responsible for serialization,
- * framing, and any transport-specific concerns (auth, sessions, headers).
+ * stdio-transport imports dispatch() and feeds it parsed JSON-RPC envelopes;
+ * it owns serialization and framing. (The HTTP transport was removed in 1.5.0.)
  */
 
 import { readFileSync, existsSync } from 'fs';
@@ -21,8 +20,9 @@ import { tools as mgmtTools }       from '../tools/mgmt-console.js';
 import { tools as sdlTools }        from '../tools/sdl-api.js';
 import { tools as haTools }         from '../tools/hyperautomation.js';
 import { tools as uamIngestTools }  from '../tools/uam-ingest.js';
-import { getCreds, hasS1Creds, hasSdlCreds } from './credentials.js';
+import { getCreds, hasS1Creds, hasSdlCreds, loadCredentials } from './credentials.js';
 import { hasHecCreds } from './uam-ingest.js';
+import { redact } from './redact.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 
@@ -94,7 +94,7 @@ const PROMPTS = [
 
 export const SERVER_INFO = {
   name: 's1-secops-mcp-server',
-  version: '1.4.0',
+  version: '1.5.2',
 };
 
 export const PROTOCOL_VERSION = '2024-11-05';
@@ -108,7 +108,7 @@ export function err(id, code, message, data) {
 }
 
 function log(...args) {
-  process.stderr.write('[s1-secops-mcp] ' + args.join(' ') + '\n');
+  process.stderr.write(redact('[s1-secops-mcp] ' + args.join(' ')) + '\n');
 }
 
 // ─── dispatch ────────────────────────────────────────────────────────────────
@@ -146,6 +146,7 @@ export async function dispatch(method, params, id) {
       }
       if (uri === 'sentinelone://credentials-status') {
         const c = getCreds();
+        const { sources, keychain } = loadCredentials();
         const status = {
           s1MgmtApi: {
             configured: hasS1Creds(),
@@ -158,9 +159,13 @@ export async function dispatch(method, params, id) {
           },
           uamIngestApi: {
             configured: hasHecCreds(),
-            hecUrl: c.S1_HEC_INGEST_URL || 'NOT SET (add S1_HEC_INGEST_URL to credentials.json)',
+            hecUrl: c.S1_HEC_INGEST_URL || 'NOT SET (run `s1-secops-mcp setup` or set S1_HEC_INGEST_URL)',
             tokenPresent: !!c.S1_CONSOLE_API_TOKEN,
           },
+          hecTokenPresent: !!c.S1_HEC_TOKEN,
+          // Where each value came from (env:<VAR> or keychain:<backend>). Never the value.
+          sources,
+          keychain: { backend: keychain.backend, available: !keychain.error, note: keychain.error || undefined },
         };
         return ok(id, {
           contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(status, null, 2) }],
@@ -237,13 +242,15 @@ Apply the SOC analyst context from the soc_analyst prompt throughout.`,
         const output = await handler(args);
         const text = typeof output === 'string' ? output : JSON.stringify(output, null, 2);
         return ok(id, {
-          content: [{ type: 'text', text }],
+          // Success output: exact configured secrets only, never pattern masking
+          // (see lib/redact.js: patterns would corrupt legitimate file content).
+          content: [{ type: 'text', text: redact(text, { patterns: false }) }],
           isError: false,
         });
       } catch (e) {
         log(`Tool error [${toolName}]:`, e.message);
         return ok(id, {
-          content: [{ type: 'text', text: `Error: ${e.message}` }],
+          content: [{ type: 'text', text: redact(`Error: ${e.message}`) }],
           isError: true,
         });
       }

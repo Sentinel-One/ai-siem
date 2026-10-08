@@ -968,6 +968,34 @@ def set_alert_status(
     )
 
 
+# The `AnalystVerdict` enum, introspected (20 values; see
+# references/UNIFIED_ALERTS.md). TRUE_POSITIVE and FALSE_POSITIVE are group
+# headers in the console's verdict picker, not values, and there is no
+# SUSPICIOUS.
+ANALYST_VERDICTS = (
+    "UNDEFINED",
+    "TRUE_POSITIVE_MALWARE",
+    "TRUE_POSITIVE_UNAUTHORIZED_ACCESS",
+    "TRUE_POSITIVE_DATA_EXFILTRATION",
+    "TRUE_POSITIVE_INSIDER_THREAT",
+    "TRUE_POSITIVE_PHISHING_ATTACK",
+    "TRUE_POSITIVE_ADVANCED_PERSISTENT_THREAT",
+    "TRUE_POSITIVE_DENIAL_OF_SERVICE",
+    "TRUE_POSITIVE_RANSOMWARE",
+    "TRUE_POSITIVE_POLICY_VIOLATION",
+    "TRUE_POSITIVE_BENIGN_BUT_SUSPICIOUS",
+    "TRUE_POSITIVE_BENIGN",
+    "TRUE_POSITIVE_UNDEFINED",
+    "TRUE_POSITIVE_EXPLOITATION_TOOLS",
+    "TRUE_POSITIVE_PUA_ADWARE",
+    "FALSE_POSITIVE_BENIGN",
+    "FALSE_POSITIVE_BENIGN_BUT_SUSPICIOUS",
+    "FALSE_POSITIVE_SYSTEM_ERROR",
+    "FALSE_POSITIVE_USER_ERROR",
+    "FALSE_POSITIVE_UNDEFINED",
+)
+
+
 def set_analyst_verdict(
     client: S1Client,
     *,
@@ -978,8 +1006,27 @@ def set_analyst_verdict(
 ) -> Dict[str, Any]:
     """Convenience wrapper: analyst-verdict update on specific alerts.
 
-    `verdict` enum: TRUE_POSITIVE, SUSPICIOUS, FALSE_POSITIVE_USER_ERROR,
-    etc. (see column_metadata for the full enum)."""
+    `verdict` must be one of the 20 `AnalystVerdict` values in
+    `ANALYST_VERDICTS`:
+
+      * `UNDEFINED` (clears the verdict);
+      * `TRUE_POSITIVE_` + MALWARE, UNAUTHORIZED_ACCESS, DATA_EXFILTRATION,
+        INSIDER_THREAT, PHISHING_ATTACK, ADVANCED_PERSISTENT_THREAT,
+        DENIAL_OF_SERVICE, RANSOMWARE, POLICY_VIOLATION,
+        BENIGN_BUT_SUSPICIOUS, BENIGN, UNDEFINED, EXPLOITATION_TOOLS,
+        PUA_ADWARE;
+      * `FALSE_POSITIVE_` + BENIGN, BENIGN_BUT_SUSPICIOUS, SYSTEM_ERROR,
+        USER_ERROR, UNDEFINED.
+
+    `TRUE_POSITIVE` and `FALSE_POSITIVE` alone are console group headers, not
+    values, and there is no `SUSPICIOUS`. Anything outside the enum raises
+    ValueError before a request is sent.
+    """
+    if verdict not in ANALYST_VERDICTS:
+        raise ValueError(
+            f"verdict {verdict!r} is not an AnalystVerdict value. Use one of: "
+            + ", ".join(ANALYST_VERDICTS)
+        )
     filt = or_filter([build_filter(fieldId="id", stringIn={"values": alert_ids})])
     actions: List[Dict[str, Any]] = [
         {"id": "S1/alert/analystVerdictUpdate", "payload": {"analystVerdict": {"value": verdict}}}
@@ -991,17 +1038,76 @@ def set_analyst_verdict(
     )
 
 
+def resolve_user_id(
+    client: S1Client,
+    *,
+    user_id: Optional[Any] = None,
+    user_email: Optional[str] = None,
+) -> str:
+    """Return the numeric console user id to send in `S1/alert/assignUser`.
+
+    `AssignUserInput` has one field, `value: Long`; the console sends the id as
+    a string. A `user_id` is validated and returned as a string. A
+    `user_email` is looked up with `GET /web/api/v2.1/users?email=<email>`
+    and must match exactly one user (case-insensitive), the same rule the
+    MCP's `uam_assign_alert` applies.
+    """
+    if user_id is not None and str(user_id).strip() != "":
+        uid = str(user_id).strip()
+        if not uid.isdigit() or len(uid) > 20:
+            raise ValueError(
+                f"user_id must be a numeric console user id (got {user_id!r})"
+            )
+        return uid
+    email = (user_email or "").strip()
+    if "@" not in email:
+        raise ValueError("Pass user_id (numeric console user id) or user_email.")
+    res = client.get("/web/api/v2.1/users", params={"email": email, "limit": 10})
+    matches = [
+        u for u in (res.get("data") or [])
+        if str(u.get("email") or "").lower() == email.lower()
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            f"No unique console user with email {email} is visible to this token "
+            f"(found {len(matches)}). Pass user_id instead "
+            "(GET /web/api/v2.1/users lists ids)."
+        )
+    return str(matches[0].get("id"))
+
+
 def assign_alerts(
     client: S1Client,
     *,
     scope_input: Dict[str, Any],
     alert_ids: List[str],
-    user_email: str,
+    user_id: Optional[Any] = None,
+    user_email: Optional[str] = None,
+    unassign: bool = False,
 ) -> Dict[str, Any]:
-    """Convenience wrapper: assign a set of alerts to a user."""
+    """Convenience wrapper: assign a set of alerts to a user, or unassign.
+
+    Sends what the console sends: action `S1/alert/assignUser` with payload
+    `{"assignUser": {"value": "<numeric user id as a string>"}}`, or
+    `{"assignUser": {"value": None}}` to unassign. Pass exactly one of
+    `user_id`, `user_email` (resolved with `resolve_user_id`) or
+    `unassign=True`. The older `{"assignUser": {"userEmail": ...}}` payload is
+    a GraphQL ValidationError (`AssignUserInput` has no `userEmail` field).
+    """
+    given = sum([
+        user_id is not None and str(user_id).strip() != "",
+        bool(user_email),
+        unassign is True,
+    ])
+    if given != 1:
+        raise ValueError(
+            "assign_alerts: pass exactly one of user_id, user_email, or unassign=True."
+        )
+    value = None if unassign else resolve_user_id(
+        client, user_id=user_id, user_email=user_email)
     filt = or_filter([build_filter(fieldId="id", stringIn={"values": alert_ids})])
     actions = [
-        {"id": "S1/alert/assignUser", "payload": {"assignUser": {"userEmail": user_email}}}
+        {"id": "S1/alert/assignUser", "payload": {"assignUser": {"value": value}}}
     ]
     return trigger_actions(
         client, scope_input=scope_input, actions=actions, filter_input=filt

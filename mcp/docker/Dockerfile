@@ -8,9 +8,10 @@
 # the npm and npx binaries are deleted from the final image so a future edit
 # cannot quietly reintroduce one. Each MCP arrives from source:
 #
-#   s1-secops-mcp    COPY from this repo's build context. It declares zero
-#                    dependencies and zero devDependencies, so there is
-#                    nothing to resolve: the source IS the install.
+#   s1-secops-mcp    COPY from this repo's build context. It has no required
+#                    dependencies (its one optional dependency, the Windows
+#                    keychain binding, is not used in a container), so there
+#                    is nothing to resolve: the source IS the install.
 #   virustotal-mcp   git clone of a pinned commit in our fork, which commits
 #                    its own build/ and production node_modules/ (see
 #                    scripts/vendor-vt-fork.sh). Clone, symlink, done.
@@ -153,7 +154,7 @@ LABEL org.opencontainers.image.title="SentinelOne Claude Skills MCP Stack" \
       org.opencontainers.image.description="s1-secops-mcp + purple-mcp + virustotal MCP, single image, no npm" \
       org.opencontainers.image.source="https://github.com/Sentinel-One/ai-siem" \
       org.opencontainers.image.documentation="https://github.com/Sentinel-One/ai-siem/blob/main/plugins/s1-secops-skills/docs/docker.md" \
-      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.licenses="AGPL-3.0" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.version="${IMAGE_VERSION}"
@@ -201,8 +202,11 @@ COPY s1-secops-mcp/package.json  /opt/s1-secops-mcp/package.json
 COPY s1-secops-mcp/index.js      /opt/s1-secops-mcp/index.js
 COPY s1-secops-mcp/lib/          /opt/s1-secops-mcp/lib/
 COPY s1-secops-mcp/tools/        /opt/s1-secops-mcp/tools/
-COPY s1-secops-mcp/deploy/       /opt/s1-secops-mcp/deploy/
 COPY s1-secops-mcp/scripts/      /opt/s1-secops-mcp/scripts/
+# A container has no OS keychain. Credentials arrive from the host launcher over
+# stdin (S1_SECRETS_STDIN=1, see entrypoint.sh) or as environment variables.
+# The optional @napi-rs/keyring dependency is deliberately not installed here.
+ENV S1_KEYCHAIN=off
 # Normalise permissions. COPY preserves the mode of the source file, and a
 # repo checkout can easily carry 0600 files (this one does: package.json comes
 # through as -rw-------). Under USER node that is unreadable, and Node >=24
@@ -263,8 +267,10 @@ RUN chmod 755 /usr/local/bin/entrypoint.sh
 # The node base image already ships an unprivileged `node` user (uid 1000), so
 # use it rather than inventing another. Nothing here needs to write: the three
 # servers read their code from /opt, read CLAUDE.md and versions.json from
-# /etc/sentinelone, and speak JSON-RPC over stdio. Credentials arrive as
-# environment variables, not files the container writes.
+# /etc/sentinelone, and speak JSON-RPC over stdio. Credentials arrive over stdin
+# from the host launcher (docker/s1-secops-mcp-launch.sh), which keeps them out
+# of `docker inspect`; plain environment variables still work but are visible
+# there. The container never reads or writes a credentials file.
 #
 # HOME is set because a bare `USER node` leaves HOME=/root, which the user
 # cannot read. Python and Node both fall back to HOME for caches, and the

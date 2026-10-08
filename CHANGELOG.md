@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security - credentials move to the OS keychain (s1-secops-skills v1.3.12, MCP and image 1.5.2)
+
+- **No more plaintext credentials.** Console, ingest and VirusTotal keys are stored in the OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager) and never written to disk in clear text.
+- **`credentials.json` is no longer read.** The MCP server, the Python clients and the plugin's session hook used to search several folders for a plaintext credentials file. That loading code is removed, so a stray copy can no longer be picked up. Existing files can be imported once with `s1-secops-mcp setup --import-json` and then deleted.
+- **No tokens in client configs or Docker metadata.** A host launcher reads the keychain and passes values to the container over stdin, so they do not appear in the Claude Desktop config, `docker inspect` or the process list.
+- The HTTP transport and shared VM deployment are removed; each user runs the server over stdio with their own credentials.
+- The bundled VirusTotal MCP picks up fixes for CVE-2026-90711 (`proxy-addr`, critical) and CVE-2026-104850 (`@modelcontextprotocol/sdk`, high).
+- Also in this release: verified UAM alert status, verdict and assignee updates; PowerQuery raw-log queries, parallel time slicing and file output; a smaller plugin package; docs re-synced with the code. Licence metadata is AGPL-3.0, matching this repository.
+- Upgrading from 1.4.x is a breaking change: see `plugins/s1-secops-skills/docs/upgrading.md` and the [1.5.2 release notes](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.5.2.md).
+
 ### Added - site-level dashboard lifecycle and scope-aware SDL calls (s1-secops-skills v1.3.2, MCP 1.3.6)
 
 - **`s1-secops-mcp` gains six dashboard-lifecycle tools** on the `dashboardsV2` GraphQL surface, the one the console itself drives: `sdl_list_dashboards`, `sdl_get_dashboard`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`. Tool count 26 to 32.

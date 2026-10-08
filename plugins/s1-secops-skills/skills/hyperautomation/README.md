@@ -24,19 +24,16 @@ cp -r hyperautomation ~/.claude/skills/
 
 ## Configure
 
-Set credentials as environment variables in `claude_desktop_config.json` inside the `s1-secops-mcp` server entry (recommended), or drop a `credentials.json` into your Cowork project folder for direct skill use:
+Live import, export and activation run through the `s1-secops-mcp` MCP server (`ha_*` and `s1_api_*` tools; see `s1-secops-mcp/README.md` in the s1-secops-skills source repo, not shipped in the plugin). It runs on your machine, so it works from Cowork.
 
-```json
-{
-  "S1_CONSOLE_URL": "https://usea1-acme.sentinelone.net",
-  "S1_CONSOLE_API_TOKEN": "eyJ...your-console-user-api-token...",
-  "S1_HEC_INGEST_URL": "https://ingest.us1.sentinelone.net"
-}
+Credentials live in environment variables or the OS keychain, not in a file and not in an MCP client config `env` block (that is plaintext). Store them once:
+
+```bash
+s1-secops-mcp setup      # S1_CONSOLE_URL, S1_CONSOLE_API_TOKEN, ... prompted without echo
+s1-secops-mcp status     # shows the source of each value, masked
 ```
 
-Use a **Console User (personal) API token**, not a Service User token. Workflows imported with a Service User token are owned by that service account and invisible to human users in the console UI.
-
-`S1_HEC_INGEST_URL` is the SentinelOne HEC ingest host (region-specific: see [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961)). It is not used by this Hyperautomation skill, but is shown here so the credentials file is consistent across all skills in this plugin (the mgmt-console skill's UAM Alert Interface uses it for OCSF alert/indicator ingest).
+Use a **Console User (personal) API token**, not a Service User token. Workflows imported with a Service User token are owned by that service account and invisible to human users in the console UI. If you also keep a service-user token, store the personal one under its own profile (`s1-secops-mcp setup --profile personal`) and start the MCP server with `S1_PROFILE=personal` for Hyperautomation work.
 
 ## Usage
 

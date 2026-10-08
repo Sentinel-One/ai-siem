@@ -26,7 +26,7 @@ You don't pick skills manually. You describe the outcome you want in plain Engli
 
 Without a skill, Claude has to guess at the things every API has too many of: field names, endpoint paths, required parameters, output shapes, version-specific behaviour. Guessing produces plausible-looking but broken code, wrong field references, and hallucinated fields. Skills replace guesswork with knowledge that has been validated against a live tenant.
 
-For SentinelOne specifically: the Management Console exposes 781 operations across 113 tags. The SDL API has its own auth model, log ingest format, and configuration filesystem. PowerQuery has reserved-field rewrites, type-locked columns, and a per-call deadline that aggregates can blow through. STAR rules have one schema; PowerQuery Alerts have another. Skills capture all of this so Claude doesn't have to rediscover it on every request.
+For SentinelOne specifically: the Management Console exposes 781 operations across 111 tags. The SDL API has its own auth model, log ingest format, and configuration filesystem. PowerQuery has reserved-field rewrites, type-locked columns, and a per-call deadline that aggregates can blow through. STAR rules have one schema; PowerQuery Alerts have another. Skills capture all of this so Claude doesn't have to rediscover it on every request.
 
 ### The three-layer mental model
 
@@ -36,8 +36,8 @@ Three pieces work together in every session:
 CLAUDE.md            SOC Analyst persona, evidence rules, session protocol
        |
        v
-MCP Servers          Live API access (bypasses the Cowork sandbox proxy)
-  s1-secops-mcp    32 tools: PowerQuery, SDL, Mgmt REST, UAM, UAM Ingest, Hyperautomation
+MCP Servers          Live API access from your machine, credentials from the OS keychain
+  s1-secops-mcp    35 tools: PowerQuery, SDL, Mgmt REST, UAM, UAM Ingest, Hyperautomation
   purple-mcp         Alert triage, Purple AI NLQ, Deep Visibility, assets, vulns
   threat-intel-mcp   External IOC enrichment (e.g. VirusTotal)
        |
@@ -64,7 +64,8 @@ You can also be explicit. "Use the SDL log parser skill to..." or "switch to Pow
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default. |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import. |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions from one short prompt: data source onboarding (raw stream to OCSF, enrichment, dashboard, MITRE detections, threat-response flow) , asset enrichment of raw logs, and UEBA behavioural anomaly detection (z-score baselining of any signal). Orchestrates the other six skills. |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions from one short prompt. Ten solutions: data source onboarding (raw stream to OCSF, enrichment, dashboard, MITRE detections, threat-response flow), asset enrichment, UEBA anomaly detection, per-device ingest health, detection exclusions, Risk-Based Alerting, Detection as Code, alert noise reduction, custom detections with MITRE mapping, and query slicing. Orchestrates the primitive skills above. |
+| soc-investigator | Autonomous DFIR investigation of SentinelOne alerts (SHORT, MEDIUM, LONG) and alert-agnostic SWEEP hunts for MITRE-mapped TTPs, with IOC enrichment, strict verdict gates and a report with a query appendix. |
 
 Plus `CLAUDE.md` at the repo root, which transforms Claude into a **Principal SOC Analyst**: a structured investigator that runs the same enrichment, correlation, and reasoning process a senior analyst would, on every alert, every time.
 
@@ -107,15 +108,15 @@ Continue to [Section 3: Install](#3-install-in-30-minutes) to set this up.
 
 ## 3. Install in 30 minutes
 
-The install is a Docker quick start: one image bundles all three MCPs, so the only host dependency is Docker. Rather than repeat it here, follow the three steps in the **[README Quick start (Docker)](../README.md#1-quick-start-docker)**:
+The install is a Docker quick start: one image bundles all three MCPs, so the host needs Docker plus a small launcher script that reads your OS keychain. Rather than repeat it here, follow the steps in the **[README Quick start (Docker)](../README.md#1-quick-start-docker)**:
 
-1. **Pull the image** (all three MCPs in one).
-2. **Configure credentials** in `claude_desktop_config.json`. The README has the copy-paste config block and a table of where to get each token/key; the full key reference is [`docs/credentials.md`](./credentials.md).
+1. **Store credentials in the OS keychain** with the launcher's `setup` mode (or `s1-secops-mcp setup`). The values never go into a file or a config; the full reference is [`docs/credentials.md`](./credentials.md).
+2. **Pull the image and point `claude_desktop_config.json` at the launcher** (all three MCPs in one image; the config holds no secrets).
 3. **Install the plugin** (the latest `s1-secops-skills-v*.plugin` in the `dist/` folder) via Cowork → Customize → Browse plugins.
 
-Then create a Cowork project named `PrincipalSOCAnalyst`, select a folder for it, and (optionally) drop your own [`CLAUDE.md`](https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/plugins/s1-secops-skills/CLAUDE.md) into the folder to customise the persona; the Docker image ships a default, so this is optional (to override it, mount the folder read-only and set `S1_CLAUDE_MD_PATH`, see [`docs/docker.md`](./docker.md#claudemd-customization)).
+Then create a Cowork project named `PrincipalSOCAnalyst`, select a folder for it, and (optionally) drop your own [`CLAUDE.md`](https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/plugins/s1-secops-skills/CLAUDE.md) into the folder to customise the persona; the Docker image ships a default, so this is optional (to override it, set `S1_CLAUDE_MD_PATH`, see [`docs/docker.md`](./docker.md#claudemd-customization)). Never put tokens in the project folder.
 
-For the same three steps at full length, with project creation and the upgrade path, see [`docs/installation.md`](./installation.md). Every credential key is documented in [`docs/credentials.md`](./credentials.md).
+For the same steps at full length, with project creation and the upgrade path, see [`docs/installation.md`](./installation.md). Every credential value is documented in [`docs/credentials.md`](./credentials.md).
 
 ### Verify
 
@@ -292,7 +293,7 @@ If a skill should have triggered and didn't, ask Claude `which skills are loaded
 
 ### MCP server not connecting (red dot in Cowork)
 
-Most first-run failures are Docker not running or a token that didn't propagate. Work through the troubleshooting table in the [README Quick start (Docker)](../README.md#1-quick-start-docker) first (Docker running, Docker Hub reachable, env values propagated, restart Claude Desktop). For the full flowchart, per-MCP log tailing, and hand-testing the container with credentials, see [`docs/docker.md`](./docker.md#troubleshooting).
+Most first-run failures are Docker not running, a value missing from the keychain, or (on macOS) a launcher stored under `~/Documents`, `~/Desktop` or `~/Downloads`, which Claude Desktop is not permitted to run (`Operation not permitted` in the MCP log; copy it to `~/.local/bin/`). Work through the troubleshooting table in the [README Quick start (Docker)](../README.md#1-quick-start-docker) first (Docker running, Docker Hub reachable, values present in the keychain per `s1-secops-mcp status`, restart Claude Desktop). For the full flowchart, per-MCP log tailing, and hand-testing the container with credentials, see [`docs/docker.md`](./docker.md#troubleshooting).
 
 ### 401 / 403 errors
 
@@ -300,14 +301,14 @@ Most first-run failures are Docker not running or a token that didn't propagate.
 
 ### Plugin upload failed
 
-Fall back to per-skill `.skill` files in [`s1-secops-skills-plugin/dist/`](../dist/). Double-click each `.skill` file to install, or upload one at a time via Browse plugins. The eight files are: `mgmt-console-api.skill`, `powerquery.skill`, `sdl-api.skill`, `sdl-dashboard.skill`, `sdl-log-parser.skill`, `hyperautomation.skill`, `sdl-solutions.skill`, `soc-investigator.skill`.
+Fall back to per-skill `.skill` files in [the ai-siem `dist/` folder](../dist/). Double-click each `.skill` file to install, or upload one at a time via Browse plugins. The eight files are: `mgmt-console-api.skill`, `powerquery.skill`, `sdl-api.skill`, `sdl-dashboard.skill`, `sdl-log-parser.skill`, `hyperautomation.skill`, `sdl-solutions.skill`, `soc-investigator.skill`.
 
 ### "I imported a workflow but I can't see it in the console UI"
 
 Workflows imported with a service user token are invisible to human users. Two ways to fix it:
 
 - **Quickest, no token change:** ask Claude to enable the workflow and then deactivate it. That toggle surfaces it in the console UI without touching your config.
-- **Permanent:** generate a personal console user token, set `S1_CONSOLE_API_TOKEN` to that token in `claude_desktop_config.json`, and re-import.
+- **Permanent:** generate a personal console user token, store it under its own keychain profile (`s1-secops-mcp setup --profile personal`), run the server with `S1_PROFILE=personal`, and re-import.
 
 ### "Claude said something I don't believe"
 
@@ -332,11 +333,11 @@ It runs through every MCP and skill, reports what's healthy, and gives a precise
 | Doc | When to read it |
 |---|---|
 | [`docs/docker.md`](./docker.md) | Full Docker install reference: image tags, troubleshooting, upgrade, CLAUDE.md mount |
-| [`docs/installation.md`](./installation.md) | Full four-step install walkthrough, including upgrade and the credentials.json fallback |
+| [`docs/installation.md`](./installation.md) | Full install walkthrough: keychain setup, launcher config, plugin, verify, upgrade |
 | [`docs/architecture.md`](./architecture.md) | Data flow, auth model, sandbox proxy explanation |
 | [`docs/skills.md`](./skills.md) | Per-skill capability reference |
 | [`docs/mcp-tools.md`](./mcp-tools.md) | Every MCP tool with usage notes |
-| [`docs/credentials.md`](./credentials.md) | Every credential key and where to find it |
+| [`docs/credentials.md`](./credentials.md) | Every credential value, keychain setup, migration, and the security model |
 | [`docs/sdl-dashboard.md`](./sdl-dashboard.md) | Every supported panel type with confirmed JSON examples |
 | [`docs/testing.md`](./testing.md) | Test coverage matrix and confirmed API field requirements |
 | [`mgmt-console-api/SKILL.md`](../skills/mgmt-console-api/SKILL.md) | Confirmed field schemas and required parameters per endpoint |

@@ -19,7 +19,7 @@ description: Use whenever the user wants to author, edit, debug, validate, or ex
 
 This skill turns raw log samples into deployed, validated SDL parser definitions. A parser is an *augmented-JSON* file at `/logParsers/<name>` on the SDL tenant that extracts fields from each ingested line. The parser editor and the `Test Parser` button in the console run the parser client-side in JavaScript; this skill mirrors that workflow programmatically and finishes by ingesting a sample through the deployed parser to confirm the actual ingest path works.
 
-> **Sandbox proxy blocked?** If `putFile` or HEC ingest calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see the s1-secops-mcp README: `s1-secops-mcp/README.md` in the s1-secops-skills repo, `mcp/s1-secops-mcp/README.md` in ai-siem; it is not shipped inside the plugin). Use `sdl_put_file` to deploy the parser and `hec_ingest` to run the ingest validation step, both execute from your machine, not the sandbox.
+> **Deploy and validate through the `s1-secops-mcp` MCP tools.** `sdl_get_file` / `sdl_put_file` read and deploy the parser, `powerquery_run` validates on the live stream, and `hec_ingest` runs the synthetic-ingest fallback. The server runs on the user's machine, so it reaches `*.sentinelone.net` where the Cowork sandbox cannot, and it reads credentials from environment variables or the OS keychain. If the tools are missing, point the user to the s1-secops-mcp README (`s1-secops-mcp/README.md` in the s1-secops-skills source repo, `mcp/s1-secops-mcp/README.md` in ai-siem; not shipped inside the plugin).
 
 ## Gate 0: can an SDL parser run on this source at all? (check this first)
 
@@ -384,20 +384,21 @@ Always validate against the live tenant, the only authoritative test is "did the
 
 When the source is already ingesting (the normal case), **edit the real parser and validate on real traffic.** Do NOT create a `claude_test_*` parser and do NOT synthetically ingest, saved parser edits are non-destructive (they apply only to newly ingested events and never re-parse history), so editing the live parser is safe, and the feed the source is already sending is the authoritative test.
 
-```python
-# Use the s1-secops-mcp tools (sdl_get_file / sdl_put_file / powerquery_run).
-# 1. Read current version (for optimistic locking + rollback reference).
-cur = sdl_get_file("/logParsers/<name>")           # note cur["version"]
+```text
+MCP tool calls (s1-secops-mcp), in order:
 
-# 2. Deploy the edit to the SAME path. Bump metadata.version in the file first.
-sdl_put_file("/logParsers/<name>", content=parser_body, expectedVersion=cur["version"])
+1. sdl_get_file   {path: "/logParsers/<name>"}
+   -> note the returned version (optimistic locking + rollback reference)
 
-# 3. Wait ~3-5 min for propagation (activation is NOT instant on this tenant).
+2. sdl_put_file   {path: "/logParsers/<name>", content: <parser body>, expectedVersion: <version>}
+   -> deploy the edit to the SAME path; bump metadata.version in the file first
 
-# 4. Validate on the live stream, keyed on the NEW metadata.version so you only
-#    see events the new parser touched (SDL never re-parses history):
-#    dataSource.name='<Name>' metadata.version='<new>' | group count=count() by <subtype-field>
-#    then: dataSource.name='<Name>' metadata.version='<new>' | columns <expected_fields> | limit 10
+3. Wait ~3-5 min for propagation (activation is NOT instant on this tenant).
+
+4. powerquery_run {query: "dataSource.name='<Name>' metadata.version='<new>' | group count=count() by <subtype-field>", hours: 1}
+   powerquery_run {query: "dataSource.name='<Name>' metadata.version='<new>' | columns <expected_fields> | limit 10", hours: 1}
+   -> keyed on the NEW metadata.version so you only see events the new parser touched
+      (SDL never re-parses history)
 ```
 
 A successful validation means: (a) `sdl_put_file` returned `success`, (b) the live query returns rows tagged with the new `metadata.version`, (c) the expected fields are populated and not null. If a subtype is rare and no event has arrived yet, widen the window or wait for one; do NOT fall back to synthetic ingest just to force a row.
@@ -414,19 +415,21 @@ On every deploy:
 2. On the FIRST touch of an existing live parser, commit the current live definition (from `sdl_get_file`) as the baseline BEFORE your edit; this is the rollback point.
 3. After deploying, `git add` + `git commit` the new version there (commit message = the new `metadata.version` + what changed).
 
-Rollback is then a local operation: `git checkout <prior-commit> -- parsers/<name>.json`, then `sdl_put_file("/logParsers/<name>", content=..., expectedVersion=<current>)` to push the previous content back. Bump `metadata.version` on the rollback too so you can confirm from the live stream which definition is active.
+Rollback is then a local operation: `git checkout <prior-commit> -- parsers/<name>.json`, then `sdl_put_file` with `path: "/logParsers/<name>"`, the previous content and `expectedVersion: <current>` to push it back. Bump `metadata.version` on the rollback too so you can confirm from the live stream which definition is active.
 
 ### Fallback: synthetic HEC ingest (ONLY when the source is not live)
 
 Use this only for a brand-new source that is not ingesting yet, or a shape you cannot observe in the live stream. Deploy to the **real** parser name (still bump `metadata.version`), ingest the sample through it, and query back. Do not resurrect the `claude_test_*` throwaway-parser pattern.
 
-```python
-import time, uuid, json
-# Deploy to the real parser path (see Default above), then:
-hec_ingest(logContent=sample, parser="<name>", scope="<accountId>", endpoint="raw")
-time.sleep(8)  # ingest-to-search latency
-# Isolate the test rows with a unique nonce embedded in the sample, or filter on
-# parser='<name>' over a short recent window, then confirm the expected fields.
+```text
+MCP tool calls (s1-secops-mcp), after deploying to the real parser path (see Default above):
+
+1. hec_ingest     {logContent: <sample with a unique nonce>, parser: "<name>", endpoint: "raw"}
+   -> authenticates with the SDL Log Write Key (S1_HEC_TOKEN); the key's own scope fixes
+      where the events land, so no scope argument applies
+2. Wait ~8 s (ingest-to-search latency).
+3. powerquery_run {query: "parser='<name>' * contains '<nonce>' | columns <expected_fields>", hours: 1}
+   -> confirm the expected fields are populated
 ```
 
 ## Bundled references
@@ -466,11 +469,11 @@ When a user pastes a log and asks you to parse it, you owe them: (1) a parser fi
 
 ## Parser deployment via s1-secops-mcp
 
-Parser deployment and validation use the `s1-secops-mcp` MCP tools, which bypass the
-Cowork sandbox proxy entirely. Use `sdl_put_file`, `sdl_get_file`, `sdl_list_files`,
-and `hec_ingest` directly instead of falling back to the `sdl-api`
-skill scripts. The MCP tools run locally on your machine and make direct HTTPS calls
-to `*.sentinelone.net` without proxy interference.
+Parser deployment and validation use the `s1-secops-mcp` MCP tools, which run on the
+user's machine and reach `*.sentinelone.net` where the Cowork sandbox cannot. Use
+`sdl_put_file`, `sdl_get_file`, `sdl_list_files`, `hec_ingest` and `powerquery_run`
+directly; the `sdl-api` skill's Python scripts are host-only. If a tool reports a missing
+credential, ask the user to run `s1-secops-mcp setup` on their machine.
 
 ## Per-app sentinel pattern (multi-tenant / multi-service parsers)
 

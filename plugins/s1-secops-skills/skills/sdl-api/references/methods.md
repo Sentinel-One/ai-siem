@@ -7,7 +7,13 @@ response uses a slash-delimited hierarchy; `success` prefix = OK,
 `error/client` prefix = caller bug, `error/server` prefix = retry.
 
 The rows below refer to client methods on `SDLClient` (in `scripts/sdl_client.py`)
-and CLI subcommands (in `scripts/sdl_cli.py`).
+and CLI subcommands (in `scripts/sdl_cli.py`). Both are host-only: they run from
+Claude Code or a terminal on the user's machine, with credentials from
+environment variables or the OS keychain. From Cowork or any MCP client, use the
+`s1-secops-mcp` equivalents: `sdl_list_files` / `sdl_get_file` / `sdl_put_file` /
+`sdl_delete_file` for config files, `powerquery_run` (with `queryType: "LOG"` for
+raw events) instead of the deprecated V1 query methods, and
+`powerquery_schema_discover` for field discovery.
 
 ---
 
@@ -24,7 +30,7 @@ All five methods consume the CPU leaky bucket described in `auth_and_limits.md`.
 
 ### `query`: `c.query(filter="", ...)` / `c.iter_query(...)`, CLI `query`
 
-**DEPRECATED.** The V1 `/api/query` endpoint sunsets on 2027-02-15. For log search in new code use the LRQ API with `queryType: "LOG"` - async, cursor-paged to unlimited rows, survives long windows. See the `powerquery` skill's `references/lrq-api.md`. This method is fine for legacy one-offs until the sunset date.
+**DEPRECATED.** The V1 `/api/query` endpoint sunsets on 2027-02-15. For log search in new code use the LRQ API with `queryType: "LOG"` (the `powerquery_run` tool's `queryType: "LOG"`), async and survives long windows. See the `powerquery` skill's `references/lrq-api.md`. This method is fine for legacy one-offs until the sunset date.
 
 Event search. Filter syntax matches the UI search bar.
 

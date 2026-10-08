@@ -143,10 +143,11 @@ def main() -> int:
                     help="do not delete after test (for manual inspection)")
     args = ap.parse_args()
 
-    # IOCs reject multi-scope tokens with code 4030010 ("This page doesn't
-    # support multi-scopes users yet"). Use the single-scope token that's
-    # pinned to one account via S1_CONSOLE_API_TOKEN_SINGLE_SCOPE in credentials.json.
-    client = S1Client(timeout=30, token_kind="single_scope")
+    # IOCs reject a token whose user spans several accounts with code 4030010
+    # ("This page doesn't support multi-scopes users yet"). Run this test with
+    # S1_PROFILE set to a keychain profile that holds a token minted at a
+    # single account or site (`s1-secops-mcp setup --profile <name>`).
+    client = S1Client(timeout=30)
     run_tag = RUN_TAG
     iocs = build_test_iocs(run_tag, args.count)
 
@@ -167,10 +168,12 @@ def main() -> int:
     try:
         client.get("/web/api/v2.1/threat-intelligence/iocs", params={"limit": 1})
     except S1APIError as e:
-        if e.status == 403 and "multi-scopes" in str(e):
-            _log("SKIP: token has multiple account scopes; /iocs requires a "
-                 "single-account-scoped token. Not a skill bug, documented "
-                 "in tests/README.md.")
+        if e.status == 403 and ("multi-scopes" in str(e) or "4030010" in str(e)):
+            _log("SKIP: this token's user spans several accounts (error 4030010); "
+                 "/iocs needs a token minted at a single account or site. Store "
+                 "one in its own keychain profile (`s1-secops-mcp setup --profile "
+                 "<name>`) and re-run with S1_PROFILE=<name>. Not a skill bug, "
+                 "documented in tests/README.md.")
             return 0
         _log(f"PRECHECK FAILED: HTTP {e.status} {e}")
         return 1

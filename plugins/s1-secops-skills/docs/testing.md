@@ -6,20 +6,22 @@ Tests were run against a live SentinelOne demo tenant. Specific tenant URL, site
 
 Full test scripts live in `mgmt-console-api/tests/`. All lifecycle tests are reversible: they clean up after themselves.
 
+The Python tests are host-only: run them from a terminal or Claude Code on your machine, not from the Cowork sandbox. They read credentials from environment variables, then the OS keychain (service `sentinelone-mcp`, stored with `s1-secops-mcp setup`); there is no credentials file. The credential resolution itself is covered offline by `mgmt-console-api/tests/test_credential_resolution.py`, `test_s1_keystore.py` and their `sdl-api/tests/` twins, which run with `S1_KEYCHAIN=off` or a stubbed backend and need no tenant. The MCP server's own suite runs with `npm test` in `s1-secops-mcp/`.
+
 ---
 
 ## What was tested: at a glance
 
 | Area | Test | Script | Reversible? | Result |
 |---|---|---|---|---|
-| Full API surface read-only sweep | Non-destructive sweep across all 113 tags | `scripts/smoke_test_queries.py` | N/A (read-only) | PASSED |
-| Threat Intelligence IOCs | CREATE → LIST → DELETE → VERIFY | `tests/test_ioc_lifecycle.py` | Yes (single-scope token required) | PASSED |
+| Full API surface read-only sweep | Non-destructive sweep across all 111 tags | `scripts/smoke_test_queries.py` | N/A (read-only) | PASSED |
+| Threat Intelligence IOCs | CREATE → LIST → DELETE → VERIFY | `tests/test_ioc_lifecycle.py` | Yes (single-account token required) | PASSED |
 | Unified Alerts (UAM) GraphQL + REST | list → detail → addNote → deleteNote → verify; parallel REST read | `tests/test_alerts_dual_api.py` | Yes | PASSED |
 | Saved filters | CREATE → LIST → UPDATE → DELETE → VERIFY | `tests/test_saved_filter_lifecycle.py` | Yes | PASSED |
 | Custom Detection Rules | CREATE (disabled) → LIST → UPDATE → DELETE → VERIFY | `tests/test_custom_rule_lifecycle.py` | Yes | PASSED |
 | Alert status and verdict mutations | pick alert → status round-trip → verdict round-trip → history check | `tests/test_alert_mutation_lifecycle.py` | Yes (auto-restores to starting state) | PASSED |
 | Scheduled default-report tasks | CREATE → LIST → UPDATE → DELETE → VERIFY | `tests/test_scheduled_report_lifecycle.py` | Yes | PASSED |
-| Alert → Indicator pivot | read alert.rawIndicators → pin to TI IOC → verify link → delete | `tests/test_alert_indicator_pivot.py` | Yes (single-scope token) | PASSED |
+| Alert → Indicator pivot | read alert.rawIndicators → pin to TI IOC → verify link → delete | `tests/test_alert_indicator_pivot.py` | Yes (single-account token required) | PASSED |
 | UAM Alert Interface (single) | one `POST /v1/alerts` carrying 1 OCSF indicator inline → assert exactly one request was made → poll UAM → verify the indicator surfaced → close | `tests/test_uam_alert_interface_single.py` | Semi (alert closed; ingested events not hard-deletable) | PASSED |
 | UAM Alert Interface (batch) | one `POST /v1/alerts` carrying 3 indicators inline (file/process/network, OCSF 1001/1007/4001) with 3+ observables each → poll UAM → verify all indicator and observable links → close | `tests/test_uam_alert_interface_batch.py` | Semi | PASSED |
 | Unified Exclusions v2.1 | CREATE (EDR path, site scope) → LIST → DELETE → VERIFY | `tests/test_unified_exclusion_lifecycle.py` | Yes | PASSED |
@@ -33,7 +35,7 @@ Full test scripts live in `mgmt-console-api/tests/`. All lifecycle tests are rev
 
 ## MCP tools validated (s1-secops-mcp)
 
-The s1-secops-mcp tools were exercised against the live demo tenant:
+The s1-secops-mcp tools were exercised against the live demo tenant. The 1.5.x live A/B regression covered all 35 tools, both natively and in the Docker image (harness coverage line `coveredNew 35, coveredDocker 35`):
 
 | Tool | Tested operation | Result |
 |---|---|---|
@@ -43,20 +45,29 @@ The s1-secops-mcp tools were exercised against the live demo tenant:
 | `s1_api_get` | agents, sites, accounts, threats, detection rules | PASSED |
 | `s1_api_post` | Create detection rule, create exclusion, import HA workflow | PASSED |
 | `s1_api_put` | Update detection rule body and description | PASSED |
-| `s1_api_patch` | Not exercised (rare in S1 API) | N/A |
+| `s1_api_patch` | Covered by the A/B regression (rare in the S1 API) | PASSED |
 | `s1_api_delete` | Delete detection rule, delete exclusion | PASSED |
+| `s1_api_download` | Binary download saved with `outputFile` | PASSED |
 | `uam_list_alerts` | List open UAM alerts | PASSED |
 | `uam_get_alert` | Fetch full alert detail by UUID | PASSED |
 | `uam_add_note` | Add text note to alert | PASSED |
 | `uam_set_status` | Set status to NEW / IN_PROGRESS / RESOLVED | PASSED |
+| `uam_set_verdict` | Set the analyst verdict (the tool verifies by re-read) | PASSED |
+| `uam_assign_alert` | Assign an alert to a console user (the tool verifies by re-read) | PASSED |
+| `uam_available_actions` | Read the actions offered on an alert | PASSED |
 | `purple_ai_alert_summary` | Generate natural-language summary of a UAM alert | PASSED |
 | `uam_ingest_alert` | POST one OCSF alert carrying its indicator inline | PASSED |
 | `uam_post_alert` | POST OCSF alert envelope | PASSED |
-| `uam_available_actions` | List actions triggerable on an alert | PASSED |
 | `sdl_list_files` | List `/logParsers/` and `/dashboards/` | PASSED |
 | `sdl_get_file` | Download parser JSON | PASSED |
-| `sdl_put_file` | Deploy dashboard JSON to SDL | PASSED |
+| `sdl_put_file` | Update dashboard JSON by `udoId` with `expectedVersion` | PASSED |
 | `sdl_delete_file` | Delete test configuration file | PASSED |
+| `sdl_list_dashboards` | List dashboards at a scope | PASSED |
+| `sdl_get_dashboard` | Read one dashboard with its tabs | PASSED |
+| `sdl_create_dashboard` | Create a dashboard at a scope | PASSED |
+| `sdl_share_dashboard` | Share a dashboard | PASSED |
+| `sdl_save_dashboard_layout` | Save panel positions for one tab | PASSED |
+| `sdl_delete_dashboard` | Delete a dashboard (the tool verifies by re-read) | PASSED |
 | `hec_ingest` | Ingest test events via HEC | PASSED |
 | `ha_list_workflows` | List all workflows on tenant | PASSED |
 | `ha_get_workflow` | Fetch single workflow | PASSED |
@@ -75,8 +86,6 @@ The s1-secops-mcp tools were exercised against the live demo tenant:
 | `get_alert` | Full alert detail by UUID | PASSED |
 | `get_alert_history` | Alert status change log | PASSED |
 | `get_alert_notes` | Alert analyst notes | PASSED |
-| `uam_add_note` | Add note via purple-mcp | PASSED |
-| `uam_set_status` | Set alert status | PASSED |
 | `list_inventory_items` | Agent inventory list | PASSED |
 | `get_inventory_item` | Single agent detail | PASSED |
 | `list_vulnerabilities` | CVE list by agent | PASSED |
@@ -123,19 +132,19 @@ Two paths share the ingest host and take different credentials.
 - Import response uses `id` (not `workflowId`) and `version_id` (not `versionId`)
 - List response shape: `{id, workflow: {id, name, state, version_id, ...}, actions: []}`; `workflow.id` == top-level `id`
 
-#### Full lifecycle — validated end to end (2026-06-13, account scope)
+#### Full lifecycle: validated end to end (2026-06-13, account scope)
 
 | Step | Call | Result |
 |---|---|---|
-| IMPORT | `POST /api/public/workflow-import-export/import?accountIds=<acct>` | `201` — returns `id` + `version_id`, state `draft` |
+| IMPORT | `POST /api/public/workflow-import-export/import?accountIds=<acct>` | `201`: returns `id` + `version_id`, state `draft` |
 | LIST | `GET /api/public/workflows?accountIds=<acct>` | workflow present, state `draft` |
-| PUBLISH | `POST /api/v1/workflows/{id}/publish?accountIds=<acct>` | `204` — state → `inactive` (Shared Draft, visible to team) |
-| DELETE | `DELETE /api/v1/workflows/{id}?accountIds=<acct>` | `204` — soft, recoverable |
+| PUBLISH | `POST /api/v1/workflows/{id}/publish?accountIds=<acct>` | `204`: state → `inactive` (Shared Draft, visible to team) |
+| DELETE | `DELETE /api/v1/workflows/{id}?accountIds=<acct>` | `204`: soft, recoverable |
 | VERIFY | `GET /api/public/workflows` | workflow absent from active list |
 
 Tested with throwaway workflow id `3085c7ef-4157-4a82-8a93-1ac0dc2c7484` (account `<accountId>`); account workflow count moved 7 → 8 (after import) → 7 (after delete).
 
-- **Scope:** account import/publish/delete use `?accountIds=<acct>`; site-level use `?siteIds=<site>`. The v1 import path with `?_scopeId=<acct>&_scopeLevel=account` returns `403`, and a bare import with no scope returns a misleading `403` on a scoped tenant — always pass the scope query param.
+- **Scope:** account import/publish/delete use `?accountIds=<acct>`; site-level use `?siteIds=<site>`. The v1 import path with `?_scopeId=<acct>&_scopeLevel=account` returns `403`, and a bare import with no scope returns a misleading `403` on a scoped tenant; always pass the scope query param.
 - **Delete** is the REST `DELETE` above. The older `POST /workflows/archive` (and the legacy archive wrapper) return `500` on this tenant and are superseded.
 - `nextCursor` returns literal string `"null"` (truthy in Python); loop by skip/limit, not cursor
 - With large workflow counts, sort by `updated_at desc` and scan the top 20 to find a freshly imported workflow
@@ -150,7 +159,7 @@ Tested with throwaway workflow id `3085c7ef-4157-4a82-8a93-1ac0dc2c7484` (accoun
 
 ### Threat Intelligence IOCs
 
-- Requires a single-scope token (not multi-scope): HTTP 403 code 4030010 if token is scoped to multiple accounts
+- Writes require a token minted at a single account or site: a token whose user spans several accounts gets HTTP 403 code 4030010 ("This page doesn't support multi-scopes users yet"). Store that token in its own keychain profile (`s1-secops-mcp setup --profile <name>`) and run a second MCP entry, or the tests, with `S1_PROFILE=<name>`
 - DELETE body uses `{"filter": {"accountId": "...", "uuids": [...]}}`: note `accountId` (singular), not `accountIds`
 
 ### Purple AI (GraphQL)
@@ -163,18 +172,20 @@ Tested with throwaway workflow id `3085c7ef-4157-4a82-8a93-1ac0dc2c7484` (accoun
 
 ## Running the full test suite
 
+From `mgmt-console-api/` on your machine, with `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` in the keychain or the environment (run the two IOC tests with `S1_PROFILE` set to a profile holding a single-account token):
+
 ```bash
 # Read-only sweep (~60s)
 python scripts/smoke_test_queries.py --workers 16 --timeout 10
 
 # Reversible lifecycle tests
-python tests/test_ioc_lifecycle.py                       # IOC CRUD (single-scope token)
+python tests/test_ioc_lifecycle.py                       # IOC CRUD (single-account token)
 python tests/test_alerts_dual_api.py                     # UAM + REST alert surfaces
 python tests/test_saved_filter_lifecycle.py              # skips if token lacks scope
 python tests/test_custom_rule_lifecycle.py               # Custom Detection Rules
 python tests/test_alert_mutation_lifecycle.py            # status + verdict round-trip
 python tests/test_scheduled_report_lifecycle.py          # default-report tasks
-python tests/test_alert_indicator_pivot.py               # alert→IOC pivot (single-scope)
+python tests/test_alert_indicator_pivot.py               # alert→IOC pivot (single-account token)
 python tests/test_uam_alert_interface_single.py          # 1 alert, 1 inline indicator, single POST /v1/alerts
 python tests/test_uam_alert_interface_batch.py           # 1 alert, 3 inline indicators, single POST /v1/alerts
 python tests/test_unified_exclusion_lifecycle.py         # EDR path exclusion CRUD
@@ -184,7 +195,13 @@ python tests/test_xdr_graph_query_lifecycle.py           # graph query CRUD (ski
 python tests/test_star_rule_lifecycle.py                 # STAR rule (events) CREATE/UPDATE/DELETE
 ```
 
-All tests exit 0 on success. Run with `--keep` to skip cleanup and inspect what was created. Run with `--site-id <id>` or `--account-id <id>` to target a specific scope.
+All tests exit 0 on success. The lifecycle tests listed above accept `--keep` to skip cleanup and inspect what was created. Scope flags vary by test:
+
+- `--site-id <id>`: `test_star_rule_lifecycle.py`, `test_detection_rule_activate_lifecycle.py`, `test_unified_exclusion_lifecycle.py`
+- `--account-id <id>`: `test_hyperautomation_import_lifecycle.py`
+- both: `test_uam_alert_interface_single.py`, `test_uam_alert_interface_batch.py`
+
+The other tests take neither and use the token's default scope.
 
 ---
 

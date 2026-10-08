@@ -15,7 +15,7 @@ or detection logic. Zero blast radius.
 Scope
 -----
 Queries are user-scoped; no account/site filter needed. Uses the token configured
-in credentials.json.
+in the keychain or environment.
 
 Usage
 -----

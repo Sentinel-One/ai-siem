@@ -3,7 +3,8 @@
 **Endpoint:** `POST /web/api/v2.1/unifiedalerts/graphql`
 **Schema endpoint:** `POST /web/api/v2.1/unifiedalerts/graphql/schema`
 **Auth:** same `Authorization: ApiToken <token>` header as REST; no extra permission grant required beyond the RBAC entries under "Unified Alerts".
-**Skill entry points:** `scripts/unified_alerts.py` (module) and `scripts/call_unified_alerts.py` (CLI).
+**Primary entry points:** the `s1-secops-mcp` tools `uam_list_alerts`, `uam_get_alert`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_available_actions`, `uam_post_alert` and `uam_ingest_alert`. They run on the user's machine, so they work from Cowork. The three write tools send the console's exact request and verify the change by re-reading the alert; see "What the console sends" below.
+**Host-only Python entry points:** `scripts/unified_alerts.py` (module) and `scripts/call_unified_alerts.py` (CLI), for Claude Code or a terminal on the user's machine, with credentials from environment variables or the OS keychain.
 **Upstream docs:** <https://community.sentinelone.com/s/article/000010170>
 
 ---
@@ -16,7 +17,7 @@ UAM is a single GraphQL surface (17 queries + 4 mutations). Every query and muta
 
 ---
 
-## Getting started in Python
+## Getting started in Python (host only)
 
 ```python
 import sys
@@ -72,7 +73,7 @@ python3 call_unified_alerts.py group-by severity --filter status=NEW
 python3 call_unified_alerts.py add-note    <alert-id> "Investigating"
 python3 call_unified_alerts.py update-note <note-id>  "Updated"
 python3 call_unified_alerts.py delete-note <note-id>
-python3 call_unified_alerts.py set-status --scope <account-id> --alert-id <id1> <id2> RESOLVED --note "..."
+python3 call_unified_alerts.py set-status RESOLVED --scope <account-id> --alert-id <id1> <id2> --note "..."
 
 # exports
 python3 call_unified_alerts.py csv-export --filter detectionProduct=EDR -o edr.csv
@@ -94,7 +95,7 @@ Filter syntax: `fieldId=value` (stringEqual), `fieldId=v1,v2` (stringIn), `field
 | `alert(id) { indicators }` | The alert's rendered indicators | `get_alert_indicators` | This is what the inline `POST /v1/alerts` path populates and what the console Indicators tab renders, so it is what an ingest round-trip must be validated against. `Indicator` has `type`, `uid`, `title`, `description`, `message`, `severity`, plus the `observables { name value type }` sub-selection. No `name`, no `category`: either fails the whole query with `FieldUndefined`. |
 | `alertWithRawIndicators` | Alert + raw indicator JSON | `get_alert_with_raw_indicators` | Nested shape: `{ alert { ... }, rawIndicators }`. `rawIndicators` is a SCALAR (a JSON list): sub-selecting it returns `SubselectionNotAllowed`, so request it bare. It was fed by `POST /v1/indicators`, which no credential can drive any more, so on ingested alerts it is `[]`. Read `alert.indicators` via `get_alert_indicators` instead. |
 | `alertColumnMetadata` | Discover fields/enums | `column_metadata` | Tells you what you can filter, sort, group on; enum values per field. |
-| `alertAvailableActions` | What can be triggered | `available_actions` | Needs `scope` + `filter` (OrFilter). No filter ⇒ returns 0. |
+| `alertAvailableActions` | What can be triggered | `available_actions` | Needs `scope` + `filter` (OrFilter). No filter ⇒ returns 0. The console also passes `viewType: ALL`. |
 | `alertNotes` | List notes on an alert | `alert_notes` | `AlertNotesListResponse` wraps a bare `data` list. |
 | `alertHistory` | Audit history | `alert_history` | Connection; items are `AlertHistoryItem` with `eventType`/`eventText`/`createdAt` (no id). |
 | `alertTimeline` | Timeline view | `alert_timeline` | Same shape as alertHistory. |
@@ -170,6 +171,99 @@ The enum is not a hidden cause: an invalid value is rejected outright (`CLOSED`
 raises `Invalid input for enum 'Status'`). Live enum:
 `NEW | IN_PROGRESS | RESOLVED`.
 
+### `MISSING_PERMISSION` is per alert type
+
+`failure[].errorType: "MISSING_PERMISSION"` with `errorMessage: "Missing UAM
+manage permissions"` means the calling role lacks the **Unified Alerts >
+*type* Alerts: Manage** permission for that alert's type. The role editor
+groups them as STAR Alerts, Mobile Alerts, Identity Alerts, Generic Alerts
+and Endpoint Alerts, each with View and Manage. Custom roles created before
+those permissions existed have View and not Manage. `GET /web/api/v2.1/user`
+gives the caller's `scopeRoles[].roleId`, and `GET /web/api/v2.1/rbac/role/{roleId}`
+lists the `unifiedAlerts` page with each permission's `value` (unset means not
+granted).
+
+Measured 2026-10-08 with a service user whose custom role had every Unified
+Alerts View permission and no Manage permission, but did have the legacy
+**STAR Rule Alerts > Update Incident Status / Update Analyst Verdict**:
+
+| Alert | status, verdict, assign, unassign | Note (`addAlertNote`) | Request shapes tried |
+|---|---|---|---|
+| Native STAR alert | success, each change visible on re-read | success | status and verdict with and without `scope` and `viewType` (4 shapes); all four writes in the console shape |
+| Alert ingested via `/v1/alerts` (`detectionSource.product` = a custom value) | `MISSING_PERMISSION`, alert unchanged on re-read | success | status in the same 4 shapes; all four writes in the console shape |
+
+So the request shape does not decide it; the alert type and the role do. Notes
+are not gated by the Manage permissions. The
+STAR result is consistent with the legacy STAR Rule Alerts permissions being
+honoured; the ingested alert most likely needs **Generic Alerts: Manage**
+(Generic covers alerts ingested via Singularity Marketplace and the Alert
+Interface). Grant it at *Policies and settings > User management > Console
+users > Roles > (role) > Unified Alerts*. `alertAvailableActions` agrees with
+the gate: for the ingested alert it offered only `addNote`, `eventSearch` and
+the incident actions.
+
+### What the console sends (HAR, 2026-10-07)
+
+Captured from the console while a user changed one STAR alert's status
+(New, In progress, Resolved), assignee and analyst verdict. Every write is one
+`alertTriggerActions` call with one action:
+
+```text
+POST /web/api/v2.1/unifiedalerts/graphql?opname=AlertTriggerActions
+{ "operationName": "AlertTriggerActions",
+  "variables": {
+    "scope":   { "scopeIds": ["<the alert's account id>"], "scopeType": "ACCOUNT" },
+    "filter":  { "or": [ { "and": [ { "fieldId": "id", "stringEqual": { "value": "<alertId>" } } ] } ] },
+    "viewType": "ALL",
+    "actions": [ { "id": "<action id>", "payload": { ... } } ] },
+  "query": "mutation AlertTriggerActions($scope: ScopeSelectorInput, $filter: OrFilterSelectionInput, $actions: [TriggerActionInput!]!, $viewType: ViewType) { ... }" }
+```
+
+| Change | Action id | Payload |
+|---|---|---|
+| Status | `S1/alert/statusUpdate` | `{"status": {"value": "IN_PROGRESS"}}` (or `NEW`, `RESOLVED`) |
+| Analyst verdict | `S1/alert/analystVerdictUpdate` | `{"analystVerdict": {"value": "TRUE_POSITIVE_MALWARE"}}` |
+| Assignee | `S1/alert/assignUser` | `{"assignUser": {"value": "<numeric user id, as a string>"}}` |
+| Unassign | `S1/alert/assignUser` | `{"assignUser": {"value": null}}` (schema: "If `null` user will be unassigned") |
+
+The response is `ActionsTriggered { actions [{ actionId, skip [{id}], failure
+[{id, errorMessage, errorType}], success [{id}] }] }`. The selection also
+spreads `TriggerActionsError { errors { errorMessage errorPayload { limit } } }`
+and `TriggerActionsScheduled { bulkActionTriggerId }`. After each write the
+console re-reads `GetAlert`, `GetAlertNotes`, `GetAlertMitigationActionResults`
+and `AlertTimeline` (filter `itemTypes: [ACTIVITY, ASSET_OPERATION, ENRICHMENT,
+NOTE, MITIGATION, HYPERAUTOMATION]`); the timeline records each change as an
+`ACTIVITY` item with `activityType` `STATUS`, `USER_ASSIGNMENT` or
+`ANALYST_VERDICT`. The verdict picker comes from `alertAvailableActions`
+(`TreeLikeActionData` under `S1/alert/analystVerdictUpdate`). The capture held
+no note write and no mitigation result.
+
+`AssignUserInput` has one field, `value: Long`. The `{assignUser: {userEmail}}`
+payload that older docs and `scripts/unified_alerts.py assign_alerts` used is a
+ValidationError: "field name 'userEmail' that is not defined for input object
+type 'AssignUserInput'" (verified 2026-10-08). Resolve an email to an id with
+`GET /web/api/v2.1/users?email=<email>` first, as `uam_assign_alert` does.
+`assign_alerts` now does the same: pass `user_id`, `user_email` (exactly one
+matching user) or `unassign=True`.
+
+**AnalystVerdict enum** (introspected, 20 values): `UNDEFINED`;
+`TRUE_POSITIVE_MALWARE`, `_UNAUTHORIZED_ACCESS`, `_DATA_EXFILTRATION`,
+`_INSIDER_THREAT`, `_PHISHING_ATTACK`, `_ADVANCED_PERSISTENT_THREAT`,
+`_DENIAL_OF_SERVICE`, `_RANSOMWARE`, `_POLICY_VIOLATION`,
+`_BENIGN_BUT_SUSPICIOUS`, `_BENIGN`, `_UNDEFINED`, `_EXPLOITATION_TOOLS`,
+`_PUA_ADWARE` (all prefixed `TRUE_POSITIVE`); `FALSE_POSITIVE_BENIGN`,
+`_BENIGN_BUT_SUSPICIOUS`, `_SYSTEM_ERROR`, `_USER_ERROR`, `_UNDEFINED` (all
+prefixed `FALSE_POSITIVE`). `TRUE_POSITIVE` and `FALSE_POSITIVE` are group
+headers in the console picker, not values, and there is no `SUSPICIOUS`.
+
+**Our tools against the capture.** `uam_set_status`, `uam_set_verdict` and
+`uam_assign_alert` send this document verbatim with the same variables in the
+same key order and `?opname=`. Before 1.5.0, `uam_set_status` sent no `scope`,
+no `viewType`, a nullable `$actions` type, a different operation name and a
+smaller selection. The bisect above shows those differences did not change the
+outcome; the tools match the console anyway so a captured request and ours can
+be compared field for field.
+
 ### Hyperautomation native actions
 
 `hyperautomation/references/integration-catalog.md` lists native write-back
@@ -215,9 +309,9 @@ The `alerts` query takes `filters: [FilterInput!]`, a flat AND-joined list. Muta
 
 ## Scope and view
 
-`ScopeSelectorInput` is `{ scopeIds: [ID!]!, scopeType: ScopeType }` where `scopeType ∈ { ACCOUNT, SITE, GROUP, GLOBAL }`. Use `uam.scope(["<id>"])` to build one.
+`ScopeSelectorInput` is `{ scopeIds: [ID!]!, scopeType: ScopeType }` where `scopeType ∈ { ACCOUNT, SITE, GROUP }`. `GLOBAL` is rejected: "Invalid input for enum 'ScopeType'. No value found for name 'GLOBAL'" (verified 2026-10-08). Use `uam.scope(["<id>"])` to build one.
 
-`ViewType` (used by `alerts`, `alertsCsvExport`, `alertTriggerActions`): `ALL`, `ENDPOINT`, `IDENTITY`, `STAR`, `CUSTOM_ALERTS`, `CLOUD`, `THIRD_PARTY`. `ALL` is the default.
+`ViewType` (used by `alerts`, `alertsCsvExport`, `alertTriggerActions`, `alertAvailableActions`): introspection lists `ALL`, `CLOUD`, `CUSTOM_ALERTS`, `DLP`, `ENDPOINT`, `IDENTITY`, `THIRD_PARTY`. `STAR` is not listed but is still accepted (an `alerts` query with `viewType: STAR` returned STAR alerts on 2026-10-08), so treat it as deprecated. `ALL` is the default and what the console sends.
 
 ---
 
@@ -227,9 +321,9 @@ From live `alertAvailableActions` on a Singularity Platform tenant with EDR, Ide
 
 | Action ID | Type | What it does |
 |---|---|---|
-| `S1/alert/analystVerdictUpdate` | ALERT | Set analystVerdict (TRUE_POSITIVE, SUSPICIOUS, FALSE_POSITIVE_USER_ERROR, etc.) |
-| `S1/alert/statusUpdate` | ALERT | Set status (NEW, IN_PROGRESS, RESOLVED) |
-| `S1/alert/assignUser` | ALERT | Assign to user (payload `{assignUser:{userEmail}}`) |
+| `S1/alert/analystVerdictUpdate` | ALERT | Set analystVerdict, payload `{analystVerdict:{value}}` (TRUE_POSITIVE_MALWARE, FALSE_POSITIVE_USER_ERROR, etc.; see the enum above) |
+| `S1/alert/statusUpdate` | ALERT | Set status, payload `{status:{value}}` (NEW, IN_PROGRESS, RESOLVED) |
+| `S1/alert/assignUser` | ALERT | Assign to user, payload `{assignUser:{value:"<user id>"}}`; `value: null` unassigns |
 | `S1/alert/setTicketId` | ALERT | Attach external ticket id |
 | `S1/alert/addNote` | ALERT | Add a free-text note |
 | `S1/alert/eventSearch` | REFERENCE | Pivot to Event Search |

@@ -571,7 +571,7 @@ Selecting "STAR" from the Alert Product dropdown filters all panels on the tab t
 
 ### `#VarName#` substitution: flat (non-TABBED) dashboards only
 
-`#VarName#` query injection works only in flat dashboards (no `configType`, no `tabs`). The reference implementation is `parameter_examples-v1.0.json`. In a TABBED dashboard, `#VarName#` is passed literally to the query engine and throws `Don't understand [#]`.
+`#VarName#` query injection works only in flat dashboards (no `configType`, no `tabs`). In a TABBED dashboard, `#VarName#` is passed literally to the query engine and throws `Don't understand [#]`.
 
 Pre-quoting rule: string values must embed single quotes, `"'logVolume'"` so substitution produces `tag='logVolume'`. Use `"*"` for wildcard.
 

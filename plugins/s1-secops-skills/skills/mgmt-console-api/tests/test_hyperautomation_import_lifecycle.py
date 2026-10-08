@@ -18,8 +18,8 @@ Note on token type
 ------------------
 Per the Hyperautomation skill: workflows imported with a Service User token
 are invisible to human users in the UI. Use a personal Console User API token
-(S1_CONSOLE_API_TOKEN or S1_CONSOLE_API_TOKEN_SINGLE_SCOPE) for this test
-if you need the result to be visible in the UI. The test itself verifies the
+as S1_CONSOLE_API_TOKEN (or in its own keychain profile selected with
+S1_PROFILE) for this test if you need the result to be visible in the UI. The test itself verifies the
 import programmatically regardless of token type.
 
 Usage

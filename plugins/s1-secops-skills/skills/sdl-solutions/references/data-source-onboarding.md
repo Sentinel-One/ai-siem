@@ -257,7 +257,8 @@ an analyst would actually do when one of those detections fires:
    route to analyst triage with enrichment context instead of auto-containment.
 
 Render `assets/threat_response_workflow.template.json` for this (tokens: `{{SOURCE_LABEL}}`,
-`{{ACCOUNT_ID}}`, `{{VT_API_KEY}}`, `{{NOTIFY_WEBHOOK_URL}}`, `{{IOC_TTL_HOURS_NEG}}`).
+`{{ACCOUNT_ID}}`, `{{NOTIFY_WEBHOOK_URL}}`, `{{IOC_TTL_HOURS_NEG}}`). Bind a VirusTotal connection in
+Hyperautomation > Integrations after import: the API key lives there, never in the workflow JSON.
 
 **Present the HA flow(s) to the user for review before importing**, the same as detections: show
 what each flow does and its trigger, and wait for approval. Then ask **where to deploy** (which

@@ -2,6 +2,8 @@
 
 The LRQ API is the **default** programmatic path for every PowerQuery this skill runs. It is async, survives long queries, supports cursor paging to effectively unlimited rows, and is the only endpoint that stays supported after Feb 15 2027 when `/api/powerQuery` and `/web/api/v2.1/dv/events/pq` are retired.
 
+**You do not call this API by hand.** The `powerquery_run` MCP tool from `s1-secops-mcp` implements everything on this page: launch, forward-tag, polling, cancel, 429 backoff, `queryType: "LOG"` (`logLimit` up to 5000, `truncatedByServerCap` on a capped slice), `slices` (2-15) with `merge` (`keys` / `sum` / `min` / `max`, non-additive aggregates refused), `edrStrict` (top-level `scheme: "edr"`), and `outputFile` for bulk results. It runs on the user's machine, so it works from Cowork. This page documents the wire behaviour for debugging and for host-only Python runners (`scripts/pq.py` in `mgmt-console-api`).
+
 ## Endpoints (all on the tenant's own console host)
 
 ```text
@@ -140,7 +142,7 @@ Without this, an `event.type=*` aggregate on `your-tenant` over 30 days returned
 
 LRQ returning `matchCount=0` with HTTP 200 is the most common silent-failure mode. Walk these in order before widening the time range or rewriting the query.
 
-1. **Confirm the data source string.** Call `list_data_sources(c, hours=24)` (or run `| group ct=count() by dataSource.name | sort -ct | limit 50`) on the same tenant scope. The exact spelling, capitalization, and punctuation must match what's in the index. `'SentinelOne'` and `'sentinelone'` are different strings to the engine.
+1. **Confirm the data source string.** Call `powerquery_enumerate_sources` (host-only Python: `list_data_sources(c, hours=24)`), or run `| group ct=count() by dataSource.name | sort -ct | limit 50`) on the same tenant scope. The exact spelling, capitalization, and punctuation must match what's in the index. `'SentinelOne'` and `'sentinelone'` are different strings to the engine.
 
 2. **Confirm the request body has the right scope.**
    - `tenant: true` is required unless `accountIds` is passed. Without either, the query runs against a near-empty default scope and silently returns zero rows.
@@ -165,7 +167,8 @@ LRQ returning `matchCount=0` with HTTP 200 is the most common silent-failure mod
 ## Slicing & parallelism
 
 For long windows, split the time range into slices, run them in parallel, then merge client-side.
-On a 30-day window this is the single biggest speed-up available.
+On a 30-day window this is the single biggest speed-up available. `powerquery_run` does this with
+`slices` and `merge`; the measurements below are why its defaults are what they are.
 
 ### Measured on S-26.3.4 (2026-10-05)
 
@@ -212,9 +215,9 @@ Aggregates don't naively concatenate - you have to re-aggregate. For a per-key c
 
 The reference implementation (`merge_aggregate` in the runner) handles sum/min/max. For anything else, do a final aggregating pass over the union of slice outputs.
 
-## Canonical Python runner
+## Canonical Python runner (host only)
 
-The implementation is built from these key pieces, in order of importance:
+`powerquery_run` is the runner to use from Cowork and any MCP client. A host-only Python runner (Claude Code or a terminal, credentials from environment variables or the OS keychain) is built from these key pieces, in order of importance:
 
 1. **RateLimiter** - token bucket with `rps` and `burst` (about 25 rps per token), acquire before every API call. One per client.
 2. **LRQClient** - wraps one `requests.Session()` with `HTTPAdapter(pool_maxsize=N)` and `Authorization: Bearer <jwt>`. Exposes `launch(body)`, `poll(qid, forward_tag, last_seen)`, `cancel(qid, forward_tag)`. Auto-retries 429 with exponential backoff.
@@ -224,7 +227,7 @@ The implementation is built from these key pieces, in order of importance:
 
 ## LOG queries are a separate primitive
 
-`mgmt-console-api`'s `scripts/pq.py` runs `queryType: "PQ"` only. For workflows that need every parsed field on every matching row (identity investigations, all-attribute hunts, evidence-grade exports), the right primitive is `queryType: "LOG"`, which has a different body shape and different failure modes from PQ.
+For workflows that need every parsed field on every matching row (identity investigations, all-attribute hunts, evidence-grade exports), the right primitive is `queryType: "LOG"`, which has a different body shape and different failure modes from PQ. `powerquery_run` takes `queryType: "LOG"` directly (filter only in `query`, `logLimit` up to 5000, `truncatedByServerCap: true` when a slice hit the cap, combine with `slices` and `outputFile`). The host-only `scripts/pq.py` in `mgmt-console-api` runs `queryType: "PQ"` only.
 
 ### Body shape
 
@@ -252,7 +255,7 @@ Two differences from PQ that bite first-time callers:
 PQ slicing concerns the LRQ deadline budget; LOG slicing concerns server-side row caps. Different failure modes:
 
 - LOG has a server-side `log.limit` cap (typically 5000). Any slice that hits the cap **silently truncates**, returning exactly N rows where N = `log.limit`. There is no "page 2" for LOG; the missing rows are simply dropped.
-- Detect cap-hit by comparing `len(matches)` to the requested `log.limit`. If they're equal, the slice is truncated; subdivide it (typically into 1-day chunks) and re-run each piece.
+- Detect cap-hit by comparing `len(matches)` to the requested `log.limit` (`powerquery_run` reports this as `truncatedByServerCap: true`). If they're equal, the slice is truncated; subdivide it (typically into 1-day chunks, or raise `slices`) and re-run each piece.
 - PQ aggregations don't have this problem because they aggregate before capping. LOG cannot aggregate; the cap is on raw rows.
 
 Standard subdivision pattern:

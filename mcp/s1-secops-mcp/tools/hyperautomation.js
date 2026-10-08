@@ -286,13 +286,19 @@ export const tools = [
           type: 'string',
           description: 'Site scope for a site-level export. Provide this OR accountIds.',
         },
+        outputFile: {
+          type: 'string',
+          description: 'Optional absolute path to save the ZIP archive (e.g. /Users/me/ha-export.zip). Must be inside S1_OUTPUT_DIRS (default: home and temp). Without it the tool returns metadata only.',
+        },
+        overwrite: { type: 'boolean', description: 'Allow outputFile to replace an existing file.' },
       },
       required: [],
     },
-    async handler({ accountIds, siteIds } = {}) {
+    async handler({ accountIds, siteIds, outputFile, overwrite } = {}) {
       // Export path confirmed working during backtest at /public path.
       // GET returns binary ZIP of ALL workflows; POST returns 405.
       // Per-workflow filter is not supported by this API version.
+      if (outputFile) { const { resolveOutputPath } = await import('../lib/output.js'); resolveOutputPath(outputFile, { overwrite: overwrite === true }); }
       const { getCreds } = await import('../lib/credentials.js');
       const creds = getCreds();
       const base = creds.S1_CONSOLE_URL.replace(/\/+$/, '');
@@ -318,9 +324,18 @@ export const tools = [
         throw new Error(`ha_export_workflow → ${res.status}: ${text}${hint}`);
       }
       const buf    = await res.arrayBuffer();
+      if (outputFile) {
+        const { writeOutput } = await import('../lib/output.js');
+        const out = writeOutput(outputFile, Buffer.from(buf), { overwrite: overwrite === true });
+        return JSON.stringify({
+          note: 'Export returns all workflows in scope as one ZIP. Saved to outputFile.',
+          contentType: res.headers.get('Content-Type') || 'application/zip',
+          outputFile: out.path, bytesWritten: out.bytes, sha256: out.sha256,
+        }, null, 2);
+      }
       const base64 = Buffer.from(buf).toString('base64');
       return JSON.stringify({
-        note: 'Export returns all workflows as a binary ZIP. Per-workflow filtering is not supported. METADATA ONLY: this tool does not return or persist the ZIP content; use the console UI or a direct API call with file output if you need the archive itself.',
+        note: 'Export returns all workflows as a binary ZIP. Per-workflow filtering is not supported. METADATA ONLY: pass outputFile to save the archive.',
         contentType: res.headers.get('Content-Type') || 'application/zip',
         sizeBytes: buf.byteLength,
         base64Preview: base64.slice(0, 200) + '… [truncated]',

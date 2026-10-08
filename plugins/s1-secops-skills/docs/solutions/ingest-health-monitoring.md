@@ -26,14 +26,14 @@ flows, `sdl-dashboard` for the dashboard); it does not reimplement them.
 
 The whole solution deploys from a single prompt:
 
-> *"Deploy the ingest health monitoring solution per device to the Acme site and email soc@acme.com on every failure."*
+> *"Deploy the ingest health monitoring solution per device to the Acme site and email <soc@acme.com> on every failure."*
 
 That one prompt seeds the two baseline tables, creates and enables the per-device detections (volume spike/drop, ingest lag, parser drift), imports the Baseline Builder, Alert Notifier, and Ingest Loss Watchdog flows, and deploys the dashboard, previewing each step before it runs and asking only for the site and the notify address.
 
 More targeted prompts:
 
 - *"Deploy ingest health monitoring per device on the Acme site"*
-- *"Monitor ingest per firewall and endpoint and email soc@acme.com on any failure"*
+- *"Monitor ingest per firewall and endpoint and email <soc@acme.com> on any failure"*
 - *"Alert me when a specific firewall or endpoint stops sending logs"*
 - *"Which devices are spiking, dropping, or over the ingest lag SLA right now?"*
 - *"Find parser drift, where a parser stopped normalising"*
@@ -43,7 +43,7 @@ More targeted prompts:
 The sending device differs by source, so one universal key resolves all of them and falls back to
 the source name when a source has no device field:
 
-```
+```text
 device = device.name ? ... : endpoint.name ? ... : agent.uuid ? ... : src_endpoint.hostname ? ... : hostname ? ... : dataSource.name
 ```
 

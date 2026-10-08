@@ -2,52 +2,38 @@
 
 Deployment via the SDL API (udoId and CAS guard, duplicate handling), the pre-deploy parallel load test and verification, the escalation ladder for a hung dashboard, and the full pre-deploy checklist. Referenced from `SKILL.md`.
 
+Every step below runs through the `s1-secops-mcp` MCP tools, which run on the user's machine and work from Cowork. The `sdl-api` skill's Python client (`SDLClient`) exposes the same operations under snake_case names for host-only scripts (Claude Code or a terminal); it cannot reach the tenant from the Cowork sandbox.
+
 ## Choosing a deployment route
 
-Three routes. Pick by what you need, not by habit.
+Two routes. Pick by what you need, not by habit.
 
-| Route | Use when | Call |
+| Route | Use when | MCP call (host-only Python) |
 |---|---|---|
-| **`create_dashboard` at a scope** | Creating a new dashboard, any scope. **Preferred.** | `create_dashboard(name, config, scope=...)` / `sdl_create_dashboard` |
-| **`create` then `share`** | The calling token sits at account scope but the dashboard belongs to a site | `create_dashboard(...)` then `share_dashboard(id, scopes=[...])` |
-| **`put_config_file` by udoId** | Updating an existing dashboard's full config with a CAS guard | `put_config_file(udo_id=..., expected_version=...)` |
+| **Create at a scope** | Creating a new dashboard at any scope, including a site from an account-scoped token (`scope: "<accountId>:<siteId>"`). **Default, and the only way to deploy to a site.** | `sdl_create_dashboard {name, config, isPublic: true, scope}` (`create_dashboard`) |
+| **Config file by udoId** | Updating an existing dashboard's full config with a CAS guard | `sdl_put_file {udoId, content, expectedVersion}` (`put_config_file`) |
 
-`create_dashboard` takes the whole document as one `config` string and is the path the console itself uses. `put_config_file` is the raw config-file layer underneath; only it exposes the numeric version needed for optimistic locking.
+`sdl_create_dashboard` takes the whole document as one `config` string and is the path the console itself uses. `sdl_put_file` is the raw config-file layer underneath; only it exposes the numeric version needed for optimistic locking.
+
+`sdl_share_dashboard` (`share_dashboard`) shares a dashboard with the account or with users. It is not a deployment route: to put a dashboard at a site, create it there.
 
 ## Site-level deployment
 
 **Deployment scope and query scope are separate decisions.** Before deploying to a site, confirm the panels are scoped too: see the **Scope doctrine** section of `SKILL.md`. A site-deployed dashboard whose panels have no `site.id` predicate reports the wrong numbers, and one that filters on `site.name` silently drops `alert` and `asset` records.
 
-### Route A: create in place at the site
+Create the dashboard in place at the site:
 
-```python
-from sdl_client import SDLClient
-
-client = SDLClient()
-ACCOUNT_ID = "1234567890123456789"
-SITE_ID    = "9876543210987654321"
-SITE_SCOPE = f"{ACCOUNT_ID}:{SITE_ID}"
-
-created = client.create_dashboard(
-    name="Metacortex Site",
-    config=json.dumps(dashboard_json),   # panels already filter site.id='<SITE_ID>'
-    scope=SITE_SCOPE,
-)
-dashboard_id = created["id"]             # == the udoId in config_files()
+```text
+sdl_create_dashboard {
+  name:     "Metacortex Site",
+  config:   <dashboard JSON as a string>,       # panels already filter site.id='<SITE_ID>'
+  isPublic: true,
+  scope:    "<ACCOUNT_ID>:<SITE_ID>"
+}
+-> the returned id is the udoId that sdl_list_files reports
 ```
 
-### Route B: create at account scope, then share to the site
-
-Use this when the token cannot be scoped to the site. `shareResource` is the **only** SDL operation that takes an explicit scope target; everything else infers scope from the header.
-
-```python
-created = client.create_dashboard(name="Metacortex Site", config=body)   # account scope
-
-client.share_dashboard(
-    dashboard_id=created["id"],
-    scopes=[{"scopeType": "site", "scopeId": SITE_ID, "operation": "ADD"}],
-)
-```
+An account-scoped API token can create at any site in its account this way.
 
 ### Two things that make a successful deploy look like a failure
 
@@ -57,7 +43,7 @@ owner is `serviceuser-<uuid>@mgmt-<n>.sentinelone.net`, not a person, so a priva
 readable through the API and **invisible in the console to the operator**. It presents exactly like
 a failed deploy. Verified live: the same dashboard at the same scope became visible purely by
 recreating it with `public: true`, and every pre-existing dashboard at that site was public.
-`shareResource` to a scope does not flip `public`; they are independent.
+Sharing a dashboard does not flip `public`; they are independent.
 
 **Dashboard names reject punctuation, and the only error is `Invalid name`.** Probed live, one
 character class at a time:
@@ -73,71 +59,55 @@ before creating.
 
 Confirming at a single scope proves nothing, because a listing at the wrong scope reports a live dashboard as absent.
 
-```python
-at_site    = client.list_dashboards(scope=SITE_SCOPE)
-at_account = client.list_dashboards(scope=ACCOUNT_ID)
-
-assert any(d["id"] == dashboard_id for d in at_site), "not visible at the site"
-# Route A: expect it ABSENT from the account listing.
-# Route B: expect it present in both.
+```text
+sdl_list_dashboards { scope: "<ACCOUNT_ID>:<SITE_ID>" }   -> must contain the dashboard id
+sdl_list_dashboards { scope: "<ACCOUNT_ID>" }         -> expect it ABSENT from the account listing
 ```
 
 Measured on `<console>` 2026-08-17: `configFiles` returned 113 files at account scope and 4 at a site scope, same token and query. A dashboard created at site scope is invisible from account scope and `config_file` on its `udoId` reports it absent. **Every "not found" is scope-relative.**
 
 ### Getting the ids
 
-```bash
-# account ids
-curl -s -H "Authorization: ApiToken $TOKEN" "$CONSOLE/web/api/v2.1/accounts" | jq '.data[].id'
-# site ids (the same value used in site.id predicates and shareResource scopeId)
-curl -s -H "Authorization: ApiToken $TOKEN" "$CONSOLE/web/api/v2.1/sites?states=active" \
-  | jq '.data.sites[] | {id, name}'
+```text
+s1_api_get { path: "/web/api/v2.1/accounts" }                          -> data[].id
+s1_api_get { path: "/web/api/v2.1/sites", params: { states: "active" } } -> data.sites[].{id, name}
+   (the site id is the value used in site.id predicates and in the "<accountId>:<siteId>" scope)
 ```
 
 ## Deploying a dashboard via API
 
-Use the `sdl-api` skill to deploy. Dashboard config files live at paths like `/dashboards/my-dashboard-name`.
+Deploy with the `sdl_*` MCP tools. Dashboard config files live at paths like `/dashboards/my-dashboard-name`.
 
 ### 1. Resolve the udoId, then write with a CAS guard
 
-```python
-import json
-from sdl_client import SDLClient
+```text
+1. sdl_list_files { pathPrefix: "/dashboards/" }
+   -> filter for name == "/dashboards/soc-overview". Only /dashboards/ files carry a udoId,
+      and a name can resolve to more than one file: if there is more than one match, stop
+      and ask the user which udoId to keep.
 
-client = SDLClient()
-DASH_NAME = "/dashboards/soc-overview"
+2a. One match (update):
+    sdl_get_file { udoId: <udoId> }                  -> content, version
+    Write the current content to a backup file (Write tool) before changing anything.
+    sdl_put_file { udoId: <udoId>, content: <new JSON>, expectedVersion: <version> }
 
-# Resolve the name to its udoId. Only /dashboards/ files carry one, and a name
-# can resolve to more than one file, so check the count before writing.
-matches = [f for f in client.config_files() if f["name"] == DASH_NAME]
-if len(matches) > 1:
-    raise SystemExit(f"{len(matches)} copies already share that name: {[m['udoId'] for m in matches]}")
-
-body = json.dumps(dashboard_json, indent=2)
-
-if matches:
-    cur = client.config_file(udo_id=matches[0]["udoId"])      # None if absent, does not raise
-    open(f"/tmp/{DASH_NAME.replace('/','_')}.{cur['version']}.bak.json", "w").write(cur["content"] or "{}")
-    res = client.put_config_file(udo_id=cur["udoId"], content=body, expected_version=cur["version"])
-else:
-    res = client.put_config_file(name=DASH_NAME, content=body)   # first create only
-
-udo_id = res["udoId"]    # record this; every later deploy addresses by udoId
+2b. No match (first create only):
+    sdl_put_file { path: "/dashboards/soc-overview", content: <new JSON> }
+    -> record the returned udoId; every later deploy addresses by udoId
 ```
 
-The `expected_version` argument is a CAS guard against concurrent writes from the SDL UI or another script.
+The `expectedVersion` argument is a CAS guard against concurrent writes from the SDL UI or another script.
 
-### 2. Verify deployment by re-fetching (and grep for a canary)
+### 2. Verify deployment by re-fetching (and check a canary)
 
-```python
-time.sleep(3)  # eventual-consistency window
-verify = client.get_file(DASH_PATH)
-deployed_content = verify.get("content", "")
-assert verify.get("version") != cur_version, "version did not bump"
-assert "<canary-string-from-new-section>" in deployed_content, "deploy did not include new content"
+```text
+Wait ~3 s (eventual-consistency window), then:
+sdl_get_file { udoId: <udoId> }
+-> version must differ from the pre-write version
+-> content must contain a canary string from the new section
 ```
 
-A `put_file` response of `{"status": "success"}` does not guarantee the new content was written, always re-fetch and grep for a canary string from the change.
+A write that returns success does not guarantee the new content was written; always re-fetch and check for a canary string from the change.
 
 ### 3. Never update a dashboard by name, address it by udoId
 
@@ -191,54 +161,19 @@ The SDL engine has three query surfaces: the V1 query API, the LRQ async API, an
 
 The learnings below let you predict and eliminate renderer failures before deploy.
 
-### Parallel load test (run before every `put_file`)
+### Parallel load test (run before every `sdl_put_file`)
 
-The browser fires all panel queries in parallel on load. Total dashboard load time ≈ slowest single panel + small per-panel render overhead. Always run a parallel load test before deploying a new or significantly modified dashboard:
+The browser fires all panel queries in parallel on load. Total dashboard load time ≈ slowest single panel + small per-panel render overhead. Always run a parallel load test before deploying a new or significantly modified dashboard: issue one `powerquery_run` call per non-markdown panel (the panel's exact `query`, the dashboard's time range and `scope`, a small `maxRows`) as parallel tool calls in the same turn, about 10 at a time. Note any call that errors and any panel that is visibly slow to return; those are the panels to rewrite.
 
-```python
-import concurrent.futures, time
-
-def run_one(panel_query):
-    c = SDLClient()
-    # auth setup ...
-    t0 = time.time()
-    try:
-        res = c.power_query(query=panel_query, start_time="24h")
-        return ("OK", time.time() - t0, res.get("matchingEvents") or 0)
-    except Exception as e:
-        return ("FAIL", time.time() - t0, str(e)[:200])
-
-queries = [p["query"] for tab in dashboard["tabs"] for p in tab["graphs"]
-           if p.get("graphStyle") != "markdown" and p.get("query")]
-
-wall_t0 = time.time()
-with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
-    results = list(pool.map(run_one, queries))
-wall_clock = time.time() - wall_t0
-
-print(f"  Total serial:        {sum(r[1] for r in results):.1f}s")
-print(f"  Wall-clock parallel: {wall_clock:.1f}s   <- expect this in browser")
-print(f"  Slowest single:      {max(r[1] for r in results):.1f}s")
-```
+On the user's host, a Python harness can time each panel precisely: run the same queries through `SDLClient().power_query(...)` in a `ThreadPoolExecutor(max_workers=10)` and record per-panel elapsed time and the total wall clock.
 
 **Acceptance thresholds:** slowest single panel ≤ 2s, wall-clock parallel ≤ 5s, zero failures. If the slowest panel exceeds 2s, identify it and rewrite: replace `group` with `top K`, narrow the initial filter, raise the timebucket granularity, or split the dashboard.
 
 ### Deploy-and-verify: sleep before re-fetching
 
-`put_config_file` returns synchronously, but the file propagates across replicas with eventual consistency. Re-reading ~100ms after a successful write can report the file as absent. Always wait:
+`sdl_put_file` returns synchronously, but the file propagates across replicas with eventual consistency. Re-reading ~100ms after a successful write can report the file as absent. Always wait about 3 s before the verifying `sdl_get_file` by `udoId`, and confirm the returned `udoId` matches and the version bumped.
 
-```python
-res = c.put_config_file(udo_id=udo_id, content=new_content, expected_version=cur_version)
-assert res.get("udoId") == udo_id
-
-import time
-time.sleep(3)            # eventual-consistency window
-
-post = c.get_file(DASH_PATH)
-assert post.get("version") != cur_version  # version bumped
-```
-
-Without the sleep, verification looks like a deploy failure even when the deploy succeeded.
+Without the wait, verification looks like a deploy failure even when the deploy succeeded.
 
 ---
 
@@ -247,21 +182,21 @@ Without the sleep, verification looks like a deploy failure even when the deploy
 1. **Log out and log back in.** The SDL UI caches panel render state in the session. After a `put_file`, the browser can serve a stale render from the prior version even though the underlying config changed. A fresh login clears session state completely. Try this before any config investigation when the query is confirmed to return data.
 2. **Hard refresh** (`Ctrl+Shift+R` / `Cmd+Shift+R`). Eliminates cached state from a previous broken version. Resolves ~10% of "still hung" reports.
 3. **Check dev-tools network tab.** If panel queries are NOT being fired, the renderer is stuck before any HTTP call. Cause is structural (layout/options/JSON parse), not query performance. If queries ARE firing, record the slowest and move to step 3.
-4. **Run the slow panel's query in isolation via the V1 API.** If it returns fast, the issue is renderer-side (column names, `transpose`, panel options). If it is slow, optimise the query.
+4. **Run the slow panel's query in isolation with `powerquery_run`.** If it returns fast, the issue is renderer-side (column names, `transpose`, panel options). If it is slow, optimise the query.
 5. **Reduce panel count by 50%.** If the dashboard now loads, the issue was concurrency or memory in the renderer. Add panels back 25% at a time until a regression isolates the offender.
-6. **Diff against a working reference dashboard in the same tenant.** `list_files /dashboards/`, `get_file` on a working dashboard, compare top-level keys, panel `layout` shape, `options` keys, and `graphStyle`-specific fields. Working dashboards in the same tenant are more reliable ground truth than any external documentation, because rendering rules drift between SDL releases.
-7. **Roll back.** Always keep a backup of the prior dashboard JSON before `put_file`-ing a new version. Restore via `put_file(expected_version=current)` to unblock analysts while iterating offline.
+6. **Diff against a working reference dashboard in the same tenant.** `sdl_list_files` with `pathPrefix: "/dashboards/"`, `sdl_get_file` by `udoId` on a working dashboard, compare top-level keys, panel `layout` shape, `options` keys, and `graphStyle`-specific fields. Working dashboards in the same tenant are more reliable ground truth than any external documentation, because rendering rules drift between SDL releases.
+7. **Roll back.** Always keep a backup of the prior dashboard JSON before writing a new version. Restore it with `sdl_put_file` by `udoId` and `expectedVersion: <current>` to unblock analysts while iterating offline.
 
 ---
 
 ## Pre-deploy checklist
 
-Run this before every `put_file`. Items marked **[scripted]** are checked automatically by `scripts/panel_safety_check.py`.
+Run this before every `sdl_put_file`. Items marked **[scripted]** are checked automatically by `scripts/panel_safety_check.py`.
 
 ```text
 PRE-AUTHORING
 [ ] Live data-source enumeration confirms every dataSource.name used by the dashboard exists
-[ ] V1-query schema discovery run for every source; field list saved for the session
+[ ] powerquery_schema_discover run for every source; field list saved for the session
 [ ] Discriminator field validated for every event.type the dashboard counts
 [ ] No panel relies on a field that is only present in raw_data (or, if it does, the panel
     is a number/selective-table that won't time out under full-text)
@@ -303,13 +238,13 @@ PERFORMANCE & LOAD
 
 DEPLOYMENT
 [ ] Backup of current dashboard JSON saved (for rollback)
-[ ] put_file called with expected_version of the current deployed copy
-[ ] sleep(3) before re-fetching to verify deploy
+[ ] sdl_put_file called with expectedVersion of the current deployed copy
+[ ] ~3 s wait before re-fetching to verify deploy
 [ ] Re-fetched content greps for a canary string from the change
 [ ] Existing dashboard addressed by udoId from sdl_list_files, not by name (name-addressed writes are for the first create only)
 
 POST-DEPLOY (MANDATORY)
-[ ] scripts/validate_dashboard.py run; per-panel evidence JSON persisted
+[ ] Every panel replayed with powerquery_run (or scripts/validate_dashboard.py on the host); per-panel evidence JSON persisted
 [ ] Markdown evidence file emitted alongside the JSON
 [ ] scripts/render_validation_pdf.py run; PDF report delivered with the dashboard
 [ ] PDF Appendix lists every empty-result panel with a SOC-meaningful interpretation

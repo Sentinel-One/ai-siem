@@ -20,8 +20,8 @@
  * docs/release-process.md, and it is the only way to catch a packaging fault such as
  * a file missing from the "files" allowlist, which no working-tree run can see.
  *
- *   npm i --prefix /tmp/verify @pmoses-s1/s1-secops-mcp@<version>
- *   E2E_SERVER=/tmp/verify/node_modules/@pmoses-s1/s1-secops-mcp/index.js \
+ *   npm i --prefix /tmp/verify <package-name>@<version>
+ *   E2E_SERVER=/tmp/verify/node_modules/<package-name>/index.js \
  *     node tests/e2e-live.mjs
  *
  * Exit code is 0 only when every check passes.

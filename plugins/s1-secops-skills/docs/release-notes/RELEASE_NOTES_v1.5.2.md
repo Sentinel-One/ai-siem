@@ -71,6 +71,15 @@ create the dashboard at the site instead).
 
 ### Security
 
+- **Plaintext credentials are gone.** Tokens and keys live in the OS keychain, one item per value,
+  and are never written to disk in clear text.
+- **`credentials.json` is no longer loaded.** The server, the Python clients and the plugin's
+  session hook used to search several folders for a plaintext credentials file, so any stray copy
+  could be picked up. That code is removed. Import an existing file once with
+  `s1-secops-mcp setup --import-json`, then delete it and any copies.
+- **No secrets in client configs or Docker metadata.** The launcher passes values to the container
+  over stdin, so they no longer appear in `claude_desktop_config.json`, `docker inspect` or the
+  process list. Tool output and logs mask configured secrets.
 - VirusTotal fork `97ca2b8`: `proxy-addr` 2.0.8 (CVE-2026-90711, critical) and
   `@modelcontextprotocol/sdk` 1.32.1 (CVE-2026-104850, high). Neither was reachable in the stdio
   server; both are fixed so scans come back clean.

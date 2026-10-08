@@ -45,8 +45,8 @@ When bumping a pin, edit both. They are checked via `grep` in CI; a mismatch fai
 |---|---|---|
 | Image version (`IMAGE_VERSION`) | this repo | `1.5.2` |
 | `s1-secops-mcp` | local `COPY` from this repo | whatever commit you build |
-| `virustotal-mcp` | git, `pmoses-s1/mcp-virustotal` | `97ca2b8` (vendored fork of `w0h1v/mcp-virustotal` v1.0.28; proxy-addr 2.0.8, MCP SDK 1.32.1) |
-| `purple-mcp` | git, `pmoses-s1/purple-mcp` | `1390b8c` (fork of `Sentinel-One/purple-mcp` v0.7.0, pandas made optional) |
+| `virustotal-mcp` | git, maintained fork (repo in `build.sh`) | `97ca2b8` (vendored fork of `w0h1v/mcp-virustotal` v1.0.28; proxy-addr 2.0.8, MCP SDK 1.32.1) |
+| `purple-mcp` | git, maintained fork (repo in `build.sh`) | `1390b8c` (fork of `Sentinel-One/purple-mcp` v0.7.0, pandas made optional) |
 
 **`s1-secops-mcp` has no pin** because it is not fetched. Its source is in this repo and the Dockerfile `COPY`s it, so the image always carries the commit being built. This is possible only because the package declares zero `dependencies` and zero `devDependencies`: there is nothing to resolve, so the source *is* the install. `S1_MCP_VERSION` in `build.sh` is now purely a **label** for the image, and CI asserts it equals the `version` in `s1-secops-mcp/package.json` so it cannot drift into a lie.
 
@@ -125,7 +125,7 @@ There is no `s1-secops-mcp` pin to bump: edit the source in `s1-secops-mcp/`, bu
 ## Refresh the VirusTotal fork against upstream
 
 ```bash
-git clone https://github.com/pmoses-s1/mcp-virustotal.git ~/src/mcp-virustotal
+git clone https://github.com/<your-org>/mcp-virustotal.git ~/src/mcp-virustotal
 cd ~/src/mcp-virustotal
 git remote add upstream https://github.com/w0h1v/mcp-virustotal.git
 git fetch upstream && git merge upstream/main     # resolve any conflict in build/ by rebuilding

@@ -30,8 +30,9 @@ CLI:
     python3 lrq_sliced.py --query "| group n=count() by dataSource.name" \
         --days 30 --slices 15 --keys dataSource.name --sum n
 
-Credentials: S1_CONSOLE_URL + S1_CONSOLE_API_TOKEN from the environment, or
---creds <credentials.json> holding the same keys.
+Credentials: S1_CONSOLE_URL + S1_CONSOLE_API_TOKEN from the environment, else
+the OS keychain (service "sentinelone-mcp", account "<S1_PROFILE>:<NAME>", the
+items `s1-secops-mcp setup` writes). No credentials file is read.
 """
 from __future__ import annotations
 
@@ -353,13 +354,93 @@ def run_sliced(client: LRQClient, query: str, start: datetime, end: datetime,
 
 # -- CLI ---------------------------------------------------------------------------
 
-def _creds(path: Optional[str]) -> Tuple[str, str]:
-    url, tok = os.environ.get("S1_CONSOLE_URL"), os.environ.get("S1_CONSOLE_API_TOKEN")
-    if path:
-        d = json.loads(open(path).read())
-        url, tok = d.get("S1_CONSOLE_URL", url), d.get("S1_CONSOLE_API_TOKEN", tok)
+# Minimal inline copy of the s1_keystore.py lookup (mgmt-console-api/scripts), kept
+# here so this file stays a single stdlib-only module that deployers can vendor.
+# Same item naming as the MCP server: service "sentinelone-mcp", account "<profile>:<NAME>".
+_KC_SERVICE = "sentinelone-mcp"
+_ENV_ALIASES = {
+    "S1_CONSOLE_URL": ("S1_CONSOLE_URL", "S1_BASE_URL"),
+    "S1_CONSOLE_API_TOKEN": ("S1_CONSOLE_API_TOKEN", "S1_API_TOKEN", "SDL_CONSOLE_API_TOKEN"),
+}
+
+
+def _keychain_get(name: str) -> Tuple[Optional[str], Optional[str]]:
+    """(value, error) from the OS keychain. Never raises."""
+    import re
+    import shutil
+    import subprocess
+    if (os.environ.get("S1_KEYCHAIN") or "").strip().lower() == "off":
+        return None, "disabled by S1_KEYCHAIN=off"
+    prof = (os.environ.get("S1_PROFILE") or "default").strip()
+    if not re.match(r"^[A-Za-z0-9_.-]{1,64}$", prof):
+        return None, f'invalid S1_PROFILE "{prof}"'
+    acct = f"{prof}:{name}"
+    try:
+        if sys.platform == "darwin" and os.path.exists("/usr/bin/security"):
+            r = subprocess.run(["/usr/bin/security", "find-generic-password", "-s", _KC_SERVICE,
+                                "-a", acct, "-w"], capture_output=True, text=True, timeout=15)
+            if r.returncode == 0:
+                return r.stdout.rstrip("\r\n") or None, None
+            if r.returncode == 44:
+                return None, None
+            return None, f"macOS keychain read failed: {r.stderr.strip() or 'exit %d' % r.returncode}"
+        if sys.platform.startswith("linux"):
+            if not shutil.which("secret-tool"):
+                return None, "secret-tool not found"
+            r = subprocess.run(["secret-tool", "lookup", "service", _KC_SERVICE, "username", acct],
+                               capture_output=True, text=True, timeout=15)
+            if r.returncode == 0:
+                return r.stdout.rstrip("\r\n") or None, None
+            if r.returncode == 1 and not r.stderr.strip():
+                return None, None
+            return None, f"Linux keyring unavailable: {r.stderr.strip() or 'exit %d' % r.returncode}"
+        if sys.platform == "win32":
+            # Same Credential Manager item as the Node server and the PowerShell
+            # launcher: TargetName "<account>.sentinelone-mcp", UTF-16LE blob.
+            import ctypes
+            from ctypes import wintypes
+            class _CRED(ctypes.Structure):
+                _fields_ = [("Flags", wintypes.DWORD), ("Type", wintypes.DWORD), ("TargetName", wintypes.LPWSTR),
+                            ("Comment", wintypes.LPWSTR), ("LastWritten", wintypes.DWORD * 2),
+                            ("CredentialBlobSize", wintypes.DWORD), ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)),
+                            ("Persist", wintypes.DWORD), ("AttributeCount", wintypes.DWORD), ("Attributes", ctypes.c_void_p),
+                            ("TargetAlias", wintypes.LPWSTR), ("UserName", wintypes.LPWSTR)]
+            adv = ctypes.WinDLL("advapi32", use_last_error=True)
+            p = ctypes.POINTER(_CRED)()
+            if not adv.CredReadW(acct + "." + _KC_SERVICE, 1, 0, ctypes.byref(p)):
+                err = ctypes.get_last_error()
+                return (None, None) if err == 1168 else (None, "Windows Credential Manager read failed: %d" % err)
+            try:
+                c = p.contents
+                return ctypes.string_at(c.CredentialBlob, c.CredentialBlobSize).decode("utf-16-le") or None, None
+            finally:
+                adv.CredFree(p)
+        try:
+            import keyring  # type: ignore
+        except Exception:
+            return None, "no keychain backend (install the Python keyring package)"
+        return keyring.get_password(_KC_SERVICE, acct) or None, None
+    except Exception as e:  # never crash over the keychain
+        return None, f"OS keychain read failed: {e}"
+
+
+def _cred(name: str) -> Tuple[Optional[str], Optional[str]]:
+    """Environment first (canonical name, then aliases), then the OS keychain."""
+    for k in _ENV_ALIASES.get(name, (name,)):
+        if os.environ.get(k):
+            return os.environ[k], None
+    return _keychain_get(name)
+
+
+def _creds() -> Tuple[str, str]:
+    url, e1 = _cred("S1_CONSOLE_URL")
+    tok, e2 = _cred("S1_CONSOLE_API_TOKEN")
     if not url or not tok:
-        sys.exit("set S1_CONSOLE_URL and S1_CONSOLE_API_TOKEN, or pass --creds credentials.json")
+        missing = [n for n, v in (("S1_CONSOLE_URL", url), ("S1_CONSOLE_API_TOKEN", tok)) if not v]
+        err = e1 or e2
+        sys.exit(f"{' and '.join(missing)} not configured (looked in the environment and the OS keychain). "
+                 "Store it with `s1-secops-mcp setup` or pass it as an environment variable"
+                 + (f" (OS keychain: {err})" if err else "") + ".")
     return url, tok
 
 
@@ -382,7 +463,6 @@ def main() -> None:
     ap.add_argument("--limit", type=int)
     ap.add_argument("--account-ids", default="")
     ap.add_argument("--edr-strict", action="store_true", help='send scheme="edr" (fail loud on field typos)')
-    ap.add_argument("--creds")
     a = ap.parse_args()
 
     end = parse_iso(a.end) if a.end else datetime.now(timezone.utc).replace(microsecond=0)
@@ -393,7 +473,7 @@ def main() -> None:
     sp = lambda s: [x.strip() for x in s.split(",") if x.strip()]
     merge = Merge(keys=sp(a.keys), sum=sp(a.sum), min=sp(a.min), max=sp(a.max),
                   mode="concat" if a.concat else "aggregate", limit=a.limit)
-    url, tok = _creds(a.creds)
+    url, tok = _creds()
     c = LRQClient(url, tok, rps=a.rps, account_ids=sp(a.account_ids),
                   scheme="edr" if a.edr_strict else None)
     try:

@@ -1,0 +1,149 @@
+{
+  "manifest_version": "0.3",
+  "name": "s1-secops-mcp",
+  "display_name": "SentinelOne SecOps MCP",
+  "version": "1.5.2",
+  "description": "PowerQuery, Management Console API, Unified Alert Management, Singularity Data Lake and Hyperautomation tools for a SentinelOne tenant.",
+  "long_description": "Runs the s1-secops-mcp server (stdio) inside Claude Desktop. Enter the console URL and API token in the extension settings; Claude Desktop stores fields marked sensitive in the OS secure store (Keychain on macOS, Credential Manager on Windows) and passes them to the server as environment variables at launch. The server is started with S1_KEYCHAIN=off, so the values in these settings are the only credentials it uses.\n\n35 tools: PowerQuery (LRQ) hunts and schema discovery, generic Mgmt Console REST calls, UAM alert triage (status, analyst verdict, assignee, notes), SDL configuration files and dashboards, HEC log ingest, UAM test-alert ingest, and Hyperautomation workflow import and export. Also serves the soc_analyst and session_init prompts.",
+  "author": {
+    "name": "Prithvi Moses",
+    "email": "prithvi.moses@sentinelone.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sentinel-One/ai-siem"
+  },
+  "homepage": "https://github.com/Sentinel-One/ai-siem",
+  "documentation": "https://github.com/Sentinel-One/ai-siem/tree/main/mcp/s1-secops-mcp#readme",
+  "support": "https://github.com/Sentinel-One/ai-siem/issues",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "S1_CONSOLE_URL": "${user_config.console_url}",
+        "S1_CONSOLE_API_TOKEN": "${user_config.api_token}",
+        "S1_HEC_INGEST_URL": "${user_config.hec_ingest_url}",
+        "S1_HEC_TOKEN": "${user_config.hec_token}",
+        "S1_SCOPE": "${user_config.scope}",
+        "S1_OUTPUT_DIRS": "${user_config.output_dir}",
+        "S1_CLAUDE_MD_PATH": "${user_config.claude_md_path}",
+        "S1_KEYCHAIN": "off"
+      }
+    }
+  },
+  "tools": [
+    { "name": "powerquery_enumerate_sources", "description": "Run the standard data-source enumeration query to list every dataSource.name, vendor and category active in the tenant" },
+    { "name": "powerquery_run", "description": "Run a SentinelOne PowerQuery against the Singularity Data Lake using the LRQ API" },
+    { "name": "powerquery_schema_discover", "description": "Discover the field schema for an SDL data source by fetching raw event JSON via the V1 query endpoint" },
+    { "name": "s1_api_get", "description": "Generic GET request to the SentinelOne Management Console REST API (v2.1)" },
+    { "name": "s1_api_post", "description": "Generic POST request to the SentinelOne Management Console REST API (v2.1)" },
+    { "name": "s1_api_put", "description": "Generic PUT request to the SentinelOne Management Console REST API (v2.1)" },
+    { "name": "s1_api_delete", "description": "Generic DELETE request to the SentinelOne Management Console REST API (v2.1)" },
+    { "name": "s1_api_patch", "description": "Generic PATCH request to the SentinelOne Management Console REST API (v2.1)" },
+    { "name": "s1_api_download", "description": "Download a binary response from the Management Console REST API (v2.1) and save it to a file" },
+    { "name": "purple_ai_alert_summary", "description": "Get a Purple AI natural-language summary for a specific UAM alert" },
+    { "name": "uam_list_alerts", "description": "List UAM (Unified Alert Management) alerts via GraphQL" },
+    { "name": "uam_get_alert", "description": "Get full details for a specific UAM alert including analyst notes" },
+    { "name": "uam_add_note", "description": "Add an analyst note to a UAM alert" },
+    { "name": "uam_set_status", "description": "Update the status of a UAM alert, verified by re-reading it" },
+    { "name": "uam_set_verdict", "description": "Set the analyst verdict of a UAM alert, verified by re-reading it" },
+    { "name": "uam_assign_alert", "description": "Assign a UAM alert to a console user, or unassign it, verified by re-reading it" },
+    { "name": "uam_available_actions", "description": "Ask the API which actions can be triggered on a UAM alert, with isDisabled and disabledReason per action" },
+    { "name": "sdl_list_files", "description": "List the SDL configuration files (parsers, dashboards, alerts, lookups, datatables) visible at a scope" },
+    { "name": "sdl_get_file", "description": "Get the content and current version of an SDL configuration file" },
+    { "name": "sdl_put_file", "description": "Create or update an SDL configuration file" },
+    { "name": "sdl_delete_file", "description": "Delete an SDL configuration file (parser, dashboard, alert, lookup, datatable)" },
+    { "name": "sdl_list_dashboards", "description": "List the dashboards visible at a scope with their id, name, type and sharing" },
+    { "name": "sdl_get_dashboard", "description": "Read one dashboard including its tabs, description, duration, sharing and authorship" },
+    { "name": "sdl_create_dashboard", "description": "Create a dashboard from a complete dashboard-JSON document at a given scope" },
+    { "name": "sdl_share_dashboard", "description": "Share or unshare a dashboard with the account or with users" },
+    { "name": "sdl_save_dashboard_layout", "description": "Save panel positions (layout x/y/w/h) for one dashboard tab" },
+    { "name": "sdl_delete_dashboard", "description": "Delete a dashboard by id or name" },
+    { "name": "hec_ingest", "description": "Ingest raw logs or events into the Singularity Data Lake via the HEC (HTTP Event Collector) endpoint" },
+    { "name": "ha_list_workflows", "description": "List SentinelOne Hyperautomation workflows" },
+    { "name": "ha_get_workflow", "description": "Get a single Hyperautomation workflow by workflowId and revisionId" },
+    { "name": "ha_delete_workflow", "description": "Delete one or more Hyperautomation workflows" },
+    { "name": "ha_import_workflow", "description": "Import a Hyperautomation workflow JSON into the SentinelOne console" },
+    { "name": "ha_export_workflow", "description": "Export Hyperautomation workflows as a ZIP archive" },
+    { "name": "uam_ingest_alert", "description": "Create a synthetic test alert in Unified Alert Management (UAM) via the SentinelOne ingest API" },
+    { "name": "uam_post_alert", "description": "POST a single raw OCSF SecurityAlert to /v1/alerts on the SentinelOne HEC ingest host" }
+  ],
+  "tools_generated": false,
+  "prompts_generated": true,
+  "keywords": [
+    "sentinelone",
+    "singularity",
+    "security",
+    "soc",
+    "powerquery",
+    "sdl",
+    "singularity-data-lake",
+    "uam",
+    "hyperautomation",
+    "threat-hunting"
+  ],
+  "license": "MIT",
+  "privacy_policies": [
+    "https://www.sentinelone.com/legal/privacy-notice/"
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=24"
+    }
+  },
+  "user_config": {
+    "console_url": {
+      "type": "string",
+      "title": "Console URL",
+      "description": "SentinelOne Management Console URL, for example https://usea1-acme.sentinelone.net (no trailing path).",
+      "required": true
+    },
+    "api_token": {
+      "type": "string",
+      "title": "Console API token",
+      "description": "Management Console API token (service user or console user). Used for the Mgmt API, UAM, PowerQuery and SDL.",
+      "sensitive": true,
+      "required": true
+    },
+    "hec_ingest_url": {
+      "type": "string",
+      "title": "HEC ingest URL (optional)",
+      "description": "HEC ingest host for hec_ingest, uam_ingest_alert and uam_post_alert, for example https://ingest.us1.sentinelone.net.",
+      "required": false,
+      "default": ""
+    },
+    "hec_token": {
+      "type": "string",
+      "title": "SDL Log Write Key (optional)",
+      "description": "SDL Log Write Key, used only by hec_ingest. Console > Singularity Data Lake > API Keys > Log Write Key.",
+      "sensitive": true,
+      "required": false,
+      "default": ""
+    },
+    "scope": {
+      "type": "string",
+      "title": "Default S1-Scope (optional)",
+      "description": "Default S1-Scope for SDL requests: \"<accountId>\" or \"<accountId>:<siteId>\". Leave blank to use the token default.",
+      "required": false,
+      "default": ""
+    },
+    "output_dir": {
+      "type": "directory",
+      "title": "Output directory (optional)",
+      "description": "The only directory tools may write outputFile results to. Leave blank to allow your home directory and the system temp directory.",
+      "required": false,
+      "default": ""
+    },
+    "claude_md_path": {
+      "type": "file",
+      "title": "SOC analyst CLAUDE.md (optional)",
+      "description": "CLAUDE.md served by the soc_analyst prompt and the sentinelone://soc-context resource. Leave blank to use the copy bundled with the extension.",
+      "required": false,
+      "default": ""
+    }
+  }
+}

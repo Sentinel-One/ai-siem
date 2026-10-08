@@ -9,6 +9,17 @@
 
 import { lrqRun } from '../lib/s1.js';
 import { v1Query } from '../lib/sdl.js';
+import { slicedRun, MAX_SLICES } from '../lib/slicing.js';
+import { writeOutput, serialiseRows, resolveOutputPath } from '../lib/output.js';
+
+const OUTPUT_FILE_DESC = 'Optional absolute path on the machine running this MCP server. When set, the FULL result is written there (.csv, .jsonl/.ndjson, or JSON for any other extension) and the response carries only a summary plus a 5-row preview, so bulk results do not pass through the context window. Must be inside S1_OUTPUT_DIRS (default: home and temp directories). Refuses to overwrite unless overwrite is true. Files are created mode 0600.';
+
+/** Write a result to outputFile and return a compact summary instead of the rows. */
+function persist(result, rows, outputFile, overwrite) {
+  const out = writeOutput(outputFile, serialiseRows(outputFile, rows, result), { overwrite: overwrite === true });
+  const { rows: _r, matches: _m, ...rest } = result;
+  return { ...rest, outputFile: out.path, bytesWritten: out.bytes, sha256: out.sha256, rowsWritten: rows.length, preview: rows.slice(0, 5) };
+}
 
 export const tools = [
   // ─── powerquery_enumerate_sources ─────────────────────────────────────────
@@ -25,7 +36,7 @@ export const tools = [
         },
         scope: {
           type: 'string',
-          description: 'Optional S1-Scope, "<accountId>" or "<accountId>:<siteId>". LOG READS ARE SCOPE-FILTERED just like config reads, so this changes which events the query can see. Use it to hunt within one site, and to validate a site-scoped dashboard panel against the same boundary the dashboard will see. Omit to use S1_SCOPE from credentials.json, or the token default when that is unset.',
+          description: 'Optional S1-Scope, "<accountId>" or "<accountId>:<siteId>". LOG READS ARE SCOPE-FILTERED just like config reads, so this changes which events the query can see. Use it to hunt within one site, and to validate a site-scoped dashboard panel against the same boundary the dashboard will see. Omit to use the configured S1_SCOPE, or the token default when that is unset.',
         },
       },
       required: [],
@@ -43,7 +54,7 @@ export const tools = [
   // ─── powerquery_run ────────────────────────────────────────────────────────
   {
     name: 'powerquery_run',
-    description: `Run a SentinelOne PowerQuery against the Singularity Data Lake using the LRQ API. The LRQ API is async; this tool handles the full launch-poll-cancel lifecycle and returns results. Use for threat hunting, telemetry analysis, dashboard panel validation, and STAR rule testing. Auth: Bearer <jwt> (same token as mgmt API). Time range defaults to last 24 hours if startTime/endTime are omitted. SDL INGEST-METERING ROWS ARE EXCLUDED BY DEFAULT: every ingest writes receive-time accounting rows (tag='logVolume', fields metric/value/path1) under the source's own dataSource.name, which inflate per-source counts and make a silent source look live. The tool ANDs \`tag != 'logVolume'\` into the initial filter (rows with no tag are kept) and returns effectiveQuery. It is not added when the query mentions logVolume, or opens with | datasource, | dataset, | join or | union. Set includeMetering true to send the query unchanged, e.g. for ingest-volume or licence analysis. The console's XDR view already hides these rows; All Data does not.`,
+    description: `Run a SentinelOne PowerQuery against the Singularity Data Lake using the LRQ API. The LRQ API is async; this tool handles the full launch-poll-cancel lifecycle and returns results. Use for threat hunting, telemetry analysis, dashboard panel validation, and STAR rule testing. Auth: Bearer <jwt> (same token as mgmt API). Time range defaults to last 24 hours if startTime/endTime are omitted. SDL INGEST-METERING ROWS ARE EXCLUDED BY DEFAULT: every ingest writes receive-time accounting rows (tag='logVolume', fields metric/value/path1) under the source's own dataSource.name, which inflate per-source counts and make a silent source look live. The tool ANDs \`tag != 'logVolume'\` into the initial filter (rows with no tag are kept) and returns effectiveQuery. It is not added when the query mentions logVolume, or opens with | datasource, | dataset, | join or | union. Set includeMetering true to send the query unchanged, e.g. for ingest-volume or licence analysis. The console's XDR view already hides these rows; All Data does not. NUMBERS: integers beyond 2^53 (17-19 digit ids, nanosecond timestamps) are returned as exact strings, not rounded numbers; aggregates such as sum(), min() and max() come back from SDL as floats and stay numbers.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -71,8 +82,33 @@ export const tools = [
         },
         scope: {
           type: 'string',
-          description: 'Optional S1-Scope, "<accountId>" or "<accountId>:<siteId>". LOG READS ARE SCOPE-FILTERED just like config reads, so this changes which events the query can see. Use it to hunt within one site, and to validate a site-scoped dashboard panel against the same boundary the dashboard will see. Omit to use S1_SCOPE from credentials.json, or the token default when that is unset.',
+          description: 'Optional S1-Scope, "<accountId>" or "<accountId>:<siteId>". LOG READS ARE SCOPE-FILTERED just like config reads, so this changes which events the query can see. Use it to hunt within one site, and to validate a site-scoped dashboard panel against the same boundary the dashboard will see. Omit to use the configured S1_SCOPE, or the token default when that is unset.',
         },
+        queryType: {
+          type: 'string',
+          enum: ['PQ', 'LOG'],
+          description: 'PQ (default): a PowerQuery pipeline. LOG: raw event search; `query` is a filter expression only (no pipes), e.g. dataSource.name=\'Okta\' * contains \'jdoe\', and the response carries every parsed field per event in `matches`. Use LOG for evidence-grade exports, full-event forensic timelines and S1QL-style hunts (the Deep Visibility replacement). The server caps LOG at logLimit rows (max 5000); truncatedByServerCap=true means the window held more, so slice it.',
+        },
+        logLimit: {
+          type: 'number',
+          description: 'LOG only: server-side row cap per query or slice (default and max 5000).',
+        },
+        slices: {
+          type: 'number',
+          description: `Split the window into N equal time slices (2-${MAX_SLICES}) run in parallel, then combine. Use for windows over ~24h, where one query is slow or times out (30 days: ~5 s as 15 slices vs 21-40 s unsliced, identical totals). For PQ group-by results also pass merge; without merge the slice rows are concatenated. Only mergeable aggregates (count, sum, min, max) may be merged; estimate_distinct, avg, percentiles, top and savelookup are refused.`,
+        },
+        merge: {
+          type: 'object',
+          description: 'With slices on a PQ aggregate: how to combine rows across slices. keys = group-by columns; sum = columns to add (count() results are sums); min / max = columns to take the min / max of. Example: {"keys":["dataSource.name"],"sum":["count"]}.',
+          properties: {
+            keys: { type: 'array', items: { type: 'string' } },
+            sum: { type: 'array', items: { type: 'string' } },
+            min: { type: 'array', items: { type: 'string' } },
+            max: { type: 'array', items: { type: 'string' } },
+          },
+        },
+        outputFile: { type: 'string', description: OUTPUT_FILE_DESC },
+        overwrite: { type: 'boolean', description: 'Allow outputFile to replace an existing file.' },
         includeMetering: {
           type: 'boolean',
           description: 'Send the query unchanged, including SDL ingest-metering rows (tag=\'logVolume\'). Omit, or false, to exclude them (the normal case). Set true only for ingest-volume, data-usage or licence questions.',
@@ -84,8 +120,32 @@ export const tools = [
       },
       required: ['query'],
     },
-    async handler({ query, startTime, endTime, hours = 24, maxRows = 1000, scope, includeMetering, edrStrict }) {
-      const result = await lrqRun(query, { startTime, endTime, hours, maxRows, scope, includeMetering: includeMetering === true, edrStrict: edrStrict === true });
+    async handler({ query, startTime, endTime, hours = 24, maxRows = 1000, scope, includeMetering, edrStrict, queryType = 'PQ', logLimit, slices, merge, outputFile, overwrite }) {
+      const common = { startTime, endTime, hours, scope, includeMetering: includeMetering === true, edrStrict: edrStrict === true, queryType, logLimit };
+      const n = slices === undefined || slices === null ? 1 : Number(slices);
+      if (!Number.isInteger(n) || n < 1 || n > MAX_SLICES) throw new Error(`slices must be a whole number between 1 and ${MAX_SLICES}`);
+      if (merge && n < 2) throw new Error('merge only applies with slices >= 2');
+      // Validate the output path BEFORE running the query, so a refused path costs nothing.
+      if (outputFile) resolveOutputPath(outputFile, { overwrite: overwrite === true });
+
+      let result;
+      let rows;
+      if (n > 1) {
+        result = await slicedRun(query, { ...common, slices: n, merge });
+        rows = result.rows;
+      } else {
+        // With outputFile, keep every row the engine returned; maxRows caps the inline response only.
+        result = await lrqRun(query, { ...common, maxRows: outputFile ? Number.MAX_SAFE_INTEGER : maxRows });
+        rows = queryType === 'LOG' ? result.matches : result.rows;
+      }
+
+      if (outputFile) return JSON.stringify(persist(result, rows, outputFile, overwrite), null, 2);
+
+      // Inline response: apply the maxRows cap (sliced results are uncapped internally).
+      if (n > 1 && rows.length > maxRows) {
+        result = { ...result, rows: rows.slice(0, maxRows), rowCount: maxRows, rowsTruncatedInline: true,
+          note: `${rows.length} rows; showing the first ${maxRows}. Pass outputFile to keep them all.` };
+      }
       return JSON.stringify(result, null, 2);
     },
   },

@@ -58,7 +58,7 @@ Ids come from `GET /web/api/v2.1/accounts` and `GET /web/api/v2.1/sites`. Group 
 2. The `/dashboards/` duplicate guard must list at the scope of the write, or it will either miss a same-named sibling or block a legitimate create.
 3. "File not found" is always scope-relative. Before concluding an object is gone, re-check at the scope it was created in.
 
-`SDLClient` and the `sdl_*` MCP tools take an explicit `scope` argument, defaulting to `S1_SCOPE` from credentials. Passing `scope=None` / `scope: null` deliberately suppresses that default and sends no header, which is what a token-default listing needs.
+The `sdl_*` MCP tools and the host-only `SDLClient` take an explicit `scope` argument, defaulting to `S1_SCOPE` from the environment or the OS keychain. Passing `scope=None` / `scope: null` deliberately suppresses that default and sends no header, which is what a token-default listing needs.
 
 ## Why not REST
 
@@ -183,7 +183,9 @@ and the stored content is left untouched (verified 2026-08-07 on a name-addresse
 
 ## Client
 
-Use `SDLClient` from `scripts/sdl_client.py`:
+From Cowork or any MCP client, use the `s1-secops-mcp` tools, which implement every rule on this page: `sdl_list_files` (GraphQL `configFiles`), `sdl_get_file` (`path` or `udoId`), `sdl_put_file` (`path` to create, `udoId` plus `expectedVersion` to update a dashboard; it refuses a path-addressed write to an existing dashboard) and `sdl_delete_file`.
+
+On the user's host (Claude Code or a terminal), `SDLClient` from `scripts/sdl_client.py` does the same, with credentials from environment variables or the OS keychain:
 
 ```python
 from sdl_client import SDLClient
@@ -220,7 +222,7 @@ The same `POST /sdl/v2/graphql` endpoint carries a second, higher-level surface 
 | `getDashboardV2(id, dashboardName, resolveParameters)` | query | One dashboard incl. tabs, duration, authorship |
 | `createDashboardV2(dashboardName, config, public)` | mutation | Create from a full dashboard-JSON string |
 | `saveDashboardLayout(id, dashboardName, graphs, options, tabName)` | mutation | Save panel POSITIONS of ONE tab (layout only, matched by index; content ignored, panel count must match) |
-| `shareResource(id, users, scopes)` | mutation | Share to scopes and/or users |
+| `shareResource(id, users, scopes)` | mutation | Share with the account or with users |
 | `deleteDashboard(id, dashboardName)` | mutation | Delete; returns a bare boolean |
 
 **`id` here IS `udoId` there.** Dashboard `meta1` is `id 6999000578736128` in `getDashboardV2` and `udoId 6999000578736128` / `name "/dashboards/meta1"` in `configFile`. Same object, two views.
@@ -236,9 +238,9 @@ The same `POST /sdl/v2/graphql` endpoint carries a second, higher-level surface 
 
 `getDashboardV2` returns `version: ""`, a display string that is empty in practice. `configFile` returns `version: 215771284`, the optimistic-locking token. **Only the `configFile` value is valid as `expectedVersion`.**
 
-### `shareResource` is the only scope-targeting operation
+### `shareResource`: share with the account or with users
 
-Every other operation infers scope from the `S1-Scope` header. `shareResource` takes explicit targets, which is how you push an account-scoped dashboard down to a site without recreating it:
+`shareResource` shares an existing dashboard with the account or with users. It is not a deployment route: to put a dashboard on a site, create it there (see "Site-level lifecycle" below).
 
 ```json
 {
@@ -246,13 +248,13 @@ Every other operation infers scope from the `S1-Scope` header. `shareResource` t
   "variables": {
     "id": "6999150597128192",
     "users": [],
-    "scopes": [{ "scopeType": "site", "scopeId": "9876543210987654321", "operation": "ADD" }]
+    "scopes": [{ "scopeType": "account", "scopeId": "1234567890123456789", "operation": "ADD" }]
   },
   "query": "mutation ShareDashboard($id: ID!, $users: [UserSharingCommand], $scopes: [ScopeSharingCommand]) { shareResource(id: $id, users: $users, scopes: $scopes) { id name } }"
 }
 ```
 
-`scopeType` is `site` | `account` | `global`; `operation` is `ADD` | `REMOVE`; `scopeId` is the numeric id. A malformed entry is accepted and shares nothing, which reads as success, so validate before sending.
+`operation` is `ADD` | `REMOVE`; `scopeId` is the numeric account id. A malformed entry is accepted and shares nothing, which reads as success, so validate before sending.
 
 ### Tab payloads are JSON strings
 
@@ -270,12 +272,9 @@ The dashboard survives as an empty shell (`configType: "NOT_SPECIFIED"`, `graphs
 
 ### Site-level lifecycle, end to end
 
-Two equivalent routes:
+Create the dashboard in place: call `createDashboardV2` with `S1-Scope: <accountId>:<siteId>` (MCP: `sdl_create_dashboard` with `scope: "<accountId>:<siteId>"`). This is the one documented way to deploy to a site, and it works from an account-scoped service user (verified live 2026-10-08).
 
-1. **Create in place**: call `createDashboardV2` with `S1-Scope: <accountId>:<siteId>`.
-2. **Create then share**: create at account scope, then `shareResource` with a `site` target. Use this when the calling token sits at account scope.
-
-Then verify: `dashboardsV2` at the site scope must list it, and at account scope it must be absent (or present-but-shared, depending on route). Confirming at only one scope proves nothing.
+Then verify: `dashboardsV2` at the site scope must list it, and at account scope it must be absent. Confirming at only one scope proves nothing.
 
 ## Credentials
 
@@ -298,7 +297,7 @@ there, where the write key returns `HTTP 200 {"text":"Success","code":0}`.
 
 Pass `public: true` for anything a person is meant to open. Verified: the same dashboard at the same scope went from invisible to visible in the console purely by recreating it with `public: true`, and every pre-existing dashboard at that site carried `public: true`.
 
-`shareResource` with a scope target does **not** flip `public`; the two are independent.
+`shareResource` does **not** flip `public`; the two are independent.
 
 **2. Dashboard names reject several punctuation characters, with only `Invalid name` as the error.**
 

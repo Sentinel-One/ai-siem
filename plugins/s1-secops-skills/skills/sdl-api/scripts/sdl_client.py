@@ -5,33 +5,31 @@ Every SDL method authenticates with the management-console API token,
 sent as ``Authorization: Bearer <token>``. That single credential covers
 config read, config write, and log read.
 
-Credential resolution order (highest wins, applied last):
+Credentials resolve per value (first hit wins), see s1_keystore.py:
   1. Environment variables
-  2. $COWORK_WORKSPACE/credentials.json   (recommended: drop credentials.json
-     directly in your Cowork project folder.)
-  3. Auto-discovered <workspace>/credentials.json (cwd walk-up, then scan
-     ~/mnt/* for any Cowork-accessible folder containing credentials.json).
-  4. $CLAUDE_CONFIG_DIR/sentinelone/credentials.json  (Cowork session)
-  5. ~/.config/sentinelone/credentials.json           (host terminal fallback)
-  6. <skill>/config.json                              (last resort)
+  2. OS keychain, service "sentinelone-mcp", account "<profile>:<NAME>",
+     profile from S1_PROFILE (default "default")
 
-  Legacy layouts (.sentinelone/credentials.json and
-  .claude/sentinelone/credentials.json under the same workspace roots)
-  are still accepted at every workspace pass, so existing setups keep
-  working without migration.
+There is no file fallback: credentials.json and config.json are never read.
+Store values once with `s1-secops-mcp setup` (or
+`python3 scripts/s1_keystore.py setup`), or export them.
 
-Canonical keys:
+Names:
   S1_CONSOLE_URL         -> base_url is <console>/sdl
   S1_CONSOLE_API_TOKEN   -> console_api_token (mgmt-console token; authorises
                                                every SDL query and config
                                                method. Same token used by
                                                S1Client.)
-  SDL_S1_SCOPE           -> s1_scope          (required with console token when multi-site/account)
-  SDL_VERIFY_TLS         -> verify_tls        (default true)
+  S1_SCOPE               -> s1_scope          (default S1-Scope header; needed
+                                               when the token spans several
+                                               accounts or sites)
 
-Deprecated aliases (still read but logged once):
+Environment aliases (still read):
   S1_API_TOKEN           -> S1_CONSOLE_API_TOKEN  (former canonical)
   SDL_CONSOLE_API_TOKEN  -> S1_CONSOLE_API_TOKEN  (legacy duplicate, same JWT)
+  SDL_S1_SCOPE           -> S1_SCOPE
+
+Non-secret setting (environment only): SDL_VERIFY_TLS (default true).
 
 Usage:
     from sdl_client import SDLClient
@@ -67,95 +65,25 @@ import requests
 
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
-CONFIG_PATH = SKILL_DIR / "config.json"
-# Legacy terminal fallback; kept for backward compat.
-HOME_CREDS_PATH = Path.home() / ".config" / "sentinelone" / "credentials.json"
-# Recommended persistent Mac path; aligns with $CLAUDE_CONFIG_DIR conventions
-# and is editable from outside the sandbox without knowing CLAUDE_CONFIG_DIR.
-DOTCLAUDE_CREDS_PATH = Path.home() / ".claude" / "sentinelone" / "credentials.json"
-# Cowork session creds (shared across plugins) when CLAUDE_CONFIG_DIR is set.
-_CLAUDE_CONFIG_DIR = os.environ.get("CLAUDE_CONFIG_DIR", "")
-PLUGIN_CREDS_PATH = (Path(_CLAUDE_CONFIG_DIR) / "sentinelone" / "credentials.json"
-                     if _CLAUDE_CONFIG_DIR else None)
 
 
-# Workspace creds layout. The recommended path is just credentials.json
-# directly in the project folder. The legacy .sentinelone/ and
-# .claude/sentinelone/ subfolder layouts are still accepted so existing
-# setups keep working without migration.
-_WORKSPACE_CREDS_RELS = (
-    Path("credentials.json"),
-    Path(".sentinelone") / "credentials.json",
-    Path(".claude") / "sentinelone" / "credentials.json",
-)
-# Mount points under $HOME/mnt that are not user workspaces.
-_MNT_SKIP = frozenset({".claude", ".auto-memory", ".remote-plugins", "outputs", "uploads"})
-
-
-def _walk_up_for_workspace_creds() -> Optional[Path]:
-    """Find workspace-scoped credentials inside a Cowork-accessible folder.
-
-    Three-pass search (in priority order):
-
-      1. $COWORK_WORKSPACE env var. If set, look for
-         $COWORK_WORKSPACE/credentials.json (the recommended convention).
-         Falls through if not found.
-
-      2. Walk up from cwd looking for credentials.json.
-
-      3. Scan $HOME/mnt/<folder>/ for any Cowork-accessible folder that
-         contains credentials.json. This is the simple "drop the file in
-         any folder Cowork can see" backup: in a sandbox, the user's
-         project folder is mounted at ~/mnt/<projectname>/ but cwd is
-         often /outputs.
-
-    All three passes also accept the legacy .sentinelone/credentials.json
-    and .claude/sentinelone/credentials.json layouts so existing setups
-    keep working without migration.
-    """
-    # Pass 1: explicit $COWORK_WORKSPACE override.
-    explicit = os.environ.get("COWORK_WORKSPACE", "").strip()
-    if explicit:
-        explicit_path = Path(explicit)
-        for rel in _WORKSPACE_CREDS_RELS:
-            candidate = explicit_path / rel
-            if candidate.is_file():
-                return candidate
-
-    # Pass 2: cwd walk-up.
+def _import_keystore():
+    """Import the sibling s1_keystore.py whether or not scripts/ is on sys.path."""
     try:
-        cwd = Path.cwd().resolve()
-    except (OSError, RuntimeError):
-        cwd = None
-    if cwd is not None:
-        for i, parent in enumerate([cwd, *cwd.parents]):
-            if i >= 20:
-                break
-            for rel in _WORKSPACE_CREDS_RELS:
-                candidate = parent / rel
-                if candidate.is_file():
-                    return candidate
-
-    # Pass 3: scan $HOME/mnt for any Cowork-accessible folder.
-    home_mnt = Path.home() / "mnt"
-    if home_mnt.is_dir():
-        try:
-            entries = sorted(home_mnt.iterdir())
-        except OSError:
-            entries = []
-        for entry in entries:
-            if not entry.is_dir() or entry.name in _MNT_SKIP:
-                continue
-            for rel in _WORKSPACE_CREDS_RELS:
-                candidate = entry / rel
-                if candidate.is_file():
-                    return candidate
-    return None
+        import s1_keystore as ks  # type: ignore
+        return ks
+    except ImportError:
+        import importlib.util
+        import sys as _sys
+        path = Path(__file__).resolve().parent / "s1_keystore.py"
+        spec = importlib.util.spec_from_file_location("s1_keystore", path)
+        ks = importlib.util.module_from_spec(spec)
+        _sys.modules["s1_keystore"] = ks
+        spec.loader.exec_module(ks)  # type: ignore[union-attr]
+        return ks
 
 
-# One-time deprecation warning flags.
-_warned_legacy_token = False
-_warned_legacy_url = False
+_keystore = _import_keystore()
 
 
 class _Unset:
@@ -211,110 +139,32 @@ class SandboxProxyBlockedError(RuntimeError):
     pass
 
 
-def _apply_sdl_keys(creds: Dict[str, Any], cfg: Dict[str, Any], source: str) -> None:
-    """Populate cfg from a creds dict, accepting canonical and legacy keys.
-
-    Token canonical: S1_CONSOLE_API_TOKEN drives console_api_token (same JWT
-    as mgmt console). Aliases: S1_API_TOKEN (former canonical),
-    SDL_CONSOLE_API_TOKEN (legacy duplicate).
-
-    base_url is derived from S1_CONSOLE_URL as <console>/sdl.
-    (former canonical).
-    """
-    global _warned_legacy_token, _warned_legacy_url
-    if creds.get("S1_CONSOLE_URL"):
-        cfg["base_url"] = creds["S1_CONSOLE_URL"].rstrip("/") + "/sdl"
-    direct_map = {
-        "SDL_S1_SCOPE": "s1_scope",
-    }
-    for env, field in direct_map.items():
-        if creds.get(env):
-            cfg[field] = creds[env]
-    # Console token: canonical S1_CONSOLE_API_TOKEN; aliases: S1_API_TOKEN
-    # (former canonical), SDL_CONSOLE_API_TOKEN (legacy duplicate of the
-    # same JWT). All three name the same token.
-    token = (
-        creds.get("S1_CONSOLE_API_TOKEN")
-        or creds.get("S1_API_TOKEN")
-        or creds.get("SDL_CONSOLE_API_TOKEN")
-    )
-    if token:
-        cfg["console_api_token"] = token
-        if not creds.get("S1_CONSOLE_API_TOKEN") and not _warned_legacy_token:
-            legacy_name = "S1_API_TOKEN" if creds.get("S1_API_TOKEN") else "SDL_CONSOLE_API_TOKEN"
-            import warnings as _w
-            _w.warn(
-                f"{source}: {legacy_name} is deprecated, rename to S1_CONSOLE_API_TOKEN",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            _warned_legacy_token = True
-
-
 def _load_config() -> Dict[str, Any]:
-    """Resolve credentials across all configured layers.
+    """Resolve credentials: environment variables, then the OS keychain.
 
-    Priority (highest wins): env vars > workspace .sentinelone (resolved
-    via $COWORK_WORKSPACE, cwd walk-up, or ~/mnt/* scan; legacy
-    .claude/sentinelone/ accepted) > $CLAUDE_CONFIG_DIR > ~/.claude
-    > ~/.config > skill config.json.
+    Each value is looked up independently through s1_keystore.get(), which
+    checks the canonical environment variable and its aliases first and the
+    keychain item "<profile>:<NAME>" second. Keychain errors never raise
+    here; they are reported by the "not configured" message instead. No
+    file is read. base_url is derived from S1_CONSOLE_URL as <console>/sdl.
     """
     cfg: Dict[str, Any] = {}
-
-    # Layer 1: skill-local config.json (last resort).
-    if CONFIG_PATH.exists():
-        try:
-            cfg = json.loads(CONFIG_PATH.read_text())
-        except json.JSONDecodeError as e:
-            raise RuntimeError(f"config.json is not valid JSON: {e}")
-
-    # Layered file lookup, applied lowest-to-highest priority.
-    file_layers: List = []
-    if HOME_CREDS_PATH.exists():
-        file_layers.append((HOME_CREDS_PATH, "~/.config/sentinelone/credentials.json"))
-    if DOTCLAUDE_CREDS_PATH.exists():
-        file_layers.append((DOTCLAUDE_CREDS_PATH, "~/.claude/sentinelone/credentials.json"))
-    if PLUGIN_CREDS_PATH and PLUGIN_CREDS_PATH.exists():
-        file_layers.append((PLUGIN_CREDS_PATH, "$CLAUDE_CONFIG_DIR/sentinelone/credentials.json"))
-    workspace_creds = _walk_up_for_workspace_creds()
-    if workspace_creds is not None:
-        file_layers.append((workspace_creds, str(workspace_creds)))
-
-    for path, label in file_layers:
-        try:
-            creds = json.loads(path.read_text())
-        except json.JSONDecodeError as e:
-            raise RuntimeError(f"{path} is not valid JSON: {e}")
-        _apply_sdl_keys(creds, cfg, label)
-
-    # Highest priority: environment variables.
-    if os.environ.get("S1_CONSOLE_URL"):
-        cfg["base_url"] = os.environ["S1_CONSOLE_URL"].rstrip("/") + "/sdl"
-    direct_env = {
-        "SDL_S1_SCOPE": "s1_scope",
-    }
-    for env, field in direct_env.items():
-        if os.environ.get(env):
-            cfg[field] = os.environ[env]
-    env_token = (
-        os.environ.get("S1_CONSOLE_API_TOKEN")
-        or os.environ.get("S1_API_TOKEN")
-        or os.environ.get("SDL_CONSOLE_API_TOKEN")
-    )
-    if env_token:
-        cfg["console_api_token"] = env_token
+    url = _keystore.get("S1_CONSOLE_URL")
+    if url:
+        cfg["base_url"] = url.rstrip("/") + "/sdl"
+    token = _keystore.get("S1_CONSOLE_API_TOKEN")
+    if token:
+        cfg["console_api_token"] = token
+    scope = _keystore.get("S1_SCOPE")
+    if scope:
+        cfg["s1_scope"] = scope
     if os.environ.get("SDL_VERIFY_TLS"):
         cfg["verify_tls"] = os.environ["SDL_VERIFY_TLS"].lower() not in ("0", "false", "no")
     return cfg
 
 
 class SDLClient:
-    """SDL API client. Picks the right token per method automatically."""
-
-    # --- key selection table -------------------------------------------------
-    # Read-log methods fall back: log_read -> config_read -> config_write -> console
-    # Config-read methods: config_read -> config_write -> console
-    # Config-write methods: config_write -> console
+    """SDL API client. Every method authenticates with the console API token."""
 
     def __init__(
         self,
@@ -331,17 +181,13 @@ class SDLClient:
         self.base_url = (base_url or cfg.get("base_url") or "").rstrip("/")
         if not self.base_url or "REPLACE-ME" in self.base_url:
             raise RuntimeError(
-                "SDL base_url is not set. Add S1_CONSOLE_URL to "
-                "$COWORK_WORKSPACE/credentials.json (or any "
-                "folder Cowork can access) or export S1_CONSOLE_URL."
+                _keystore.not_configured_message("S1_CONSOLE_URL", "SDL base URL (S1_CONSOLE_URL)")
             )
 
         self.token = cfg.get("console_api_token") or ""
         if not self.token:
             raise RuntimeError(
-                "S1_CONSOLE_API_TOKEN is not set. Add it to "
-                "$COWORK_WORKSPACE/credentials.json (or any "
-                "folder Cowork can access) or export S1_CONSOLE_API_TOKEN."
+                _keystore.not_configured_message("S1_CONSOLE_API_TOKEN", "S1 console API token (S1_CONSOLE_API_TOKEN)")
             )
         self.s1_scope = cfg.get("s1_scope") or ""
         self.verify_tls = cfg.get("verify_tls", True) if verify_tls is None else verify_tls
@@ -1056,7 +902,7 @@ class SDLClient:
         digits, space, - _ . / . Rejected: ( ) [ ] { } : , & ' % # .
 
         DUPLICATE NAMES ARE ALLOWED here, unlike put_config_file: the console
-        itself creates "<name> - Copy" siblings and shareResource addresses
+        itself creates "<name> - Copy" siblings and every later call addresses
         dashboards by id. Pass fail_if_name_exists=True to refuse instead.
         """
         if not name or not isinstance(name, str):
@@ -1109,18 +955,16 @@ class SDLClient:
         users: Optional[List[Dict[str, Any]]] = None,
         scope: Any = _UNSET,
     ) -> Dict[str, Any]:
-        """Share (or unshare) a dashboard to scopes and/or users.
+        """Share (or unshare) a dashboard with the account or with users.
 
-        THE ONLY SDL OPERATION THAT TAKES AN EXPLICIT SCOPE TARGET; everything
-        else infers scope from the S1-Scope header. Use it to push an
-        account-scoped dashboard down to a site without recreating it.
+        This is not a deployment route. To deploy a dashboard to a site, create
+        it there: create_dashboard(scope="<accountId>:<siteId>").
 
-        Note the two different scope arguments: `scopes` is WHERE THE DASHBOARD
-        GOES; `scope` is the header for this call, i.e. where you are standing.
+        Note the two different scope arguments: `scopes` lists the share
+        targets; `scope` is the header for this call, i.e. where you are standing.
 
-        Each `scopes` entry is {scopeType, scopeId, operation}: scopeType is
-        site | account | global, scopeId is the numeric id from
-        /web/api/v2.1/sites or /accounts, operation is ADD | REMOVE.
+        Each `scopes` entry is {scopeType, scopeId, operation}: scopeId is the
+        numeric account id from /web/api/v2.1/accounts, operation is ADD | REMOVE.
         """
         if not dashboard_id:
             raise ValueError("share_dashboard requires dashboard_id")

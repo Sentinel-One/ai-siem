@@ -18,9 +18,9 @@ description: >
 > changes which files exist as far as the caller can tell.
 > Full detail: [`sdl-api/references/config-file-graphql.md`](../sdl-api/references/config-file-graphql.md)
 
-This skill helps you design, author, and deploy Singularity Data Lake (SDL) dashboards, from a single panel to a full multi-tab SOC dashboard. Dashboards live as configuration files in SDL and are authored as JSON (or a relaxed JavaScript-literal superset of it). You deploy them via the `sdl-api` skill's `put_file` method.
+This skill helps you design, author, and deploy Singularity Data Lake (SDL) dashboards, from a single panel to a full multi-tab SOC dashboard. Dashboards live as configuration files in SDL and are authored as JSON (or a relaxed JavaScript-literal superset of it). You deploy them with the `sdl_put_file` MCP tool.
 
-> **Sandbox proxy blocked?** If `put_file` or SDL API calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see the s1-secops-mcp README: `s1-secops-mcp/README.md` in the s1-secops-skills repo, `mcp/s1-secops-mcp/README.md` in ai-siem; it is not shipped inside the plugin). Use the `sdl_put_file` tool to deploy dashboards and `sdl_get_file` / `sdl_list_files` to inspect what's already deployed.
+> **Talk to the tenant through the `s1-secops-mcp` MCP tools.** `sdl_list_files` / `sdl_get_file` / `sdl_put_file` inspect and deploy dashboards, `powerquery_enumerate_sources` and `powerquery_schema_discover` drive pre-authoring discovery, and `powerquery_run` validates every panel query. The server runs on the user's machine, so it reaches `*.sentinelone.net` where the Cowork sandbox cannot, and it reads credentials from environment variables or the OS keychain. If the tools are missing, point the user to the s1-secops-mcp README (`s1-secops-mcp/README.md` in the s1-secops-skills source repo, `mcp/s1-secops-mcp/README.md` in ai-siem; not shipped inside the plugin). The local scripts in `scripts/` that make no network calls (`panel_safety_check.py`, `render_validation_pdf.py`) run anywhere; `validate_dashboard.py` calls the tenant and is host-only.
 
 ## Before you start: REST cannot SEE most dashboards
 
@@ -80,24 +80,28 @@ rather than silently following the prompt into a broken panel.
 
 This workflow is mandatory for every new or modified dashboard. Steps 0, 1, and 7 are non-negotiable: pre-flight discovery, the safety pre-flight check, and the post-deploy log-evidence report. Skipping any of them produces dashboards that look fine in isolation but mislead, hang, or silently drop data.
 
-0. **Discovery (MANDATORY for every session)**: Re-enumerate connected data sources (`| group UniqueDataSourceNames = array_agg_distinct(dataSource.name) | limit 1000`), run V1-query schema discovery on every source the dashboard will touch, and validate the discriminator field for any `event.type` you intend to count. See **Pre-authoring discovery** below. Never start a panel from a remembered schema.
+0. **Discovery (MANDATORY for every session)**: Re-enumerate connected data sources (`| group UniqueDataSourceNames = array_agg_distinct(dataSource.name) | limit 1000`), run schema discovery on every source the dashboard will touch, and validate the discriminator field for any `event.type` you intend to count. See **Pre-authoring discovery** below. Never start a panel from a remembered schema.
 
-   **Execution path for schema discovery via s1-secops-mcp:**
+   **Execution path for discovery via s1-secops-mcp:**
 
-   1. **PowerQuery enumeration** (`array_agg_distinct(dataSource.name)`): run via `mcp__s1-secops-mcp__powerquery_run` directly. The s1-secops-mcp server runs locally and makes direct HTTPS calls without sandbox interference.
-   2. **V1 query schema discovery** (full event JSON per source): use `mcp__s1-secops-mcp__powerquery_schema_discover` to fetch sample events from each data source and inspect their field names and types. The MCP server runs on your local machine and bypasses the sandbox proxy entirely.
+   1. **Source enumeration**: `powerquery_enumerate_sources`, or `powerquery_run` with the `array_agg_distinct(dataSource.name)` query, at the dashboard's `scope`.
+   2. **Schema discovery** (full event JSON per source): `powerquery_schema_discover` per source (issue them in parallel), at the same `scope`. Persist the field lists with the Write tool if later steps will need them.
 0.5. **Establish both scopes before authoring anything.** Ask, or read from the request: which scope is this dashboard *deployed* at, and which data should its panels *read*? If the deployment target is a site, every query panel gets `site.id='<siteId>'` unless the user explicitly asked for account-wide queries. See **Scope doctrine** below. Getting this wrong is not a cosmetic error: an unscoped panel on a site dashboard reports another site's numbers, and a `site.name` filter silently drops alert and asset records.
 1. **Understand the ask**: What data should the dashboard show? Who is the audience (SOC analyst, manager, customer POC)? What time range makes sense? What posture should each panel reflect (a panel that legitimately returns 0 needs a markdown header explaining the SOC-positive interpretation, see **Empty results are valid evidence**).
 2. **Design the structure**: Choose tabs (if multi-topic), then panels per tab. Match panel type to the data shape using the guide in `references/panel-type-cheatsheet.md`. Key decisions: flows/kill-chains → `sankey`; KPI vs SLA target → `bullet`; SOC queue health → `gauge`; 3D outlier detection → `scattered_bubble`; time-based density → `heatmap`; multiple queries in one panel → tabbed table. Where one `event.type` covers multiple semantic populations (delivery-time vs click-time, scheduled vs on-demand, inbound vs outbound), build separate sections per population, not a mixed section.
 3. **Write the JSON**: Use the panel type reference below and real examples in `references/community-examples.md`. Compute explicit `x`/`y`/`w`/`h` for every panel. Apply the naming-hygiene rule from **Panel naming hygiene** so titles read as SLA-grade claims.
-4. **Validate queries**: Sample 3-5 events per source/event-ID to confirm field semantics. Test each panel query via the `powerquery` skill. Run the parallel load test (see **Pre-deploy validation**), acceptance thresholds: slowest panel ≤ 2s, wall-clock ≤ 5s. Run `scripts/panel_safety_check.py` against the dashboard JSON; resolve every flag before deploy.
-5. **Deploy**: Use the `sdl-api` skill's GraphQL methods. First deploy only: `put_config_file(name="/dashboards/my-dashboard", content=...)`, then record the returned `udoId`. Every deploy after that: `config_file(udo_id=...)` for the current `version`, then `put_config_file(udo_id=..., content=..., expected_version=...)` as the CAS guard. A name-addressed write to an existing dashboard is refused because it duplicates. Save a backup of the prior JSON first. Sleep 3s, then re-read by `udo_id` to verify the version bumped AND grep the returned content for a canary string from your change.
+4. **Validate queries**: Sample 3-5 events per source/event-ID to confirm field semantics. Test each panel query with `powerquery_run` (see the `powerquery` skill). Run the parallel load test (see **Pre-deploy validation**), acceptance thresholds: slowest panel ≤ 2s, wall-clock ≤ 5s. Run `scripts/panel_safety_check.py` against the dashboard JSON (local, no network); resolve every flag before deploy.
+5. **Deploy** with the GraphQL-backed MCP tools (see `references/deployment.md`). First deploy: `sdl_create_dashboard` with `name`, `config` (the dashboard JSON as a string), `isPublic: true` and `scope` (`"<accountId>:<siteId>"` for a site); this is the default and the only way to deploy to a site. Record the returned id: it is the `udoId` (`sdl_list_files` with `pathPrefix: "/dashboards/"` resolves it if needed). Every deploy after that: `sdl_get_file` with `udoId` for the current `version`, then `sdl_put_file` with `udoId`, `content` and `expectedVersion` as the CAS guard. A path-addressed write to an existing dashboard is refused because it duplicates. Save a backup of the prior JSON first. Wait 3s, then re-read by `udoId` to verify the version bumped AND check the returned content for a canary string from your change.
 6. **Iterate**: Show the user what was built, explain each panel, offer to tweak. If the dashboard hangs, follow the escalation ladder in **Pre-deploy validation**.
-7. **Log-evidence report (MANDATORY)**: Run `scripts/validate_dashboard.py` against the deployed dashboard JSON to replay every panel, persist per-panel evidence (sample rows, row count, matchCount, elapsed, errors) to a JSON, and emit a markdown evidence file. Then run `scripts/render_validation_pdf.py` to render the PDF report (cover, per-tab sections, sample-data tables, empty-result appendix with SOC-meaningful interpretations). Deliver both alongside the dashboard. A dashboard delivered without an evidence report is incomplete.
+7. **Log-evidence report (MANDATORY)**: Replay every non-markdown panel against live data and keep the evidence. A dashboard delivered without an evidence report is incomplete.
 
-   **`validate_dashboard.py` MUST be run as a background process**, at ~10s per panel, a 30-panel dashboard takes 5 minutes; a 60-panel dashboard takes 10-30 minutes. Both exceed the MCP timeout. Start it with `python3 scripts/validate_dashboard.py ... > /tmp/validate_out.txt 2>&1 &`, confirm the PID, then poll `len(json.load(open(evidence_json)))` vs the expected panel count in short separate calls. The script persists results after every panel (idempotent), so a cancelled poll never loses work. When a `stacked_bar` or `line` panel using `| transpose` returns 0 rows in validation, cross-check whether the corresponding number panel for the same source shows data, if it does, the empty result is a V1-API artefact, not a broken query. Document it in the Appendix as confirmed false-empty and do not remove the panel.
+   - **Replay:** one `powerquery_run` call per panel, with the panel's exact `query`, the dashboard's time range (`hours` or `startTime` / `endTime`) and the same `scope` the dashboard is deployed at. Issue the calls in parallel, about 10 per turn, so a 60-panel dashboard takes a few turns, not one long blocking run. Keep `maxRows` small (for example 20); you need the row count, columns and the first 3 rows.
+   - **Persist:** write the evidence JSON with the Write tool, one entry per panel keyed `"<tab>::<title>"` with `ok`, `verdict` (`PASS` / `WARN` / `EMPTY` / `FAIL`, or `SKIP` for markdown), `style`, `query`, `row_count`, `columns`, `sample_rows` (first 3 rows verbatim), `matchCount`, `elapsed_s` (null when not measured) and `error` (first 300 characters on failure). Apply the per-style pass conditions in **Log-evidence report** below. Write the markdown evidence file next to it.
+   - **Render:** run `scripts/render_validation_pdf.py <evidence.json>` (local, no network) for the PDF (cover, per-tab sections, sample-data tables, empty-result appendix with SOC-meaningful interpretations). Deliver the PDF and the markdown alongside the dashboard.
 
-8. **Screenshot review with the user (MANDATORY).** API validation proves each panel's query returns rows; it does NOT prove the panel RENDERS. Render-only failures happen in the browser, not the API, so `validate_dashboard.py` cannot see them: a panel showing "Couldn't load content", a markdown tile showing "Untitled", a number reading "34 principals" under a title that already says principals, an empty chart, or a broken legend. After EVERY deploy, ALWAYS ask the user to open the dashboard and send screenshots of each tab, then read them, diagnose each visual defect, fix the JSON, and re-deploy, without waiting to be asked. Prompt explicitly, e.g.: "The dashboard is deployed at `/dashboards/<name>`. Please open it and send screenshots of each tab so I can catch any render-only issues and fix them automatically." Treat this as part of deployment, not optional polish. Fixes for the common render-only defects are in the **Quick triage** table.
+   When a `stacked_bar` or `line` panel using `| transpose` returns 0 rows in validation, cross-check whether the corresponding number panel for the same source shows data; if it does, record it in the Appendix as a confirmed false-empty and do not remove the panel. On the user's host, `scripts/validate_dashboard.py` automates the same replay and writes the same JSON shape; run it as a background process there, since it takes about 10 s per panel.
+
+8. **Screenshot review with the user (MANDATORY).** API validation proves each panel's query returns rows; it does NOT prove the panel RENDERS. Render-only failures happen in the browser, not the API, so query replay cannot see them: a panel showing "Couldn't load content", a markdown tile showing "Untitled", a number reading "34 principals" under a title that already says principals, an empty chart, or a broken legend. After EVERY deploy, ALWAYS ask the user to open the dashboard and send screenshots of each tab, then read them, diagnose each visual defect, fix the JSON, and re-deploy, without waiting to be asked. Prompt explicitly, e.g.: "The dashboard is deployed at `/dashboards/<name>`. Please open it and send screenshots of each tab so I can catch any render-only issues and fix them automatically." Treat this as part of deployment, not optional polish. Fixes for the common render-only defects are in the **Quick triage** table.
 
 ## Scope doctrine
 
@@ -329,7 +333,7 @@ for example a site-scoped parser with HEC ingestion where account-scope parsers 
 unparsed, carry no `dataSource.category`, and appear only under All Data.
 
 **API-passing is not render-passing.** The LRQ API never applies the console `preFilter`, so a panel
-set can validate cleanly through `scripts/validate_dashboard.py` and still fail in the browser.
+set can validate cleanly through `powerquery_run` replay and still fail in the browser.
 Treat them as two separate gates, and do not conclude a query is wrong from a blank panel until the
 selector has been checked.
 
@@ -352,7 +356,7 @@ Source-by-source field patterns and starting-point queries (S1 internal OCSF sou
 
 ## Deploying a dashboard via API
 
-Deployment via the `sdl-api` GraphQL methods (resolve the `udoId`, write with a CAS guard, verify by re-fetch with a canary grep, and handle name-vs-udoId duplicates) is documented in [`references/deployment.md`](references/deployment.md).
+Deployment via the `sdl_*` MCP tools (resolve the `udoId`, write with a CAS guard, verify by re-fetch with a canary grep, and handle name-vs-udoId duplicates) is documented in [`references/deployment.md`](references/deployment.md).
 
 ---
 
@@ -377,7 +381,7 @@ Reading only this file is not enough, and that has cost real time: the XDR scope
 
 ## Skill scripts (in `scripts/`)
 
-These scripts are mandatory parts of the workflow, not optional tooling.
+The safety check and the PDF renderer are mandatory parts of the workflow, not optional tooling. Neither makes a network call.
 
 **They live in the installed plugin directory and are not always reachable from a sandbox.** If
 `scripts/panel_safety_check.py` cannot be executed, do not skip the gate: the checks it performs are
@@ -387,7 +391,7 @@ no `area` with a `query`, `transpose` last, spaces around `-` in arithmetic, no 
 `sum(if())`, `| limit` on every number and table panel, and a `layout` on every panel.
 
 - `scripts/panel_safety_check.py <dashboard.json>`: pre-deploy. Scans dashboard JSON for known-bad patterns (markdown `content` vs `markdown` field, `area` + `query`, transpose-not-terminal, hyphenated arithmetic, `count_if` / `sum(if())` / mid-pipeline `| union` (union-first is allowed) / named subqueries, `\\s`/`\\d` regex escapes inside `matches`, full-text combined with timebucket+transpose, missing layout, missing `| limit` on number/table panels). Exits non-zero on any flag. Run before every `put_file`.
-- `scripts/validate_dashboard.py <dashboard.json> [--start 7d] [--out <dir>]`: post-deploy. Replays every non-markdown panel against the SDL `power_query` API, persists per-panel evidence (style, query, elapsed, rowCount, matchCount, columns, sample rows, error) to a JSON keyed on `tab::title`, and emits a markdown evidence file. Idempotent, resumes cleanly, persists after each panel. Auth falls through to console JWT (force-clears scoped keys). **Always run as a background process** (`... &`); see step 7 in the Workflow section. Do not wait for it inline.
+- `scripts/validate_dashboard.py <dashboard.json> [--start 7d] [--out <dir>]`: post-deploy, **host-only** (it calls the tenant, so it does not run in the Cowork sandbox; use parallel `powerquery_run` calls there, see step 7). Replays every non-markdown panel against the SDL `power_query` API, persists per-panel evidence (style, query, elapsed, rowCount, matchCount, columns, sample rows, error) to a JSON keyed on `tab::title`, and emits a markdown evidence file. Idempotent, resumes cleanly, persists after each panel. Reads credentials from environment variables or the OS keychain. Run it as a background process (`... &`).
 - `scripts/render_validation_pdf.py <evidence.json> [--out <pdf>]`: post-deploy. Reads the validation JSON and emits a PDF report with cover page, per-tab sections, sample-data tables (first 3 rows of N), and an Appendix listing every empty-result panel with the operator's prepared SOC-meaningful interpretation. The PDF is the leadership deliverable; the markdown evidence stays in version control.
 
 ## Log-evidence report (mandatory deliverable)
@@ -454,13 +458,10 @@ The full pre-deploy checklist (pre-authoring, JSON structure, query hygiene, nam
 - **Use `estimate_distinct()`** for cardinality counts on the event stream: exact distinct is expensive on large datasets. It is an approximation, measured at 14,196 against a true 14,043, so do not quote it as an exact figure. On `| datasource` inventory queries the chained-group form is cheap and exact, and is preferred: `| group n = count() by assetName | group total = count()`.
 - **Add a markdown panel** to each tab explaining what it covers: this helps both users and future editors understand the dashboard at a glance.
 
-## Sandbox proxy blocked? Use Desktop Commander
+## Why the MCP tools and not a script in the sandbox
 
-Dashboard deployment uses `sdl_client.py` from the `sdl-api` skill, which
-makes direct HTTPS calls to `*.sentinelone.net`. If you see `SandboxProxyBlockedError`
-or `OSError: Tunnel connection failed: 403 Forbidden`, the Cowork sandbox proxy is
-blocking those calls.
-
-The fix: use s1-secops-mcp MCP tools instead. Use `sdl_put_file` and `sdl_get_file`
-to deploy dashboards directly. These tools run locally and bypass the sandbox proxy entirely.
-No Desktop Commander workaround is necessary.
+The Cowork sandbox blocks outbound HTTPS to `*.sentinelone.net`, so `sdl_client.py` or
+`validate_dashboard.py` run from the sandbox fail with `SandboxProxyBlockedError` or
+`OSError: Tunnel connection failed: 403 Forbidden`. Use the `s1-secops-mcp` tools
+(`sdl_put_file`, `sdl_get_file`, `powerquery_run`), which run on the user's machine. If a tool
+reports a missing credential, ask the user to run `s1-secops-mcp setup` on their machine.

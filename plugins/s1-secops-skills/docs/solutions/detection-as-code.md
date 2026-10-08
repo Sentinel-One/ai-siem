@@ -48,7 +48,7 @@ payload without maintaining two formats. JSON and YAML rule files are also accep
 - *"Set up detection as code for the Acme site"*
 - *"Scaffold a DaC repo and sync the example rules"*
 - *"Automate our detections as code with GitHub Actions"*
-- *"Build the detection-as-code pipeline for GitLab and sync to <site>"*
+- *"Build the detection-as-code pipeline for GitLab and sync to `<site>`"*
 
 ## What it deploys
 

@@ -1,13 +1,21 @@
 # API Integration Reference
 
-## Environment Variables
+## Credentials
 
-Two environment variables drive all API interactions with the console:
+Two values drive all API interactions with the console:
 
-| Variable | Contains |
+| Name | Contains |
 |----------|----------|
 | `S1_CONSOLE_URL` | Full console base URL, e.g. `https://usea1-acme.sentinelone.net` |
 | `S1_CONSOLE_API_TOKEN` | Console User (personal) API token (generated in Settings → Users → API Token) |
+
+They resolve from environment variables first, then the OS keychain (stored with
+`s1-secops-mcp setup`). There is no credentials file. From Cowork or any MCP client, make
+every call below through the `s1-secops-mcp` tools: `s1_api_get` for the checks and lists,
+`ha_import_workflow` / `s1_api_post` for imports and actions. The tools inject the
+`Authorization` header and mask the token in their output. The `curl` and JavaScript
+snippets in this file are the wire format, for host-only scripts that read the token from
+the environment.
 
 **Always validate these before use.** Run the two-step check below, if either step fails,
 stop and tell the user what went wrong before proceeding with any workflow operation.
@@ -569,12 +577,16 @@ Same body as Evaluate Expression. Returns a parsed breakdown of expression compo
 
 ### Deploy a new workflow end-to-end
 
-Uses the `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` environment variables. Always call `validateCredentials()`
+From an MCP client, run the same sequence as tool calls: `s1_api_get` for the validation
+checks, `ha_import_workflow` (or `s1_api_post` on the site-scoped import path), then
+`s1_api_post` for publish / activate / run-now. The host-only script below reads
+`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` from the environment (export them from the
+keychain for the session; never hard-code them). Always call `validateCredentials()`
 (defined above) before any workflow operation.
 
 ```javascript
 const apiUrl   = process.env.S1_CONSOLE_URL;    // e.g. https://usea1-acme.sentinelone.net
-const apiToken = process.env.S1_CONSOLE_API_TOKEN;  // Service User API token
+const apiToken = process.env.S1_CONSOLE_API_TOKEN;  // personal Console User API token
 const siteId   = process.env.SITE_ID;    // optional, scope to a specific site
 
 const base = `${apiUrl}/web/api/v2.1/hyper-automate/api/public`;

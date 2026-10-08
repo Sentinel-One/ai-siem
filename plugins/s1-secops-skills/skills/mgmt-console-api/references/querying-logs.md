@@ -1,20 +1,32 @@
 ## Querying logs via the mgmt console API: the foolproof procedure
 
-Every time somebody rolls their own `requests.post(...)` for a PowerQuery, one of the same six things goes wrong: wrong auth prefix, wrong endpoint path, missing `tenant: true`, missing `X-Dataset-Query-Forward-Tag`, no retry on transient 5xx, or 0 rows and the wrong debugging reflex. The fix is: do not hand-roll the call. Use `scripts/pq.py`.
+Every time somebody rolls their own `requests.post(...)` for a PowerQuery, one of the same six things goes wrong: wrong auth prefix, wrong endpoint path, missing `tenant: true`, missing `X-Dataset-Query-Forward-Tag`, no retry on transient 5xx, or 0 rows and the wrong debugging reflex. The fix is: do not hand-roll the call. Use the `powerquery_run` MCP tool from `s1-secops-mcp`. It runs on the user's machine, so it works from Cowork, where the sandbox cannot reach `*.sentinelone.net`. On the user's host (Claude Code or a terminal), `scripts/pq.py` is the Python equivalent; it reads credentials from environment variables or the OS keychain.
 
 ### Step 0: pick the right surface before you write a query
 
 | The user wants… | Use | Why |
 |---|---|---|
-| Raw event telemetry (EDR, third-party logs, SDL data) | **`scripts/pq.py`** (LRQ PowerQuery) | This is what SDL/PowerQuery is for. All `dataSource.*`, `event.*`, `src.process.*`, `tgt.file.*`, `i.scheme="edr"` filters. |
-| Triage/filter/note/status on an existing alert | `scripts/unified_alerts.py` (UAM GraphQL) | Alerts are entities, not log events. UAM filter syntax is GraphQL `FilterInput`, NOT PowerQuery. Do not confuse the two. |
-| Legacy STAR/cloud-detection alert REST shape | `/web/api/v2.1/cloud-detection/alerts` | Only when you need `agentDetectionInfo` / `sourceProcess` etc. Otherwise UAM. |
-| A console entity: threat, agent, site, policy, IOC, group | REST via `s1_client.py` | Not a log query. `GET /web/api/v2.1/{threats,agents,sites,...}`. |
-| Natural-language hunt that can be hand-reviewed | `purple_ai.purple_query(...)` then LRQ-execute the returned PQ | Purple generates PQ text; `pq.py` runs it. |
+| Raw event telemetry (EDR, third-party logs, SDL data) | **`powerquery_run`** (LRQ PowerQuery; host-only Python: `scripts/pq.py`) | This is what SDL/PowerQuery is for. All `dataSource.*`, `event.*`, `src.process.*`, `tgt.file.*`, `i.scheme="edr"` filters. |
+| Every parsed field of raw events (evidence export, forensic timeline) | `powerquery_run` with `queryType: "LOG"` and `outputFile` | Filter only, no pipes. Server cap 5000 events per query or slice; `truncatedByServerCap: true` means slice the window. |
+| Triage/filter/note/status/verdict/assignee on an existing alert | `uam_list_alerts` / `uam_get_alert` / `uam_add_note` / `uam_set_status` / `uam_set_verdict` / `uam_assign_alert` (UAM GraphQL; host-only Python: `scripts/unified_alerts.py`) | Alerts are entities, not log events. UAM filter syntax is GraphQL `FilterInput`, NOT PowerQuery. Do not confuse the two. |
+| Legacy STAR/cloud-detection alert REST shape | `s1_api_get` on `/web/api/v2.1/cloud-detection/alerts` | Only when you need `agentDetectionInfo` / `sourceProcess` etc. Otherwise UAM. |
+| A console entity: threat, agent, site, policy, IOC, group | `s1_api_get` / `s1_api_post` (host-only Python: `s1_client.py`) | Not a log query. `GET /web/api/v2.1/{threats,agents,sites,...}`. |
+| Natural-language hunt that can be hand-reviewed | `mcp__purple-mcp__purple_ai`, then run the returned PQ with `powerquery_run` | Purple generates PQ text; `powerquery_run` runs it. |
 
 If the user names a vendor ("Example Source", "Zscaler", "Okta", "FortiGate") and says "query" or "search logs", that is always the PQ path, never UAM filter syntax.
 
-### Step 1: use `scripts/pq.py`, not inline `requests`
+### Step 1: use `powerquery_run`, not inline `requests`
+
+```json
+{
+  "query": "dataSource.name = 'Example Source' | group ct = count() by event.type | sort -ct | limit 50",
+  "hours": 24
+}
+```
+
+That single tool call handles launch, polling, forward-tag, cancel and retry, and returns `matchCount`, `columns`, `rows` and the `effectiveQuery` it sent. Add `outputFile` (absolute path on the user's machine) when the result is large: the full result is written as `.csv`, `.jsonl` or JSON and only a summary plus a 5-row preview comes back.
+
+Host-only Python equivalent (Claude Code or a terminal):
 
 ```python
 import sys
@@ -38,7 +50,7 @@ for row in res["rows"]:
     print(row)
 ```
 
-The helper does ALL of this for you, so there is nothing to remember:
+The tool and the helper do ALL of this for you, so there is nothing to remember:
 
 - `Authorization: Bearer <jwt>` (flipped from the REST `ApiToken` prefix; same JWT, different scheme).
 - `POST /sdl/v2/api/queries` on the tenant console host. **NOT** `/web/api/v2.1/sdl/v2/api/queries`, **NOT** `xdr.<region>.sentinelone.net`. Do not "fix" a 404 by adding `/web/api/v2.1`; that path does not exist; the fix is the shorter path.
@@ -50,15 +62,9 @@ The helper does ALL of this for you, so there is nothing to remember:
 
 ### Step 2: if you get 0 rows, follow the ladder, do NOT widen the window first
 
-`run_pq` returning `row_count=0` has an ordered diagnostic. Burning time by widening the window first is the most common failure mode; the window is almost never the cause.
+A query returning 0 rows has an ordered diagnostic. Burning time by widening the window first is the most common failure mode; the window is almost never the cause.
 
-1. **Enumerate the data sources.** If your filter names a vendor / product, first confirm it exists on THIS tenant and you have the string right. Spelling, case, and punctuation matter, the filter is a literal string match.
-
-   ```python
-   sources = list_data_sources(c, hours=24)
-   for s in sources[:30]:
-       print(s["dataSource.name"], s["dataSource.category"], s["ct"])
-   ```
+1. **Enumerate the data sources.** If your filter names a vendor / product, first confirm it exists on THIS tenant and you have the string right. Spelling, case, and punctuation matter, the filter is a literal string match. Call `powerquery_enumerate_sources` (host-only Python: `list_data_sources(c, hours=24)`).
 
    If "Example Source" isn't in the list, the tenant isn't ingesting it; no amount of widening the window will help. If it's there under a different spelling (`"PromptSecurity"`, `"Prompt Sec"`), use the exact string.
 2. **Compare `matchCount` vs `row_count`.** `matchCount=0` means the initial filter discarded everything before any aggregation, the filter is too tight (or naming the wrong thing). `matchCount > 0` with `row_count = 0` means a post-pipe stage (`| group`, `| filter after group`) ate the rows, inspect the pipe.
@@ -66,7 +72,16 @@ The helper does ALL of this for you, so there is nothing to remember:
 
 ### Step 3: for large windows / heavy aggregates, slice
 
-For ranges past 2-3 days with `event.type=*`-scale aggregates, slice the window and run slices in parallel. Full reference, measured perf (30d 574M-event aggregate lands in ~29s with two service-user JWTs), and the two-JWT runner recipe are in the `powerquery` skill at `references/lrq-api.md`. `run_pq` is the single-slice primitive underneath.
+For ranges past 2-3 days with `event.type=*`-scale aggregates, slice the window and run slices in parallel. `powerquery_run` does this in one call: pass `slices` (2-15) and, for a group-by result, `merge` (`{"keys": [...], "sum": [...], "min": [...], "max": [...]}`). Only count, sum, min and max merge; the tool refuses `estimate_distinct`, `avg`, percentiles, `top` and `savelookup` across slices. Measured: a 30-day aggregate in about 5 s as 15 slices versus 21 to 40 s unsliced, identical totals. One token is enough (about 30 calls/s sustained). Full reference is in the `powerquery` skill at `references/lrq-api.md`; `run_pq` is the host-only single-slice primitive.
+
+```json
+{
+  "query": "dataSource.name='SentinelOne' | group n = count() by event.type",
+  "hours": 720,
+  "slices": 15,
+  "merge": { "keys": ["event.type"], "sum": ["n"] }
+}
+```
 
 ### Step 3a (timeseries): prefer client-side day slicing over `timebucket(...)`
 
@@ -78,7 +93,7 @@ For ranges past 2-3 days with `event.type=*`-scale aggregates, slice the window 
 
 The bare positional form (no alias) and references inside `let` / `filter` are unreliable across tenant versions and have historically returned HTTP 500 `"undefined field 'timebucket'"`. Even when `timebucket` does work, a single 7d / 30d aggregate against a busy source frequently exceeds the LRQ per-call deadline (~38s observed), a 7d aggregate that finishes in 60s on the older `/api/powerQuery` endpoint will time out on LRQ.
 
-**Default to client-side day slicing for any window > 24h.** It's faster, avoids the deadline budget, and produces the same end result. The named-form `day = timebucket('1d')` is fine inside a single 24h-or-less slice when you really do need per-hour or per-15-min buckets:
+**Default to slicing for any window > 24h.** It's faster, avoids the deadline budget, and produces the same end result. The named-form `day = timebucket('1d')` is fine inside a single 24h-or-less slice when you really do need per-hour or per-15-min buckets. For per-day rows, run one `powerquery_run` call per day as parallel tool calls in the same turn, each with its own `startTime` / `endTime`, and label each result with its day. Host-only Python equivalent:
 
 ```python
 from datetime import datetime, timedelta, timezone
@@ -92,7 +107,7 @@ def slice_day(c, base, start, end):
 
 end = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 days = [(end - timedelta(days=i+1), end - timedelta(days=i)) for i in range(7)]
-with cf.ThreadPoolExecutor(max_workers=3) as ex:   # 3rps user cap
+with cf.ThreadPoolExecutor(max_workers=7) as ex:   # one token sustains ~30 calls/s
     results = list(ex.map(lambda se: slice_day(c, base, *se), days))
 ```
 
@@ -100,34 +115,34 @@ with cf.ThreadPoolExecutor(max_workers=3) as ex:   # 3rps user cap
 
 ### Step 3b: window-scaling playbook (performance by period)
 
-| Window | Recommended runner | Why |
+| Window | Recommended call | Why |
 |---|---|---|
-| seconds to 1h | single `run_pq(hours=1)` | server returns in <5s |
-| 1h to 24h | single `run_pq(hours=24)` | 5-30s depending on filter selectivity |
-| 24h to 7d | single call OK for selective filters; for `event.type=*`-scale aggregates, 7 x 1d slices in parallel (max_workers=3) | single-call ~2 min; sliced ~20s |
-| 7d to 30d | mandatory slicing (daily buckets) + 2 JWTs | two-JWT runner in `powerquery` |
-| 30d+ | hourly slicing + 2-3 JWTs, cache results | 574M-event aggregate at 30d = ~29s with two JWTs |
+| seconds to 1h | `powerquery_run` with `hours: 1` | server returns in <5s |
+| 1h to 24h | `powerquery_run` with `hours: 24` | 5-30s depending on filter selectivity |
+| 24h to 7d | single call OK for selective filters; for `event.type=*`-scale aggregates, `slices: 7` plus `merge` | single-call ~2 min; sliced ~20s |
+| 7d to 30d | `slices: 15` plus `merge` | 30-day aggregate in about 5 s, identical totals |
+| 30d+ | `slices: 15` plus `merge`, cache results with `outputFile` | long windows are a cost, not a wall |
 
-### Step 3c: LRQ response-shape gotchas (handled by `run_pq`)
+### Step 3c: LRQ response-shape gotchas (handled by `powerquery_run` and `run_pq`)
 
 If you ever have to read a raw LRQ response (e.g. debugging), know:
 
 - `columns` is a list of dicts `{name, cellType, decimalPlaces}`, not a list of strings. Zipping values by `col["name"]` (not `str(col)`) is mandatory.
 - `matchCount` lives inside the `data` block (`response["data"]["matchCount"]`), not at top level. Default to that path; fall back to top-level for older engines.
-- `values` is an array of arrays (one per row); `run_pq` pairs it with column names for you.
+- `values` is an array of arrays (one per row); `powerquery_run` and `run_pq` pair it with column names for you.
 
-### Step 4: when NOT to use `pq.py`
+### Step 4: when NOT to use `powerquery_run`
 
-- If the user said "purple mcp" or "mcp", defer to `mcp__purple-mcp__powerquery` first; this is the backup path when the MCP times out or 5xxs.
-- If the user is working with alerts as entities (listing, filtering, note, status), that's UAM GraphQL (`unified_alerts.py`), not PowerQuery. UAM filter syntax is `[{fieldId, stringEqual: {...}}]`; it is NOT PowerQuery `| filter` syntax. Mixing them is a common trap in screenshot-driven debugging.
+- If the user said "purple mcp", defer to `mcp__purple-mcp__powerquery` first; `powerquery_run` is the backup path when that tool times out or 5xxs.
+- If the user is working with alerts as entities (listing, filtering, note, status), that's UAM GraphQL (`uam_*` tools), not PowerQuery. UAM filter syntax is `[{fieldId, stringEqual: {...}}]`; it is NOT PowerQuery `| filter` syntax. Mixing them is a common trap in screenshot-driven debugging.
 
 ### Checklist before running a PQ programmatically
 
-- [ ] You called `run_pq` / `list_data_sources`, not inline `requests.post`.
+- [ ] You called `powerquery_run` / `powerquery_enumerate_sources` (host-only Python: `run_pq` / `list_data_sources`), not inline `requests.post`.
 - [ ] Base URL is the tenant console (e.g. `https://your-tenant.sentinelone.net`), not `xdr.<region>.sentinelone.net`.
 - [ ] Endpoint path is `/sdl/v2/api/queries` (short form). If you see 404s, do NOT add `/web/api/v2.1`; that's wrong.
 - [ ] If you're filtering on EDR data (`src.process.*`, `event.type=*`, `tgt.file.*`), prepend `dataSource.name='SentinelOne' dataSource.category='security'`: on mixed tenants the default scope carries Scalyr/infra logs too and wide filters silently return `matchCount=0`.
-- [ ] 0 rows → ran `list_data_sources` and checked `matchCount` vs `row_count` BEFORE widening the window.
+- [ ] 0 rows → ran `powerquery_enumerate_sources` and checked `matchCount` vs `row_count` BEFORE widening the window.
 
 ## Unified Alert Management (UAM): PRIMARY alert API
 
@@ -140,6 +155,8 @@ If you ever have to read a raw LRQ response (e.g. debugging), know:
 Auth is the same `Authorization: ApiToken` header as REST; no extra credentials. Full reference in `references/UNIFIED_ALERTS.md`. The end-to-end dual-API round-trip test is `tests/test_alerts_dual_api.py`.
 
 Use UAM whenever the user is working with *alerts* as first-class entities, triaging, filtering, adding notes, resolving, bulk-assigning, rather than the older `GET /web/api/v2.1/threats` surface.
+
+In Cowork and any MCP client, use the `s1-secops-mcp` tools: `uam_list_alerts` (filters, paging), `uam_get_alert`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, and `uam_available_actions` (read `isDisabled` / `disabledReason` before naming why an action failed). The Python wrapper and CLI below are host-only (Claude Code or a terminal on the user's machine; credentials from environment variables or the OS keychain).
 
 ```python
 import sys
@@ -170,14 +187,14 @@ uam.set_alert_status(
 )
 ```
 
-CLI equivalents:
+CLI equivalents (host-only):
 
 ```text
 python scripts/call_unified_alerts.py list --filter detectionProduct=EDR --first 20
 python scripts/call_unified_alerts.py facets status severity detectionProduct
 python scripts/call_unified_alerts.py notes <alert-id>
 python scripts/call_unified_alerts.py add-note <alert-id> "Investigating"
-python scripts/call_unified_alerts.py set-status --scope <account-id> --alert-id <id1> <id2> RESOLVED --note "..."
+python scripts/call_unified_alerts.py set-status RESOLVED --scope <account-id> --alert-id <id1> <id2> --note "..."
 python scripts/call_unified_alerts.py csv-export --filter severity=CRITICAL -o crit.csv
 ```
 
@@ -206,7 +223,8 @@ Everything else in this skill talks to `<tenant>.sentinelone.net/web/api/v2.1/..
 
 **Host and wire contract:**
 
-- Prod (US1): `https://ingest.us1.sentinelone.net`. This is the SentinelOne ingest host, shared between raw log ingest and OCSF alert ingest. Configure via the `S1_HEC_INGEST_URL` env var, the `--uam-url` flag, or the `S1_HEC_INGEST_URL` key in `credentials.json`. The former canonical `S1_UAM_ALERT_INTERFACE_URL` and legacy snake_case `uam_alert_interface_url` are still honored as fallbacks.
+- Prod (US1): `https://ingest.us1.sentinelone.net`. This is the SentinelOne ingest host, shared between raw log ingest and OCSF alert ingest. Configure `S1_HEC_INGEST_URL` as an environment variable or in the OS keychain (`s1-secops-mcp setup`); the host-only Python client also takes a `--uam-url` flag.
+- From Cowork or any MCP client, push the alert with the `uam_post_alert` tool (one alert per call). The Python client below is host-only.
 - Auth: `Authorization: Bearer <JWT>`. NOT `ApiToken`. The mgmt-console JWT from `S1_CONSOLE_API_TOKEN` works; the endpoint rejects `ApiToken ...` with HTTP 401 `"Unsupported auth type"`. Alert creation and IOCs remain console-token operations. Only raw log ingest over the event collector (`/services/collector/raw` and `/event`) moved to the SDL Log Write Key, and that is a separate path on the same host.
 - Body: concatenated JSON (one or more objects back-to-back, optionally newline-separated), gzip-compressed. `Content-Encoding: gzip` is mandatory. zstd also accepted.
 - Scope: `S1-Scope: <accountId>` or `<accountId>:<siteId>[:<groupId>]` is mandatory on `/v1/alerts`.
@@ -268,7 +286,7 @@ PowerQuery fields on EDR behavioural-indicator events, an unrelated schema.)
 - `build_process_indicator(...)` -- OCSF class 1007 Process Activity. Observables: Hostname, Process Name, Resource UID (pid), User Name, IP Address, plus parent process.
 - `build_network_indicator(...)` -- OCSF class 4001 Network Activity. Observables: Hostname, src/dst IP Address, URL, User Name.
 
-**Python usage.** `post_indicators()` and `post_alert_with_indicators()` were removed from
+**Python usage (host-only).** `post_indicators()` and `post_alert_with_indicators()` were removed from
 `scripts/uam_alert_interface.py`; both drove the unreachable `/v1/indicators` endpoint, and
 tombstone comments in the module record why. Build the alert with its indicators inline and send
 it with `post_alerts([alert])`, one alert per call, as in the worked example at the end of this
@@ -420,20 +438,26 @@ Before you write queries, dashboards, or detections against an SDL data source, 
 
 ### Step 1: enumerate sources (`dataSource.name = *`)
 
+Call `powerquery_enumerate_sources` (optionally `hours: 168` for low-volume tenants, `scope` for one site). Host-only Python equivalent:
+
 ```python
 from pq import list_data_sources
 sources = list_data_sources(client, hours=24, limit=200)
 # -> [{"dataSource.name": "SentinelOne", "dataSource.category": "security", "ct": 18304051}, ...]
 ```
 
-CLI: `python scripts/inspect_source.py --list` prints a ranked table of every source that ingested in the last 24h. If a name the user asked for isn't in the list, fuzzy-match and surface candidates rather than running a query that will return 0.
+Host-only CLI: `python scripts/inspect_source.py --list` prints a ranked table of every source that ingested in the last 24h. If a name the user asked for isn't in the list, fuzzy-match and surface candidates rather than running a query that will return 0.
 
 Rules of thumb:
 
 - There can be multiple rows with the same `dataSource.name` under different `dataSource.category` values (e.g. `SentinelOne / security`, `SentinelOne / None`, `SentinelOne / telemetry`). Treat category as metadata, not part of the name.
 - A source with non-zero `ct` in 24h is live. Anything else is either decommissioned, in a different time window, or scoped out of the current token.
 
-### Step 2: discover the schema for one source (`discover_schema`)
+### Step 2: discover the schema for one source
+
+Call `powerquery_schema_discover` with the exact source name as `dataSourceName` (`maxEvents` up to 50, `startTime` such as `"24h"` or `"7d"`, optional `scope`). It returns full event attributes and drops `logVolume` metering rows, reporting how many in `excludedMeteringRows`. For a larger sample, run `powerquery_run` with `queryType: "LOG"`, `query: "dataSource.name='<name>'"`, and `outputFile`, then read the field names from the written file. Persist the field list for the session with the Write tool (for example `sdl_schemas_<YYYY-MM-DD>.json` in the outputs folder).
+
+Host-only Python equivalent, which also classifies fields into principal / action keys:
 
 ```python
 from inspect_source import discover_schema, pick_keys
@@ -448,7 +472,7 @@ schema = discover_schema(
 prim_key, action_key = pick_keys(schema)
 ```
 
-CLI: `python scripts/inspect_source.py --source "<name>" --window 24h`.
+Host-only CLI: `python scripts/inspect_source.py --source "<name>" --window 24h`.
 
 Key points:
 
@@ -507,7 +531,7 @@ elif prim_key:
 
 ## Source-agnostic baseline + anomaly detection
 
-`scripts/baseline_anomaly.py` is the productionised end-to-end pipeline for behavioural baselining and z-score anomaly detection on ANY data source. It composes the schema-discovery + key-picker + LRQ runner already in this skill, so a caller never has to hand-pick principal/action fields per source.
+`scripts/baseline_anomaly.py` (host-only; it calls the tenant directly) is the productionised end-to-end pipeline for behavioural baselining and z-score anomaly detection on ANY data source. It composes the schema-discovery + key-picker + LRQ runner already in this skill, so a caller never has to hand-pick principal/action fields per source.
 
 What it does:
 
@@ -538,7 +562,7 @@ PQ building blocks the script wraps live in the `powerquery` skill at `examples/
 
 ## CTO report generation pipeline
 
-A source-agnostic pipeline for producing CTO-grade Word + PowerPoint reports on any SDL data source. Three scripts, one JSON artefact.
+A source-agnostic pipeline for producing CTO-grade Word + PowerPoint reports on any SDL data source. Three scripts, one JSON artefact. The collector calls the tenant, so it runs on the user's host (Claude Code or a terminal); the renderers make no tenant calls. In Cowork, collect the same aggregates with parallel `powerquery_run` calls and write them to `data.json` with the Write tool, then run the renderers.
 
 1. `scripts/build_source_report.py --source "<vendor>" --window <7d|24h|...>`. Runs dimension probes, a unified per-principal query, and a timeline aggregate against the tenant via `scripts/pq.py`, then writes `reports/<slug>_<window>/data.json`. Probes which of `user`, `src.ip.address`, `src.hostname`, `action`, `event.type` actually carry values, so the renderer can skip sections that would otherwise be empty.
 2. `scripts/render_charts.py <data.json>`. Emits PNG charts into `reports/<slug>_<window>/charts/`. Pure function of the JSON, no tenant calls.
@@ -574,7 +598,7 @@ Order: `user`, then `src.hostname`, then `src.ip.address`, then none. The collec
 ### Running the whole thing
 
 ```text
-# From the skill root, with $CLAUDE_CONFIG_DIR/sentinelone/credentials.json configured.
+# From the skill root on the user's host, with credentials in the environment or the OS keychain.
 python scripts/build_source_report.py --source "<vendor>" --window <7d|24h|...>
 python scripts/render_charts.py reports/<slug>_<window>/data.json
 python scripts/build_docx.py    reports/<slug>_<window>/data.json
@@ -585,15 +609,15 @@ The collector creates `reports/<slug>_<window>/` on first run. The `reports/` di
 
 ## Common high-value workflows
 
-- **Unified alert triage**: `list_alerts(...)` from `unified_alerts` for the modern multi-source alerts inbox (EDR + XDR + Identity + cloud + third-party); use `facets`/`group-by` for volume rollups; `set_alert_status` / `set_analyst_verdict` / `assign_alerts` for triage decisions; `add_alert_note` for context.
+- **Unified alert triage**: `uam_list_alerts` (host-only Python: `list_alerts(...)` from `unified_alerts`) for the modern multi-source alerts inbox (EDR + XDR + Identity + cloud + third-party); use `facets`/`group-by` for volume rollups; `set_alert_status` / `set_analyst_verdict` / `assign_alerts` for triage decisions; `add_alert_note` for context.
 - **Threat triage (legacy)**: `GET /threats` filtered by `createdAt__gte` + `resolved=false`; enrich with agent details from `/agents?ids=...`; output a table.
 - **Endpoint isolation**: find agent IDs (`/agents` with name/IP filter), confirm count, `POST /agents/actions/disconnect` with filter.
-- **Hunt across DV / PowerQuery** -- `POST /sdl/v2/api/queries` with `queryType="LOG"` (S1QL) or `queryType="PQ"` (PowerQuery), then poll `GET /sdl/v2/api/queries/{id}` echoing the `X-Dataset-Query-Forward-Tag` response header. Auth is Bearer, not ApiToken. Legacy `/dv/init-query` + `/dv/query-status` + `/dv/events` + `/dv/events/pq` flows are deprecated (sunset 2027-02-15). See `references/WORKFLOWS.md` Section 4 for the canonical runner.
+- **Hunt across DV / PowerQuery** -- `POST /sdl/v2/api/queries` with `queryType="LOG"` (S1QL) or `queryType="PQ"` (PowerQuery), then poll `GET /sdl/v2/api/queries/{id}` echoing the `X-Dataset-Query-Forward-Tag` response header. Auth is Bearer, not ApiToken. `powerquery_run` (with `queryType: "LOG"` or the default `"PQ"`) does all of this. Legacy `/dv/init-query` + `/dv/query-status` + `/dv/events` + `/dv/events/pq` flows are deprecated (sunset 2027-02-15). See `references/WORKFLOWS.md` Section 4 for the canonical runner.
 - **Natural-language hunt via Purple AI** -- Use `mcp__purple-mcp__purple_ai` (Purple MCP). The `purple_query()` Python helper and `scripts/call_purple.py` are non-functional for API tokens (`purpleLaunchQuery NATURAL_LANGUAGE` requires a browser-session teamToken, confirmed 2026-05-03). Only for SDL-telemetry questions; route entity questions to REST.
 - **Site/Group inventory**: `/sites`, `/groups`, `/accounts` are the tenant-structure endpoints; many resources require filtering by `siteIds` / `accountIds`.
 - **Bulk action audit**: `/activities` is the system-wide audit log; filter by `activityTypes` and `createdAt__gte`.
-- **Push alerts INTO UAM** -- build one OCSF alert carrying its indicators inline in `finding_info.related_events[]`, then call `UAMAlertInterfaceClient.post_alerts([alert], scope=...)` once per alert (loop for many). There is no separate indicator POST: `/v1/indicators` refuses every credential. See "UAM Alert Interface" above for the required fields and the multi-alert silent-drop trap. Use for pipeline integrations, synthetic-alert generation, and detection testing.
-- **CTO report for a data source** -- `python scripts/build_source_report.py --source "<vendor>" --window <7d|24h>` then `scripts/render_charts.py`, `scripts/build_docx.py`, `scripts/build_pptx.py` on the resulting `reports/<slug>_<window>/data.json`. Works for any SDL data source; the renderer gates every section on `dims` so dimension-sparse sources (e.g. Windows Event Logs with only `event.type`) still produce a coherent deck. See "CTO report generation pipeline" for the data contract and renderer gotchas.
+- **Push alerts INTO UAM** -- build one OCSF alert carrying its indicators inline in `finding_info.related_events[]`, then call `uam_post_alert` (host-only Python: `UAMAlertInterfaceClient.post_alerts([alert], scope=...)`) once per alert (loop for many). There is no separate indicator POST: `/v1/indicators` refuses every credential. See "UAM Alert Interface" above for the required fields and the multi-alert silent-drop trap. Use for pipeline integrations, synthetic-alert generation, and detection testing.
+- **CTO report for a data source** (collector is host-only) -- `python scripts/build_source_report.py --source "<vendor>" --window <7d|24h>` then `scripts/render_charts.py`, `scripts/build_docx.py`, `scripts/build_pptx.py` on the resulting `reports/<slug>_<window>/data.json`. Works for any SDL data source; the renderer gates every section on `dims` so dimension-sparse sources (e.g. Windows Event Logs with only `event.type`) still produce a coherent deck. See "CTO report generation pipeline" for the data contract and renderer gotchas.
 
 Consult the per-tag reference files for exact parameter names, the above are orientation, not copy-paste ready.
 
@@ -695,11 +719,12 @@ Action types observed: `singularity_response_trigger`, `manual_trigger`, `http_t
 
 ## Using s1-secops-mcp tools for direct console operations
 
-Console operations use the `s1-secops-mcp` MCP tools, which bypass the Cowork sandbox proxy
-entirely. Use `s1_api_get`, `s1_api_post`, `uam_list_alerts`, `uam_get_alert`, `uam_set_status`,
-and other MCP tools directly instead of falling back to the `mgmt-console-api`
-skill scripts. The MCP tools run locally on your machine and make direct HTTPS calls to
-`*.sentinelone.net` without proxy interference.
+Console operations use the `s1-secops-mcp` MCP tools, which run on the user's machine and reach
+`*.sentinelone.net` where the Cowork sandbox cannot. Use `s1_api_get`, `s1_api_post`,
+`s1_api_download` (binary responses), `uam_list_alerts`, `uam_get_alert`, `uam_set_status`, `uam_set_verdict`,
+`uam_assign_alert`, and the other MCP tools directly. The skill's Python scripts are host-only. The server reads credentials
+from environment variables or the OS keychain and masks tokens in every response; if a credential
+is missing, ask the user to run `s1-secops-mcp setup` on their machine.
 
 ## STAR / Custom Detection rule lifecycle (learnings)
 

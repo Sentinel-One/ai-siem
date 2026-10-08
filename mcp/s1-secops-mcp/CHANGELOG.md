@@ -1,5 +1,164 @@
 # Changelog
 
+## 1.5.2
+
+One console token, a setup check that matches the tools, and a docs and code sync. Tool count
+stays 35.
+
+### Changed
+
+- **`S1_CONSOLE_API_TOKEN_SINGLE_SCOPE` and `tokenKind` are removed** from the MCP, the
+  launchers, the entrypoint allowlist, the `.mcpb` manifest, the Python clients
+  (`S1Client(token_kind=...)` is gone) and the docs. Every call uses `S1_CONSOLE_API_TOKEN`.
+  Live check 2026-10-08: IOC create, list and delete succeed with the regular token of a
+  service user scoped to one account. A 403 with code 4030010 (a token whose user spans several
+  accounts) now carries a hint: use a token minted at a single account or site, in its own
+  keychain profile (`setup --profile <name>`), and a second MCP entry with `S1_PROFILE=<name>`.
+  A stored `<profile>:S1_CONSOLE_API_TOKEN_SINGLE_SCOPE` item is no longer read, listed or
+  removed by `forget`; delete it by hand (see docs/upgrading.md).
+- **`S1_SCOPE` setup accepts `<accountId>` or `<accountId>:<siteId>` only** (`setup`, both
+  launchers, Python `keychain_set`). A group part used to be accepted and then rejected by every
+  SDL and PowerQuery tool (`Invalid S1-Scope`).
+- `setup` accepts every environment alias the server resolves (`S1_BASE_URL`,
+  `SDL_CONSOLE_API_TOKEN`, `S1_UAM_ALERT_INTERFACE_URL`, `SDL_S1_SCOPE`, `VT_API_KEY`, ...):
+  `cli.js` now builds its alias map from `credentials.js`.
+- Docker: `docker/.dockerignore` was never read (the build context is the repo root). It is now
+  `docker/Dockerfile.dockerignore`, with root-relative patterns.
+
+### Docs
+
+- Dashboards: first deploy is `sdl_create_dashboard {name, config, isPublic: true, scope}`,
+  updates are `sdl_get_file` then `sdl_put_file {udoId, content, expectedVersion}` (SKILL.md,
+  docs/skills.md and CLAUDE.md said `sdl_put_file` by path).
+- Catalogs list all 8 skills and 10 sdl-solutions; docs/mcp-tools.md lists all 33 purple-mcp
+  tools and the previously undocumented tool parameters; docs/testing.md lists all 35
+  s1-secops-mcp tools; the Windows launcher's `versions`, `help` and `S1_CLAUDE_MD_PATH` support
+  is documented; a troubleshooting step no longer prints a secret; broken in-text references
+  fixed; release notes before 1.4.6 removed (this CHANGELOG is the full history).
+
+### Plugin
+
+- The plugin build leaves each skill's `tests/` and `evals/` out of the package, except files the
+  skill's own SKILL.md or references name as user tools.
+
+## 1.5.1
+
+Security patch for the image. No tool, parameter or behaviour change in s1-secops-mcp; the tool
+count stays 35.
+
+- **Image `sentinelone/secops-mcps:1.5.1`:** the bundled VirusTotal MCP fork is repinned to
+  `97ca2b8`, which overrides two transitive npm dependencies:
+  - `proxy-addr` 2.0.7 to 2.0.8, CVE-2026-90711 (critical, CVSS 9.1);
+  - `@modelcontextprotocol/sdk` 1.26.0 to 1.32.1, CVE-2026-104850 (high, CVSS 7.5).
+
+  Neither was reachable: the VirusTotal server runs on stdio, never loads Express or `proxy-addr`
+  (checked with a module-load hook through `tools/list`), and the SDK advisory excludes servers and
+  stdio clients. Both are fixed anyway so that image scans come back clean. The remaining Scout
+  findings are Debian 13 packages with no fixed version yet (expat, zlib, plus lows).
+- The launchers default to `sentinelone/secops-mcps:1.5.1`, and the docs pin it.
+- CI: `docker-publish.yml` carried `S1_MCP_VERSION: '1.4.0'`, which fails its own check against
+  `docker/build.sh`; it now matches. `docker/README.md` lists the actual VirusTotal and Purple
+  pins.
+
+## 1.5.0
+
+Credentials move to the OS keychain; plaintext files and the HTTP transport are gone.
+Every change below was verified live on an S-26.3.4 tenant on 2026-10-07/08 (A/B against
+1.4.0 and image 1.4.10). Tool count 35 (new: `s1_api_download`, `uam_set_verdict`,
+`uam_assign_alert`).
+
+### Breaking
+
+- **No credentials file, anywhere.** The `credentials.json` discovery chain (`S1_CREDS_FILE`,
+  `COWORK_WORKSPACE`, cwd walk-up, `~/mnt/*`, `CLAUDE_CONFIG_DIR/sentinelone`,
+  `~/.config/sentinelone`) is removed. Values resolve per name from environment variables,
+  then the OS keychain (service `sentinelone-mcp`, account `<profile>:<NAME>`, profile from
+  `S1_PROFILE`, default `default`). Migrate with `s1-secops-mcp setup --import-json <file>`,
+  check with `s1-secops-mcp status`, then delete the file.
+- **stdio only.** The Streamable HTTP transport, bearer tokens (`MCP_BEARER_TOKENS*`) and the
+  team VM deployment (`deploy/`: install.sh, systemd, Caddy, bridge) are removed.
+  `--transport http` and `MCP_TRANSPORT=http` now exit 2 instead of starting.
+- **Docker: secrets over stdin.** `-e S1_CONSOLE_API_TOKEN` still works but is readable through
+  `docker inspect`. The new host launcher `docker/s1-secops-mcp-launch.sh` (macOS/Linux) and
+  `.ps1` (Windows) read the keychain and send the values over stdin
+  (`S1_SECRETS_STDIN=1` in `entrypoint.sh`), so the MCP client config holds no secret.
+  Measured: secret hits in `docker inspect` and `ps eww` went from 3 to 0 per server.
+
+### New
+
+- Keychain backends: macOS `/usr/bin/security` (writes via `security -i` on stdin), Linux
+  `secret-tool` (stdin; headless, missing-tool, locked and timeout cases give a clear reason
+  and never fall back to a file), Windows Credential Manager via the optional
+  `@napi-rs/keyring` dependency. `S1_KEYCHAIN=off` disables it.
+- CLI: `setup` (no-echo prompts, or `NAME=value` lines on stdin; validates values; reads back
+  every write), `status` (source per value, secrets masked), `forget`, and `exec -- <cmd>`,
+  which runs purple-mcp or the VirusTotal MCP natively with keychain values mapped to
+  `PURPLEMCP_*` and `VT_API_KEY`.
+- purple-mcp threat intelligence enabled from the same keychain VT key. The launchers
+  (`s1-secops-mcp-launch.sh` / `.ps1`) now send `VIRUSTOTAL_API_KEY` to purple-mcp, the
+  entrypoint maps it to `PURPLEMCP_VT_API_KEY` for purple-mcp only and then unsets
+  `VIRUSTOTAL_API_KEY` / `VT_API_KEY` in that container, and `exec` sets
+  `PURPLEMCP_VT_API_KEY` too. Verified live 2026-10-08. The VirusTotal MCP stays the primary
+  enrichment and pivot server; use purple-mcp `threat_intel_search` for VT Intelligence hunts
+  and never call `threat_intel_get_file_relationships` or `threat_intel_get_file_behavior`
+  (0.8M to 27M characters per call). See docs/mcp-tools.md.
+- Redaction: configured secret values are masked in all tool output and logs; error output and
+  logs also mask `ApiToken`/`Bearer`/`Basic`/`Splunk` token-shaped values.
+- `powerquery_run`: `queryType: "LOG"` (raw events, every parsed field, `truncatedByServerCap`),
+  `slices` (2-15, parallel) with `merge {keys,sum,min,max}`; a trailing `| sort` / `| limit` is
+  applied after the merge, other post-group commands and non-additive aggregates are refused.
+  Live: 2/8/15 slices match unsliced exactly over 24h and 7d.
+- `outputFile` on `powerquery_run` (.csv/.jsonl/.json), `s1_api_get`, `ha_export_workflow` (ZIP),
+  and the new `s1_api_download` (binary GET to file). Paths must be absolute and inside
+  `S1_OUTPUT_DIRS` (default home and temp), no overwrite unless asked, no symlinks (including
+  dangling ones), files mode 0600, path validated before the API call.
+- `tokenKind: "single_scope"` on `s1_api_*` uses `S1_CONSOLE_API_TOKEN_SINGLE_SCOPE` (IOC
+  writes); never falls back to the default token.
+- Optional Claude Desktop extension (`mcpb/`), sensitive fields stored by Desktop in the OS store.
+- UAM alert management matches the console. `uam_set_verdict` (S1/alert/analystVerdictUpdate,
+  the 20 AnalystVerdict values, `TRUE_POSITIVE` / `FALSE_POSITIVE` / `SUSPICIOUS` refused before
+  any request) and `uam_assign_alert` (S1/alert/assignUser by numeric `userId`, by `email`
+  resolved through `GET /users?email=`, or `unassign: true`, which sends `value: null`). These
+  and `uam_set_status` send the console's `alertTriggerActions` document verbatim, captured from
+  a console HAR: `?opname=AlertTriggerActions`, `scope` = the alert's own account, `viewType:
+  ALL`, one action, filter by id. Each reads the alert first, re-reads it afterwards, and fails
+  unless the alert shows the requested value; the result has `outcome`
+  (`applied`/`already_set`/`scheduled`), `verified`, `before` and `after`. Optional
+  `scopeIds`/`scopeType` override the scope.
+- `MISSING_PERMISSION` names the RBAC permission for the alert type ("Unified Alerts > STAR /
+  Endpoint / Identity / Mobile / Generic Alerts: Manage", plus the legacy STAR Rule Alerts
+  permissions for STAR), the console path to grant it, and, when the token can read its own
+  role (`GET /user`, `GET /rbac/role/{id}`), which Manage permissions that role lacks. It also
+  re-reads the alert and reports that it is unchanged. Live: STAR alert writes succeeded and an
+  ingested alert's writes failed with a role that has no Unified Alerts Manage permission;
+  the request shape (with or without `scope` / `viewType`) did not change either outcome.
+
+### Fixed
+
+- Ids beyond 2^53 returned as JSON numbers (SDL shareResource dashboard ids) were rounded,
+  so a follow-up get or delete missed the dashboard. Responses are now parsed with exact
+  integers (`lib/json.js`), and `sdl_share_dashboard` returns the id it was given.
+- `powerquery_run` results are parsed the same way: ids and nanosecond timestamps beyond 2^53
+  come back as exact strings instead of rounded numbers, and sliced merges add and compare
+  them exactly (BigInt). Float literals such as `1e21` stay numbers.
+- LRQ launch retries 429/502/503/504 (not a plain 500, which SDL returns for some invalid
+  queries).
+- `edrStrict: true` no longer fails with "Unknown EDR field 'tag'": the metering filter is not
+  added to strict EDR queries.
+- `uam_list_alerts` `searchText` matched nothing (`fieldId '*'` is rejected); it now matches
+  `alertName`.
+- `s1_api_post` reports a GraphQL `errors[]` response with no data as an error.
+- LRQ: a poll answered 404 "Requested token=... not found" (seen in three A/B runs; a rerun
+  always succeeded) relaunches the query once instead of failing it. A second 404 is fatal.
+- `uam_set_status` now verifies by re-reading the alert, and an invalid status is refused before
+  any request.
+- `uam_get_alert` returns `assignee.userId` and `ticketId`.
+- `uam_available_actions` no longer offers `scopeType: GLOBAL` (the API rejects it);
+  `uam_list_alerts` accepts `viewType: DLP`.
+- `uam_post_alert`: the `alert` parameter description no longer tells callers to reference a
+  previously posted indicator by uid (that endpoint is gone); it describes the inline
+  `related_events[]` shape, the single `resources[]` entry and the Fingerprint-array hashes.
+
 ## 1.4.0
 
 From the S-26.2.x / S-26.3.x release-note review, each verified on a live S-26.3.4 tenant on

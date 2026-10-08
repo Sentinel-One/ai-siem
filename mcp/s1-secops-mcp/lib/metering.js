@@ -25,7 +25,7 @@ export const METERING_PREDICATE = "tag != 'logVolume'";
 const PASSTHROUGH_COMMANDS = new Set(['datasource', 'dataset', 'join', 'union', 'inputlookup', 'lookup', 'savelookup']);
 
 /** Index of the first `|` that is outside single or double quotes, or -1. */
-function firstTopLevelPipe(q) {
+export function firstTopLevelPipe(q) {
   let quote = null;
   for (let i = 0; i < q.length; i++) {
     const c = q[i];

@@ -178,11 +178,14 @@ Always preview before deploying:
 2. **Dry run** to see the exact JSON that will be sent, with no API call:
    `python3 scripts/dac_sync.py --dry-run detections`. Show the user the rendered envelopes.
 3. **Deploy.** In production this is the on-merge CI job. For the initial bootstrap (or a wiring
-   test), run it directly from a host that can reach the console:
-   `S1_CONSOLE_URL=... S1_CONSOLE_API_TOKEN=... python3 scripts/dac_sync.py --sync --site "<SITE>"`.
+   test), run it directly from the user's host (not the Cowork sandbox, which cannot reach the
+   console), with `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` exported from the OS keychain or a
+   secret manager rather than typed on the command line:
+   `python3 scripts/dac_sync.py --sync --site "<SITE>"`.
    New rules are created in `Draft`; activation is deliberate and separate.
-4. **Verify** with the Mgmt Console API, always passing `isLegacy=false` so scheduled rules are
-   not silently omitted: `GET /web/api/v2.1/cloud-detection/rules?isLegacy=false&name__contains=<name>`.
+4. **Verify** with `s1_api_get` (or the Mgmt Console API from the host), always passing
+   `isLegacy=false` so scheduled rules are not silently omitted:
+   `GET /web/api/v2.1/cloud-detection/rules?isLegacy=false&name__contains=<name>`.
 5. **Re-run** the sync to prove idempotency: the second run updates in place (PUT), it does not
    create duplicates.
 6. **Validate end to end (optional, on a test / AI-SIEM site).** Enable the rule, simulate matching

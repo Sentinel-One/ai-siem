@@ -112,6 +112,8 @@ shape reconciles against tenant inventory on the ingest path.
 
 ## Probing your own tenant
 
+From Cowork or any MCP client, call `uam_get_alert` with the alert id and read its `assets` block. On the user's host (Claude Code or a terminal, credentials from environment variables or the OS keychain), the Python wrapper does the same:
+
 ```python
 from scripts.s1_client import S1Client
 from scripts import unified_alerts as ua

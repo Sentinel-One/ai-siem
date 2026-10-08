@@ -89,7 +89,7 @@ Returns indicator_uid and alert_uid. The alert surfaces in UAM within 30-60s. Ve
   // ─── uam_post_alert ───────────────────────────────────────────────────────
   {
     name: 'uam_post_alert',
-    description: `POST a single raw OCSF SecurityAlert to /v1/alerts on the SentinelOne HEC ingest host. IMPORTANT: one alert per call. The HEC stitcher silently drops all but one alert in a multi-alert POST body (HTTP 202 still returned), so this tool rejects arrays. To send multiple alerts, loop this call. Carry the indicator INLINE in finding_info.related_events[] (uid, title, desc, message, time, severity_id, class_uid, type_uid, category_uid, activity_id, and observables[] with type + typeName). That alone populates alert.indicators, which is what the UAM Indicators tab renders; no /v1/indicators call is needed and none should be made, because that endpoint returns 403 "User token not allowed for this endpoint" for a service-user token while /v1/alerts accepts the same credential. Requires S1_HEC_INGEST_URL in credentials.json.`,
+    description: `POST a single raw OCSF SecurityAlert to /v1/alerts on the SentinelOne HEC ingest host. IMPORTANT: one alert per call. The HEC stitcher silently drops all but one alert in a multi-alert POST body (HTTP 202 still returned), so this tool rejects arrays. To send multiple alerts, loop this call. Carry the indicator INLINE in finding_info.related_events[] (uid, title, desc, message, time, severity_id, class_uid, type_uid, category_uid, activity_id, and observables[] with type + typeName). That alone populates alert.indicators, which is what the UAM Indicators tab renders; no /v1/indicators call is needed and none should be made, because that endpoint returns 403 "User token not allowed for this endpoint" for a service-user token while /v1/alerts accepts the same credential. Requires S1_HEC_INGEST_URL (environment or keychain, see s1-secops-mcp setup).`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -99,7 +99,7 @@ Returns indicator_uid and alert_uid. The alert surfaces in UAM within 30-60s. Ve
         },
         alert: {
           type: 'object',
-          description: 'Single OCSF SecurityAlert object. class_uid MUST be 99602001 (S1 Security Alert extension class) with type_uid 9960200101; the generic OCSF 2002 is silently dropped by the stitcher even though HEC returns HTTP 202. Must have metadata.uid, finding_info.related_events[] each referencing a previously-posted indicator via uid. Each related_events entry needs class_uid, type_uid, category_uid, activity_id, severity_id, time, message, and observables[] with type+typeName.',
+          description: 'Single OCSF SecurityAlert object. class_uid MUST be 99602001 (S1 Security Alert extension class) with type_uid 9960200101; the generic OCSF 2002 is silently dropped by the stitcher even though HEC returns HTTP 202. Needs finding_info.uid and finding_info.title, exactly one resources[] entry (several devices are silently dropped), and finding_info.related_events[] carrying each indicator INLINE (there is no separate indicator POST to reference). Each related_events entry needs class_uid, type_uid, category_uid, activity_id, severity_id, time, message, and observables[] with type + typeName alongside type_id/name/value; title and desc render as the indicator title and description. file.hashes must be an OCSF Fingerprint array, not a dict.',
           additionalProperties: true,
         },
       },

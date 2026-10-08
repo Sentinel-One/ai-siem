@@ -1,78 +1,38 @@
-# Validation Workflow: Using `sdl-api` to Test a Parser
+# Validation Workflow: Testing a Parser End to End
 
-There is **no dedicated `testParser` REST endpoint** on the SDL tenant. The in-console `Test Parser` button at `/logImportTester` runs the parser client-side in JavaScript. To validate end-to-end you must deploy the parser, ingest a sample through it, and query the result back. This doc is the recipe.
+There is **no dedicated `testParser` REST endpoint** on the SDL tenant. The in-console `Test Parser` button at `/logImportTester` runs the parser client-side in JavaScript. To validate end-to-end you must deploy the parser, ingest a sample through it, and query the result back. This doc is the recipe for the synthetic-ingest path; when the source is already live, validate on the live stream instead (see "Validation (mandatory)" in SKILL.md).
 
 ## Prerequisites
 
-- `sdl-api` skill is installed.
-
+- The `s1-secops-mcp` MCP server is connected (`sdl_get_file`, `sdl_put_file`, `sdl_delete_file`, `hec_ingest`, `powerquery_run`, `powerquery_schema_discover`). It runs on the user's machine and reads credentials from environment variables or the OS keychain; `hec_ingest` needs `S1_HEC_INGEST_URL` and the SDL Log Write Key in `S1_HEC_TOKEN`. The `sdl-api` skill's Python client can do the same from the user's host only; it cannot reach the tenant from the Cowork sandbox.
 - You have a draft parser JSON and a sample log file.
 
-## Full loop
+## Full loop (MCP tool calls)
 
-```python
-import sys, os, time, uuid, json, pathlib
-_sdl_scripts = os.environ.get("SDL_API_SCRIPTS") or os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sdl-api", "scripts")
-)
-sys.path.insert(0, _sdl_scripts)
-from sdl_client import SDLClient
+```text
+1. Deploy
+   sdl_get_file  {path: "/logParsers/<name>"}
+     -> if it exists, note version; bump metadata.version in the draft
+   sdl_put_file  {path: "/logParsers/<name>", content: <draft parser>, expectedVersion: <version>}
+     -> omit expectedVersion only when the file does not exist yet
 
-c = SDLClient()
+2. Ingest a sample
+   Embed a unique nonce IN the payload (for example append " claude_test=<12 hex chars>" to
+   each line). The `server-host` upload header is unreliable for isolation: SDL sometimes
+   overrides it, and a `host` field parsed from the log wins over it.
+   hec_ingest    {logContent: <sample with nonce>, parser: "<name>", endpoint: "raw"}
+     -> the Log Write Key fixes the destination account or site; no scope argument applies
 
-PARSER_NAME = "claude_test_fortigate_cef"    # claude_test_ prefix so cleanup is a one-liner
-parser_body = pathlib.Path("draft_parser.json").read_text()
-sample      = pathlib.Path("sample.log").read_text()
-
-# --- 1. Deploy ------------------------------------------------------------
-#    Use expected_version=0 on first deploy to refuse overwriting a parser
-#    that already exists; drop expected_version on iterative edits.
-try:
-    existing = c.get_file(f"/logParsers/{PARSER_NAME}")
-    version  = existing["version"]
-except Exception:
-    version = None
-
-put_kwargs = {"content": parser_body}
-if version is not None:
-    put_kwargs["expected_version"] = version
-c.put_file(f"/logParsers/{PARSER_NAME}", **put_kwargs)
-
-# --- 2. Ingest a sample --------------------------------------------------
-#    The `server-host` upload header is unreliable for isolation (see the
-#    ingest-path gotchas in SKILL.md): SDL sometimes overrides it, and a
-#    `host` field parsed from the log wins over it. Embed a unique nonce
-#    IN the payload and filter on that instead. Append it as a trailing
-#    token per line (or place it wherever the parser tolerates it).
-nonce  = uuid.uuid4().hex[:12]
-sample_with_nonce = "\n".join(
-    f"{line} claude_test={nonce}" for line in sample.splitlines() if line
-)
-# HEC ingest applies the named parser before the data lands (replaces the
-# removed uploadLogs). Real MCP tool argument names: logContent, scope,
-# parser, endpoint.
-hec_ingest(
-    logContent=sample_with_nonce,
-    parser=PARSER_NAME,
-    scope="<accountId>",
-    endpoint="raw",
-)
-
-# --- 3. Query back -------------------------------------------------------
-#    Sleep long enough that the event is durable and searchable.
-time.sleep(8)
-
-EXPECTED = ["timestamp", "src", "dst", "spt", "dpt", "proto", "act"]
-pq = f"* contains '{nonce}' | columns " + ", ".join(["message"] + EXPECTED)
-res = c.power_query(query=pq, start_time="10m")
-print(json.dumps(res, indent=2))
+3. Query back (wait ~8 s first so the events are searchable)
+   powerquery_run {query: "* contains '<nonce>' | columns message, timestamp, src, dst, spt, dpt, proto, act",
+                   hours: 1}
 ```
 
 ## What success looks like
 
-- `put_file` → `{"status": "success", ...}`.
-- HEC ingest → `{"status": "success", ...}` (a `bytesCharged` number appearing is normal).
-- `power_query` returns at least one row per line in the sample, and every expected field is present (not null) for at least the lines where it should be.
+- `sdl_put_file` returns success with the new version.
+- `hec_ingest` returns `{"text": "Success", "code": 0}`.
+- `powerquery_run` returns at least one row per line in the sample, and every expected field is present (not null) for at least the lines where it should be.
 
 A duplicate-`Nonce` response (`status: "success", message: "ignoring request, due to duplicate nonce..."`) means the ingest was deduped, advance to a fresh nonce on iteration.
 
@@ -80,10 +40,10 @@ A duplicate-`Nonce` response (`status: "success", message: "ignoring request, du
 
 | Symptom | Likely cause |
 |---|---|
-| `put_file` → `error/client/badParam` | JSON syntax error. Run the body through a JSON5-tolerant validator; watch for unmatched braces or trailing commas inside format strings. |
+| `sdl_put_file` → `error/client/badParam` | JSON syntax error. Run the body through a JSON5-tolerant validator; watch for unmatched braces or trailing commas inside format strings. |
 | HEC ingest → `error/client/badParam` with "unknown parser" | Wrong `parser:` header name, or putFile hadn't replicated yet (retry after a few seconds). |
-| `power_query` returns rows but expected fields are null | Line format didn't match. Check: regex escaping (`\\d` not `\d`), delimiter mismatches, `halt: true` on an earlier format eating the line, `message`-as-field-name mistake. |
-| `power_query` returns zero rows | `host_tag` isn't set (upload header `server-host` missing) or too short a `start_time` window. Widen to 30m. **Also check event time:** if the parser sets event time from a field in the log (a `timestamp` rewrite off `createdDateTime`/`activityDateTime`/etc.), events are stamped at the log's own time, not ingest time, so a log a few hours old falls outside a `10m`/`1h` window seconds after you ingest it. Widen `start_time` to `24h`/`7d` (or filter by a `claude_test=<nonce>` field instead of time). |
+| `powerquery_run` returns rows but expected fields are null | Line format didn't match. Check: regex escaping (`\\d` not `\d`), delimiter mismatches, `halt: true` on an earlier format eating the line, `message`-as-field-name mistake. |
+| `powerquery_run` returns zero rows | The nonce filter does not match, or the window is too short. Widen to a few hours. **Also check event time:** if the parser sets event time from a field in the log (a `timestamp` rewrite off `createdDateTime`/`activityDateTime`/etc.), events are stamped at the log's own time, not ingest time, so a log a few hours old falls outside a `10m`/`1h` window seconds after you ingest it. Widen the window to `hours: 24` or `168` (or filter by a `claude_test=<nonce>` field instead of time). |
 | Field X populated sometimes, null others | The format works for some variants and not others. Add a fragment format for the other shape, or widen the regex. |
 | Re-ingested event still shows the OLD shape on a LIVE source | Parser propagation is ~3-5 min; a continuously-ingesting source keeps producing events parsed by the PREVIOUS version during that window, and SDL does not re-parse historical events. A "still broken" event is usually pre-propagation, not a parser bug. Confirm with the version canary below before concluding anything. |
 | `\| columns unmapped.x[0].y` → "Unable to parse the entire query" | You can't type a `[N]` array-index field name in a raw PowerQuery `columns`/`filter` clause (backticks and quotes don't help). The field exists; read it via `powerquery_schema_discover` or the Event Search field picker instead. |
@@ -93,25 +53,23 @@ A duplicate-`Nonce` response (`status: "success", message: "ignoring request, du
 Parser propagation is ~3-5 min on the tenant, and on a live source events keep flowing through the old version during that window. Make "which version produced this event" observable:
 
 1. Bump `metadata.version` on every deploy (semver).
-2. After deploying, poll until the new version appears in the live stream:
+2. After deploying, poll until the new version appears in the live stream, with `powerquery_run`:
 
-   ```python
-   c.power_query(query="dataSource.name='Microsoft Entra ID' | group c=count() by metadata.version",
-                 start_time="30m")
+   ```json
+   { "query": "dataSource.name='Microsoft Entra ID' | group c=count() by metadata.version", "hours": 1 }
    ```
 
 3. When validating a specific re-ingested sample, check `metadata.version` on that event, if it still shows the prior version, you're looking at a pre-propagation event; wait and re-ingest, don't "fix" a non-bug.
 
 ## Validating array (`[N]`) and bracketed fields
 
-`gron`/`dottedJson` expand arrays into `[N]`-indexed attributes (e.g. `unmapped.targetResources[0].modifiedProperties[0].newValue`). A raw `power_query` `columns`/`filter` clause **cannot type the `[`**, so use `powerquery_schema_discover` (V1 query endpoint) to see the full event JSON including every `[N]` key and confirm where values landed (and that envelope noise was dropped, that `rename_tree` moved a subtree, etc.):
+`gron`/`dottedJson` expand arrays into `[N]`-indexed attributes (e.g. `unmapped.targetResources[0].modifiedProperties[0].newValue`). A PowerQuery `columns`/`filter` clause **cannot type the `[`**, so use `powerquery_schema_discover` to see the full event JSON including every `[N]` key and confirm where values landed (and that envelope noise was dropped, that `rename_tree` moved a subtree, etc.):
 
-```python
-# returns confirmedFields (all attribute names) + allSampleAttributes (full per-event JSON)
-discover(dataSourceName="Microsoft Entra ID", maxEvents=30, startTime="24h")
+```json
+{ "dataSourceName": "Microsoft Entra ID", "maxEvents": 30, "startTime": "24h" }
 ```
 
-Caveat: for a source that also emits SDL metering, the sample mixes real events with `logVolume`/`logBytes` rows, read past those. This is the most reliable way to verify array-heavy parsers, since the values are unreachable via a normal `columns` projection.
+`powerquery_run` with `queryType: "LOG"` and `query: "dataSource.name='Microsoft Entra ID'"` returns the same full attribute sets for a larger sample (add `outputFile` to keep them on disk). Both exclude SDL `logVolume` metering rows. This is the most reliable way to verify array-heavy parsers, since the values are unreachable via a normal `columns` projection.
 
 ## Isolating which format matched
 
@@ -128,17 +86,20 @@ Then query `| columns _matched, ...` to see which format each line hit. Remove t
 
 ## Cleanup
 
-```python
-# Throwaway test: delete
-c.put_file(f"/logParsers/{PARSER_NAME}", delete=True)
+If you deployed under a throwaway name for a source that is not live yet:
 
-# Keep and rename
-content = c.get_file(f"/logParsers/{PARSER_NAME}")["content"]
-c.put_file("/logParsers/FortiGate_CEF", content=content)
-c.put_file(f"/logParsers/{PARSER_NAME}", delete=True)
+```text
+Throwaway test, delete:
+  sdl_get_file    {path: "/logParsers/<throwaway>"}            -> note version
+  sdl_delete_file {path: "/logParsers/<throwaway>", expectedVersion: <version>}
+
+Keep and rename:
+  sdl_get_file    {path: "/logParsers/<throwaway>"}            -> content, version
+  sdl_put_file    {path: "/logParsers/<canonical>", content: <content>}
+  sdl_delete_file {path: "/logParsers/<throwaway>", expectedVersion: <version>}
 ```
 
-Ask the user before promoting a `claude_test_` parser to a canonical name; it's their tenant.
+Ask the user before promoting a throwaway parser to a canonical name; it's their tenant.
 
 ## Synthesizing samples when the catalog parser ships without a `samples/` dir
 
@@ -153,10 +114,12 @@ Synthesizing samples is also the right move when the user is preparing a parser 
 
 ## Pre-flight check: 4 mandatory attributes and OCSF field names
 
-Before deploying, run a two-step pre-flight on every parser you're about to ship:
+Before deploying, run a two-step pre-flight on every parser you're about to ship. It is local Python with no network calls, so it runs anywhere, including the Cowork sandbox:
 
 ```python
+import os, pathlib
 import json5  # tolerant of // comments and unquoted keys
+parser_body = pathlib.Path("draft_parser.json").read_text()
 parser = json5.loads(parser_body)
 
 # 1. The 4 mandatory attributes.

@@ -11,7 +11,7 @@
  *   sdl_list_dashboards       List dashboards with owner and sharing metadata
  *   sdl_get_dashboard         Read one dashboard including its tabs
  *   sdl_create_dashboard      Create from a full dashboard-JSON config
- *   sdl_share_dashboard       Share to a site / account / global scope
+ *   sdl_share_dashboard       Share with the account or with users
  *   sdl_save_dashboard_layout Save panel positions (layout only) of one tab
  *   sdl_delete_dashboard      Delete a dashboard
  *
@@ -43,7 +43,7 @@ const SCOPE_NOTE =
   'argument changes which objects exist as far as the caller can tell. Verified live: the same listing ' +
   'returned 113 files at account scope and 4 at a site scope. Format "<accountId>" for account scope or ' +
   '"<accountId>:<siteId>" for site scope; ids come from GET /web/api/v2.1/accounts and /sites. Omit to ' +
-  'use S1_SCOPE from credentials.json, or the token default when that is unset. If an object you expect ' +
+  'use the configured S1_SCOPE (environment or keychain), or the token default when that is unset. If an object you expect ' +
   'is missing, re-check at the scope it was created in before concluding it is gone.';
 
 /** Shared scope property for every tool schema. */
@@ -277,7 +277,7 @@ export const tools = [
   // ─── sdl_create_dashboard ─────────────────────────────────────────────────
   {
     name: 'sdl_create_dashboard',
-    description: `Create a dashboard from a complete dashboard-JSON document via createDashboardV2, filed at the given scope. THIS IS THE PREFERRED WAY TO DEPLOY A NEW DASHBOARD: it accepts the whole document (configType, duration, description, tabs[]) in one call, unlike sdl_put_file which writes the raw config file. It also avoids the console's stub-append trap, where creating an empty dashboard in the UI and pasting JSON after the existing "{graphs: []}" stub yields "Content is invalid json / Additional text after JSON object" and leaves an empty dashboard behind. To deploy to a SITE, either pass scope as "<accountId>:<siteId>" here, or create at account scope and then use sdl_share_dashboard. Duplicate names ARE allowed (the console itself makes "<name> - Copy" siblings); set failIfNameExists to refuse instead. Names reject punctuation with only "Invalid name" as the error: accepted are letters, digits, space, hyphen, underscore, dot and slash; rejected are ( ) [ ] { } : , & ' % #. ${SCOPE_NOTE}`,
+    description: `Create a dashboard from a complete dashboard-JSON document via createDashboardV2, filed at the given scope. THIS IS THE PREFERRED WAY TO DEPLOY A NEW DASHBOARD: it accepts the whole document (configType, duration, description, tabs[]) in one call, unlike sdl_put_file which writes the raw config file. It also avoids the console's stub-append trap, where creating an empty dashboard in the UI and pasting JSON after the existing "{graphs: []}" stub yields "Content is invalid json / Additional text after JSON object" and leaves an empty dashboard behind. To deploy to a SITE, pass scope as "<accountId>:<siteId>". Duplicate names ARE allowed (the console itself makes "<name> - Copy" siblings); set failIfNameExists to refuse instead. Names reject punctuation with only "Invalid name" as the error: accepted are letters, digits, space, hyphen, underscore, dot and slash; rejected are ( ) [ ] { } : , & ' % #. ${SCOPE_NOTE}`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -298,18 +298,18 @@ export const tools = [
   // ─── sdl_share_dashboard ──────────────────────────────────────────────────
   {
     name: 'sdl_share_dashboard',
-    description: 'Share (or unshare) a dashboard to one or more scopes and/or users via the shareResource mutation. THIS IS THE ONLY SDL OPERATION THAT TAKES AN EXPLICIT SCOPE TARGET; every other operation infers scope from the request header. Use it to push an account-scoped dashboard down to a specific site without recreating it, which is how site-level deployment is done when the calling token sits at account scope. Note the two different scope arguments: the "scopes" array is WHERE THE DASHBOARD GOES, while "scope" is the header for this call, i.e. where you are standing when you share.',
+    description: 'Share (or unshare) a dashboard with the account or with users via the shareResource mutation. This is not a deployment route: to deploy a dashboard to a site, create it at the site with sdl_create_dashboard and scope "<accountId>:<siteId>". Note the two different scope arguments: the "scopes" array lists the share targets, while "scope" is the header for this call, i.e. where you are standing when you share.',
     inputSchema: {
       type: 'object',
       properties: {
         id: { type: 'string', description: 'Dashboard id from sdl_list_dashboards or sdl_create_dashboard.' },
         scopes: {
           type: 'array',
-          description: 'Share targets. Each entry is {scopeType, scopeId, operation}: scopeType is "site" | "account" | "global"; scopeId is the numeric id from GET /web/api/v2.1/sites or /accounts (not required for global); operation is "ADD" or "REMOVE" (default ADD). Example: [{"scopeType":"site","scopeId":"9876543210987654321","operation":"ADD"}].',
+          description: 'Share targets. Each entry is {scopeType, scopeId, operation}: scopeType is "account"; scopeId is the numeric account id from GET /web/api/v2.1/accounts; operation is "ADD" or "REMOVE" (default ADD). Example: [{"scopeType":"account","scopeId":"1234567890123456789","operation":"ADD"}]. To put a dashboard at a site, create it there with sdl_create_dashboard.',
           items: {
             type: 'object',
             properties: {
-              scopeType: { type: 'string', enum: ['site', 'account', 'global'] },
+              scopeType: { type: 'string', enum: ['account'] },
               scopeId: { type: 'string' },
               operation: { type: 'string', enum: ['ADD', 'REMOVE'] },
             },

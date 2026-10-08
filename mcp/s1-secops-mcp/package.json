@@ -1,7 +1,7 @@
 {
   "name": "@pmoses-s1/s1-secops-mcp",
-  "version": "1.4.0",
-  "description": "MCP server orchestrating SentinelOne skills, APIs, and SOC analyst context. Stdio or Streamable HTTP transport with per-user bearer auth for team deployments.",
+  "version": "1.5.2",
+  "description": "MCP server orchestrating SentinelOne skills, APIs, and SOC analyst context. Stdio transport; credentials from environment variables or the OS keychain, never a plaintext file.",
   "type": "module",
   "main": "index.js",
   "bin": {
@@ -11,17 +11,18 @@
     "index.js",
     "lib/",
     "tools/",
-    "deploy/",
     "scripts/",
     "README.md",
     "CHANGELOG.md"
   ],
   "scripts": {
     "start": "node index.js",
-    "start:http": "node index.js --transport http",
     "dev": "node --watch index.js",
-    "test": "node --test tests/smoke.test.mjs tests/stdio-transport.test.mjs tests/http-transport.test.mjs tests/ssrf-path.test.mjs tests/http-origin-guard.test.mjs tests/sdl-graphql.test.mjs tests/regressions-2026-07-29.test.mjs tests/regressions-2026-07-31.test.mjs tests/contracts-1.3.9.test.mjs tests/regressions-2026-10-03.test.mjs",
+    "test": "node --import ./tests/setup.mjs --test tests/smoke.test.mjs tests/stdio-transport.test.mjs tests/ssrf-path.test.mjs tests/sdl-graphql.test.mjs tests/regressions-2026-07-29.test.mjs tests/regressions-2026-07-31.test.mjs tests/contracts-1.3.9.test.mjs tests/regressions-2026-10-03.test.mjs tests/keychain-1.5.0.test.mjs tests/uam-lifecycle-1.5.0.test.mjs",
     "regen:readme": "node scripts/regen-readme-tools-table.mjs"
+  },
+  "optionalDependencies": {
+    "@napi-rs/keyring": "2.1.0"
   },
   "engines": {
     "node": ">=24"
@@ -29,7 +30,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Sentinel-One/ai-siem.git",
-    "directory": "s1-secops-mcp"
+    "directory": "mcp/s1-secops-mcp"
   },
   "homepage": "https://github.com/Sentinel-One/ai-siem/tree/main/mcp/s1-secops-mcp#readme",
   "bugs": "https://github.com/Sentinel-One/ai-siem/issues",

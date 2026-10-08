@@ -190,76 +190,81 @@ baseline savelookup (it raises the LRQ scan cap), never in a rule body.
 
 ### Core baseline (feeds SPIKE, DROP, NEW-BEHAVIOR, SILENT)
 
-```
+```text
 dataSource.name = '<src>' | nolimit | filter <pr> = * AND <ac> = * | group day_count = count() by day = timebucket('1d'), action_v = <ac>, principal_v = <pr> | group baseline_avg = avg(day_count), baseline_stddev = stddev(day_count), baseline_med = median(day_count), baseline_p95 = p95(day_count), baseline_p05 = pct(5, day_count), n_days = count() by action_v, principal_v | filter n_days >= 2 AND baseline_stddev > 0 | sort -baseline_avg | limit 500 | savelookup '<prefix><src>Baseline'
 ```
 
 ### SPIKE (Robust: `filter live_count > baseline_p95`; Standard: `filter z >= Z`)
 
-```
+```text
 dataSource.name = '<src>' | filter <pr> = * AND <ac> = * | group live_count = count() by action_v = <ac>, principal_v = <pr> | lookup baseline_avg = baseline_avg, baseline_stddev = baseline_stddev, baseline_p95 = baseline_p95, baseline_p05 = baseline_p05, n_days = n_days from <prefix><src>Baseline by action_v = action_v, principal_v = principal_v | filter baseline_avg = * | let z = (live_count - baseline_avg) / baseline_stddev | filter live_count > baseline_p95 | let direction = 'SPIKE' | sort -z | columns principal_v, action_v, live_count, baseline_avg, baseline_stddev, z, direction | limit 100
 ```
 
 ### DROP (Robust: `filter live_count < baseline_p05`; Standard: `filter z <= -Z`)
 
-```
+```text
 dataSource.name = '<src>' | filter <pr> = * AND <ac> = * | group live_count = count() by action_v = <ac>, principal_v = <pr> | lookup baseline_avg = baseline_avg, baseline_stddev = baseline_stddev, baseline_p95 = baseline_p95, baseline_p05 = baseline_p05, n_days = n_days from <prefix><src>Baseline by action_v = action_v, principal_v = principal_v | filter baseline_avg = * | let z = (live_count - baseline_avg) / baseline_stddev | filter live_count < baseline_p05 | let direction = 'DROP' | sort z | columns principal_v, action_v, live_count, baseline_avg, baseline_stddev, z, direction | limit 100
 ```
 
 ### NEW-BEHAVIOR (active now, no baseline entry)
 
-```
+```text
 dataSource.name = '<src>' | filter <pr> = * AND <ac> = * | group live_count = count() by action_v = <ac>, principal_v = <pr> | lookup baseline_avg = baseline_avg from <prefix><src>Baseline by action_v = action_v, principal_v = principal_v | filter !(baseline_avg = *) | sort -live_count | columns principal_v, action_v, live_count | limit 100
 ```
 
 ### SILENT anti-join (Hyperautomation watchdog)
 
-```
+```text
 | left join a = ( | dataset 'config://datatables/<prefix><src>Baseline' | columns action_v, principal_v, baseline_avg, baseline_stddev ), b = ( dataSource.name='<src>' <pr>=* <ac>=* | group live_count=count() by action_v=<ac>, principal_v=<pr> ) on a.action_v = b.action_v, a.principal_v = b.principal_v | let lc = number(live_count) | let z = (lc - baseline_avg) / baseline_stddev | filter baseline_avg >= 5 | filter lc == 0 | filter z <= -2.5 | let direction = 'SILENT' | sort z | columns principal_v, action_v, baseline_avg, baseline_stddev, z, direction | limit 200
 ```
 
 ### OFF-HOURS baseline + rule (Robust: `filter live_oh > oh_p95`; Standard: `filter z >= Z`)
 
-```
+```text
 dataSource.name = '<src>' | nolimit | filter <pr> = * AND <ac> = * | let hod = strftime(event.time, '%H') | filter hod >= '00' AND hod < '05' | group day_count = count() by day = timebucket('1d'), action_v = <ac>, principal_v = <pr> | group oh_avg = avg(day_count), oh_stddev = stddev(day_count), oh_p95 = p95(day_count), n_days = count() by action_v, principal_v | filter n_days >= 2 | sort -oh_avg | limit 500 | savelookup '<prefix><src>BaselineOffHours'
 ```
-```
+
+```text
 dataSource.name = '<src>' | filter <pr> = * AND <ac> = * | let hod = strftime(event.time, '%H') | filter hod >= '00' AND hod < '05' | group live_oh = count() by action_v = <ac>, principal_v = <pr> | lookup oh_avg = oh_avg, oh_stddev = oh_stddev, oh_p95 = oh_p95 from <prefix><src>BaselineOffHours by action_v = action_v, principal_v = principal_v | filter oh_avg = * | let sd = number(oh_stddev) | let z = (live_oh - oh_avg) / sd | filter live_oh > oh_p95 | let direction = 'OFF-HOURS' | sort -live_oh | columns principal_v, action_v, live_oh, oh_avg, oh_p95, z, direction | limit 100
 ```
 
 ### FAN-OUT baseline + rule (Robust: `filter live_distinct > fo_p95`; Standard: `filter z >= Z`)
 
-```
+```text
 dataSource.name = '<src>' | nolimit | filter <pr> = * AND <fanout_field> = * | group d = estimate_distinct(<fanout_field>) by day = timebucket('1d'), principal_v = <pr> | group fo_avg = avg(d), fo_stddev = stddev(d), fo_p95 = p95(d), n_days = count() by principal_v | filter n_days >= 2 | sort -fo_avg | limit 500 | savelookup '<prefix><src>BaselineFanout'
 ```
-```
+
+```text
 dataSource.name = '<src>' | filter <pr> = * AND <fanout_field> = * | group live_distinct = estimate_distinct(<fanout_field>) by principal_v = <pr> | lookup fo_avg = fo_avg, fo_stddev = fo_stddev, fo_p95 = fo_p95 from <prefix><src>BaselineFanout by principal_v = principal_v | filter fo_avg = * | let sd = number(fo_stddev) | let z = (live_distinct - fo_avg) / sd | filter live_distinct > fo_p95 | let direction = 'FAN-OUT' | sort -live_distinct | columns principal_v, live_distinct, fo_avg, fo_p95, z, direction | limit 100
 ```
 
 ### RATIO baseline + rule (Robust: `filter live_r > rt_p95`; Standard: `filter z >= Z`)
 
-```
+```text
 dataSource.name = '<src>' | nolimit | filter <pr> = * AND <ac> = * | group total = count(), fails = count(<failure_predicate>) by day = timebucket('1d'), action_v = <ac>, principal_v = <pr> | filter total >= 5 | let r = fails / total | group rt_avg = avg(r), rt_stddev = stddev(r), rt_p95 = p95(r), n_days = count() by action_v, principal_v | filter n_days >= 2 | sort -rt_avg | limit 500 | savelookup '<prefix><src>BaselineRatio'
 ```
-```
+
+```text
 dataSource.name = '<src>' | filter <pr> = * AND <ac> = * | group total = count(), fails = count(<failure_predicate>) by action_v = <ac>, principal_v = <pr> | filter total >= 5 | let live_r = fails / total | lookup rt_avg = rt_avg, rt_stddev = rt_stddev, rt_p95 = rt_p95 from <prefix><src>BaselineRatio by action_v = action_v, principal_v = principal_v | filter rt_avg = * | let sd = number(rt_stddev) | let z = (live_r - rt_avg) / sd | filter live_r > rt_p95 | let direction = 'RATIO' | sort -live_r | columns principal_v, action_v, total, fails, live_r, rt_avg, rt_p95, z, direction | limit 100
 ```
 
 ### VELOCITY baseline + rule (Robust: `filter live_peak > vel_p95`; Standard: `filter z >= Z`)
 
-```
+```text
 dataSource.name = '<src>' | nolimit | filter <pr> = * AND <ac> = * | group h = count() by day = timebucket('1d'), hour = timebucket('1h'), action_v = <ac>, principal_v = <pr> | group peak = max(h) by day, action_v, principal_v | group vel_avg = avg(peak), vel_stddev = stddev(peak), vel_p95 = p95(peak), n_days = count() by action_v, principal_v | filter n_days >= 2 | sort -vel_avg | limit 500 | savelookup '<prefix><src>BaselineVelocity'
 ```
-```
+
+```text
 dataSource.name = '<src>' | filter <pr> = * AND <ac> = * | group live_h = count() by hour = timebucket('1h'), action_v = <ac>, principal_v = <pr> | group live_peak = max(live_h) by action_v, principal_v | lookup vel_avg = vel_avg, vel_stddev = vel_stddev, vel_p95 = vel_p95 from <prefix><src>BaselineVelocity by action_v = action_v, principal_v = principal_v | filter vel_avg = * | let sd = number(vel_stddev) | let z = (live_peak - vel_avg) / sd | filter live_peak > vel_p95 | let direction = 'VELOCITY' | sort -live_peak | columns principal_v, action_v, live_peak, vel_avg, vel_p95, z, direction | limit 100
 ```
 
 ### DORMANT baseline + anti-join (Hyperautomation watchdog)
 
-```
+```text
 dataSource.name = '<src>' | nolimit | filter <pr> = * AND <ac> = * | group last_ms = newest(event.time), total = count() by action_v = <ac>, principal_v = <pr> | filter total >= 5 | sort -last_ms | limit 500 | savelookup '<prefix><src>BaselineDormant'
 ```
-```
+
+```text
 | left join a = ( | dataset 'config://datatables/<prefix><src>BaselineDormant' | columns action_v, principal_v, last_ms ), b = ( dataSource.name='<src>' <pr>=* <ac>=* | group live_count=count() by action_v=<ac>, principal_v=<pr> ) on a.action_v = b.action_v, a.principal_v = b.principal_v | let lc = number(live_count) | let last_n = number(last_ms) | let age_days = ({{Function.DATETIME_TO_MS(Function.DATETIME_NOW())}} - last_n) / 86400000 | filter lc > 0 | filter age_days >= 30 | let direction = 'DORMANT' | sort -age_days | columns principal_v, action_v, last_ms, age_days, direction | limit 200
 ```
 
@@ -270,10 +275,11 @@ from the Hyperautomation flow, so no PowerQuery `now()` is required.
 
 The cohort is per action: the baseline averages each principal's daily volume, then takes the mean, stddev, and p95 across all principals doing that action. The rule flags a principal doing far more of the action than the cohort.
 
-```
+```text
 dataSource.name = '<src>' | nolimit | filter <pr> = * AND <ac> = * | group day_count = count() by day = timebucket('1d'), action_v = <ac>, principal_v = <pr> | group pp_avg = avg(day_count) by action_v, principal_v | group peer_avg = avg(pp_avg), peer_stddev = stddev(pp_avg), peer_p95 = p95(pp_avg), n_principals = count() by action_v | filter n_principals >= 3 | sort -peer_p95 | limit 500 | savelookup '<prefix><src>BaselinePeer'
 ```
-```
+
+```text
 dataSource.name = '<src>' | filter <pr> = * AND <ac> = * | group live_count = count() by action_v = <ac>, principal_v = <pr> | lookup peer_avg = peer_avg, peer_stddev = peer_stddev, peer_p95 = peer_p95, n_principals = n_principals from <prefix><src>BaselinePeer by action_v = action_v | filter peer_avg = * | let sd = number(peer_stddev) | let z = (live_count - peer_avg) / sd | filter live_count > peer_p95 * 3 | let direction = 'PEER-GROUP' | sort -live_count | columns principal_v, action_v, live_count, peer_avg, peer_p95, n_principals, z, direction | limit 100
 ```
 
@@ -281,10 +287,11 @@ dataSource.name = '<src>' | filter <pr> = * AND <ac> = * | group live_count = co
 
 The baseline records every location a principal has been seen from; the rule flags a principal active now from a location with no baseline entry. In `ip` mode the location is normalised in-query to an ISO country via `geo_ip_country_iso`; `country` / `coord` modes substitute the location expression.
 
-```
+```text
 dataSource.name = '<src>' | nolimit | filter <pr> = * AND <ip> = * | let loc_v = geo_ip_country_iso(<ip>) | filter loc_v = * AND loc_v != 'null' AND loc_v != 'null,null' | group loc_count = count() by principal_v = <pr>, loc_v | sort -loc_count | limit 5000 | savelookup '<prefix><src>GeoBaseline'
 ```
-```
+
+```text
 dataSource.name = '<src>' | filter <pr> = * AND <ip> = * | let loc_v = geo_ip_country_iso(<ip>) | filter loc_v = * AND loc_v != 'null' AND loc_v != 'null,null' | group live_count = count() by principal_v = <pr>, loc_v | lookup loc_count = loc_count from <prefix><src>GeoBaseline by principal_v = principal_v, loc_v = loc_v | filter !(loc_count = *) | let direction = 'GEO-NEW' | sort -live_count | columns principal_v, loc_v, live_count, direction | limit 100
 ```
 
@@ -292,7 +299,7 @@ dataSource.name = '<src>' | filter <pr> = * AND <ip> = * | let loc_v = geo_ip_co
 
 A self-join per principal over the window: for each pair of events, compute the great-circle distance and the elapsed hours, then flag any hop faster than the km/h threshold (default 900) above a minimum distance (default 100 km).
 
-```
+```text
 | join a = ( dataSource.name = '<src>' <pr>=* <ip>=* | let pa = geo_ip_location(<ip>) | filter geo_is_point(pa) | columns principal_a = <pr>, ta = timestamp, pa ), b = ( dataSource.name = '<src>' <pr>=* <ip>=* | let pb = geo_ip_location(<ip>) | filter geo_is_point(pb) | columns principal_b = <pr>, tb = timestamp, pb ) on a.principal_a = b.principal_b | filter tb > ta | let km = geo_distance(pa, pb, 'kilometer') | filter km > 100 | let hours = number(tb - ta) / 3600000000000 | filter hours > 0 | let kmh = km / hours | filter kmh > 900 | group max_kmh = max(kmh), max_km = max(km), hops = count() by principal_v = principal_a | sort -max_kmh | columns principal_v, max_kmh, max_km, hops | limit 200
 ```
 
@@ -300,13 +307,13 @@ A self-join per principal over the window: for each pair of events, compute the 
 
 RBA scores the SentinelOne alert stream against the editable `<prefix><src>RiskWeights` table in a single scan: one nested-ternary branch per RiskWeights row maps an alert-title substring to a base score (the branches below are the pre-seeded UEBA detections). Scores accumulate per entity (`resources[*].name`, a user or host); the watchdog fires one alert per entity at or above the threshold (default 6). With an asset watchlist, `asset_mult` becomes `max(multiplier)` over matching `<prefix><src>AssetWatchlist` branches and `weighted_risk = base_risk * asset_mult`.
 
-```
+```text
 dataSource.name='alert' class_uid=99602001 | let mt = (finding_info.title contains:anycase("anomaly SPIKE") ? 'anomaly SPIKE' : (finding_info.title contains:anycase("anomaly DROP") ? 'anomaly DROP' : (finding_info.title contains:anycase("NEW-BEHAVIOR") ? 'NEW-BEHAVIOR' : (finding_info.title contains:anycase("OFF-HOURS") ? 'OFF-HOURS' : (finding_info.title contains:anycase("FAN-OUT") ? 'FAN-OUT' : (finding_info.title contains:anycase("failure-RATIO") ? 'failure-RATIO' : (finding_info.title contains:anycase("VELOCITY burst") ? 'VELOCITY burst' : (finding_info.title contains:anycase("PEER-GROUP") ? 'PEER-GROUP' : (finding_info.title contains:anycase("GEO-NEW") ? 'GEO-NEW' : (finding_info.title contains:anycase("anomaly SILENT") ? 'anomaly SILENT' : (finding_info.title contains:anycase("anomaly DORMANT") ? 'anomaly DORMANT' : (finding_info.title contains:anycase("IMPOSSIBLE-TRAVEL") ? 'IMPOSSIBLE-TRAVEL' : '')))))))))))) | let sc = (finding_info.title contains:anycase("anomaly SPIKE") ? number(4) : (finding_info.title contains:anycase("anomaly DROP") ? number(2) : (finding_info.title contains:anycase("NEW-BEHAVIOR") ? number(1) : (finding_info.title contains:anycase("OFF-HOURS") ? number(2) : (finding_info.title contains:anycase("FAN-OUT") ? number(4) : (finding_info.title contains:anycase("failure-RATIO") ? number(4) : (finding_info.title contains:anycase("VELOCITY burst") ? number(4) : (finding_info.title contains:anycase("PEER-GROUP") ? number(2) : (finding_info.title contains:anycase("GEO-NEW") ? number(3) : (finding_info.title contains:anycase("anomaly SILENT") ? number(2) : (finding_info.title contains:anycase("anomaly DORMANT") ? number(2) : (finding_info.title contains:anycase("IMPOSSIBLE-TRAVEL") ? number(5) : number(0))))))))))))) | filter sc > 0 | group th = count() by entity = resources[*].name, mt, sc | group base_risk = sum(sc), types = count(), alerts = sum(th) by entity | let asset_mult = number(1) | let weighted_risk = base_risk * asset_mult | filter weighted_risk >= 6 | sort -weighted_risk | columns entity, weighted_risk, base_risk, asset_mult, types, alerts | limit 200
 ```
 
 ### RBA per-alert scoring (dashboard "Calculated risk per alert")
 
-```
+```text
 dataSource.name='alert' class_uid=99602001 | let sc = (finding_info.title contains:anycase("anomaly SPIKE") ? number(4) : (finding_info.title contains:anycase("anomaly DROP") ? number(2) : (finding_info.title contains:anycase("NEW-BEHAVIOR") ? number(1) : (finding_info.title contains:anycase("OFF-HOURS") ? number(2) : (finding_info.title contains:anycase("FAN-OUT") ? number(4) : (finding_info.title contains:anycase("failure-RATIO") ? number(4) : (finding_info.title contains:anycase("VELOCITY burst") ? number(4) : (finding_info.title contains:anycase("PEER-GROUP") ? number(2) : (finding_info.title contains:anycase("GEO-NEW") ? number(3) : (finding_info.title contains:anycase("anomaly SILENT") ? number(2) : (finding_info.title contains:anycase("anomaly DORMANT") ? number(2) : (finding_info.title contains:anycase("IMPOSSIBLE-TRAVEL") ? number(5) : number(0))))))))))))) | filter sc > 0 | group hits = count() by title = finding_info.title, base_score = sc | let alert_risk = hits * base_score | sort -alert_risk | columns title, base_score, hits, alert_risk | limit 100
 ```
 
@@ -331,7 +338,9 @@ The interactive mode is a source-agnostic pipeline at
 4. **Merges client-side** with one of two strategies: `pooled` (all daily samples in one bucket per pair) or `dow` (a separate bucket per pair per day-of-week, which removes the weekday/weekend false positive and is the production tier).
 5. **Surfaces the anomaly classes** every run: matched deviations (SPIKE/DROP), silent pairs, and new-behaviour pairs.
 
-CLI:
+CLI (host-only: run it from a terminal or Claude Code on your machine, with credentials in the OS
+keychain or the environment; it cannot reach the tenant from the Cowork sandbox, where the same
+analysis runs as parallel `powerquery_run` calls):
 
 ```bash
 # Auto-discover principal/action, 30-day DoW-stratified baseline

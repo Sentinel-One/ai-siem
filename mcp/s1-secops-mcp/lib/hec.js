@@ -27,7 +27,7 @@
  */
 
 import { gzipSync } from 'zlib';
-import { getCreds } from './credentials.js';
+import { getCreds, setupHint } from './credentials.js';
 
 const MAX_UNCOMPRESSED = 10 * 1024 * 1024; // 10 MB per HEC docs
 
@@ -35,8 +35,8 @@ function hecBase() {
   const url = (getCreds().S1_HEC_INGEST_URL || '').replace(/\/+$/, '');
   if (!url) {
     throw new Error(
-      'S1_HEC_INGEST_URL not configured. Add it to credentials.json ' +
-      '(e.g. "S1_HEC_INGEST_URL": "https://ingest.us1.sentinelone.net"). ' +
+      'S1_HEC_INGEST_URL not configured (e.g. https://ingest.us1.sentinelone.net). ' +
+      setupHint() + ' ' +
       'Find the regional ingest URL at https://community.sentinelone.com/s/article/000004961'
     );
   }
@@ -50,8 +50,8 @@ function hecToken() {
       'S1_HEC_TOKEN not configured. Log ingest needs an SDL Log Write Key, not the ' +
       'Management Console API token: the event collector refuses a user token. ' +
       'Mint one at Console > Singularity Data Lake > API Keys > Log Write Key ' +
-      '(no API creates one) and set S1_HEC_TOKEN. The key is scoped to one account or ' +
-      'site and writes only there.'
+      '(no API creates one) and store it as S1_HEC_TOKEN. The key is scoped to one account or ' +
+      'site and writes only there. ' + setupHint()
     );
   }
   return tok;

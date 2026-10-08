@@ -34,21 +34,9 @@ Discovery is mandatory before querying any source, but it runs ONCE PER PROJECT 
 
 **Step 2 (schema), per-source schema discovery (ONLY on cache miss/stale, or for a single missing source):**
 
-PowerQuery's default projection only returns `timestamp + message`, so it cannot discover schemas. Use the V1 `query` method (returns full event JSON) via the SDL client, which authenticates with `S1_CONSOLE_API_TOKEN`.
+PowerQuery's default projection only returns `timestamp + message`, so it cannot discover schemas. Use the `powerquery_schema_discover` MCP tool (s1-secops-mcp), which returns sample events as full attribute sets and drops `logVolume` metering rows. Call it for EVERY source from Step 1, not a curated subset, issuing the calls in parallel: `{"dataSourceName": "<dataSource.name>", "maxEvents": 2, "startTime": "24h"}`. For a larger sample use `powerquery_run` with `queryType: "LOG"` and an `outputFile`. The MCP server runs on the user's machine and reads credentials from environment variables or the OS keychain; never run a discovery script from the Cowork sandbox (it cannot reach `*.sentinelone.net`, and a proxy error read as an empty result fabricates a schema). If a credential is missing, ask the user to run `s1-secops-mcp setup`.
 
-```python
-from sdl_client import SDLClient
-c = SDLClient()
-schemas = {}
-for source in all_sources_from_step1:  # EVERY source from Step 1, not a curated subset
-    res = c.query(filter=f"dataSource.name=='{source}'", max_count=2, start_time="24h")
-    matches = res.get("matches") or []
-    if matches:
-        schemas[source] = sorted((matches[0].get("attributes") or {}).keys())
-import json, datetime
-json.dump({"schema_cache_version": datetime.datetime.utcnow().isoformat()+"Z",
-           "ttl_days": 30, "schemas": schemas}, open("s1_sdl_schema_cache.json", "w"), indent=2)
-```
+Then write the cache with the Write tool, shaped as `{"schema_cache_version": "<UTC ISO-8601>Z", "ttl_days": 30, "data_source_enumeration": {...}, "schemas": {"<source>": ["field.a", ...]}, "pending_rediscovery": [...]}`.
 
 Persist to `s1_sdl_schema_cache.json` in the project root with: `schema_cache_version` (current UTC timestamp), `ttl_days`, the `data_source_enumeration` result, a `schemas` map (per-source field lists), and a `pending_rediscovery` list for sources not yet discovered or that returned only volume/metric samples. Keep a dated copy if you want drift diffs.
 
@@ -301,7 +289,7 @@ When a suspicious IOC (IP, domain, hash, user, hostname) appears in any one sour
        OR dst.ip.address == "SUSPICIOUS_IP" )
 | columns timestamp, dataSource.name, dataSource.vendor, src.ip.address,
           dst.ip.address, actor.user.name, src_endpoint.ip
-| sort - timestamp
+| sort -timestamp
 | limit 1000
 ```
 
@@ -358,7 +346,7 @@ After discovery confirms the action, source-IP, destination-IP, destination-port
 | columns timestamp, <action_field>, <src_ip_field>, <src_port_field>,
           <dst_ip_field>, <dst_port_field>, <protocol_field>, <direction_field>,
           <interface_field>, <rule_field>
-| sort - timestamp
+| sort -timestamp
 | limit 1000
 ```
 
@@ -416,7 +404,7 @@ PQ pattern, auth outside business hours (any identity source):
 | filter( dataSource.name == "<identity_source>" )
 | filter( <event_type_field> == "<login_success_value>" )
 | columns timestamp, actor.user.name, actor.user.email_addr, src_endpoint.ip, <target_field>
-| sort - timestamp
+| sort -timestamp
 | limit 1000
 # Post-query: flag rows where timestamp hour (UTC) is outside 06:00 to 22:00
 ```
@@ -588,12 +576,13 @@ VT default-bundle tool names; substitute your provider's equivalents.
 Use installed skills eagerly; do not hand-author SDL config files, Hyperautomation workflows, or detection rule bodies without the skill loaded.
 
 - `s1-secops-skills:powerquery`: author/optimise/debug/explain any PowerQuery (STAR rule body, dashboard panel, hunt, alert). LRQ runner, syntax reference, performance rules (filter early, group narrow, `top` over `group` for huge ranges, `transpose` LAST, escape regex, percentile rules).
-- `s1-secops-skills:mgmt-console-api`: site / agent / threat / IOC / Custom Detection rule console operations; deploying STAR rules; UAM alert triage. `S1Client`, endpoint index, UAM GraphQL wrapper, `pq.py` LRQ runner, IOC lifecycle test, asset linkage ref.
-- `s1-secops-skills:sdl-api`: SDL configuration files (parsers, dashboards, lookups), custom log ingestion, V1 query for ad-hoc <24h stats. `SDLClient.config_files` / `config_file` / `put_config_file` / `delete_config_file` over `POST /sdl/v2/graphql`; the legacy `list_files` / `get_file` / `put_file` REST methods cannot see udoId-addressed dashboards. One console token authorises everything.
+- `s1-secops-skills:mgmt-console-api`: site / agent / threat / IOC / Custom Detection rule console operations; deploying STAR rules; UAM alert triage. Runs through the s1-secops-mcp `s1_api_*` (IOC writes need a token minted at a single account or site, error 4030010: run a second MCP entry with `S1_PROFILE=<name>`), `s1_api_download` and `uam_*` tools; endpoint index, asset linkage ref; host-only Python (`S1Client`, `pq.py`, IOC lifecycle test) for Claude Code or a terminal.
+- `s1-secops-skills:sdl-api`: SDL configuration files (parsers, dashboards, lookups), custom log ingestion, queries. The `sdl_list_files` / `sdl_get_file` / `sdl_put_file` / `sdl_delete_file` MCP tools over `POST /sdl/v2/graphql` (host-only Python: `SDLClient.config_files` / `config_file` / `put_config_file` / `delete_config_file`); the legacy REST file methods cannot see udoId-addressed dashboards. One console token authorises everything; credentials come from env or the OS keychain, never a file.
 - `s1-secops-skills:sdl-dashboard`: building or editing any SDL dashboard JSON. Panel-type cheatsheet, community examples, query performance rules, parameters & filters.
 - `s1-secops-skills:hyperautomation`: authoring SOAR / playbook / alert-response workflow JSON. Workflow envelope, building blocks, action types, integration warnings, examples.
 - `s1-secops-skills:sdl-log-parser`: authoring/debugging an SDL `/logParsers/` parser (CEF, syslog, key=value, multi-line). Parser DSL, end-to-end validation via `putFile → hec_ingest → query`.
-- `s1-secops-skills:sdl-solutions`: onboarding a data source or deploying a packaged SDL solution end to end ("onboard <source> logs", detections + dashboard for a source, asset enrichment, or UEBA anomaly detection: baseline any signal, flag z-score SPIKE/DROP/SILENT/NEW). Orchestrates the primitives: parser→OCSF + asset enrichment, dashboard, MITRE-mapped detections, UEBA baseline + scheduled rule, threat-response / refresh HA flows.
+- `s1-secops-skills:sdl-solutions`: deploying one of 10 packaged SDL solutions end to end: data source onboarding, asset enrichment, UEBA anomaly detection, per-device ingest health, detection exclusions, Risk-Based Alerting, Detection as Code, alert noise reduction, custom detections with MITRE mapping (watchdog alert carrying ATT&CK, since STAR rules cannot), and query slicing (long-window PowerQuery as parallel slices, merged). Orchestrates the primitives: parser→OCSF + asset enrichment, dashboard, MITRE-mapped detections, scheduled rules, threat-response / refresh HA flows.
+- `s1-secops-skills:soc-investigator`: investigating or triaging an alert or incident (SHORT triage, MEDIUM correlation, LONG forensic timeline), or a SWEEP of raw logs over a time window for MITRE-mapped TTPs with no alert. Threat-intel enrichment, strict verdict gates, report with a mandatory query appendix.
 - `mcp__purple-mcp__*` (built-in MCP): first-line PowerQuery hunts, alert triage, threat-intel enrichment. Auto-authenticated; preferred for quick hunts and 24h stats.
 - Threat-intel MCP (default `mcp__virustotal__*`; substitute your provider): **mandatory** for every IOC enrichment. File / IP / domain / URL lookups + all relationship pivots.
 - `docx`: CISO / leadership reports as `.docx` (docx-js Node lib, validated output, table styling rules). `xlsx` / `pptx` / `pdf`: same idea for spreadsheets / decks / PDFs.
@@ -604,10 +593,10 @@ For any investigation culminating in deliverables:
 
 1. **Load skills up front** (`powerquery`, `mgmt-console-api`, `sdl-dashboard`, `hyperautomation`, `sdl-api`, `docx`) BEFORE starting; mid-task loading wastes turns.
 2. **Session init in parallel:** enumeration (per cache protocol) + `search_alerts` + `get_timestamp_range` in one batch.
-3. **Schema for every source you'll query** via the cache / Section 7 workflow; persist dumps to `outputs/sdl_schemas_<YYYY-MM-DD>.json`.
+3. **Schema for every source you'll query** via the cache / Section 7 workflow (`powerquery_schema_discover`); persist dumps with the Write tool to `outputs/sdl_schemas_<YYYY-MM-DD>.json`.
 4. **Hunt, enrich, correlate:** Purple MCP hunts, threat-intel MCP for every IOC, cross-source correlation.
 5. **Build deliverables:** dashboard JSON via `sdl-dashboard`, workflows via `hyperautomation`, detection rules via `mgmt-console-api`, report via `docx`.
-6. **Deploy live:** dashboards via `SDLClient.put_config_file()` on `POST /sdl/v2/graphql`, creating by name once and addressing by `udo_id` with `expected_version` on every write after that; a name-addressed write to an existing dashboard is refused because it duplicates. STAR rules via `POST /web/api/v2.1/cloud-detection/rules`. Read the existing version first; pass `expected_version` on overwrite.
+6. **Deploy live:** new dashboards via `sdl_create_dashboard {name, config, isPublic: true, scope}` (the default, and the only way to deploy to a site; pass `scope: "<accountId>:<siteId>"`). Updates: `sdl_get_file` by `udoId`, then `sdl_put_file {udoId, content, expectedVersion}`; a path-addressed write to an existing dashboard is refused because it duplicates. STAR rules via `s1_api_post` to `/web/api/v2.1/cloud-detection/rules`. Read the existing version first; pass `expectedVersion` on overwrite.
 7. **Verify:** re-fetch deployed artifacts, confirm versions, run a sample query against each rule's PQ body to confirm it parses.
 
 ---

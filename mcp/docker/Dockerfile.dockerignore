@@ -1,0 +1,61 @@
+# Build-context exclusions for docker/Dockerfile.
+#
+# Builds use the REPO ROOT as context (`docker/build.sh` runs
+# `docker buildx build -f docker/Dockerfile .`; CI uses `context: .` and
+# `file: docker/Dockerfile`). Docker reads `<context>/.dockerignore` or, with
+# BuildKit, `<Dockerfile path>.dockerignore`. This file is the second form, so
+# every pattern below is relative to the repo root, not to docker/.
+#
+# The Dockerfile COPYs only: s1-secops-mcp/package.json, s1-secops-mcp/index.js,
+# s1-secops-mcp/lib/, s1-secops-mcp/tools/, s1-secops-mcp/scripts/, CLAUDE.md
+# and docker/entrypoint.sh. Nothing below may match those paths.
+
+.git
+.github
+node_modules
+**/node_modules
+**/__pycache__
+**/.venv
+**/.pytest_cache
+
+# s1-secops-mcp ships from local source, so what sits beside it in the build
+# context matters. s1-secops-mcp/data/ is git-ignored and holds only local
+# exports; no code references it and the Dockerfile COPYs path by path and
+# never names it. Excluding it here as well keeps local files out of the
+# context and out of any layer.
+s1-secops-mcp/data/
+data/
+
+# Build artefacts
+s1-secops-skills-plugin/dist/
+s1-secops-mcp/dist/
+s1-secops-mcp/mcpb/
+*.tar.gz
+*.zip
+*.skill
+*.plugin
+*.mcpb
+
+# Heavy reference / test data not needed inside the image
+mgmt-console-api/spec/
+**/tests/
+tests/
+spec/
+docs/
+assets/
+
+# Editor & OS junk
+.vscode/
+.idea/
+**/.DS_Store
+**/*.swp
+**/*.log
+
+# Office docs (sometimes dropped in the repo root for one-offs)
+*.pptx
+*.docx
+*.xlsx
+*.pdf
+
+# Windsurf workflow files (not needed at runtime)
+.windsurf/

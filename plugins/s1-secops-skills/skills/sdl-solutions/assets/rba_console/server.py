@@ -2,17 +2,18 @@
 """
 RBA Console - zero-dependency local proxy + static UI server.
 
-Reads SentinelOne SDL creds from the Claude Desktop config at runtime
-(nothing hard-coded), injects Bearer + talks to the SDL xdr host, and
-serves the 4-tab RBA demo UI at http://localhost:8787
+Reads S1_CONSOLE_URL and S1_CONSOLE_API_TOKEN at runtime from the environment,
+else the OS keychain (service "sentinelone-mcp", account "<S1_PROFILE>:<NAME>",
+the items `s1-secops-mcp setup` writes). Nothing is hard-coded and no config
+file is read. Injects Bearer, talks to the SDL host, and serves the 4-tab RBA
+demo UI at http://localhost:8787
 
 Run:  python3 server.py
 Then open http://localhost:8787 in your browser.
 """
-import json, os, secrets, urllib.request, urllib.error, http.server, socketserver, pathlib, sys
+import json, os, re, secrets, shutil, subprocess, urllib.request, urllib.error, http.server, socketserver, pathlib, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
-CONFIG = os.path.expanduser("~/Library/Application Support/Claude/claude_desktop_config.json")
 PORT = int(os.environ.get("RBA_PORT", "8787"))
 # CSRF guard: only requests from this server's own UI origin may hit the proxy.
 # The proxy injects a credentialed SDL Bearer, so a wildcard CORS policy would let any
@@ -20,32 +21,91 @@ PORT = int(os.environ.get("RBA_PORT", "8787"))
 ALLOWED_ORIGINS = {f"http://localhost:{PORT}", f"http://127.0.0.1:{PORT}"}
 # Second guard: the origin check alone still admits Origin-less requests (curl,
 # any local process), which could otherwise drive /api/putFile with the
-# config-write key. A per-session token is minted at startup, injected into the
+# console API token. A per-session token is minted at startup, injected into the
 # served HTML, and must be echoed back by the frontend as the X-RBA-Token
 # header on every /api/ POST.
 SESSION_TOKEN = secrets.token_hex(16)
 
-try:
-    env = json.load(open(CONFIG))["mcpServers"]["s1-secops-mcp"]["env"]
-except Exception:
-    env = {}
-# Exported environment variables override the config file, so operators can
-# retarget the proxy (or run it without the Claude Desktop config) per the docs.
-for _k in ("S1_CONSOLE_URL", "S1_CONSOLE_API_TOKEN"):
-    if os.environ.get(_k):
-        env[_k] = os.environ[_k]
+_ENV_ALIASES = {
+    "S1_CONSOLE_URL": ("S1_CONSOLE_URL", "S1_BASE_URL"),
+    "S1_CONSOLE_API_TOKEN": ("S1_CONSOLE_API_TOKEN", "S1_API_TOKEN", "SDL_CONSOLE_API_TOKEN"),
+}
 
-if not env.get("S1_CONSOLE_URL"):
-    sys.exit(f"S1_CONSOLE_URL not set: export it or add it to {CONFIG}")
 
-XDR = env["S1_CONSOLE_URL"].rstrip("/") + "/sdl"
-TOKEN = env.get("S1_CONSOLE_API_TOKEN")
+def _keychain_get(name):
+    """(value, error) from the OS keychain; mirrors mgmt-console-api/scripts/s1_keystore.py. Never raises."""
+    if (os.environ.get("S1_KEYCHAIN") or "").strip().lower() == "off":
+        return None, "disabled by S1_KEYCHAIN=off"
+    prof = (os.environ.get("S1_PROFILE") or "default").strip()
+    if not re.match(r"^[A-Za-z0-9_.-]{1,64}$", prof):
+        return None, 'invalid S1_PROFILE "%s"' % prof
+    acct = "%s:%s" % (prof, name)
+    try:
+        if sys.platform == "darwin" and os.path.exists("/usr/bin/security"):
+            r = subprocess.run(["/usr/bin/security", "find-generic-password", "-s", "sentinelone-mcp",
+                                "-a", acct, "-w"], capture_output=True, text=True, timeout=15)
+            if r.returncode == 0:
+                return r.stdout.rstrip("\r\n") or None, None
+            if r.returncode == 44:
+                return None, None
+            return None, "macOS keychain read failed: " + (r.stderr.strip() or "exit %d" % r.returncode)
+        if sys.platform.startswith("linux"):
+            if not shutil.which("secret-tool"):
+                return None, "secret-tool not found"
+            r = subprocess.run(["secret-tool", "lookup", "service", "sentinelone-mcp", "username", acct],
+                               capture_output=True, text=True, timeout=15)
+            if r.returncode == 0:
+                return r.stdout.rstrip("\r\n") or None, None
+            if r.returncode == 1 and not r.stderr.strip():
+                return None, None
+            return None, "Linux keyring unavailable: " + (r.stderr.strip() or "exit %d" % r.returncode)
+        if sys.platform == "win32":
+            # Same Credential Manager item as the Node server and the PowerShell
+            # launcher: TargetName "<account>.sentinelone-mcp", UTF-16LE blob.
+            import ctypes
+            from ctypes import wintypes
+            class _CRED(ctypes.Structure):
+                _fields_ = [("Flags", wintypes.DWORD), ("Type", wintypes.DWORD), ("TargetName", wintypes.LPWSTR),
+                            ("Comment", wintypes.LPWSTR), ("LastWritten", wintypes.DWORD * 2),
+                            ("CredentialBlobSize", wintypes.DWORD), ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)),
+                            ("Persist", wintypes.DWORD), ("AttributeCount", wintypes.DWORD), ("Attributes", ctypes.c_void_p),
+                            ("TargetAlias", wintypes.LPWSTR), ("UserName", wintypes.LPWSTR)]
+            adv = ctypes.WinDLL("advapi32", use_last_error=True)
+            p = ctypes.POINTER(_CRED)()
+            if not adv.CredReadW(acct + ".sentinelone-mcp", 1, 0, ctypes.byref(p)):
+                err = ctypes.get_last_error()
+                return (None, None) if err == 1168 else (None, "Windows Credential Manager read failed: %d" % err)
+            try:
+                c = p.contents
+                return ctypes.string_at(c.CredentialBlob, c.CredentialBlobSize).decode("utf-16-le") or None, None
+            finally:
+                adv.CredFree(p)
+        try:
+            import keyring
+        except Exception:
+            return None, "no keychain backend (install the Python keyring package)"
+        return keyring.get_password("sentinelone-mcp", acct) or None, None
+    except Exception as e:
+        return None, "OS keychain read failed: %s" % e
 
+
+def _cred(name):
+    """Environment first (canonical name, then aliases), then the OS keychain. Exits with a clear message."""
+    for k in _ENV_ALIASES[name]:
+        if os.environ.get(k):
+            return os.environ[k]
+    v, err = _keychain_get(name)
+    if not v:
+        sys.exit("%s not configured (looked in the environment and the OS keychain). Store it with "
+                 "`s1-secops-mcp setup` or pass it as an environment variable%s."
+                 % (name, " (OS keychain: %s)" % err if err else ""))
+    return v
+
+
+XDR = _cred("S1_CONSOLE_URL").rstrip("/") + "/sdl"
 # Fail fast with a clear message rather than crashing on `"Bearer " + None` at
 # request time when no token is configured.
-if not TOKEN:
-    sys.exit("S1_CONSOLE_API_TOKEN not set: export it or add it to "
-             f"{CONFIG}")
+TOKEN = _cred("S1_CONSOLE_API_TOKEN")
 
 
 def sdl(ep, body, key):

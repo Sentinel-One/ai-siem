@@ -7,13 +7,14 @@
  * All SDL endpoints live under `<console>/sdl`, derived from S1_CONSOLE_URL.
  */
 
-import { getCreds } from './credentials.js';
+import { getCreds, setupHint } from './credentials.js';
+import { parseJsonExact } from './json.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 function sdlBase() {
   const url = (getCreds().S1_CONSOLE_URL || '').replace(/\/+$/, '');
-  if (!url) throw new Error('S1_CONSOLE_URL not configured. Drop credentials.json into your project folder.');
+  if (!url) throw new Error('S1_CONSOLE_URL not configured. ' + setupHint());
   return `${url}/sdl`;
 }
 
@@ -21,7 +22,7 @@ function sdlBase() {
 export function sdlToken() {
   const token = getCreds().S1_CONSOLE_API_TOKEN;
   if (!token) {
-    throw new Error('S1_CONSOLE_API_TOKEN not configured. Drop credentials.json into your project folder.');
+    throw new Error('S1_CONSOLE_API_TOKEN not configured. ' + setupHint());
   }
   return token;
 }
@@ -143,7 +144,7 @@ async function sdlFetch(method, path, { body, extraHeaders = {}, rawBody = null,
 
     const text = await res.text();
     let data;
-    try { data = JSON.parse(text); } catch { data = text; }
+    try { data = parseJsonExact(text); } catch { data = text; }
 
     if (!res.ok) {
       const msg = typeof data === 'object' ? JSON.stringify(data) : text;
@@ -431,9 +432,8 @@ export async function deleteConfigFile({ name, udoId, expectedVersion, scope }) 
 //
 // WHY THIS EXISTS: creating a dashboard through addConfigFile(name:) files it at
 // the request's scope but gives no way to share it elsewhere, and the console's
-// own create path is createDashboardV2. Site-level lifecycle needs both this and
-// shareResource, which is the ONLY operation that takes an explicit scope target
-// rather than inferring one from the request header.
+// own create path is createDashboardV2, which files the dashboard at the scope in
+// the S1-Scope header: that is how a dashboard is deployed to a site.
 //
 // VERSION FIELDS DIFFER, do not cross them. getDashboardV2 returns
 // `version: ""` (a display string, empty in practice); configFile returns
@@ -595,18 +595,20 @@ export async function createDashboard({ name, config, isPublic = true, scope, fa
 }
 
 /**
- * Share a dashboard to scopes and/or users. THE ONLY OPERATION THAT TAKES AN
- * EXPLICIT SCOPE TARGET; everything else infers scope from the S1-Scope header.
+ * Share a dashboard with the account and/or with users.
  *
  * `scopes` entries are {scopeType, scopeId, operation}:
- *   scopeType  'site' | 'account' | 'global'
- *   scopeId    the numeric id from /web/api/v2.1/sites or /accounts
+ *   scopeType  'account'
+ *   scopeId    the numeric id from /web/api/v2.1/accounts
  *   operation  'ADD' | 'REMOVE'
+ *
+ * Deploying to a site is NOT a share: create the dashboard at the site with
+ * createDashboardV2 and S1-Scope "<accountId>:<siteId>".
  *
  * `scope` (the option, not the array) is still the header for the CALL, i.e.
  * where you are standing when you share. It is independent of the targets.
  */
-const VALID_SCOPE_TYPES = new Set(['site', 'account', 'global']);
+const VALID_SCOPE_TYPES = new Set(['account']);
 const VALID_SCOPE_OPS = new Set(['ADD', 'REMOVE']);
 
 export async function shareDashboard({ id, scopes = [], users = [], scope }) {
@@ -646,7 +648,8 @@ export async function shareDashboard({ id, scopes = [], users = [], scope }) {
   if (!shared?.id) {
     throw new SdlGraphqlError('shareDashboard: shareResource returned no id, so nothing was shared.');
   }
-  return { status: 'success', dashboard: { id: String(shared.id), name: shared.name }, scopes: normalisedScopes, users };
+  // Return the id that was sent: it is exact by construction.
+  return { status: 'success', dashboard: { id: String(id), name: shared.name }, scopes: normalisedScopes, users };
 }
 
 /**

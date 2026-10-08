@@ -20,7 +20,7 @@ dataSource.name='<m365_source>'
 | sort -ct | limit 30
 ```
 
-The `<candidate_*_field>` placeholders below should be replaced with the field names that the discovery step confirmed are populated. The mgmt-console-api skill's `inspect_source.py` automates this and returns the right keys; use it when scripting.
+The `<candidate_*_field>` placeholders below should be replaced with the field names that the discovery step confirmed are populated. `powerquery_schema_discover` (s1-secops-mcp) shows which fields are populated; on the user's host, the mgmt-console-api skill's `inspect_source.py` automates this and returns the right keys.
 
 ## Recipe 1: "did user X send any mail in the last N days"
 

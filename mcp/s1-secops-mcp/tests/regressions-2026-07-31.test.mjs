@@ -73,17 +73,33 @@ test('doFetch: numeric Retry-After header keeps its prior behavior (0 -> immedia
 
 // ─── uamSetStatus result verification (mocked fetch, no network) ─────────────
 
-function gqlResponse(alertTriggerActions) {
-  return new Response(JSON.stringify({ data: { alertTriggerActions } }), {
-    status: 200, headers: { 'Content-Type': 'application/json' },
-  });
+// Since 1.5.0 the write path reads the alert first (state + scope) and re-reads
+// it afterwards, so the mock routes by GraphQL operation: AlertState answers
+// with a NEW alert, AlertTriggerActions with the canned result. The full
+// lifecycle suite lives in uam-lifecycle-1.5.0.test.mjs.
+function routedFetch(alertTriggerActions) {
+  const json = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  const alert = { id: 'alert-1', status: 'NEW', analystVerdict: 'UNDEFINED', assignee: null,
+    detectionSource: { product: 'STAR' }, realTime: { scope: { account: { id: '1' } } } };
+  return async (url, opts = {}) => {
+    const body = opts.body ? JSON.parse(opts.body) : {};
+    const op = body.operationName || (body.query || '').match(/(query|mutation)\s+(\w+)/)?.[2];
+    if (op === 'AlertTriggerActions') {
+      if (alertTriggerActions.actions?.[0]?.success?.length) alert.status = body.variables.actions[0].payload.status.value;
+      return json({ data: { alertTriggerActions } });
+    }
+    if (op === 'AlertState') return json({ data: { alert: structuredClone(alert) } });
+    if (op === 'AvailableActions') return json({ data: { alertAvailableActions: { data: [] } } });
+    return json({ data: {} }); // role diagnosis lookups: best effort, empty
+  };
 }
+const FAST = { verifyDelayMs: 0, verifyAttempts: 2 };
 
 test('uamSetStatus: throws when the response contains a failure entry', async () => {
   process.env.S1_CONSOLE_URL = 'https://mgmt.example.invalid';
   process.env.S1_CONSOLE_API_TOKEN = 'tok';
   const realFetch = globalThis.fetch;
-  globalThis.fetch = async () => gqlResponse({
+  globalThis.fetch = routedFetch({
     actions: [{
       actionId: 'S1/alert/statusUpdate',
       skip: [],
@@ -94,7 +110,7 @@ test('uamSetStatus: throws when the response contains a failure entry', async ()
   try {
     const { uamSetStatus } = await import('../lib/s1.js');
     await assert.rejects(
-      () => uamSetStatus('alert-1', 'RESOLVED'),
+      () => uamSetStatus('alert-1', 'RESOLVED', FAST),
       /status transition rejected/,
       'a failure entry must surface as a thrown error, not silent success',
     );
@@ -108,12 +124,12 @@ test('uamSetStatus: throws when the action is skipped with no success', async ()
   process.env.S1_CONSOLE_URL = 'https://mgmt.example.invalid';
   process.env.S1_CONSOLE_API_TOKEN = 'tok';
   const realFetch = globalThis.fetch;
-  globalThis.fetch = async () => gqlResponse({
+  globalThis.fetch = routedFetch({
     actions: [{ actionId: 'S1/alert/statusUpdate', skip: [{ id: 'alert-1' }], failure: [], success: [] }],
   });
   try {
     const { uamSetStatus } = await import('../lib/s1.js');
-    await assert.rejects(() => uamSetStatus('alert-1', 'RESOLVED'), /skipped/);
+    await assert.rejects(() => uamSetStatus('alert-1', 'RESOLVED', FAST), /skipped/);
   } finally {
     globalThis.fetch = realFetch;
     delete process.env.S1_CONSOLE_URL; delete process.env.S1_CONSOLE_API_TOKEN;
@@ -127,27 +143,29 @@ test('uamSetStatus: throws when the backend returns an empty actions array', asy
   process.env.S1_CONSOLE_URL = 'https://mgmt.example.invalid';
   process.env.S1_CONSOLE_API_TOKEN = 'tok';
   const realFetch = globalThis.fetch;
-  globalThis.fetch = async () => gqlResponse({ actions: [] });
+  globalThis.fetch = routedFetch({ actions: [] });
   try {
     const { uamSetStatus } = await import('../lib/s1.js');
-    await assert.rejects(() => uamSetStatus('alert-1', 'RESOLVED'), /applied no action/);
+    await assert.rejects(() => uamSetStatus('alert-1', 'RESOLVED', FAST), /applied no action/);
   } finally {
     globalThis.fetch = realFetch;
     delete process.env.S1_CONSOLE_URL; delete process.env.S1_CONSOLE_API_TOKEN;
   }
 });
 
-test('uamSetStatus: resolves when the action reports success', async () => {
+test('uamSetStatus: resolves when the action reports success and the re-read confirms it', async () => {
   process.env.S1_CONSOLE_URL = 'https://mgmt.example.invalid';
   process.env.S1_CONSOLE_API_TOKEN = 'tok';
   const realFetch = globalThis.fetch;
-  globalThis.fetch = async () => gqlResponse({
+  globalThis.fetch = routedFetch({
     actions: [{ actionId: 'S1/alert/statusUpdate', skip: [], failure: [], success: [{ id: 'alert-1' }] }],
   });
   try {
     const { uamSetStatus } = await import('../lib/s1.js');
-    const r = await uamSetStatus('alert-1', 'IN_PROGRESS');
-    assert.equal(r.actions[0].success[0].id, 'alert-1');
+    const r = await uamSetStatus('alert-1', 'IN_PROGRESS', FAST);
+    assert.equal(r.response.actions[0].success[0].id, 'alert-1');
+    assert.equal(r.verified, true);
+    assert.equal(r.after.status, 'IN_PROGRESS');
   } finally {
     globalThis.fetch = realFetch;
     delete process.env.S1_CONSOLE_URL; delete process.env.S1_CONSOLE_API_TOKEN;

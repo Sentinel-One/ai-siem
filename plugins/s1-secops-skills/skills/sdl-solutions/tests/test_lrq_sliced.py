@@ -196,5 +196,67 @@ class Slices(unittest.TestCase):
             self.assertEqual(y1, x2)
 
 
+class Credentials(unittest.TestCase):
+    """CLI credentials: environment, then the OS keychain; never a file (no --creds)."""
+
+    _VARS = ("S1_CONSOLE_URL", "S1_BASE_URL", "S1_CONSOLE_API_TOKEN", "S1_API_TOKEN",
+             "SDL_CONSOLE_API_TOKEN", "S1_PROFILE", "S1_KEYCHAIN")
+
+    def setUp(self):
+        import os
+        from unittest import mock
+        env = {k: v for k, v in os.environ.items() if k not in self._VARS}
+        p = mock.patch.dict(os.environ, env, clear=True)
+        p.start()
+        self.addCleanup(p.stop)
+        self.os = os
+        self.mock = mock
+
+    def test_env(self):
+        self.os.environ.update({"S1_KEYCHAIN": "off", "S1_CONSOLE_URL": "https://t.example",
+                                "S1_API_TOKEN": "alias-tok"})
+        self.assertEqual(L._creds(), ("https://t.example", "alias-tok"))
+
+    def test_keychain_off_exits_with_clear_message(self):
+        self.os.environ["S1_KEYCHAIN"] = "off"
+        with self.assertRaises(SystemExit) as cm:
+            L._creds()
+        msg = str(cm.exception.code)
+        self.assertIn("S1_CONSOLE_URL and S1_CONSOLE_API_TOKEN not configured", msg)
+        self.assertIn("s1-secops-mcp setup", msg)
+        self.assertIn("S1_KEYCHAIN=off", msg)
+
+    def test_keychain_lookup_argv(self):
+        import subprocess
+        seen = []
+
+        def fake(argv, **kw):
+            seen.append(argv)
+            return subprocess.CompletedProcess(argv, 0, "v-" + argv[-2 if argv[0].endswith("security") else -1] + "\n", "")
+
+        with self.mock.patch.object(L.sys, "platform", "darwin"), \
+                self.mock.patch.object(L.os.path, "exists", return_value=True), \
+                self.mock.patch("subprocess.run", side_effect=fake):
+            url, tok = L._creds()
+        self.assertEqual(seen[0], ["/usr/bin/security", "find-generic-password", "-s", "sentinelone-mcp",
+                                   "-a", "default:S1_CONSOLE_URL", "-w"])
+        self.assertEqual((url, tok), ("v-default:S1_CONSOLE_URL", "v-default:S1_CONSOLE_API_TOKEN"))
+
+    def test_bad_profile_never_crashes(self):
+        self.os.environ["S1_PROFILE"] = "no spaces allowed"
+        with self.assertRaises(SystemExit) as cm:
+            L._creds()
+        self.assertIn("invalid S1_PROFILE", str(cm.exception.code))
+
+    def test_creds_flag_removed(self):
+        import contextlib
+        import io
+        argv = ["lrq_sliced.py", "--query", "| group n=count()", "--creds", "x.json"]
+        with self.mock.patch.object(L.sys, "argv", argv), contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as cm:
+                L.main()
+        self.assertEqual(cm.exception.code, 2)   # argparse: unrecognized arguments
+
+
 if __name__ == "__main__":
     unittest.main()

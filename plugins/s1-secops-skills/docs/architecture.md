@@ -10,7 +10,7 @@ The stack runs top-down: CLAUDE.md decides what to do and invokes skills; the um
 `sdl-solutions` skill orchestrates the primitive skills for whole-solution work; the skills reach the
 live APIs through the MCP servers.
 
-```
+```text
 CLAUDE.md                       Main instruction layer: SOC Analyst persona, session protocol,
                                 evidence rules, investigation workflow, classification gates.
                                 Loaded as a resource via s1-secops-mcp at session start. Decides what
@@ -56,14 +56,16 @@ MCP Servers                     Live API access, outside the Cowork sandbox prox
 
 ### s1-secops-mcp
 
-A local Node.js process that runs outside the Cowork sandbox. Because the Cowork sandbox proxy blocks outbound HTTPS to `*.sentinelone.net` by default, all API calls go through this server instead, bypassing the sandbox proxy entirely.
+A local Node.js process (or the Docker image, started by the host launcher) that runs on the user's machine, outside the Cowork sandbox, over stdio. Because the Cowork sandbox proxy blocks outbound HTTPS to `*.sentinelone.net` by default, all API calls go through this server. It reads credentials from environment variables, then the OS keychain, and masks token values in every tool response and log line. There is no HTTP transport and no shared team server: each user runs their own instance with their own credentials.
 
-It exposes 32 MCP tools across five groups:
+Bulk results do not have to pass through the model's context: `powerquery_run`, `s1_api_get`, `s1_api_download` and `ha_export_workflow` take an `outputFile` (an absolute path inside `S1_OUTPUT_DIRS`, default home and temp; files are created mode 0600 and never overwritten unless `overwrite` is true) and return a summary instead.
+
+It exposes 35 MCP tools across five groups:
 
 | Group | Tools | API surface |
 |---|---|---|
-| PowerQuery | `powerquery_enumerate_sources`, `powerquery_run`, `powerquery_schema_discover` | SDL LRQ API |
-| Mgmt Console | `s1_api_get`, `s1_api_post`, `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_list_alerts`, `uam_get_alert`, `uam_add_note`, `uam_available_actions`, `uam_set_status`, `purple_ai_alert_summary` | S1 REST API v2.1 + UAM GraphQL |
+| PowerQuery | `powerquery_enumerate_sources`, `powerquery_run` (PQ or LOG, `slices` + `merge`, `outputFile`), `powerquery_schema_discover` | SDL LRQ API |
+| Mgmt Console | `s1_api_get`, `s1_api_post`, `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_available_actions`, `purple_ai_alert_summary` | S1 REST API v2.1 + UAM GraphQL |
 | SDL | `sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `hec_ingest` | SDL config + dashboards + event collector |
 | Hyperautomation | `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, `ha_export_workflow`, `ha_delete_workflow` | HA public + v1 API |
 | UAM Ingest | `uam_ingest_alert`, `uam_post_alert` | UAM Alert Interface (`/v1/alerts`) |
@@ -74,7 +76,7 @@ Full tool reference: [mcp-tools.md](./mcp-tools.md)
 
 ### purple-mcp
 
-A separate MCP server (Python, fetched from GitHub via `uvx`) that provides the Purple AI investigation surface. It covers:
+A separate MCP server (Python, bundled in the `sentinelone/secops-mcps` image from a pinned git commit; a native install runs it as `s1-secops-mcp exec -- purple-mcp --mode stdio`, see [credentials.md](./credentials.md#storing-values-setup-status-forget)) that provides the Purple AI investigation surface. It covers:
 
 - `purple_ai`: natural-language queries against SDL telemetry
 - `powerquery`: run raw PowerQuery strings via the SDL LRQ engine
@@ -101,10 +103,10 @@ Each skill folder contains a `SKILL.md` that Claude reads when a relevant reques
 
 - API endpoint paths and required field schemas (confirmed against live API, not just swagger)
 - Non-obvious requirements, gotchas, and field-name traps discovered by testing
-- Python script reference for running operations locally
-- MCP tool guidance (which tool to use for which operation)
+- MCP tool guidance (which tool to use for which operation); the MCP tools are the primary path
+- Host-only Python script reference for Claude Code or terminal use, where the scripts read the same environment variables or keychain entries
 
-The skills are read-only procedural knowledge. They do not execute API calls directly when loaded: they instruct Claude on *how* to use the MCP tools and scripts to execute operations correctly.
+The skills are read-only procedural knowledge. They do not execute API calls directly when loaded: they instruct Claude on *how* to use the MCP tools (and, on the host, the scripts) to execute operations correctly.
 
 `sdl-solutions` is the umbrella skill in this layer: for a whole-solution request (onboard a source, asset enrichment, UEBA, ingest health monitoring, or custom detection exclusions) it runs first, collects parameters, previews, and orchestrates the primitive skills in dependency order, instead of each skill being invoked independently.
 
@@ -114,7 +116,7 @@ The skills are read-only procedural knowledge. They do not execute API calls dir
 
 Two credentials cover the API surfaces. The console service-user token (`S1_CONSOLE_API_TOKEN`) authorises the management, SDL and UAM surfaces. Raw log ingest to the event collector is the exception: it authorises with the SDL Log Write Key (`S1_HEC_TOKEN`).
 
-```
+```text
 S1_CONSOLE_API_TOKEN  ──► S1 Mgmt REST API    (Authorization: ApiToken <jwt>)
                       ──► SDL config ops       (Authorization: Bearer <jwt>)
                       ──► UAM GraphQL          (Authorization: ApiToken <jwt>)
@@ -123,35 +125,31 @@ S1_CONSOLE_API_TOKEN  ──► S1 Mgmt REST API    (Authorization: ApiToken <jw
                       ──► UAM alert ingest     (Authorization: Bearer <jwt>, POST /v1/alerts, S1-Scope required)
 
 S1_HEC_TOKEN          ──► HEC log ingest       (Authorization: Bearer <write-key>, host S1_HEC_INGEST_URL, no S1-Scope)
+
 ```
 
-`S1_CONSOLE_API_TOKEN` authorises every SDL config read, config write and log read, plus UAM alert ingest on `/v1/alerts` (which additionally requires an `S1-Scope` header) and the IOC endpoints. `hec_ingest` is the one surface it does not cover: raw log ingest to the event collector (`/services/collector/raw` and `/event`) needs the SDL Log Write Key (`S1_HEC_TOKEN`) and sends no `S1-Scope` header. Passing the console token there returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` where the write key returns `HTTP 200 {"text":"Success","code":0}`. The key is minted for exactly one account or site and writes only there, so the key itself fixes the ingest destination. The two ingest paths are separate; do not substitute one credential for the other.
+`S1_CONSOLE_API_TOKEN` authorises every SDL config read, config write and log read, plus UAM alert ingest on `/v1/alerts` (which additionally requires an `S1-Scope` header) and the IOC endpoints. `hec_ingest` is the one surface it does not cover: raw log ingest to the event collector needs the SDL Log Write Key (`S1_HEC_TOKEN`) and sends no `S1-Scope` header. Passing the console token there returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` where the write key returns `HTTP 200 {"text":"Success","code":0}`. The two ingest paths are separate; do not substitute one credential for the other.
 
-Credential resolution order (highest priority first):
+Credential resolution, per value (highest priority first):
 
-1. Environment variables (`S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `SDL_*`)
-2. `credentials.json` in the Cowork project folder (auto-discovered by the plugin's SessionStart hook)
-3. `~/.config/sentinelone/credentials.json` (terminal fallback)
+1. Environment variables (`S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `S1_HEC_INGEST_URL`, `S1_HEC_TOKEN`, `S1_SCOPE`, `VIRUSTOTAL_API_KEY`)
+2. The OS keychain: service `sentinelone-mcp`, account `<profile>:<NAME>`, profile from `S1_PROFILE` (default `default`). macOS login keychain, Linux Secret Service, Windows Credential Manager.
 
-For the MCP servers, credentials are passed via `env` in `claude_desktop_config.json`: see [credentials.md](./credentials.md).
+There is no file fallback. Values are stored with `s1-secops-mcp setup` (or the Docker launcher's `setup` mode). Under Docker, the host launcher reads the keychain and passes the values to the container over stdin, so the MCP client config carries no secrets. Details, the migration from `credentials.json`, and the limits of keychain protection: [credentials.md](./credentials.md).
 
 ---
 
 ## Sandbox proxy and why MCP is needed
 
-The Cowork sandbox runs API calls through a proxy that blocks outbound HTTPS to arbitrary domains including `*.sentinelone.net`. There are two solutions:
+The Cowork sandbox runs API calls through a proxy that blocks outbound HTTPS to arbitrary domains including `*.sentinelone.net`. The supported path is the **s1-secops-mcp local server**: it runs on your machine, outside the sandbox, so API calls go directly from your machine to SentinelOne with no allowlist change. Every skill is written to use it.
 
-**Option A (recommended): s1-secops-mcp local server.** Runs as a local process on your machine, outside the sandbox. API calls go directly from your machine to SentinelOne. No allowlist changes needed.
-
-**Option B: Network allowlist.** In Claude Desktop settings, add `*.sentinelone.net` to the allowed domains. This lets the skills' Python scripts (`s1_client.py`, `sdl_client.py`) reach the API from inside the sandbox. No MCP server needed, but requires admin configuration.
-
-Most users should use Option A.
+> **Note (allowlist):** an administrator can add `*.sentinelone.net` to the Claude Desktop network allowlist, which lets the skills' Python scripts reach the API from inside the sandbox. Those scripts read credentials from environment variables or the OS keychain, neither of which exists inside the sandbox, so this route still needs credentials supplied another way and is not a documented setup. Prefer the MCP server.
 
 ---
 
 ## Data flow in a typical investigation
 
-```
+```text
 User: "Investigate alert abc-123"
        │
        ▼
@@ -183,16 +181,15 @@ Claude reads powerquery SKILL.md → writes hunt query
 
 ## Directory layout
 
-```
+```text
 s1-secops-skills/
   CLAUDE.md                     SOC Analyst persona and operating instructions
   README.md                     High-level overview (this project)
-  credentials.json              Your credentials (gitignored; not in repo)
   docs/                         Detailed documentation (this folder)
     architecture.md             How all layers fit together (this file)
     skills.md                   Per-skill capability reference
     mcp-tools.md                All MCP tool schemas and usage notes
-    credentials.md              Credential keys, resolution order, where to find each
+    credentials.md              Credential values, env + keychain resolution, setup, security model
     testing.md                  Test coverage: what was validated, gotchas per surface
   mgmt-console-api/ Skill: Management Console REST + SDL + UAM + Purple AI
   powerquery/       Skill: PowerQuery authoring and execution
@@ -201,8 +198,9 @@ s1-secops-skills/
   sdl-log-parser/   Skill: SDL log parser authoring and validation
   hyperautomation/  Skill: Hyperautomation workflow authoring and import
   sdl-solutions/    Skill: repeatable SDL solution deployment (onboarding, enrichment)
-  soc-investigator/ Skill: autonomous DFIR alert investigation and correlation
-  s1-secops-mcp/              MCP server (Node.js): 32 tools, stdio or HTTP
+  soc-investigator/             Skill: autonomous DFIR alert investigation and correlation
+  s1-secops-mcp/              MCP server (Node.js): 35 tools, stdio
+  docker/                       Image build, entrypoint, and the host keychain launchers
   s1-secops-skills-plugin/    Distributable plugin bundle (all 8 skills)
   assets/                       Screenshots and images for documentation
 ```

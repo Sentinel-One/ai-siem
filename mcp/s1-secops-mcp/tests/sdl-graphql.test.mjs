@@ -420,28 +420,35 @@ test('createDashboard permits duplicate names by default, refuses with failIfNam
 
 // ─── shareDashboard ───
 
-test('shareDashboard sends the scope target array the console sends', async () => {
+test('shareDashboard sends the account target the console sends', async () => {
   const calls = stubFetchH([gql({ shareResource: { id: 6999150597128192, name: 'meta2' } })]);
   const res = await shareDashboard({
     id: '6999150597128192',
-    scopes: [{ scopeType: 'site', scopeId: SITE, operation: 'ADD' }],
+    scopes: [{ scopeType: 'account', scopeId: ACCOUNT, operation: 'ADD' }],
   });
   assert.equal(res.status, 'success');
-  assert.deepEqual(calls[0].body.variables.scopes, [{ scopeType: 'site', scopeId: SITE, operation: 'ADD' }]);
+  assert.deepEqual(calls[0].body.variables.scopes, [{ scopeType: 'account', scopeId: ACCOUNT, operation: 'ADD' }]);
   assert.deepEqual(calls[0].body.variables.users, []);
 });
 
 test('shareDashboard defaults operation to ADD and lowercases scopeType', async () => {
   const calls = stubFetchH([gql({ shareResource: { id: 1, name: 'x' } })]);
-  await shareDashboard({ id: '1', scopes: [{ scopeType: 'Site', scopeId: SITE }] });
-  assert.deepEqual(calls[0].body.variables.scopes, [{ scopeType: 'site', scopeId: SITE, operation: 'ADD' }]);
+  await shareDashboard({ id: '1', scopes: [{ scopeType: 'Account', scopeId: ACCOUNT }] });
+  assert.deepEqual(calls[0].body.variables.scopes, [{ scopeType: 'account', scopeId: ACCOUNT, operation: 'ADD' }]);
+});
+
+test('shareDashboard refuses site and global targets (deploy to a site with createDashboard at the site)', async () => {
+  const calls = stubFetchH([]);
+  await assert.rejects(shareDashboard({ id: '1', scopes: [{ scopeType: 'site', scopeId: SITE }] }), /scopeType must be one of account/);
+  await assert.rejects(shareDashboard({ id: '1', scopes: [{ scopeType: 'global' }] }), /scopeType must be one of account/);
+  assert.equal(calls.length, 0, 'validation must happen before the request');
 });
 
 test('shareDashboard rejects a malformed target instead of silently sharing nothing', async () => {
   const calls = stubFetchH([]);
-  await assert.rejects(shareDashboard({ id: '1', scopes: [{ scopeType: 'group', scopeId: SITE }] }), /scopeType must be one of/);
-  await assert.rejects(shareDashboard({ id: '1', scopes: [{ scopeType: 'site', scopeId: 'Metacortex' }] }), /must be a numeric id/);
-  await assert.rejects(shareDashboard({ id: '1', scopes: [{ scopeType: 'site', scopeId: SITE, operation: 'GRANT' }] }), /must be ADD or REMOVE/);
+  await assert.rejects(shareDashboard({ id: '1', scopes: [{ scopeType: 'group', scopeId: ACCOUNT }] }), /scopeType must be one of/);
+  await assert.rejects(shareDashboard({ id: '1', scopes: [{ scopeType: 'account', scopeId: 'pmoses' }] }), /must be a numeric id/);
+  await assert.rejects(shareDashboard({ id: '1', scopes: [{ scopeType: 'account', scopeId: ACCOUNT, operation: 'GRANT' }] }), /must be ADD or REMOVE/);
   await assert.rejects(shareDashboard({ id: '1' }), /at least one scope or user/);
   assert.equal(calls.length, 0, 'validation must happen before the request');
 });
@@ -449,7 +456,7 @@ test('shareDashboard rejects a malformed target instead of silently sharing noth
 test('shareDashboard throws when shareResource returns no id', async () => {
   stubFetchH([gql({ shareResource: null })]);
   await assert.rejects(
-    shareDashboard({ id: '1', scopes: [{ scopeType: 'site', scopeId: SITE }] }),
+    shareDashboard({ id: '1', scopes: [{ scopeType: 'account', scopeId: ACCOUNT }] }),
     /nothing was shared/,
   );
 });

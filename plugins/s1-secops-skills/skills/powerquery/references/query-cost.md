@@ -25,7 +25,7 @@ The 15-30 day row was inferred from row counts on a high-volume tenant and never
 example: a dashboard was scanning ~9x10^8 events five times per tab load to compute numbers that
 were already sitting in a 13-row datatable written by its own nightly job.
 
-See `dashboard-performance.md` for the entity-datasource and `count_by` patterns.
+See the sdl-dashboard skill's [`references/query-performance.md`](../../sdl-dashboard/references/query-performance.md) for the entity-datasource and `count_by` patterns.
 
 ---
 

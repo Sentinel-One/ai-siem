@@ -18,45 +18,32 @@ In Cowork/Claude Code, the path is:
 
 ## Configure
 
-### With s1-secops-mcp (recommended)
+The skill's primary path is the `s1-secops-mcp` MCP server (see the s1-secops-mcp README: `s1-secops-mcp/README.md` in the s1-secops-skills source repo, `mcp/s1-secops-mcp/README.md` in ai-siem; not shipped in the plugin). It runs on your machine and is the only path that works from Cowork, whose sandbox cannot reach `*.sentinelone.net`.
 
-Set credentials as environment variables in `claude_desktop_config.json` inside the `s1-secops-mcp` server entry. No `credentials.json` file is needed:
+Credentials live in environment variables or the OS keychain, never in a file and never in an MCP client config `env` block (those are plaintext). Store them once on your machine:
 
-```json
-"env": {
-  "S1_CONSOLE_URL":       "https://usea1-acme.sentinelone.net",
-  "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
-  "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net"
-}
-```
-
-### Without s1-secops-mcp (direct skill use)
-
-Drop a `credentials.json` file into your Cowork project folder (see the **Credentials** section of the s1-secops-mcp README (`s1-secops-mcp/README.md` in the s1-secops-skills repo, `mcp/s1-secops-mcp/README.md` in ai-siem; not shipped in the plugin) for all available keys). The plugin's SessionStart hook auto-discovers it. To trigger a manual refresh: `bash scripts/bootstrap_creds.sh`.
-
-```json
-{
-  "S1_CONSOLE_URL": "https://usea1-acme.sentinelone.net",
-  "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
-  "S1_HEC_INGEST_URL": "https://ingest.us1.sentinelone.net"
-}
+```bash
+s1-secops-mcp setup     # prompts without echo, stores in the OS keychain, verifies read-back
+s1-secops-mcp status    # shows the source of each value, masked
 ```
 
 Create the API token in the S1 console: Settings → Users → Service Users → Generate API Token. Scope it to the minimum permissions needed.
 
-`S1_HEC_INGEST_URL` is the SentinelOne HEC ingest host, used by the UAM Alert Interface for OCSF alert/indicator ingest (and for log ingest via HEC). It is region-specific; look up your region's URL in [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961). Only required if you push alerts/indicators into UAM via `UAMAlertInterfaceClient`; the read-side UAM GraphQL works without it.
+`S1_HEC_INGEST_URL` is the SentinelOne ingest host, used by the UAM Alert Interface for OCSF alert ingest (and for log ingest via HEC). It is region-specific; look up your region's URL in [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961). Only required if you push alerts into UAM (`uam_post_alert`); the read-side UAM GraphQL works without it.
 
-## Quick test
+The Python scripts under `scripts/` are host-only (Claude Code or a terminal). They read the same environment variables or keychain entries as the MCP server.
+
+## Quick test (host only)
 
 ```bash
-pip install requests
+pip install requests          # add keyring on Windows for Credential Manager reads
 cd ~/.claude/skills/mgmt-console-api
 python scripts/s1_client.py
 ```
 
 Should print the first 5 accounts, then fan out 4 parallel GETs.
 
-## Probe a new tenant (non-destructive)
+## Probe a new tenant (non-destructive, host only)
 
 ```bash
 python scripts/smoke_test_queries.py --workers 12
@@ -74,7 +61,7 @@ python scripts/search_endpoints.py "threats" --only-works
 - `references/WORKFLOWS.md`: ready-to-adapt multi-step recipes.
 - `references/TAG_INDEX.md`: full 113-tag directory with per-tag reference files.
 
-Unified Alert Management:
+Unified Alert Management (MCP tools `uam_list_alerts`, `uam_get_alert`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_available_actions`; host-only CLI below):
 
 ```bash
 python scripts/call_unified_alerts.py list --filter detectionProduct=EDR --first 10
@@ -92,9 +79,7 @@ Purple AI answers questions about SDL telemetry (process/network/file events, in
 ## Layout
 
 - `SKILL.md`: instructions Claude reads when the skill triggers
-- `<project folder>/credentials.json` (optional): credentials for direct skill use; auto-discovered by the plugin's SessionStart hook
-- `scripts/bootstrap_creds.sh`: idempotent helper to copy workspace creds into the sandbox-local path
-- `scripts/s1_client.py`: REST client (auth, pooled HTTP, retries, cursor pagination, parallel `get_many()`, optional cache)
+- `scripts/s1_client.py`: host-only REST client (auth, pooled HTTP, retries, cursor pagination, parallel `get_many()`, optional cache)
 - `scripts/call_endpoint.py`: REST CLI wrapper
 - `scripts/search_endpoints.py`: ranked keyword search over the endpoint index (verb-aware, `--only-works` filter)
 - `scripts/smoke_test_queries.py`: non-destructive sweep of every GET + safe query POST

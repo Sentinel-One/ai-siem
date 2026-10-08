@@ -1,131 +1,95 @@
 /**
- * Credential loader: zero dependencies, synchronous.
+ * Credential loader.
  *
- * Resolution order (highest wins):
- *   1. Environment variables
- *   2. S1_CREDS_FILE (explicit absolute path; recommended for team / VM deployments)
- *   3. COWORK_WORKSPACE/credentials.json
- *   4. Walk-up from cwd looking for credentials.json
- *   5. ~/mnt/<any-folder>/credentials.json (Cowork workspace mounts)
- *   6. CLAUDE_CONFIG_DIR/sentinelone/credentials.json
- *   7. ~/.config/sentinelone/credentials.json
+ * Resolution order (highest wins), per value:
+ *   1. Environment variables (secret-manager injection, CI, the Docker launcher)
+ *   2. OS keychain, profile S1_PROFILE (default "default"); see lib/keystore.js
+ *
+ * There is deliberately NO file fallback. Plaintext credentials.json discovery
+ * (S1_CREDS_FILE, COWORK_WORKSPACE, cwd walk-up, ~/mnt/*, CLAUDE_CONFIG_DIR,
+ * ~/.config/sentinelone) was removed in 1.5.0. Store values once with
+ * `s1-secops-mcp setup`; migrate an old file with
+ * `s1-secops-mcp setup --import-json <path>` and then delete the file.
  */
 
-import { readFileSync, existsSync, readdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { homedir } from 'os';
+import { readAll, KEY_NAMES, SECRET_NAMES } from './keystore.js';
 
-const CRED_FILENAMES = [
-  'credentials.json',
-  '.sentinelone/credentials.json',
-  '.claude/sentinelone/credentials.json',
-];
+// Same alias lists as the Python clients (mgmt-console-api/scripts/s1_keystore.py),
+// so one environment works for both. lib/cli.js derives its setup aliases from this.
+export const ENV_ALIASES = {
+  S1_CONSOLE_URL: ['S1_CONSOLE_URL', 'S1_BASE_URL'],
+  S1_CONSOLE_API_TOKEN: ['S1_CONSOLE_API_TOKEN', 'S1_API_TOKEN', 'SDL_CONSOLE_API_TOKEN'],
+  S1_HEC_INGEST_URL: ['S1_HEC_INGEST_URL', 'S1_UAM_ALERT_INTERFACE_URL'],
+  S1_SCOPE: ['S1_SCOPE', 'SDL_S1_SCOPE'],
+  VIRUSTOTAL_API_KEY: ['VIRUSTOTAL_API_KEY', 'VT_API_KEY'],
+};
 
-const MNT_SKIP = new Set(['.claude', '.auto-memory', '.remote-plugins', 'outputs', 'uploads']);
-
-function tryLoad(dir) {
-  for (const rel of CRED_FILENAMES) {
-    const p = join(dir, rel);
-    if (existsSync(p)) {
-      try { return JSON.parse(readFileSync(p, 'utf-8')); } catch { /* bad JSON */ }
-    }
+function fromEnv(name) {
+  for (const k of ENV_ALIASES[name] || [name]) {
+    const v = process.env[k];
+    if (v) return { value: v, source: `env:${k}` };
   }
   return null;
 }
 
-function discoverCredentials() {
-  // 1. S1_CREDS_FILE: explicit absolute path. Useful for VM deployments and
-  //    secret-store integrations (Vault / Doppler / 1Password / sealed-secrets)
-  //    that render a credentials file to a known path at boot.
-  const credsFile = process.env.S1_CREDS_FILE;
-  if (credsFile && existsSync(credsFile)) {
-    try { return JSON.parse(readFileSync(credsFile, 'utf-8')); }
-    catch (e) {
-      process.stderr.write(`[credentials] S1_CREDS_FILE set but unreadable: ${e.message}\n`);
-    }
-  }
+// Keychain values are read once (lazily) and cached; environment variables are
+// read live on every call so they always win and tests can set them at runtime.
+let _kc = null;
 
-  // 2. COWORK_WORKSPACE env override
-  const ws = process.env.COWORK_WORKSPACE;
-  if (ws) {
-    const found = tryLoad(ws);
-    if (found) return found;
-  }
-
-  // 2. Walk up from cwd
-  let dir;
-  try { dir = process.cwd(); } catch { dir = '/'; }
-  for (let i = 0; i < 20; i++) {
-    const found = tryLoad(dir);
-    if (found) return found;
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-
-  // 3. ~/mnt/* scan (Cowork workspace mounts)
-  const homeMnt = join(homedir(), 'mnt');
-  if (existsSync(homeMnt)) {
-    try {
-      const entries = readdirSync(homeMnt, { withFileTypes: true });
-      for (const e of entries) {
-        if (!e.isDirectory() || MNT_SKIP.has(e.name)) continue;
-        const found = tryLoad(join(homeMnt, e.name));
-        if (found) return found;
-      }
-    } catch { /* skip */ }
-  }
-
-  // 4. CLAUDE_CONFIG_DIR plugin creds
-  const ccDir = process.env.CLAUDE_CONFIG_DIR;
-  if (ccDir) {
-    const p = join(ccDir, 'sentinelone', 'credentials.json');
-    if (existsSync(p)) {
-      try { return JSON.parse(readFileSync(p, 'utf-8')); } catch { /* bad JSON */ }
-    }
-  }
-
-  // 5. ~/.config/sentinelone/credentials.json
-  const configPath = join(homedir(), '.config', 'sentinelone', 'credentials.json');
-  if (existsSync(configPath)) {
-    try { return JSON.parse(readFileSync(configPath, 'utf-8')); } catch { /* bad JSON */ }
-  }
-
-  return {};
+function keychainValues({ refresh = false } = {}) {
+  if (_kc && !refresh) return _kc;
+  const inEnv = new Set(KEY_NAMES.filter(n => fromEnv(n)));
+  _kc = readAll(inEnv);
+  return _kc;
 }
 
-// Load once at module init
-const _file = discoverCredentials();
+/** Merged view with per-value provenance. Exported for the status command. */
+export function loadCredentials({ refresh = false } = {}) {
+  const kc = keychainValues({ refresh });
+  const values = {};
+  const sources = {};
+  for (const name of KEY_NAMES) {
+    const hit = fromEnv(name);
+    if (hit) { values[name] = hit.value; sources[name] = hit.source; continue; }
+    if (kc.values[name]) { values[name] = kc.values[name]; sources[name] = `keychain:${kc.backend}`; }
+  }
+  return { values, sources, keychain: { backend: kc.backend, error: kc.error } };
+}
 
 /**
- * Returns merged credentials. Environment variables take precedence over file values.
+ * Returns merged credentials. Shape unchanged from earlier releases so every
+ * caller keeps working.
  */
 export function getCreds() {
-  const e = (key) => process.env[key] || _file[key] || '';
+  const { values } = loadCredentials();
+  const e = (k) => values[k] || '';
   return {
     S1_CONSOLE_URL:       e('S1_CONSOLE_URL'),
-    S1_CONSOLE_API_TOKEN: e('S1_CONSOLE_API_TOKEN') || e('S1_API_TOKEN'),
+    S1_CONSOLE_API_TOKEN: e('S1_CONSOLE_API_TOKEN'),
     S1_HEC_INGEST_URL:    e('S1_HEC_INGEST_URL'),
     // SDL Log Write Key, used ONLY for log ingest over the event collector.
-    // Optional: every other tool authenticates with S1_CONSOLE_API_TOKEN, and a
-    // deployment that never ingests logs does not need this at all.
-    //
-    // It is a DIFFERENT credential, not an alias. The collector refuses a
-    // console user token, and the key is minted for one account or site and
-    // writes only there, so it also fixes the destination: there is no scope
-    // header to override. Mint it at Console > Singularity Data Lake >
-    // API Keys > Log Write Key. No API creates one.
-    //
-    // Named to match the deployer repos, which already ship this variable, so
-    // one value can be pasted across all of them.
+    // A different credential from the console token: the collector refuses a
+    // console user token, and the key is minted for one account or site
+    // (Console > Singularity Data Lake > API Keys > Log Write Key).
     S1_HEC_TOKEN:         e('S1_HEC_TOKEN'),
-    // Default S1-Scope for SDL requests: "<accountId>" for account scope or
-    // "<accountId>:<siteId>" for site scope. Optional. Per-call scope arguments
-    // override it; passing scope:null suppresses it entirely. SDL reads are
-    // scope-FILTERED, so this value decides which config files and dashboards a
-    // session can see at all, not merely where new ones are filed.
+    // Default S1-Scope for SDL requests: "<accountId>" or "<accountId>:<siteId>".
     S1_SCOPE:             e('S1_SCOPE'),
   };
+}
+
+/** Values that must never appear in output (for lib/redact.js). */
+export function secretValues() {
+  const { values } = loadCredentials();
+  return Object.entries(values)
+    .filter(([k, v]) => SECRET_NAMES.has(k) && v && v.length >= 8)
+    .map(([, v]) => v);
+}
+
+/** One-line hint appended to "not configured" errors. */
+export function setupHint() {
+  const { keychain } = loadCredentials();
+  const kc = keychain.error ? ` (OS keychain: ${keychain.error})` : '';
+  return `Store it in the OS keychain with \`s1-secops-mcp setup\`, or pass it as an environment variable${kc}.`;
 }
 
 /** True if minimum required credentials for S1 Mgmt API are present. */

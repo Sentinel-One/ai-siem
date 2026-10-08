@@ -23,7 +23,7 @@ set -euo pipefail
 # commit you are building. S1_MCP_VERSION below is therefore a LABEL, not an
 # install target: keep it equal to the version in s1-secops-mcp/package.json so
 # the image label does not lie about what it carries.
-S1_MCP_VERSION="${S1_MCP_VERSION:-1.4.0}"
+S1_MCP_VERSION="${S1_MCP_VERSION:-1.5.2}"
 
 # virustotal-mcp: our fork of w0h1v/mcp-virustotal. The fork exists
 # because upstream publishes only to npm: it has a `prepublishOnly` build and
@@ -35,7 +35,7 @@ S1_MCP_VERSION="${S1_MCP_VERSION:-1.4.0}"
 # Must be a FULL 40-character commit SHA: the Dockerfile fetches the object by
 # id, and a branch name would silently un-pin the build.
 VT_MCP_REPO="${VT_MCP_REPO:-https://github.com/pmoses-s1/mcp-virustotal.git}"
-VT_MCP_REF="${VT_MCP_REF:-0305f3d218518e46b8e6939676815bbd56db1c7b}"
+VT_MCP_REF="${VT_MCP_REF:-97ca2b8fa696a798d8689aff13d9cb57cbd9067e}"
 
 # purple-mcp: our fork of Sentinel-One/purple-mcp at the v0.7.0 release commit,
 # plus one change. Upstream requires pandas, but imports it in exactly one place
@@ -67,7 +67,7 @@ fi
 #   docker run --rm <image> versions
 # (That replaces the old `--entrypoint npm <image> ls -g --depth=0`. There is
 # no npm in the image any more, so that command now fails with "not found".)
-IMAGE_VERSION="${IMAGE_VERSION:-1.4.10}"
+IMAGE_VERSION="${IMAGE_VERSION:-1.5.2}"
 
 # ── Image identity ───────────────────────────────────────────────────────────
 REGISTRY="${REGISTRY:-docker.io/sentinelone}"
@@ -140,6 +140,6 @@ else
   docker buildx build "${ARGS[@]}" --load .
   echo
   echo "Smoke test:"
-  echo "  docker run -i --rm ${IMAGE_NAME}:${TAG} help"
-  echo "  docker run -i --rm ${IMAGE_NAME}:${TAG} versions"
+  echo "  docker run -i --rm ${REGISTRY}/${IMAGE_NAME}:${TAG} help"
+  echo "  docker run -i --rm ${REGISTRY}/${IMAGE_NAME}:${TAG} versions"
 fi

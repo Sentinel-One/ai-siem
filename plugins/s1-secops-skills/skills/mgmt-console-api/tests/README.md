@@ -8,6 +8,11 @@ every GET + curated safe POSTs.
 > **Rule of thumb:** smoke_test_queries proves *what reads work on this
 > tenant*; the tests in this folder prove *what write paths work end-to-end
 > without leaving state behind*.
+>
+> **Host only.** These scripts call the tenant directly, so run them from
+> Claude Code or a terminal on your machine, not from the Cowork sandbox.
+> They read credentials from environment variables or the OS keychain
+> (store them with `s1-secops-mcp setup`). There is no credentials file.
 
 ---
 
@@ -16,13 +21,13 @@ every GET + curated safe POSTs.
 | Area | How it's tested | Script | Reversible? |
 |---|---|---|---|
 | Every GET + safe read-only POST | Non-destructive sweep across all 111 tags | `scripts/smoke_test_queries.py` | N/A (read-only) |
-| Threat Intelligence IOCs | CREATE → LIST → DELETE → VERIFY | `tests/test_ioc_lifecycle.py` | Yes (requires single-scope token) |
+| Threat Intelligence IOCs | CREATE → LIST → DELETE → VERIFY | `tests/test_ioc_lifecycle.py` | Yes (requires a single-account token) |
 | Unified Alerts (UAM) GraphQL + REST | list → detail → addNote → list-notes → deleteNote → verify, plus parallel REST `/cloud-detection/alerts` read | `tests/test_alerts_dual_api.py` | Yes |
 | Saved filters (REST) | CREATE → LIST → UPDATE → DELETE → VERIFY | `tests/test_saved_filter_lifecycle.py` | Yes (needs token scope) |
 | Custom Detection Rules | CREATE (disabled) → LIST → UPDATE → DELETE → VERIFY | `tests/test_custom_rule_lifecycle.py` | Yes |
 | Alert status + verdict mutations | pick alert → status round-trip → verdict round-trip → history check | `tests/test_alert_mutation_lifecycle.py` | Yes (auto-restores to starting state) |
 | Scheduled default-report tasks | CREATE → LIST → UPDATE → DELETE → VERIFY | `tests/test_scheduled_report_lifecycle.py` | Yes |
-| Alert → Indicator pivot | read alert.rawIndicators → pin to TI IOC → verify link → delete | `tests/test_alert_indicator_pivot.py` | Yes (requires single-scope token) |
+| Alert → Indicator pivot | read alert.rawIndicators → pin to TI IOC → verify link → delete | `tests/test_alert_indicator_pivot.py` | Yes (requires a single-account token) |
 | UAM Alert Interface (single) | one POST /v1/alerts (1 alert, indicator inline) → assert exactly one request was made → poll UAM → verify the indicator surfaced → close | `tests/test_uam_alert_interface_single.py` | Semi (closes alert; ingested events are not hard-deletable). See section 9. |
 | UAM Alert Interface (batch, multi-observable) | one POST /v1/alerts with 3 inline indicators (file+process+network, OCSF 1001/1007/4001) each with 3+ observables, on a single device -> poll UAM -> assert every indicator + observable surfaces -> close | `tests/test_uam_alert_interface_batch.py` | Semi (closes alert; ingested events are not hard-deletable). See section 10. |
 | Unified Exclusions v2.1 | CREATE (EDR path, site scope) → LIST → DELETE → VERIFY | `tests/test_unified_exclusion_lifecycle.py` | Yes (scoped to one site, fictional path) |
@@ -45,23 +50,22 @@ are assigned to more than one account simultaneously, with
 `HTTP 403 code 4030010 "This page doesn't support multi-scopes users
 yet"`. Confirmed today (2026-04-22) on `/web/api/v2.1/threat-intelligence/iocs`.
 
-Add two optional token fields to your `credentials.json` (in your Cowork project folder):
+For those endpoints, use a console API token minted at a single account or
+site. Store it in its own keychain profile and select that profile with
+`S1_PROFILE`:
 
-```json
-{
-  "S1_CONSOLE_API_TOKEN": "<multi-scope or single-scope>",
-  "S1_CONSOLE_API_TOKEN_SINGLE_SCOPE": "<single-account-pinned>"
-}
+```text
+s1-secops-mcp setup --profile <name>      # S1_CONSOLE_URL + the single-account S1_CONSOLE_API_TOKEN
+S1_PROFILE=<name> python tests/test_ioc_lifecycle.py
 ```
 
-Both are optional, supply whichever you have. Tests that need a
-single-scope token (`test_ioc_lifecycle.py`, `test_alert_indicator_pivot.py`)
-instantiate the client with `S1Client(token_kind="single_scope")`. If only
-one token is configured, the client falls back to it, and the test
-precheck will skip cleanly with a clear message if the endpoint rejects
-the fallback.
+Through the MCP server, run a second MCP entry with `S1_PROFILE=<name>`
+(or make that token your default). The tests that need it
+(`test_ioc_lifecycle.py`, `test_alert_indicator_pivot.py`) use the default
+`S1Client()`; their precheck skips cleanly with this guidance if the
+endpoint rejects the token.
 
-**Which endpoints need single-scope?** The known ones today:
+**Which endpoints need a single-account token?** The known ones today:
 
 - `/web/api/v2.1/threat-intelligence/iocs`: all CRUD methods
 - (document further here as discovered)
@@ -109,7 +113,7 @@ DELETE  DELETE /web/api/v2.1/threat-intelligence/iocs   (body filter: {uuids: [.
 VERIFY  GET    /web/api/v2.1/threat-intelligence/iocs?name__contains=<run_tag>  (expect 0)
 ```
 
-Uses `token_kind="single_scope"` (see **Tokens and scopes** above). Precheck
+Needs a single-account token (see **Tokens and scopes** above). Precheck
 step verifies reachability before creating any state, so a bad token on the
 first call does not leak IOCs.
 
@@ -261,7 +265,7 @@ promote it to a tracked TI IOC":
 6. VERIFY re-query returns zero
 ```
 
-Uses `token_kind="single_scope"` (same as IOC lifecycle). If the alert's
+Needs a single-account token (same as IOC lifecycle). If the alert's
 rawIndicators don't expose a usable hash, falls back to a deterministic
 hash derived from the run_tag; the workflow is still proven, just with
 a non-real-world hash.
@@ -336,10 +340,8 @@ public API, but the cleanup step marks it TRUE_POSITIVE_BENIGN / RESOLVED
 and names it `smoke-<timestamp>-<uuid> alert`, so it is clearly tagged as
 synthetic and exits the active analyst workload. Use `--keep` to leave
 it in NEW for UI inspection. Configure the host via `--uam-url` (legacy
-alias `--igw-url`), the `S1_HEC_INGEST_URL` env var, or the
-`S1_HEC_INGEST_URL` key in `credentials.json` (former canonical
-`S1_UAM_ALERT_INTERFACE_URL` and legacy snake_case `uam_alert_interface_url`
-both still honored). Default is `https://ingest.us1.sentinelone.net`.
+alias `--igw-url`) or `S1_HEC_INGEST_URL` from the environment or the
+OS keychain. Default is `https://ingest.us1.sentinelone.net`.
 
 ---
 
@@ -610,13 +612,13 @@ VERIFY  GET    ids=<id> → data=[]
 python scripts/smoke_test_queries.py --workers 16 --timeout 10
 
 # 2. Reversible lifecycles: each ~3-15s end-to-end. Full set ~1 minute.
-python tests/test_ioc_lifecycle.py                  # IOC CRUD (single-scope token)
+python tests/test_ioc_lifecycle.py                  # IOC CRUD (single-account token)
 python tests/test_alerts_dual_api.py                # UAM + REST alert surfaces
 python tests/test_saved_filter_lifecycle.py         # skips cleanly if token lacks scope
 python tests/test_custom_rule_lifecycle.py          # Custom Detection Rules
 python tests/test_alert_mutation_lifecycle.py       # status + verdict round-trip
 python tests/test_scheduled_report_lifecycle.py     # default-report tasks
-python tests/test_alert_indicator_pivot.py          # alert→IOC pivot (single-scope)
+python tests/test_alert_indicator_pivot.py          # alert→IOC pivot (single-account token)
 python tests/test_uam_alert_interface_single.py     # 1 alert + 1 inline indicator, one POST, see section 9
 python tests/test_uam_alert_interface_batch.py      # 1 alert + 3 inline indicators, one POST, see section 10
 python tests/test_unified_exclusion_lifecycle.py    # EDR path exclusion CREATE/LIST/DELETE

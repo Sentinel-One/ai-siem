@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - repository organization and community health
+
+- Added `SECURITY.md` (reporting process), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) and `CONTRIBUTORS.md`, plus issue and pull request templates and Dependabot configuration.
+- Renamed `.github/CODEOWNERS.md` to `.github/CODEOWNERS` so GitHub applies it.
+- Renamed `metadata.yml` files to `metadata.yaml`.
+- Renamed the five `observo_export_pipeline_*.json` templates to `datapipelines_export_pipeline_*.json` and replaced remaining "Observo" wording with "Data Pipelines".
+- Moved the five legacy templates from `pipelines/community/` into the `pipelines/pull/` tree (`api/okta/log_collector`, `api/cisco/duo`, `api/netskope/alerts`, `api/proofpoint/logs`, `object_store/aws/cloudtrail`) and added `ingest_mode` and `auth_type` to their metadata.
+- Renamed `workflows/community/undefind vendor` to `ai-siem-platform`.
+- Added README files for `parsers/`, `dashboards/`, `detections/`, `monitors/` and `queries/`.
+- Corrected the README: component counts, CI and release description, and removed `make` targets that never existed.
+
 ### Added - site-level dashboard lifecycle and scope-aware SDL calls (s1-secops-skills v1.3.2, MCP 1.3.6)
 
 - **`s1-secops-mcp` gains six dashboard-lifecycle tools** on the `dashboardsV2` GraphQL surface, the one the console itself drives: `sdl_list_dashboards`, `sdl_get_dashboard`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`. Tool count 26 to 32.
@@ -121,7 +132,7 @@ agnostic OCSF overlays for generic / template / unknown-vendor data
 Removed 16 directories from `pipelines/community/transform_ocsf/` for vendors
 whose log streams are typically delivered to AI SIEM via first-party or
 vendor-native ingestion paths in supported deployments, rather than via
-community-contributed Observo transforms:
+community-contributed Data Pipelines transforms:
 
 - `aws_guardduty_logs/`, `aws_waf/`
 - `azure_ad/`, `azure_platform/`
@@ -217,7 +228,7 @@ at least one working alternative covering the same vendor cluster
 ## [1.0.1] - 2025-09-14
 
 ### Added
-- Pipelines directory structure for Observo Transformations
+- Pipelines directory structure for Data Pipelines Transformations
 - Updated main branch as default branch
 
 ## [1.0.0] - 2025-09-12

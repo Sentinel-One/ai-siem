@@ -17,13 +17,13 @@ Sentinel-One AI-SIEM repository is a community-driven, open source project desig
 
 ## Repository layout
 ```
-ai-siem/                # AI SIEM core structure (260+ components)
-  ├── dashboards/      # Visualizations (79 dashboards with metadata)
+ai-siem/                # AI SIEM core structure (400+ components)
+  ├── dashboards/      # Visualizations (88 dashboards with metadata)
   │   └── community/   # Community-contributed dashboards
-  ├── detections/      # Detection rules (8 detections with metadata)
+  ├── detections/      # Detection rules (11 detections with metadata)
   │   └── community/   # Community-contributed detection rules
   ├── monitors/        # Python monitoring scripts for Dataset Agent (log_gen, maxmind, powerquery)
-  ├── pipelines/       # Observo pipeline templates
+  ├── pipelines/       # Data Pipelines templates
   │   ├── push/        # Vendor pushes to us (syslog/CEF/LEEF/KV or direct HEC)
   │   │   ├── syslog/<vendor>/<product>/
   │   │   └── hec/<vendor>/<product>/
@@ -32,10 +32,10 @@ ai-siem/                # AI SIEM core structure (260+ components)
   │   │   └── object_store/<vendor>/<product>/
   │   └── community/
   │       └── transform_ocsf/<vendor>/<product>/  # OCSF normalization overlays
-  ├── parsers/         # Parsing logic and configurations (165 parsers)
-  │   ├── community/   # 148 community parsers (*.conf + metadata)
-  │   └── sentinelone/ # 17 official marketplace parsers (*.conf + metadata)
-  ├── workflows/       # Automated playbooks and responses (3 workflows with metadata)
+  ├── parsers/         # Parsing logic and configurations (171 parsers)
+  │   ├── community/   # 153 community parsers (*.conf + metadata)
+  │   └── sentinelone/ # 18 official marketplace parsers (*.conf + metadata)
+  ├── workflows/       # Automated playbooks and responses (25+ workflows with metadata)
   ├── plugins/         # Claude plugins (skills bundled for Cowork / Claude Code)
   │   └── s1-secops-skills/  # 8 SentinelOne SecOps skills + built .plugin/.skill bundles
   └── mcp/             # SentinelOne MCP server (Node.js) + container build
@@ -48,31 +48,38 @@ ai-siem/                # AI SIEM core structure (260+ components)
 2. **Import** dashboards (`*.conf`) or rules (`*.conf`) into your Singularity console.  
 3. **Choose** between community parsers or official SentinelOne marketplace parsers.  
 4. **Deploy** parsers using the included metadata.yaml for proper configuration.  
-5. *(Optional)* run `make install` or `make validate` to lint and prep local changes.
 
 
 ---
 
 ## Contribution guide ##
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. In short:
+
 1. Fork the repo and create a feature branch.  
 2. Name files `vendor-usecase-vX.Y.<ext>` (e.g., `zscaler_http_access-v1.0.s1ql`) and add a matching `metadata.yaml`.  
 3. Include or update sample logs under `tests/fixtures`.  
-4. Open a Pull Request – CI will run secret scanning and CodeReview.  
+4. Open a Pull Request – CI runs TruffleHog secret scanning; any verified secret fails the check.  
 5. At least one owner review is required before merge.
+
+Participation is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues privately per [SECURITY.md](SECURITY.md).
 
 
 ---
 
 ## Automation & quality gates
-| Stage        | What it does                                                                        |
-|--------------|-------------------------------------------------------------------------------------|
-| Security     | Secret scanning & CodeQL                                                            |
-| Release      | Semantic‑release tags `vX.Y.Z` and publishes artifacts to GitHub Releases & S3      |
+| Stage        | What it does |
+|--------------|--------------|
+| Secret scan  | TruffleHog scans every push and pull request to `main` for **verified** secrets. A hit fails the check, comments on the PR, and on `main` opens a `secret-scan` issue. |
+| Review       | At least one code owner (see `.github/CODEOWNERS`) must approve before merge. |
+| Dependencies | Dependabot proposes weekly updates for GitHub Actions and the `monitors/` Python requirements. |
+| Release      | Each clean push to `main` creates the next `v_1_N_0` git tag and a GitHub Release (`v1.N.0`) with auto-generated notes and a zip of the repository. |
 
 ---
 
 ## Community recognition
 Quarterly awards for **Top Contributor**, **Most Interesting Use‑Case**, and **Best Dashboard** keep momentum high. All merged PRs count toward the public leaderboard—watch the PartnerOne newsletter for shout‑outs!
+
+See everyone who has contributed in [CONTRIBUTORS.md](CONTRIBUTORS.md). Thank you!
 
 ---
 
@@ -136,7 +143,7 @@ The monitors directory contains Python scripts for use with the Dataset Agent:
 
 ## Pipelines
 
-The `pipelines/` directory holds Observo pipeline templates for SentinelOne
+The `pipelines/` directory holds Data Pipelines templates for SentinelOne
 AI SIEM, organized by ingest mode:
 
 - `pipelines/push/{syslog,hec}/<vendor>/<product>/` — vendor pushes events to us
@@ -151,7 +158,7 @@ conventions are documented in [`pipelines/community/README.md`](pipelines/commun
 
 1. Navigate to the relevant `pipelines/{push,pull}/<mode>/<vendor>/<product>/`
    or `pipelines/community/transform_ocsf/<vendor>/<product>/` directory.
-2. Import the JSON template into your Observo instance, or apply the Lua
+2. Import the JSON template into your Data Pipelines instance, or apply the Lua
    serializer to the appropriate transform stage.
 3. Update authentication credentials per the `metadata.yaml` `dependencies`
    block.

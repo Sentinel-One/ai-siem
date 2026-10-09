@@ -46,7 +46,7 @@ export function sdlToken() {
  * scope. Group scope does not exist in SDL; the console silently promotes a
  * Group selection to the Site above it.
  */
-function resolveScope(scope) {
+export function resolveScope(scope) {
   if (scope === null) return null;
   const raw = scope !== undefined ? scope : getCreds().S1_SCOPE;
   if (raw === undefined || raw === null || raw === '') return null;
@@ -536,8 +536,11 @@ export async function getDashboard({ id, name, scope }) {
  */
 export async function createDashboard({ name, config, isPublic = true, scope, failIfNameExists = false }) {
   if (!name || typeof name !== 'string') throw new Error('createDashboard requires a name');
+  // Accept the document as an object too: callers (and models) often pass one,
+  // and refusing it only cost a retry. Strings are still validated below.
+  if (config && typeof config === 'object') config = JSON.stringify(config);
   if (typeof config !== 'string' || !config.trim()) {
-    throw new Error('createDashboard requires config as a JSON string (the full dashboard document).');
+    throw new Error('createDashboard requires config: the full dashboard document as a JSON string or object.');
   }
   // Fail before the mutation rather than filing a broken dashboard the console
   // then renders as an empty shell.

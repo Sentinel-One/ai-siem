@@ -140,6 +140,7 @@ on every edge.
 - UAM-ingested alerts (`uam_ingest_alert`) synthesize the asset from `device.hostname`; `agentUuid` is always null on this path.
 - Scheduled (PowerQuery) rule alerts bind the asset only when `data.entityMappings` references the output column(s) (UI "Entity column mapping"); without it the alert is "Unknown Device". Events-type rule alerts bind a device or an identity automatically per OCSF `class_uid` (`1008` -> Device via `device.agent.uuid`; `3002` -> Identity).
 - UAM ingest is NOT HEC ingest; they share the ingest host URL but are separate APIs.
+- Platform events-rule alerts on ingested data (measured 2026-10-09, `WEL Security Event Log Cleared`, events with no `class_uid`, one variant per event): `agent.uuid` set to a real agent's UUID is enough to link the alert to that endpoint (asset category Workstation / Desktop, `agentUuid` populated), and the alert then belongs to the AGENT's site, not the site the event was ingested into. The host only in `winEventLog.data.event.system.computer`, a `device.hostname` with no agent, and even the real agent's hostname in `device.hostname` without `agent.uuid` all gave "Unknown Device". Other sources' rules name the asset from their own fields instead (a Zscaler rule used `device.hostname` and the user email), still with `agentUuid: null`.
 
 ## Operational notes (detection rules)
 

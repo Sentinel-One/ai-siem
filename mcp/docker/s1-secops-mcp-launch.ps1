@@ -32,7 +32,7 @@
   language mode, use the native server with `s1-secops-mcp setup` instead.
 #>
 param(
-  [string]$Image = $(if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.2' }),
+  [string]$Image = $(if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.3' }),
   [Alias('Profile')][string]$KeyProfile = $(if ($env:S1_PROFILE) { $env:S1_PROFILE } else { 'default' }),
   [Parameter(Position = 0, Mandatory = $true)][string]$Command,
   [Parameter(Position = 1, ValueFromRemainingArguments = $true)][string[]]$ServerArgs

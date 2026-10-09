@@ -49,8 +49,8 @@ Service user tokens are preferred over personal user tokens: they do not expire 
 | Field | Required | Notes |
 |---|---|---|
 | `queryType` | yes | `"PQ"` for PowerQuery, `"LOG"` for log search, also `TOP_FACETS`, `FACET_VALUES`, `PLOT`, `DISTRIBUTION`. Omit and you get HTTP 400 "Query type must be specified". |
-| `tenant` | conditional | `true` = query every account the token can reach. Omit (and omit `accountIds`) and the query runs against a near-empty default scope and returns `matchCount=0` with 200 OK. |
-| `accountIds` | optional | Array of account IDs. Must pair with `tenant: false`. Passing `accountIds` with `tenant: true` (or true-by-default) returns 400 "tenant=false should be used when querying accountIds". |
+| `tenant` | conditional | `true` = query every account the token can reach: ALL of them on a global or multi-account token. Omit (and omit `accountIds`) and the query runs against a near-empty default scope and returns `matchCount=0` with 200 OK. `false` without `accountIds` returns only global-level rows. |
+| `accountIds` | optional | Array of account IDs (a string is 400 "Invalid JSON"). Must pair with `tenant: false`. Passing `accountIds` with `tenant: true` (or true-by-default) returns 400 "tenant=false should be used when querying accountIds". This is how to scope a multi-account token to one account; there is no `siteIds` field, so narrow to a site with a `site.id='<siteId>'` term in the query. |
 | `startTime` / `endTime` | yes | ISO-8601 with `Z`. Relative forms like `"48h"` also accepted in the launch body. |
 | `queryPriority` | no | `"LOW"` / `"HIGH"`. Use `HIGH` for interactive work. |
 | `pq.query` | yes (for PQ) | The PowerQuery string. |
@@ -147,7 +147,9 @@ LRQ returning `matchCount=0` with HTTP 200 is the most common silent-failure mod
 2. **Confirm the request body has the right scope.**
    - `tenant: true` is required unless `accountIds` is passed. Without either, the query runs against a near-empty default scope and silently returns zero rows.
    - `accountIds` must pair with `tenant: false`. Sending both `tenant: true` and `accountIds` returns HTTP 400.
-   - `tenant: true` is **not** equivalent to "every account in the tenant" on every deployment. On multi-account tenants where an integration writes only to a sub-account or site, `tenant: true` can silently scope to a default account that doesn't carry that integration. **If a Purple MCP query returns rows for the same time window and query but LRQ returns `matchCount=0`, suspect multi-account scoping**. Re-run with explicit `accountIds` set to the account that actually carries the data. Discover candidate account IDs via `GET /web/api/v2.1/accounts`.
+   - **Scope goes in the body; the `S1-Scope` header is not enough.** `tenant: true` covers every account the token is authorized for: one account on an account-level token, all of them on a global or multi-account token (measured 2026-10-09: a 385-account service user returned 20 accounts in one hour). `S1-Scope` narrows an account-level token but is ignored for a multi-account one, so a "scoped" query silently answers for every account. To query one account send `tenant: false, accountIds: ["<accountId>"]`; for one site also add `site.id='<siteId>'` to the initial filter. An account the token cannot reach is HTTP 403 "Not allowed to access requested resource" (or 500 "You do not have access to this account"). The `powerquery_run`, `powerquery_enumerate_sources` and `powerquery_schema_discover` MCP tools do all of this from `scope: "<accountId>[:<siteId>]"` (s1-secops-mcp 1.5.3+) and report it as `scopeApplied`; for a leading `| join` or `| union` the site term goes into every subquery. **Keep sending `S1-Scope` anyway:** lookup tables are per scope (the same path at account and at site scope is two files), and `| dataset` / `| lookup` read the copy at the header's scope on every token. On a global token with `accountIds` and no header, the table was not found.
+   - **`site.id` is stored as a string on some events and as a number on others**, so a `group ... by site.id` can show the same site twice, once as a rounded number. Filter with `site.id='<siteId>'`, which matches both forms.
+   - **If a Purple MCP query returns rows for the same time window and query but LRQ returns `matchCount=0`, check the scope**: re-run with `accountIds` set to the account that carries the data. Discover account IDs via `GET /web/api/v2.1/accounts`.
 
 3. **Check `matchCount` vs `row_count`.** `matchCount=0` means the initial filter eliminated everything (data source, scope, or filter mismatch). `matchCount > 0` with `row_count=0` means the post-filter pipeline (`| filter`, `| group` with a missing key, `| filter` after `group`) threw everything out, in which case the fix is in the pipeline, not the scope. Exception: on a query with an `in (...)` subquery, `matchCount` also counts the events the **inner** query scanned (a subquery whose inner and outer match the same events reports twice the outer count; regression case `sq-matchcount-includes-inner-scan`), so `matchCount > 0` with 0 rows can mean the outer matched nothing at all.
 
@@ -314,6 +316,7 @@ audit   = [r for r in matches if not r.get("dataSource.name")]
 - [ ] `Authorization: Bearer <jwt>` (same JWT as mgmt, different prefix)
 - [ ] PQ body: `queryType: "PQ"`, `tenant: true`, `pq: {query, resultType}`
 - [ ] LOG body: `queryType: "LOG"`, `tenant: true`, `log: {filter, limit}` (NOT `pq: {…, resultType: "LOG"}`)
+- [ ] One account on a multi-account token: `tenant: false, accountIds: ["<accountId>"]` instead of `tenant: true`; one site: also `site.id='<siteId>'` in the initial filter
 - [ ] Query / filter starts with the EDR filter (for SentinelOne EDR data)
 - [ ] Grab `X-Dataset-Query-Forward-Tag` from POST response, echo on every GET and DELETE
 - [ ] Poll every 1-2s (query expires 30s after last poll)

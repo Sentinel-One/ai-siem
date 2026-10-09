@@ -234,6 +234,7 @@ export async function slicedRun(query, opts) {
     return {
       queryType: 'LOG', sliced: true, slices: n, startTime, endTime, elapsedMs,
       rows: matches, totalRows: matches.length,
+      scopeApplied: parts[0]?.r.scopeApplied,
       anySliceTruncated: sliceSummary.some(s => s.truncatedByServerCap),
       sliceSummary,
     };
@@ -251,6 +252,7 @@ export async function slicedRun(query, opts) {
     columns, rows, totalRows: rows.length,
     matchCount: parts.reduce((a, p) => a + (Number(p.r.matchCount) || 0), 0),
     effectiveQuery: parts[0]?.r.effectiveQuery,
+    scopeApplied: parts[0]?.r.scopeApplied,
     meteringExcluded: parts[0]?.r.meteringExcluded,
     sliceSummary,
   };

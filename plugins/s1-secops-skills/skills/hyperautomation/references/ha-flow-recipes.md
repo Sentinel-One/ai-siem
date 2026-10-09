@@ -80,13 +80,15 @@ Create/verify this connection at Hyperautomation → Integrations → SentinelOn
 (Bearer token) BEFORE activating the workflow; activation otherwise fails 400 "requires configuration".
 
 **HEC event-collector ingest is a different credential and a different connection.** A
-`POST {HEC_INGEST_URL}/services/collector/event` or `/raw` action takes an **SDL Log Write Key**, not
-the console token. A Hyperautomation connection passes its credential through verbatim as
-`Authorization: Bearer <value>`, so bind a second Bearer connection whose key value is the Log Write
-Key for the target account or site. The console token is refused with `HTTP 400 {"text":"Missing
-S1-Scope header","code":5}` where the write key returns `HTTP 200 {"text":"Success","code":0}`, and
-adding an `S1-Scope` header does not fix it. Send no `S1-Scope` header on collector actions: the key
-is minted for one account or site and that fixes the destination. `/v1/alerts` on the same host is
+`POST {HEC_INGEST_URL}/services/collector/event` or `/raw` action takes an **SDL Log Write Key**. A
+Hyperautomation connection passes its credential through verbatim as `Authorization: Bearer <value>`,
+so bind a second Bearer connection whose key value is the Log Write Key for the target account or
+site. The write key returns `HTTP 200 {"text":"Success","code":0}`. A connection holding the console
+token behaves like the console token: on some consoles `HTTP 400 {"text":"Missing S1-Scope
+header","code":5}` without an `S1-Scope` header and accepted with one, on others
+`HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` either way. Use the write key
+in both cases. Send no `S1-Scope` header on collector actions: the key is minted for one account or
+site and that fixes the destination. `/v1/alerts` on the same host is
 the opposite case, see the UAM section below, so do not copy collector auth to it.
 
 ## Posting a UAM SecurityAlert from an HA flow that actually SURFACES

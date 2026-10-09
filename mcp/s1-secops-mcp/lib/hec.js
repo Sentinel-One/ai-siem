@@ -10,16 +10,18 @@
  *   Host      : S1_HEC_INGEST_URL (e.g. https://ingest.us1.sentinelone.net)
  *   Endpoints : /services/collector/raw   (raw text, recommended for logs)
  *               /services/collector/event (structured JSON)
- *   Auth      : Authorization: Bearer <S1_HEC_TOKEN>, an SDL Log Write Key. NOT the
- *               Management Console API token: the collector refuses a user token.
- *               Mint one at Console > Singularity Data Lake > API Keys > Log Write Key;
- *               no API creates one.
+ *   Auth      : Authorization: Bearer <S1_HEC_TOKEN>, an SDL Log Write Key (`Splunk <key>`
+ *               is accepted too). Not the Management Console API token: measured
+ *               2026-10-09, a console token is refused outright on some consoles (403
+ *               "User token not allowed for this endpoint", code 4) and on others needs an
+ *               S1-Scope header (400 "Missing S1-Scope header", code 5, without one), so it
+ *               is not a portable credential here. Mint the key at Console > Singularity
+ *               Data Lake > API Keys > Log Write Key; no API creates one.
  *   Scope     : NONE. A Log Write Key is minted for one account or site and writes only
  *               there, so the key itself fixes the destination and the S1-Scope header is
- *               neither required nor honoured. Measured on a live tenant: the write key
- *               returns 200 with no S1-Scope header at all, while the console token on the
- *               same request returns 400 "Missing S1-Scope header". To write somewhere
- *               else, use a key minted for that scope.
+ *               neither required nor honoured (a site key's events landed at its site
+ *               whatever the header said). To write somewhere else, use a key minted for
+ *               that scope.
  *   Parser    : ?sourcetype=<parserName> query param. Other query params become fields in the UI.
  *   Pre-parsed: /event with ?isParsed=true indexes already-structured JSON fields directly, with no SDL parser.
  *   Compress  : optional "Content-Encoding: gzip" (or zstd), recommended, lowers egress cost.
@@ -48,7 +50,7 @@ function hecToken() {
   if (!tok) {
     throw new Error(
       'S1_HEC_TOKEN not configured. Log ingest needs an SDL Log Write Key, not the ' +
-      'Management Console API token: the event collector refuses a user token. ' +
+      'Management Console API token, which the event collector refuses on some consoles. ' +
       'Mint one at Console > Singularity Data Lake > API Keys > Log Write Key ' +
       '(no API creates one) and store it as S1_HEC_TOKEN. The key is scoped to one account or ' +
       'site and writes only there. ' + setupHint()
@@ -158,8 +160,8 @@ export async function hecIngest(logContent, { parser, fields = {}, scope, endpoi
     // The collector is Splunk-HEC-compatible: it reports the per-batch outcome
     // in the BODY, not the status line. A rejected batch still answers 200.
     // Measured on a live tenant: an SDL Log Write Key returns
-    // {"text":"Success","code":0}; a Management Console token returns
-    // {"text":"Missing S1-Scope header","code":5}, also with HTTP 200. A key
+    // {"text":"Success","code":0}; a Management Console token without an S1-Scope
+    // header returned {"text":"Missing S1-Scope header","code":5}. A key
     // minted for a different account or site likewise returns success and then
     // discards every event, which is the case that looks healthy and is not.
     // Without this check a caller reports a successful ingest of data that was

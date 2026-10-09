@@ -158,7 +158,7 @@ Ask (or infer from context):
 ### Step 2: Warn about integrations
 
 **CRITICAL**: Before generating JSON, identify any integration-backed actions (tag = "integration").
-These require pre-configured connections in the console that CANNOT be *created* via API. (An EXISTING connection CAN be pre-bound programmatically: set `integration_id` = the connection's id on each `http_request` action in the import JSON with `use_authentication_data: true`, then activate via `POST .../workflows/{id}/{version_id}/activation`; no manual UI binding needed. One connection also serves actions that hit different hosts, e.g. the LRQ console host and the `/v1/alerts` ingest host, since auth is header-injected regardless of the URL, PROVIDED both endpoints take the same credential. HEC event-collector actions (`/services/collector/*`) do not: they need their own connection holding an SDL Log Write Key, see "Connection requirement" below.)
+These require a connection under their integration. A connection CAN be created via API (`POST /hyper-automate/api/v1/connections?siteIds=<site>` with a `data` wrapper, returns 201; the operator supplies the secret; see `references/api-integration.md` section 16). (An EXISTING connection CAN be pre-bound programmatically: set `integration_id` = the connection's id on each `http_request` action in the import JSON with `use_authentication_data: true`, then activate via `POST .../workflows/{id}/{version_id}/activation`; no manual UI binding needed. One connection also serves actions that hit different hosts, e.g. the LRQ console host and the `/v1/alerts` ingest host, since auth is header-injected regardless of the URL, PROVIDED both endpoints take the same credential. HEC event-collector actions (`/services/collector/*`) do not: they need their own connection holding an SDL Log Write Key, see "Connection requirement" below.)
 Always tell the user: *"This workflow uses the [X, Y, Z] integrations. Before importing, you must
 configure connections for these in your Hyperautomation → Integrations section."*
 
@@ -408,7 +408,7 @@ Moved to a reference to keep SKILL.md under the 500-line limit. See [`references
 
 Moved to a reference to keep SKILL.md under the 500-line limit. See [`references/ha-flow-recipes.md`](references/ha-flow-recipes.md).
 
-**The credential split matters and is the usual cause of a silent failure.** The event collector needs its OWN connection carrying an SDL **Log Write Key**; the Management Console API token is refused there and returns `Missing S1-Scope header`. UAM alert ingest via `/v1/alerts` is the opposite case: it uses the console token and does require `S1-Scope`. One connection cannot serve both.
+**The credential split matters and is the usual cause of a silent failure.** The event collector needs its OWN connection carrying an SDL **Log Write Key**. A connection sends its credential as `Authorization: Bearer <value>`, so one holding the console token behaves like the console token: `400 Missing S1-Scope header` without a scope header, accepted with one on some consoles, `403 "User token not allowed for this endpoint"` either way on others. Use the write key in both cases. UAM alert ingest via `/v1/alerts` is the opposite case: it uses the console token and does require `S1-Scope`. Do not reuse one connection for both.
 
 ## Detection watchdog pattern (the alternate to a scheduled rule)
 
@@ -442,7 +442,9 @@ Workflow import, export, and listing use the `s1-secops-mcp` MCP server, which r
 user's machine and reaches `*.sentinelone.net` where the Cowork sandbox cannot. Use
 `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, `ha_export_workflow` (with
 `outputFile` to save the ZIP) and `ha_delete_workflow` directly; the `mgmt-console-api` skill
-scripts are host-only.
+scripts are host-only. On a global or multi-account token, pass the account the user named as
+`accountIds` (or `siteIds`) on list, export, import and delete: unscoped list and export cover
+every account the token can reach, and `siteIds` alone misses account-level workflows.
 
 ### Deployment gotchas (confirmed 2026-06-11 on `<console>`)
 
@@ -456,7 +458,7 @@ scripts are host-only.
   scope rule applies to `activation`, `deactivate`, `publish`, and `DELETE`, append
   `?siteIds=<id>` or `?accountIds=<acct>` to match where the workflow lives.
 - **There is no in-place update.** Import always creates a NEW workflow. Re-importing a name that
-  already exists succeeds but the console auto-appends `(1)`, `(2)`, … to the name. To "edit" a
+  already exists succeeds and creates `Name (1)`, `Name (2)`, … (re-confirmed 2026-10-09). To "edit" a
   deployed workflow you must delete the old one (REST `DELETE`, see below) and re-import (or edit it
   in the UI).
 - **Delete a workflow with a REST `DELETE`.** `DELETE /hyper-automate/api/v1/workflows/{id}?accountIds=<acct>`

@@ -438,6 +438,11 @@ Must have `"parent_action": <loop_export_id>`. `"connected_to": []`.
 }
 ```
 
+Mail delivery is per console. Measured 2026-10-09: on one console the action sent the mail
+(run `Completed`); on a mail-sandboxed console it failed with SES `MessageRejected` ("Email address
+is not verified ... no-reply@sentinelone.net, <recipient>"), which errors the whole run. With
+`continue_on_fail: true` the same run finished `CompletedWithErrors` and continued past the step.
+
 `mime_type`: `"text/plain"` or `"text/html"`. HTML is more common in active flows (analyst-
 friendly tables, embedded SentinelOne logo banner).
 For attachments, use the keys **`file_name`** and **`file_content`** (NOT `name`/`content`):
@@ -725,7 +730,7 @@ integration-backed. It needs no connection: `integration_id`, `connection_id` an
 |---|---|---|
 | `model` | yes | Console-assigned model UUID. **Tenant-specific, do not hard-code across tenants**; read it off an existing `llm` action in the target console. The literal string `"deep"` also appears in the corpus, so the field is not strictly a UUID. |
 | `prompt` | yes | Free text; interpolate prior step output with the normal `{{...}}` expressions. |
-| `response_format` | yes | `"off"` in every observed action (16/16). Set `"off"` unless you have confirmed another value on the target console. |
+| `response_format` | yes | One of `"off"`, `"auto"`, `"strict"`; any other value is refused at import with 422 "Input should be 'off', 'auto' or 'strict'" (3 consoles). `"off"` in every observed action (16/16). |
 | `json_schema` | yes | Present but `null` in every observed action. Pairs with a structured `response_format`. |
 
 Reference the output like any other action: `{{ai-summary.body}}`.

@@ -94,7 +94,7 @@ const PROMPTS = [
 
 export const SERVER_INFO = {
   name: 's1-secops-mcp-server',
-  version: '1.5.2',
+  version: '1.5.3',
 };
 
 export const PROTOCOL_VERSION = '2024-11-05';

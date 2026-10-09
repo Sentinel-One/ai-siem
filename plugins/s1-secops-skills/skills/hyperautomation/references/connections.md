@@ -12,7 +12,8 @@ supplied by the human operator; do not hard-code, echo, or store it.
 POST /web/api/v2.1/hyper-automate/api/v1/connections?siteIds=<id>     (or ?accountIds=<acct>)
 ```
 
-Returns `200` with a connection id. Scope with `siteIds` / `accountIds` to place the connection
+Returns `201` with the connection (`id`, `scope_level`, `site_name`; measured 2026-10-09, see
+`api-integration.md` section 16 for the full measured body and error codes). Scope with `siteIds` / `accountIds` to place the connection
 where the flow lives; connections are per-scope, so a site flow needs a connection in that site
 (or an account-level one that covers it).
 
@@ -52,16 +53,32 @@ All three SentinelOne connections share one body shape; they differ only in `nam
   "Header must start with Bearer"` (mgmt token on an SDL endpoint) failure.
 - `api_key` is the console API token for all three.
 
+### Connections are resolved by name at the workflow's own scope, at run time
+
+Measured 2026-10-09: an `http_request` action bound by name (`use_connection_name: true`,
+`connection_name: "<name>"`) imported and ACTIVATED (204) at a scope where no connection of that
+name existed, so activation does not check it. At run time the same workflow imported at the account,
+while the connection lived at a site under it, failed with "Connection with name '<name>' could not
+be found."; imported at the site it reached the connection (the call itself then ran with that
+connection's credential). Import a workflow at the scope that owns its connections, and treat a
+clean activation as no proof that its connections resolve: run it.
+
 ### HEC event-collector ingest needs a fourth, separate connection
 
-`POST {HEC_INGEST_URL}/services/collector/event` and `/raw` do **not** take the console API token.
-They take an **SDL Log Write Key**. A Hyperautomation connection passes its stored credential
-through verbatim as `Authorization: Bearer <value>`, so the binding is a `Bearer` connection created
-with the same body shape above but `api_key` set to the Log Write Key rather than the console token.
-Measured live: the write key returns `HTTP 200 {"text":"Success","code":0}`; the console token
-returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}`, and adding an `S1-Scope` header does
-not fix it. Send **no** `S1-Scope` header on collector actions: the key is minted for one account or
-site and that fixes where events land, so the header is not honoured.
+`POST {HEC_INGEST_URL}/services/collector/event` and `/raw` take an **SDL Log Write Key**. A
+Hyperautomation connection passes its stored credential through verbatim as
+`Authorization: Bearer <value>`, so the binding is a `Bearer` connection created with the same body
+shape above but `api_key` set to the Log Write Key rather than the console token. Measured live
+2026-10-09: the write key returns `HTTP 200 {"text":"Success","code":0}` on every console where
+ingest worked. A connection holding the console token behaves exactly like the console token, and
+that differs per console: on some it returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}`
+without an `S1-Scope` header and is accepted with one (the header then decides where events land);
+on others it returns `HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` with or
+without the header. A `400 Missing S1-Scope header` means the action carried the console token
+without a scope header; a `403 code 4` means this console does not accept user tokens at the
+collector. Use the write key in both cases. Send **no** `S1-Scope` header on collector actions: the
+key is minted for one account or site and that fixes where events land; the header does not change
+it.
 
 Mint the key at Console → Singularity Data Lake → API Keys → Log Write Key; no API creates one. Keep
 this connection distinct from "SentinelOne SDL", a flow that both queries SDL and ingests to the

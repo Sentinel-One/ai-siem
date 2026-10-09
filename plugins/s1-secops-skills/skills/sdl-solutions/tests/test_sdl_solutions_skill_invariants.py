@@ -17,8 +17,9 @@ loss has a concrete, expensive consequence:
    (a fourth is rejected `400: Longer than maximum length 3`).
 4. The RBA collector's two-credential split. The ingest action takes an SDL Log
    Write Key and sends no `S1-Scope` header; binding the console-token
-   connection to it fails `400 Missing S1-Scope header`, which reads like a
-   missing header and is not one.
+   connection to it fails `400 Missing S1-Scope header` (the console token
+   without a scope header) or, on other consoles, `403 code 4` either way.
+   The fix is the write key in both cases, not adding a header.
 5. Ingest-health scope lives in an editable CSV lookup, and the internal
    streams are listed BY NAME because a vendor filter keeps null-vendor rows.
 6. Every documented PowerQuery still passes the repo linter.
@@ -279,11 +280,20 @@ class RbaCollectorCredentialSplit(unittest.TestCase):
 
     def test_the_console_token_refusal_is_recorded_with_its_error(self):
         self.assertIn("Missing S1-Scope header", RBA)
+        self.assertIn("User token not allowed for this endpoint", RBA)
         self.assertRegex(
-            RBA, r"(?i)adding the header does not help|an `?S1-Scope`? header "
-                 r"does not fix it",
-            "the note that the 400 is a wrong credential rather than a missing "
-            "header is gone, which sends the next reader off adding headers")
+            RBA, r"(?i)400 means the action carried the console token without "
+                 r"a scope header",
+            "the meaning of the 400 (console token, no scope header) is gone")
+        self.assertRegex(
+            RBA, r"(?i)fix is the write key in both cases",
+            "the rule that the write key fixes both the 400 and the 403 is "
+            "gone, which sends the next reader off adding headers")
+        # Live 2026-10-09: with S1-Scope the console token IS accepted on some
+        # consoles, so these old claims are wrong and must not return.
+        self.assertNotRegex(
+            RBA, r"(?i)adding the header does not help|`?S1-Scope`? header "
+                 r"does not fix it")
 
     def test_two_connections_not_one(self):
         self.assertRegex(RBA, r"(?i)second, separate connection|two "

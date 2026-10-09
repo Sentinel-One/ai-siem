@@ -28,7 +28,7 @@
 import { writeOutput, resolveOutputPath } from '../lib/output.js';
 import {
   apiGet, apiGetBinary, apiPost, apiPut, apiDelete, apiPatch, purpleAlertSummary,
-  uamListAlerts, uamGetAlert, uamAddNote, uamSetStatus, uamSetVerdict, uamAssignAlert, uamAvailableActions,
+  uamListAlerts, uamGetAlert, uamAddNote, uamSetStatus, uamSetVerdict, uamAssignAlert, uamAvailableActions, alertScope,
   UAM_STATUSES, UAM_ANALYST_VERDICTS,
 } from '../lib/s1.js';
 
@@ -289,7 +289,7 @@ export const tools = [
   // ─── uam_list_alerts ──────────────────────────────────────────────────────
   {
     name: 'uam_list_alerts',
-    description: `List UAM (Unified Alert Management) alerts via GraphQL. The PRIMARY alert API in S1, covers all alert types (EDR, STAR, cloud, identity, third-party). Uses the correct FilterInput schema: dateTimeRange { start, end } for time windows (epoch ms). USE THIS instead of Purple MCP search_alerts for time-scoped searches; the Purple MCP sends date_range (snake_case) which UAM rejects; this tool uses dateTimeRange (the actual schema field). Convenience params (status, severity, startTime, endTime) build FilterInputs automatically. For deeper analysis, follow up with uam_get_alert.`,
+    description: `List UAM (Unified Alert Management) alerts via GraphQL. The PRIMARY alert API in S1, covers all alert types (EDR, STAR, cloud, identity, third-party). Uses the correct FilterInput schema: dateTimeRange { start, end } for time windows (epoch ms). USE THIS instead of Purple MCP search_alerts for time-scoped searches; the Purple MCP sends date_range (snake_case) which UAM rejects; this tool uses dateTimeRange (the actual schema field). Convenience params (status, severity, startTime, endTime) build FilterInputs automatically. SCOPE: with a global or multi-account token an unscoped listing spans every account; pass scopeIds (and scopeType SITE for sites) for the account or site the user named. Each alert carries accountId and siteId. For deeper analysis, follow up with uam_get_alert.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -332,10 +332,20 @@ export const tools = [
           type: 'string',
           description: 'End of time window. ISO-8601 string or epoch ms. Defaults to now when startTime is provided.',
         },
+        scopeIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional. Account (or site) ids to list alerts for. A global or multi-account token lists alerts from EVERY account it can reach when this is omitted; pass the account the user named. Each alert in the response carries accountId and siteId.',
+        },
+        scopeType: {
+          type: 'string',
+          enum: ['ACCOUNT', 'SITE'],
+          description: 'Optional. Scope type for scopeIds (default ACCOUNT).',
+        },
       },
       required: [],
     },
-    async handler({ first = 20, after, viewType = 'ALL', status, severity, detectionProduct, searchText, startTime, endTime } = {}) {
+    async handler({ first = 20, after, viewType = 'ALL', status, severity, detectionProduct, searchText, startTime, endTime, scopeIds, scopeType } = {}) {
       // Convert string epoch ms to numbers if needed
       const parseTime = (v) => {
         if (!v) return null;
@@ -350,6 +360,7 @@ export const tools = [
         searchText: searchText || null,
         startTime: parseTime(startTime),
         endTime: parseTime(endTime),
+        scope: scopeIds?.length ? { scopeIds: scopeIds.map(String), scopeType: scopeType || 'ACCOUNT' } : null,
       });
       return JSON.stringify(result, null, 2);
     },
@@ -499,7 +510,7 @@ export const tools = [
         scopeIds: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Optional. Account or site ids for the scope. Defaults to every account visible to the token, resolved via GET /accounts.',
+          description: 'Optional. Account or site ids for the scope. Defaults to the alert\'s own account (read from the alert, as the writes do), or every account visible to the token when the alert carries none.',
         },
         scopeType: {
           type: 'string',
@@ -512,12 +523,12 @@ export const tools = [
     async handler({ alertId, scopeIds, scopeType }) {
       const scope = scopeIds?.length
         ? { scopeIds, scopeType: scopeType || 'ACCOUNT' }
-        : undefined;
+        : await alertScope(alertId);
       const actions = await uamAvailableActions(alertId, scope);
       return JSON.stringify(
         {
           alertId,
-          scope: scope || 'all accounts visible to the token (ACCOUNT)',
+          scope: scopeIds?.length ? scope : { ...scope, source: scope.scopeIds.length === 1 ? 'the alert\'s account' : 'every account visible to the token' },
           enabled: actions.filter((a) => !a.isDisabled).map((a) => a.id),
           disabled: actions
             .filter((a) => a.isDisabled)

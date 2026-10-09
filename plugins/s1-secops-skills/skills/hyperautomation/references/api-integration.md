@@ -280,6 +280,11 @@ don't trust a 500 from a malformed `filter` as evidence about permissions).
 
 Returns the full workflow JSON for re-import or inspection.
 
+**To read or diff one live workflow, use the batch export with one id** (measured 2026-10-09):
+`GET /hyper-automate/api/public/workflow-import-export/export?workflow_ids=<id>` returns the workflow
+JSON (`name`, `description`, `actions`, `notes`). `GET /hyper-automate/api/v1/workflows/single/{id}/{version_id}`
+returns only action stubs (`id`, `integration_id`, `type`) with no `data`.
+
 **Finding IDs**: From the console URL when viewing a workflow:
 `https://<console>/hyperautomation/workflow/<workflow_id>/<version_id>`
 
@@ -330,13 +335,18 @@ Returns the full workflow JSON for re-import or inspection.
 | `workflow_ids` | string | Comma-separated IDs |
 | `tags` | string | Filter by tag |
 | `oversight` | boolean | Filter oversight workflows |
-| `limit` | integer | Page size |
+| `limit` | integer | Page size. Omitted, it returns 10 rows; it is not capped at 500 (`limit=2000` returned all 1,286 on one console) |
 | `skip` | integer | Offset for pagination |
 | `sortBy` | string | Field to sort by |
 | `sortOrder` | string | `asc` or `desc` |
 | `accountIds` | string | Scope to account(s) |
 | `siteIds` | string | Scope to site(s) |
 | `groupIds` | string | Scope to group(s) |
+
+Measured 2026-10-09: of the name filters tested, only `name__contains` is honoured. `name`,
+`search` and `query` are silently ignored and return the unfiltered page; the v1 base behaves the
+same. Each row is `{id, workflow: {...}, actions: [{id, integration_id, type}]}`: name, state,
+`version_id` and scope live under `row.workflow`, not at the top of the row.
 
 ---
 
@@ -396,6 +406,11 @@ to deactivate the currently active version (you do not need to look the version 
 **Responses**: `204` success (no body), `422` validation error. Validated 2026-07-11: a bodyless
 `POST .../workflows/{id}/deactivate?siteIds=<id>` with no `version_id` returned `204`.
 
+Path variants (measured 2026-10-09): `POST /public/workflows/{id}/deactivate` (unversioned) and
+`POST /hyper-automate/api/v1/workflows/{id}/{version_id}/deactivate` both return `204`. The
+versioned public paths `/public/workflows/{id}/{version_id}/deactivate` and `.../deactivation`
+return `404`.
+
 ---
 
 ### 8a. Publish a Workflow (Share with team)
@@ -431,6 +446,9 @@ still-active flow first returned the 400 above.
 **Query params**: `accountIds` or `siteIds`, match where the workflow lives. A `404 "Object not
 found"` means the id is not under that scope (or already deleted).
 
+Delete exists only on the v1 base: `DELETE /hyper-automate/api/v1/workflows/{id}` works and
+`DELETE /hyper-automate/api/public/workflows/{id}` returns `404` (measured 2026-10-09).
+
 **Responses**: `204` success (no body).
 
 ---
@@ -443,7 +461,7 @@ found"` means the id is not under that scope (or already deleted).
 
 **Query params**: `accountIds`, `siteIds`, `groupIds` for scope.
 
-**Body** (all fields optional):
+**Body**: the `data` object is REQUIRED; every field inside it is optional.
 
 ```json
 {
@@ -457,15 +475,31 @@ found"` means the id is not under that scope (or already deleted).
 }
 ```
 
-**Responses**: `201` success (returns the execution object with `id` and `state: "Running"`), `422` validation error.
+**Responses**: `201` success (returns the execution object with `id` and `state: "Running"`), `422` validation error, `400` for a workflow whose trigger cannot run on demand (below).
 
-> **Run-now returns HTTP 500 on an EMPTY body.** Posting `{}` returns
-> `500 {"detail":"Internal server error"}`, not a 4xx, so it reads like a server fault rather than
-> a malformed request and sends you debugging the wrong thing. Send the full envelope even when
-> there is no payload:
-> `{"data": {"payload": "{}", "singularity_response_event_id": null,
-> "singularity_response_event_type": null, "is_downstream_execution": false,
-> "parent_execution_id": null}}`. Tenant-validated 2026-08-18.
+> **Run-now needs the `data` object.** Measured 2026-10-09 on 2 consoles: `{"data": {}}` returned
+> `201`; an empty `{}` body returned a bare `500 {"detail":"Internal server error"}`, which reads
+> like a server fault rather than a malformed request; no body at all returned `422 "Field
+> required"`. Always send at least `{"data": {}}`.
+>
+> **A `singularity_response_trigger` workflow cannot be run on demand.** Run-now returns `400
+> "On-demand execution is not supported for trigger type 'singularity_response_trigger'. Only
+> workflows with a manual or scheduled trigger can be run on demand."` (2 consoles). UAM
+> `alertAvailableActions` never lists such a workflow either (0 `MARKETPLACE` actions for the
+> workflow's own alert). It starts from alerts with `run_automatically: true` on a filter group:
+> measured, the workflow started 6 to 8 s after each matching alert, and the execution carried
+> `singularity_response_event_type: "alert"` and `singularity_response_event_id: <alert id>`.
+>
+> **Converting a response-trigger workflow to manual.** Swapping `action.type` to `manual_trigger`
+> while keeping the trigger's `data.name` activates (`204`). Renaming the trigger breaks every
+> `{{singularity-response-trigger.*}}` reference and activation fails with `400 "Some actions in
+> this workflow have invalid references"` (`type: invalid_references`, `actions_ids`). A manual
+> trigger's `dynamic_properties` is a schema, not values: passing values returns `422` ("Input
+> should be a valid dictionary ..." / "dynamic_properties.data.title: Field required"). Even when it
+> activates, the swapped trigger does not supply the alert: the first step reading it fails at run
+> time with "Attribute id not found in Action singularity-response-trigger. Check
+> singularity-response-trigger test data for available attributes." Converting means rewriting every
+> `{{singularity-response-trigger.*}}` reference to the manual trigger's own input.
 >
 > **Run-now also works on a SCHEDULED-trigger workflow (validated 2026-06-22).** Despite the name
 > "manual", `POST .../workflow-execution/manual/{id}/{version_id}?accountIds=<acct>` triggers an
@@ -507,7 +541,11 @@ found"` means the id is not under that scope (or already deleted).
 
 ---
 
-**Response** includes `data` (array) and `pagination: { nextCursor, totalItems }`.
+**Response** includes `data` (array) and `pagination: { nextCursor, totalItems }`. List rows carry
+`state` (not `status`) and no `error_actions`; only `GET /workflow-execution/{id}` (section 11)
+returns `error_actions` (measured 2026-10-09). `GET /v1/workflow-execution/{id}` returns the same
+object. There is no route for action outputs (`/workflow-execution/{id}/output` and `/actions` are
+404 on both bases), so prove a run by its `state`, `error_actions` and side effects.
 
 ---
 
@@ -570,6 +608,37 @@ Evaluates a Hyperautomation expression string against a given context.
 `POST /hyper-automate/api/public/workflow-action-expressions/{base_action_id}/expression-breakdown`
 
 Same body as Evaluate Expression. Returns a parsed breakdown of expression components.
+
+---
+
+### 16. Integrations and connections (measured 2026-10-09)
+
+Base `/hyper-automate/api/v1`. `GET /integrations/{integration_id}` returns the integration,
+including `default_connection_data`. `GET /connections` and `GET /integrations` return `405`;
+`GET /integrations/connections` returns `422` (the path segment is parsed as a UUID).
+`GET /connections/{id}` reads one connection; there is no plain list route at `/connections`.
+
+Connections CAN be created by API: `POST /connections?siteIds=<site>` returned `201` with the
+connection (`id`, `scope_level`, `site_name`) for this body:
+
+```json
+{ "data": { "name": "<name>", "description": "<text>", "integration_id": "<integration id>",
+  "scope_id": "<site id>", "scope_level": "site", "is_default": false, "is_pna": false,
+  "protocol": "https://", "url": "<host, no scheme>", "authentication_type": "api_key",
+  "authentication_data": { "authentication_type": "api_key", "way_to_pass": "header",
+    "way_to_pass_input": "Authorization", "way_to_pass_prefix": "Bearer",
+    "api_key": "<key, operator supplies>" } } }
+```
+
+| Mistake | Response |
+|---|---|
+| No `data` wrapper | `400 "Request body must include 'data'."` |
+| `url` / `protocol` missing, or nested | `422 "url and protocol are required for non-webhook connections"` |
+| Same `name` again at that scope | `409 "Connection name already exists"` |
+| `DELETE /connections/{id}` while a workflow references it | `409 "Connection which is in use cannot be deleted"` |
+
+`DELETE /connections/{id}` exists; it refuses a connection that a workflow still references (the
+`409` above). See `connections.md` for the per-integration body variants.
 
 ---
 

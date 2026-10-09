@@ -57,6 +57,7 @@ Ids come from `GET /web/api/v2.1/accounts` and `GET /web/api/v2.1/sites`. Group 
 1. Absence checks must re-list at the **same** scope as the failed lookup. Disambiguating a site-scoped miss against an account-scoped listing reports a live file as deleted.
 2. The `/dashboards/` duplicate guard must list at the scope of the write, or it will either miss a same-named sibling or block a legitimate create.
 3. "File not found" is always scope-relative. Before concluding an object is gone, re-check at the scope it was created in.
+4. Lookup tables and other config files are per scope. Writing `/datatables/<name>` at account scope and at `<accountId>:<siteId>` creates two independent files (separate versions), each read back at its own scope (verified 2026-10-09). An LRQ `| dataset 'config://datatables/<name>'` or `| lookup` reads the copy named by the `S1-Scope` header, on an account token and a global token alike; a global token with `accountIds` and no header got "does not exist".
 
 The `sdl_*` MCP tools and the host-only `SDLClient` take an explicit `scope` argument, defaulting to `S1_SCOPE` from the environment or the OS keychain. Passing `scope=None` / `scope: null` deliberately suppresses that default and sends no header, which is what a token-default listing needs.
 
@@ -116,6 +117,8 @@ curl -sS -X POST "https://$S1_CONSOLE/sdl/v2/graphql?opname=getConfigurationFile
 ```
 
 `version` is required for any later update or delete. Cache it.
+
+A `ConfigFile` has `name`, `udoId`, `readOnly` and `version`; there is no `path` field (`configFiles { path }` fails with "Field 'path' in type 'ConfigFile' is undefined"). Introspection is disabled: `__schema { queryType }`, `__schema { types }`, `__type { fields }` and `__type { name }` each return a FieldUndefined validation error, and only `__typename` answers. Take field names from this page, not from the schema. For comparison, REST `POST /sdl/api/listFiles` returns `{"paths": [...]}` and honours `S1-Scope`.
 
 ### Read
 
@@ -284,10 +287,13 @@ scoped SDL keys (`SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KE
 `Bearer` for `/sdl/v2/graphql` and `<console>/sdl/api/*`; `ApiToken` for the Management API at
 `/web/api/v2.1/*`.
 
-Raw log ingest over the event collector is the one operation the console token does not cover. It
-takes an SDL Log Write Key (`S1_HEC_TOKEN`, minted at Console > Singularity Data Lake > API Keys >
-Log Write Key). The console token returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}`
-there, where the write key returns `HTTP 200 {"text":"Success","code":0}`.
+Raw log ingest over the event collector takes an SDL Log Write Key (`S1_HEC_TOKEN`, minted at
+Console > Singularity Data Lake > API Keys > Log Write Key, sent with a `Splunk` or `Bearer`
+prefix, no `S1-Scope` header). The console token is not a reliable substitute: on some consoles
+it gets `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without an `S1-Scope` header and is
+accepted with one, on others it gets
+`HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` either way. Use the write
+key in both cases.
 
 ### `createDashboardV2` gotchas (verified live 2026-08-17)
 

@@ -313,7 +313,7 @@ family (e.g. `ingest.us1.sentinelone.net`). Find your region endpoint at
 - `S1-Scope: <accountId>` or `<accountId>:<siteId>[:<groupId>]` is mandatory
   on `/v1/alerts`. (Raw log ingest over the event collector is the opposite:
   the Log Write Key fixes the destination, no scope header is sent, and
-  sending one has no effect.)
+  sending one does not change where the key's events land.)
 - Payload is **concatenated JSON** (one or more objects back-to-back,
   optionally newline-separated), then gzip-compressed.
 - Each `finding_info.related_events[]` entry carries the full indicator

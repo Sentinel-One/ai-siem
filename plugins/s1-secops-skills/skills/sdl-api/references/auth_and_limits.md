@@ -28,7 +28,9 @@ Required when a console token has access to multiple sites or accounts:
 
 Find the IDs via `GET /web/api/v2.1/accounts` and `GET /web/api/v2.1/sites`, or in the S1 Console → Settings → Accounts / Sites. Group scope does not exist in SDL; a Group selection is silently promoted to the Site above it.
 
-Raw log ingest is out of scope for this header: a Log Write Key is minted for exactly one account or site and writes only there, so the key itself fixes the destination. No `S1-Scope` header is sent for log ingest, and sending one has no effect. To write elsewhere, use a key minted for that scope.
+Raw log ingest with a Log Write Key is out of scope for this header: a key is minted for exactly one account or site and writes only there, so the key's mint scope decides where events land. For a write key the collector ignores `S1-Scope` (a site-minted key's events carried `site.id` whether the header named the account, the site or nothing). On a console that accepts the console token at the collector, the header does decide where that token's events land, see "Ingestion" below. An account-minted key lands account-only data with no `site.id`, which site-scoped detection rules do not see. To write elsewhere, use a key minted for that scope.
+
+**Checking where data landed.** Run PowerQuery `<filter> | group n=count() by account.id, site.id`. Do not rely on V1 `/api/query` attributes or LRQ LOG `values`: for `addEvents` and agent-shipped data, account and site sit at session level, so both omit them (LOG shows them under `serverInfo`), while HEC events carry `site.id` as an event attribute. The PowerQuery group and a `site.id='<site>'` filter see both kinds, and `site.id='<site>'` matches whether the value is stored as a string or a number.
 
 **The header applies to `/sdl/v2/graphql` config-file and dashboard operations too, not only to queries.** Verified on `<console>` 2026-08-17: `configFiles` returned 113 files at account scope and 4 at a site scope, same token and same query. A dashboard created at site scope does not appear in an account-scoped listing and `configFile` on its `udoId` reports it absent. Treat every "not found" as scope-relative.
 
@@ -98,7 +100,16 @@ Usage Metering datasource calls (`| datasource "metering"` for `tenants` / `repo
 
 ### Ingestion (moved to the event collector)
 
-Raw-log/event ingestion is not part of the SDL query client; use the event collector (`hec_ingest`) with an SDL Log Write Key in `S1_HEC_TOKEN`. The console API token does not work there: it returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` where the write key returns `HTTP 200 {"text":"Success","code":0}`. Ingest limits are documented with the ingest tooling.
+Raw-log/event ingestion is not part of the SDL query client; use the event collector (`hec_ingest`) with an SDL Log Write Key in `S1_HEC_TOKEN`, sent as `Authorization: Splunk <key>` or `Bearer <key>` (both accepted). The key needs no `S1-Scope` header.
+
+The console API token is not a reliable substitute; its behaviour at `/services/collector/event` differs per console (live 2026-10-09):
+
+| Console | Console token, no `S1-Scope` | Console token, with `S1-Scope` |
+|---|---|---|
+| A | `HTTP 400 {"text":"Missing S1-Scope header","code":5}` | `HTTP 200 {"text":"Success","code":0}`, events stored; `<accountId>:<siteId>` gave `site.id`, `<accountId>` gave account-only data |
+| B | `HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` | same 403 |
+
+A `400 Missing S1-Scope header` means the call carried the console token without a scope header; a `403 code 4` means this console does not accept user tokens at the collector. Use the write key in both cases: it worked on both consoles and its scope is fixed at mint time. On a third console both the key and the console token got `401`. Ingest limits are documented with the ingest tooling.
 
 ## Retry strategy
 

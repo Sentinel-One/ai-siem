@@ -156,7 +156,7 @@ Auth is the same `Authorization: ApiToken` header as REST; no extra credentials.
 
 Use UAM whenever the user is working with *alerts* as first-class entities, triaging, filtering, adding notes, resolving, bulk-assigning, rather than the older `GET /web/api/v2.1/threats` surface.
 
-In Cowork and any MCP client, use the `s1-secops-mcp` tools: `uam_list_alerts` (filters, paging), `uam_get_alert`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, and `uam_available_actions` (read `isDisabled` / `disabledReason` before naming why an action failed). The Python wrapper and CLI below are host-only (Claude Code or a terminal on the user's machine; credentials from environment variables or the OS keychain).
+In Cowork and any MCP client, use the `s1-secops-mcp` tools: `uam_list_alerts` (filters, paging, `scopeIds` for one account or site on a multi-account token), `uam_get_alert`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, and `uam_available_actions` (read `isDisabled` / `disabledReason` before naming why an action failed). The Python wrapper and CLI below are host-only (Claude Code or a terminal on the user's machine; credentials from environment variables or the OS keychain).
 
 ```python
 import sys
@@ -706,7 +706,7 @@ Action types observed: `singularity_response_trigger`, `manual_trigger`, `http_t
 
 ### MCP tools
 
-`ha_list_workflows`, list with scope/sort/pagination. Returns `revisionId` alongside each workflow.
+`ha_list_workflows`, list with scope (`accountIds` or `siteIds`; neither lists every account on a multi-account token)/sort/pagination. Returns `revisionId` alongside each workflow.
 `ha_get_workflow`, fetch a single workflow by `workflowId` + optional `revisionId` (auto-resolves from list if omitted).
 `ha_delete_workflow`, soft-delete one or more workflows via `DELETE /workflows/{id}` (scope with accountIds/siteIds). Confirm with user before calling.
 `ha_import_workflow`, create workflow from JSON. Requires Hyper Automate.write permission.

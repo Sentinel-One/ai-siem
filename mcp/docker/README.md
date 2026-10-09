@@ -43,7 +43,7 @@ When bumping a pin, edit both. They are checked via `grep` in CI; a mismatch fai
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.5.2` |
+| Image version (`IMAGE_VERSION`) | this repo | `1.5.3` |
 | `s1-secops-mcp` | local `COPY` from this repo | whatever commit you build |
 | `virustotal-mcp` | git, maintained fork (repo in `build.sh`) | `97ca2b8` (vendored fork of `w0h1v/mcp-virustotal` v1.0.28; proxy-addr 2.0.8, MCP SDK 1.32.1) |
 | `purple-mcp` | git, maintained fork (repo in `build.sh`) | `1390b8c` (fork of `Sentinel-One/purple-mcp` v0.7.0, pandas made optional) |
@@ -66,7 +66,7 @@ Two consequences of that switch, both handled in the workflow: a commit under `s
 Because the number does not encode what is inside, verify rather than infer:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.5.2 versions
+docker run --rm sentinelone/secops-mcps:1.5.3 versions
 ```
 
 ## Build locally
@@ -76,14 +76,14 @@ docker run --rm sentinelone/secops-mcps:1.5.2 versions
 docker/build.sh
 
 # Full smoke suite: 25 assertions (T17 skips on a local image reference), exit code is the failure count.
-docker/smoke-test.sh sentinelone/secops-mcps:1.5.2 --expect-version 1.5.2
+docker/smoke-test.sh sentinelone/secops-mcps:1.5.3 --expect-version 1.5.3
 
 # Or spot-check by hand:
-docker run -i --rm sentinelone/secops-mcps:1.5.2 help
-docker run -i --rm sentinelone/secops-mcps:1.5.2 versions
+docker run -i --rm sentinelone/secops-mcps:1.5.3 help
+docker run -i --rm sentinelone/secops-mcps:1.5.3 versions
 
 # There should be no npm in here. This must print "absent".
-docker run --rm --entrypoint sh sentinelone/secops-mcps:1.5.2 -c 'command -v npm || echo absent'
+docker run --rm --entrypoint sh sentinelone/secops-mcps:1.5.3 -c 'command -v npm || echo absent'
 ```
 
 The dispatcher accepts `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, `versions`, or `help`.
@@ -111,7 +111,7 @@ On a slow or unreliable link, push with `skopeo copy --all --retry-times 20` fro
 # Then:
 docker/build.sh                                            # verify locally
 git push                                                   # no build, by design
-git tag -a s1-mcps-v1.5.2 -m "..." && git push origin s1-mcps-v1.5.2
+git tag -a s1-mcps-v1.5.3 -m "..." && git push origin s1-mcps-v1.5.3
 ```
 
 **Only a release tag builds an image.** A push to `main` does not, however much

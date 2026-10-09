@@ -70,7 +70,7 @@ It exposes 35 MCP tools across five groups:
 | Hyperautomation | `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, `ha_export_workflow`, `ha_delete_workflow` | HA public + v1 API |
 | UAM Ingest | `uam_ingest_alert`, `uam_post_alert` | UAM Alert Interface (`/v1/alerts`) |
 
-Two credentials split the ingest surface. `hec_ingest` posts raw logs to the event collector and authenticates with an SDL Log Write Key (`S1_HEC_TOKEN`); the console API token is refused there, returning `HTTP 400 {"text":"Missing S1-Scope header","code":5}` where the write key returns `HTTP 200 {"text":"Success","code":0}`. The UAM Ingest tools post alerts to `/v1/alerts` and keep using the console API token (`S1_CONSOLE_API_TOKEN`). Indicators have no separate ingest path: they ride inside the alert, in `finding_info.related_events[]`.
+Two credentials split the ingest surface. `hec_ingest` posts raw logs to the event collector and authenticates with an SDL Log Write Key (`S1_HEC_TOKEN`), which returns `HTTP 200 {"text":"Success","code":0}` with no `S1-Scope` header. The console API token is not a reliable substitute there: on some consoles it returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without an `S1-Scope` header and is accepted with one, on others it returns `HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` either way. Use the write key in both cases. The UAM Ingest tools post alerts to `/v1/alerts` and keep using the console API token (`S1_CONSOLE_API_TOKEN`). Indicators have no separate ingest path: they ride inside the alert, in `finding_info.related_events[]`.
 
 Full tool reference: [mcp-tools.md](./mcp-tools.md)
 
@@ -128,7 +128,7 @@ S1_HEC_TOKEN          ──► HEC log ingest       (Authorization: Bearer <wri
 
 ```
 
-`S1_CONSOLE_API_TOKEN` authorises every SDL config read, config write and log read, plus UAM alert ingest on `/v1/alerts` (which additionally requires an `S1-Scope` header) and the IOC endpoints. `hec_ingest` is the one surface it does not cover: raw log ingest to the event collector needs the SDL Log Write Key (`S1_HEC_TOKEN`) and sends no `S1-Scope` header. Passing the console token there returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` where the write key returns `HTTP 200 {"text":"Success","code":0}`. The two ingest paths are separate; do not substitute one credential for the other.
+`S1_CONSOLE_API_TOKEN` authorises every SDL config read, config write and log read, plus UAM alert ingest on `/v1/alerts` (which additionally requires an `S1-Scope` header) and the IOC endpoints. `hec_ingest` is the one surface it does not reliably cover: raw log ingest to the event collector uses the SDL Log Write Key (`S1_HEC_TOKEN`) and sends no `S1-Scope` header. The console token there gets `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without a scope header, and with one it is accepted on some consoles and refused on others (`HTTP 403 {"text":"User token not allowed for this endpoint","code":4}`); the write key returns `HTTP 200 {"text":"Success","code":0}`. The two ingest paths are separate; do not substitute one credential for the other.
 
 Credential resolution, per value (highest priority first):
 

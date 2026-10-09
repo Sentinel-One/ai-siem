@@ -7,14 +7,14 @@ This page is the full Docker reference for everything beyond those steps: the la
 One Docker image bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`) so you only need Docker and the launcher script on the host: no Node, Python, or `uv`. It works on machines where IT policy blocks host-level package installs.
 
 Image: `sentinelone/secops-mcps`
-Tags: full semver only. `1.5.2` is the current tag; `1.5.1`, `1.5.0` and `1.4.10` stay published as earlier ones. There is no `latest`, no rolling `1` or `1.4`, and no `sha-<short>`: the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. Every install is therefore pinned and reproducible by construction, and an upgrade is something you do deliberately.
+Tags: full semver only. `1.5.3` is the current tag; `1.5.2`, `1.5.1`, `1.5.0` and `1.4.10` stay published as earlier ones. There is no `latest`, no rolling `1` or `1.4`, and no `sha-<short>`: the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. Every install is therefore pinned and reproducible by construction, and an upgrade is something you do deliberately.
 
 From `1.4.0` the image is built entirely from pinned git sources. Nothing in the build resolves a package from the npm registry, and `npm` and `npx` are not present in the image. This matters if you are reviewing the supply chain of what runs in your environment, or running builds somewhere the npm registry is unreachable. One registry dependency does remain: purple-mcp's Python packages still come from PyPI at build time.
 
-The image version is its own counter and does not encode the versions inside it: image `1.5.2` bundles s1-secops-mcp 1.5.2. From 1.3.4 onward a version tag strictly increases and is never republished, so a pin is stable. Tags at or below `1.3.3` were republished with different contents and do not reliably identify what is inside. To know what you have, ask the image:
+The image version is its own counter and does not encode the versions inside it: image `1.5.3` bundles s1-secops-mcp 1.5.3. From 1.3.4 onward a version tag strictly increases and is never republished, so a pin is stable. Tags at or below `1.3.3` were republished with different contents and do not reliably identify what is inside. To know what you have, ask the image:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.5.2 versions
+docker run --rm sentinelone/secops-mcps:1.5.3 versions
 ```
 
 - [Secrets: the launcher, never `-e`](#secrets-the-launcher-never--e)
@@ -57,7 +57,7 @@ mkdir -p ~/.local/bin && cp -X mcp/docker/s1-secops-mcp-launch.sh ~/.local/bin/ 
 
 On macOS, do not run it from `~/Documents`, `~/Desktop` or `~/Downloads`, which is where a repo clone or a browser download usually lands. macOS privacy protection blocks Claude Desktop's `/bin/sh` from executing a script stored in those folders, and the MCP log shows `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted`. `cp -X` drops extended attributes such as the download quarantine flag.
 
-Launcher options go **before** the server name; everything after the server name is passed to the server inside the container. Environment: `S1_MCP_IMAGE` (default image, `sentinelone/secops-mcps:1.5.2`), `S1_PROFILE` (keychain profile, default `default`), `S1_OUTPUT_DIR` (host directory for `outputFile`), `S1_CLAUDE_MD_PATH` (host CLAUDE.md, mounted read-only), `S1_KEYCHAIN_TIMEOUT` (keychain call timeout in **seconds**, default 15). The native Node server and the Python clients read `S1_KEYCHAIN_TIMEOUT_MS` (milliseconds, default 15000) instead; the launcher does not read the `_MS` name. The Windows launcher takes `-Image` and `-Profile`, reads `S1_MCP_IMAGE`, `S1_PROFILE`, `S1_OUTPUT_DIR` and `S1_CLAUDE_MD_PATH`, and supports `setup`, `status`, `versions`, `help` and the three server names. It has no keychain timeout: Credential Manager reads do not wait on a prompt.
+Launcher options go **before** the server name; everything after the server name is passed to the server inside the container. Environment: `S1_MCP_IMAGE` (default image, `sentinelone/secops-mcps:1.5.3`), `S1_PROFILE` (keychain profile, default `default`), `S1_OUTPUT_DIR` (host directory for `outputFile`), `S1_CLAUDE_MD_PATH` (host CLAUDE.md, mounted read-only), `S1_KEYCHAIN_TIMEOUT` (keychain call timeout in **seconds**, default 15). The native Node server and the Python clients read `S1_KEYCHAIN_TIMEOUT_MS` (milliseconds, default 15000) instead; the launcher does not read the `_MS` name. The Windows launcher takes `-Image` and `-Profile`, reads `S1_MCP_IMAGE`, `S1_PROFILE`, `S1_OUTPUT_DIR` and `S1_CLAUDE_MD_PATH`, and supports `setup`, `status`, `versions`, `help` and the three server names. It has no keychain timeout: Credential Manager reads do not wait on a prompt.
 
 Claude Desktop config:
 
@@ -71,7 +71,7 @@ Claude Desktop config:
 }
 ```
 
-Put `"--image", "sentinelone/secops-mcps:1.5.2"` in front of the server name in the args to pin explicitly (on Windows, `"-Image", "..."`). Set `S1_PROFILE` in an `env` block to use a non-default keychain profile, and `S1_OUTPUT_DIR` to a host directory to receive `outputFile` results: the macOS/Linux launcher mounts that directory into the container at the same path, so a path you pass to `outputFile` means the same thing on both sides. The Windows launcher mounts it at `/output` instead, so pass `outputFile` paths under `/output/` there. Neither variable is a secret.
+Put `"--image", "sentinelone/secops-mcps:1.5.3"` in front of the server name in the args to pin explicitly (on Windows, `"-Image", "..."`). Set `S1_PROFILE` in an `env` block to use a non-default keychain profile, and `S1_OUTPUT_DIR` to a host directory to receive `outputFile` results: the macOS/Linux launcher mounts that directory into the container at the same path, so a path you pass to `outputFile` means the same thing on both sides. The Windows launcher mounts it at `/output` instead, so pass `outputFile` paths under `/output/` there. Neither variable is a secret.
 
 All three servers ship in the same image and read the same names. The entrypoint maps the canonical names onto purple-mcp's own variables (`S1_CONSOLE_URL` → `PURPLEMCP_CONSOLE_BASE_URL`, `S1_CONSOLE_API_TOKEN` → `PURPLEMCP_CONSOLE_TOKEN`, `VIRUSTOTAL_API_KEY` → `PURPLEMCP_VT_API_KEY`); a server-specific variable that is already set wins.
 
@@ -124,7 +124,7 @@ Common signatures:
 | `Cannot connect to the Docker daemon` | Docker Desktop is not running, see step 1 |
 | `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` (macOS) | The launcher is stored under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Copy it to `~/.local/bin/` (see [the launcher](#secrets-the-launcher-never--e)) and update `command` in the config. |
 | `Unable to find image ... pulling from docker.io` | First-launch pull, normal, takes 30 to 90 s |
-| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.5.2`. Check with `docker manifest inspect sentinelone/secops-mcps:1.5.2`. |
+| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.5.3`. Check with `docker manifest inspect sentinelone/secops-mcps:1.5.3`. |
 | `VIRUSTOTAL_API_KEY environment variable is required` | The value is not in the keychain, or the launcher could not read it. Check with `s1-secops-mcp-launch.sh status` (or `s1-secops-mcp status`), which shows a stored secret as a length only, then re-run the launcher's `setup`. |
 | `pydantic_core.ValidationError ... PURPLEMCP_*` | Same root cause for purple-mcp: `S1_CONSOLE_URL` or `S1_CONSOLE_API_TOKEN` did not reach the container. |
 | `S1 Mgmt API: NOT configured` | s1-secops-mcp boots but no console token reached it; check the keychain entries for `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` and the `S1_PROFILE` in use. |
@@ -135,11 +135,11 @@ Common signatures:
 This bypasses Claude Desktop entirely and confirms the image works. The initialize handshake needs no credentials:
 
 ```bash
-docker run -i --rm --pull=missing sentinelone/secops-mcps:1.5.2 s1-secops-mcp \
+docker run -i --rm --pull=missing sentinelone/secops-mcps:1.5.3 s1-secops-mcp \
   <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
 ```
 
-Expected: a single JSON line back on stdout with `serverInfo.name = "s1-secops-mcp-server"` and the bundled MCP version (`1.5.2`). Stderr shows `Tools: 35 registered` and a `NOT configured` summary per API surface, because no credentials were supplied.
+Expected: a single JSON line back on stdout with `serverInfo.name = "s1-secops-mcp-server"` and the bundled MCP version (`1.5.3`). Stderr shows `Tools: 35 registered` and a `NOT configured` summary per API surface, because no credentials were supplied.
 
 To test with your real credentials, run the launcher by hand instead of `docker run -e`, so the token never lands on a command line or in `docker inspect`:
 
@@ -155,8 +155,8 @@ Stderr should now show `configured` for each surface whose values are in the key
 If you suspect a corrupted local image:
 
 ```bash
-docker rmi sentinelone/secops-mcps:1.5.2
-docker pull sentinelone/secops-mcps:1.5.2
+docker rmi sentinelone/secops-mcps:1.5.3
+docker pull sentinelone/secops-mcps:1.5.3
 ```
 
 ---
@@ -187,14 +187,14 @@ Confirm the override took effect by reading the `sentinelone://soc-context` reso
 
 Upgrading is deliberate: edit the `--image` tag in `claude_desktop_config.json` (or update the launcher's default) and restart Claude Desktop.
 
-The documented config pins `1.5.2`, so restarting does **not** move you to a newer image, by design. An immutable tag cannot change underneath you, which is what makes a pin forensically meaningful: the bytes you validated are the bytes you keep running. The trade is that nothing upgrades on its own, so watch the releases rather than expecting a restart to do it.
+The documented config pins `1.5.3`, so restarting does **not** move you to a newer image, by design. An immutable tag cannot change underneath you, which is what makes a pin forensically meaningful: the bytes you validated are the bytes you keep running. The trade is that nothing upgrades on its own, so watch the releases rather than expecting a restart to do it.
 
 Replace the tag in all three MCP entries at once. They share one image, and leaving them on different tags is the one way to get the three servers out of lockstep.
 
 To pre-pull the new version before editing the config:
 
 ```bash
-docker pull sentinelone/secops-mcps:1.5.2
+docker pull sentinelone/secops-mcps:1.5.3
 ```
 
 Coming from 1.4.x: the `-e`/`env` configs no longer apply. Store the values with the launcher's `setup`, switch each entry to the launcher, and remove the tokens from the config file. Full checklist: [upgrading.md](./upgrading.md).
@@ -214,7 +214,7 @@ The image is built and published by the maintainers; end users never need to bui
 To confirm what a published image contains, ask the image itself. It reports the exact repository and commit behind each bundled server:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.5.2 versions
+docker run --rm sentinelone/secops-mcps:1.5.3 versions
 ```
 
 Maintainer reference (pinned versions, publishing, bumping a pin): [`docker/README.md`](../../../mcp/docker/README.md).

@@ -68,8 +68,8 @@ export function getCreds() {
     S1_CONSOLE_API_TOKEN: e('S1_CONSOLE_API_TOKEN'),
     S1_HEC_INGEST_URL:    e('S1_HEC_INGEST_URL'),
     // SDL Log Write Key, used ONLY for log ingest over the event collector.
-    // A different credential from the console token: the collector refuses a
-    // console user token, and the key is minted for one account or site
+    // A different credential from the console token: some consoles refuse a
+    // console user token at the collector, and the key is minted for one account or site
     // (Console > Singularity Data Lake > API Keys > Log Write Key).
     S1_HEC_TOKEN:         e('S1_HEC_TOKEN'),
     // Default S1-Scope for SDL requests: "<accountId>" or "<accountId>:<siteId>".

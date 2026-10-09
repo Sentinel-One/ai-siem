@@ -309,7 +309,8 @@ case "$CMD" in
     elif [ -z "$(kc_get S1_CONSOLE_API_TOKEN)" ]; then
       if [ -t 0 ]; then
         echo "No credentials stored yet for profile $PROFILE. Starting setup." >&2
-        "$DEST" --profile "$PROFILE" setup
+        "$DEST" --profile "$PROFILE" setup || true
+        [ -n "$(kc_get S1_CONSOLE_API_TOKEN)" ] || echo "s1-secops-mcp-launch: warning: S1_CONSOLE_API_TOKEN is still not stored. Run: $DEST setup" >&2
       else
         echo "Next: store your credentials with: $DEST setup" >&2
       fi

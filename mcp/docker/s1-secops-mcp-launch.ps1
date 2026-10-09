@@ -220,7 +220,12 @@ if ($Command -in 'install', 'config') {
   $hasToken = $true
   try { $hasToken = [bool](Get-Kc 'S1_CONSOLE_API_TOKEN') } catch { Write-Err "s1-secops-mcp-launch: warning: Credential Manager unavailable: $($_.Exception.Message)" }
   if (-not $hasToken) {
-    if (-not [Console]::IsInputRedirected) { Write-Err "No credentials stored yet for profile $KeyProfile. Starting setup."; & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File $dest -Profile $KeyProfile setup }
+    if (-not [Console]::IsInputRedirected) {
+      Write-Err "No credentials stored yet for profile $KeyProfile. Starting setup."
+      & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File $dest -Profile $KeyProfile setup
+      $still = $true; try { $still = -not (Get-Kc 'S1_CONSOLE_API_TOKEN') } catch { }
+      if ($still) { Write-Err "s1-secops-mcp-launch: warning: S1_CONSOLE_API_TOKEN is still not stored. Run: powershell -NoProfile -ExecutionPolicy Bypass -File `"$dest`" setup  (paste with right-click if Ctrl+V does nothing)" }
+    }
     else { Write-Err "Next: store your credentials with: powershell -NoProfile -ExecutionPolicy Bypass -File `"$dest`" setup" }
   }
   Write-Err 'Done. Quit Claude Desktop completely (also from the system tray) and open it again: it starts the three MCPs itself. Nothing needs starting in Docker Desktop.'
@@ -231,6 +236,7 @@ switch -Regex ($Command) {
   '^setup$' {
     if ([Console]::IsInputRedirected) { throw 'setup must run in an interactive console (or use: s1-secops-mcp setup, which reads NAME=value lines on stdin)' }
     Write-Host "Profile: $KeyProfile. Press Enter to keep a value. Secrets are not echoed."
+    Write-Host "Tip: if Ctrl+V does not paste into a hidden prompt, right-click to paste."
     foreach ($n in $AllNames) {
       $cur = Get-Kc $n
       $hint = if (-not $cur) { 'not set' } elseif (Test-Secret $n) { "set, $($cur.Length) chars" } else { $cur }

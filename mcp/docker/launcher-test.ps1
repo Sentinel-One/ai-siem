@@ -2,7 +2,8 @@
   launcher-test.ps1: hermetic tests for `s1-secops-mcp-launch.ps1 install` and
   `config`. Runs each case in a child PowerShell whose HOME, USERPROFILE and
   APPDATA point at a temp directory, so the real Claude Desktop config is never
-  touched. Needs no network; Credential Manager is only read.
+  touched. Input is redirected, so install never prompts for credentials.
+  Needs no network; Credential Manager is only read.
 
   Usage: pwsh -NoProfile -File docker/launcher-test.ps1
          (Windows PowerShell 5.1: powershell -NoProfile -ExecutionPolicy Bypass -File ...)
@@ -30,7 +31,10 @@ function Invoke-Launcher([string]$Script, [string[]]$LauncherArgs) {
   # which 'Stop' would make fatal: the launcher writes its progress to stderr.
   $ErrorActionPreference = 'Continue'
   try {
-    $out = & $psExe -NoProfile -ExecutionPolicy Bypass -File $Script @LauncherArgs 2> (Join-Path $root 'err.txt')
+    # Piped (empty) stdin: the child sees redirected input, so install never
+    # starts the interactive credential setup, and -NonInteractive makes any
+    # stray prompt fail instead of waiting on the keyboard.
+    $out = '' | & $psExe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $Script @LauncherArgs 2> (Join-Path $root 'err.txt')
     $script:rc = $LASTEXITCODE
     ($out | Out-String)
   } finally { foreach ($k in $saved.Keys) { Set-Item "env:$k" $saved[$k] } }
@@ -63,6 +67,7 @@ try {
   if ($rc -eq 0 -and (Test-Path $dest) -and ($cmds -join '') -eq $dest -and -not (Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue)) {
     Ok 'install: fresh config under APPDATA, launcher copied to HOME\bin' } else { Bad "install fresh (rc=$rc)" (ErrText) }
   if ((ErrText) -match 'QuitClaudeDesktopcompletely') { Ok 'install: restart instruction' } else { Bad 'install messages' (ErrText) }
+  if ((ErrText) -notmatch 'Startingsetup') { Ok 'install: no credential prompt when input is redirected' } else { Bad 'install prompted for credentials' (ErrText) }
 
   # install merge
   $orig = @'

@@ -93,6 +93,25 @@ public static class S1Cred {
     } finally { Marshal.FreeHGlobal(c.CredentialBlob); }
   }
 }
+// Forwards the MCP client's stdin to docker one read at a time, flushing every
+// chunk. Stream.CopyToAsync into Process.StandardInput leaves each message in
+// that stream's write buffer until it fills or closes, so the server never saw
+// a request until the client gave up and closed stdin.
+public static class S1Relay {
+  public static System.Threading.Thread Start(System.IO.Stream input, System.IO.Stream output) {
+    var t = new System.Threading.Thread(() => {
+      var buf = new byte[65536];
+      try {
+        int n;
+        while ((n = input.Read(buf, 0, buf.Length)) > 0) { output.Write(buf, 0, n); output.Flush(); }
+      } catch (Exception) { }
+      try { output.Close(); } catch (Exception) { }
+    });
+    t.IsBackground = true;
+    t.Start();
+    return t;
+  }
+}
 '@
 
 function Get-Target([string]$Name) { "${KeyProfile}:${Name}.$Service" }
@@ -328,14 +347,11 @@ $utf8 = New-Object System.Text.UTF8Encoding($false)
 $bytes = $utf8.GetBytes($payload.ToString())
 $proc.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
 $proc.StandardInput.BaseStream.Flush()
-# Relay the client's stdin to docker until either side closes.
-$stdin = [Console]::OpenStandardInput()
-$copy = $stdin.CopyToAsync($proc.StandardInput.BaseStream)
+# Relay the client's stdin to docker, flushing each read, until the client
+# closes stdin (the relay then closes docker's stdin) or docker exits.
+$relay = [S1Relay]::Start([Console]::OpenStandardInput(), $proc.StandardInput.BaseStream)
 try {
-  while (-not $proc.HasExited) {
-    if ($copy.IsCompleted) { $proc.StandardInput.Close(); $copy = [System.Threading.Tasks.Task]::Delay(-1) }
-    Start-Sleep -Milliseconds 100
-  }
+  while (-not $proc.WaitForExit(200)) { }
 } finally {
   if (-not $proc.HasExited) { try { & docker kill $cname *> $null } catch { } }
 }

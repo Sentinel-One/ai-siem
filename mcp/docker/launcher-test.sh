@@ -119,6 +119,26 @@ J
   fi
 done
 
+# Live stdio check (Docker running and the image present): an MCP client keeps
+# stdin open, so the initialize reply must arrive before stdin closes. Piping
+# one line and closing stdin would hide a relay that buffers input.
+IMAGE=sentinelone/secops-mcps:1.5.3
+if command -v docker >/dev/null 2>&1 && docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  echo "== live stdio"
+  L="$ROOT/live"; mkdir -p "$L"; mkfifo "$L/in"
+  sh "$LAUNCHER" --image "$IMAGE" s1-secops-mcp < "$L/in" > "$L/out" 2> "$L/err" &
+  LPID=$!
+  exec 4> "$L/in"   # hold stdin open
+  printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"launcher-test","version":"0"}}}' >&4
+  i=0; while [ $i -lt 450 ] && ! grep -q '"serverInfo"' "$L/out" 2>/dev/null; do sleep 0.1; i=$((i + 1)); done
+  if grep -q '"serverInfo"' "$L/out"; then ok "stdio: initialize answered in about $((i / 10)) s with stdin still open"; else bad "stdio: no initialize reply within 45 s while stdin was open" "$L/err"; fi
+  exec 4>&-
+  w=0; while kill -0 "$LPID" 2>/dev/null && [ $w -lt 200 ]; do sleep 0.1; w=$((w + 1)); done
+  kill "$LPID" 2>/dev/null || true
+else
+  echo "  skip stdio: needs Docker running and $IMAGE pulled"
+fi
+
 echo
 echo "launcher-test: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

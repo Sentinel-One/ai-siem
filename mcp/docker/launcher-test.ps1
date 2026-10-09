@@ -129,6 +129,33 @@ try {
   # -ConfigPath is install-only
   [void](Invoke-Launcher $launcher @('config', '-ConfigPath', $alt))
   if ($rc -ne 0) { Ok 'config: rejects -ConfigPath' } else { Bad 'config -ConfigPath accepted' }
+  # Live stdio check (Windows with Docker running and the image present): an MCP
+  # client keeps stdin open, so the initialize reply must arrive before stdin
+  # closes. Piping one line and closing stdin hides a relay that buffers input.
+  $image = 'sentinelone/secops-mcps:1.5.3'
+  $dockerOk = $false
+  if ($env:OS -eq 'Windows_NT' -and (Get-Command docker -ErrorAction SilentlyContinue)) {
+    $ErrorActionPreference = 'Continue'
+    & docker image inspect $image *> $null; $dockerOk = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = 'Stop'
+  }
+  if ($dockerOk) {
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $psExe
+    $psi.Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$launcher`" -Image $image s1-secops-mcp"
+    $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $null = $p.StandardError.ReadToEndAsync()
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $p.StandardInput.WriteLine('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"launcher-test","version":"0"}}}')
+    $p.StandardInput.Flush()
+    $line = $p.StandardOutput.ReadLineAsync()
+    $got = $line.Wait(45000)
+    $secs = [math]::Round($sw.Elapsed.TotalSeconds, 1)
+    if ($got -and $line.Result -match '"serverInfo"') { Ok "stdio: initialize answered in $secs s with stdin still open" } else { Bad "stdio: no initialize reply within 45 s while stdin was open" }
+    $p.StandardInput.Close()
+    if (-not $p.WaitForExit(20000)) { try { $p.Kill() } catch { } }
+  } else { Write-Host '  skip stdio: needs Windows, Docker running and the image pulled' }
 } finally { Remove-Item -Recurse -Force $root -ErrorAction SilentlyContinue }
 
 Write-Host ''

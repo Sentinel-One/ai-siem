@@ -19,12 +19,20 @@
     s1-secops-mcp-launch.ps1 setup  [-Profile P]
     s1-secops-mcp-launch.ps1 status [-Profile P]
     s1-secops-mcp-launch.ps1 versions | help      image versions / entrypoint help
+    s1-secops-mcp-launch.ps1 install [options]   copy to $HOME\bin, pull the image, add the
+                                                 three servers to the Claude Desktop config
+                                                 (backup kept), then run setup if no token
+    s1-secops-mcp-launch.ps1 config  [options]   print the mcpServers JSON with this
+                                                 script's absolute path (other clients)
+      options: -Image IMG  -Profile P  -OutputDir DIR  -ClaudeMd FILE
+               -ConfigPath FILE (install only; default %APPDATA%\Claude\claude_desktop_config.json)
 
   Environment: S1_MCP_IMAGE, S1_PROFILE, S1_OUTPUT_DIR (mounted at /output),
   S1_CLAUDE_MD_PATH (host CLAUDE.md, mounted read-only). S1_SCOPE is
   <accountId> or <accountId>:<siteId>.
 
-  MCP client config example (no secrets):
+  MCP client config example (no secrets; JSON does not expand %USERPROFILE%,
+  which is why install and config write the real path):
     "s1-secops-mcp": { "command": "powershell.exe",
       "args": ["-NoProfile","-ExecutionPolicy","Bypass","-File","C:\\path\\s1-secops-mcp-launch.ps1","s1-secops-mcp"] }
 
@@ -34,6 +42,9 @@
 param(
   [string]$Image = $(if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.3' }),
   [Alias('Profile')][string]$KeyProfile = $(if ($env:S1_PROFILE) { $env:S1_PROFILE } else { 'default' }),
+  [string]$OutputDir,
+  [string]$ClaudeMd,
+  [string]$ConfigPath,
   [Parameter(Position = 0, Mandatory = $true)][string]$Command,
   [Parameter(Position = 1, ValueFromRemainingArguments = $true)][string[]]$ServerArgs
 )
@@ -110,6 +121,98 @@ function Test-Value([string]$n, [string]$v) {
 function ConvertTo-WinArg([string]$a) {
   if ($a -ne '' -and $a -notmatch '[\s"]') { return $a }
   '"' + ([regex]::Replace($a, '(\\*)"', { param($m) $m.Groups[1].Value * 2 + '\"' }) -replace '(\\+)$', '$1$1') + '"'
+}
+
+# The three Claude Desktop entries for launcher $Launcher. No secrets: paths and names only.
+function New-S1Entries([string]$Launcher) {
+  $pre = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Launcher, '-Image', $Image)
+  if ($KeyProfile -ne 'default') { $pre += @('-Profile', $KeyProfile) }
+  $s1 = [ordered]@{ command = 'powershell.exe'; args = @($pre + 's1-secops-mcp') }
+  $envMap = [ordered]@{}
+  if ($OutputDir) { $envMap['S1_OUTPUT_DIR'] = $OutputDir }
+  if ($ClaudeMd) { $envMap['S1_CLAUDE_MD_PATH'] = $ClaudeMd }
+  if ($envMap.Count) { $s1['env'] = $envMap }
+  [ordered]@{
+    's1-secops-mcp' = $s1
+    'purple-mcp'    = [ordered]@{ command = 'powershell.exe'; args = @($pre + 'purple-mcp') }
+    'virustotal'    = [ordered]@{ command = 'powershell.exe'; args = @($pre + 'virustotal-mcp') }
+  }
+}
+
+if ($Command -in 'install', 'config') {
+  if (-not $PSCommandPath) { throw "cannot find this script on disk. Save it to a file first, then run: powershell -NoProfile -ExecutionPolicy Bypass -File <file> $Command" }
+  if ($ConfigPath -and $Command -ne 'install') { throw '-ConfigPath is for install only' }
+  if ($OutputDir) {
+    New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+    $OutputDir = (Resolve-Path -LiteralPath $OutputDir).ProviderPath
+  }
+  if ($ClaudeMd) {
+    if (-not (Test-Path -LiteralPath $ClaudeMd -PathType Leaf)) { throw "-ClaudeMd $ClaudeMd is not a file" }
+    $ClaudeMd = (Resolve-Path -LiteralPath $ClaudeMd).ProviderPath
+  }
+  if ($Command -eq 'config') {
+    [ordered]@{ mcpServers = (New-S1Entries $PSCommandPath) } | ConvertTo-Json -Depth 10
+    exit 0
+  }
+
+  # install
+  $binDir = Join-Path $HOME 'bin'
+  $dest = Join-Path $binDir 's1-secops-mcp-launch.ps1'
+  New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+  if ([IO.Path]::GetFullPath($PSCommandPath) -ne [IO.Path]::GetFullPath($dest)) { Copy-Item -LiteralPath $PSCommandPath -Destination $dest -Force }
+  if (Get-Command Unblock-File -ErrorAction SilentlyContinue) { Unblock-File -LiteralPath $dest }
+  Write-Err "Launcher installed: $dest"
+
+  if (-not $ConfigPath) {
+    if (-not $env:APPDATA) { throw 'APPDATA is not set; pass -ConfigPath <path to claude_desktop_config.json>' }
+    $ConfigPath = Join-Path (Join-Path $env:APPDATA 'Claude') 'claude_desktop_config.json'
+  }
+  $cfg = [pscustomobject]@{}
+  if (Test-Path -LiteralPath $ConfigPath -PathType Leaf) {
+    $raw = [IO.File]::ReadAllText($ConfigPath)
+    if ($raw.Trim()) {
+      try { $cfg = $raw | ConvertFrom-Json } catch { throw "config not changed: invalid JSON in ${ConfigPath}: $($_.Exception.Message)" }
+    }
+  }
+  if ($cfg -isnot [System.Management.Automation.PSCustomObject]) { throw "config not changed: $ConfigPath is not a JSON object" }
+  $servers = $cfg.mcpServers
+  if ($servers -isnot [System.Management.Automation.PSCustomObject]) { $servers = [pscustomobject]@{} }
+  $new = New-S1Entries $dest
+  # Keep every other server and setting, replace our three entries, and drop
+  # older entries that ran this launcher under another name (e.g. "virustotal-mcp").
+  foreach ($p in @($servers.PSObject.Properties)) {
+    if (-not $new.Contains($p.Name) -and (($p.Value | ConvertTo-Json -Depth 20 -Compress) -match 's1-secops-mcp-launch')) {
+      $servers.PSObject.Properties.Remove($p.Name); Write-Err "removed old entry $($p.Name)"
+    }
+  }
+  foreach ($k in $new.Keys) { $servers | Add-Member -NotePropertyName $k -NotePropertyValue $new[$k] -Force }
+  $cfg | Add-Member -NotePropertyName mcpServers -NotePropertyValue $servers -Force
+  $json = $cfg | ConvertTo-Json -Depth 20
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ConfigPath) | Out-Null
+  if (Test-Path -LiteralPath $ConfigPath -PathType Leaf) {
+    $bak = "$ConfigPath.bak-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    Copy-Item -LiteralPath $ConfigPath -Destination $bak
+    Write-Err "Backup of your previous config: $bak"
+  }
+  [IO.File]::WriteAllText($ConfigPath, $json + "`n", (New-Object System.Text.UTF8Encoding($false)))
+  Write-Err "Claude Desktop config updated: $ConfigPath"
+
+  $dockerUp = $false
+  if (Get-Command docker -ErrorAction SilentlyContinue) { & docker info *> $null; $dockerUp = ($LASTEXITCODE -eq 0) }
+  if ($dockerUp) {
+    Write-Err "Pulling $Image ..."
+    & docker pull $Image | ForEach-Object { Write-Err $_ }
+    if ($LASTEXITCODE -ne 0) { Write-Err 's1-secops-mcp-launch: warning: pull failed; the first start will retry it' }
+  } else { Write-Err 's1-secops-mcp-launch: warning: Docker is not running. Start Docker Desktop before you open Claude Desktop.' }
+
+  $hasToken = $true
+  try { $hasToken = [bool](Get-Kc 'S1_CONSOLE_API_TOKEN') } catch { Write-Err "s1-secops-mcp-launch: warning: Credential Manager unavailable: $($_.Exception.Message)" }
+  if (-not $hasToken) {
+    if (-not [Console]::IsInputRedirected) { Write-Err "No credentials stored yet for profile $KeyProfile. Starting setup."; & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File $dest -Profile $KeyProfile setup }
+    else { Write-Err "Next: store your credentials with: powershell -NoProfile -ExecutionPolicy Bypass -File `"$dest`" setup" }
+  }
+  Write-Err 'Done. Quit Claude Desktop completely (also from the system tray) and open it again: it starts the three MCPs itself. Nothing needs starting in Docker Desktop.'
+  exit 0
 }
 
 switch -Regex ($Command) {

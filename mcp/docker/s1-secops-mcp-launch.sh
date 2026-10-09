@@ -13,8 +13,17 @@
 #   s1-secops-mcp-launch.sh setup  [--profile P]   store values (prompts, no echo)
 #   s1-secops-mcp-launch.sh status [--profile P]   show which values are stored
 #   s1-secops-mcp-launch.sh versions | help        image versions / entrypoint help
+#   s1-secops-mcp-launch.sh install [options]      copy to ~/.local/bin, pull the image,
+#                                                  add the three servers to the Claude
+#                                                  Desktop config (backup kept), then
+#                                                  run setup if no token is stored
+#   s1-secops-mcp-launch.sh config  [options]      print the mcpServers JSON with this
+#                                                  launcher's absolute path (other clients)
+#     options: --image IMG  --profile P  --output-dir DIR  --claude-md FILE
+#              --config-path FILE (install only; default is Claude Desktop's config)
 #
-# MCP client config (Claude Desktop example; no secrets in it):
+# MCP client config (Claude Desktop example; no secrets in it). JSON does not
+# expand ~ or $HOME, which is why `install` and `config` write the real path:
 #   "s1-secops-mcp": { "command": "/abs/path/s1-secops-mcp-launch.sh", "args": ["s1-secops-mcp"] }
 #
 # Environment
@@ -40,13 +49,14 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --image) [ $# -ge 2 ] || die "--image needs a value"; IMAGE=$2; shift 2 ;;
     --profile) [ $# -ge 2 ] || die "--profile needs a value"; PROFILE=$2; shift 2 ;;
-    -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,39p' "$0"; exit 0 ;;
     *) break ;;
   esac
 done
-[ $# -ge 1 ] || die "missing server name (s1-secops-mcp | purple-mcp | virustotal-mcp | setup | status)"
+[ $# -ge 1 ] || die "missing server name (s1-secops-mcp | purple-mcp | virustotal-mcp | setup | status | install | config)"
 CMD=$1; shift
-# setup and status take their options after the command too
+OUTPUT_DIR=""; CLAUDE_MD=""; CONFIG_PATH=""
+# setup, status, install and config take their options after the command too
 # (`setup --profile P`); servers pass everything after the name through.
 case "$CMD" in
   setup|status)
@@ -55,6 +65,19 @@ case "$CMD" in
         --profile) [ $# -ge 2 ] || die "--profile needs a value"; PROFILE=$2; shift 2 ;;
         *) die "unknown option for $CMD: $1" ;;
       esac
+    done ;;
+  install|config)
+    while [ $# -gt 0 ]; do
+      [ $# -ge 2 ] || die "$1 needs a value"
+      case "$1" in
+        --image) IMAGE=$2 ;;
+        --profile) PROFILE=$2 ;;
+        --output-dir) OUTPUT_DIR=$2 ;;
+        --claude-md) CLAUDE_MD=$2 ;;
+        --config-path) [ "$CMD" = install ] || die "--config-path is for install only"; CONFIG_PATH=$2 ;;
+        *) die "unknown option for $CMD: $1" ;;
+      esac
+      shift 2
     done ;;
   s1-secops-mcp|s1|purple-mcp|purple|virustotal-mcp|virustotal|vt)
     case "${1:-}" in --image|--profile) die "put $1 before the server name: $0 $1 <value> $CMD" ;; esac ;;
@@ -110,7 +133,8 @@ kc_check() {
     *) KC_ERR="unsupported OS $OS (use s1-secops-mcp-launch.ps1 on Windows)" ;;
   esac
 }
-kc_check
+# `config` only prints JSON: it must not wait on a locked keychain.
+[ "$CMD" = config ] || kc_check
 
 kc_get() {
   [ -z "$KC_ERR" ] || return 0   # the health check already failed or timed out: do not wait again per name
@@ -141,6 +165,158 @@ kc_set() { # name value(from stdin-safe variable)
 
 ALL_NAMES="S1_CONSOLE_URL S1_CONSOLE_API_TOKEN S1_HEC_INGEST_URL S1_HEC_TOKEN S1_SCOPE VIRUSTOTAL_API_KEY"
 is_secret() { case "$1" in *TOKEN*|*KEY*) return 0 ;; *) return 1 ;; esac; }
+
+# ---- install / config ------------------------------------------------------
+# Absolute path of a file whose directory exists, resolved from the caller's cwd.
+abs_path() { _ad=$(cd "$(dirname "$1")" 2>/dev/null && pwd -P) || return 1; printf '%s/%s\n' "$_ad" "$(basename "$1")"; }
+json_str() { printf '"%s"' "$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"; }
+# macOS privacy protection stops Claude Desktop's /bin/sh running a script there.
+tcc_blocked() {
+  [ "$OS" = Darwin ] || return 1
+  case "$1" in "$HOME"/Documents/*|"$HOME"/Desktop/*|"$HOME"/Downloads/*) return 0 ;; esac
+  return 1
+}
+# The three Claude Desktop entries for launcher $1. No secrets: paths and names only.
+mcp_json() {
+  _l=$(json_str "$1"); _i=$(json_str "$IMAGE"); _p=""; _e=""
+  [ "$PROFILE" = default ] || _p=", \"--profile\", $(json_str "$PROFILE")"
+  [ -z "$OUTPUT_DIR" ] || _e="\"S1_OUTPUT_DIR\": $(json_str "$OUTPUT_DIR")"
+  [ -z "$CLAUDE_MD" ] || _e="${_e:+$_e, }\"S1_CLAUDE_MD_PATH\": $(json_str "$CLAUDE_MD")"
+  printf '{\n  "mcpServers": {\n'
+  printf '    "s1-secops-mcp": {\n      "command": %s,\n      "args": ["--image", %s%s, "s1-secops-mcp"]' "$_l" "$_i" "$_p"
+  [ -z "$_e" ] || printf ',\n      "env": {%s}' "$_e"
+  printf '\n    },\n'
+  printf '    "purple-mcp": {\n      "command": %s,\n      "args": ["--image", %s%s, "purple-mcp"]\n    },\n' "$_l" "$_i" "$_p"
+  printf '    "virustotal": {\n      "command": %s,\n      "args": ["--image", %s%s, "virustotal-mcp"]\n    }\n' "$_l" "$_i" "$_p"
+  printf '  }\n}\n'
+}
+# Merge: keep every other server and setting, replace our three entries, and drop
+# older entries that ran this launcher under another name (e.g. "virustotal-mcp").
+MERGE_JS='function run(argv) {
+  ObjC.import("Foundation");
+  function rd(p) { var s = $.NSString.stringWithContentsOfFileEncodingError(p, $.NSUTF8StringEncoding, null); return s.isNil() ? null : ObjC.unwrap(s); }
+  var add = JSON.parse(rd(argv[1])).mcpServers, raw = rd(argv[0]), cfg = {};
+  if (raw !== null && raw.trim() !== "") {
+    try { cfg = JSON.parse(raw); } catch (e) { throw new Error("invalid JSON in " + argv[0] + ": " + e.message); }
+  }
+  if (cfg === null || typeof cfg !== "object" || Array.isArray(cfg)) throw new Error(argv[0] + " is not a JSON object");
+  var s = (cfg.mcpServers && typeof cfg.mcpServers === "object" && !Array.isArray(cfg.mcpServers)) ? cfg.mcpServers : {};
+  Object.keys(s).forEach(function (k) {
+    if (!(k in add) && JSON.stringify(s[k]).indexOf("s1-secops-mcp-launch") >= 0) { delete s[k]; console.log("removed old entry " + k); }
+  });
+  Object.keys(add).forEach(function (k) { s[k] = add[k]; });
+  cfg.mcpServers = s;
+  return JSON.stringify(cfg, null, 2);
+}'
+MERGE_PY='import json, sys
+cfg_path, new_path = sys.argv[1:3]
+add = json.load(open(new_path, encoding="utf-8"))["mcpServers"]
+try:
+    raw = open(cfg_path, encoding="utf-8").read()
+except FileNotFoundError:
+    raw = ""
+cfg = {}
+if raw.strip():
+    try:
+        cfg = json.loads(raw)
+    except ValueError as e:
+        sys.exit("invalid JSON in %s: %s" % (cfg_path, e))
+if not isinstance(cfg, dict):
+    sys.exit("%s is not a JSON object" % cfg_path)
+s = cfg.get("mcpServers") if isinstance(cfg.get("mcpServers"), dict) else {}
+for k in list(s):
+    if k not in add and "s1-secops-mcp-launch" in json.dumps(s[k]):
+        del s[k]
+        print("removed old entry " + k, file=sys.stderr)
+s.update(add)
+cfg["mcpServers"] = s
+print(json.dumps(cfg, indent=2))'
+
+case "$CMD" in
+  install|config)
+    if [ -n "$OUTPUT_DIR" ]; then
+      mkdir -p "$OUTPUT_DIR" || die "cannot create --output-dir $OUTPUT_DIR"
+      OUTPUT_DIR=$(cd "$OUTPUT_DIR" && pwd -P)
+    fi
+    if [ -n "$CLAUDE_MD" ]; then
+      [ -f "$CLAUDE_MD" ] || die "--claude-md $CLAUDE_MD is not a file"
+      CLAUDE_MD=$(abs_path "$CLAUDE_MD")
+    fi
+    # $0 is the shell itself when the script arrives on a pipe (curl ... | sh):
+    # check the file really is this launcher before copying or pointing at it.
+    SELF=$(abs_path "$0" 2>/dev/null || true)
+    { [ -n "$SELF" ] && [ -f "$SELF" ] && sed -n 2p "$SELF" 2>/dev/null | grep -q '^# s1-secops-mcp-launch.sh: run a bundled MCP server'; } ||
+      die "cannot find this script on disk ($0). Download it to a file first, then run: sh <file> $CMD"
+    ;;
+esac
+
+case "$CMD" in
+  config)
+    tcc_blocked "$SELF" && echo "s1-secops-mcp-launch: warning: $SELF is under ~/Documents, ~/Desktop or ~/Downloads, where macOS blocks Claude Desktop from running it. Run '$0 install' instead, which copies it to ~/.local/bin." >&2
+    mcp_json "$SELF"
+    exit 0 ;;
+  install)
+    BIN_DIR="$HOME/.local/bin"
+    DEST="$BIN_DIR/s1-secops-mcp-launch.sh"
+    mkdir -p "$BIN_DIR"
+    if [ "$SELF" != "$(abs_path "$DEST")" ]; then
+      cp "$SELF" "$DEST.tmp.$$" && mv -f "$DEST.tmp.$$" "$DEST"
+    fi
+    chmod 755 "$DEST"
+    # Drop the download quarantine flag and other extended attributes.
+    [ "$OS" != Darwin ] || xattr -c "$DEST" 2>/dev/null || true
+    echo "Launcher installed: $DEST" >&2
+
+    if [ -z "$CONFIG_PATH" ]; then
+      case "$OS" in
+        Darwin) CONFIG_PATH="$HOME/Library/Application Support/Claude/claude_desktop_config.json" ;;
+        *) CONFIG_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/Claude/claude_desktop_config.json" ;;
+      esac
+    fi
+    TMPD=$(mktemp -d "${TMPDIR:-/tmp}/s1mcp.XXXXXX")
+    trap 'rm -rf "$TMPD"' EXIT
+    mcp_json "$DEST" > "$TMPD/new.json"
+    MERGED=""
+    if [ "$OS" = Darwin ] && [ -x /usr/bin/osascript ]; then
+      printf '%s\n' "$MERGE_JS" > "$TMPD/merge.js"
+      MERGED=$(/usr/bin/osascript -l JavaScript "$TMPD/merge.js" "$CONFIG_PATH" "$TMPD/new.json") || die "config not changed: $CONFIG_PATH could not be merged (see the error above)"
+    elif command -v python3 >/dev/null 2>&1; then
+      MERGED=$(python3 -I -c "$MERGE_PY" "$CONFIG_PATH" "$TMPD/new.json") || die "config not changed: $CONFIG_PATH could not be merged (see the error above)"
+    fi
+    if [ -n "$MERGED" ]; then
+      mkdir -p "$(dirname "$CONFIG_PATH")"
+      if [ -f "$CONFIG_PATH" ]; then
+        BAK="$CONFIG_PATH.bak-$(date +%Y%m%d-%H%M%S)"
+        cp -p "$CONFIG_PATH" "$BAK"
+        echo "Backup of your previous config: $BAK" >&2
+      fi
+      printf '%s\n' "$MERGED" > "$CONFIG_PATH.tmp.$$" && mv -f "$CONFIG_PATH.tmp.$$" "$CONFIG_PATH"
+      echo "Claude Desktop config updated: $CONFIG_PATH" >&2
+    else
+      echo "No JSON tool found (osascript or python3), so the config was not edited. Add these entries to your MCP client config:" >&2
+      cat "$TMPD/new.json"
+    fi
+
+    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+      echo "Pulling $IMAGE ..." >&2
+      docker pull "$IMAGE" >&2 || echo "s1-secops-mcp-launch: warning: pull failed; the first start will retry it" >&2
+    else
+      echo "s1-secops-mcp-launch: warning: Docker is not running. Start Docker Desktop (or the Docker service) before you open Claude Desktop." >&2
+    fi
+
+    if [ -n "$KC_ERR" ]; then
+      echo "s1-secops-mcp-launch: warning: $KC_ERR" >&2
+    elif [ -z "$(kc_get S1_CONSOLE_API_TOKEN)" ]; then
+      if [ -t 0 ]; then
+        echo "No credentials stored yet for profile $PROFILE. Starting setup." >&2
+        "$DEST" --profile "$PROFILE" setup
+      else
+        echo "Next: store your credentials with: $DEST setup" >&2
+      fi
+    fi
+    echo "Done. Quit Claude Desktop completely and open it again: it starts the three MCPs itself. Nothing needs starting in Docker Desktop." >&2
+    exit 0 ;;
+esac
 
 case "$CMD" in
   setup)

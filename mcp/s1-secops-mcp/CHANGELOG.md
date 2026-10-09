@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased: host launchers only (image and MCP unchanged at 1.5.3)
+
+### Added
+
+- **`install` and `config` on both launchers.** `install` copies the launcher to
+  `~/.local/bin/` (Windows: `%USERPROFILE%\bin\`), adds `s1-secops-mcp`, `purple-mcp` and
+  `virustotal` to the Claude Desktop config with the real path, keeps every other entry and a dated
+  backup, pulls the image and runs `setup` when no token is stored. `config` prints the same
+  entries for any MCP client. Both take `--image`, `--profile`, `--output-dir` and `--claude-md`
+  (Windows: `-Image`, `-Profile`, `-OutputDir`, `-ClaudeMd`). Nobody types a home path into JSON
+  any more, which was the most common first-run failure, and a launcher left under `~/Documents`
+  on macOS is moved out of the folders Claude Desktop cannot run scripts from.
+- **No-clone install.** The docs lead with a one-line download from ai-siem followed by `install`.
+- **`mcp/docker/launcher-test.sh` and `mcp/docker/launcher-test.ps1`:** hermetic tests for both commands.
+
 ## 1.5.3
 
 One global token drives any account or site under it (issue #111). Tool count stays 35.

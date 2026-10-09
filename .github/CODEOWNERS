@@ -1,0 +1,3 @@
+# Default reviewers for everything in the repo.
+# Narrow with path patterns (e.g. /parsers/ @handle) as ownership firms up.
+* @nate-smalls-s1 @pmoses-s1 @marcorottigni-s1

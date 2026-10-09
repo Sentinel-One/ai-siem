@@ -2,6 +2,16 @@
 
 ## Unreleased: host launchers only (image and MCP unchanged at 1.5.3)
 
+### Fixed
+
+- **Windows launcher: Claude Desktop requests reached the server only when the connection closed.**
+  The relay copied stdin into docker with `Stream.CopyToAsync`, which on Windows PowerShell 5.1
+  (.NET Framework) leaves each message in the write buffer of the process's stdin stream. The
+  server answered `initialize` only after Claude Desktop gave up and closed stdin, logged as
+  `Couldn't start for Cowork and Code sessions. Error: Request timed out`. A relay thread now
+  flushes every chunk. Present since 1.5.0; macOS and Linux were never affected. Windows users
+  get the fix by running `install` again.
+
 ### Added
 
 - **`install` and `config` on both launchers.** `install` copies the launcher to

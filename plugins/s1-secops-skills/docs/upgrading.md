@@ -38,7 +38,8 @@ No config changes beyond the image tag, with two exceptions noted below (both fr
   SDL and PowerQuery tool rejected anyway.
 
 Upgrade with the install command (it also installs the newer launcher, which adds `install` and
-`config`). macOS or Linux:
+`config`). **Windows: required.** Earlier Windows launchers held each request from Claude Desktop until the
+connection closed, so servers timed out in Cowork; the new launcher fixes it. macOS or Linux:
 
 ```bash
 mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install

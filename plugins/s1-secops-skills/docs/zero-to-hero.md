@@ -110,8 +110,8 @@ Continue to [Section 3: Install](#3-install-in-30-minutes) to set this up.
 
 The install is a Docker quick start: one image bundles all three MCPs, so the host needs Docker plus a small launcher script that reads your OS keychain. Rather than repeat it here, follow the steps in the **[README Quick start (Docker)](../README.md#1-quick-start-docker)**:
 
-1. **Store credentials in the OS keychain** with the launcher's `setup` mode (or `s1-secops-mcp setup`). The values never go into a file or a config; the full reference is [`docs/credentials.md`](./credentials.md).
-2. **Pull the image and point `claude_desktop_config.json` at the launcher** (all three MCPs in one image; the config holds no secrets).
+1. **Run the one install command** for your OS. It installs the launcher, adds all three MCPs to `claude_desktop_config.json` with your real path (the config holds no secrets), pulls the image, and asks for your credentials, which go into the OS keychain, never a file; the full reference is [`docs/credentials.md`](./credentials.md).
+2. **Quit and reopen Claude Desktop.** It starts the MCPs itself; there is nothing to start in Docker Desktop.
 3. **Install the plugin** (the latest `s1-secops-skills-v*.plugin` in the `dist/` folder) via Cowork → Customize → Browse plugins.
 
 Then create a Cowork project named `PrincipalSOCAnalyst`, select a folder for it, and (optionally) drop your own [`CLAUDE.md`](https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/plugins/s1-secops-skills/CLAUDE.md) into the folder to customise the persona; the Docker image ships a default, so this is optional (to override it, set `S1_CLAUDE_MD_PATH`, see [`docs/docker.md`](./docker.md#claudemd-customization)). Never put tokens in the project folder.
@@ -293,7 +293,7 @@ If a skill should have triggered and didn't, ask Claude `which skills are loaded
 
 ### MCP server not connecting (red dot in Cowork)
 
-Most first-run failures are Docker not running, a value missing from the keychain, or (on macOS) a launcher stored under `~/Documents`, `~/Desktop` or `~/Downloads`, which Claude Desktop is not permitted to run (`Operation not permitted` in the MCP log; copy it to `~/.local/bin/`). Work through the troubleshooting table in the [README Quick start (Docker)](../README.md#1-quick-start-docker) first (Docker running, Docker Hub reachable, values present in the keychain per `s1-secops-mcp status`, restart Claude Desktop). For the full flowchart, per-MCP log tailing, and hand-testing the container with credentials, see [`docs/docker.md`](./docker.md#troubleshooting).
+Most first-run failures are Docker not running, a value missing from the keychain, or (on macOS) a launcher stored under `~/Documents`, `~/Desktop` or `~/Downloads`, which Claude Desktop is not permitted to run (`Operation not permitted` in the MCP log; run the launcher's `install` again, which moves it to `~/.local/bin/`). Work through the troubleshooting table in the [README Quick start (Docker)](../README.md#1-quick-start-docker) first (Docker running, Docker Hub reachable, values present in the keychain per `s1-secops-mcp status`, restart Claude Desktop). For the full flowchart, per-MCP log tailing, and hand-testing the container with credentials, see [`docs/docker.md`](./docker.md#troubleshooting).
 
 ### 401 / 403 errors
 

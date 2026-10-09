@@ -20,6 +20,8 @@ docker/
 ├── entrypoint.sh              # dispatcher: argv[1] selects which MCP to run; reads secrets from stdin when S1_SECRETS_STDIN=1
 ├── s1-secops-mcp-launch.sh    # host launcher (macOS, Linux): keychain -> container stdin
 ├── s1-secops-mcp-launch.ps1   # host launcher (Windows): Credential Manager -> container stdin
+├── launcher-test.sh           # hermetic tests for the launcher's install/config (macOS, Linux)
+├── launcher-test.ps1          # the same for the Windows launcher (pwsh or Windows PowerShell)
 ├── build.sh                   # local + push build wrapper
 ├── smoke-test.sh              # image smoke test (tool count, stdin secrets, docker inspect, stdio only)
 ├── Dockerfile.dockerignore    # build-context exclusions; BuildKit reads <Dockerfile>.dockerignore, patterns are repo-root relative

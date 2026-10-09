@@ -425,34 +425,38 @@ Credentials are identical across both paths and live in the OS keychain, never i
 
 One image (`sentinelone/secops-mcps`) bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`), version-locked together. On the host you need Docker and the launcher script, which reads your OS keychain and hands the secrets to the container over stdin. It works the same on macOS, Windows, and Linux, including machines where IT policy blocks host-level package installs.
 
-**Step 1: Install Docker and the launcher**
+**Step 1: Install Docker**
 
-Docker Desktop (macOS/Windows) or Docker Engine (Linux). Confirm it is running:
+Docker Desktop (macOS/Windows) or Docker Engine (Linux). Start it and confirm it is running:
 
 ```bash
 docker info | head -3
-docker pull sentinelone/secops-mcps:1.5.3
 ```
 
-Get the launcher from this repo, [`mcp/docker/s1-secops-mcp-launch.sh`](../../mcp/docker/s1-secops-mcp-launch.sh) (macOS, Linux) or [`mcp/docker/s1-secops-mcp-launch.ps1`](../../mcp/docker/s1-secops-mcp-launch.ps1) (Windows). On macOS and Linux, install it to `~/.local/bin/` from the repo root:
+**Step 2: Install the launcher and connect Claude Desktop (one command)**
+
+macOS or Linux, in Terminal:
 
 ```bash
-mkdir -p ~/.local/bin && cp -X mcp/docker/s1-secops-mcp-launch.sh ~/.local/bin/ && chmod 755 ~/.local/bin/s1-secops-mcp-launch.sh
+mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
 ```
 
-> **macOS: do not run the launcher from `~/Documents`, `~/Desktop` or `~/Downloads`.** macOS privacy protection blocks Claude Desktop's `/bin/sh` from executing a script stored in those folders, and the MCP log shows `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted`. A repo clone or a browser download usually lands in one of them, so copy the script to `~/.local/bin/` and point the client config there. `cp -X` drops extended attributes such as the download quarantine flag.
+Windows, in PowerShell:
 
-**Step 2: Store credentials in the OS keychain**
-
-Run this once in a terminal. It prompts for each value without echo and stores it in the macOS login keychain or the Linux Secret Service (service `sentinelone-mcp`):
-
-```bash
-~/.local/bin/s1-secops-mcp-launch.sh setup
+```powershell
+$f = "$env:TEMP\s1-secops-mcp-launch.ps1"; Invoke-WebRequest https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f install
 ```
 
-With Node installed, `s1-secops-mcp setup` does the same and verifies each value by reading it back; `s1-secops-mcp status` shows where each value resolves from, masked. Coming from a `credentials.json`? Run `s1-secops-mcp setup --import-json /path/to/credentials.json`, check `status`, then delete the file.
+Already cloned this repo? Run `sh mcp/docker/s1-secops-mcp-launch.sh install` from the repo root instead (Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File mcp\docker\s1-secops-mcp-launch.ps1 install`).
 
-Where to get each value:
+`install` does the whole setup and is safe to re-run:
+
+- copies the launcher to `~/.local/bin/` (Windows: `%USERPROFILE%\bin\`), outside `~/Documents`, `~/Desktop` and `~/Downloads`, where macOS stops Claude Desktop from running scripts;
+- adds the three MCP servers to your Claude Desktop config with your real home path filled in, keeps every other server and setting, and saves a backup of the old file next to it;
+- pulls `sentinelone/secops-mcps:1.5.3`;
+- asks for your credentials if none are stored yet, and stores them in the macOS login keychain, the Linux Secret Service or Windows Credential Manager (service `sentinelone-mcp`). Nothing is typed into a file.
+
+Where to get each value it asks for:
 
 | Name | What it is | Where to get it |
 |---|---|---|
@@ -463,40 +467,30 @@ Where to get each value:
 | `S1_SCOPE` | Optional default `S1-Scope` for SDL calls, needed when the token spans several accounts or sites: `<accountId>` or `<accountId>:<siteId>` | Account and site ids from `GET /web/api/v2.1/accounts` and `/web/api/v2.1/sites` |
 | `VIRUSTOTAL_API_KEY` | VirusTotal API key (free tier is fine). Serves both the VirusTotal MCP and purple-mcp's threat intelligence tools | [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) |
 
+To change a value later, run `~/.local/bin/s1-secops-mcp-launch.sh setup` (Enter keeps the current value). With Node installed, `s1-secops-mcp setup` does the same and verifies each value by reading it back; `s1-secops-mcp status` shows where each value resolves from, masked. Coming from a `credentials.json`? Run `s1-secops-mcp setup --import-json /path/to/credentials.json`, check `status`, then delete the file.
+
 > **IOC writes:** `/threat-intelligence/iocs` refuses a token whose user spans several accounts (HTTP 403, code 4030010). Use a console API token minted at a single account or site; store it in its own keychain profile (`s1-secops-mcp setup --profile <name>`) and run a second MCP entry with `S1_PROFILE=<name>` (or make that token your default).
 
 > **On `S1_HEC_TOKEN`:** the console API token does not work for raw log ingest. The write key is bound to one account or site, and a key minted for a different scope still returns `200 Success` while discarding every event. Read an event back before trusting an ingest.
 
-**Step 3: Point Claude Desktop at the launcher**
+**Step 3: Restart Claude Desktop**
 
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows). The config holds no secrets:
+Quit Claude Desktop completely (macOS: Cmd+Q; Windows: also quit it from the system tray) and open it again. Claude Desktop starts the three MCPs itself, one container each, and removes them when it quits.
 
-```json
-{
-  "mcpServers": {
-    "s1-secops-mcp": {
-      "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"]
-    },
-    "purple-mcp": {
-      "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.3", "purple-mcp"]
-    },
-    "virustotal": {
-      "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.3", "virustotal-mcp"]
-    }
-  }
-}
-```
+> **Do I start the MCPs myself, or from Docker Desktop?** No. Docker Desktop only needs to be running. The containers you see in Docker Desktop while Claude is open are the ones Claude Desktop started through the launcher; starting the image from Docker Desktop gives you a container with no credentials and no connection to Claude.
 
-Launcher options (`--image`, `--profile`) go **before** the server name: everything after the server name is passed to the server inside the container, which rejects an unknown argument.
+<details>
+<summary>Editing the config yourself, or using another MCP client</summary>
 
-On Windows, set `"command": "powershell.exe"` and use `"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\Users\\you\\bin\\s1-secops-mcp-launch.ps1", "-Image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"]` (PowerShell parameters take one dash). Optional: add `"env": {"S1_OUTPUT_DIR": "/Users/you/Documents/s1-output"}` to the `s1-secops-mcp` entry so bulk results written with `outputFile` land in a folder you can open (a path, not a secret). The macOS/Linux launcher mounts that folder at the same path inside the container; the Windows launcher mounts it at `/output`, so pass `outputFile` paths under `/output/` there.
+`~/.local/bin/s1-secops-mcp-launch.sh config` prints the three entries with this machine's real path, ready to paste into `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`; Windows: `%APPDATA%\Claude\`, or `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\` for a fresh install from the claude.ai installer, which is an MSIX package and reads only that copy) or any other MCP client. Do not type the path by hand: the config is JSON, which does not expand `~`, `$HOME` or `%USERPROFILE%`, so a path such as `/Users/you/...` must be your exact home folder. On Windows, run the same with `powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 config`.
 
-> **Do not put tokens in this file, and do not use `docker run -e`.** MCP client configs are plaintext, and `-e` values show in `docker inspect`. The same applies to `~/.claude.json`, `.mcp.json`, Cursor, Windsurf and Zed. See [docs/credentials.md](./docs/credentials.md#mcp-client-configs-are-not-a-secret-store).
+`install` and `config` take the same options: `--image IMG` to pin another tag, `--profile P` for a non-default keychain profile, `--output-dir DIR` so bulk results written with `outputFile` land in a folder you can open (macOS/Linux mount it at the same path in the container; Windows mounts it at `/output`), and `--claude-md FILE` to use your own CLAUDE.md. `install --config-path FILE` writes a config somewhere other than Claude Desktop's. On Windows the options are `-Image`, `-Profile`, `-OutputDir`, `-ClaudeMd` and `-ConfigPath`.
 
-**Restart Claude Desktop** after saving.
+In a hand-written entry, launcher options (`--image`, `--profile`) go **before** the server name: everything after the server name is passed to the server inside the container, which rejects an unknown argument.
+
+</details>
+
+> **Do not put tokens in the MCP config, and do not use `docker run -e`.** MCP client configs are plaintext, and `-e` values show in `docker inspect`. The same applies to `~/.claude.json`, `.mcp.json`, Cursor, Windsurf and Zed. See [docs/credentials.md](./docs/credentials.md#mcp-client-configs-are-not-a-secret-store).
 
 **Step 4: Install the plugin (all eight skills)**
 
@@ -528,13 +522,16 @@ The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-
 |---|---|
 | MCP shows red in Cowork → MCP Servers | Confirm Docker is running: `docker info \| head -3`. Start Docker Desktop, then restart Claude Desktop. |
 | `Cannot connect to the Docker daemon` in the logs | Docker Desktop is not running. |
-| `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` in the MCP log (macOS) | The launcher is stored under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Copy it to `~/.local/bin/` (Step 1) and update `command` in the client config. |
+| `Couldn't start for Cowork and Code sessions. Error: Request timed out` (`shared-pool`) in the MCP log | On Windows, update the launcher: run the Step 2 command again. Launchers before this release held each request from Claude Desktop until it closed the connection, so the server answered only after Claude had given up (in the log, `Message from server: id=0 result` comes right after `notifications/cancelled`). If it persists with the current launcher, Claude Desktop's own readiness timeout may be involved ([anthropics/claude-code#92758](https://github.com/anthropics/claude-code/issues/92758)): restart Claude Desktop and open a new Cowork session. |
+| `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` in the MCP log (macOS) | The config points at a launcher under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Run the Step 2 command again: `install` copies the launcher to `~/.local/bin/` and rewrites the config. |
+| `ENOENT`, `No such file or directory` or `spawn ... s1-secops-mcp-launch` in the MCP log | The `command` path in the config does not exist, usually a hand-typed `/Users/you/...`. Run the Step 2 command again: `install` writes your real path. |
+| Windows: Settings → Developer shows "No servers added" after the config was edited | Claude Desktop from the claude.ai installer is an MSIX package that reads `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\`, not the `%APPDATA%\Claude\` file that **Edit config** opens. Run the Step 2 command again: `install` writes both. Or uninstall that build and install with the classic `Claude Setup.exe`, which reads `%APPDATA%\Claude\` like the rest of these docs describe (tested on Windows 11). |
 | `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.5.3`. |
-| `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The value is not in the keychain, or the launcher could not read it. Re-run `s1-secops-mcp-launch.sh setup`; on Linux confirm the Secret Service is unlocked. |
+| `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The value is not in the keychain, or the launcher could not read it. Re-run `~/.local/bin/s1-secops-mcp-launch.sh setup`; on Linux confirm the Secret Service is unlocked. |
 | `S1 Mgmt API: NOT configured` | No console token reached the server; check `s1-secops-mcp status` (or `security find-generic-password -s sentinelone-mcp -a default:S1_CONSOLE_API_TOKEN` on macOS). |
 | A skill asks you to run `s1-secops-mcp setup` | A value is missing. Run it in a terminal; never paste a token into the chat. |
 
-Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log`. Upgrading from 1.4.x or older? See **[docs/upgrading.md](./docs/upgrading.md)**.
+Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log` on macOS, and in the `logs` folder next to the config Claude Desktop reads on Windows (for an MSIX install, `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\logs\`). Upgrading from 1.4.x or older? See **[docs/upgrading.md](./docs/upgrading.md)**.
 
 Full troubleshooting flowchart, hand-testing, and rollback: **[docs/docker.md](./docs/docker.md)**.
 
@@ -542,7 +539,7 @@ Full troubleshooting flowchart, hand-testing, and rollback: **[docs/docker.md](.
 
 ### 2. Individual MCP / plugin / skill install
 
-Only want one MCP instead of all three? Keep the single `mcpServers` entry you need from the Step 3 config block and drop the others. Every entry runs the same image through the same launcher; the last argument is the server name (`s1-secops-mcp`, `purple-mcp`, or `virustotal-mcp`), so one server costs you one block and no extra image.
+Only want one MCP instead of all three? Run `~/.local/bin/s1-secops-mcp-launch.sh config`, keep the one `mcpServers` entry you need and drop the others (or run `install` and delete the two you do not want). Every entry runs the same image through the same launcher; the last argument is the server name (`s1-secops-mcp`, `purple-mcp`, or `virustotal-mcp`), so one server costs you one block and no extra image.
 
 Prefer Node to Docker for `s1-secops-mcp`? Install it, store values with `s1-secops-mcp setup`, and use `{"command": "s1-secops-mcp"}` with no `env` block; it reads the keychain itself. Claude Desktop users who want the OS store without a terminal can install the optional `.mcpb` extension from `mcp/s1-secops-mcp/mcpb/`, whose token fields are marked sensitive. Details: [s1-secops-mcp/README.md](../../mcp/s1-secops-mcp/README.md).
 

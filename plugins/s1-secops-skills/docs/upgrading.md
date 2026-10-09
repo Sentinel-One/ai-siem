@@ -37,14 +37,24 @@ No config changes beyond the image tag, with two exceptions noted below (both fr
 - **`S1_SCOPE` is `<accountId>` or `<accountId>:<siteId>` (from 1.5.2):** setup refuses a group part, which every
   SDL and PowerQuery tool rejected anyway.
 
+Upgrade with the install command (it also installs the newer launcher, which adds `install` and
+`config`). **Windows: required.** Earlier Windows launchers held each request from Claude Desktop until the
+connection closed, so servers timed out in Cowork; the new launcher fixes it. macOS or Linux:
+
 ```bash
-docker pull sentinelone/secops-mcps:1.5.3
-docker run --rm sentinelone/secops-mcps:1.5.3 versions
+mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
 ```
 
-Replace the installed launcher with the 1.5.3 copy (its default image is now `1.5.3`), or change
-`--image sentinelone/secops-mcps:1.5.x` to `:1.5.3` in every MCP entry of your client config, then
-restart the client.
+Windows (PowerShell):
+
+```powershell
+$f = "$env:TEMP\s1-secops-mcp-launch.ps1"; Invoke-WebRequest https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f install
+```
+
+It rewrites the `s1-secops-mcp`, `purple-mcp` and `virustotal` entries with `1.5.3` and your real
+path, keeps your other servers, saves a backup of the old config, pulls the image and keeps your
+stored credentials. If you used `S1_PROFILE`, an output folder or your own CLAUDE.md, pass them
+again (`--profile P`, `--output-dir DIR`, `--claude-md FILE`). Then quit and reopen the client.
 
 If you stored a single-scope token, it stays in the keychain but nothing reads it, and `status` and
 `forget` no longer list it. Delete it by hand: macOS
@@ -66,7 +76,7 @@ Windows `cmdkey /delete:<profile>:S1_CONSOLE_API_TOKEN_SINGLE_SCOPE.sentinelone-
 | **No `credentials.json`** | Every file location is gone: `S1_CREDS_FILE`, `COWORK_WORKSPACE`, the working-directory walk-up, `~/mnt/*`, `CLAUDE_CONFIG_DIR`, `~/.config/sentinelone`, `~/.claude/sentinelone`. The plugin's SessionStart hook (`bootstrap_creds.sh`) and both `scripts/bootstrap_creds.sh` copies are deleted. | Move the values into the OS keychain with `s1-secops-mcp setup --import-json <file>`, then delete the file. |
 | **Credentials resolve from env, then the OS keychain** | Nothing reads a file any more. | `s1-secops-mcp setup` stores values (service `sentinelone-mcp`, account `<profile>:<NAME>`); `s1-secops-mcp status` shows where each resolves from. |
 | **No HTTP transport** | `--transport http`, bearer tokens (`MCP_BEARER_TOKENS*`), the team VM deployment (`mcp/s1-secops-mcp/deploy/`: `install.sh`, systemd, Caddy, the bridge) and its guide are removed. The server speaks stdio only. | Each user runs their own server (Docker launcher or Node) with their own credentials. Decommission any shared VM. |
-| **Docker launcher instead of `-e`** | Configs that pass tokens with `docker run -e` and an `env` block still start, but they keep tokens in plaintext and in `docker inspect`. The documented configs no longer do this. | Copy `mcp/docker/s1-secops-mcp-launch.sh` to `~/.local/bin/` (macOS, Linux) and point each server entry at that copy, or at `s1-secops-mcp-launch.ps1` on Windows. |
+| **Docker launcher instead of `-e`** | Configs that pass tokens with `docker run -e` and an `env` block still start, but they keep tokens in plaintext and in `docker inspect`. The documented configs no longer do this. | Run the launcher's `install` (Step 2): it copies the launcher to `~/.local/bin/` (Windows: `%USERPROFILE%\bin\`) and points each server entry at that copy. |
 
 ### Step 1: move credentials into the keychain
 
@@ -80,24 +90,29 @@ rm /path/to/credentials.json
 
 Also delete the copies the old hook made (`~/.claude/sentinelone/credentials.json`, `~/.config/sentinelone/credentials.json`, any `.sentinelone/credentials.json` in a project) and remove the file from Cowork projects' **Add files** lists.
 
-If your tokens were in the `env` blocks of `claude_desktop_config.json` instead, run `s1-secops-mcp setup` (or, Docker-only, `s1-secops-mcp-launch.sh setup`) and enter the same values when prompted. Back up the config first (`cp claude_desktop_config.json claude_desktop_config.json.bak`), and delete the backup once the new setup works, because it still holds the tokens.
+If your tokens were in the `env` blocks of `claude_desktop_config.json` instead, run `s1-secops-mcp setup` (or, Docker-only, the launcher's `setup`, which `install` in Step 2 runs for you) and enter the same values when prompted. Back up the config first (`cp claude_desktop_config.json claude_desktop_config.json.bak`), and delete the backup once the new setup works, because it still holds the tokens.
 
 No Node on the machine? `s1-secops-mcp-launch.sh setup` (macOS, Linux), `s1-secops-mcp-launch.ps1 setup` (Windows), or `python3 mgmt-console-api/scripts/s1_keystore.py setup` from a skills checkout (macOS, Linux) store the same entries.
 
-### Step 2: the image
+### Step 2: the launcher, the image and the config
+
+One command installs the launcher to `~/.local/bin/`, rewrites the three Docker entries in
+`claude_desktop_config.json` (with a dated backup of the old file), pulls the image and runs
+`setup` if no token is stored. macOS or Linux:
 
 ```bash
-docker pull sentinelone/secops-mcps:1.5.3
-docker run --rm sentinelone/secops-mcps:1.5.3 versions
+mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
 ```
 
-Get the launcher from this repo: `mcp/docker/s1-secops-mcp-launch.sh` for macOS and Linux, `mcp/docker/s1-secops-mcp-launch.ps1` for Windows (put the Windows script somewhere stable such as `C:\Users\you\bin\`). On macOS and Linux, install it from the repo root:
+Windows (PowerShell):
 
-```bash
-mkdir -p ~/.local/bin && cp -X mcp/docker/s1-secops-mcp-launch.sh ~/.local/bin/ && chmod 755 ~/.local/bin/s1-secops-mcp-launch.sh
+```powershell
+$f = "$env:TEMP\s1-secops-mcp-launch.ps1"; Invoke-WebRequest https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f install
 ```
 
-On macOS, do not point the config at a copy under `~/Documents`, `~/Desktop` or `~/Downloads` (including a repo clone there): macOS blocks Claude Desktop's `/bin/sh` from running scripts in those folders, and the MCP log shows `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted`.
+The launcher has to live outside `~/Documents`, `~/Desktop` and `~/Downloads` on macOS (including a
+repo clone there), because macOS blocks Claude Desktop's `/bin/sh` from running scripts in those
+folders; `install` puts it in `~/.local/bin/`.
 
 ### Step 3: the plugin
 
@@ -105,19 +120,14 @@ Install plugin `1.3.13` (Cowork → Customize → Browse plugins → upload → 
 
 ### Step 4: the config
 
-Replace each Docker entry with the launcher and delete every token from the file:
-
-```json
-{
-  "mcpServers": {
-    "s1-secops-mcp":  { "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"] },
-    "purple-mcp":     { "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.3", "purple-mcp"] },
-    "virustotal":     { "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.3", "virustotal-mcp"] }
-  }
-}
-```
-
-Keep `--image` before the server name: anything after the server name is passed to the server inside the container, which rejects it. On Windows the command is `powershell.exe` with `-NoProfile -ExecutionPolicy Bypass -File <path>\s1-secops-mcp-launch.ps1 -Image sentinelone/secops-mcps:1.5.3 <server>` as the args.
+Step 2 already replaced the `s1-secops-mcp`, `purple-mcp` and `virustotal` entries, and removed
+older entries that ran the launcher under another name. Open the config and delete any token still
+left in other entries, then delete the `.bak-` copy `install` made once the new setup works, because
+it may still hold tokens. To see the entries for this machine, or to configure another client by
+hand, run `~/.local/bin/s1-secops-mcp-launch.sh config`: it prints them with your real path (JSON
+does not expand `~` or `$HOME`, so never type the path yourself). Keep `--image` before the server
+name in a hand-written entry: anything after the server name is passed to the server inside the
+container, which rejects it.
 
 Node installs: `"command": "s1-secops-mcp"` (or `node /path/to/s1-secops-mcp/index.js`) with no `env` block. Remove any `--transport http` argument and any `MCP_BEARER_TOKENS*` variable. Claude Code users: re-register without `--env` (`claude mcp add s1-secops-mcp -- s1-secops-mcp`) and remove tokens from `~/.claude.json` and project `.mcp.json` files.
 
@@ -155,7 +165,8 @@ Full tool reference: [mcp-tools.md](./mcp-tools.md).
 
 | Symptom | Cause and fix |
 |---|---|
-| `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` in the MCP log (macOS) | The launcher is stored under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Copy it to `~/.local/bin/` (Step 2) and update `command` in the config. |
+| `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` in the MCP log (macOS) | The config points at a launcher under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Run the Step 2 command again: it installs the launcher to `~/.local/bin/` and rewrites the config. |
+| `ENOENT` or `No such file or directory` for the launcher in the MCP log | The `command` path was typed by hand and does not exist. Run the Step 2 command again, which writes your real path. |
 | `S1 Mgmt API: NOT configured` | No value reached the server. `s1-secops-mcp status` shows what resolves; check `S1_PROFILE` if you stored values under a named profile. |
 | `OS keychain unavailable: secret-tool not found` | Linux without libsecret tools. Install `libsecret-tools` / `libsecret`, or use environment variables from a secret manager. |
 | D-Bus or `locked collection` errors on Linux | No unlocked Secret Service in this session (common on headless hosts and over SSH). Unlock the keyring or use environment variables. |
@@ -219,7 +230,7 @@ Delete those lines. Nothing replaces them; the client uses the console token for
 | Skills still mention `SDL_XDR_URL` or `c.keys[...]` | An old plugin cache. Re-check with the loop above. |
 | `AttributeError: 'SDLClient' object has no attribute 'keys'` | A script still force-clears scoped keys. See above. |
 
-Per-MCP logs: `~/Library/Logs/Claude/mcp-server-<name>.log`.
+Per-MCP logs: `~/Library/Logs/Claude/mcp-server-<name>.log` on macOS; on Windows, the `logs` folder next to the config Claude Desktop reads (for an MSIX install, `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\logs\`).
 
 ---
 

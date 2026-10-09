@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased: host launchers only (image and MCP unchanged at 1.5.3)
+
+### Fixed
+
+- **Windows launcher: Claude Desktop requests reached the server only when the connection closed.**
+  The relay copied stdin into docker with `Stream.CopyToAsync`, which on Windows PowerShell 5.1
+  (.NET Framework) leaves each message in the write buffer of the process's stdin stream. The
+  server answered `initialize` only after Claude Desktop gave up and closed stdin, logged as
+  `Couldn't start for Cowork and Code sessions. Error: Request timed out`. A relay thread now
+  flushes every chunk. Present since 1.5.0; macOS and Linux were never affected. Windows users
+  get the fix by running `install` again.
+
+### Added
+
+- **`install` and `config` on both launchers.** `install` copies the launcher to
+  `~/.local/bin/` (Windows: `%USERPROFILE%\bin\`), adds `s1-secops-mcp`, `purple-mcp` and
+  `virustotal` to the Claude Desktop config with the real path, keeps every other entry and a dated
+  backup, pulls the image and runs `setup` when no token is stored. `config` prints the same
+  entries for any MCP client. Both take `--image`, `--profile`, `--output-dir` and `--claude-md`
+  (Windows: `-Image`, `-Profile`, `-OutputDir`, `-ClaudeMd`). Nobody types a home path into JSON
+  any more, which was the most common first-run failure, and a launcher left under `~/Documents`
+  on macOS is moved out of the folders Claude Desktop cannot run scripts from.
+- **Windows MSIX installs.** The claude.ai installer now ships Claude Desktop as an MSIX package, and a
+  fresh install reads `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\claude_desktop_config.json`,
+  not the `%APPDATA%\Claude\` file that Settings > Developer > Edit config opens. The Windows `install`
+  writes both, so the servers load either way.
+- **No-clone install.** The docs lead with a one-line download from ai-siem followed by `install`.
+- **`mcp/docker/launcher-test.sh` and `mcp/docker/launcher-test.ps1`:** hermetic tests for both commands.
+
 ## 1.5.3
 
 One global token drives any account or site under it (issue #111). Tool count stays 35.

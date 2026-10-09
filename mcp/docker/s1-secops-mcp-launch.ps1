@@ -197,13 +197,25 @@ if ($Command -in 'install', 'config') {
   [IO.File]::WriteAllText($ConfigPath, $json + "`n", (New-Object System.Text.UTF8Encoding($false)))
   Write-Err "Claude Desktop config updated: $ConfigPath"
 
+  # Windows PowerShell 5.1 turns a native command's redirected stderr into
+  # error records, which 'Stop' makes fatal (docker info prints warnings and,
+  # with Docker stopped, errors there). Run docker under 'Continue' and judge
+  # by exit code only.
   $dockerUp = $false
-  if (Get-Command docker -ErrorAction SilentlyContinue) { & docker info *> $null; $dockerUp = ($LASTEXITCODE -eq 0) }
-  if ($dockerUp) {
-    Write-Err "Pulling $Image ..."
-    & docker pull $Image | ForEach-Object { Write-Err $_ }
-    if ($LASTEXITCODE -ne 0) { Write-Err 's1-secops-mcp-launch: warning: pull failed; the first start will retry it' }
-  } else { Write-Err 's1-secops-mcp-launch: warning: Docker is not running. Start Docker Desktop before you open Claude Desktop.' }
+  $pullRc = 0
+  if (Get-Command docker -ErrorAction SilentlyContinue) {
+    $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try {
+      & docker info *> $null; $dockerUp = ($LASTEXITCODE -eq 0)
+      if ($dockerUp) {
+        Write-Err "Pulling $Image ..."
+        & docker pull $Image 2>&1 | ForEach-Object { Write-Err "$_" }
+        $pullRc = $LASTEXITCODE
+      }
+    } catch { $dockerUp = $false } finally { $ErrorActionPreference = $eap }
+  }
+  if (-not $dockerUp) { Write-Err 's1-secops-mcp-launch: warning: Docker is not running. Start Docker Desktop before you open Claude Desktop.' }
+  elseif ($pullRc -ne 0) { Write-Err 's1-secops-mcp-launch: warning: pull failed; the first start will retry it' }
 
   $hasToken = $true
   try { $hasToken = [bool](Get-Kc 'S1_CONSOLE_API_TOKEN') } catch { Write-Err "s1-secops-mcp-launch: warning: Credential Manager unavailable: $($_.Exception.Message)" }

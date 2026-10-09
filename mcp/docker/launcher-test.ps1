@@ -26,13 +26,18 @@ $dest = Join-Path (Join-Path $homeDir 'bin') 's1-secops-mcp-launch.ps1'
 function Invoke-Launcher([string]$Script, [string[]]$LauncherArgs) {
   $saved = @{ HOME = $env:HOME; USERPROFILE = $env:USERPROFILE; APPDATA = $env:APPDATA }
   $env:HOME = $homeDir; $env:USERPROFILE = $homeDir; $env:APPDATA = $appData
+  # Windows PowerShell 5.1 turns redirected native stderr into error records,
+  # which 'Stop' would make fatal: the launcher writes its progress to stderr.
+  $ErrorActionPreference = 'Continue'
   try {
     $out = & $psExe -NoProfile -ExecutionPolicy Bypass -File $Script @LauncherArgs 2> (Join-Path $root 'err.txt')
     $script:rc = $LASTEXITCODE
     ($out | Out-String)
   } finally { foreach ($k in $saved.Keys) { Set-Item "env:$k" $saved[$k] } }
 }
-function ErrText { Get-Content -Raw (Join-Path $root 'err.txt') -ErrorAction SilentlyContinue }
+# Whitespace removed: Windows PowerShell 5.1 wraps redirected stderr at the
+# console width, even mid-word, so the patterns below are written without spaces.
+function ErrText { (Get-Content -Raw (Join-Path $root 'err.txt') -ErrorAction SilentlyContinue) -replace '\s+', '' }
 
 try {
   # config: three entries, absolute path, powershell.exe -File <launcher>
@@ -57,7 +62,7 @@ try {
   $cmds = @($j.mcpServers.PSObject.Properties | ForEach-Object { $_.Value.args[4] } | Select-Object -Unique)
   if ($rc -eq 0 -and (Test-Path $dest) -and ($cmds -join '') -eq $dest -and -not (Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue)) {
     Ok 'install: fresh config under APPDATA, launcher copied to HOME\bin' } else { Bad "install fresh (rc=$rc)" (ErrText) }
-  if ((ErrText) -match 'Quit Claude Desktop completely') { Ok 'install: restart instruction' } else { Bad 'install messages' (ErrText) }
+  if ((ErrText) -match 'QuitClaudeDesktopcompletely') { Ok 'install: restart instruction' } else { Bad 'install messages' (ErrText) }
 
   # install merge
   $orig = @'
@@ -76,7 +81,7 @@ try {
       ($names -join ',') -eq 'other,purple-mcp,s1-secops-mcp,virustotal' -and $j.mcpServers.'s1-secops-mcp'.args[4] -eq $dest) {
     Ok 'install: merge keeps others, replaces ours, drops old entry' } else { Bad 'install merge' (ErrText) }
   $bak = @(Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue)
-  if ($bak.Count -eq 1 -and [IO.File]::ReadAllText($bak[0].FullName) -eq $orig -and (ErrText) -match 'removed old entry virustotal-mcp') {
+  if ($bak.Count -eq 1 -and [IO.File]::ReadAllText($bak[0].FullName) -eq $orig -and (ErrText) -match 'removedoldentryvirustotal-mcp') {
     Ok 'install: backup identical to previous config' } else { Bad 'install backup' (ErrText) }
   $bak | Remove-Item
 
@@ -93,7 +98,7 @@ try {
   # invalid JSON left untouched
   [IO.File]::WriteAllText($cfg, '{ "mcpServers": ')
   [void](Invoke-Launcher $launcher @('install'))
-  if ($rc -ne 0 -and [IO.File]::ReadAllText($cfg) -eq '{ "mcpServers": ' -and (ErrText) -match 'config not changed' -and -not (Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue)) {
+  if ($rc -ne 0 -and [IO.File]::ReadAllText($cfg) -eq '{ "mcpServers": ' -and (ErrText) -match 'confignotchanged' -and -not (Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue)) {
     Ok "install: invalid JSON left untouched (rc=$rc)" } else { Bad 'install invalid JSON' (ErrText) }
 
   # -ConfigPath

@@ -163,39 +163,58 @@ if ($Command -in 'install', 'config') {
   if (Get-Command Unblock-File -ErrorAction SilentlyContinue) { Unblock-File -LiteralPath $dest }
   Write-Err "Launcher installed: $dest"
 
-  if (-not $ConfigPath) {
+  # Which config Claude Desktop reads depends on how it was installed. The
+  # claude.ai installer now ships an MSIX package (Claude_<publisher id>): a
+  # fresh install reads its file-system-virtualized copy under
+  # %LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude, while an install
+  # that found a real %APPDATA%\Claude from an earlier version keeps reading that
+  # one (and Settings > Developer > Edit config always opens the %APPDATA% copy).
+  # So write every location that applies; each is merged on its own.
+  if ($ConfigPath) { $targets = @($ConfigPath) } else {
     if (-not $env:APPDATA) { throw 'APPDATA is not set; pass -ConfigPath <path to claude_desktop_config.json>' }
-    $ConfigPath = Join-Path (Join-Path $env:APPDATA 'Claude') 'claude_desktop_config.json'
-  }
-  $cfg = [pscustomobject]@{}
-  if (Test-Path -LiteralPath $ConfigPath -PathType Leaf) {
-    $raw = [IO.File]::ReadAllText($ConfigPath)
-    if ($raw.Trim()) {
-      try { $cfg = $raw | ConvertFrom-Json } catch { throw "config not changed: invalid JSON in ${ConfigPath}: $($_.Exception.Message)" }
+    $targets = @(Join-Path (Join-Path $env:APPDATA 'Claude') 'claude_desktop_config.json')
+    if ($env:LOCALAPPDATA -and (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'Packages'))) {
+      Get-ChildItem -LiteralPath (Join-Path $env:LOCALAPPDATA 'Packages') -Directory -Filter 'Claude_*' -ErrorAction SilentlyContinue |
+        ForEach-Object { $targets += Join-Path (Join-Path (Join-Path (Join-Path $_.FullName 'LocalCache') 'Roaming') 'Claude') 'claude_desktop_config.json' }
     }
   }
-  if ($cfg -isnot [System.Management.Automation.PSCustomObject]) { throw "config not changed: $ConfigPath is not a JSON object" }
-  $servers = $cfg.mcpServers
-  if ($servers -isnot [System.Management.Automation.PSCustomObject]) { $servers = [pscustomobject]@{} }
   $new = New-S1Entries $dest
-  # Keep every other server and setting, replace our three entries, and drop
-  # older entries that ran this launcher under another name (e.g. "virustotal-mcp").
-  foreach ($p in @($servers.PSObject.Properties)) {
-    if (-not $new.Contains($p.Name) -and (($p.Value | ConvertTo-Json -Depth 20 -Compress) -match 's1-secops-mcp-launch')) {
-      $servers.PSObject.Properties.Remove($p.Name); Write-Err "removed old entry $($p.Name)"
+  # Merge every target first, so one invalid file stops the run before any file is written.
+  $merged = @()
+  foreach ($t in $targets) {
+    $cfg = [pscustomobject]@{}
+    if (Test-Path -LiteralPath $t -PathType Leaf) {
+      $raw = [IO.File]::ReadAllText($t)
+      if ($raw.Trim()) {
+        try { $cfg = $raw | ConvertFrom-Json } catch { throw "config not changed: invalid JSON in ${t}: $($_.Exception.Message)" }
+      }
     }
+    if ($cfg -isnot [System.Management.Automation.PSCustomObject]) { throw "config not changed: $t is not a JSON object" }
+    $servers = $cfg.mcpServers
+    if ($servers -isnot [System.Management.Automation.PSCustomObject]) { $servers = [pscustomobject]@{} }
+    # Keep every other server and setting, replace our three entries, and drop
+    # older entries that ran this launcher under another name (e.g. "virustotal-mcp").
+    foreach ($p in @($servers.PSObject.Properties)) {
+      if (-not $new.Contains($p.Name) -and (($p.Value | ConvertTo-Json -Depth 20 -Compress) -match 's1-secops-mcp-launch')) {
+        $servers.PSObject.Properties.Remove($p.Name); Write-Err "removed old entry $($p.Name) from $t"
+      }
+    }
+    foreach ($k in $new.Keys) { $servers | Add-Member -NotePropertyName $k -NotePropertyValue $new[$k] -Force }
+    $cfg | Add-Member -NotePropertyName mcpServers -NotePropertyValue $servers -Force
+    $merged += , @($t, ($cfg | ConvertTo-Json -Depth 20))
   }
-  foreach ($k in $new.Keys) { $servers | Add-Member -NotePropertyName $k -NotePropertyValue $new[$k] -Force }
-  $cfg | Add-Member -NotePropertyName mcpServers -NotePropertyValue $servers -Force
-  $json = $cfg | ConvertTo-Json -Depth 20
-  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ConfigPath) | Out-Null
-  if (Test-Path -LiteralPath $ConfigPath -PathType Leaf) {
-    $bak = "$ConfigPath.bak-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-    Copy-Item -LiteralPath $ConfigPath -Destination $bak
-    Write-Err "Backup of your previous config: $bak"
+  foreach ($m in $merged) {
+    $t = $m[0]
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $t) | Out-Null
+    if (Test-Path -LiteralPath $t -PathType Leaf) {
+      $bak = "$t.bak-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+      Copy-Item -LiteralPath $t -Destination $bak
+      Write-Err "Backup of your previous config: $bak"
+    }
+    [IO.File]::WriteAllText($t, $m[1] + "`n", (New-Object System.Text.UTF8Encoding($false)))
+    $kind = if ($t -match '[\\/]Packages[\\/]Claude_') { ' (MSIX install: the file Claude Desktop reads)' } else { '' }
+    Write-Err "Claude Desktop config updated: $t$kind"
   }
-  [IO.File]::WriteAllText($ConfigPath, $json + "`n", (New-Object System.Text.UTF8Encoding($false)))
-  Write-Err "Claude Desktop config updated: $ConfigPath"
 
   # Windows PowerShell 5.1 turns a native command's redirected stderr into
   # error records, which 'Stop' makes fatal (docker info prints warnings and,

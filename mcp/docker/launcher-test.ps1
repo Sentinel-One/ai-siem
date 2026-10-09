@@ -19,14 +19,15 @@ function Bad([string]$m, [string]$detail) { $script:fail++; Write-Host "  FAIL $
 
 $homeDir = Join-Path $root 'home with space'
 $appData = Join-Path $homeDir 'AppData'
-New-Item -ItemType Directory -Force -Path $homeDir, $appData | Out-Null
+$localAppData = Join-Path $homeDir 'LocalAppData'
+New-Item -ItemType Directory -Force -Path $homeDir, $appData, $localAppData | Out-Null
 $cfg = Join-Path (Join-Path $appData 'Claude') 'claude_desktop_config.json'
 $dest = Join-Path (Join-Path $homeDir 'bin') 's1-secops-mcp-launch.ps1'
 
 # Run the launcher in a child PowerShell with a temp HOME. Returns stdout; stderr lands in $root\err.txt.
 function Invoke-Launcher([string]$Script, [string[]]$LauncherArgs) {
-  $saved = @{ HOME = $env:HOME; USERPROFILE = $env:USERPROFILE; APPDATA = $env:APPDATA }
-  $env:HOME = $homeDir; $env:USERPROFILE = $homeDir; $env:APPDATA = $appData
+  $saved = @{ HOME = $env:HOME; USERPROFILE = $env:USERPROFILE; APPDATA = $env:APPDATA; LOCALAPPDATA = $env:LOCALAPPDATA }
+  $env:HOME = $homeDir; $env:USERPROFILE = $homeDir; $env:APPDATA = $appData; $env:LOCALAPPDATA = $localAppData
   # Windows PowerShell 5.1 turns redirected native stderr into error records,
   # which 'Stop' would make fatal: the launcher writes its progress to stderr.
   $ErrorActionPreference = 'Continue'
@@ -110,6 +111,20 @@ try {
   $alt = Join-Path $root 'alt\c.json'
   [void](Invoke-Launcher $launcher @('install', '-ConfigPath', $alt))
   if (@((Get-Content -Raw $alt | ConvertFrom-Json).mcpServers.PSObject.Properties).Count -eq 3) { Ok 'install: -ConfigPath' } else { Bad 'install -ConfigPath' (ErrText) }
+
+  # MSIX install (claude.ai installer): the packaged app reads its virtualized
+  # copy, so install writes it too, keeping the app's own preferences.
+  $msixCfg = Join-Path (Join-Path (Join-Path (Join-Path (Join-Path (Join-Path $localAppData 'Packages') 'Claude_pzs8sxrjxfjjc') 'LocalCache') 'Roaming') 'Claude') 'claude_desktop_config.json'
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $msixCfg) | Out-Null
+  [IO.File]::WriteAllText($msixCfg, '{"preferences": {"sidebarMode": "chat"}}')
+  [IO.File]::WriteAllText($cfg, '{}')
+  [void](Invoke-Launcher $launcher @('install'))
+  $m = Get-Content -Raw $msixCfg | ConvertFrom-Json
+  $a2 = Get-Content -Raw $cfg | ConvertFrom-Json
+  if ($rc -eq 0 -and $m.preferences.sidebarMode -eq 'chat' -and $m.mcpServers.'s1-secops-mcp'.args[4] -eq $dest -and $a2.mcpServers.'purple-mcp'.args[4] -eq $dest -and (ErrText) -match 'MSIXinstall') {
+    Ok 'install: MSIX install gets the virtualized config too, preferences kept' } else { Bad 'install MSIX' (ErrText) }
+  Remove-Item -Recurse -Force (Join-Path $localAppData 'Packages')
+  Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue | Remove-Item
 
   # -ConfigPath is install-only
   [void](Invoke-Launcher $launcher @('config', '-ConfigPath', $alt))

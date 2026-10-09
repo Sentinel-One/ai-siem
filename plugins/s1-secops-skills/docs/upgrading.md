@@ -229,7 +229,7 @@ Delete those lines. Nothing replaces them; the client uses the console token for
 | Skills still mention `SDL_XDR_URL` or `c.keys[...]` | An old plugin cache. Re-check with the loop above. |
 | `AttributeError: 'SDLClient' object has no attribute 'keys'` | A script still force-clears scoped keys. See above. |
 
-Per-MCP logs: `~/Library/Logs/Claude/mcp-server-<name>.log`.
+Per-MCP logs: `~/Library/Logs/Claude/mcp-server-<name>.log` on macOS; on Windows, the `logs` folder next to the config Claude Desktop reads (for an MSIX install, `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\logs\`).
 
 ---
 

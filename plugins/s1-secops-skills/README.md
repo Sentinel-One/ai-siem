@@ -482,7 +482,7 @@ Quit Claude Desktop completely (macOS: Cmd+Q; Windows: also quit it from the sys
 <details>
 <summary>Editing the config yourself, or using another MCP client</summary>
 
-`~/.local/bin/s1-secops-mcp-launch.sh config` prints the three entries with this machine's real path, ready to paste into `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`) or any other MCP client. Do not type the path by hand: the config is JSON, which does not expand `~`, `$HOME` or `%USERPROFILE%`, so a path such as `/Users/you/...` must be your exact home folder. On Windows, run the same with `powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 config`.
+`~/.local/bin/s1-secops-mcp-launch.sh config` prints the three entries with this machine's real path, ready to paste into `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`; Windows: `%APPDATA%\Claude\`, or `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\` for a fresh install from the claude.ai installer, which is an MSIX package and reads only that copy) or any other MCP client. Do not type the path by hand: the config is JSON, which does not expand `~`, `$HOME` or `%USERPROFILE%`, so a path such as `/Users/you/...` must be your exact home folder. On Windows, run the same with `powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 config`.
 
 `install` and `config` take the same options: `--image IMG` to pin another tag, `--profile P` for a non-default keychain profile, `--output-dir DIR` so bulk results written with `outputFile` land in a folder you can open (macOS/Linux mount it at the same path in the container; Windows mounts it at `/output`), and `--claude-md FILE` to use your own CLAUDE.md. `install --config-path FILE` writes a config somewhere other than Claude Desktop's. On Windows the options are `-Image`, `-Profile`, `-OutputDir`, `-ClaudeMd` and `-ConfigPath`.
 
@@ -524,12 +524,13 @@ The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-
 | `Cannot connect to the Docker daemon` in the logs | Docker Desktop is not running. |
 | `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` in the MCP log (macOS) | The config points at a launcher under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Run the Step 2 command again: `install` copies the launcher to `~/.local/bin/` and rewrites the config. |
 | `ENOENT`, `No such file or directory` or `spawn ... s1-secops-mcp-launch` in the MCP log | The `command` path in the config does not exist, usually a hand-typed `/Users/you/...`. Run the Step 2 command again: `install` writes your real path. |
+| Windows: Settings → Developer shows "No servers added" after the config was edited | Claude Desktop from the claude.ai installer is an MSIX package that reads `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\`, not the `%APPDATA%\Claude\` file that **Edit config** opens. Run the Step 2 command again: `install` writes both. |
 | `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.5.3`. |
 | `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The value is not in the keychain, or the launcher could not read it. Re-run `~/.local/bin/s1-secops-mcp-launch.sh setup`; on Linux confirm the Secret Service is unlocked. |
 | `S1 Mgmt API: NOT configured` | No console token reached the server; check `s1-secops-mcp status` (or `security find-generic-password -s sentinelone-mcp -a default:S1_CONSOLE_API_TOKEN` on macOS). |
 | A skill asks you to run `s1-secops-mcp setup` | A value is missing. Run it in a terminal; never paste a token into the chat. |
 
-Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log`. Upgrading from 1.4.x or older? See **[docs/upgrading.md](./docs/upgrading.md)**.
+Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log` on macOS, and in the `logs` folder next to the config Claude Desktop reads on Windows (for an MSIX install, `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\logs\`). Upgrading from 1.4.x or older? See **[docs/upgrading.md](./docs/upgrading.md)**.
 
 Full troubleshooting flowchart, hand-testing, and rollback: **[docs/docker.md](./docs/docker.md)**.
 

@@ -12,6 +12,10 @@
   (Windows: `-Image`, `-Profile`, `-OutputDir`, `-ClaudeMd`). Nobody types a home path into JSON
   any more, which was the most common first-run failure, and a launcher left under `~/Documents`
   on macOS is moved out of the folders Claude Desktop cannot run scripts from.
+- **Windows MSIX installs.** The claude.ai installer now ships Claude Desktop as an MSIX package, and a
+  fresh install reads `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\claude_desktop_config.json`,
+  not the `%APPDATA%\Claude\` file that Settings > Developer > Edit config opens. The Windows `install`
+  writes both, so the servers load either way.
 - **No-clone install.** The docs lead with a one-line download from ai-siem followed by `install`.
 - **`mcp/docker/launcher-test.sh` and `mcp/docker/launcher-test.ps1`:** hermetic tests for both commands.
 

@@ -431,7 +431,7 @@ Docker Desktop (macOS/Windows) or Docker Engine (Linux). Confirm it is running:
 
 ```bash
 docker info | head -3
-docker pull sentinelone/secops-mcps:1.5.2
+docker pull sentinelone/secops-mcps:1.5.3
 ```
 
 Get the launcher from this repo, [`mcp/docker/s1-secops-mcp-launch.sh`](../../mcp/docker/s1-secops-mcp-launch.sh) (macOS, Linux) or [`mcp/docker/s1-secops-mcp-launch.ps1`](../../mcp/docker/s1-secops-mcp-launch.ps1) (Windows). On macOS and Linux, install it to `~/.local/bin/` from the repo root:
@@ -476,15 +476,15 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.2", "s1-secops-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"]
     },
     "purple-mcp": {
       "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.2", "purple-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.3", "purple-mcp"]
     },
     "virustotal": {
       "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.2", "virustotal-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.3", "virustotal-mcp"]
     }
   }
 }
@@ -492,7 +492,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 
 Launcher options (`--image`, `--profile`) go **before** the server name: everything after the server name is passed to the server inside the container, which rejects an unknown argument.
 
-On Windows, set `"command": "powershell.exe"` and use `"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\Users\\you\\bin\\s1-secops-mcp-launch.ps1", "-Image", "sentinelone/secops-mcps:1.5.2", "s1-secops-mcp"]` (PowerShell parameters take one dash). Optional: add `"env": {"S1_OUTPUT_DIR": "/Users/you/Documents/s1-output"}` to the `s1-secops-mcp` entry so bulk results written with `outputFile` land in a folder you can open (a path, not a secret). The macOS/Linux launcher mounts that folder at the same path inside the container; the Windows launcher mounts it at `/output`, so pass `outputFile` paths under `/output/` there.
+On Windows, set `"command": "powershell.exe"` and use `"args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\Users\\you\\bin\\s1-secops-mcp-launch.ps1", "-Image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"]` (PowerShell parameters take one dash). Optional: add `"env": {"S1_OUTPUT_DIR": "/Users/you/Documents/s1-output"}` to the `s1-secops-mcp` entry so bulk results written with `outputFile` land in a folder you can open (a path, not a secret). The macOS/Linux launcher mounts that folder at the same path inside the container; the Windows launcher mounts it at `/output`, so pass `outputFile` paths under `/output/` there.
 
 > **Do not put tokens in this file, and do not use `docker run -e`.** MCP client configs are plaintext, and `-e` values show in `docker inspect`. The same applies to `~/.claude.json`, `.mcp.json`, Cursor, Windsurf and Zed. See [docs/credentials.md](./docs/credentials.md#mcp-client-configs-are-not-a-secret-store).
 
@@ -515,12 +515,12 @@ smoke test s1 secops skills
 Claude checks all three MCPs, confirms each skill is loaded, and reports any missing credential or unreachable endpoint. You can also test the image straight from a terminal, no Claude Desktop required:
 
 ```bash
-docker run -i --rm sentinelone/secops-mcps:1.5.2 help    # lists the three bundled servers
+docker run -i --rm sentinelone/secops-mcps:1.5.3 help    # lists the three bundled servers
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
   | ~/.local/bin/s1-secops-mcp-launch.sh s1-secops-mcp
 ```
 
-The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.5.2"`, and stderr shows `Tools: 35 registered` plus `configured` for each surface whose values are in the keychain.
+The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.5.3"`, and stderr shows `Tools: 35 registered` plus `configured` for each surface whose values are in the keychain.
 
 **Troubleshooting**
 
@@ -529,7 +529,7 @@ The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-
 | MCP shows red in Cowork → MCP Servers | Confirm Docker is running: `docker info \| head -3`. Start Docker Desktop, then restart Claude Desktop. |
 | `Cannot connect to the Docker daemon` in the logs | Docker Desktop is not running. |
 | `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` in the MCP log (macOS) | The launcher is stored under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Copy it to `~/.local/bin/` (Step 1) and update `command` in the client config. |
-| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.5.2`. |
+| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.5.3`. |
 | `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The value is not in the keychain, or the launcher could not read it. Re-run `s1-secops-mcp-launch.sh setup`; on Linux confirm the Secret Service is unlocked. |
 | `S1 Mgmt API: NOT configured` | No console token reached the server; check `s1-secops-mcp status` (or `security find-generic-password -s sentinelone-mcp -a default:S1_CONSOLE_API_TOKEN` on macOS). |
 | A skill asks you to run `s1-secops-mcp setup` | A value is missing. Run it in a terminal; never paste a token into the chat. |
@@ -554,7 +554,7 @@ Full walkthrough (keychain setup, config block, prerequisites, project setup, up
 
 ### Upgrading
 
-- **MCPs**: bump the pinned `--image` tag in `claude_desktop_config.json` to the current release (`1.5.2`), run `docker pull sentinelone/secops-mcps:1.5.2`, and restart Claude Desktop. Coming from 1.4.x, also move credentials into the keychain and switch to the launcher. There is no moving tag to drift onto, so an upgrade is always an explicit, reviewable edit.
+- **MCPs**: bump the pinned `--image` tag in `claude_desktop_config.json` to the current release (`1.5.3`), run `docker pull sentinelone/secops-mcps:1.5.3`, and restart Claude Desktop. Coming from 1.4.x, also move credentials into the keychain and switch to the launcher. There is no moving tag to drift onto, so an upgrade is always an explicit, reviewable edit.
 - **Plugin**: download the newer `.plugin` from [the ai-siem `dist/` folder](./dist/), then Cowork → Customize → Browse plugins, upload, and click **Replace**.
 
 Step-by-step, including what to delete from an older config: **[docs/upgrading.md](./docs/upgrading.md)**.

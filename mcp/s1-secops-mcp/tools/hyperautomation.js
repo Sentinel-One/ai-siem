@@ -35,7 +35,7 @@ export const tools = [
   // ─── ha_list_workflows ────────────────────────────────────────────────────
   {
     name: 'ha_list_workflows',
-    description: `List SentinelOne Hyperautomation workflows. Returns workflow ID, version_id (revisionId for ha_get_workflow), name, state, status, trigger types, action types, scope, and timestamps. Supports filtering by siteId, state, and sorting. Use siteIds to scope to a specific site. State values: active, inactive, deactivated, draft. Requires Hyper Automate.view permission.`,
+    description: `List SentinelOne Hyperautomation workflows. Returns workflow ID, version_id (revisionId for ha_get_workflow), name, state, status, trigger types, action types, scope, and timestamps. Supports filtering by accountIds or siteIds, state, and sorting. Use accountIds for one account (account- and site-level workflows) and siteIds for specific sites; with neither, a global token lists every account's workflows. State values: active, inactive, deactivated, draft. Requires Hyper Automate.view permission.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -48,6 +48,14 @@ export const tools = [
           type: 'number',
           description: 'Offset for pagination (default 0).',
           default: 0,
+        },
+        accountIds: {
+          type: 'string',
+          description: 'Comma-separated account IDs to scope results to. A global or multi-account token lists workflows from EVERY account it can reach when both accountIds and siteIds are omitted; pass the account the user named. siteIds alone misses account-level workflows.',
+        },
+        nameContains: {
+          type: 'string',
+          description: 'Substring of the workflow name (sent as name__contains, the only name filter the API honours; name, search and query are silently ignored and return the unfiltered page). Use it to find one workflow on a busy tenant.',
         },
         siteIds: {
           type: 'string',
@@ -68,14 +76,16 @@ export const tools = [
       },
       required: [],
     },
-    async handler({ limit = 50, skip = 0, siteIds, sortBy = 'updated_at', sortOrder = 'desc' } = {}) {
+    async handler({ limit = 50, skip = 0, accountIds, siteIds, nameContains, sortBy = 'updated_at', sortOrder = 'desc' } = {}) {
       const params = {
         limit: Math.min(limit, 200),
         skip,
         sortBy,
         sortOrder,
       };
+      if (accountIds) params.accountIds = accountIds;
       if (siteIds) params.siteIds = siteIds;
+      if (nameContains) params.name__contains = nameContains;
       const result = await apiGet(`${HA_BASE}/workflows`, params);
       // Summarise for readability: include key fields the LLM needs for follow-up calls.
       const items = (result?.data || []).map(item => ({
@@ -160,7 +170,7 @@ export const tools = [
   // ─── ha_delete_workflow ───────────────────────────────────────────────────
   {
     name: 'ha_delete_workflow',
-    description: `Delete one or more Hyperautomation workflows. Uses the REST DELETE /hyper-automate/api/v1/workflows/{id} endpoint (validated 2026-06-13), a soft, recoverable delete (the console offers a "Restore workflow" action), equivalent to clicking Delete in the Hyperautomation UI. Scope the call to where the workflow lives with accountIds (account-scoped workflow) or siteIds (site-scoped); a 404 "Object not found" means the id is not under that scope or is already deleted. Requires Hyper Automate.write permission. NOTE: do NOT use the older POST /workflows/archive path; it returns 500 on this tenant.`,
+    description: `Delete one or more Hyperautomation workflows. Uses the REST DELETE /hyper-automate/api/v1/workflows/{id} endpoint (validated 2026-06-13), a soft, recoverable delete (the console offers a "Restore workflow" action), equivalent to clicking Delete in the Hyperautomation UI. Scope the call to where the workflow lives with accountIds (account-scoped workflow) or siteIds (site-scoped); a 404 "Object not found" means the id is not under that scope or is already deleted. An ACTIVE workflow cannot be deleted (HTTP 400); the tool then deactivates it and retries once, and reports deactivatedFirst: true. Requires Hyper Automate.write permission. NOTE: do NOT use the older POST /workflows/archive path; it returns 500 on this tenant.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -192,12 +202,23 @@ export const tools = [
         : `siteIds=${encodeURIComponent(siteIds)}`;
       const results = [];
       for (const id of workflowIds) {
+        const path = `${HA_BASE}/workflows/${encodeURIComponent(id)}?${scope}`;
         try {
           // DELETE returns 204 No Content on success.
-          await apiDelete(`${HA_BASE}/workflows/${encodeURIComponent(id)}?${scope}`);
+          await apiDelete(path);
           results.push({ id, status: 'deleted' });
         } catch (e) {
-          results.push({ id, status: 'error', error: e.message });
+          // An ACTIVE workflow cannot be deleted: measured 2026-10-09, DELETE returned 400
+          // until the workflow was deactivated, then 204. Deactivate (unversioned, 204)
+          // and retry once; any other error is reported as is.
+          if (!/→ 400/.test(e.message)) { results.push({ id, status: 'error', error: e.message }); continue; }
+          try {
+            await apiPost(`${HA_BASE}/workflows/${encodeURIComponent(id)}/deactivate?${scope}`, {});
+            await apiDelete(path);
+            results.push({ id, status: 'deleted', deactivatedFirst: true });
+          } catch (e2) {
+            results.push({ id, status: 'error', error: e.message, retryAfterDeactivate: e2.message });
+          }
         }
       }
       return JSON.stringify({ deleted: results }, null, 2);
@@ -274,7 +295,7 @@ export const tools = [
   // ─── ha_export_workflow ───────────────────────────────────────────────────
   {
     name: 'ha_export_workflow',
-    description: `Export Hyperautomation workflows as a ZIP archive. Returns metadata about the ZIP (size, content-type) plus the first 200 bytes of the base64-encoded content. NOTE: there is no per-workflow filter; the API returns every workflow in scope. Use ha_get_workflow to read a specific workflow's JSON definition instead. Scope with accountIds or siteIds: on a scoped tenant an unscoped call can return a 403 "Insufficient permissions" that is really a scoping problem, the same misleading failure ha_import_workflow documents. Requires Hyper Automate.view permission.`,
+    description: `Export Hyperautomation workflows as a ZIP archive. Returns metadata about the ZIP (size, content-type) plus the first 200 bytes of the base64-encoded content. NOTE: there is no per-workflow filter; the API returns every workflow in scope. Use ha_get_workflow to read a specific workflow's JSON definition instead. Scope with accountIds or siteIds: on a scoped tenant an unscoped call can return a 403 "Insufficient permissions" that is really a scoping problem, the same misleading failure ha_import_workflow documents. On a global or multi-account token an unscoped export succeeds and holds EVERY account's workflows (measured 253 KB against 26 KB for one account), so pass the account the user named. Requires Hyper Automate.view permission.`,
     inputSchema: {
       type: 'object',
       properties: {

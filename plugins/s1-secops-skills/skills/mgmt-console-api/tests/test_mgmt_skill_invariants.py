@@ -9,6 +9,8 @@ These pin the rules that have cost real time on this API:
    and never as the action `id`, and the write is verified by re-reading.
 3. The PowerQuery recipes shipped with this skill still pass the repo linter in
    `tools/run_evals.py`, which is imported rather than reimplemented.
+4. Live-measured platform-rule and UAM query facts (2026-10-09) stay stated,
+   and the superseded claims they replaced stay gone.
 
 Run:
     python3 -m unittest discover -s mgmt-console-api/tests
@@ -127,6 +129,95 @@ class UamWriteShape(unittest.TestCase):
         self.assertIn("S1/alert/analystVerdictUpdate", self.ref)
 
 
+class PlatformRulesWorkingNotes(unittest.TestCase):
+    """Platform-rule facts measured live on 3 consoles, 2026-10-09."""
+
+    def setUp(self):
+        text = (SKILL_DIR / "references" / "tags" /
+                "Platform_Detection_Rules.md").read_text(encoding="utf-8")
+        # Only the hand-written notes; the generated spec sections below repeat
+        # upstream wording (for example "use cursor") that was measured false.
+        self.notes = text.split("## `GET ", 1)[0]
+
+    def test_settings_is_a_one_call_posture_read(self):
+        self.assertIn("/detection-library/platform-rules/settings?scopeLevel=", self.notes)
+        for field in ("disableInheritance", "inheritanceAvailable", "coreCount",
+                      "autoDefaultCount", "emergingThreatCount", "smartDefault"):
+            self.assertIn(field, self.notes, f"settings read no longer lists {field}")
+
+    def test_paging_limits_are_stated(self):
+        for frag in ("less than or equal to 1000", "4000080", "4000010",
+                     "Invalid cursor value received", "nextCursor",
+                     '400 "Unknown field"'):
+            self.assertIn(frag, self.notes, f"paging note lost {frag!r}")
+
+    def test_full_catalog_recipe_pages_by_severity(self):
+        for sev in ("`Info`", "`Low`", "`Medium`", "`High`", "`Critical`"):
+            self.assertIn(sev, self.notes)
+        self.assertIn("skip=1000", self.notes)
+        self.assertIn("pagination.totalItems", self.notes)
+        self.assertRegex(self.notes, r"`sources`.*valid alternative")
+        self.assertNotIn("To reach the full catalog, filter by `sources`", self.notes,
+                         "the superseded sources-only full-catalog advice is back")
+
+    def test_core_label_is_sentinelone_only(self):
+        self.assertRegex(self.notes, r"(?i)no third-party rule carries `core`")
+        self.assertRegex(self.notes, r"label `core` hides every third-party rule")
+        self.assertIn("coreCount", self.notes)
+
+    def test_inheritance_facts(self):
+        self.assertIn("5000010", self.notes)
+        self.assertIn('{"data":{"affected":1}}', self.notes)
+        self.assertRegex(self.notes, r"own copy of every rule it inherited")
+        self.assertRegex(self.notes, r"stayed `Disabled` at the account")
+
+    def test_activation_and_ingest_timing(self):
+        self.assertRegex(self.notes, r"`Activating`.*`Active` in 35 s")
+        self.assertRegex(self.notes, r"only data ingested after the rule is `Active`")
+        self.assertRegex(self.notes, r"back-dated 2 h")
+        self.assertRegex(self.notes, r"ingest time, not the back-dated event time")
+
+    def test_audit_activity_and_asset_binding(self):
+        self.assertIn("activityTypes=3776", self.notes)
+        self.assertIn("Platform Library Rule Enabled", self.notes)
+        self.assertRegex(self.notes, r"Other Device.*`agentUuid: null`")
+
+
+class UamQueryShapeFacts(unittest.TestCase):
+    """UAM GraphQL facts measured live, 2026-10-09."""
+
+    def setUp(self):
+        self.ref = (SKILL_DIR / "references" / "UNIFIED_ALERTS.md").read_text(
+            encoding="utf-8")
+
+    def test_available_actions_scope_is_optional_but_changes_the_answer(self):
+        # Corrected 2026-10-09: an unscoped call is NOT silently empty (15 actions on
+        # 3 consoles); an empty list means the filter matched no visible alert.
+        self.assertRegex(self.ref, r"`scope` is optional but changes the answer")
+        self.assertIn("scope: {scopeIds, scopeType}", self.ref)
+        self.assertNotRegex(self.ref, r"Without `scope` it returns `\{\"data\": \[\]",
+                            "the refuted 'unscoped is silently empty' claim is back")
+
+    def test_name_filter_and_sort_shape(self):
+        self.assertIn('fieldId: "alertName", match: {value: [...]}', self.ref)
+        self.assertIn("Field name does not exist or not supported for FILTER API call",
+                      self.ref)
+        self.assertIn("UnknownArgument", self.ref)
+        self.assertIn('sort: {by: "<field>", order: ASC|DESC}', self.ref)
+        self.assertIn("alerts(first, after, last, before, scope, viewType, sort, "
+                      "filters, sorts, orFilter)", self.ref)
+        self.assertIn("TriggerActionInput {id: ID!, payload: TriggerPayloadInput}",
+                      self.ref)
+
+    def test_sdl_graphql_rejects_introspection(self):
+        self.assertIn("/sdl/v2/graphql", self.ref)
+        self.assertRegex(self.ref, r"only `__typename` answers")
+
+    def test_ai_investigation_availability_is_read_per_alert(self):
+        self.assertIn("This alert type is not supported by AI investigations", self.ref)
+        self.assertRegex(self.ref, r"do not infer it from severity")
+
+
 class GetVsPostRule(unittest.TestCase):
     def test_nonexistent_post_paths_documented(self):
         skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
@@ -188,6 +279,16 @@ class EvalSuiteIsGradable(unittest.TestCase):
         blob = json.dumps(self.suite)
         self.assertIn("isLegacy", blob,
                       "no eval case asserts the isLegacy=false rule")
+
+
+class AssetLinkageOnPlatformAlerts(unittest.TestCase):
+    """Measured 2026-10-09: which event field links a platform alert to an endpoint."""
+
+    def test_agent_uuid_links_and_moves_the_alert_to_the_agent_site(self):
+        ref = (SKILL_DIR / "references" / "ASSET_LINKAGE.md").read_text(encoding="utf-8")
+        self.assertRegex(ref, r"`agent.uuid` set to a real agent's UUID is enough to link")
+        self.assertIn("belongs to the AGENT's site", ref)
+        self.assertRegex(ref, r"real agent's hostname in `device.hostname` without `agent.uuid`")
 
 
 if __name__ == "__main__":

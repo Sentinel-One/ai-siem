@@ -19,7 +19,7 @@ raw events) instead of the deprecated V1 query methods, and
 
 ## Ingestion (moved to HEC)
 
-SDL raw-log ingestion (`uploadLogs`, `addEvents`) has been removed from this skill. Ingest raw logs/events via the **event collector** on the ingest host (`/services/collector/raw` and `/event`, with a named `parser`), which feeds Event Search, PowerQuery, and detection rules. That path authenticates with an SDL Log Write Key (`S1_HEC_TOKEN`), not the console API token, and the key's own scope fixes the ingest destination. UAM alert creation is separate: it lives in `mgmt-console-api` (`uam_*`, posted to `/v1/alerts` on the same host but a distinct API, still using the console API token), and indicators ride inline in the alert rather than having an endpoint of their own. This skill now covers queries and configuration files only.
+SDL raw-log ingestion (`uploadLogs`, `addEvents`) has been removed from this skill. Ingest raw logs/events via the **event collector** on the ingest host (`/services/collector/raw` and `/event`, with a named `parser`), which feeds Event Search, PowerQuery, and detection rules. That path authenticates with an SDL Log Write Key (`S1_HEC_TOKEN`), not the console API token, and the key's own scope fixes the ingest destination. UAM alert creation is separate: it lives in `mgmt-console-api` (`uam_*`, posted to `/v1/alerts` on the same host but a distinct API, still using the console API token), and indicators ride inline in the alert rather than having an endpoint of their own. This skill now covers queries and configuration files only. Hyperautomation flows that still call `addEvents`: see `integration_patterns.md` for its measured scope, `ts` and `attrs` behaviour.
 
 ---
 

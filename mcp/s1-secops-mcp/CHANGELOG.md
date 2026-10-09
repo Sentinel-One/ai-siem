@@ -1,5 +1,85 @@
 # Changelog
 
+## 1.5.3
+
+One global token drives any account or site under it (issue #111). Tool count stays 35.
+
+Measured live on 2026-10-09 against a service user spanning 385 accounts, with an
+account-level token as the control.
+
+### Fixed
+
+- **`scope` now narrows PowerQuery on a global or multi-account token.** `lrqRun` launched
+  every query with `tenant: true` and sent the scope only as an `S1-Scope` header, which
+  `/sdl/v2/api/queries` ignores for a multi-account user. `scope: "<A>"` returned 19 accounts
+  (20 unscoped) and `scope: "<A>:<S>"` 29 account:site pairs. A scope is now sent as
+  `tenant: false, accountIds: ["<A>"]`, and a site adds `site.id='<S>'` to the initial filter
+  (the API has no site field). After the fix: 1 account and 1 account:site pair. On the
+  account-level token the new body matches the old header exactly (184 = 184 for the account,
+  106 = 106 for a site). Applies to `powerquery_run` (PQ, LOG and every slice),
+  `powerquery_enumerate_sources` and the `powerquery_schema_discover` fallback. The response
+  carries `scopeApplied` (`mode`, `accountIds`, `siteFilter`), and `effectiveQuery` shows the
+  site term. For a leading `| join` or `| union` the term is added to every subquery
+  (lookup-table subqueries are left as they are), and `| datasource vulnerabilities` /
+  `misconfigurations` get `| filter siteId='<S>'`; all three matched the header ground truth on an
+  account-level token (union 37,106 = 37,106, join identical per source, misconfigurations 0
+  against 711 account-wide). Lookup tables need no filter: the same path at account and at
+  site scope is two files, and the `S1-Scope` header (still sent) picks the copy `| dataset`
+  reads, on the global token too (with `accountIds` and no header it found no table). A site
+  scope is refused only for `| datasource alerts`, which has no site column. An account the token cannot reach is a clear error (HTTP 403
+  "Not allowed to access requested resource" plus a hint); with a site scope the query retries
+  with `tenant: true` and keeps the site term, for a site-level token.
+- **`powerquery_schema_discover` falls back to an LRQ LOG search** when the V1 query returns no
+  events. Unscoped, V1 returned 0 for every source on the global token; the fallback returned
+  127 fields for `SentinelOne`. `via` reports which path answered (`v1-query` or `lrq-log`), and
+  a failed fallback is reported as `fallbackError` instead of failing the call.
+- **`uam_available_actions` defaults to the alert's own account**, as the write tools do. It
+  used the first 100 accounts only, so an alert in account 101+ was offered 0 actions with no
+  error (now 7). The write tools' all-accounts fallback follows the `/accounts` cursor too
+  (`allAccountIds`).
+
+### Added
+
+- `uam_list_alerts`: `scopeIds` and `scopeType` (`ACCOUNT` default, or `SITE`), sent as the UAM
+  `scope` argument. Unscoped the global token listed 135,303 alerts across accounts; scoped to
+  one account 120,777, all in it; scoped to a site, all in that site. Each alert now carries
+  `accountId` and `siteId`.
+- `ha_list_workflows`: `accountIds`. One account returned 15 workflows (14 account-level, 1
+  site-level); its sites via `siteIds` returned 1, and unscoped returned 105.
+- `ha_list_workflows`: `nameContains`, sent as `name__contains`, the only name filter the API
+  honours (`name`, `search` and `query` return the unfiltered page). Live: 83 workflows, 1 match.
+- `ha_delete_workflow`: an ACTIVE workflow is refused with HTTP 400, so the tool now deactivates
+  it and retries once, reporting `deactivatedFirst: true` (live: 204 after deactivation).
+- `powerquery_schema_discover`: the LRQ fallback also reports session-level fields
+  (`account.id`, `site.id`, `serverHost`), which LOG returns under `serverInfo` for `addEvents`
+  and agent-shipped data.
+- `sdl_create_dashboard`: `config` may be an object as well as a JSON string.
+- `tools/live_learnings_check.mjs` (repo, host-only): re-checks every API behaviour the skills
+  document as measured live; `--lab <accountId>:<siteId>` adds reversible writes.
+
+### Docs
+
+- Tool descriptions state that an unscoped call on a global token spans every account, and to
+  pass the account or site the user named. `ha_export_workflow` notes that an unscoped export
+  holds every account's workflows (253 KB against 26 KB for one account).
+- The three `lrq-api.md` copies, `powerquery/SKILL.md`, `mgmt-console-api` (SKILL.md,
+  UNIFIED_ALERTS.md, querying-logs.md), `hyperautomation/SKILL.md`, `query-slicing.md`,
+  `CLAUDE.md`, `docs/mcp-tools.md` and the MCP README replace the old claim that `tenant: true`
+  means "a default account" with the measured behaviour, and document scoping per tool.
+- Skills (plugin 1.3.13) fold the API behaviours confirmed live on 2026-10-09 on several
+  consoles; each has an invariant test. Detection library: the settings posture read, paging
+  limits and the severity recipe, `core` labels, inheritance (500 while inheriting, per-rule site
+  copies, independent scopes), `Activating` to `Active`, no backfill, back-dated events, activity
+  3776, asset linking by `agent.uuid`. UAM: optional but answer-changing `scope` on
+  `alertAvailableActions`, `alertName` filter, `sort`, introspection, AI Investigation
+  availability. Hyperautomation: list filters and paging, run-now body `{"data": {}}`, deactivate
+  and delete paths, response-trigger limits and conversion, connections by API and by name at
+  run time, `send_email` per console, `GENERATE_UUID4`, JQ features.
+  SDL: collector auth per console, scope attribution checks, `addEvents` behaviour, per-scope
+  datatables, GraphQL introspection. PowerQuery: the scheduled-rule toggle, `disableStreaksLogic`
+  placement, inventory site columns, `site.id` types, correlation alerts per seed.
+- Code comments in `lib/hec.js` and `lib/credentials.js` now match the collector measurements.
+
 ## 1.5.2
 
 One console token, a setup check that matches the tools, and a docs and code sync. Tool count

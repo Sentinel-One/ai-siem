@@ -668,9 +668,9 @@ Query string goes inside `pq.query`, NOT top level. `queryType` must be uppercas
 
 Measured 2026-10-05 on S-26.3.4, one service-user token, one egress IP: about 30 calls/s sustained with zero 429s; 429s start around 35 calls/s and hit only launches (POST), never polls or cancels. Use a token bucket at about 25 calls/s and retry launch 429s with backoff. A 30-day aggregate: one query 21 to 40 s; 15 x 2d slices with 15 in flight about 5 s (merged totals match); 30 slices in flight is slower (10 s). Bind each slice to one client for its full launch-poll-cancel lifecycle (the forward tag is session-scoped). A second token is not needed for speed.
 
-### `tenant: true` multi-account scoping gotcha
+### LRQ scoping on a global or multi-account token
 
-`tenant: true` scopes to a **default account**, not every account. If Purple MCP returns rows for the same window/query but LRQ returns `matchCount=0`, suspect multi-account scoping: re-run with explicit `accountIds` for the account carrying the data. Discover account IDs via `GET /web/api/v2.1/accounts`.
+`tenant: true` covers every account the token is authorized for: one account on an account-level token, ALL of them on a global or multi-account token. The `S1-Scope` header does not narrow a multi-account token (measured 2026-10-09, issue #111). For one account send `tenant: false, accountIds: ["<accountId>"]` (array); for one site also add `site.id='<siteId>'` to the initial filter (there is no `siteIds` field). `tenant: false` without `accountIds` returns only global-level rows. Keep sending `S1-Scope` too: lookup tables are per scope and `| dataset` / `| lookup` read the copy at the header's scope, on any token. The MCP does this from `scope: "<accountId>[:<siteId>]"` (1.5.3+) and reports `scopeApplied`. When the user names an account or site, pass it as `scope` on every PowerQuery, SDL, UAM (`scopeIds`) and Hyperautomation (`accountIds`/`siteIds`) call; unscoped calls on a global token span every account. Discover account IDs via `GET /web/api/v2.1/accounts`.
 
 ### `merge_aggregate`: non-additive aggregates
 

@@ -106,6 +106,12 @@ alert.
 This is the first thing to check when a correlation rule does not fire, ahead of
 the query itself.
 
+A window also does not deduplicate. Measured 2026-10-09 on the platform rule
+"Okta Repeated MFA Push Notifications Denied" (`entity: ip`, `matchesRequired: 10`,
+`windowMinutes: 60`): two seeds of 10 matching events for the same IP, 4 minutes
+apart, raised two alerts. Space repeated test seeds more than one window apart, or
+expect one alert per seed.
+
 #### The cartesian-product trap: one event, many entities, many alerts
 
 A single event can carry several values for a field the entity keys on: several
@@ -607,7 +613,7 @@ Every option on the rule's Overview page maps to a field in the `POST/PUT /cloud
 | Threshold criteria | `data.scheduledParams.threshold.operator` | e.g. `Greater` |
 | Threshold | `data.scheduledParams.threshold.value` | |
 | Generate alert per row | `data.scheduledParams.alertPerRow` | bool |
-| Deduplication logic | `data.scheduledParams.disableStreaksLogic` | inverse: dedup ON ⇔ `disableStreaksLogic:false` |
+| Deduplication logic | `data.scheduledParams.disableStreaksLogic` | inverse: dedup ON ⇔ `disableStreaksLogic:false`. Under `scheduledParams` it is accepted and echoed back; as a top-level `data` field it is HTTP 400 `data: dict_values(['disableStreaksLogic']): Unknown field` (live-verified 2026-10-09) |
 | Cool off period | `data.coolOffSettings.renotifyMinutes` | top level of `data`, not inside `scheduledParams` (there it is HTTP 400 `Unknown field`); live-verified 2026-10 by create and read-back |
 | Hide logic | `data.hideLogic` | bool |
 | Treat as threat (Active Response) | `data.treatAsThreat` | `UNDEFINED` / `Suspicious` / `Malicious`. Scheduled rules must use `UNDEFINED`: no inline active-response on the rule itself. Drive mitigation from a Hyperautomation flow triggered by the alert instead (any alert can trigger an HA flow) |
@@ -671,7 +677,7 @@ Notes on the shape:
 
 ### If creation fails with `feature not enabled` or equivalent
 
-If `POST /web/api/v2.1/cloud-detection/rules` returns an error indicating Scheduled Detections / PowerQuery Alerts are not licensed or not turned on for the tenant, do not retry, do not silently downgrade to S1QL. **Stop and tell the user to enable the Scheduled Detections feature on the tenant before deploying.** Common surface for this in the console: *Settings → Account → Detection / SDL Add-Ons → Scheduled Detections* (exact path varies by platform version). The user needs to enable it (or have their CS/SE enable it) and then the same POST will succeed.
+If `POST /web/api/v2.1/cloud-detection/rules` returns an error indicating Scheduled Detections / PowerQuery Alerts are not licensed or not turned on for the tenant, do not retry, do not silently downgrade to S1QL. The measured form is HTTP 400 code `4000010` "scheduled rules toggle not enabled for scope site <id>" (or "... scope account <id>"): on 2026-10-09 one console returned it at site and at account scope while another accepted the identical body (created as Draft). It is a per-console setting, not a body error. **Stop and tell the user to enable the Scheduled Detections feature on the tenant before deploying.** Common surface for this in the console: *Settings → Account → Detection / SDL Add-Ons → Scheduled Detections* (exact path varies by platform version). The user needs to enable it (or have their CS/SE enable it) and then the same POST will succeed.
 
 If the feature cannot be enabled, or the query is one the scheduled evaluator rejects, build it as an HA watchdog instead. See "The fourth rule type: the HA watchdog" below.
 

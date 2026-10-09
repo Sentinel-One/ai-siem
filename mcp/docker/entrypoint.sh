@@ -113,7 +113,7 @@ keychain and passes secrets over stdin so they never appear in
   s1-secops-mcp-launch.sh s1-secops-mcp    # what the MCP client runs
 
 Manual equivalent (secrets as the first stdin lines, then an empty line):
-  docker run -i --rm -e S1_SECRETS_STDIN=1 sentinelone/secops-mcps:1.5.2 s1-secops-mcp
+  docker run -i --rm -e S1_SECRETS_STDIN=1 sentinelone/secops-mcps:1.5.3 s1-secops-mcp
 
 Environment variables (-e S1_CONSOLE_URL -e S1_CONSOLE_API_TOKEN ...) still
 work but are readable by anyone who can run `docker inspect`.

@@ -116,8 +116,8 @@ python3 sdl-solutions/scripts/lrq_sliced.py \
 Output is JSON: `columns`, `values` (merged, sorted by the first `--sum` column), `matchCount`
 (summed), and `stats` (`slices`, `calls`, `launches`, `launch_429`, `splits`, `wall_s`). Add
 `--edr-strict` on SentinelOne EDR queries so a mistyped field fails with HTTP 400 instead of
-returning nothing; `--account-ids` scopes the query explicitly (`tenant: true` narrows to a
-default account on some tenants).
+returning nothing; `--account-ids` scopes the query explicitly (`tenant: true` spans every
+account the token can reach, all of them on a global or multi-account token).
 
 As a library:
 
@@ -144,7 +144,9 @@ vs 14,131,685 (the window moved between runs).
 - **One client per token, shared by every slice.** Separate clients each get the full rate and
   together exceed it.
 - **A slice is bound to the forward tag of its own launch.** Poll and cancel with that tag only.
-- **`tenant: true` is not every account.** Pass `account_ids` (Python) or a `scope` (MCP) for
-  anything that reports per account.
+- **Scope every slice explicitly.** `tenant: true` spans every account the token can reach, and
+  the `S1-Scope` header does not narrow a multi-account token. Pass `account_ids` (Python) or a
+  `scope` (MCP, 1.5.3+, which sends `tenant: false` + `accountIds` on every slice) for one
+  account.
 - **The SDL per-IP limit (60 burst / 30 req/s, published for 2026-09-10) covers this host too.**
   It was not enforced when measured, which is one more reason to stay at 25 calls/s.

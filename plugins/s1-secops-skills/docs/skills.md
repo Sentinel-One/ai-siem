@@ -66,7 +66,7 @@ Full field reference: `mgmt-console-api/SKILL.md`
 
 **What it provides:**
 
-- SDL log ingest via the event collector (`hec_ingest`), posted to `S1_HEC_INGEST_URL` with an SDL Log Write Key (`S1_HEC_TOKEN`). The console API token is refused there, and the key's own account or site scope fixes where the data lands
+- SDL log ingest via the event collector (`hec_ingest`), posted to `S1_HEC_INGEST_URL` with an SDL Log Write Key (`S1_HEC_TOKEN`). The console API token is not a reliable substitute there (`400 Missing S1-Scope header` without a scope header, `403 "User token not allowed for this endpoint"` on some consoles either way; use the write key in both cases), and the key's own account or site scope fixes where the data lands
 - SDL config file CRUD over `POST <console>/sdl/v2/graphql` (`sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`; host-only Python client `config_files`, `config_file`, `put_config_file`, `delete_config_file`). Dashboards are addressed by `udoId`, every other namespace by name
 - Queries through LRQ with `powerquery_run`, and schema discovery with `powerquery_schema_discover` (full-event JSON per source); the deprecated V1 query methods remain on the host-only Python client until 2027-02-15
 

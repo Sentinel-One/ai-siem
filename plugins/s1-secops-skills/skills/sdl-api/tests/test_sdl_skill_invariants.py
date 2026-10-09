@@ -4,9 +4,12 @@ These pin the facts a careless edit would erase, each of which has a concrete
 failure attached:
 
 1. The ingest credential split. Raw log ingest needs an SDL Log Write Key in
-   `S1_HEC_TOKEN`; the console token is refused with HTTP 400 "Missing S1-Scope
-   header". UAM alert ingest at /v1/alerts is the other path and does use the
-   console token with S1-Scope.
+   `S1_HEC_TOKEN` (`Splunk` or `Bearer` prefix); whether the console token is
+   accepted at the collector differs per console (400 "Missing S1-Scope
+   header" without the header and accepted with it on one console, 403 code 4
+   "User token not allowed for this endpoint" either way on another). UAM
+   alert ingest at /v1/alerts is the other path and does use the console token
+   with S1-Scope.
 2. Config files are GraphQL. Dashboards are addressed by `udoId`; a
    name-addressed write creates a duplicate instead of updating.
 3. The client still exposes the config-file round-trip surface used by the
@@ -70,12 +73,58 @@ class IngestCredentialSplit(unittest.TestCase):
         self.assertIn("S1_HEC_TOKEN", self.skill)
         self.assertRegex(self.skill, r"(?i)log\s+write\s+key")
 
-    def test_console_token_is_documented_as_refused(self):
-        self.assertIn("Missing S1-Scope header", self.skill)
+    def test_console_token_acceptance_is_per_console(self):
+        # Live 2026-10-09: on one console the console token gets 400 "Missing
+        # S1-Scope header" without the header and is ACCEPTED with it (the
+        # header then decides the landing scope); on another it gets 403 code 4
+        # with or without the header. The write key works on both. Neither the
+        # blanket "the console token is refused" claim nor the old "adding an
+        # S1-Scope header does not fix it" claim may return.
+        docs = {
+            "SKILL.md": self.skill,
+            "auth_and_limits.md": (SKILL_DIR / "references" /
+                                   "auth_and_limits.md").read_text(encoding="utf-8"),
+            "config-file-graphql.md": (SKILL_DIR / "references" /
+                                       "config-file-graphql.md").read_text(encoding="utf-8"),
+        }
+        for name, text in docs.items():
+            self.assertIn("User token not allowed for this endpoint", text, name)
+            self.assertIn("Missing S1-Scope header", text, name)
+            self.assertRegex(text, r"(?i)not a reliable substitute", name)
+            self.assertRegex(text, r"(?i)use the write\s+key in both cases", name)
+            self.assertNotRegex(text, r"(?i)does not fix it|does not help", name)
         self.assertRegex(
-            self.skill, r"(?i)console\s+(?:API\s+)?token[^.]{0,80}refused|"
-                        r"refused[^.]{0,80}console",
-            "the console-token-is-refused fact is no longer stated")
+            self.skill, r"(?i)without an `S1-Scope` header and is accepted with one",
+            "the console-token-with-S1-Scope acceptance is no longer recorded")
+        self.assertRegex(
+            self.skill, r"(?i)header then decides the landing scope",
+            "for the console token the header decides the landing scope")
+        self.assertRegex(
+            self.skill, r"(?i)refused with or without the header",
+            "the per-console 403 refusal is no longer recorded")
+        self.assertNotRegex(
+            self.skill, r"(?i)console API token, service user or personal, is refused",
+            "the blanket console-token-is-refused claim is back")
+        self.assertNotIn("The console API token is refused, `HTTP 400", self.skill)
+
+    def test_write_key_prefixes_documented(self):
+        self.assertRegex(self.skill, r"Splunk <key>")
+        self.assertRegex(self.skill, r"Bearer <key>")
+
+    def test_key_mint_scope_decides_landing_and_header_is_ignored(self):
+        auth = (SKILL_DIR / "references" / "auth_and_limits.md").read_text(encoding="utf-8")
+        for text in (self.skill, auth):
+            self.assertRegex(text, r"(?i)collector ignores `S1-Scope`")
+            self.assertRegex(text, r"(?i)account-minted key lands account-only data")
+            self.assertRegex(text, r"(?i)site-scoped detection rules do not see")
+
+    def test_landing_check_uses_powerquery_group_not_v1_or_log_values(self):
+        auth = (SKILL_DIR / "references" / "auth_and_limits.md").read_text(encoding="utf-8")
+        for text in (self.skill, auth):
+            self.assertIn("group n=count() by account.id, site.id", text)
+            self.assertIn("serverInfo", text)
+            self.assertRegex(text, r"(?i)session level")
+            self.assertIn("site.id='<site>'", text)
 
     def test_uam_alert_ingest_is_the_other_path(self):
         self.assertIn("/v1/alerts", self.skill)
@@ -105,6 +154,51 @@ class ConfigFileAddressing(unittest.TestCase):
 
     def test_parser_path_is_logparsers(self):
         self.assertIn("/logParsers/", self.skill)
+
+
+class LiveFindings20261009(unittest.TestCase):
+    """Facts measured live 2026-10-09 on three consoles."""
+
+    def setUp(self):
+        ref = SKILL_DIR / "references"
+        self.graphql = (ref / "config-file-graphql.md").read_text(encoding="utf-8")
+        self.ingest = (ref / "integration_patterns.md").read_text(encoding="utf-8")
+
+    def test_addevents_scope_ts_and_attrs_behaviour(self):
+        t = self.ingest
+        self.assertIn("/sdl/api/addEvents", t)
+        self.assertRegex(t, r"`S1-Scope: <accountId>:<siteId>` \| events carry `site\.id`")
+        self.assertRegex(t, r"`S1-Scope: <accountId>` \| no `site\.id`")
+        self.assertRegex(t, r"(?i)back-dated 3 h \| accepted")
+        self.assertRegex(t, r"(?i)no `ts` \| not stored[^|]*`warnings`")
+        self.assertRegex(t, r"(?i)nested object in `attrs` \| stored as one JSON string")
+        # The collector stays the recommendation.
+        self.assertRegex(t, r"(?i)has been removed from this skill")
+
+    def test_config_files_are_per_scope_and_lookup_follows_the_header(self):
+        t = self.graphql
+        self.assertRegex(t, r"(?i)lookup tables and other config files are per scope")
+        self.assertRegex(t, r"(?i)two independent files")
+        self.assertIn("| dataset 'config://datatables/<name>'", t)
+        self.assertRegex(t, r"(?i)reads the copy named by the `S1-Scope` header")
+        self.assertRegex(t, r"(?i)global token with `accountIds` and no header got \"does not exist\"")
+
+    def test_graphql_introspection_is_disabled_and_configfile_has_no_path(self):
+        t = self.graphql
+        self.assertIn("Field 'path' in type 'ConfigFile' is undefined", t)
+        self.assertRegex(t, r"(?i)introspection is disabled")
+        self.assertIn("FieldUndefined", t)
+        self.assertRegex(t, r"only `__typename` answers")
+
+    def test_rest_listfiles_shape_and_scope(self):
+        self.assertIn('{"paths": [...]}', self.graphql)
+        self.assertIn('`POST /sdl/api/listFiles` returns `{"paths": [...]}` '
+                      'and honours `S1-Scope`', self.graphql)
+
+    def test_eval_expected_output_drops_blanket_refusal(self):
+        blob = (SKILL_DIR / "evals" / "evals.json").read_text(encoding="utf-8")
+        self.assertNotIn("The Management Console API token is refused there", blob)
+        self.assertIn("User token not allowed for this endpoint", blob)
 
 
 class ClientSurfaceMatchesTheDocs(unittest.TestCase):

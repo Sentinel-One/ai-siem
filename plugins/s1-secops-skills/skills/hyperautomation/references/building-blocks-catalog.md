@@ -937,10 +937,12 @@ holding an **SDL Log Write Key**:
 Set `use_authentication_data: true` and bind a connection whose Bearer credential is an **SDL Log
 Write Key** for the target account or site. A Hyperautomation connection sends its credential
 verbatim as `Authorization: Bearer <value>`, so this is a separate connection from the console-token
-"SentinelOne SDL" one, not the same one reused. The console token is refused here with `HTTP 400
-{"text":"Missing S1-Scope header","code":5}` where the write key returns `HTTP 200
-{"text":"Success","code":0}`, and adding an `S1-Scope` header does not fix it. Send **no**
-`S1-Scope` header: the key's scope is fixed at mint time and the collector does not read it.
+"SentinelOne SDL" one, not the same one reused. The write key returns `HTTP 200
+{"text":"Success","code":0}`. The console token is not a reliable substitute: on some consoles it
+returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without an `S1-Scope` header and is
+accepted with one, on others it returns `HTTP 403 {"text":"User token not allowed for this
+endpoint","code":4}` either way. Use the write key in both cases. Send **no** `S1-Scope` header:
+the key's scope is fixed at mint time and the header does not change where its events land.
 (`/v1/alerts` on the same host is the opposite case: console token plus `S1-Scope`.)
 
 The four `dataSource.*` / `event.type` / `site_id` fields are not optional decoration:

@@ -42,7 +42,7 @@ A headless Linux host with no D-Bus session cannot use the keychain; pass values
 The image is multi-arch (`linux/amd64` + `linux/arm64`), so Apple Silicon runs natively without qemu. Pull it once before you start:
 
 ```bash
-docker pull sentinelone/secops-mcps:1.5.2
+docker pull sentinelone/secops-mcps:1.5.3
 ```
 
 ---
@@ -74,15 +74,15 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS,
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.2", "s1-secops-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"]
     },
     "purple-mcp": {
       "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.2", "purple-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.3", "purple-mcp"]
     },
     "virustotal": {
       "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.2", "virustotal-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.3", "virustotal-mcp"]
     }
   }
 }
@@ -97,7 +97,7 @@ On Windows, use the PowerShell launcher (PowerShell parameters take one dash):
   "command": "powershell.exe",
   "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
            "C:\\Users\\you\\bin\\s1-secops-mcp-launch.ps1",
-           "-Image", "sentinelone/secops-mcps:1.5.2", "s1-secops-mcp"]
+           "-Image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"]
 }
 ```
 
@@ -111,7 +111,7 @@ Optional: to get `outputFile` results (bulk query exports, binary downloads, wor
 - purple-mcp also receives the stored `VIRUSTOTAL_API_KEY`, which the entrypoint maps to `PURPLEMCP_VT_API_KEY` for its threat intelligence tools. No separate setup: the one key you stored in Step 1 serves both the VirusTotal MCP and purple-mcp. Which server to use for which task: [mcp-tools.md → Threat intelligence: which server to use](./mcp-tools.md#threat-intelligence-which-server-to-use).
 - Region URLs vary. Look up your region in the [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) article.
 - The VirusTotal MCP shown is one example. Replace it with your organisation's approved threat intel MCP if different.
-- Every install is pinned. There is no `:latest`, and the repository has immutable tags enabled, so `1.5.2` always means the same bytes.
+- Every install is pinned. There is no `:latest`, and the repository has immutable tags enabled, so `1.5.3` always means the same bytes.
 
 **Restart Claude Desktop** after saving.
 
@@ -166,9 +166,9 @@ Claude verifies connectivity to `s1-secops-mcp`, `purple-mcp`, and the threat in
 You can also test the image straight from a terminal, with no Claude Desktop involved:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.5.2 versions   # what is inside the image
+docker run --rm sentinelone/secops-mcps:1.5.3 versions   # what is inside the image
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm sentinelone/secops-mcps:1.5.2 s1-secops-mcp
+  | docker run -i --rm sentinelone/secops-mcps:1.5.3 s1-secops-mcp
 ```
 
 The second command needs no credentials. It returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"`, and stderr shows `Tools: 35 registered`. The `version` it reports is the bundled MCP's own version, not the image tag.
@@ -189,10 +189,10 @@ To confirm the active plugin version: `which version of s1-secops-skills is inst
 
 ## Upgrading
 
-**MCP servers** (`s1-secops-mcp`, `purple-mcp`, `virustotal`): the config above pins `1.5.2`, so restarting Claude Desktop keeps that exact image. Upgrading means editing the `--image` tag in all three entries. To pre-pull a version before switching to it:
+**MCP servers** (`s1-secops-mcp`, `purple-mcp`, `virustotal`): the config above pins `1.5.3`, so restarting Claude Desktop keeps that exact image. Upgrading means editing the `--image` tag in all three entries. To pre-pull a version before switching to it:
 
 ```bash
-docker pull sentinelone/secops-mcps:1.5.2
+docker pull sentinelone/secops-mcps:1.5.3
 ```
 
 **Plugin**: download the new `.plugin` from [the ai-siem `dist/` folder](../dist/), open Cowork → Customize → Browse plugins, upload, click **Replace** when prompted.
@@ -211,7 +211,7 @@ Moving from 1.4.x to 1.5.0 is a breaking change (no `credentials.json`, no HTTP 
 - **`S1_OUTPUT_DIR`** (Docker launcher) / **`S1_OUTPUT_DIRS`** (server): where `outputFile` may write. The server default is your home and temp directories.
 - **`S1_CLAUDE_MD_PATH`:** points the server at a custom CLAUDE.md (both the macOS/Linux and the Windows launcher mount the host file read-only into the container).
 - **`S1_KEYCHAIN_TIMEOUT`** (sh launcher, seconds, default 15) / **`S1_KEYCHAIN_TIMEOUT_MS`** (native server and Python clients, milliseconds, default 15000): how long a keychain read may wait before it is treated as unavailable.
-- **`S1_MCP_IMAGE`:** the launcher's default image when no `--image` is passed (`sentinelone/secops-mcps:1.5.2`).
+- **`S1_MCP_IMAGE`:** the launcher's default image when no `--image` is passed (`sentinelone/secops-mcps:1.5.3`).
 
 The two values you always need are `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN`, which between them authorise parser and dashboard deployment and every other SDL operation; add `S1_HEC_INGEST_URL` for alert ingest and `S1_HEC_TOKEN` for raw log ingest.
 

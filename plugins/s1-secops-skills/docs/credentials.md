@@ -19,7 +19,7 @@ As of s1-secops-mcp 1.5.0 (plugin 1.3.12) there is **no credentials file**. Valu
 
 `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are the minimum, and between them they authorise every SDL query and configuration operation including parser and dashboard deployment.
 
-Raw log ingest is the one path the console API token does not cover. `/services/collector/raw` and `/event` take the SDL Log Write Key in `S1_HEC_TOKEN`: on identical requests the write key returns `HTTP 200 {"text":"Success","code":0}` and the console token returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}`. A key is minted for exactly one account or site and writes only there, so the key fixes the ingest destination; no `S1-Scope` header is sent and sending one has no effect. UAM alert ingest and IOCs still use `S1_CONSOLE_API_TOKEN`.
+Raw log ingest is the one path the console API token does not reliably cover. `/services/collector/raw` and `/event` take the SDL Log Write Key in `S1_HEC_TOKEN` (`Splunk` or `Bearer` prefix), which returns `HTTP 200 {"text":"Success","code":0}`. The console token's behaviour there differs per console: on some it returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without an `S1-Scope` header and is accepted with one, on others it returns `HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` either way. Use the write key in both cases. A key is minted for exactly one account or site and writes only there, so the key fixes the ingest destination; no `S1-Scope` header is sent, and sending one does not change where the key's events land. UAM alert ingest and IOCs still use `S1_CONSOLE_API_TOKEN`.
 
 The scoped SDL keys (`SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`, `SDL_XDR_URL`) are retired and are no longer read.
 
@@ -182,8 +182,8 @@ Use the host launcher instead. It reads the keychain on the host and hands the v
 
 | Host | Launcher |
 |---|---|
-| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.5.2] [--profile P] <server>` |
-| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.5.2] [-Profile P] <server>` |
+| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.5.3] [--profile P] <server>` |
+| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.5.3] [-Profile P] <server>` |
 
 `<server>` is `s1-secops-mcp`, `purple-mcp` or `virustotal-mcp`. Launcher options go before the server name; anything after it is passed to the server inside the container.
 

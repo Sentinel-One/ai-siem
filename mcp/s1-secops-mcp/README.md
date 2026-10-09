@@ -80,7 +80,7 @@ Point the client at the copy in `~/.local/bin/`, not at the repo checkout. On ma
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.2", "s1-secops-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"]
     }
   }
 }
@@ -132,7 +132,7 @@ There is deliberately no file fallback. Backends: macOS login keychain via `/usr
 | `S1_CONSOLE_URL` | Every Mgmt, PowerQuery, UAM, Hyperautomation and SDL tool |
 | `S1_CONSOLE_API_TOKEN` | Every Mgmt, PowerQuery, UAM, Purple AI summary, Hyperautomation and SDL config-file tool, plus UAM alert ingest |
 | `S1_HEC_INGEST_URL` | `uam_ingest_alert`, `uam_post_alert`, `hec_ingest` |
-| `S1_HEC_TOKEN` | `hec_ingest` only: the SDL Log Write Key. The event collector refuses the console token; the key is minted for one account or site and fixes the destination |
+| `S1_HEC_TOKEN` | `hec_ingest` only: the SDL Log Write Key. The console token is not a reliable substitute at the event collector (400 `Missing S1-Scope header` without a scope header, 403 code 4 on some consoles either way); the key is minted for one account or site and fixes the destination |
 | `S1_SCOPE` | Optional default `S1-Scope` for SDL calls: `<accountId>` or `<accountId>:<siteId>` |
 
 The scoped SDL keys (`SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`, `SDL_XDR_URL`) are retired and are no longer read.
@@ -228,11 +228,11 @@ s1-secops-mcp/
 | API surface | Auth header | Key |
 |-------------|-------------|-----|
 | S1 Mgmt REST API | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
-| LRQ PowerQuery | `Authorization: Bearer <jwt>` | Same token, different prefix |
+| LRQ PowerQuery | `Authorization: Bearer <jwt>`; scope is `tenant: false` + `accountIds` in the body plus a `site.id` term for a site (the `S1-Scope` header does not narrow event rows on a multi-account token, but it still picks which scope's copy of a lookup table is read) | Same token, different prefix |
 | Purple AI GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | UAM GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | UAM alert ingest (`/v1/alerts`) | `Authorization: Bearer <jwt>`, `S1-Scope` required | `S1_CONSOLE_API_TOKEN` |
-| Event collector log ingest | `Authorization: Bearer <write-key>`, no `S1-Scope` | `S1_HEC_TOKEN` |
+| Event collector log ingest | `Authorization: Bearer <write-key>` (`Splunk <write-key>` also accepted), no `S1-Scope`; the key's mint scope decides where events land | `S1_HEC_TOKEN` (the console token is not a reliable substitute: 400 `Missing S1-Scope header` without a scope header, 403 `User token not allowed for this endpoint` on some consoles either way) |
 | SDL config files (`POST /sdl/v2/graphql`) | `Authorization: Bearer <jwt>`, plus an `s1-scope` header that IS honoured: listings and reads are scope-filtered (measured 113 files at account scope vs 4 at a site scope) | `S1_CONSOLE_API_TOKEN`, optional `S1_SCOPE` |
 
 ## Testing

@@ -12,6 +12,7 @@ import { getCreds, setupHint } from './credentials.js';
 import { parseJsonExact } from './json.js';
 import { scopeHeaders } from './sdl.js';
 import { excludeMetering, firstTopLevelPipe } from './metering.js';
+import { lrqScope, addSiteFilter, isAccountAccessRefusal } from './lrq-scope.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -283,6 +284,13 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
     throw new Error('queryType "LOG" takes a filter expression only (no pipes or commands), e.g. dataSource.name=\'X\' * contains \'evil.com\'. Use queryType "PQ" for pipelines.');
   }
 
+  // Scope (issue #111): the LRQ API ignores S1-Scope for a multi-account user, so
+  // the account goes in the body (tenant:false + accountIds) and the site goes in
+  // the query as a site.id term. See lib/lrq-scope.js for the measurements.
+  const lrqScopeInfo = lrqScope(scope);
+  const site = addSiteFilter(query, lrqScopeInfo.siteId);
+  query = site.query;
+
   // Exclude SDL ingest-metering rows (tag='logVolume') unless asked not to; see lib/metering.js.
   // Not with edrStrict: scheme=edr validates every field against the EDR schema,
   // `tag` is not an EDR field (HTTP 400 "Unknown EDR field 'tag'"), and EDR
@@ -299,22 +307,29 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
   const launchUrl = `${b}/sdl/v2/api/queries`;
   const launchBody = isLog
     ? {
-        queryType: 'LOG', tenant: true, startTime, endTime, queryPriority: 'HIGH',
+        queryType: 'LOG', ...lrqScopeInfo.body, startTime, endTime, queryPriority: 'HIGH',
         // log.limit is the server-side row cap (typically max 5000). A result that
         // returns exactly this many rows was truncated; there is no page 2.
         log: { filter: query, limit: Math.max(1, Math.min(Number(logLimit) || 5000, 5000)) },
       }
     : {
-        queryType: 'PQ', tenant: true, startTime, endTime, queryPriority: 'HIGH',
+        queryType: 'PQ', ...lrqScopeInfo.body, startTime, endTime, queryPriority: 'HIGH',
         pq: { query, resultType: 'TABLE' },
       };
+  // What the caller asked for and how it was applied; returned with the result.
+  const scopeApplied = lrqScopeInfo.resolved
+    ? { scope: lrqScopeInfo.resolved, mode: 'accountIds', accountIds: launchBody.accountIds,
+        siteFilter: site.applied ? `site.id='${lrqScopeInfo.siteId}'` : null,
+        ...(lrqScopeInfo.siteId ? { siteFilterApplied: site.applied ? site.reason : `none: ${site.reason}` } : {}) }
+    : { scope: null, mode: 'tenant', note: 'Unscoped: runs across every account this token can reach. Pass scope "<accountId>" or "<accountId>:<siteId>" to narrow.' };
   // Top-level scheme=edr (platform S-26.2.6): an unknown or wrongly cased EDR field is
   // HTTP 400 "Unknown EDR field" instead of a silent matchCount=0. It must be top level;
   // inside pq it is HTTP 400 "Invalid JSON". Correct fields return the same rows.
   if (edrStrict && !isLog) launchBody.scheme = 'edr';
 
-  // S1-Scope applies to log reads exactly as it does to config reads: an LRQ
-  // run without the intended scope silently answers for the token default.
+  // S1-Scope is still sent. It narrows an account-level token, it is ignored for
+  // event rows on a multi-account one (accountIds does that), and on every token it
+  // picks which scope's copy of a lookup table `| dataset` / `| lookup` reads.
   const scopeHdrs = scopeHeaders(scope);
 
   // Launch. A launch only creates a read-only query, so retrying a 429/5xx is
@@ -345,6 +360,23 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
 
     if (!launchRes.ok) {
       const body = await launchRes.text();
+      if (isAccountAccessRefusal(launchRes.status, body) && launchBody.tenant === false) {
+        if (lrqScopeInfo.siteId && site.applied) {
+          // A site-level user cannot name the account. tenant:true covers only what
+          // the token can reach, and the site.id term still narrows to the site.
+          delete launchBody.accountIds;
+          launchBody.tenant = true;
+          scopeApplied.mode = 'tenant+siteFilter';
+          scopeApplied.accountIds = null;
+          scopeApplied.note = 'accountIds was refused for this token (no account access), so the query ran with tenant:true and the site.id term.';
+          return launch();
+        }
+        throw new Error(
+          `LRQ launch failed (${launchRes.status}): ${body} ` +
+          `Scope "${lrqScopeInfo.resolved}" names an account this token cannot reach. Check the id with ` +
+          's1_api_get /web/api/v2.1/accounts, or for a site-level token pass "<accountId>:<siteId>".'
+        );
+      }
       throw new Error(`LRQ launch failed (${launchRes.status}): ${body}`);
     }
 
@@ -450,8 +482,10 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
       matchCount: pickMatchCount(result),
       queryId,
       startTime, endTime,
+      scopeApplied,
       meteringExcluded: metering.applied,
       ...(metering.applied ? { effectiveQuery: query } : { meteringNote: metering.reason }),
+      ...(!metering.applied && site.applied ? { effectiveQuery: query } : {}),
     };
   }
   const columns = data.columns || [];
@@ -473,8 +507,10 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
     totalRows: rawRows.length,
     matchCount: pickMatchCount(result),
     queryId,
+    scopeApplied,
     meteringExcluded: metering.applied,
     ...(metering.applied ? { effectiveQuery: query } : { meteringNote: metering.reason }),
+    ...(!metering.applied && site.applied ? { effectiveQuery: query } : {}),
   };
 }
 
@@ -594,6 +630,10 @@ export async function uamListAlerts({
   endTime = null,          // ISO string or epoch ms; defaults to now when startTime is set
   // Raw FilterInput list: overrides all convenience params above when provided
   filters = null,
+  // UAM ScopeSelectorInput {scopeIds, scopeType}. Omitted = every account the token
+  // can see (issue #111: a global token listed 135,296 alerts across accounts;
+  // scope {scopeIds:[A], scopeType:ACCOUNT} returned 120,777, all in A).
+  scope = null,
 } = {}) {
 
   // Build filters array
@@ -629,11 +669,12 @@ export async function uamListAlerts({
     ...(after ? { after } : {}),
     ...(builtFilters.length ? { filters: builtFilters } : {}),
     viewType,
+    ...(scope ? { scope } : {}),
   };
 
   const query = `
-    query ListAlerts($first: Int, $after: String, $filters: [FilterInput!], $viewType: ViewType) {
-      alerts(first: $first, after: $after, filters: $filters, viewType: $viewType) {
+    query ListAlerts($first: Int, $after: String, $filters: [FilterInput!], $viewType: ViewType, $scope: ScopeSelectorInput) {
+      alerts(first: $first, after: $after, filters: $filters, viewType: $viewType, scope: $scope) {
         pageInfo { hasNextPage endCursor }
         totalCount
         edges {
@@ -652,6 +693,7 @@ export async function uamListAlerts({
             confidenceLevel
             primaryIndicatorType
             assignee { fullName email }
+            realTime { scope { account { id } site { id } } }
           }
         }
       }
@@ -660,9 +702,15 @@ export async function uamListAlerts({
   const data = await uamGraphql(query, variables, undefined, { readOnly: true });
   const edges = data?.alerts?.edges || [];
   return {
-    alerts: edges.map(e => e.node),
+    // Flatten realTime.scope to accountId/siteId so a global-token listing says
+    // which account each alert belongs to.
+    alerts: edges.map(({ node }) => {
+      const { realTime, ...rest } = node || {};
+      return { ...rest, accountId: realTime?.scope?.account?.id ?? null, siteId: realTime?.scope?.site?.id ?? null };
+    }),
     totalCount: data?.alerts?.totalCount ?? null,
     pageInfo: data?.alerts?.pageInfo || {},
+    scope: scope || 'all accounts visible to the token',
   };
 }
 
@@ -732,21 +780,20 @@ export async function uamAddNote(alertId, noteText) {
  * explaining any refused action. Returns the raw list, each entry carrying
  * `{id, title, type, isDisabled, disabledReason}`.
  *
- * `alertAvailableActions` needs a non-null `scope`, unlike alertTriggerActions,
- * so account ids are resolved first. Availability is scope-sensitive (measured:
+ * `scope` is optional in the schema, but the answer depends on it (measured
+ * 2026-10-09: 15 actions unscoped, 17 with the alert's ACCOUNT scope on one
+ * console), so the alert's own account is resolved first, as the console sends it.
+ * An unknown alert id returns an empty list, no error. Availability is scope-sensitive (measured:
  * the S1/incident/* actions report
  * INCIDENT_ACTIONS_ONLY_AVAILABLE_FROM_SITE_VIEW under ACCOUNT scope and are
  * enabled under SITE), so pass `scope` explicitly when you care about a
  * site-scoped action.
  */
 export async function uamAvailableActions(alertId, scope) {
-  let resolved = scope;
-  if (!resolved) {
-    const accts = await apiGet('/web/api/v2.1/accounts', { limit: 100 });
-    const ids = (accts?.data || []).map((a) => a.id).filter(Boolean);
-    if (!ids.length) throw new Error('no accounts visible to this token');
-    resolved = { scopeIds: ids, scopeType: 'ACCOUNT' };
-  }
+  // Default: the alert's own account (as the writes do), else every account the
+  // token can see. Issue #111: the old first-100-accounts default answered 0
+  // actions, with no error, for an alert in account 101+ on a global token.
+  const resolved = scope || await alertScope(alertId);
   const query = `
     query AvailableActions($scope: ScopeSelectorInput!, $filter: OrFilterSelectionInput) {
       alertAvailableActions(scope: $scope, filter: $filter) {
@@ -924,11 +971,34 @@ export async function uamAlertState(alertId) {
   return data?.alert || null;
 }
 
+/**
+ * Every account id visible to the token, following the cursor. Issue #111: the
+ * old single `limit: 100` page dropped accounts 101+ on a global token (385
+ * accounts measured), and an alert in one of them was offered 0 actions.
+ */
+export async function allAccountIds({ max = 10000 } = {}) {
+  const ids = [];
+  let cursor;
+  do {
+    const page = await apiGet('/web/api/v2.1/accounts', { limit: 100, ...(cursor ? { cursor } : {}) });
+    for (const a of page?.data || []) if (a?.id) ids.push(String(a.id));
+    cursor = page?.pagination?.nextCursor || null;
+  } while (cursor && ids.length < max);
+  return ids;
+}
+
 async function allAccountsScope() {
-  const accts = await apiGet('/web/api/v2.1/accounts', { limit: 100 });
-  const ids = (accts?.data || []).map((a) => a.id).filter(Boolean);
+  const ids = await allAccountIds();
   if (!ids.length) throw new Error('no accounts visible to this token');
   return { scopeIds: ids, scopeType: 'ACCOUNT' };
+}
+
+/** UAM scope for one alert: its own account when the API reports it, else every
+ *  account the token can see. Exported for uamAvailableActions and the writes. */
+export async function alertScope(alertId) {
+  const st = await uamAlertState(alertId).catch(() => null);
+  const accountId = st?.realTime?.scope?.account?.id;
+  return accountId ? { scopeIds: [String(accountId)], scopeType: 'ACCOUNT' } : allAccountsScope();
 }
 
 /**

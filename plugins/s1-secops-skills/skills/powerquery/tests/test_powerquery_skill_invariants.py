@@ -150,5 +150,50 @@ class DetectionEngineeringDocumented(unittest.TestCase):
                                      r"\*\* alone is NOT a valid initial filter")
 
 
+class LiveFindings20261009(unittest.TestCase):
+    """Facts measured live 2026-10-09 on three consoles."""
+
+    def setUp(self):
+        ref = SKILL_DIR / "references"
+        self.rules = (ref / "detection-rules.md").read_text(encoding="utf-8")
+        self.ds = (ref / "datasource-command.md").read_text(encoding="utf-8")
+        self.lrq = (ref / "lrq-api.md").read_text(encoding="utf-8")
+
+    def test_scheduled_rules_toggle_error_is_a_console_setting(self):
+        self.assertIn("4000010", self.rules)
+        self.assertIn("scheduled rules toggle not enabled for scope site", self.rules)
+        self.assertRegex(self.rules, r"(?i)per-console setting")
+        self.assertRegex(self.rules, r"(?i)do not retry")
+
+    def test_disable_streaks_logic_lives_under_scheduled_params(self):
+        self.assertIn("`data.scheduledParams.disableStreaksLogic`", self.rules)
+        self.assertIn("data: dict_values(['disableStreaksLogic']): Unknown field",
+                      self.rules)
+
+    def test_datasource_inventories_use_their_own_site_column(self):
+        self.assertRegex(self.ds, r"`vulnerabilities` and `misconfigurations` use `siteId`")
+        self.assertIn("filter siteId='<siteId>'", self.ds)
+        self.assertRegex(self.ds, r"`alerts` has no site column")
+        # assets columns are named but explicitly not validated.
+        self.assertRegex(self.ds, r"s1OnboardedSiteId[^\n]*not yet validated")
+
+    def test_site_id_string_and_number_forms(self):
+        self.assertRegex(self.lrq, r"(?i)`site\.id` is stored as a string on some "
+                                   r"events and as a number on others")
+        self.assertIn("`site.id='<siteId>'`, which matches both forms", self.lrq)
+
+    def test_lrq_api_copies_stay_identical(self):
+        # mgmt-console-api's copy is mirrored by the lead; compare what exists.
+        mine = (SKILL_DIR / "references" / "lrq-api.md").read_bytes()
+        other = ROOT / "sdl-api" / "references" / "lrq-api.md"
+        if other.is_file():
+            self.assertEqual(mine, other.read_bytes(),
+                             "powerquery and sdl-api copies of lrq-api.md diverged")
+
+    def test_correlation_window_does_not_deduplicate(self):
+        self.assertIn("A window also does not deduplicate.", self.rules)
+        self.assertRegex(self.rules, r"two seeds of 10 matching events.*\n?.*raised two alerts|raised two alerts")
+
+
 if __name__ == "__main__":
     unittest.main()

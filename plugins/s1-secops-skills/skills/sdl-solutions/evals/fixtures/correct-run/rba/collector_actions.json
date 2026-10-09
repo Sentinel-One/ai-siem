@@ -41,7 +41,7 @@
         "headers": [{ "key": "Content-Type", "value": "application/json" }],
         "body_type": "ndjson",
         "payload": "{{ndjson}}",
-        "_connection": "separate Bearer connection holding an SDL Log Write Key; the console token is refused here"
+        "_connection": "separate Bearer connection holding an SDL Log Write Key; the console token is not a reliable substitute here (400 without a scope header, 403 code 4 on some consoles)"
       }
     }
   }

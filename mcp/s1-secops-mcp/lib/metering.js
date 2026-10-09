@@ -22,7 +22,7 @@ export const METERING_PREDICATE = "tag != 'logVolume'";
 // Queries that open with one of these commands do not scan the event stream
 // directly (inventory, config tables, multi-branch queries), so a leading
 // predicate would be wrong or rejected. They are passed through unchanged.
-const PASSTHROUGH_COMMANDS = new Set(['datasource', 'dataset', 'join', 'union', 'inputlookup', 'lookup', 'savelookup']);
+export const PASSTHROUGH_COMMANDS = new Set(['datasource', 'dataset', 'join', 'union', 'inputlookup', 'lookup', 'savelookup']);
 
 /** Index of the first `|` that is outside single or double quotes, or -1. */
 export function firstTopLevelPipe(q) {

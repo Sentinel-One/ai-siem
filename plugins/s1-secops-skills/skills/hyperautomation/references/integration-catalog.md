@@ -479,10 +479,13 @@ dead ends for new flows:
   Carry indicators inline in the alert, in `finding_info.related_events[]`, in a single
   `POST /v1/alerts`, which is also what populates the console Indicators tab. `/v1/alerts` itself
   is unchanged and still takes the console API token.
-- **`/services/collector/*` needs an SDL Log Write Key**, not the console API token: the write key
-  returns `HTTP 200 {"text":"Success","code":0}` where the console token returns
-  `HTTP 400 {"text":"Missing S1-Scope header","code":5}`. The key is minted for one account or
-  site and that fixes where the events land, so no `S1-Scope` header applies.
+- **`/services/collector/*` takes an SDL Log Write Key.** The write key returns
+  `HTTP 200 {"text":"Success","code":0}`. The console API token is not a reliable substitute: on
+  some consoles it returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without an
+  `S1-Scope` header and is accepted with one, on others it returns
+  `HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` either way. Use the write
+  key in both cases. The key is minted for one account or site and that fixes where the events
+  land, so it needs no `S1-Scope` header.
 
 ### Palo Alto Networks / Firewall
 

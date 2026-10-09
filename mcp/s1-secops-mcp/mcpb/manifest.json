@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "s1-secops-mcp",
   "display_name": "SentinelOne SecOps MCP",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "PowerQuery, Management Console API, Unified Alert Management, Singularity Data Lake and Hyperautomation tools for a SentinelOne tenant.",
   "long_description": "Runs the s1-secops-mcp server (stdio) inside Claude Desktop. Enter the console URL and API token in the extension settings; Claude Desktop stores fields marked sensitive in the OS secure store (Keychain on macOS, Credential Manager on Windows) and passes them to the server as environment variables at launch. The server is started with S1_KEYCHAIN=off, so the values in these settings are the only credentials it uses.\n\n35 tools: PowerQuery (LRQ) hunts and schema discovery, generic Mgmt Console REST calls, UAM alert triage (status, analyst verdict, assignee, notes), SDL configuration files and dashboards, HEC log ingest, UAM test-alert ingest, and Hyperautomation workflow import and export. Also serves the soc_analyst and session_init prompts.",
   "author": {

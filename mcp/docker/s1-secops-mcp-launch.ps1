@@ -221,7 +221,7 @@ if ($Command -in 'install', 'config') {
   try { $hasToken = [bool](Get-Kc 'S1_CONSOLE_API_TOKEN') } catch { Write-Err "s1-secops-mcp-launch: warning: Credential Manager unavailable: $($_.Exception.Message)" }
   if (-not $hasToken) {
     if (-not [Console]::IsInputRedirected) {
-      Write-Err "No credentials stored yet for profile $KeyProfile. Starting setup."
+      Write-Err "S1_CONSOLE_API_TOKEN is not stored for profile $KeyProfile. Starting setup: press Enter to keep any value already stored."
       & (Get-Process -Id $PID).Path -NoProfile -ExecutionPolicy Bypass -File $dest -Profile $KeyProfile setup
       $still = $true; try { $still = -not (Get-Kc 'S1_CONSOLE_API_TOKEN') } catch { }
       if ($still) { Write-Err "s1-secops-mcp-launch: warning: S1_CONSOLE_API_TOKEN is still not stored. Run: powershell -NoProfile -ExecutionPolicy Bypass -File `"$dest`" setup  (paste with right-click if Ctrl+V does nothing)" }

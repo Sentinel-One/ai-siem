@@ -554,7 +554,7 @@ Full walkthrough (keychain setup, config block, prerequisites, project setup, up
 
 ### Upgrading
 
-- **MCPs**: bump the pinned `--image` tag in `claude_desktop_config.json` to the current release (`1.5.2`), run `docker pull sentinelone/secops-mcps:1.5.3`, and restart Claude Desktop. Coming from 1.4.x, also move credentials into the keychain and switch to the launcher. There is no moving tag to drift onto, so an upgrade is always an explicit, reviewable edit.
+- **MCPs**: bump the pinned `--image` tag in `claude_desktop_config.json` to the current release (`1.5.3`), run `docker pull sentinelone/secops-mcps:1.5.3`, and restart Claude Desktop. Coming from 1.4.x, also move credentials into the keychain and switch to the launcher. There is no moving tag to drift onto, so an upgrade is always an explicit, reviewable edit.
 - **Plugin**: download the newer `.plugin` from [the ai-siem `dist/` folder](./dist/), then Cowork → Customize → Browse plugins, upload, and click **Replace**.
 
 Step-by-step, including what to delete from an older config: **[docs/upgrading.md](./docs/upgrading.md)**.

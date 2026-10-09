@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- Infoblox DNS Query Logs → OCSF 1.3.0 DNS Activity (class_uid = 4003)
--- Observo processEvent(event) contract
--- Author: Observo AI  |  Schema: OCSF 1.3.0  |  Class: DNS Activity (4003)
+-- Data Pipelines processEvent(event) contract
+-- Author: Data Pipelines AI  |  Schema: OCSF 1.3.0  |  Class: DNS Activity (4003)
 -- Covers: Infoblox NIOS syslog (named), RPZ/Threat Intelligence, pre-parsed flat
 -- Raw syslog patterns handled:
 --   Query:    client <ip>#<port> (<qname>): query: <qname> <class> <type> <flags> (<srv>)
@@ -1048,7 +1048,7 @@ end
 
 --------------------------------------------------------------------------------
 -- MAIN: processEvent
--- Entry point required by the Observo Lua transform runtime.
+-- Entry point required by the Data Pipelines Lua transform runtime.
 -- All helpers are declared as local functions ABOVE this function.
 -- Handles both:
 --   (A) Raw Infoblox NIOS syslog messages (named log format)

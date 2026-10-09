@@ -5,6 +5,8 @@ metadata_details:
     Application Activity events for SentinelOne AI SIEM.
 
   pipeline_category: "ingestion"
+  ingest_mode: "API Call"
+  auth_type: "API Key & Secret"
 
   source_template: "Cisco Duo Logs Collector"
   source_vendor: "Cisco Duo"
@@ -38,7 +40,7 @@ metadata_details:
     maxtime parameters and metadata.next_offset for pagination.
 
   retry_behavior: >
-    Uses built-in Observo retry with exponential backoff (retry.initial_backoff_secs,
+    Uses built-in Data Pipelines retry with exponential backoff (retry.initial_backoff_secs,
     retry.backoff_scaling_factor, retry.max_backoff_secs, retry.max_retries) and
     emits explicit error logs for 401 (auth failure), 403 (missing permissions),
     429 (rate limiting), and 400 (bad request) responses.
@@ -52,7 +54,7 @@ metadata_details:
   performance_impact: >
     MAX_PAGE_CALLS and per-request limit=1000 bound API usage. For large tenants,
     increase MAX_PAGE_CALLS, fetchers, and runtimes to reduce catch-up time while
-    monitoring Duo rate limits and Observo queue sizes.
+    monitoring Duo rate limits and Data Pipelines queue sizes.
 
   tags:
     - cisco

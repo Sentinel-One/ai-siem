@@ -28,7 +28,7 @@
       "name": "serializer",
       "type": "select",
       "value": "fortinet-fortigate-lua",
-      "description": "Serializer identifier used by Observo runtime"
+      "description": "Serializer identifier used by Data Pipelines runtime"
     },
     {
       "name": "lua",
@@ -52,6 +52,6 @@
   },
   "provenance": {
     "tier": "ui",
-    "source": "Observo.ai Pipeline Manager UI (production template)"
+    "source": "Data Pipelines.ai Pipeline Manager UI (production template)"
   }
 }

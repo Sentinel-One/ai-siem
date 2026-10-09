@@ -5,6 +5,8 @@ metadata_details:
     Email Activity and Email URL Activity classes for SentinelOne AI SIEM.
 
   pipeline_category: "ingestion"
+  ingest_mode: "API Call"
+  auth_type: "Basic"
 
   source_template: "Proofpoint SIEM API Collector"
   source_vendor: "Proofpoint"
@@ -42,7 +44,7 @@ metadata_details:
     queryEndTime to support incremental collection.
 
   retry_behavior: >
-    Uses Observo retry with exponential backoff for transient failures. On
+    Uses Data Pipelines retry with exponential backoff for transient failures. On
     HTTP 500 or 400 responses, the script advances the SINCE_TIME checkpoint
     to the current UTC time to avoid getting stuck on bad windows, and emits
     diagnostic logs. 401 and 429 are surfaced as error records for operator
@@ -56,7 +58,7 @@ metadata_details:
   performance_impact: >
     The polling interval and size of the sinceTime window determine volume.
     For very busy mail environments, consider separate pipelines per region
-    or log type, and tune Observo scale.* queues and fetchers for higher
+    or log type, and tune Data Pipelines scale.* queues and fetchers for higher
     throughput.
 
   tags:

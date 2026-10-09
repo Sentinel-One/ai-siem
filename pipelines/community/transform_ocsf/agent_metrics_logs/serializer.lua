@@ -1,5 +1,5 @@
 -- OCSF Device Inventory Info (class_uid 5001) serializer
--- Source: SentinelOne agent telemetry / Observo Agent metrics logs
+-- Source: SentinelOne agent telemetry / Data Pipelines Agent metrics logs
 -- Reclassified from 1007 Process Activity per 2026-04-19 Orion validation.
 
 local CLASS_UID = 5001
@@ -7,7 +7,7 @@ local CATEGORY_UID = 5
 local TYPE_UID = 500101
 local ACTIVITY_ID = 1
 
--- Safe millisecond clock (pcall-guarded per Observo sandbox rules)
+-- Safe millisecond clock (pcall-guarded per Data Pipelines sandbox rules)
 function safeTimeMs()
     local ok, secs = pcall(os.time)
     if ok and secs then return secs * 1000 end

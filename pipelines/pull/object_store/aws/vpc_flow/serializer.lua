@@ -5,7 +5,7 @@ local CLASS_UID = 4001
 local CATEGORY_UID = 4
 local TYPE_UID = 400101
 
--- Safe millisecond clock (pcall-guarded per Observo sandbox rules)
+-- Safe millisecond clock (pcall-guarded per Data Pipelines sandbox rules)
 function safeTimeMs()
     local ok, secs = pcall(os.time)
     if ok and secs then return secs * 1000 end

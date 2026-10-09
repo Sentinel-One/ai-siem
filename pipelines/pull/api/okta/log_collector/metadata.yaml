@@ -6,6 +6,8 @@ metadata_details:
     policy evaluation, and application membership changes.
 
   pipeline_category: "ingestion"
+  ingest_mode: "API Call"
+  auth_type: "API Key & Secret"
 
   source_template: "Okta Logs Collector"
   source_vendor: "Okta"
@@ -42,7 +44,7 @@ metadata_details:
     header next_url, honoring max_page_calls to bound per-run pagination.
 
   retry_behavior: >
-    Uses Observo retry with exponential backoff for HTTP failures and emits
+    Uses Data Pipelines retry with exponential backoff for HTTP failures and emits
     explicit log messages for 400 (bad request), 401 (auth failure), 429
     (rate limit), and other non-success responses. Checkpoints are only
     advanced after successful page processing to avoid gaps.

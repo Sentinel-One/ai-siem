@@ -1,10 +1,12 @@
 metadata_details:
   purpose: >
     Ingest AWS CloudTrail events from S3 (via SQS notifications) into
-    SentinelOne AI SIEM using Observo, normalizing them into OCSF
+    SentinelOne AI SIEM using Data Pipelines, normalizing them into OCSF
     HTTP / API Activity events for downstream detections and dashboards.
 
   pipeline_category: "ingestion"
+  ingest_mode: "Other - Object store (S3 with SQS notifications)"
+  auth_type: "IAM Role"
 
   source_template: "AWS S3"
   source_vendor: "AWS"
@@ -33,18 +35,18 @@ metadata_details:
 
   scheduling: >
     Continuous SQS-driven collection from the configured queue
-    (sqs.queue_url), using Observo's AWS_S3 source. Events are pulled as they
+    (sqs.queue_url), using Data Pipelines's AWS_S3 source. Events are pulled as they
     arrive in S3; batching and processing cadence are controlled by the
     source runtime rather than a fixed timer.
 
   retry_behavior: >
-    Observo fetch retry with exponential backoff (retry.initial_backoff_secs,
+    Data Pipelines fetch retry with exponential backoff (retry.initial_backoff_secs,
     retry.backoff_scaling_factor, retry.max_backoff_secs, retry.max_retries)
     for SQS / S3 operations and AI SIEM delivery. Failed events are logged
     and reattempted without duplicating already-acknowledged SQS messages.
 
   dependencies: >
-    Requires an AWS account with an IAM role that Observo can assume
+    Requires an AWS account with an IAM role that Data Pipelines can assume
     (auth.assume_role + auth.external_id) and an SQS queue wired to the S3
     bucket(s) containing CloudTrail logs. Requires a SentinelOne AI SIEM
     ingest token and endpoint configured on the SPLUNK_HEC_LOGS destination.

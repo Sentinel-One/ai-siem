@@ -4,7 +4,7 @@ local CATEGORY_UID = 3
 local CLASS_NAME = "Authentication"
 local CATEGORY_NAME = "Identity & Access Management"
 
--- Helper Functions (production-proven from Observo scripts)
+-- Helper Functions (production-proven from Data Pipelines scripts)
 function getNestedField(obj, path)
     if obj == nil or path == nil or path == '' then return nil end
     local current = obj

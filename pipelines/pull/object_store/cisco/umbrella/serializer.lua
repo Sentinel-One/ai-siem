@@ -7,7 +7,7 @@ local CATEGORY_UID = 4
 local CLASS_NAME = "Network Activity"
 local CATEGORY_NAME = "Network Activity"
 
--- Helper functions (production-proven from Observo scripts)
+-- Helper functions (production-proven from Data Pipelines scripts)
 function getNestedField(obj, path)
     if obj == nil or path == nil or path == '' then return nil end
     local current = obj

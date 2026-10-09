@@ -4,7 +4,7 @@
 local CLASS_UID = 4001
 local CATEGORY_UID = 4
 
--- Nested field access (production-proven from Observo scripts)
+-- Nested field access (production-proven from Data Pipelines scripts)
 function getNestedField(obj, path)
     if obj == nil or path == nil or path == '' then return nil end
     local current = obj
@@ -35,7 +35,7 @@ function getValue(tbl, key, default)
     return value ~= nil and value or default
 end
 
--- Replace userdata nil values (Observo sandbox quirk)
+-- Replace userdata nil values (Data Pipelines sandbox quirk)
 function no_nulls(d, rn)
     if type(d) == "table" then
         for k, v in pairs(d) do

@@ -5,7 +5,7 @@ local CLASS_UID = 4003
 local CATEGORY_UID = 4
 local DEFAULT_ACTIVITY_ID = 1 -- Query
 
--- Nested field access (production-proven from Observo scripts)
+-- Nested field access (production-proven from Data Pipelines scripts)
 function getNestedField(obj, path)
     if obj == nil or path == nil or path == '' then return nil end
     local current = obj

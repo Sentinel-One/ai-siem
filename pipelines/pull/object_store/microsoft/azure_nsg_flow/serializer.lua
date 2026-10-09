@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- Azure NSG Flow Logs → OCSF 1.3.0 Network Activity (class_uid = 4001)
--- Observo processEvent(event) contract
--- Author: Observo AI  |  Schema: OCSF 1.3.0  |  Class: Network Activity (4001)
+-- Data Pipelines processEvent(event) contract
+-- Author: Data Pipelines AI  |  Schema: OCSF 1.3.0  |  Class: Network Activity (4001)
 -- Covers: NSG Flow Log v1 & v2 (nested JSON) + pre-parsed flat records
 -- Flow Tuple v2: ts,src_ip,dst_ip,src_port,dst_port,proto,dir,action,
 --                flow_state,pkts_sent,bytes_sent,pkts_recv,bytes_recv
@@ -832,7 +832,7 @@ end
 
 --------------------------------------------------------------------------------
 -- MAIN: processEvent
--- Entry point required by the Observo Lua transform runtime.
+-- Entry point required by the Data Pipelines Lua transform runtime.
 -- All helpers are declared as local functions ABOVE this function.
 -- Handles both:
 --   (A) Pre-parsed flat NSG flow records (individual tuple fields already extracted)

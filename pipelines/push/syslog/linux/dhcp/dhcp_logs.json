@@ -28,7 +28,7 @@
       "name": "serializer",
       "type": "select",
       "value": "dhcp-logs-lua",
-      "description": "Serializer identifier used by Observo runtime"
+      "description": "Serializer identifier used by Data Pipelines runtime"
     },
     {
       "name": "lua",

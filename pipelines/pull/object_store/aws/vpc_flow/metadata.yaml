@@ -12,7 +12,7 @@ metadata_details:
   dataSource: AWS VPC Flow Logs
   format: json
   ocsf_version: 1.3.0
-  ingestion_method: "Observo OCSFSerializer (Lua-based transform)"
+  ingestion_method: "Data Pipelines OCSFSerializer (Lua-based transform)"
   ingest_mode: "Other - {Explain: VPC Flow Logs to S3 or CloudWatch Logs}"
   auth_type: "IAM Role"
   ocsf_mapping:
@@ -20,6 +20,6 @@ metadata_details:
     class_name: "Network Activity"
     category_uid: 4
     category_name: "Network Activity"
-  tags: "observo, ocsf, lua, aws, serializer, network_activity, remediation_2026_04_19"
+  tags: "datapipelines, ocsf, lua, aws, serializer, network_activity, remediation_2026_04_19"
   author: "Purple-Pipeline-Parser-Eater + Orion remediation pass 2026-04-19"
   version: "v1.0"

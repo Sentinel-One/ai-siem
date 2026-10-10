@@ -9,14 +9,15 @@ on:
       - main
 
 permissions:
-  contents: write        # needed for tags + releases
-  id-token: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
   trufflehog:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write          # open an issue when a push to main fails the scan
+      pull-requests: write   # comment on PRs when the scan fails
     env:
       TRUFFLEHOG_VERSION: v3.76.0
     defaults:
@@ -25,13 +26,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
       - name: TruffleHog OSS
         id: trufflehog
-        uses: trufflesecurity/trufflehog@v3.76.0
+        uses: trufflesecurity/trufflehog@0d8c3335ed9321c2e198206f9279a31c8f2e3b67 # v3.76.0
         continue-on-error: true
         with:
           path: ./
@@ -43,7 +44,7 @@ jobs:
 
       - name: Notify on PR (comment)
         if: steps.trufflehog.outcome == 'failure' && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -68,7 +69,7 @@ jobs:
 
       - name: Notify via issue (push to main)
         if: steps.trufflehog.outcome == 'failure' && github.event_name == 'push'
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -107,13 +108,15 @@ jobs:
       github.ref == 'refs/heads/main' &&
       needs.trufflehog.result == 'success'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # create tag and GitHub Release
     defaults:
       run:
         shell: bash
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
@@ -164,7 +167,7 @@ jobs:
           git push origin "$NEW_TAG"
 
       - name: Create GitHub Release with asset
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ env.NEW_TAG }}          # e.g. v_1_7_0
           name: v${{ env.NEW_VERSION }}         # e.g. v1.7.0 (matches existing releases)

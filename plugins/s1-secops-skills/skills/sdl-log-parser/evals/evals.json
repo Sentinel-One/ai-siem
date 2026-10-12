@@ -119,6 +119,11 @@
         {
           "type": "output_absent",
           "pattern": "\\|\\s*sort\\s+[A-Za-z0-9_.]+\\s+(?:desc|asc)\\b"
+        },
+        {
+          "type": "lint_clean",
+          "glob": "cef_parser.json",
+          "new": true
         }
       ]
     },
@@ -231,6 +236,11 @@
         {
           "type": "output_absent",
           "pattern": "\\|\\s*head\\b"
+        },
+        {
+          "type": "lint_clean",
+          "glob": "envelope_parser.json",
+          "new": true
         }
       ]
     },
@@ -356,6 +366,11 @@
         {
           "type": "output_absent",
           "pattern": "\\|\\s*head\\b"
+        },
+        {
+          "type": "lint_clean",
+          "glob": "multiline_parser.json",
+          "new": true
         }
       ]
     },

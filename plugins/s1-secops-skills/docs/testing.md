@@ -31,6 +31,7 @@ The Python tests are host-only: run them from a terminal or Claude Code on your 
 | Detection rule ENABLE/DISABLE | CREATE (disabled) → ENABLE → VERIFY_ON → DISABLE → VERIFY_OFF → DELETE → VERIFY (scheduled + events) | `tests/test_detection_rule_activate_lifecycle.py` | Yes (demo site; 24h window prevents real firing) | PASSED |
 | XDR Graph Query | FORMAT DISCOVERY → SAVE → LIST → UPDATE → DELETE → VERIFY | `tests/test_xdr_graph_query_lifecycle.py` | Yes (skips gracefully if no saved queries exist for format template) | PASSED (skipped on demo: no saved queries) |
 | STAR rules (events-type detection) | CREATE (Draft) → LIST → UPDATE → DELETE → VERIFY | `tests/test_star_rule_lifecycle.py` | Yes (Draft status, never activates) | PASSED |
+| Parser lint rules (sdl-log-parser `scripts/parser_rules.py`) | per rule: deploy a bad and a good parser → HEC ingest a sample → query fields → delete (2026-10-13, 11 rules with an observable engine effect) | via MCP tools (`sdl_put_file`, `hec_ingest`, `powerquery_run`, `sdl_delete_file`) | Yes | PASSED; corrected three prior claims (v0 `constants` key, v0 same-name rename, anchored lazy prefix) |
 | PowerQuery Scheduled Detection lifecycle | CREATE → GET → ENABLE → verify activating → DISABLE → GET → DELETE → verify gone | via MCP tools directly | Yes | PASSED |
 
 ---

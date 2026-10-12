@@ -75,7 +75,8 @@ mappings: {
 Differences from v1:
 
 - Top-level ops are **plural arrays**: `copies`, `renames`, `constants` (not `transformations`).
-- Each op entry has `inputs: [list]` (even for `rename`: always a list in v0) + `output: "..."` + `type: "..."`.
+- Each `renames` / `copies` entry has `inputs: [list]` (even for `rename`: always a list in v0) + `output: "..."` + `type: "..."`.
+- Each `constants` entry is `{ field, value, type?, predicate? }`: keyed **`field`**, not `output`. An `output`-keyed constant is rejected by `putFile` ("Expected a field"); live-validated 2026-10-13.
 - Predicate inside a constant uses `=` (single equals). Engine-level predicates (the outer `predicate:` on the mapping entry) also accept `=` in v0.
 - `type:` on copies/renames is a soft coerce: `"string"` is the universal safe choice when in doubt.
 - No `transformations` wrapper. The ops are direct keys on the mapping entry.
@@ -391,7 +392,7 @@ Source `{"Resource": {"Id": "abc", "Type": "user"}}` after `${parse=gron}$` beco
 { rename_tree: { from: "unmapped.Resource", to: "resource" } }
 ```
 
-The engine walks every key with that dotted prefix and renames all of them. **Do NOT escape the dots inside the subtree path** (`from: "unmapped\\.Resource"` does not match, even though the published `PARSER_TEMPLATE.conf` shows escaped dots; that template is stale on current tenants). The dots in flat-gron keys are literal parts of the key string, not navigation operators. Reference: `parsers/sentinelone/marketplace-cloudflare-latest/`.
+The engine walks every key with that dotted prefix and renames all of them. **Do NOT escape the dots inside the subtree path** (`from: "unmapped\\.Resource"` does not match; lint rule R13 flags it). The dots in flat-gron keys are literal parts of the key string, not navigation operators. Reference: `parsers/sentinelone/marketplace-cloudflare-latest/`.
 
 ### Enum cast with default sentinel (v1)
 

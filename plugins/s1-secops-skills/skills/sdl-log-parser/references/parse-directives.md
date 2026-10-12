@@ -84,7 +84,7 @@ mappings: {
 
 This is how the community PARSER_TEMPLATE captures the entire event into `unmapped.*` and does every OCSF mapping in one place.
 
-**Dotted source keys are flat, not nested.** When a source JSON key literally contains a dot (e.g. `"user.email": "alice@example.com"`), gron flattens it into `unmapped.user.email` as a FLAT field name. In mappings, reference it with the literal path, `from: "unmapped.user.email"`, and do NOT escape the dots. `from: "unmapped.user\\.email"` will NOT match on current tenants (tenant-validated April 2026). This contradicts the escape-the-dots guidance in the upstream PARSER_TEMPLATE.conf in ai-siem; prefer the tenant-validated form.
+**Dotted source keys are flat, not nested.** When a source JSON key literally contains a dot (e.g. `"user.email": "alice@example.com"`), gron flattens it into `unmapped.user.email` as a FLAT field name. In mappings, reference it with the literal path, `from: "unmapped.user.email"`, and do NOT escape the dots. `from: "unmapped.user\\.email"` will NOT match on current tenants (tenant-validated April 2026, re-confirmed 2026-10-13; ai-siem's PARSER_TEMPLATE.conf uses the plain form since plugin 1.3.14).
 
 **gron DOES expand arrays, into `[N]`-indexed attributes, not lossy strings. Index with `[N]`, never `.N.`** This corrects the common misconception (including elsewhere in this skill) that "gron drops arrays" or "flattens arrays to a lossy string." gron emits one queryable attribute per array leaf, using bracket-index notation:
 

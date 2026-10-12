@@ -3,7 +3,7 @@
 Three things move independently: the **MCP image** (or npm install), the **skills plugin**, and
 your **MCP client config**. Do them in that order.
 
-- [1.5.0, 1.5.1 or 1.5.2 to 1.5.3](#150-151-or-152-to-153) (current release: image and MCP `1.5.3`, plugin `1.3.13`)
+- [1.5.0, 1.5.1 or 1.5.2 to 1.5.3](#150-151-or-152-to-153) (current release: image and MCP `1.5.3`, plugin `1.3.14`)
 - [1.4.x to 1.5.0](#14x-to-150)
 - [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
 - [Rolling back](#rolling-back)

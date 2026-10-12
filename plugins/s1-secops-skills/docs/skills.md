@@ -96,9 +96,10 @@ Full field reference: `mgmt-console-api/SKILL.md`
 - SDL parser JSON schema (`formats`, `patterns`, `lineGroupers`, `rewrites`, `discardAttributes`)
 - OCSF field mapping guidance by log format (CEF, syslog, JSON key=value, multi-line, CSV)
 - Timestamp normalization patterns
+- Offline lint: `scripts/lint_parser.py` checks a parser file for 22 live-validated traps before deploy, with no tenant and no dependencies (`--new` when authoring, `--csv` / `--json` to audit a directory)
 - End-to-end validation: `sdl_put_file` → `hec_ingest` (ingest test event) → `powerquery_run` (confirm fields appear)
 
-**Workflow:** Parse raw log sample → generate parser JSON → deploy to SDL → ingest test event → confirm field extraction in query results.
+**Workflow:** Parse raw log sample → generate parser JSON → lint offline → deploy to SDL → ingest test event → confirm field extraction in query results.
 
 ---
 

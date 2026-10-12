@@ -69,24 +69,25 @@ For the end-user install paths, see the canonical **[README Installation section
 The server runs in a container on your machine. The host launcher reads your OS keychain and passes the values to the container over stdin, so no secret appears in the client config, in `docker inspect`, or in the process list.
 
 ```bash
-mkdir -p ~/.local/bin && cp -X docker/s1-secops-mcp-launch.sh ~/.local/bin/ && chmod 755 ~/.local/bin/s1-secops-mcp-launch.sh
-~/.local/bin/s1-secops-mcp-launch.sh setup    # once: store values in the OS keychain
+mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
 ```
 
-Point the client at the copy in `~/.local/bin/`, not at the repo checkout. On macOS, Claude Desktop's `/bin/sh` cannot run a script stored under `~/Documents`, `~/Desktop` or `~/Downloads`; the MCP log shows `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted`.
+`install` copies the launcher to `~/.local/bin/`, adds `s1-secops-mcp`, `purple-mcp` and `virustotal` to the Claude Desktop config with the real path (other entries kept, old file backed up), pulls the image and runs `setup` to store values in the OS keychain if none are stored. From a clone of this repo, `sh mcp/docker/s1-secops-mcp-launch.sh install` does the same. For another MCP client, `~/.local/bin/s1-secops-mcp-launch.sh config` prints the entries to paste; keep the ones you need. The resulting entry looks like this, with `<home>` written out as your full home path (JSON does not expand `~`):
 
 ```json
 {
   "mcpServers": {
     "s1-secops-mcp": {
-      "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh",
+      "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
       "args": ["--image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"]
     }
   }
 }
 ```
 
-Windows uses `mcp/docker/s1-secops-mcp-launch.ps1`. The same image serves `purple-mcp` and `virustotal-mcp`; the server-name argument, after any launcher options such as `--image`, selects which one runs. Full reference: [docs/docker.md](../../plugins/s1-secops-skills/docs/docker.md).
+On macOS the launcher must not live under `~/Documents`, `~/Desktop` or `~/Downloads`: Claude Desktop's `/bin/sh` cannot run a script stored there, and the MCP log shows `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted`. `install` takes care of it.
+
+Windows uses `mcp/docker/s1-secops-mcp-launch.ps1`, which has the same `install` and `config` commands. The same image serves `purple-mcp` and `virustotal-mcp`; the server-name argument, after any launcher options such as `--image`, selects which one runs. Full reference: [docs/docker.md](../../plugins/s1-secops-skills/docs/docker.md).
 
 ### B. Node
 

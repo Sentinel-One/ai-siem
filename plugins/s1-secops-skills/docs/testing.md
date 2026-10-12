@@ -205,6 +205,17 @@ All tests exit 0 on success. The lifecycle tests listed above accept `--keep` to
 
 The other tests take neither and use the token's default scope.
 
+### Launcher install and config
+
+The host launchers' `install` and `config` commands have hermetic tests: a temp HOME, a fake `docker`, no network and no keychain writes. Run them from the repo root:
+
+```bash
+sh mcp/docker/launcher-test.sh                # macOS and Linux: every case under sh, dash and bash
+pwsh -NoProfile -File mcp/docker/launcher-test.ps1   # Windows launcher, PowerShell 7 on any OS
+```
+
+They cover: printed JSON is valid and carries the launcher's absolute path, `--profile`/`--output-dir`/`--claude-md`/`--image`, a fresh install, a merge that keeps other servers and settings, replaces the three entries and drops older launcher entries, a backup identical to the previous file, idempotent re-runs, an invalid config left untouched, `--config-path`, a script piped into the shell refused without copying anything, and (Linux) the fallback that prints the entries when no JSON tool exists. On Windows, also run the `.ps1` test under Windows PowerShell 5.1 (`powershell -NoProfile -ExecutionPolicy Bypass -File mcp\docker\launcher-test.ps1`).
+
 ---
 
 ## Known limitations

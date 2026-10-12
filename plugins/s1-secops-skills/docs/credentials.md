@@ -187,27 +187,27 @@ Use the host launcher instead. It reads the keychain on the host and hands the v
 
 `<server>` is `s1-secops-mcp`, `purple-mcp` or `virustotal-mcp`. Launcher options go before the server name; anything after it is passed to the server inside the container.
 
-On macOS and Linux, install the launcher to `~/.local/bin/` from the repo root and point the client config at that copy:
+Install it with the launcher's `install` command, which copies it to `~/.local/bin/` (Windows: `%USERPROFILE%\bin\`), writes the Claude Desktop config with the real path, pulls the image and runs `setup` if no token is stored. No clone needed:
 
 ```bash
-mkdir -p ~/.local/bin && cp -X mcp/docker/s1-secops-mcp-launch.sh ~/.local/bin/ && chmod 755 ~/.local/bin/s1-secops-mcp-launch.sh
+mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
 ```
 
-On macOS, a launcher stored under `~/Documents`, `~/Desktop` or `~/Downloads` does not start: macOS blocks Claude Desktop's `/bin/sh` from running scripts in those folders, and the MCP log shows `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted`.
+Windows and the full walkthrough: [installation.md → Step 1](./installation.md#step-1-install-the-launcher-and-store-credentials). On macOS, a launcher stored under `~/Documents`, `~/Desktop` or `~/Downloads` does not start: macOS blocks Claude Desktop's `/bin/sh` from running scripts in those folders, and the MCP log shows `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted`. `install` keeps it out of them.
 
-Claude Desktop config (macOS, Linux):
+The resulting Claude Desktop config (`~/.local/bin/s1-secops-mcp-launch.sh config` prints it for any client; `<home>` stands for your home folder, written out in full because JSON does not expand `~` or `$HOME`):
 
 ```json
 {
   "mcpServers": {
-    "s1-secops-mcp":  { "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh", "args": ["s1-secops-mcp"] },
-    "purple-mcp":     { "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh", "args": ["purple-mcp"] },
-    "virustotal-mcp": { "command": "/Users/you/.local/bin/s1-secops-mcp-launch.sh", "args": ["virustotal-mcp"] }
+    "s1-secops-mcp":  { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"] },
+    "purple-mcp":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.3", "purple-mcp"] },
+    "virustotal":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.3", "virustotal-mcp"] }
   }
 }
 ```
 
-The config holds no secrets. Set `S1_OUTPUT_DIR` to a host directory if you want `outputFile` results written somewhere you can open: the macOS/Linux launcher mounts it into the container at the same path, and the Windows launcher mounts it at `/output`. Full Docker details are in [docker.md](./docker.md).
+The config holds no secrets. Run `install --output-dir DIR` (Windows: `-OutputDir`) if you want `outputFile` results written somewhere you can open; it sets `S1_OUTPUT_DIR` on the `s1-secops-mcp` entry, and the macOS/Linux launcher mounts it into the container at the same path, and the Windows launcher mounts it at `/output`. Full Docker details are in [docker.md](./docker.md).
 
 All three servers read the same names. `purple-mcp` uses its own variable names internally and the image entrypoint derives them (`S1_CONSOLE_URL` → `PURPLEMCP_CONSOLE_BASE_URL`, `S1_CONSOLE_API_TOKEN` → `PURPLEMCP_CONSOLE_TOKEN`, `VIRUSTOTAL_API_KEY` → `PURPLEMCP_VT_API_KEY`).
 

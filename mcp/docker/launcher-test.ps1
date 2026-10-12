@@ -1,0 +1,163 @@
+<#
+  launcher-test.ps1: hermetic tests for `s1-secops-mcp-launch.ps1 install` and
+  `config`. Runs each case in a child PowerShell whose HOME, USERPROFILE and
+  APPDATA point at a temp directory, so the real Claude Desktop config is never
+  touched. Input is redirected, so install never prompts for credentials.
+  Needs no network; Credential Manager is only read.
+
+  Usage: pwsh -NoProfile -File docker/launcher-test.ps1
+         (Windows PowerShell 5.1: powershell -NoProfile -ExecutionPolicy Bypass -File ...)
+#>
+$ErrorActionPreference = 'Stop'
+$launcher = Join-Path $PSScriptRoot 's1-secops-mcp-launch.ps1'
+$psExe = (Get-Process -Id $PID).Path
+$root = Join-Path ([IO.Path]::GetTempPath()) ("s1launch-" + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $root | Out-Null
+$script:pass = 0; $script:fail = 0
+function Ok([string]$m) { $script:pass++; Write-Host "  ok   $m" }
+function Bad([string]$m, [string]$detail) { $script:fail++; Write-Host "  FAIL $m"; if ($detail) { Write-Host "       $detail" } }
+
+$homeDir = Join-Path $root 'home with space'
+$appData = Join-Path $homeDir 'AppData'
+$localAppData = Join-Path $homeDir 'LocalAppData'
+New-Item -ItemType Directory -Force -Path $homeDir, $appData, $localAppData | Out-Null
+$cfg = Join-Path (Join-Path $appData 'Claude') 'claude_desktop_config.json'
+$dest = Join-Path (Join-Path $homeDir 'bin') 's1-secops-mcp-launch.ps1'
+
+# Run the launcher in a child PowerShell with a temp HOME. Returns stdout; stderr lands in $root\err.txt.
+function Invoke-Launcher([string]$Script, [string[]]$LauncherArgs) {
+  $saved = @{ HOME = $env:HOME; USERPROFILE = $env:USERPROFILE; APPDATA = $env:APPDATA; LOCALAPPDATA = $env:LOCALAPPDATA }
+  $env:HOME = $homeDir; $env:USERPROFILE = $homeDir; $env:APPDATA = $appData; $env:LOCALAPPDATA = $localAppData
+  # Windows PowerShell 5.1 turns redirected native stderr into error records,
+  # which 'Stop' would make fatal: the launcher writes its progress to stderr.
+  $ErrorActionPreference = 'Continue'
+  try {
+    # Piped (empty) stdin: the child sees redirected input, so install never
+    # starts the interactive credential setup, and -NonInteractive makes any
+    # stray prompt fail instead of waiting on the keyboard.
+    $out = '' | & $psExe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $Script @LauncherArgs 2> (Join-Path $root 'err.txt')
+    $script:rc = $LASTEXITCODE
+    ($out | Out-String)
+  } finally { foreach ($k in $saved.Keys) { Set-Item "env:$k" $saved[$k] } }
+}
+# Whitespace removed: Windows PowerShell 5.1 wraps redirected stderr at the
+# console width, even mid-word, so the patterns below are written without spaces.
+function ErrText { (Get-Content -Raw (Join-Path $root 'err.txt') -ErrorAction SilentlyContinue) -replace '\s+', '' }
+
+try {
+  # config: three entries, absolute path, powershell.exe -File <launcher>
+  $j = Invoke-Launcher $launcher @('config') | ConvertFrom-Json
+  $names = @($j.mcpServers.PSObject.Properties.Name)
+  $a = $j.mcpServers.'s1-secops-mcp'.args
+  if (($names -join ',') -eq 's1-secops-mcp,purple-mcp,virustotal' -and $j.mcpServers.virustotal.command -eq 'powershell.exe' -and $a[4] -eq $launcher -and $a[-1] -eq 's1-secops-mcp' -and $j.mcpServers.virustotal.args[-1] -eq 'virustotal-mcp') {
+    Ok 'config: three entries, absolute path' } else { Bad 'config' (ErrText) }
+
+  # config options
+  $md = Join-Path $root 'CLAUDE.md'; Set-Content -Path $md -Value '# x'
+  $out = Join-Path $root 'out dir'
+  $j = Invoke-Launcher $launcher @('config', '-Profile', 'prod', '-OutputDir', $out, '-ClaudeMd', $md, '-Image', 'sentinelone/secops-mcps:9.9.9') | ConvertFrom-Json
+  $e = $j.mcpServers.'s1-secops-mcp'.env
+  if ((Test-Path $out) -and $e.S1_OUTPUT_DIR -eq (Resolve-Path $out).ProviderPath -and $e.S1_CLAUDE_MD_PATH -eq (Resolve-Path $md).ProviderPath -and
+      ($j.mcpServers.'purple-mcp'.args -join ' ') -match '-Image sentinelone/secops-mcps:9\.9\.9 -Profile prod purple-mcp$' -and -not $j.mcpServers.virustotal.env) {
+    Ok 'config: -Profile -OutputDir -ClaudeMd -Image' } else { Bad 'config options' (ErrText) }
+
+  # install, fresh
+  [void](Invoke-Launcher $launcher @('install'))
+  $j = Get-Content -Raw $cfg | ConvertFrom-Json
+  $cmds = @($j.mcpServers.PSObject.Properties | ForEach-Object { $_.Value.args[4] } | Select-Object -Unique)
+  if ($rc -eq 0 -and (Test-Path $dest) -and ($cmds -join '') -eq $dest -and -not (Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue)) {
+    Ok 'install: fresh config under APPDATA, launcher copied to HOME\bin' } else { Bad "install fresh (rc=$rc)" (ErrText) }
+  if ((ErrText) -match 'QuitClaudeDesktopcompletely') { Ok 'install: restart instruction' } else { Bad 'install messages' (ErrText) }
+  if ((ErrText) -notmatch 'Startingsetup') { Ok 'install: no credential prompt when input is redirected' } else { Bad 'install prompted for credentials' (ErrText) }
+
+  # install merge
+  $orig = @'
+{"globalShortcut": "Alt+Space",
+ "mcpServers": {
+   "other": {"command": "node", "args": ["x.js"]},
+   "virustotal-mcp": {"command": "powershell.exe", "args": ["-File", "C:\\old\\s1-secops-mcp-launch.ps1", "virustotal-mcp"]},
+   "s1-secops-mcp": {"command": "docker", "args": ["run", "sentinelone/secops-mcps:1.4.0"]}},
+ "preferences": {"a": 1}}
+'@
+  [IO.File]::WriteAllText($cfg, $orig)
+  [void](Invoke-Launcher $launcher @('install'))
+  $j = Get-Content -Raw $cfg | ConvertFrom-Json
+  $names = @($j.mcpServers.PSObject.Properties.Name | Sort-Object)
+  if ($j.globalShortcut -eq 'Alt+Space' -and $j.preferences.a -eq 1 -and $j.mcpServers.other.command -eq 'node' -and
+      ($names -join ',') -eq 'other,purple-mcp,s1-secops-mcp,virustotal' -and $j.mcpServers.'s1-secops-mcp'.args[4] -eq $dest) {
+    Ok 'install: merge keeps others, replaces ours, drops old entry' } else { Bad 'install merge' (ErrText) }
+  $bak = @(Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue)
+  if ($bak.Count -eq 1 -and [IO.File]::ReadAllText($bak[0].FullName) -eq $orig -and (ErrText) -match 'removedoldentryvirustotal-mcp') {
+    Ok 'install: backup identical to previous config' } else { Bad 'install backup' (ErrText) }
+  $bak | Remove-Item
+
+  # idempotent from the installed copy
+  $before = [IO.File]::ReadAllText($cfg)
+  [void](Invoke-Launcher $dest @('install'))
+  if ([IO.File]::ReadAllText($cfg) -eq $before) { Ok 'install: idempotent from the installed copy' } else { Bad 'install idempotent' }
+  Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue | Remove-Item
+
+  # UTF-8 without BOM
+  $bytes = [IO.File]::ReadAllBytes($cfg)
+  if (-not ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB)) { Ok 'install: config written as UTF-8 without BOM' } else { Bad 'install BOM' }
+
+  # invalid JSON left untouched
+  [IO.File]::WriteAllText($cfg, '{ "mcpServers": ')
+  [void](Invoke-Launcher $launcher @('install'))
+  if ($rc -ne 0 -and [IO.File]::ReadAllText($cfg) -eq '{ "mcpServers": ' -and (ErrText) -match 'confignotchanged' -and -not (Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue)) {
+    Ok "install: invalid JSON left untouched (rc=$rc)" } else { Bad 'install invalid JSON' (ErrText) }
+
+  # -ConfigPath
+  $alt = Join-Path $root 'alt\c.json'
+  [void](Invoke-Launcher $launcher @('install', '-ConfigPath', $alt))
+  if (@((Get-Content -Raw $alt | ConvertFrom-Json).mcpServers.PSObject.Properties).Count -eq 3) { Ok 'install: -ConfigPath' } else { Bad 'install -ConfigPath' (ErrText) }
+
+  # MSIX install (claude.ai installer): the packaged app reads its virtualized
+  # copy, so install writes it too, keeping the app's own preferences.
+  $msixCfg = Join-Path (Join-Path (Join-Path (Join-Path (Join-Path (Join-Path $localAppData 'Packages') 'Claude_pzs8sxrjxfjjc') 'LocalCache') 'Roaming') 'Claude') 'claude_desktop_config.json'
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $msixCfg) | Out-Null
+  [IO.File]::WriteAllText($msixCfg, '{"preferences": {"sidebarMode": "chat"}}')
+  [IO.File]::WriteAllText($cfg, '{}')
+  [void](Invoke-Launcher $launcher @('install'))
+  $m = Get-Content -Raw $msixCfg | ConvertFrom-Json
+  $a2 = Get-Content -Raw $cfg | ConvertFrom-Json
+  if ($rc -eq 0 -and $m.preferences.sidebarMode -eq 'chat' -and $m.mcpServers.'s1-secops-mcp'.args[4] -eq $dest -and $a2.mcpServers.'purple-mcp'.args[4] -eq $dest -and (ErrText) -match 'MSIXinstall') {
+    Ok 'install: MSIX install gets the virtualized config too, preferences kept' } else { Bad 'install MSIX' (ErrText) }
+  Remove-Item -Recurse -Force (Join-Path $localAppData 'Packages')
+  Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue | Remove-Item
+
+  # -ConfigPath is install-only
+  [void](Invoke-Launcher $launcher @('config', '-ConfigPath', $alt))
+  if ($rc -ne 0) { Ok 'config: rejects -ConfigPath' } else { Bad 'config -ConfigPath accepted' }
+  # Live stdio check (Windows with Docker running and the image present): an MCP
+  # client keeps stdin open, so the initialize reply must arrive before stdin
+  # closes. Piping one line and closing stdin hides a relay that buffers input.
+  $image = 'sentinelone/secops-mcps:1.5.3'
+  $dockerOk = $false
+  if ($env:OS -eq 'Windows_NT' -and (Get-Command docker -ErrorAction SilentlyContinue)) {
+    $ErrorActionPreference = 'Continue'
+    & docker image inspect $image *> $null; $dockerOk = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = 'Stop'
+  }
+  if ($dockerOk) {
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $psExe
+    $psi.Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$launcher`" -Image $image s1-secops-mcp"
+    $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $null = $p.StandardError.ReadToEndAsync()
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $p.StandardInput.WriteLine('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"launcher-test","version":"0"}}}')
+    $p.StandardInput.Flush()
+    $line = $p.StandardOutput.ReadLineAsync()
+    $got = $line.Wait(45000)
+    $secs = [math]::Round($sw.Elapsed.TotalSeconds, 1)
+    if ($got -and $line.Result -match '"serverInfo"') { Ok "stdio: initialize answered in $secs s with stdin still open" } else { Bad "stdio: no initialize reply within 45 s while stdin was open" }
+    $p.StandardInput.Close()
+    if (-not $p.WaitForExit(20000)) { try { $p.Kill() } catch { } }
+  } else { Write-Host '  skip stdio: needs Windows, Docker running and the image pulled' }
+} finally { Remove-Item -Recurse -Force $root -ErrorAction SilentlyContinue }
+
+Write-Host ''
+Write-Host "launcher-test.ps1: $($script:pass) passed, $($script:fail) failed (PowerShell $($PSVersionTable.PSVersion))"
+if ($script:fail) { exit 1 }

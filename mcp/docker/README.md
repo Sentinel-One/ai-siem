@@ -34,16 +34,18 @@ The stdin secret contract: when `S1_SECRETS_STDIN=1`, the entrypoint reads `NAME
 
 The Dockerfile is two stages. The **fetch** stage holds everything needing git or network; the **runtime** stage copies the results, so neither `git` nor any clone metadata ships in the published image.
 
-The image is published to `sentinelone/secops-mcps`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. Images are built and published by the maintainers' release pipeline.
+The image is published to `sentinelone/secops-mcps`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. Images are built and published by the maintainers' release pipeline. Pushes made with `PUSH=true docker/build.sh` also attach BuildKit provenance and an SBOM to the image index.
+
+## Verify before you run
+
+- **Pull by digest, not just by tag.** Tags are immutable, but a digest is the strongest pin: `docker pull sentinelone/secops-mcps@sha256:<digest>`. Find the digest with `docker buildx imagetools inspect sentinelone/secops-mcps:1.5.4`.
+- **Check where it came from.** The image labels record the source repository and commit: `docker inspect --format '{{json .Config.Labels}}' sentinelone/secops-mcps:1.5.4` (see `org.opencontainers.image.source` and `org.opencontainers.image.revision`).
+- **Inspect the provenance and SBOM** attached to the index: `docker buildx imagetools inspect sentinelone/secops-mcps:1.5.4 --format '{{ json .Provenance }}'` and `--format '{{ json .SBOM }}'`. Images published before this was enabled do not carry them.
+- **Report a problem privately.** See [SECURITY.md](../../SECURITY.md); do not open a public issue for a vulnerability.
 
 ## Pinned sources
 
-All four MCPs are pinned at build time. The pins live in two places that must stay in sync:
-
-1. `docker/build.sh` for local builds and manual pushes
-2. `.github/workflows/docker-publish.yml` env block for CI builds
-
-When bumping a pin, edit both. They are checked via `grep` in CI; a mismatch fails the build.
+All four MCPs are pinned at build time. The pins live in `docker/build.sh`. If the release pipeline that publishes the image keeps its own copy of any pin (it is maintained outside this repository), update that copy in the same change so the two cannot drift.
 
 | What | Source | Current pin |
 |---|---|---|
@@ -149,7 +151,7 @@ On a slow or unreliable link, push with `skopeo copy --all --retry-times 20` fro
 
 ```bash
 # Edit docker/build.sh: change VT_MCP_REF, SHODAN_MCP_REF, PURPLE_MCP_REF or NODE_IMAGE
-# Edit .github/workflows/docker-publish.yml: same change in env block
+# If the release pipeline keeps its own copy of the pins, make the same change there
 # Bump IMAGE_VERSION in docker/build.sh
 # Then:
 docker/build.sh                                            # verify locally

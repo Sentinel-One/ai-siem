@@ -457,7 +457,23 @@ Already cloned this repo? Run `sh mcp/docker/s1-secops-mcp-launch.sh install` fr
 - pulls `sentinelone/secops-mcps:1.5.5`;
 - asks for your credentials if none are stored yet, and stores them in the macOS login keychain, the Linux Secret Service or Windows Credential Manager (service `sentinelone-mcp`). Nothing is typed into a file.
 
-> **Read-only by default.** From 1.5.5, s1-secops-mcp refuses every tool call that would change your SentinelOne tenant: alert status, verdicts and notes, dashboards, parsers, lookup tables, Hyperautomation workflows and ingest. Investigation, hunting and reporting work as before. To deploy content or triage alerts from Claude, run `install` again with `--read-write` (Windows: `-ReadWrite`) and restart Claude Desktop. Write access runs with your token's console permissions; read **[docs/read-only.md](./docs/read-only.md)** before you enable it.
+**Step 2b (optional): enable write access**
+
+s1-secops-mcp is **read-only by default**: investigation, hunting and reporting work out of the box, and tools that change your SentinelOne tenant (alert status, verdicts and notes, dashboards, parsers, lookup tables, Hyperautomation workflows, ingest) are refused with instructions. To let Claude deploy content or triage alerts, run `install` once more with the write flag, then restart Claude Desktop.
+
+macOS or Linux:
+
+```bash
+~/.local/bin/s1-secops-mcp-launch.sh install --read-write
+```
+
+Windows, in PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\bin\s1-secops-mcp-launch.ps1" install -ReadWrite
+```
+
+Add your usual options to the same command (for example `--output-dir`, `--with-shodan`). Run `install` without the flag to return to read-only. Write access runs with your token's console permissions; read **[docs/read-only.md](./docs/read-only.md)** before you enable it.
 
 Where to get each value it asks for:
 

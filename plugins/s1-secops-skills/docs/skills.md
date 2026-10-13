@@ -96,9 +96,10 @@ Full field reference: `mgmt-console-api/SKILL.md`
 - SDL parser JSON schema (`formats`, `patterns`, `lineGroupers`, `rewrites`, `discardAttributes`)
 - OCSF field mapping guidance by log format (CEF, syslog, JSON key=value, multi-line, CSV)
 - Timestamp normalization patterns
+- Offline lint: `scripts/lint_parser.py` checks a parser file for 22 live-validated traps before deploy, with no tenant and no dependencies (`--new` when authoring, `--csv` / `--json` to audit a directory)
 - End-to-end validation: `sdl_put_file` → `hec_ingest` (ingest test event) → `powerquery_run` (confirm fields appear)
 
-**Workflow:** Parse raw log sample → generate parser JSON → deploy to SDL → ingest test event → confirm field extraction in query results.
+**Workflow:** Parse raw log sample → generate parser JSON → lint offline → deploy to SDL → ingest test event → confirm field extraction in query results.
 
 ---
 
@@ -171,6 +172,7 @@ It defines:
 - **Evidence rules:** no fabrication, cite every fact to its tool call, mark every assumption explicitly
 - **Anomaly checklist:** frequency, timing, geolocation, baseline deviation, new entity, privilege, chain
 - **Classification gate:** no CRITICAL or TRUE POSITIVE verdict without independent threat intelligence confirmation
+- **Optional exposure intel:** when the Shodan MCP is installed, external IPs and domains can also be checked for open ports, services, banners, TLS/JARM and host CVEs; this complements the VirusTotal verdict and never replaces it ([mcp-tools.md → Shodan MCP](./mcp-tools.md#shodan-mcp-optional))
 - **Confidence language:** "confirmed" / "consistent with" / "suggests" / "possible", calibrated to evidence weight
 - **Investigation workflow:** triage → enrichment → infrastructure pivot → cross-source correlation → MITRE mapping → composite risk score → report
 

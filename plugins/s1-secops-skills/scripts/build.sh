@@ -43,6 +43,7 @@ done
 
 strip_tree() {
     find "$1" \( -type d -name baselines -o -type d -name __pycache__ \
+                 -o -type d -name .pytest_cache \
                  -o -type d -name reports -o -type d -name charts \) \
         -prune -exec rm -rf {} + 2>/dev/null || true
     find "$1" \( -name '*.pyc' -o -name '.DS_Store' -o -name '*.tmp' \
@@ -97,7 +98,7 @@ done
 strip_tree "$TMP_PLUGIN"
 (cd "$TMP_PLUGIN" && zip -qr "$TMP_DIST/$PLUGIN_FILENAME" . \
     -x ".git/*" "*.orig" "*.bak" ".DS_Store" "*/__pycache__/*" "*.pyc" \
-       "*/baselines/*" "*/reports/*" "*/charts/*")
+       "*/.pytest_cache/*" "*/baselines/*" "*/reports/*" "*/charts/*")
 
 [[ "${1:-}" == "--clean" ]] && rm -f "$DIST_DIR"/*.skill "$DIST_DIR"/*.plugin
 mkdir -p "$DIST_DIR"

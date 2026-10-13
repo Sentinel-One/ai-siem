@@ -128,6 +128,8 @@ Every IP, domain, URL, or file hash encountered MUST be enriched before a verdic
 
 > **Provider-agnostic, VirusTotal-by-default.** The default Docker bundle ships VirusTotal; the tool names used throughout this file (`get_file_report`, `get_ip_report`, `get_domain_report`, `get_url_report`, plus the `get_*_relationship` pivots) are the literal `mcp__virustotal__*` API. If wired to a different threat-intel MCP (Recorded Future, Mandiant Advantage, OpenCTI, MISP, etc.), substitute its equivalent file / IP / domain / URL lookups and relationship pivots; the workflow shape, decision criteria, and verdict gates are identical everywhere these names appear.
 
+> **Optional exposure intel: Shodan MCP (`mcp__shodan__*`).** When installed, it adds what is exposed on an external host: open ports, services, banners, TLS/JARM and host CVEs (`ip_lookup`, `dns_lookup`, `reverse_dns_lookup`, `domain_info`, `shodan_search`, `shodan_count`), plus Shodan CVEDB lookups (`cve_lookup`, `cpe_lookup`, `cves_by_product`, with CVSS, EPSS and KEV). It complements VirusTotal reputation and never replaces it: VirusTotal stays the primary IOC enrichment, and a Shodan result alone is not threat-intel confirmation of maliciousness. Use it only for external (non-RFC1918) IPs and domains. All tools are read-only and never start a scan. `shodan_search` (membership or higher) and `domain_info` spend query credits, so prefer `ip_lookup` and `shodan_count`; every plan is limited to 1 request per second. On a free key, `ip_lookup` and DNS can return "Requires membership or higher to access" for some targets: report that as a plan limit, not as "no exposure found". If the server is absent, skip it and say so.
+
 #### Core report tools (use FIRST for any IOC)
 
 - `get_file_report(hash)`: any MD5 / SHA-1 / SHA-256 from alerts, processes, downloads. Returns detection ratio across 70+ AV engines, file properties, behavioural analysis, contacted domains/IPs, dropped files, embedded content, related threat actors.
@@ -585,6 +587,7 @@ Use installed skills eagerly; do not hand-author SDL config files, Hyperautomati
 - `s1-secops-skills:soc-investigator`: investigating or triaging an alert or incident (SHORT triage, MEDIUM correlation, LONG forensic timeline), or a SWEEP of raw logs over a time window for MITRE-mapped TTPs with no alert. Threat-intel enrichment, strict verdict gates, report with a mandatory query appendix.
 - `mcp__purple-mcp__*` (built-in MCP): first-line PowerQuery hunts, alert triage, threat-intel enrichment. Auto-authenticated; preferred for quick hunts and 24h stats.
 - Threat-intel MCP (default `mcp__virustotal__*`; substitute your provider): **mandatory** for every IOC enrichment. File / IP / domain / URL lookups + all relationship pivots.
+- Shodan MCP (`mcp__shodan__*`, optional): exposure intelligence for external IPs and domains (ports, services, banners, TLS/JARM, host CVEs) and CVEDB lookups. Complements, never replaces, the threat-intel MCP; mind query credits and the 1 request/second limit.
 - `docx`: CISO / leadership reports as `.docx` (docx-js Node lib, validated output, table styling rules). `xlsx` / `pptx` / `pdf`: same idea for spreadsheets / decks / PDFs.
 
 ### Standard Engagement Workflow

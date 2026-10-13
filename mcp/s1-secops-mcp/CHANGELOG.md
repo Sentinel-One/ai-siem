@@ -1,6 +1,40 @@
 # Changelog
 
-## Unreleased: host launchers only (image and MCP unchanged at 1.5.3)
+## 1.5.4 (image `sentinelone/secops-mcps:1.5.4`)
+
+### Fixed
+
+- **`outputFile` under the Docker image no longer loses files.**
+  - **Before:** with no shared folder, a write to the container's `/tmp` or `/home/node` reported success (path, bytes, sha256), and the file was deleted when the container exited. A host path was refused with "Set S1_OUTPUT_DIRS", which does nothing under Docker because the client config never reaches the container.
+  - **Now:** in the image (`S1_IN_CONTAINER=1`, set by the Dockerfile) there is no default root. Without a folder shared by `install --output-dir`, `outputFile` is refused before any API call, and the message says to run `s1-secops-mcp-launch.sh install --output-dir <folder>` (Windows: `-OutputDir`) and restart Claude Desktop.
+  - **Unchanged:** the Node install keeps its home and temp default and its message.
+- The `outputFile` descriptions on `powerquery_run`, `s1_api_get`, `s1_api_download` and `ha_export_workflow` tell Claude the same, so it stops repeating the "Set S1_OUTPUT_DIRS" advice.
+- Tests: `tests/output-container-1.5.4.test.mjs` adds 8 tests. 7 of them fail on 1.5.3's `output.js`.
+
+### Skills (plugin 1.3.15)
+
+- `mgmt-console-api` ("Large results") and `powerquery` (`outputFile` row): if the server refuses
+  `outputFile` because no folder is shared with the container, Claude tells the user to run
+  `~/.local/bin/s1-secops-mcp-launch.sh install --output-dir <folder>` (Windows: `-OutputDir`) and
+  restart Claude Desktop, and does not ask them to set `S1_OUTPUT_DIRS`. Each skill's invariant
+  suite pins the sentence.
+
+## Unreleased: host launchers and plugin 1.3.14 (image and MCP unchanged at 1.5.3)
+
+### Skills (plugin 1.3.14)
+
+- **sdl-log-parser: offline parser lint.** `scripts/lint_parser.py` checks a parser file against
+  22 known traps before deploy, with no tenant and no dependencies, and exits non-zero on any
+  ERROR. `--new` for a parser being authored, `--json` / `--csv` for a directory report,
+  `--rules` to list the checks. Every rule is backed by a live-tenant result: a bad and good
+  parser pair, or the exact `putFile` rejection it predicts (R09, R19 to R22). SKILL.md adds it as
+  workflow step 4a; live validation stays the definition of done.
+- **Eval grader:** new `lint_clean` assertion type (`tools/run_evals.py`), backed by the same rules
+  module, now on the three parser-authoring cases.
+- **Corrected guidance (live-validated 2026-10-13):** a v0 `constants` entry is rejected only when
+  keyed `output`; keyed `field` it deploys and applies. A same-name rename nulls the field in v1
+  only. A lazy `[\s\S]*?` prefix fails only without a literal anchor. When no format matches, the
+  parser's root attributes are not applied either.
 
 ### Fixed
 
@@ -27,7 +61,7 @@
   not the `%APPDATA%\Claude\` file that Settings > Developer > Edit config opens. The Windows `install`
   writes both, so the servers load either way.
 - **No-clone install.** The docs lead with a one-line download from ai-siem followed by `install`.
-- **`mcp/docker/launcher-test.sh` and `mcp/docker/launcher-test.ps1`:** hermetic tests for both commands.
+- **`docker/launcher-test.sh` and `docker/launcher-test.ps1`:** hermetic tests for both commands.
 
 ## 1.5.3
 

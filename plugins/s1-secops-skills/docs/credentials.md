@@ -16,6 +16,7 @@ As of s1-secops-mcp 1.5.0 (plugin 1.3.12) there is **no credentials file**. Valu
 | `S1_HEC_TOKEN` | Optional. Raw log ingest over the event collector (`hec_ingest`) | The SDL Log Write Key: Console → Singularity Data Lake → API Keys → Log Write Key. No API mints one. |
 | `S1_SCOPE` | Optional. Default `S1-Scope` for SDL calls when the token spans several sites or accounts | `<accountId>` or `<accountId>:<siteId>`. Most tools also take a per-call `scope`. |
 | `VIRUSTOTAL_API_KEY` | The VirusTotal MCP, and purple-mcp's threat intelligence tools (`threat_intel_by_hash` / `_url` / `_domain` / `_ip`, `threat_intel_search`) | A VirusTotal API key (free tier works) from [virustotal.com](https://virustotal.com). One stored key serves both servers. `threat_intel_search` (VT Intelligence query syntax) needs a premium key. |
+| `SHODAN_API_KEY` | Optional. The Shodan MCP (`shodan-mcp`), which refuses to start without it | A Shodan API key from [account.shodan.io](https://account.shodan.io) (Account page, API key). Shodan gates endpoints by plan. A free ("oss") key reliably covers the CVEDB tools, `shodan_count`, `search_filters` and `api_info`. Host lookups and DNS on a free key return "Requires membership or higher" for some targets. `shodan_search` needs a membership or higher, and `domain_info` is billed at 1 query credit. Use a membership or higher key for dependable results. Stored by the Docker launcher's `setup` (press Enter to skip). |
 
 `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are the minimum, and between them they authorise every SDL query and configuration operation including parser and dashboard deployment.
 
@@ -182,10 +183,10 @@ Use the host launcher instead. It reads the keychain on the host and hands the v
 
 | Host | Launcher |
 |---|---|
-| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.5.3] [--profile P] <server>` |
-| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.5.3] [-Profile P] <server>` |
+| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.5.4] [--profile P] <server>` |
+| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.5.4] [-Profile P] <server>` |
 
-`<server>` is `s1-secops-mcp`, `purple-mcp` or `virustotal-mcp`. Launcher options go before the server name; anything after it is passed to the server inside the container.
+`<server>` is `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp` or `shodan-mcp`. Launcher options go before the server name; anything after it is passed to the server inside the container.
 
 Install it with the launcher's `install` command, which copies it to `~/.local/bin/` (Windows: `%USERPROFILE%\bin\`), writes the Claude Desktop config with the real path, pulls the image and runs `setup` if no token is stored. No clone needed:
 
@@ -200,18 +201,21 @@ The resulting Claude Desktop config (`~/.local/bin/s1-secops-mcp-launch.sh confi
 ```json
 {
   "mcpServers": {
-    "s1-secops-mcp":  { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"] },
-    "purple-mcp":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.3", "purple-mcp"] },
-    "virustotal":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.3", "virustotal-mcp"] }
+    "s1-secops-mcp":  { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.4", "s1-secops-mcp"] },
+    "purple-mcp":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.4", "purple-mcp"] },
+    "virustotal":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.4", "virustotal-mcp"] },
+    "shodan":         { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.4", "shodan-mcp"] }
   }
 }
 ```
 
+The `shodan` entry is optional: `install` writes it only when `SHODAN_API_KEY` is stored in the keychain, or when you pass `--with-shodan` (Windows: `-WithShodan`). To add it later, run the launcher's `setup` to store the key, run `install` again, and restart Claude Desktop.
+
 The config holds no secrets. Run `install --output-dir DIR` (Windows: `-OutputDir`) if you want `outputFile` results written somewhere you can open; it sets `S1_OUTPUT_DIR` on the `s1-secops-mcp` entry, and the macOS/Linux launcher mounts it into the container at the same path, and the Windows launcher mounts it at `/output`. Full Docker details are in [docker.md](./docker.md).
 
-All three servers read the same names. `purple-mcp` uses its own variable names internally and the image entrypoint derives them (`S1_CONSOLE_URL` → `PURPLEMCP_CONSOLE_BASE_URL`, `S1_CONSOLE_API_TOKEN` → `PURPLEMCP_CONSOLE_TOKEN`, `VIRUSTOTAL_API_KEY` → `PURPLEMCP_VT_API_KEY`).
+All four servers read the same names. `purple-mcp` uses its own variable names internally and the image entrypoint derives them (`S1_CONSOLE_URL` → `PURPLEMCP_CONSOLE_BASE_URL`, `S1_CONSOLE_API_TOKEN` → `PURPLEMCP_CONSOLE_TOKEN`, `VIRUSTOTAL_API_KEY` → `PURPLEMCP_VT_API_KEY`).
 
-Each server receives only the values it uses: `s1-secops-mcp` gets the console, ingest and scope values; `purple-mcp` gets `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` and `VIRUSTOTAL_API_KEY`; `virustotal-mcp` gets `VIRUSTOTAL_API_KEY` only. Inside the purple-mcp container the entrypoint copies the VirusTotal key to `PURPLEMCP_VT_API_KEY` and then unsets `VIRUSTOTAL_API_KEY` and `VT_API_KEY`, so purple-mcp's threat intelligence tools work from the same keychain entry with no separate setup.
+Each server receives only the values it uses: `s1-secops-mcp` gets the console, ingest and scope values; `purple-mcp` gets `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` and `VIRUSTOTAL_API_KEY`; `virustotal-mcp` gets `VIRUSTOTAL_API_KEY` only; `shodan-mcp` gets `SHODAN_API_KEY` only, and the entrypoint unsets `SHODAN_API_KEY` for every other server. Like the others, the Shodan key is stored at service `sentinelone-mcp`, account `<profile>:SHODAN_API_KEY`, and travels over the stdin secrets channel. Inside the purple-mcp container the entrypoint copies the VirusTotal key to `PURPLEMCP_VT_API_KEY` and then unsets `VIRUSTOTAL_API_KEY` and `VT_API_KEY`, so purple-mcp's threat intelligence tools work from the same keychain entry with no separate setup.
 
 ---
 

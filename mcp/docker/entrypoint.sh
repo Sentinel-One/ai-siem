@@ -23,7 +23,7 @@ if [ "${S1_SECRETS_STDIN:-}" = "1" ]; then
     name=${line%%=*}
     value=${line#*=}
     case "$name" in
-      S1_CONSOLE_URL|S1_CONSOLE_API_TOKEN|S1_HEC_INGEST_URL|S1_HEC_TOKEN|S1_SCOPE|VIRUSTOTAL_API_KEY|VT_API_KEY|PURPLEMCP_CONSOLE_BASE_URL|PURPLEMCP_CONSOLE_TOKEN|PURPLEMCP_VT_API_KEY)
+      S1_CONSOLE_URL|S1_CONSOLE_API_TOKEN|S1_HEC_INGEST_URL|S1_HEC_TOKEN|S1_SCOPE|VIRUSTOTAL_API_KEY|VT_API_KEY|PURPLEMCP_CONSOLE_BASE_URL|PURPLEMCP_CONSOLE_TOKEN|PURPLEMCP_VT_API_KEY|SHODAN_API_KEY)
         export "$name=$value" ;;
       *)
         echo "entrypoint: ignoring unknown name on the secrets channel" >&2 ;;
@@ -61,6 +61,13 @@ case "${1:-}" in
     fi
     unset VIRUSTOTAL_API_KEY VT_API_KEY ;;
 esac
+# The Shodan key goes to the Shodan server and nowhere else. Every other server
+# starts without it, however it arrived (stdin channel or -e).
+case "${1:-}" in
+  shodan-mcp|shodan) ;;
+  *) unset SHODAN_API_KEY ;;
+esac
+
 if [ -z "${VIRUSTOTAL_API_KEY:-}" ] && [ -n "${VT_API_KEY:-}" ]; then
   VIRUSTOTAL_API_KEY="${VT_API_KEY}"
   export VIRUSTOTAL_API_KEY
@@ -89,6 +96,23 @@ case "${1:-help}" in
     shift
     exec node /opt/mcp-virustotal/build/index.js "$@"
     ;;
+  shodan-mcp | shodan)
+    shift
+    # Optional server: it refuses to start without a key, so say why in one
+    # line instead of a Node stack trace in the client's log.
+    if [ -z "${SHODAN_API_KEY:-}" ]; then
+      echo "entrypoint: SHODAN_API_KEY is not set. Shodan is optional: store a key with 's1-secops-mcp-launch.sh setup', or remove the shodan entry from the MCP client config." >&2
+      exit 78
+    fi
+    # stdio only. Upstream can start an unauthenticated HTTP listener when
+    # MCP_TRANSPORT=httpStream (its own Dockerfile binds 0.0.0.0). Nothing in
+    # this image should ever listen on a socket, so drop those knobs whatever
+    # the caller passed with -e.
+    unset MCP_TRANSPORT MCP_HOST MCP_PORT MCP_ENDPOINT
+    # Nor does it need any other server's credential.
+    unset VT_API_KEY VIRUSTOTAL_API_KEY S1_CONSOLE_API_TOKEN S1_HEC_TOKEN PURPLEMCP_CONSOLE_TOKEN PURPLEMCP_VT_API_KEY
+    exec node /opt/mcp-shodan/build/index.js "$@"
+    ;;
   versions | version)
     # Replaces `npm ls -g`, which this image no longer has. The image tag does
     # not encode what is inside it, so read the manifest rather than infer.
@@ -102,6 +126,7 @@ Bundled servers (select one per `docker run`):
   s1-secops-mcp     PowerQuery, SDL, Mgmt Console REST, UAM, Hyperautomation
   purple-mcp        Alert triage, Purple AI NLQ, Deep Visibility, assets, vulnerabilities
   virustotal-mcp    External IOC enrichment
+  shodan-mcp        Optional: internet exposure intel (ports, services, host CVEs, CVEDB)
 
 Other commands:
   versions          Print the pinned source of every bundled server as JSON
@@ -113,7 +138,7 @@ keychain and passes secrets over stdin so they never appear in
   s1-secops-mcp-launch.sh s1-secops-mcp    # what the MCP client runs
 
 Manual equivalent (secrets as the first stdin lines, then an empty line):
-  docker run -i --rm -e S1_SECRETS_STDIN=1 sentinelone/secops-mcps:1.5.3 s1-secops-mcp
+  docker run -i --rm -e S1_SECRETS_STDIN=1 sentinelone/secops-mcps:1.5.4 s1-secops-mcp
 
 Environment variables (-e S1_CONSOLE_URL -e S1_CONSOLE_API_TOKEN ...) still
 work but are readable by anyone who can run `docker inspect`.
@@ -126,7 +151,7 @@ EOF
     ;;
   *)
     echo "entrypoint: unknown command '$1'" >&2
-    echo "valid: s1-secops-mcp, purple-mcp, virustotal-mcp, versions, help" >&2
+    echo "valid: s1-secops-mcp, purple-mcp, virustotal-mcp, shodan-mcp, versions, help" >&2
     exit 64
     ;;
 esac

@@ -36,6 +36,7 @@ MCP Servers                     Live API access, outside the Cowork sandbox prox
   s1-secops-mcp                PowerQuery, SDL API, Hyperautomation, Mgmt REST, UAM, UAM ingest
   purple-mcp                     alert triage, Purple AI NLQ, Deep Visibility, assets, vulnerabilities
   threat-intel-mcp               external IOC enrichment (required for CRITICAL classification)
+  shodan-mcp (optional)          exposure intelligence for external IPs and domains, Shodan CVEDB lookups
 ```
 
 ---
@@ -97,6 +98,12 @@ purple-mcp is complementary to s1-secops-mcp. They share credentials but serve d
 | SDL log ingest, parser/dashboard deploy | s1-secops-mcp SDL tools only |
 | Hyperautomation workflow import | s1-secops-mcp HA tools only |
 
+### shodan-mcp (optional)
+
+A fourth MCP server (Node.js, bundled in the same image from a pinned commit of a maintained fork of `w0h1v/mcp-shodan`, repo in `mcp/docker/build.sh`) that adds exposure intelligence: open ports, services, banners, TLS/JARM and host CVEs for an external IP or domain, plus CVE and CPE lookups in Shodan's CVEDB. Its 11 tools are all read-only and it has no scan, alert or monitor tools, so it never starts an active scan. It talks only to `api.shodan.io` and `cvedb.shodan.io`, and always over stdio: the entrypoint unsets the upstream HTTP transport variables before starting it.
+
+It complements the threat-intel MCP and does not replace it: VirusTotal stays the primary IOC enrichment, and Shodan applies only to external (non-RFC1918) IPs and domains. It needs `SHODAN_API_KEY` and refuses to start without one, so the launcher installs its Claude Desktop entry (`shodan`) only when that key is stored or `--with-shodan` is passed. Tool reference: [mcp-tools.md](./mcp-tools.md#shodan-mcp-optional).
+
 ### Skills (SKILL.md files)
 
 Each skill folder contains a `SKILL.md` that Claude reads when a relevant request triggers the skill. SKILL.md files encode:
@@ -135,7 +142,7 @@ Credential resolution, per value (highest priority first):
 1. Environment variables (`S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `S1_HEC_INGEST_URL`, `S1_HEC_TOKEN`, `S1_SCOPE`, `VIRUSTOTAL_API_KEY`)
 2. The OS keychain: service `sentinelone-mcp`, account `<profile>:<NAME>`, profile from `S1_PROFILE` (default `default`). macOS login keychain, Linux Secret Service, Windows Credential Manager.
 
-There is no file fallback. Values are stored with `s1-secops-mcp setup` (or the Docker launcher's `setup` mode). Under Docker, the host launcher reads the keychain and passes the values to the container over stdin, so the MCP client config carries no secrets. Details, the migration from `credentials.json`, and the limits of keychain protection: [credentials.md](./credentials.md).
+There is no file fallback. Values are stored with `s1-secops-mcp setup` (or the Docker launcher's `setup` mode). Under Docker, the host launcher reads the keychain and passes the values to the container over stdin, so the MCP client config carries no secrets. The optional `SHODAN_API_KEY` is stored by the launcher's `setup` under the same service (`<profile>:SHODAN_API_KEY`) and passed only to `shodan-mcp`. Details, the migration from `credentials.json`, and the limits of keychain protection: [credentials.md](./credentials.md).
 
 ---
 
@@ -171,6 +178,7 @@ Claude reads powerquery SKILL.md → writes hunt query
               ├── threat-intel-mcp: get_file_report(hash) → multi-engine verdict
               └── threat-intel-mcp: get_ip_report(ip) → threat actor attribution
               (use your org's approved threat intel MCP; VirusTotal shown as example)
+              └── shodan-mcp (optional): ip_lookup(ip) → exposed ports, services, host CVEs
                      │
                      ▼
               Claude generates SOC report (.docx) with verdict, MITRE mapping,
@@ -200,7 +208,7 @@ s1-secops-skills/
   sdl-solutions/    Skill: repeatable SDL solution deployment (onboarding, enrichment)
   soc-investigator/             Skill: autonomous DFIR alert investigation and correlation
   s1-secops-mcp/              MCP server (Node.js): 35 tools, stdio
-  docker/                       Image build, entrypoint, and the host keychain launchers
+  docker/                       Image build (four MCPs), entrypoint, and the host keychain launchers
   s1-secops-skills-plugin/    Distributable plugin bundle (all 8 skills)
   assets/                       Screenshots and images for documentation
 ```

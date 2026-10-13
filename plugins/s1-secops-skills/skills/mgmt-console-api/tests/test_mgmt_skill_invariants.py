@@ -291,5 +291,20 @@ class AssetLinkageOnPlatformAlerts(unittest.TestCase):
         self.assertRegex(ref, r"real agent's hostname in `device.hostname` without `agent.uuid`")
 
 
+class OutputFileUnderDocker(unittest.TestCase):
+    """1.5.4: under Docker only `install --output-dir` shares a folder with the host.
+
+    A user once got "Set S1_OUTPUT_DIRS" from Claude, which does nothing under
+    Docker. The skill must point at the launcher instead.
+    """
+
+    def test_large_results_note_points_at_install_output_dir(self):
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        note = next(line for line in text.splitlines() if line.startswith("> **Large results:**"))
+        self.assertIn("install --output-dir", note)
+        self.assertIn("-OutputDir", note)
+        self.assertIn("do not ask them to set `S1_OUTPUT_DIRS`", note)
+
+
 if __name__ == "__main__":
     unittest.main()

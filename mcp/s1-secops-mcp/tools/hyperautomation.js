@@ -309,7 +309,7 @@ export const tools = [
         },
         outputFile: {
           type: 'string',
-          description: 'Optional absolute path to save the ZIP archive (e.g. /Users/me/ha-export.zip). Must be inside S1_OUTPUT_DIRS (default: home and temp). Without it the tool returns metadata only.',
+          description: 'Optional absolute path to save the ZIP archive (e.g. /Users/me/ha-export.zip). Must be inside S1_OUTPUT_DIRS (default: home and temp). Without it the tool returns metadata only. Under the Docker launcher only the folder set with `install --output-dir` is shared with the host (Windows: pass paths under `/output`); if none is set, tell the user to run it rather than writing elsewhere.',
         },
         overwrite: { type: 'boolean', description: 'Allow outputFile to replace an existing file.' },
       },

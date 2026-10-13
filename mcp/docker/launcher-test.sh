@@ -36,12 +36,20 @@ for SHELL_BIN in /bin/sh /usr/bin/dash /bin/dash /bin/bash; do
   SRC="$T/clone/s1-secops-mcp-launch.sh"
   CFG="$H/$CFG_REL"
   DEST="$H/.local/bin/s1-secops-mcp-launch.sh"
-  run() { (cd "$T" && HOME="$H" XDG_CONFIG_HOME= PATH="$ROOT/fakebin:$PATH" "$SHELL_BIN" "$@" </dev/null); }
+  # S1_PROFILE is a profile nobody has, so a real SHODAN_API_KEY in the
+  # developer's keychain cannot change which entries are written.
+  run() { (cd "$T" && HOME="$H" XDG_CONFIG_HOME= S1_PROFILE=s1lt-nokey PATH="$ROOT/fakebin:$PATH" "$SHELL_BIN" "$@" </dev/null); }
 
-  # config prints valid JSON whose command is the launcher's absolute path
+  # config prints valid JSON whose command is the launcher's absolute path.
+  # Shodan is optional: no key stored for the profile, so no shodan entry.
   run "$SRC" config > "$T/c.json" 2> "$T/c.err"
   if py "$T/c.json" "sorted(j['mcpServers'])==['purple-mcp','s1-secops-mcp','virustotal'] and {v['command'] for v in j['mcpServers'].values()}=={'$SRC'} and j['mcpServers']['virustotal']['args'][-1]=='virustotal-mcp'"; then
-    ok "config: three entries, absolute path"; else bad "config" "$T/c.err"; fi
+    ok "config: three entries without a Shodan key, absolute path"; else bad "config" "$T/c.err"; fi
+
+  # --with-shodan adds the optional fourth entry, same launcher and image
+  run "$SRC" config --with-shodan > "$T/c4.json" 2> "$T/c4.err"
+  if py "$T/c4.json" "sorted(j['mcpServers'])==['purple-mcp','s1-secops-mcp','shodan','virustotal'] and j['mcpServers']['shodan']['command']=='$SRC' and j['mcpServers']['shodan']['args'][-1]=='shodan-mcp' and j['mcpServers']['shodan']['args'][:2]==j['mcpServers']['virustotal']['args'][:2]"; then
+    ok "config: --with-shodan adds the shodan entry"; else bad "config --with-shodan" "$T/c4.err"; fi
 
   # a relative invocation still resolves to an absolute path
   (cd "$T/clone" && HOME="$H" "$SHELL_BIN" ./s1-secops-mcp-launch.sh config </dev/null) > "$T/c0.json" 2>/dev/null
@@ -122,7 +130,7 @@ done
 # Live stdio check (Docker running and the image present): an MCP client keeps
 # stdin open, so the initialize reply must arrive before stdin closes. Piping
 # one line and closing stdin would hide a relay that buffers input.
-IMAGE=sentinelone/secops-mcps:1.5.3
+IMAGE=sentinelone/secops-mcps:1.5.4
 if command -v docker >/dev/null 2>&1 && docker image inspect "$IMAGE" >/dev/null 2>&1; then
   echo "== live stdio"
   L="$ROOT/live"; mkdir -p "$L"; mkfifo "$L/in"

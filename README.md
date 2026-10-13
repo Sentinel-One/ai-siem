@@ -48,7 +48,6 @@ ai-siem/                # AI SIEM core structure (400+ components)
 2. **Import** dashboards (`*.conf`) or rules (`*.conf`) into your Singularity console.  
 3. **Choose** between community parsers or official SentinelOne marketplace parsers.  
 4. **Deploy** parsers using the included metadata.yaml for proper configuration.  
-5. **Connect Claude** to your tenant with the SecOps MCPs and skills: follow the [MCP quick start](plugins/s1-secops-skills/README.md#1-quick-start-docker). The MCP is read-only by default; to enable write access run `~/.local/bin/s1-secops-mcp-launch.sh install --read-write` (Windows: `install -ReadWrite`) and restart Claude Desktop.  
 
 
 ---
@@ -209,21 +208,7 @@ Eight Claude skills for SentinelOne SecOps, bundled in `plugins/s1-secops-skills
 - **hyperautomation**: build and export Hyperautomation (SOAR) workflow JSON.
 - **soc-investigator**: autonomous DFIR investigation over S1 alerts and third-party sources.
 
-**Current release:** plugin **1.3.16**, Docker image **`sentinelone/secops-mcps:1.5.5`** (bundles `s1-secops-mcp` 1.5.5, purple-mcp, VirusTotal and the optional Shodan MCP). Credentials live in the OS keychain; coming from 1.4.x, follow the [1.4.x to 1.5.0 upgrade guide](plugins/s1-secops-skills/docs/upgrading.md#14x-to-150). What changed: [release notes 1.5.5](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.5.5.md). Install and upgrade: [plugin README](plugins/s1-secops-skills/README.md), [docs/installation.md](plugins/s1-secops-skills/docs/installation.md), [docs/upgrading.md](plugins/s1-secops-skills/docs/upgrading.md). Third-party notices: [THIRD_PARTY_NOTICES.md](plugins/s1-secops-skills/THIRD_PARTY_NOTICES.md).
-
-**MCP quick start.** Install the launcher and connect Claude Desktop (macOS or Linux; Windows steps are in the [plugin README](plugins/s1-secops-skills/README.md#1-quick-start-docker)):
-
-```bash
-mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
-```
-
-`s1-secops-mcp` is **read-only by default**. To let Claude deploy content or triage alerts, enable write access and restart Claude Desktop:
-
-```bash
-~/.local/bin/s1-secops-mcp-launch.sh install --read-write
-```
-
-On Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\bin\s1-secops-mcp-launch.ps1" install -ReadWrite`. Details and the controls that apply: [read-only.md](plugins/s1-secops-skills/docs/read-only.md).
+**Current release:** plugin **1.3.16**, Docker image **`sentinelone/secops-mcps:1.5.5`** (bundles `s1-secops-mcp` 1.5.5, purple-mcp, VirusTotal and the optional Shodan MCP). Credentials live in the OS keychain; coming from 1.4.x, follow the [1.4.x to 1.5.0 upgrade guide](plugins/s1-secops-skills/docs/upgrading.md#14x-to-150). What changed: [release notes 1.5.5](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.5.5.md). Install and upgrade: [plugin README](plugins/s1-secops-skills/README.md), [docs/installation.md](plugins/s1-secops-skills/docs/installation.md), [docs/upgrading.md](plugins/s1-secops-skills/docs/upgrading.md). From 1.5.5, `s1-secops-mcp` is read-only by default; see [read-only.md](plugins/s1-secops-skills/docs/read-only.md) to enable write. Third-party notices: [THIRD_PARTY_NOTICES.md](plugins/s1-secops-skills/THIRD_PARTY_NOTICES.md).
 
 See [`plugins/s1-secops-skills/docs/skills.md`](plugins/s1-secops-skills/docs/skills.md) for details.
 

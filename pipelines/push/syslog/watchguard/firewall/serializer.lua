@@ -138,7 +138,7 @@ local function parseTimestamp(timestamp)
     return os.time() * 1000
 end
 
--- Helper functions from production Observo scripts
+-- Helper functions from production Data Pipelines scripts
 function getNestedField(obj, path)
     if obj == nil or path == nil or path == '' then return nil end
     local current = obj

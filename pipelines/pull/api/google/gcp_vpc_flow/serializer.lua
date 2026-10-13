@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- GCP VPC Flow Logs → OCSF 1.3.0 Network Activity (class_uid = 4001)
--- Observo processEvent(event) contract
--- Author: Observo AI  |  Schema: OCSF 1.3.0  |  Class: Network Activity (4001)
+-- Data Pipelines processEvent(event) contract
+-- Author: Data Pipelines AI  |  Schema: OCSF 1.3.0  |  Class: Network Activity (4001)
 -- Covers: Cloud Logging nested JSON (jsonPayload + resource.labels) and
 --         pre-parsed flat records exported via Pub/Sub or Log Sink
 -- Strict rules enforced:
@@ -702,7 +702,7 @@ end
 
 --------------------------------------------------------------------------------
 -- MAIN: processEvent
--- Entry point required by the Observo Lua transform runtime.
+-- Entry point required by the Data Pipelines Lua transform runtime.
 -- All helpers are declared as local functions ABOVE this function.
 -- Handles both:
 --   (A) Raw nested GCP Cloud Logging JSON (jsonPayload + resource.labels)

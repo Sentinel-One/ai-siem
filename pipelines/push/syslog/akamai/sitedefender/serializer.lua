@@ -7,7 +7,7 @@ local CATEGORY_UID = 4
 local CLASS_NAME = "HTTP Activity"
 local CATEGORY_NAME = "Network Activity"
 
--- Nested field access (production-proven from Observo scripts)
+-- Nested field access (production-proven from Data Pipelines scripts)
 function getNestedField(obj, path)
     if obj == nil or path == nil or path == '' then return nil end
     local current = obj

@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- GitHub Audit Log → OCSF 1.3.0 API Activity (class_uid = 6003)
--- Observo processEvent(event) contract
--- Author: Observo AI  |  Schema: OCSF 1.3.0  |  Class: API Activity (6003)
+-- Data Pipelines processEvent(event) contract
+-- Author: Data Pipelines AI  |  Schema: OCSF 1.3.0  |  Class: API Activity (6003)
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -442,7 +442,7 @@ end
 
 --------------------------------------------------------------------------------
 -- MAIN: processEvent
--- Entry point required by the Observo Lua transform runtime.
+-- Entry point required by the Data Pipelines Lua transform runtime.
 --------------------------------------------------------------------------------
 function processEvent(event)
 

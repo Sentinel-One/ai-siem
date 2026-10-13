@@ -1,6 +1,6 @@
 # pipelines/community/
 
-Community-contributed Observo pipeline templates for SentinelOne AI SIEM.
+Community-contributed Data Pipelines templates for SentinelOne AI SIEM.
 
 This directory holds parser/transform pipelines that bridge a vendor's log
 format to OCSF and the AI SIEM HEC endpoint.
@@ -22,7 +22,7 @@ pipelines/
 ```
 
 Each leaf (`<product>/`) contains a `metadata.yaml` and (for ingestion
-templates) one Observo pipeline export JSON, or (for `transform_ocsf/`
+templates) one Data Pipelines export JSON, or (for `transform_ocsf/`
 overlays) the serializer Lua plus metadata.
 
 ---

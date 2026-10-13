@@ -1,8 +1,8 @@
 --------------------------------------------------------------------------------
 -- Google Workspace Admin & Login Activity Logs
 -- → OCSF 1.3.0 Authentication (class_uid = 3002)
--- Observo processEvent(event) contract
--- Author: Observo AI  |  Schema: OCSF 1.3.0  |  Class: Authentication (3002)
+-- Data Pipelines processEvent(event) contract
+-- Author: Data Pipelines AI  |  Schema: OCSF 1.3.0  |  Class: Authentication (3002)
 -- Covers: login, admin, token, groups, drive, meet, chat applicationNames
 -- Handles: nested GWS Reports API JSON + pre-parsed flat records
 -- Strict rules enforced:
@@ -975,7 +975,7 @@ end
 
 --------------------------------------------------------------------------------
 -- MAIN: processEvent
--- Entry point required by the Observo Lua transform runtime.
+-- Entry point required by the Data Pipelines Lua transform runtime.
 -- All helpers are declared as local functions ABOVE this function.
 -- Handles both:
 --   (A) Raw nested GWS Reports API JSON (id{}, actor{}, events[]{parameters[]})

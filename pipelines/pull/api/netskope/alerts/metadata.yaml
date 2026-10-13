@@ -6,6 +6,8 @@ metadata_details:
     Resource Activity, and related classes for SentinelOne AI SIEM.
 
   pipeline_category: "ingestion"
+  ingest_mode: "API Call"
+  auth_type: "Bearer Token"
 
   source_template: "Netskope Alerts"
   source_vendor: "Netskope"
@@ -42,7 +44,7 @@ metadata_details:
     issues one GET per alert_type from the comma-separated ALERT_TYPES list.
 
   retry_behavior: >
-    Uses Observo retry with exponential backoff for HTTP failures based on
+    Uses Data Pipelines retry with exponential backoff for HTTP failures based on
     retry.initial_backoff_secs, retry.backoff_scaling_factor, retry.max_backoff_secs,
     retry.max_retries. Non-200 responses are logged with URL, status, and
     alert_type for troubleshooting; successful calls update the checkpoint

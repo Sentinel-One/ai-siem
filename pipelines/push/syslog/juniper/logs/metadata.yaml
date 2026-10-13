@@ -13,7 +13,7 @@ metadata_details:
   dataSource: Juniper Logs
   format: source-specific JSON/KV/syslog
   ocsf_version: 1.3.0
-  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingestion_method: Data Pipelines OCSFSerializer (Lua-based transform)
   ingest_mode: "Syslog"
   auth_type: "N/A"
   sample_record: "{\n  \"timestamp\": \"2026-04-19T15:41:53.123963+00:00\",\n  \"hostname\": \"srx-9\"\
@@ -23,7 +23,7 @@ metadata_details:
     \ \"software_version\": \"Junos 18.4R8\",\n  \"model\": \"SRX3022\",\n  \"serial_number\": \"FKLA0L3CD74\"\
     ,\n  \"uptime\": \"348 days, 4:13:47\",\n  \"neighbor_ip\": \"145.166.193.89\",\n  \"routing_instance\"\
     : \"management\",\n  \"protocol\": \"BGP\",\n  \"as_number\": 65091\n}"
-  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+  dependency_summary: Requires Data Pipelines OCSFSerializer template with Lua runtime (lupa). Source events
     must match the field layout exercised by the Lua mappings.
   performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
     nested access.

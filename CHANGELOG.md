@@ -139,7 +139,7 @@ agnostic OCSF overlays for generic / template / unknown-vendor data
 Removed 16 directories from `pipelines/community/transform_ocsf/` for vendors
 whose log streams are typically delivered to AI SIEM via first-party or
 vendor-native ingestion paths in supported deployments, rather than via
-community-contributed Observo transforms:
+community-contributed Data Pipelines transforms:
 
 - `aws_guardduty_logs/`, `aws_waf/`
 - `azure_ad/`, `azure_platform/`
@@ -235,7 +235,7 @@ at least one working alternative covering the same vendor cluster
 ## [1.0.1] - 2025-09-14
 
 ### Added
-- Pipelines directory structure for Observo Transformations
+- Pipelines directory structure for Data Pipelines Transformations
 - Updated main branch as default branch
 
 ## [1.0.0] - 2025-09-12

@@ -4,7 +4,7 @@
 local CLASS_UID = 4002
 local CATEGORY_UID = 4
 
--- Nested field access (production-proven from Observo scripts)
+-- Nested field access (production-proven from Data Pipelines scripts)
 function getNestedField(obj, path)
     if obj == nil or path == nil or path == '' then return nil end
     local current = obj

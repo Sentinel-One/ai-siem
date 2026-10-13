@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- CrowdStrike Detections → OCSF 1.3.0 Detection Finding (class_uid = 2004)
--- Observo processEvent(event) contract
--- Author: Observo AI  |  Schema: OCSF 1.3.0  |  Class: Detection Finding (2004)
+-- Data Pipelines processEvent(event) contract
+-- Author: Data Pipelines AI  |  Schema: OCSF 1.3.0  |  Class: Detection Finding (2004)
 -- Strict rules enforced:
 --   (1) No "Unknown"/"unknown" string defaults — nil or source fallbacks only
 --   (2) tostring(x or "") guard before every :match/:gsub/:gmatch/:lower/:upper
@@ -879,7 +879,7 @@ end
 
 --------------------------------------------------------------------------------
 -- MAIN: processEvent
--- Entry point required by the Observo Lua transform runtime.
+-- Entry point required by the Data Pipelines Lua transform runtime.
 -- All helpers are declared as local functions ABOVE this function.
 --------------------------------------------------------------------------------
 function processEvent(event)

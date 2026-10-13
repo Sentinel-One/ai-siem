@@ -6,7 +6,7 @@ local CATEGORY_UID = 3
 local CLASS_NAME = "Authentication"
 local CATEGORY_NAME = "Identity & Access Management"
 
--- Nested field access (production-proven from Observo scripts)
+-- Nested field access (production-proven from Data Pipelines scripts)
 function getNestedField(obj, path)
     if obj == nil or path == nil or path == '' then return nil end
     local current = obj
@@ -36,7 +36,7 @@ function getValue(tbl, key, default)
     return value ~= nil and value or default
 end
 
--- Replace userdata nil values (Observo sandbox quirk)
+-- Replace userdata nil values (Data Pipelines sandbox quirk)
 function no_nulls(d, rn)
     if type(d) == "table" then
         for k, v in pairs(d) do

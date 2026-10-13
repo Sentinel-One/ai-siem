@@ -11,8 +11,8 @@ echo "=== Starting Hyperautomation workflow reorganization ==="
 for vendor_dir in */; do
     # Skip if not a directory or special folders
     [[ -d "$vendor_dir" ]] || continue
-    [[ "$vendor_dir" == "workflow-template-folder/" ]] && continue
-    [[ "$vendor_dir" == "undefind vendor/" ]] && continue  # fix typo later if needed
+    [[ "$vendor_dir" == "TEMPLATE/" ]] && continue
+    [[ "$vendor_dir" == "ai-siem-platform/" ]] && continue
 
     echo "Processing vendor: ${vendor_dir%/}"
 

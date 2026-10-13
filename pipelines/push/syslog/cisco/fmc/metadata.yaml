@@ -13,7 +13,7 @@ metadata_details:
   dataSource: Cisco Fmc Logs
   format: source-specific JSON/KV/syslog
   ocsf_version: 1.3.0
-  ingestion_method: Observo OCSFSerializer (Lua-based transform)
+  ingestion_method: Data Pipelines OCSFSerializer (Lua-based transform)
   ingest_mode: "Syslog"
   auth_type: "N/A"
   sample_record: "{\n  \"timestamp\": \"2026-04-20T03:32:52.723426+00:00\",\n  \"event_id\": 9448853,\n\
@@ -28,7 +28,7 @@ metadata_details:
     : \"MX\",\n  \"dns_response_type\": \"Name Error\",\n  \"dns_ttl\": 83960,\n  \"source_latitude\"\
     : 56.497201,\n  \"source_longitude\": -136.336536,\n  \"destination_latitude\": 24.435877,\n  \"destination_longitude\"\
     : 19.513012\n}"
-  dependency_summary: Requires Observo OCSFSerializer template with Lua runtime (lupa). Source events
+  dependency_summary: Requires Data Pipelines OCSFSerializer template with Lua runtime (lupa). Source events
     must match the field layout exercised by the Lua mappings.
   performance_impact: Single-event transform, ~? lines. Field-for-field normalization with helper-based
     nested access.

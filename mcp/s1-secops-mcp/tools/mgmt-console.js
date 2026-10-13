@@ -97,7 +97,7 @@ export const tools = [
         },
         outputFile: {
           type: 'string',
-          description: 'Optional absolute path on the machine running this MCP server. The full JSON response is written there and only a summary (path, bytes, sha256, item count, pagination) is returned. Must be inside S1_OUTPUT_DIRS (default: home and temp). For binary responses use s1_api_download.',
+          description: 'Optional absolute path on the machine running this MCP server. The full JSON response is written there and only a summary (path, bytes, sha256, item count, pagination) is returned. Must be inside S1_OUTPUT_DIRS (default: home and temp). For binary responses use s1_api_download. Under the Docker launcher only the folder set with `install --output-dir` is shared with the host (Windows: pass paths under `/output`); if none is set, tell the user to run it rather than writing elsewhere.',
         },
         overwrite: { type: 'boolean', description: 'Allow outputFile to replace an existing file.' },
       },
@@ -249,7 +249,7 @@ export const tools = [
         },
         outputFile: {
           type: 'string',
-          description: 'Absolute path to write. Must be inside S1_OUTPUT_DIRS (default: home and temp). Created mode 0600.',
+          description: 'Absolute path to write. Must be inside S1_OUTPUT_DIRS (default: home and temp). Created mode 0600. Under the Docker launcher only the folder set with `install --output-dir` is shared with the host (Windows: pass paths under `/output`); if none is set, tell the user to run it rather than writing elsewhere.',
         },
         overwrite: { type: 'boolean', description: 'Allow replacing an existing file.' },
       },

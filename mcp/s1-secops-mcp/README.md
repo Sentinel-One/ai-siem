@@ -79,7 +79,7 @@ mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-O
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.3", "s1-secops-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.4", "s1-secops-mcp"]
     }
   }
 }
@@ -143,7 +143,7 @@ IOC writes (`/threat-intelligence/iocs`) refuse a token whose user spans several
 ### Redaction and output files
 
 - Token values are masked in every tool response and every log line.
-- `outputFile` (on `powerquery_run`, `s1_api_get`, `s1_api_download`, `ha_export_workflow`) writes only inside `S1_OUTPUT_DIRS` (path-list; default: home and temp directories), refuses symlinks and dot or autostart paths below the root, never replaces an existing file unless `overwrite: true`, and creates files mode 0600.
+- `outputFile` (on `powerquery_run`, `s1_api_get`, `s1_api_download`, `ha_export_workflow`) writes only inside `S1_OUTPUT_DIRS` (path-list; default: home and temp directories), refuses symlinks and dot or autostart paths below the root, never replaces an existing file unless `overwrite: true`, and creates files mode 0600. In the Docker image (`S1_IN_CONTAINER=1`) there is no default root: only the folder shared with `install --output-dir` is allowed, and without one every `outputFile` is refused with that advice, because the container's home and temp folders are lost when it exits.
 
 ### Security limit
 

@@ -195,5 +195,16 @@ class LiveFindings20261009(unittest.TestCase):
         self.assertRegex(self.rules, r"two seeds of 10 matching events.*\n?.*raised two alerts|raised two alerts")
 
 
+class OutputFileUnderDocker(unittest.TestCase):
+    """1.5.4: the outputFile row tells Claude what to say when no folder is shared."""
+
+    def test_outputfile_row_points_at_install_output_dir(self):
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        row = next(line for line in text.splitlines() if line.startswith("| `outputFile`"))
+        self.assertIn("install --output-dir", row)
+        self.assertIn("-OutputDir", row)
+        self.assertIn("do not ask them to set `S1_OUTPUT_DIRS`", row)
+
+
 if __name__ == "__main__":
     unittest.main()

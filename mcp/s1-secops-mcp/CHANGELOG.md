@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.5.4 (image `sentinelone/secops-mcps:1.5.4`)
+
+### Fixed
+
+- **`outputFile` under the Docker image no longer loses files.**
+  - **Before:** with no shared folder, a write to the container's `/tmp` or `/home/node` reported success (path, bytes, sha256), and the file was deleted when the container exited. A host path was refused with "Set S1_OUTPUT_DIRS", which does nothing under Docker because the client config never reaches the container.
+  - **Now:** in the image (`S1_IN_CONTAINER=1`, set by the Dockerfile) there is no default root. Without a folder shared by `install --output-dir`, `outputFile` is refused before any API call, and the message says to run `s1-secops-mcp-launch.sh install --output-dir <folder>` (Windows: `-OutputDir`) and restart Claude Desktop.
+  - **Unchanged:** the Node install keeps its home and temp default and its message.
+- The `outputFile` descriptions on `powerquery_run`, `s1_api_get`, `s1_api_download` and `ha_export_workflow` tell Claude the same, so it stops repeating the "Set S1_OUTPUT_DIRS" advice.
+- Tests: `tests/output-container-1.5.4.test.mjs` adds 8 tests. 7 of them fail on 1.5.3's `output.js`.
+
+### Skills (plugin 1.3.15)
+
+- `mgmt-console-api` ("Large results") and `powerquery` (`outputFile` row): if the server refuses
+  `outputFile` because no folder is shared with the container, Claude tells the user to run
+  `~/.local/bin/s1-secops-mcp-launch.sh install --output-dir <folder>` (Windows: `-OutputDir`) and
+  restart Claude Desktop, and does not ask them to set `S1_OUTPUT_DIRS`. Each skill's invariant
+  suite pins the sentence.
+
 ## Unreleased: host launchers and plugin 1.3.14 (image and MCP unchanged at 1.5.3)
 
 ### Skills (plugin 1.3.14)

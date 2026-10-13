@@ -7,10 +7,12 @@
  *   - The path must be absolute and resolve (after symlinks) inside one of the
  *     allowed roots: S1_OUTPUT_DIRS (path-delimiter separated) or, when unset,
  *     the user's home directory and the OS temp directory.
+ *   - In the Docker image (S1_IN_CONTAINER=1) there is no default root. The
+ *     container's home and temp folders vanish with the container, so a write
+ *     there reports success and then loses the file. Only S1_OUTPUT_DIRS counts,
+ *     and the launcher sets it when `install --output-dir` mounted a host folder.
  *   - Existing files are never overwritten unless overwrite is true.
  *   - Files are created with mode 0600 (results can hold sensitive telemetry).
- *   - Under Docker the path is inside the container unless the launcher mounted
- *     the host directory at the same path (see docker/s1-secops-mcp-launch.sh).
  */
 
 import { createHash } from 'crypto';
@@ -18,11 +20,23 @@ import { existsSync, mkdirSync, realpathSync, lstatSync, openSync, writeSync, cl
 import { homedir, tmpdir } from 'os';
 import { delimiter, dirname, isAbsolute, join, relative, resolve, sep, extname } from 'path';
 
+/** True when running inside the secops-mcps image (docker/Dockerfile sets it). */
+export function inContainer() {
+  return process.env.S1_IN_CONTAINER === '1';
+}
+
 export function allowedRoots() {
   const raw = process.env.S1_OUTPUT_DIRS;
-  const roots = raw ? raw.split(delimiter).filter(Boolean) : [homedir(), tmpdir()];
+  const roots = raw ? raw.split(delimiter).filter(Boolean) : (inContainer() ? [] : [homedir(), tmpdir()]);
   return roots.map(r => { try { return realpathSync(resolve(r)); } catch { return resolve(r); } });
 }
+
+// The advice has to work where the server actually runs. Under Docker,
+// S1_OUTPUT_DIRS in the MCP client config never reaches the container: only the
+// launcher's `install --output-dir` mounts a host folder and sets it.
+const CONTAINER_ADVICE = 'outputFile needs a folder shared with this container. Ask the user to run '
+  + '"s1-secops-mcp-launch.sh install --output-dir <folder>" (Windows: -OutputDir) and restart Claude Desktop, '
+  + 'then write inside that folder (Windows: under /output). Setting S1_OUTPUT_DIRS in the client config has no effect under Docker.';
 
 function within(child, root) {
   return child === root || child.startsWith(root.endsWith(sep) ? root : root + sep);
@@ -34,6 +48,10 @@ export function resolveOutputPath(p, { overwrite = false } = {}) {
   if (!isAbsolute(p)) throw new Error(`outputFile must be an absolute path (got ${p})`);
   const target = resolve(p);
   const roots = allowedRoots();
+  if (roots.length === 0) {
+    // Only reachable in the container with no shared folder.
+    throw new Error(`outputFile ${target} refused: no output folder is shared with this container. ${CONTAINER_ADVICE}`);
+  }
 
   // Resolve the deepest existing ancestor through symlinks, so a symlinked
   // directory cannot be used to escape the allowed roots.
@@ -41,7 +59,9 @@ export function resolveOutputPath(p, { overwrite = false } = {}) {
   while (!existsSync(probe)) { const up = dirname(probe); if (up === probe) break; probe = up; }
   const realTarget = join(realpathSync(probe), relative(probe, target));
   if (!roots.some(r => within(realTarget, r))) {
-    throw new Error(`outputFile ${target} is outside the allowed output directories (${roots.join(', ')}). Set S1_OUTPUT_DIRS to allow another directory.`);
+    throw new Error(inContainer()
+      ? `outputFile ${target} is outside the folder shared with this container (${roots.join(', ')}). Write inside it, or: ${CONTAINER_ADVICE}`
+      : `outputFile ${target} is outside the allowed output directories (${roots.join(', ')}). Set S1_OUTPUT_DIRS to allow another directory.`);
   }
   // Below the allowed root, refuse places where a written file changes what runs
   // or who can log in: any dot-file or dot-directory (.ssh/authorized_keys,

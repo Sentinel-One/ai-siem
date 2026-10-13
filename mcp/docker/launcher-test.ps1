@@ -45,12 +45,20 @@ function Invoke-Launcher([string]$Script, [string[]]$LauncherArgs) {
 function ErrText { (Get-Content -Raw (Join-Path $root 'err.txt') -ErrorAction SilentlyContinue) -replace '\s+', '' }
 
 try {
-  # config: three entries, absolute path, powershell.exe -File <launcher>
-  $j = Invoke-Launcher $launcher @('config') | ConvertFrom-Json
+  # config: three entries, absolute path, powershell.exe -File <launcher>.
+  # A profile nobody has, so a real SHODAN_API_KEY in Credential Manager cannot
+  # add the optional shodan entry.
+  $j = Invoke-Launcher $launcher @('config', '-Profile', 's1lt-nokey') | ConvertFrom-Json
   $names = @($j.mcpServers.PSObject.Properties.Name)
   $a = $j.mcpServers.'s1-secops-mcp'.args
   if (($names -join ',') -eq 's1-secops-mcp,purple-mcp,virustotal' -and $j.mcpServers.virustotal.command -eq 'powershell.exe' -and $a[4] -eq $launcher -and $a[-1] -eq 's1-secops-mcp' -and $j.mcpServers.virustotal.args[-1] -eq 'virustotal-mcp') {
-    Ok 'config: three entries, absolute path' } else { Bad 'config' (ErrText) }
+    Ok 'config: three entries without a Shodan key, absolute path' } else { Bad 'config' (ErrText) }
+
+  # -WithShodan adds the optional fourth entry
+  $j = Invoke-Launcher $launcher @('config', '-Profile', 's1lt-nokey', '-WithShodan') | ConvertFrom-Json
+  $names = @($j.mcpServers.PSObject.Properties.Name)
+  if (($names -join ',') -eq 's1-secops-mcp,purple-mcp,virustotal,shodan' -and $j.mcpServers.shodan.args[-1] -eq 'shodan-mcp' -and $j.mcpServers.shodan.args[4] -eq $launcher) {
+    Ok 'config: -WithShodan adds the shodan entry' } else { Bad 'config -WithShodan' (ErrText) }
 
   # config options
   $md = Join-Path $root 'CLAUDE.md'; Set-Content -Path $md -Value '# x'
@@ -132,7 +140,7 @@ try {
   # Live stdio check (Windows with Docker running and the image present): an MCP
   # client keeps stdin open, so the initialize reply must arrive before stdin
   # closes. Piping one line and closing stdin hides a relay that buffers input.
-  $image = 'sentinelone/secops-mcps:1.5.3'
+  $image = 'sentinelone/secops-mcps:1.5.4'
   $dockerOk = $false
   if ($env:OS -eq 'Windows_NT' -and (Get-Command docker -ErrorAction SilentlyContinue)) {
     $ErrorActionPreference = 'Continue'

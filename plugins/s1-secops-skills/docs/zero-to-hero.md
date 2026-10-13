@@ -40,6 +40,7 @@ MCP Servers          Live API access from your machine, credentials from the OS 
   s1-secops-mcp    35 tools: PowerQuery, SDL, Mgmt REST, UAM, UAM Ingest, Hyperautomation
   purple-mcp         Alert triage, Purple AI NLQ, Deep Visibility, assets, vulns
   threat-intel-mcp   External IOC enrichment (e.g. VirusTotal)
+  shodan (optional)  Exposure intel for external IPs and domains: ports, services, host CVEs
        |
        v
 Skills (SKILL.md)    Procedural knowledge: confirmed schemas, field requirements,
@@ -108,9 +109,9 @@ Continue to [Section 3: Install](#3-install-in-30-minutes) to set this up.
 
 ## 3. Install in 30 minutes
 
-The install is a Docker quick start: one image bundles all three MCPs, so the host needs Docker plus a small launcher script that reads your OS keychain. Rather than repeat it here, follow the steps in the **[README Quick start (Docker)](../README.md#1-quick-start-docker)**:
+The install is a Docker quick start: one image bundles all four MCPs (Shodan is optional), so the host needs Docker plus a small launcher script that reads your OS keychain. Rather than repeat it here, follow the steps in the **[README Quick start (Docker)](../README.md#1-quick-start-docker)**:
 
-1. **Run the one install command** for your OS. It installs the launcher, adds all three MCPs to `claude_desktop_config.json` with your real path (the config holds no secrets), pulls the image, and asks for your credentials, which go into the OS keychain, never a file; the full reference is [`docs/credentials.md`](./credentials.md).
+1. **Run the one install command** for your OS. It installs the launcher, adds the three core MCPs to `claude_desktop_config.json` with your real path (the config holds no secrets), pulls the image, and asks for your credentials, which go into the OS keychain, never a file; the full reference is [`docs/credentials.md`](./credentials.md). The Shodan API key is optional: press Enter to skip it. If you store one, `install` also adds the `shodan` entry.
 2. **Quit and reopen Claude Desktop.** It starts the MCPs itself; there is nothing to start in Docker Desktop.
 3. **Install the plugin** (the latest `s1-secops-skills-v*.plugin` in the `dist/` folder) via Cowork → Customize → Browse plugins.
 
@@ -181,6 +182,7 @@ A few signals tell you which skill is running and what API surface is being used
 - **Tool calls named `mcp__s1-secops-mcp__*`** are the local MCP server. Names like `powerquery_run`, `s1_api_get`, `sdl_put_file`, `uam_list_alerts`, `ha_import_workflow` map cleanly to the skill they belong to.
 - **Tool calls named `mcp__purple-mcp__*`** are the Python Purple MCP. Use these for alert triage, Purple AI NLQ, vulnerabilities, inventory.
 - **Tool calls named `mcp__virustotal__*`** (or your equivalent) are external threat intel.
+- **Tool calls named `mcp__shodan__*`** (only if installed) are exposure lookups on external IPs and domains, and CVE lookups. They complement the threat-intel verdict, never replace it.
 - **Skill load indicators** appear inline: Claude will mention "loading powerquery" or similar before it starts authoring a query.
 - **Citations** appear in Claude's prose. Every fact ties back to a specific tool call, with no fabrication.
 

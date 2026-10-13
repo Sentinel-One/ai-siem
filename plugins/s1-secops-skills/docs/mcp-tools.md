@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-Full reference for all tools exposed by `s1-secops-mcp` and `purple-mcp`. For architecture context see [architecture.md](./architecture.md).
+Full reference for all tools exposed by `s1-secops-mcp`, `purple-mcp` and the optional `shodan-mcp`. For architecture context see [architecture.md](./architecture.md).
 
 ---
 
@@ -12,7 +12,7 @@ Runs on the user's machine over stdio, as a Node.js process or from the Docker i
 
 - **Redaction.** Token values are masked in every tool response and log line.
 - **Large integers.** API and PowerQuery results keep integers beyond 2^53 exact: 17-19 digit ids and nanosecond timestamps come back as strings, not rounded numbers. SDL's own `sum()`, `min()` and `max()` aggregates are floats and stay numbers. Sliced merges add and compare exact integers exactly.
-- **`outputFile`.** `powerquery_run`, `s1_api_get`, `s1_api_download` and `ha_export_workflow` accept an absolute `outputFile` path on the machine running the server. The full result is written there and the response carries only a summary (path, bytes, sha256, counts, plus a 5-row preview for queries), so bulk data does not pass through the model's context. The path must resolve inside `S1_OUTPUT_DIRS` (path-list; default: the home and temp directories), symlinks, dot paths and autostart folders (LaunchAgents, Windows Startup) below the root are refused, an existing file is never replaced unless `overwrite: true`, files are created mode 0600, and the path is checked before the API call. Under Docker the path is inside the container unless the launcher mounted the directory (`S1_OUTPUT_DIR`: mounted at the same path by the macOS/Linux launcher, at `/output` by the Windows launcher).
+- **`outputFile`.** `powerquery_run`, `s1_api_get`, `s1_api_download` and `ha_export_workflow` accept an absolute `outputFile` path on the machine running the server. The full result is written there and the response carries only a summary (path, bytes, sha256, counts, plus a 5-row preview for queries), so bulk data does not pass through the model's context. The path must resolve inside `S1_OUTPUT_DIRS` (path-list; default: the home and temp directories), symlinks, dot paths and autostart folders (LaunchAgents, Windows Startup) below the root are refused, an existing file is never replaced unless `overwrite: true`, files are created mode 0600, and the path is checked before the API call. Under Docker, only the folder set with `install --output-dir` reaches your machine (mounted at the same path by the macOS/Linux launcher, at `/output` by the Windows launcher). Without it, a path inside the container is lost when the container exits, and a path on your machine is refused. From 1.5.4 the server in the image refuses both, with that advice, instead of reporting success for a file that is then lost.
 
 ### PowerQuery tools
 
@@ -241,6 +241,42 @@ CVE lookups against cve-search.org (CIRCL). No key needed.
 
 ---
 
+## Shodan MCP (optional)
+
+Bundled in the `sentinelone/secops-mcps` image from 1.5.4, built from a pinned commit (`1b34db4`) of a maintained fork (repo in `mcp/docker/build.sh`) of [`w0h1v/mcp-shodan`](https://github.com/w0h1v/mcp-shodan) (npm `@burtthecoder/mcp-shodan` v1.0.34, MIT). Started through the same launcher (`s1-secops-mcp-launch.sh shodan-mcp`, alias `shodan`); the Claude Desktop entry is named `shodan`, so tools appear as `mcp__shodan__*`.
+
+It is optional exposure intelligence: open ports, services, banners, TLS/JARM and host CVEs, plus CVE and CPE lookups in Shodan's CVEDB. It complements VirusTotal reputation and does not replace it: the VirusTotal MCP stays the primary IOC enrichment server. Use it only for external (non-RFC1918) IPs and domains.
+
+- **Credential:** `SHODAN_API_KEY`, optional, from [account.shodan.io](https://account.shodan.io) (Account page, API key). The server refuses to start without it, so the launcher's `install` writes the `shodan` entry only when the key is stored or `--with-shodan` (Windows: `-WithShodan`) is passed. The key reaches this server only.
+- **Read-only.** All 11 tools carry `readOnlyHint`. There are no scan, alert or monitor tools, so it never starts an active scan or spends scan credits.
+- **Network:** `api.shodan.io` and `cvedb.shodan.io` only, over stdio only (the entrypoint unsets the upstream HTTP transport variables).
+- **Fork patches** (see the fork's `FORK_NOTES.md`): `page` capped at 10 on `shodan_search` and `domain_info`; HTTP redirects disabled; the API key is redacted from every error string; no `.env` loading; dead code (the `mcp-proxy` CLI and its `pipenet` tunnel library) stripped from the vendored tree.
+- **Plans and limits:** Shodan gates endpoints by plan, and the free tier is not consistent.
+  - On a free ("oss") key, the CVEDB tools, `shodan_count`, `search_filters` and `api_info` work reliably.
+  - `ip_lookup` and the DNS tools work for some targets and return "Requires membership or higher to access" for others. On 2026-10-14, `1.1.1.1` answered and `8.8.8.8` did not.
+  - `shodan_search` needs a membership or higher.
+  - `domain_info` is billed at 1 query credit per lookup.
+  - Every Shodan API plan is limited to 1 request per second.
+  - Use a membership or higher key for dependable results. When a tool returns the membership error, report it as a plan limit, not as missing data.
+
+| Tool | What it returns | Credit cost |
+|---|---|---|
+| `ip_lookup` | Host information for an IPv4 or IPv6 address: ports, banners, OS, CVEs, TLS/JARM. Options `history`, `minify` | No query credits |
+| `shodan_search` | Device search with Shodan query syntax and facets | 1 query credit when the query uses filters, plus 1 per page past the first (`page` max 10) |
+| `shodan_count` | Total and facet breakdown, without results | Free |
+| `dns_lookup` | Forward DNS | Free |
+| `reverse_dns_lookup` | Reverse DNS | Free |
+| `domain_info` | Subdomains and DNS records for a domain | 1 query credit per lookup (`page` max 10) |
+| `api_info` | Plan, query credits and scan credits | Free |
+| `search_filters` | Valid search filters and facets | Free |
+| `cve_lookup` | CVE detail from Shodan CVEDB: CVSS v3/v4, EPSS, KEV, CPEs (capped at 50) | Free, no key used |
+| `cpe_lookup` | CPE search in CVEDB | Free |
+| `cves_by_product` | CVEs for a product or CPE 2.3, with KEV and EPSS sorting and a date range | Free |
+
+Prefer `shodan_count` before `shodan_search` to size a query without spending credits, and `ip_lookup` for a single external IOC.
+
+---
+
 ## Threat intelligence: which server to use
 
 Both the VirusTotal MCP and purple-mcp read the same stored `VIRUSTOTAL_API_KEY`, but they are not interchangeable. A live side-by-side evaluation (2026-10-08) kept the VirusTotal MCP as the primary enrichment server:
@@ -253,6 +289,8 @@ Both the VirusTotal MCP and purple-mcp read the same stored `VIRUSTOTAL_API_KEY`
 | Single-IOC verdict when the VirusTotal MCP is unavailable | purple-mcp `threat_intel_by_hash` / `_url` / `_domain` / `_ip` | Acceptable fallback: detection ratio, reputation and whois. |
 | File relationships or sandbox behaviour | VirusTotal MCP only. **Never** call purple-mcp `threat_intel_get_file_relationships` or `threat_intel_get_file_behavior` | They return raw VirusTotal objects of 0.8M to 27M characters per call, far beyond MCP output limits. |
 | CVE details | purple-mcp `cve_search_by_id` / `cve_search_by_vendor` | No key needed. |
+| Exposure of an external IP or domain (open ports, services, banners, TLS/JARM, host CVEs) | Shodan MCP (optional): `ip_lookup`, `domain_info` | Complements the VirusTotal verdict; not a substitute for it. External (non-RFC1918) IOCs only. |
+| CVE detail with EPSS and KEV, or CVEs for a product/CPE | Shodan MCP (optional): `cve_lookup`, `cves_by_product`, `cpe_lookup` | Free CVEDB lookups. |
 
 ---
 
@@ -276,3 +314,4 @@ Both the VirusTotal MCP and purple-mcp read the same stored `VIRUSTOTAL_API_KEY`
 | Import Hyperautomation workflow | `ha_import_workflow` |
 | Enrich IOC (IP, hash, domain, URL) and pivot on relationships | Threat-intel MCP tools (default bundle: virustotal-mcp; substitute your provider's tools if different). See [Threat intelligence: which server to use](#threat-intelligence-which-server-to-use) |
 | VT Intelligence hunt (search syntax) | purple-mcp `threat_intel_search` |
+| What an external IP or domain exposes to the internet | Shodan MCP (optional) `ip_lookup` / `domain_info`. See [Shodan MCP](#shodan-mcp-optional) |

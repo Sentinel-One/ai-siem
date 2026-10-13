@@ -172,6 +172,7 @@ It defines:
 - **Evidence rules:** no fabrication, cite every fact to its tool call, mark every assumption explicitly
 - **Anomaly checklist:** frequency, timing, geolocation, baseline deviation, new entity, privilege, chain
 - **Classification gate:** no CRITICAL or TRUE POSITIVE verdict without independent threat intelligence confirmation
+- **Optional exposure intel:** when the Shodan MCP is installed, external IPs and domains can also be checked for open ports, services, banners, TLS/JARM and host CVEs; this complements the VirusTotal verdict and never replaces it ([mcp-tools.md → Shodan MCP](./mcp-tools.md#shodan-mcp-optional))
 - **Confidence language:** "confirmed" / "consistent with" / "suggests" / "possible", calibrated to evidence weight
 - **Investigation workflow:** triage → enrichment → infrastructure pivot → cross-source correlation → MITRE mapping → composite risk score → report
 

@@ -15,17 +15,21 @@
 
   Usage:
     s1-secops-mcp-launch.ps1 [-Image IMG] [-Profile P] <server> [server args...]
-      server: s1-secops-mcp | purple-mcp | virustotal-mcp
+      server: s1-secops-mcp | purple-mcp | virustotal-mcp | shodan-mcp
     s1-secops-mcp-launch.ps1 setup  [-Profile P]
     s1-secops-mcp-launch.ps1 status [-Profile P]
     s1-secops-mcp-launch.ps1 versions | help      image versions / entrypoint help
     s1-secops-mcp-launch.ps1 install [options]   copy to $HOME\bin, pull the image, add the
-                                                 three servers to the Claude Desktop config
+                                                 servers to the Claude Desktop config
                                                  (backup kept), then run setup if no token
     s1-secops-mcp-launch.ps1 config  [options]   print the mcpServers JSON with this
                                                  script's absolute path (other clients)
       options: -Image IMG  -Profile P  -OutputDir DIR  -ClaudeMd FILE
+               -WithShodan (add the optional shodan entry even with no key stored)
                -ConfigPath FILE (install only; default %APPDATA%\Claude\claude_desktop_config.json)
+
+  Shodan is optional: install/config write the "shodan" entry only when
+  SHODAN_API_KEY is stored for the profile, or with -WithShodan.
 
   Environment: S1_MCP_IMAGE, S1_PROFILE, S1_OUTPUT_DIR (mounted at /output),
   S1_CLAUDE_MD_PATH (host CLAUDE.md, mounted read-only). S1_SCOPE is
@@ -40,11 +44,12 @@
   language mode, use the native server with `s1-secops-mcp setup` instead.
 #>
 param(
-  [string]$Image = $(if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.3' }),
+  [string]$Image = $(if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.4' }),
   [Alias('Profile')][string]$KeyProfile = $(if ($env:S1_PROFILE) { $env:S1_PROFILE } else { 'default' }),
   [string]$OutputDir,
   [string]$ClaudeMd,
   [string]$ConfigPath,
+  [switch]$WithShodan,
   [Parameter(Position = 0, Mandatory = $true)][string]$Command,
   [Parameter(Position = 1, ValueFromRemainingArguments = $true)][string[]]$ServerArgs
 )
@@ -124,7 +129,7 @@ function Set-Kc([string]$Name, [string]$Value) {
 # Write-Warning / Write-Host can land on stdout and corrupt the JSON-RPC stream.
 function Write-Err([string]$m) { [Console]::Error.WriteLine($m) }
 
-$AllNames = 'S1_CONSOLE_URL','S1_CONSOLE_API_TOKEN','S1_HEC_INGEST_URL','S1_HEC_TOKEN','S1_SCOPE','VIRUSTOTAL_API_KEY'
+$AllNames = 'S1_CONSOLE_URL','S1_CONSOLE_API_TOKEN','S1_HEC_INGEST_URL','S1_HEC_TOKEN','S1_SCOPE','VIRUSTOTAL_API_KEY','SHODAN_API_KEY'
 function Test-Secret([string]$n) { $n -match 'TOKEN|KEY' }
 
 # Same validation as `s1-secops-mcp setup` and the sh launcher. Returns an error or $null.
@@ -142,7 +147,13 @@ function ConvertTo-WinArg([string]$a) {
   '"' + ([regex]::Replace($a, '(\\*)"', { param($m) $m.Groups[1].Value * 2 + '\"' }) -replace '(\\+)$', '$1$1') + '"'
 }
 
-# The three Claude Desktop entries for launcher $Launcher. No secrets: paths and names only.
+# Shodan is optional: its entry is written only when a key is stored for this
+# profile or -WithShodan was given (without a key the server refuses to start).
+function Test-WantShodan {
+  if ($WithShodan) { return $true }
+  try { return [bool](Get-Kc 'SHODAN_API_KEY') } catch { return $false }
+}
+# The Claude Desktop entries for launcher $Launcher. No secrets: paths and names only.
 function New-S1Entries([string]$Launcher) {
   $pre = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Launcher, '-Image', $Image)
   if ($KeyProfile -ne 'default') { $pre += @('-Profile', $KeyProfile) }
@@ -151,11 +162,13 @@ function New-S1Entries([string]$Launcher) {
   if ($OutputDir) { $envMap['S1_OUTPUT_DIR'] = $OutputDir }
   if ($ClaudeMd) { $envMap['S1_CLAUDE_MD_PATH'] = $ClaudeMd }
   if ($envMap.Count) { $s1['env'] = $envMap }
-  [ordered]@{
+  $entries = [ordered]@{
     's1-secops-mcp' = $s1
     'purple-mcp'    = [ordered]@{ command = 'powershell.exe'; args = @($pre + 'purple-mcp') }
     'virustotal'    = [ordered]@{ command = 'powershell.exe'; args = @($pre + 'virustotal-mcp') }
   }
+  if (Test-WantShodan) { $entries['shodan'] = [ordered]@{ command = 'powershell.exe'; args = @($pre + 'shodan-mcp') } }
+  $entries
 }
 
 if ($Command -in 'install', 'config') {
@@ -266,7 +279,9 @@ if ($Command -in 'install', 'config') {
     }
     else { Write-Err "Next: store your credentials with: powershell -NoProfile -ExecutionPolicy Bypass -File `"$dest`" setup" }
   }
-  Write-Err 'Done. Quit Claude Desktop completely (also from the system tray) and open it again: it starts the three MCPs itself. Nothing needs starting in Docker Desktop.'
+  if (Test-WantShodan) { Write-Err 'Shodan: entry added (optional server).' }
+  else { Write-Err "Shodan: skipped (optional). To add it: run setup (enter SHODAN_API_KEY), then install again." }
+  Write-Err 'Done. Quit Claude Desktop completely (also from the system tray) and open it again: it starts the MCPs itself. Nothing needs starting in Docker Desktop.'
   exit 0
 }
 
@@ -303,6 +318,7 @@ switch -Regex ($Command) {
   '^(s1-secops-mcp|s1)$' { $Names = 'S1_CONSOLE_URL','S1_CONSOLE_API_TOKEN','S1_HEC_INGEST_URL','S1_HEC_TOKEN','S1_SCOPE' }
   '^(purple-mcp|purple)$' { $Names = 'S1_CONSOLE_URL','S1_CONSOLE_API_TOKEN','VIRUSTOTAL_API_KEY' }  # VT key -> PURPLEMCP_VT_API_KEY
   '^(virustotal-mcp|virustotal|vt)$' { $Names = @('VIRUSTOTAL_API_KEY') }
+  '^(shodan-mcp|shodan)$' { $Names = @('SHODAN_API_KEY') }
   default { throw "unknown server '$Command'" }
 }
 

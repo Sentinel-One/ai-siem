@@ -1,0 +1,39 @@
+name: MCP Tests
+
+on:
+  pull_request:
+    paths:
+      - 'mcp/s1-secops-mcp/**'
+      - '.github/workflows/mcp-tests.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'mcp/s1-secops-mcp/**'
+      - '.github/workflows/mcp-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mcp/s1-secops-mcp
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # package.json requires Node >=24. The server has no runtime
+      # dependencies, so there is nothing to install before running the suite.
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      # Hermetic: uses no credentials and makes no network calls
+      # (tests/setup.mjs turns the OS keychain off).
+      - name: Run tests
+        run: npm test

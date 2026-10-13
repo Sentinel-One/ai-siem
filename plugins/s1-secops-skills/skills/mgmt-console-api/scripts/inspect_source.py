@@ -51,6 +51,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+# SDL ingest-metering rows (tag='logVolume') are excluded from samples by
+# default; pass include_metering=True to keep them.
+DISCOVERY_METERING_FILTER = "(tag != 'logVolume' OR !(tag = *))"
+
 import requests
 
 HERE = Path(__file__).resolve().parent
@@ -257,7 +261,7 @@ def _run_lrq_log_query(client: Any, log_filter: str, *,
 
     # Fast-poll schedule: most LOG queries finish in <2s, so tight
     # initial intervals shave latency. Fall back to 1s steady-state.
-    # Respects the per-user 3 rps rate cap (first 3 polls take 0.9s).
+    # The first 3 polls take 0.9s in total, so a single query stays well under the LRQ limit.
     poll_schedule = [0.25, 0.35, 0.5, 0.75, 1.0]
     deadline = time.time() + poll_deadline_s
     last_seen = 0
@@ -348,7 +352,8 @@ def discover_schema(client: Any, source: str, *, hours: float = 24,
                     extra_filter: Optional[str] = None,
                     min_events: int = 50,
                     escalate: bool = True,
-                    backend: str = "auto") -> Dict[str, Any]:
+                    backend: str = "auto",
+                    include_metering: bool = False) -> Dict[str, Any]:
     """Sample events from ``source`` via a LOG query and return a
     schema description.
 
@@ -403,6 +408,12 @@ def discover_schema(client: Any, source: str, *, hours: float = 24,
     log_filter = f"dataSource.name='{safe}'"
     if extra_filter:
         log_filter = f"{log_filter} {extra_filter}"
+    # Exclude SDL ingest-metering rows by default so they cannot crowd real
+    # events out of the sample. This path can run on the V1 / LOG backends,
+    # where `!=` on an absent field has not been live-verified, so it keeps the
+    # explicit no-tag clause (PowerQuery, verified 2026-10-03, needs only `!=`).
+    if not include_metering and not (extra_filter and "logvolume" in extra_filter.lower()):
+        log_filter = f"{log_filter} {DISCOVERY_METERING_FILTER}"
 
     # Escalating window: 1h -> 4h -> 24h -> min(hours, 168)...
     # The earliest narrow window that returns >= min_events wins.

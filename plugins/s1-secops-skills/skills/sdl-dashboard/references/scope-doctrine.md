@@ -6,7 +6,7 @@ Moved out of `SKILL.md` to keep it under the 500-line authoring limit. The conte
 
 **Two independent decisions. Get them both explicitly before authoring a panel.**
 
-1. **Deployment scope**: which scope the dashboard object is filed at (Global, Account, or Site). Set by the `S1-Scope` header on the create call, or by `shareResource` afterwards.
+1. **Deployment scope**: which scope the dashboard object is filed at (Global, Account, or Site). Set by the `S1-Scope` header on the create call (`sdl_create_dashboard` with `scope: "<accountId>:<siteId>"` for a site).
 2. **Query scope**: which data the panels read. Set by what you put in the query.
 
 ### The rule
@@ -30,7 +30,7 @@ Breakdown of the 510 that a `site.name` filter would silently drop: `ActivityFee
 
 So `site.name` drops alert and asset records, which is exactly what a SOC dashboard leans on, with no error and no empty panel to hint at it. `site.id` also:
 
-- is the **same identifier** as the `siteId` in the `S1-Scope` header and `shareResource`'s `scopeId`, so one value threads the whole deployment;
+- is the **same identifier** as the `siteId` in the `S1-Scope` header, so one value threads the whole deployment;
 - survives a site rename.
 
 `site.name` is fine as a display column or a `group by` key. It is not fine as the scoping predicate.

@@ -113,7 +113,7 @@
       "id": 3,
       "name": "custom-correlation-key",
       "prompt": "I want a correlation rule that ties a Process Creation event to an IP Connect event from the same process tree within 10 minutes. The two sides hold the identity in different places: on the process-creation side it is `src.process.parent.storyline.id`, on the connect side it is `tgt.process.storyline.id`. The built-in `user` and `ip` correlation keys are no use here. Write just the `correlationParams` block to `correlation_params.json` and tell me what the API rejects if I get the shape wrong.",
-      "expected_output": "`entity` is set to `\"custom\"` and the key is supplied as `entitiesAndFields`, a list of lists with one inner list per sub-query, matched positionally: `[[\"src.process.parent.storyline.id\"], [\"tgt.process.storyline.id\"]]`. The field is not called `customEntityKey` (that returns `Unknown field`), a flat list of strings fails with `Not a valid list` on element 0, and repeating the same field path in both inner lists fails with `entityFields contains duplicate alias(es)`, which is exactly why the two sides must be named by two different field paths. `timeWindow.windowMinutes` is 10 and there are two `subQueries` entries.",
+      "expected_output": "`entity` is set to `\"custom\"` and the key is supplied as `entitiesAndFields`, a list of entity groups where fields in one group are OR'd and groups are AND'd. Both field paths go in ONE group: `[[\"src.process.parent.storyline.id\", \"tgt.process.storyline.id\"]]`. Splitting them into two groups means both fields AND'd, which the API accepts and which never fires when each event carries only one of them. The field is not called `customEntityKey` (that returns `Unknown field`), a flat list of strings fails with `Not a valid list` on element 0, and repeating a field path in two groups fails with `entityFields contains duplicate alias(es)`. `timeWindow.windowMinutes` is 10 and there are two `subQueries` entries.",
       "assertions": [
         {
           "type": "json_parses",
@@ -139,7 +139,7 @@
         {
           "type": "file_json_path",
           "glob": "correlation_params.json",
-          "path": "entitiesAndFields.1.0",
+          "path": "entitiesAndFields.0.1",
           "matches": "^tgt\\."
         },
         {

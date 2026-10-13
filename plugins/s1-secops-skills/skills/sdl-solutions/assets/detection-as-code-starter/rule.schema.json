@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/pmoses-s1/detection-as-code/rule.schema.json",
+  "$id": "https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/plugins/s1-secops-skills/skills/sdl-solutions/assets/detection-as-code-starter/rule.schema.json",
   "title": "SentinelOne Detection-as-Code rule",
   "description": "Schema for a single detection rule authored in TOML. Editors with TOML schema support (Taplo, VS Code Even Better TOML) validate as you type. The dac_sync.py converter enforces the same rules at lint and sync time.",
   "type": "object",

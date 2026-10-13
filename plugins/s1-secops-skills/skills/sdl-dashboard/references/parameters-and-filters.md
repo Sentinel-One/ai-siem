@@ -25,7 +25,7 @@ The dropdown options are populated dynamically from live field values in the cur
 
 ### `#VarName#` substitution: works in FLAT and TABBED dashboards; refiltering applies on Search
 
-`#VarName#` query injection is confirmed working in flat dashboards (no `configType`, no `tabs`, top-level `parameters` and `graphs`; see `parameter_examples-v1.0.json`).
+`#VarName#` query injection is confirmed working in flat dashboards (no `configType`, no `tabs`, top-level `parameters` and `graphs`).
 
 On a `configType: "TABBED"` dashboard, live visual verification (2026-07-29): a tab-level `parameters` entry renders its dropdown, a panel query using `#VarName#` renders WITHOUT error with the `defaultValue` substituted, and selecting a dropdown value re-filters the panel to exactly that value once the user presses **Search** (the dropdown does not auto-refresh the view). Test panel: `dataSource.name=#SrcName#` with facet `dataSource.name`, defaultValue `"*"`. The earlier claim that TABBED passes the literal `#` and throws `Don't understand [#]` was wrong; remember the Search-to-apply gotcha when demoing.
 

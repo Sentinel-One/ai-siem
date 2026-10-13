@@ -1,8 +1,8 @@
 # RBA demo console (optional)
 
 A local, browser-based console for demoing Risk-Based Alerting. Zero dependencies beyond the
-Python 3 that ships with macOS. It reads your SentinelOne SDL creds from the Claude Desktop config
-at runtime (nothing hard-coded) and proxies SDL calls, so the browser never holds a token and CORS
+Python 3 that ships with macOS. It reads your SentinelOne credentials from the environment or the
+OS keychain at runtime (nothing hard-coded, no config file) and proxies SDL calls, so the browser never holds a token and CORS
 is not an issue.
 
 ## Files
@@ -22,10 +22,11 @@ Ctrl-C to stop. Override the port with `RBA_PORT=9000 python3 server.py`.
 
 ## Credentials
 
-`server.py` reads `mcpServers["s1-secops-mcp"].env` from
-`~/Library/Application Support/Claude/claude_desktop_config.json`
-(`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN`). To target a different tenant, set those as environment variables or edit the
-config. The proxy exposes three POST/JSON endpoints: `/api/powerQuery {query,startTime}`,
+`server.py` reads `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` at runtime from the environment,
+else the OS keychain (service `sentinelone-mcp`, account `<S1_PROFILE>:<NAME>`, the items
+`s1-secops-mcp setup` writes). It reads no config file. To target a different tenant, store that
+tenant under its own profile and start the server with `S1_PROFILE=<name>`; on Windows the
+keychain read needs the Python `keyring` package. The proxy exposes three POST/JSON endpoints: `/api/powerQuery {query,startTime}`,
 `/api/getFile {path}`, `/api/putFile {path,content}`.
 
 ## Tabs

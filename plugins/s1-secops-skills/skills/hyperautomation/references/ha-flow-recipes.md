@@ -80,13 +80,15 @@ Create/verify this connection at Hyperautomation → Integrations → SentinelOn
 (Bearer token) BEFORE activating the workflow; activation otherwise fails 400 "requires configuration".
 
 **HEC event-collector ingest is a different credential and a different connection.** A
-`POST {HEC_INGEST_URL}/services/collector/event` or `/raw` action takes an **SDL Log Write Key**, not
-the console token. A Hyperautomation connection passes its credential through verbatim as
-`Authorization: Bearer <value>`, so bind a second Bearer connection whose key value is the Log Write
-Key for the target account or site. The console token is refused with `HTTP 400 {"text":"Missing
-S1-Scope header","code":5}` where the write key returns `HTTP 200 {"text":"Success","code":0}`, and
-adding an `S1-Scope` header does not fix it. Send no `S1-Scope` header on collector actions: the key
-is minted for one account or site and that fixes the destination. `/v1/alerts` on the same host is
+`POST {HEC_INGEST_URL}/services/collector/event` or `/raw` action takes an **SDL Log Write Key**. A
+Hyperautomation connection passes its credential through verbatim as `Authorization: Bearer <value>`,
+so bind a second Bearer connection whose key value is the Log Write Key for the target account or
+site. The write key returns `HTTP 200 {"text":"Success","code":0}`. A connection holding the console
+token behaves like the console token: on some consoles `HTTP 400 {"text":"Missing S1-Scope
+header","code":5}` without an `S1-Scope` header and accepted with one, on others
+`HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` either way. Use the write key
+in both cases. Send no `S1-Scope` header on collector actions: the key is minted for one account or
+site and that fixes the destination. `/v1/alerts` on the same host is
 the opposite case, see the UAM section below, so do not copy collector auth to it.
 
 ## Posting a UAM SecurityAlert from an HA flow that actually SURFACES
@@ -120,6 +122,20 @@ populated from `finding_info.related_events[]` with nothing sent to `/v1/indicat
 | `message` | `Indicator.message` |
 | `severity_id` | `Indicator.severity`, resolved PER INDICATOR, independent of the alert envelope |
 | `observables[]` | `Indicator.observables`, `type_id` mapped to the UI enum (1 HOSTNAME, 2 IP, 4 USER_NAME, 5 EMAIL, 9 PROCESS_NAME, 10 RESOURCE_UID) |
+| `attacks[]` | `Indicator.attacks` (`tactic {uid name}`, `technique {uid name}`, `version`), and the alert's `mitreTactics` / `mitreTechniques` in `\| datasource alerts` |
+
+**MITRE ATT&CK on an HA alert.** Put the mapping on each related_events entry:
+`"attacks":[{"tactic":{"uid":"TA0002","name":"Execution"},"technique":{"uid":"T1059.001","name":"PowerShell"},"version":"18"}]`.
+UAM then shows `mitreTactics ["Execution"]` and `mitreTechniques ["T1059.001 PowerShell"]`. The
+same array on `finding_info.attacks` is ignored (tested side by side, 2026-10-05, S-26.3.4). This is
+the only way a custom detection's alert carries MITRE, because STAR rules have no MITRE field. The
+packaged version, with a renderer and example specs, is the sdl-solutions "Custom detections with MITRE
+mapping" solution. UAM renders TA0005 as "Stealth" (ATT&CK v18); match on tactic ids.
+
+**`confidence_id` on the alert envelope** sets UAM `confidenceLevel`: 1 SUSPICIOUS, 3 MALICIOUS,
+99 INFORMATIONAL, 0 or absent none. 2 and 4 were silently dropped (202, no alert). INFORMATIONAL
+alerts are hidden from unfiltered `alerts` queries and `| datasource alerts`; they appear only when
+you filter on `confidenceLevel` explicitly.
 
 Add `title` and `desc`: without them the indicator renders with a null title and description.
 Multiple entries give multiple indicators on one alert. Inline `device` / `actor.user` /
@@ -143,7 +159,7 @@ Log Write Key is `401` on both, being a key for the event collector rather than 
 `CompletedWithErrors` with `error_actions` empty, which reads as a broken flow and is not one.
 Delete the action.
 
-Reference builder: `s1-secops-mcp/lib/uam-ingest.js` `buildSecurityAlert({inline:true})`. The alert
+Reference builder (s1-secops-mcp server source, not shipped in the plugin): `s1-secops-mcp/lib/uam-ingest.js` `buildSecurityAlert({inline:true})`. The alert
 surfaces in UAM ~30-60s after the POST; poll `uam_list_alerts`.
 
 - **Attribution:** for alerts a flow itself raises (e.g. the UEBA SILENT / DORMANT watchdogs), set

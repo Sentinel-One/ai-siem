@@ -25,8 +25,8 @@ Wire contract
 Auth token
 ----------
 /v1/alerts takes the same service-user JWT used for the Mgmt Console API
-(loaded from credentials.json via S1Client.api_token, canonical key
-`S1_CONSOLE_API_TOKEN`). `ApiToken <token>` is rejected with HTTP 401
+(S1Client.api_token, resolved from the environment or the OS keychain
+under the name `S1_CONSOLE_API_TOKEN`). `ApiToken <token>` is rejected with HTTP 401
 `{"details":"Unsupported auth type: ApiToken"}`, so callers MUST switch
 to the `Bearer` scheme when talking to this endpoint family.
 
@@ -95,15 +95,14 @@ from typing import Any, Dict, Iterable, List, Optional
 
 _DEFAULT_PROD_HOST = "https://ingest.us1.sentinelone.net"
 
-# Optional override key in credentials.json or config.json.
-# If not present the helper falls back to _DEFAULT_PROD_HOST.
-# Canonical key is S1_HEC_INGEST_URL: the host serves both log ingest
-# and OCSF alert/indicator ingest, so the variable name reflects that.
-# Aliases are read for backward compatibility.
+# Optional ingest host override, read from the environment and then the OS
+# keychain (never from a file). If not present the helper falls back to
+# _DEFAULT_PROD_HOST. Canonical name is S1_HEC_INGEST_URL: the host serves
+# both log ingest and OCSF alert/indicator ingest, so the name reflects that.
+# The former canonical environment variable is still read.
 _CONFIG_KEY = "S1_HEC_INGEST_URL"
 _LEGACY_CONFIG_KEYS = (
     "S1_UAM_ALERT_INTERFACE_URL",  # former canonical
-    "uam_alert_interface_url",     # legacy snake_case
 )
 
 
@@ -154,86 +153,32 @@ def _enrich_observable_for_alert(obs: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-# Workspace creds layouts, mirroring s1_client._WORKSPACE_CREDS_RELS.
-# Reused from s1_client when importable (same scripts dir); the local
-# fallback keeps this module stdlib-only and must stay in sync.
-try:
-    from s1_client import _WORKSPACE_CREDS_RELS, _MNT_SKIP
-except Exception:  # pragma: no cover - stdlib-only fallback
-    _WORKSPACE_CREDS_RELS = (
-        Path("credentials.json"),
-        Path(".sentinelone") / "credentials.json",
-        Path(".claude") / "sentinelone" / "credentials.json",
-    )
-    _MNT_SKIP = frozenset(
-        {".claude", ".auto-memory", ".remote-plugins", "outputs", "uploads"})
+def _configured_url() -> Optional[str]:
+    """The HEC ingest URL from the environment, then the OS keychain.
 
-
-def _walk_up_for_workspace_creds() -> Optional[Path]:
-    """Find workspace-scoped credentials inside a Cowork-accessible folder.
-
-    Two-pass search: cwd walk-up first, then scan $HOME/mnt/ * for
-    Cowork-mounted workspace folders (skips system mounts). Each pass
-    checks every layout in _WORKSPACE_CREDS_RELS (workspace-root
-    credentials.json plus the legacy .sentinelone/ and
-    .claude/sentinelone/ subfolder layouts), matching s1_client.py.
+    Environment: S1_HEC_INGEST_URL, then S1_UAM_ALERT_INTERFACE_URL.
+    Keychain: item "<profile>:S1_HEC_INGEST_URL" (see s1_keystore.py).
+    No file is read. Returns None when neither has a value; a keychain
+    error is never raised from here.
     """
+    for key in (_CONFIG_KEY, *_LEGACY_CONFIG_KEYS):
+        v = os.environ.get(key)
+        if v and v.strip():
+            return v.strip().rstrip("/")
     try:
-        cwd = Path.cwd().resolve()
-    except (OSError, RuntimeError):
-        cwd = None
-    if cwd is not None:
-        for i, parent in enumerate([cwd, *cwd.parents]):
-            if i >= 20:
-                break
-            for rel in _WORKSPACE_CREDS_RELS:
-                candidate = parent / rel
-                if candidate.is_file():
-                    return candidate
-    home_mnt = Path.home() / "mnt"
-    if home_mnt.is_dir():
         try:
-            entries = sorted(home_mnt.iterdir())
-        except OSError:
-            entries = []
-        for entry in entries:
-            if not entry.is_dir() or entry.name in _MNT_SKIP:
-                continue
-            for rel in _WORKSPACE_CREDS_RELS:
-                candidate = entry / rel
-                if candidate.is_file():
-                    return candidate
-    return None
-
-
-def _load_config_url() -> Optional[str]:
-    """Resolve the UAM Alert Interface URL across all credential layers.
-
-    Priority (highest wins): workspace .claude > $CLAUDE_CONFIG_DIR
-    > ~/.claude > ~/.config > skill config.json. The first non-empty
-    value wins; iteration is highest-to-lowest so we can short-circuit.
-    """
-    _claude_config_dir = os.environ.get("CLAUDE_CONFIG_DIR", "")
-    _plugin_creds = (Path(_claude_config_dir) / "sentinelone" / "credentials.json"
-                     if _claude_config_dir else None)
-    _dotclaude_creds = Path.home() / ".claude" / "sentinelone" / "credentials.json"
-    _home_creds = Path.home() / ".config" / "sentinelone" / "credentials.json"
-    _local_config = Path(__file__).resolve().parent.parent / "config.json"
-    _workspace_creds = _walk_up_for_workspace_creds()
-    # Highest priority first.
-    candidates = [p for p in [_workspace_creds, _plugin_creds, _dotclaude_creds, _home_creds, _local_config] if p]
-    for cfg_path in candidates:
-        if not cfg_path.is_file():
-            continue
-        try:
-            cfg = json.loads(cfg_path.read_text())
-        except Exception:
-            continue
-        for key in (_CONFIG_KEY, *_LEGACY_CONFIG_KEYS):
-            url = cfg.get(key)
-            if isinstance(url, str) and url.strip():
-                return url.rstrip("/")
-    return None
+            import s1_keystore as ks  # type: ignore
+        except ImportError:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                "s1_keystore", Path(__file__).resolve().parent / "s1_keystore.py")
+            ks = importlib.util.module_from_spec(spec)
+            sys.modules["s1_keystore"] = ks
+            spec.loader.exec_module(ks)  # type: ignore[union-attr]
+        v = ks.get(_CONFIG_KEY)
+    except Exception:  # keychain problems fall through to the default host
+        v = None
+    return v.strip().rstrip("/") if v and v.strip() else None
 
 
 class UAMAlertInterfaceError(RuntimeError):
@@ -282,20 +227,15 @@ class UAMAlertInterfaceClient:
             )
         self.bearer_token = bearer_token
         # Resolution priority: explicit base_url arg > S1_HEC_INGEST_URL env >
-        # legacy S1_UAM_ALERT_INTERFACE_URL env > credentials.json > default.
-        resolved = (
-            base_url
-            or os.environ.get("S1_HEC_INGEST_URL")
-            or os.environ.get("S1_UAM_ALERT_INTERFACE_URL")
-            or _load_config_url()
-        )
+        # legacy S1_UAM_ALERT_INTERFACE_URL env > OS keychain > default.
+        resolved = base_url or _configured_url()
         if not resolved:
             resolved = _DEFAULT_PROD_HOST
             print(
-                "WARNING: no S1_HEC_INGEST_URL configured (env or "
-                "credentials.json); falling back to the default US1 ingest "
+                "WARNING: no S1_HEC_INGEST_URL configured (environment or OS "
+                "keychain); falling back to the default US1 ingest "
                 f"host {_DEFAULT_PROD_HOST}. If your tenant is not in US1, "
-                "set S1_HEC_INGEST_URL to your region's ingest host "
+                "store S1_HEC_INGEST_URL with `s1-secops-mcp setup` or export it "
                 "(see https://community.sentinelone.com/s/article/000004961).",
                 file=sys.stderr,
             )

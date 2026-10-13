@@ -32,7 +32,7 @@ description: >-
 This skill enables Claude to design and generate valid SentinelOne Hyperautomation workflow
 JSON, explain the logic behind workflows, and optionally submit them to a live console via API.
 
-> **Sandbox proxy blocked?** If import/export API calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). The MCP server exposes `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, and `ha_export_workflow`, all running from your machine against the Hyperautomation API.
+> **Talk to the console through the `s1-secops-mcp` MCP tools.** `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, `ha_export_workflow` (pass `outputFile` to save the ZIP to disk) and `ha_delete_workflow` cover the workflow lifecycle; `s1_api_post` / `s1_api_put` / `s1_api_delete` cover publish, activate, deactivate and run-now. The server runs on the user's machine, so it reaches `*.sentinelone.net` where the Cowork sandbox cannot, and it reads credentials from environment variables or the OS keychain. If the tools are missing, point the user to the s1-secops-mcp README (`s1-secops-mcp/README.md` in the s1-secops-skills source repo, `mcp/s1-secops-mcp/README.md` in ai-siem; not shipped inside the plugin).
 
 ## Minimum viable workflow JSON (smoke test)
 
@@ -158,7 +158,7 @@ Ask (or infer from context):
 ### Step 2: Warn about integrations
 
 **CRITICAL**: Before generating JSON, identify any integration-backed actions (tag = "integration").
-These require pre-configured connections in the console that CANNOT be *created* via API. (An EXISTING connection CAN be pre-bound programmatically: set `integration_id` = the connection's id on each `http_request` action in the import JSON with `use_authentication_data: true`, then activate via `POST .../workflows/{id}/{version_id}/activation`; no manual UI binding needed. One connection also serves actions that hit different hosts, e.g. the LRQ console host and the `/v1/alerts` ingest host, since auth is header-injected regardless of the URL, PROVIDED both endpoints take the same credential. HEC event-collector actions (`/services/collector/*`) do not: they need their own connection holding an SDL Log Write Key, see "Connection requirement" below.)
+These require a connection under their integration. A connection CAN be created via API (`POST /hyper-automate/api/v1/connections?siteIds=<site>` with a `data` wrapper, returns 201; the operator supplies the secret; see `references/api-integration.md` section 16). (An EXISTING connection CAN be pre-bound programmatically: set `integration_id` = the connection's id on each `http_request` action in the import JSON with `use_authentication_data: true`, then activate via `POST .../workflows/{id}/{version_id}/activation`; no manual UI binding needed. One connection also serves actions that hit different hosts, e.g. the LRQ console host and the `/v1/alerts` ingest host, since auth is header-injected regardless of the URL, PROVIDED both endpoints take the same credential. HEC event-collector actions (`/services/collector/*`) do not: they need their own connection holding an SDL Log Write Key, see "Connection requirement" below.)
 Always tell the user: *"This workflow uses the [X, Y, Z] integrations. Before importing, you must
 configure connections for these in your Hyperautomation → Integrations section."*
 
@@ -195,36 +195,18 @@ If the workflow chains `Function.JQ` steps, builds a time window, or fails a run
 
 If the user wants to submit to a live console, read `references/api-integration.md`.
 
-**Credentials**: The plugin's SessionStart hook auto-discovers a `credentials.json`
-dropped directly into the user's Cowork project folder at the start of every session.
-If the file is missing, ask the user to drop a `credentials.json` into their project folder.
+**Credentials**: never read, paste or write a token yourself. The `s1-secops-mcp` server
+resolves `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` per value from environment variables
+first, then the OS keychain (service `sentinelone-mcp`, account `<profile>:<NAME>`, profile
+from `S1_PROFILE`). There is no credentials file. If a tool reports a missing credential,
+ask the user to run `s1-secops-mcp setup` on their machine (prompts without echo) and
+`s1-secops-mcp status` to confirm. Host-only Python scripts (Claude Code or a terminal) read
+the same environment variables or keychain entries.
 
-Resolution priority (highest wins):
-
-1. Environment variables `S1_CONSOLE_URL` / `S1_CONSOLE_API_TOKEN`
-2. `<project folder>/credentials.json` (auto-discovered)
-3. Ask the user to provide their console URL and personal Console User API token
-
-To read credentials in Python:
-
-```python
-import json, os
-from pathlib import Path
-_creds = {}
-for candidate in (
-    Path.home() / ".claude" / "sentinelone" / "credentials.json",
-    Path(os.environ.get("COWORK_WORKSPACE", "")) / ".sentinelone" / "credentials.json"
-        if os.environ.get("COWORK_WORKSPACE") else None,
-    Path(os.environ.get("CLAUDE_CONFIG_DIR", "")) / "sentinelone" / "credentials.json"
-        if os.environ.get("CLAUDE_CONFIG_DIR") else None,
-    Path.home() / ".config" / "sentinelone" / "credentials.json",
-):
-    if candidate and candidate.is_file():
-        _creds = json.loads(candidate.read_text())
-        break
-S1_CONSOLE_URL  = os.environ.get("S1_CONSOLE_URL")  or _creds.get("S1_CONSOLE_URL")  or None
-S1_CONSOLE_API_TOKEN = os.environ.get("S1_CONSOLE_API_TOKEN") or _creds.get("S1_CONSOLE_API_TOKEN") or None
-```
+Because imports should use a personal Console User API token (see below), a user who also
+keeps a service-user token can store the personal one under its own profile
+(`s1-secops-mcp setup --profile personal`) and run the MCP server with `S1_PROFILE=personal`
+for Hyperautomation work.
 
 Once resolved, validate them using the two-step test in `references/api-integration.md`
 (system health check + token permission check). Only proceed with import/trigger/activate
@@ -426,7 +408,7 @@ Moved to a reference to keep SKILL.md under the 500-line limit. See [`references
 
 Moved to a reference to keep SKILL.md under the 500-line limit. See [`references/ha-flow-recipes.md`](references/ha-flow-recipes.md).
 
-**The credential split matters and is the usual cause of a silent failure.** The event collector needs its OWN connection carrying an SDL **Log Write Key**; the Management Console API token is refused there and returns `Missing S1-Scope header`. UAM alert ingest via `/v1/alerts` is the opposite case: it uses the console token and does require `S1-Scope`. One connection cannot serve both.
+**The credential split matters and is the usual cause of a silent failure.** The event collector needs its OWN connection carrying an SDL **Log Write Key**. A connection sends its credential as `Authorization: Bearer <value>`, so one holding the console token behaves like the console token: `400 Missing S1-Scope header` without a scope header, accepted with one on some consoles, `403 "User token not allowed for this endpoint"` either way on others. Use the write key in both cases. UAM alert ingest via `/v1/alerts` is the opposite case: it uses the console token and does require `S1-Scope`. Do not reuse one connection for both.
 
 ## Detection watchdog pattern (the alternate to a scheduled rule)
 
@@ -456,11 +438,13 @@ at a time.
 
 ## Workflow import via s1-secops-mcp
 
-Workflow import, export, and listing use the `s1-secops-mcp` MCP server, which bypasses the
-Cowork sandbox proxy entirely. Use `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`,
-and `ha_export_workflow` directly instead of falling back to the `mgmt-console-api`
-skill scripts. The MCP server runs locally on your machine and makes direct HTTPS calls to
-`*.sentinelone.net` without proxy interference.
+Workflow import, export, and listing use the `s1-secops-mcp` MCP server, which runs on the
+user's machine and reaches `*.sentinelone.net` where the Cowork sandbox cannot. Use
+`ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, `ha_export_workflow` (with
+`outputFile` to save the ZIP) and `ha_delete_workflow` directly; the `mgmt-console-api` skill
+scripts are host-only. On a global or multi-account token, pass the account the user named as
+`accountIds` (or `siteIds`) on list, export, import and delete: unscoped list and export cover
+every account the token can reach, and `siteIds` alone misses account-level workflows.
 
 ### Deployment gotchas (confirmed 2026-06-11 on `<console>`)
 
@@ -474,7 +458,7 @@ skill scripts. The MCP server runs locally on your machine and makes direct HTTP
   scope rule applies to `activation`, `deactivate`, `publish`, and `DELETE`, append
   `?siteIds=<id>` or `?accountIds=<acct>` to match where the workflow lives.
 - **There is no in-place update.** Import always creates a NEW workflow. Re-importing a name that
-  already exists succeeds but the console auto-appends `(1)`, `(2)`, … to the name. To "edit" a
+  already exists succeeds and creates `Name (1)`, `Name (2)`, … (re-confirmed 2026-10-09). To "edit" a
   deployed workflow you must delete the old one (REST `DELETE`, see below) and re-import (or edit it
   in the UI).
 - **Delete a workflow with a REST `DELETE`.** `DELETE /hyper-automate/api/v1/workflows/{id}?accountIds=<acct>`

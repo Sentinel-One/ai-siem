@@ -7,16 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed - repository organization and community health
+### Added - optional Shodan MCP and outputFile fix (image and MCP 1.5.4, s1-secops-skills v1.3.15)
 
-- Added `SECURITY.md` (reporting process), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) and `CONTRIBUTORS.md`, plus issue and pull request templates and Dependabot configuration.
-- Renamed `.github/CODEOWNERS.md` to `.github/CODEOWNERS` so GitHub applies it.
-- Renamed `metadata.yml` files to `metadata.yaml`.
-- Renamed the five `observo_export_pipeline_*.json` templates to `datapipelines_export_pipeline_*.json` and replaced remaining "Observo" wording with "Data Pipelines".
-- Moved the five legacy templates from `pipelines/community/` into the `pipelines/pull/` tree (`api/okta/log_collector`, `api/cisco/duo`, `api/netskope/alerts`, `api/proofpoint/logs`, `object_store/aws/cloudtrail`) and added `ingest_mode` and `auth_type` to their metadata.
-- Renamed `workflows/community/undefind vendor` to `ai-siem-platform`.
-- Added README files for `parsers/`, `dashboards/`, `detections/`, `monitors/` and `queries/`.
-- Corrected the README: component counts, CI and release description, and removed `make` targets that never existed.
+- **Optional Shodan MCP** in `sentinelone/secops-mcps:1.5.4`: exposure intelligence for external IPs and domains (ports, services, banners, TLS/JARM, host CVEs) and Shodan CVEDB lookups. 11 read-only tools, stdio only, key isolated to that server. The launcher's `install` adds it only when `SHODAN_API_KEY` is stored (or with `--with-shodan` / `-WithShodan`).
+- **`outputFile` under Docker:** the server in the image refuses a path that is not inside the folder shared with `install --output-dir`, and says so, instead of reporting success for a file that is lost when the container exits.
+- **Image hardening:** base image pinned by digest (Node 24), `libexpat1` 2.9.0-1, and unused Debian packages with unfixed HIGH CVEs removed. 0 fixable HIGH or CRITICAL findings. VEX statements in `mcp/docker/vex/`.
+- **Skills (plugin 1.3.15):** `mgmt-console-api` and `powerquery` give the `install --output-dir` advice. Plugin 1.3.14 added the offline `sdl-log-parser` lint.
+- Release notes: [secops-mcps 1.5.4](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_mcps_v1.5.4.md).
+
+### Security - credentials move to the OS keychain (s1-secops-skills v1.3.12, MCP and image 1.5.2)
+
+- **No more plaintext credentials.** Console, ingest and VirusTotal keys are stored in the OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager) and never written to disk in clear text.
+- **`credentials.json` is no longer read.** The MCP server, the Python clients and the plugin's session hook used to search several folders for a plaintext credentials file. That loading code is removed, so a stray copy can no longer be picked up. Existing files can be imported once with `s1-secops-mcp setup --import-json` and then deleted.
+- **No tokens in client configs or Docker metadata.** A host launcher reads the keychain and passes values to the container over stdin, so they do not appear in the Claude Desktop config, `docker inspect` or the process list.
+- The HTTP transport and shared VM deployment are removed; each user runs the server over stdio with their own credentials.
+- The bundled VirusTotal MCP picks up fixes for CVE-2026-90711 (`proxy-addr`, critical) and CVE-2026-104850 (`@modelcontextprotocol/sdk`, high).
+- Also in this release: verified UAM alert status, verdict and assignee updates; PowerQuery raw-log queries, parallel time slicing and file output; a smaller plugin package; docs re-synced with the code. Licence metadata is AGPL-3.0, matching this repository.
+- Upgrading from 1.4.x is a breaking change: see `plugins/s1-secops-skills/docs/upgrading.md` and the [1.5.2 release notes](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.5.2.md).
 
 ### Added - site-level dashboard lifecycle and scope-aware SDL calls (s1-secops-skills v1.3.2, MCP 1.3.6)
 

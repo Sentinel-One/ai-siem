@@ -6,7 +6,10 @@ Examples:
     python scripts/call_endpoint.py GET /web/api/v2.1/threats --param limit=100 --paginate
     python scripts/call_endpoint.py POST /web/api/v2.1/agents/actions/disconnect --body '{"filter":{"ids":["123"]}}'
 
-Reads credentials from $CLAUDE_CONFIG_DIR/sentinelone/credentials.json or env vars via s1_client.
+Credentials come from environment variables, then the OS keychain, via
+s1_client (see s1_keystore.py). Store them with `s1-secops-mcp setup` or
+`python3 scripts/s1_keystore.py setup`, or export S1_CONSOLE_URL and
+S1_CONSOLE_API_TOKEN.
 """
 
 from __future__ import annotations

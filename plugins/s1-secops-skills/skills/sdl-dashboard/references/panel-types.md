@@ -77,7 +77,7 @@ Best for: category breakdowns over time, per-group counts.
   "graphStyle": "stacked_bar",
   "xAxis": "time",
   "yScale": "linear",
-  "query": "index='activities' activity_type in ('18','19','20') | group count=count() by timestamp=timebucket('1 day'), data.confidence_level | transpose data.confidence_level on timestamp"
+  "query": "dataSource.name='ActivityFeed' activity_type in ('18','19','20') | group count=count() by timestamp=timebucket('1 day'), data.confidence_level | transpose data.confidence_level on timestamp"
 }
 ```
 

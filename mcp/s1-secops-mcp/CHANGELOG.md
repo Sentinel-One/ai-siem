@@ -1,5 +1,367 @@
 # Changelog
 
+## 1.5.4 (image `sentinelone/secops-mcps:1.5.4`)
+
+### Fixed
+
+- **`outputFile` under the Docker image no longer loses files.**
+  - **Before:** with no shared folder, a write to the container's `/tmp` or `/home/node` reported success (path, bytes, sha256), and the file was deleted when the container exited. A host path was refused with "Set S1_OUTPUT_DIRS", which does nothing under Docker because the client config never reaches the container.
+  - **Now:** in the image (`S1_IN_CONTAINER=1`, set by the Dockerfile) there is no default root. Without a folder shared by `install --output-dir`, `outputFile` is refused before any API call, and the message says to run `s1-secops-mcp-launch.sh install --output-dir <folder>` (Windows: `-OutputDir`) and restart Claude Desktop.
+  - **Unchanged:** the Node install keeps its home and temp default and its message.
+- The `outputFile` descriptions on `powerquery_run`, `s1_api_get`, `s1_api_download` and `ha_export_workflow` tell Claude the same, so it stops repeating the "Set S1_OUTPUT_DIRS" advice.
+- Tests: `tests/output-container-1.5.4.test.mjs` adds 8 tests. 7 of them fail on 1.5.3's `output.js`.
+
+### Skills (plugin 1.3.15)
+
+- `mgmt-console-api` ("Large results") and `powerquery` (`outputFile` row): if the server refuses
+  `outputFile` because no folder is shared with the container, Claude tells the user to run
+  `~/.local/bin/s1-secops-mcp-launch.sh install --output-dir <folder>` (Windows: `-OutputDir`) and
+  restart Claude Desktop, and does not ask them to set `S1_OUTPUT_DIRS`. Each skill's invariant
+  suite pins the sentence.
+
+## Unreleased: host launchers and plugin 1.3.14 (image and MCP unchanged at 1.5.3)
+
+### Skills (plugin 1.3.14)
+
+- **sdl-log-parser: offline parser lint.** `scripts/lint_parser.py` checks a parser file against
+  22 known traps before deploy, with no tenant and no dependencies, and exits non-zero on any
+  ERROR. `--new` for a parser being authored, `--json` / `--csv` for a directory report,
+  `--rules` to list the checks. Every rule is backed by a live-tenant result: a bad and good
+  parser pair, or the exact `putFile` rejection it predicts (R09, R19 to R22). SKILL.md adds it as
+  workflow step 4a; live validation stays the definition of done.
+- **Eval grader:** new `lint_clean` assertion type (`tools/run_evals.py`), backed by the same rules
+  module, now on the three parser-authoring cases.
+- **Corrected guidance (live-validated 2026-10-13):** a v0 `constants` entry is rejected only when
+  keyed `output`; keyed `field` it deploys and applies. A same-name rename nulls the field in v1
+  only. A lazy `[\s\S]*?` prefix fails only without a literal anchor. When no format matches, the
+  parser's root attributes are not applied either.
+
+### Fixed
+
+- **Windows launcher: Claude Desktop requests reached the server only when the connection closed.**
+  The relay copied stdin into docker with `Stream.CopyToAsync`, which on Windows PowerShell 5.1
+  (.NET Framework) leaves each message in the write buffer of the process's stdin stream. The
+  server answered `initialize` only after Claude Desktop gave up and closed stdin, logged as
+  `Couldn't start for Cowork and Code sessions. Error: Request timed out`. A relay thread now
+  flushes every chunk. Present since 1.5.0; macOS and Linux were never affected. Windows users
+  get the fix by running `install` again.
+
+### Added
+
+- **`install` and `config` on both launchers.** `install` copies the launcher to
+  `~/.local/bin/` (Windows: `%USERPROFILE%\bin\`), adds `s1-secops-mcp`, `purple-mcp` and
+  `virustotal` to the Claude Desktop config with the real path, keeps every other entry and a dated
+  backup, pulls the image and runs `setup` when no token is stored. `config` prints the same
+  entries for any MCP client. Both take `--image`, `--profile`, `--output-dir` and `--claude-md`
+  (Windows: `-Image`, `-Profile`, `-OutputDir`, `-ClaudeMd`). Nobody types a home path into JSON
+  any more, which was the most common first-run failure, and a launcher left under `~/Documents`
+  on macOS is moved out of the folders Claude Desktop cannot run scripts from.
+- **Windows MSIX installs.** The claude.ai installer now ships Claude Desktop as an MSIX package, and a
+  fresh install reads `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\claude_desktop_config.json`,
+  not the `%APPDATA%\Claude\` file that Settings > Developer > Edit config opens. The Windows `install`
+  writes both, so the servers load either way.
+- **No-clone install.** The docs lead with a one-line download from ai-siem followed by `install`.
+- **`docker/launcher-test.sh` and `docker/launcher-test.ps1`:** hermetic tests for both commands.
+
+## 1.5.3
+
+One global token drives any account or site under it (issue #111). Tool count stays 35.
+
+Measured live on 2026-10-09 against a service user spanning 385 accounts, with an
+account-level token as the control.
+
+### Fixed
+
+- **`scope` now narrows PowerQuery on a global or multi-account token.** `lrqRun` launched
+  every query with `tenant: true` and sent the scope only as an `S1-Scope` header, which
+  `/sdl/v2/api/queries` ignores for a multi-account user. `scope: "<A>"` returned 19 accounts
+  (20 unscoped) and `scope: "<A>:<S>"` 29 account:site pairs. A scope is now sent as
+  `tenant: false, accountIds: ["<A>"]`, and a site adds `site.id='<S>'` to the initial filter
+  (the API has no site field). After the fix: 1 account and 1 account:site pair. On the
+  account-level token the new body matches the old header exactly (184 = 184 for the account,
+  106 = 106 for a site). Applies to `powerquery_run` (PQ, LOG and every slice),
+  `powerquery_enumerate_sources` and the `powerquery_schema_discover` fallback. The response
+  carries `scopeApplied` (`mode`, `accountIds`, `siteFilter`), and `effectiveQuery` shows the
+  site term. For a leading `| join` or `| union` the term is added to every subquery
+  (lookup-table subqueries are left as they are), and `| datasource vulnerabilities` /
+  `misconfigurations` get `| filter siteId='<S>'`; all three matched the header ground truth on an
+  account-level token (union 37,106 = 37,106, join identical per source, misconfigurations 0
+  against 711 account-wide). Lookup tables need no filter: the same path at account and at
+  site scope is two files, and the `S1-Scope` header (still sent) picks the copy `| dataset`
+  reads, on the global token too (with `accountIds` and no header it found no table). A site
+  scope is refused only for `| datasource alerts`, which has no site column. An account the token cannot reach is a clear error (HTTP 403
+  "Not allowed to access requested resource" plus a hint); with a site scope the query retries
+  with `tenant: true` and keeps the site term, for a site-level token.
+- **`powerquery_schema_discover` falls back to an LRQ LOG search** when the V1 query returns no
+  events. Unscoped, V1 returned 0 for every source on the global token; the fallback returned
+  127 fields for `SentinelOne`. `via` reports which path answered (`v1-query` or `lrq-log`), and
+  a failed fallback is reported as `fallbackError` instead of failing the call.
+- **`uam_available_actions` defaults to the alert's own account**, as the write tools do. It
+  used the first 100 accounts only, so an alert in account 101+ was offered 0 actions with no
+  error (now 7). The write tools' all-accounts fallback follows the `/accounts` cursor too
+  (`allAccountIds`).
+
+### Added
+
+- `uam_list_alerts`: `scopeIds` and `scopeType` (`ACCOUNT` default, or `SITE`), sent as the UAM
+  `scope` argument. Unscoped the global token listed 135,303 alerts across accounts; scoped to
+  one account 120,777, all in it; scoped to a site, all in that site. Each alert now carries
+  `accountId` and `siteId`.
+- `ha_list_workflows`: `accountIds`. One account returned 15 workflows (14 account-level, 1
+  site-level); its sites via `siteIds` returned 1, and unscoped returned 105.
+- `ha_list_workflows`: `nameContains`, sent as `name__contains`, the only name filter the API
+  honours (`name`, `search` and `query` return the unfiltered page). Live: 83 workflows, 1 match.
+- `ha_delete_workflow`: an ACTIVE workflow is refused with HTTP 400, so the tool now deactivates
+  it and retries once, reporting `deactivatedFirst: true` (live: 204 after deactivation).
+- `powerquery_schema_discover`: the LRQ fallback also reports session-level fields
+  (`account.id`, `site.id`, `serverHost`), which LOG returns under `serverInfo` for `addEvents`
+  and agent-shipped data.
+- `sdl_create_dashboard`: `config` may be an object as well as a JSON string.
+- `tools/live_learnings_check.mjs` (repo, host-only): re-checks every API behaviour the skills
+  document as measured live; `--lab <accountId>:<siteId>` adds reversible writes.
+
+### Docs
+
+- Tool descriptions state that an unscoped call on a global token spans every account, and to
+  pass the account or site the user named. `ha_export_workflow` notes that an unscoped export
+  holds every account's workflows (253 KB against 26 KB for one account).
+- The three `lrq-api.md` copies, `powerquery/SKILL.md`, `mgmt-console-api` (SKILL.md,
+  UNIFIED_ALERTS.md, querying-logs.md), `hyperautomation/SKILL.md`, `query-slicing.md`,
+  `CLAUDE.md`, `docs/mcp-tools.md` and the MCP README replace the old claim that `tenant: true`
+  means "a default account" with the measured behaviour, and document scoping per tool.
+- Skills (plugin 1.3.13) fold the API behaviours confirmed live on 2026-10-09 on several
+  consoles; each has an invariant test. Detection library: the settings posture read, paging
+  limits and the severity recipe, `core` labels, inheritance (500 while inheriting, per-rule site
+  copies, independent scopes), `Activating` to `Active`, no backfill, back-dated events, activity
+  3776, asset linking by `agent.uuid`. UAM: optional but answer-changing `scope` on
+  `alertAvailableActions`, `alertName` filter, `sort`, introspection, AI Investigation
+  availability. Hyperautomation: list filters and paging, run-now body `{"data": {}}`, deactivate
+  and delete paths, response-trigger limits and conversion, connections by API and by name at
+  run time, `send_email` per console, `GENERATE_UUID4`, JQ features.
+  SDL: collector auth per console, scope attribution checks, `addEvents` behaviour, per-scope
+  datatables, GraphQL introspection. PowerQuery: the scheduled-rule toggle, `disableStreaksLogic`
+  placement, inventory site columns, `site.id` types, correlation alerts per seed.
+- Code comments in `lib/hec.js` and `lib/credentials.js` now match the collector measurements.
+
+## 1.5.2
+
+One console token, a setup check that matches the tools, and a docs and code sync. Tool count
+stays 35.
+
+### Changed
+
+- **`S1_CONSOLE_API_TOKEN_SINGLE_SCOPE` and `tokenKind` are removed** from the MCP, the
+  launchers, the entrypoint allowlist, the `.mcpb` manifest, the Python clients
+  (`S1Client(token_kind=...)` is gone) and the docs. Every call uses `S1_CONSOLE_API_TOKEN`.
+  Live check 2026-10-08: IOC create, list and delete succeed with the regular token of a
+  service user scoped to one account. A 403 with code 4030010 (a token whose user spans several
+  accounts) now carries a hint: use a token minted at a single account or site, in its own
+  keychain profile (`setup --profile <name>`), and a second MCP entry with `S1_PROFILE=<name>`.
+  A stored `<profile>:S1_CONSOLE_API_TOKEN_SINGLE_SCOPE` item is no longer read, listed or
+  removed by `forget`; delete it by hand (see docs/upgrading.md).
+- **`S1_SCOPE` setup accepts `<accountId>` or `<accountId>:<siteId>` only** (`setup`, both
+  launchers, Python `keychain_set`). A group part used to be accepted and then rejected by every
+  SDL and PowerQuery tool (`Invalid S1-Scope`).
+- `setup` accepts every environment alias the server resolves (`S1_BASE_URL`,
+  `SDL_CONSOLE_API_TOKEN`, `S1_UAM_ALERT_INTERFACE_URL`, `SDL_S1_SCOPE`, `VT_API_KEY`, ...):
+  `cli.js` now builds its alias map from `credentials.js`.
+- Docker: `docker/.dockerignore` was never read (the build context is the repo root). It is now
+  `docker/Dockerfile.dockerignore`, with root-relative patterns.
+- **Licence: AGPL-3.0** (was MIT), matching ai-siem: the repo `LICENSE`, `package.json`, the
+  `.mcpb` manifest, the plugin and marketplace entries, and the image label
+  `org.opencontainers.image.licenses`.
+
+### Docs
+
+- Dashboards: first deploy is `sdl_create_dashboard {name, config, isPublic: true, scope}`,
+  updates are `sdl_get_file` then `sdl_put_file {udoId, content, expectedVersion}` (SKILL.md,
+  docs/skills.md and CLAUDE.md said `sdl_put_file` by path).
+- Catalogs list all 8 skills and 10 sdl-solutions; docs/mcp-tools.md lists all 33 purple-mcp
+  tools and the previously undocumented tool parameters; docs/testing.md lists all 35
+  s1-secops-mcp tools; the Windows launcher's `versions`, `help` and `S1_CLAUDE_MD_PATH` support
+  is documented; a troubleshooting step no longer prints a secret; broken in-text references
+  fixed; release notes before 1.4.6 removed (this CHANGELOG is the full history).
+
+### Plugin
+
+- The plugin build leaves each skill's `tests/` and `evals/` out of the package, except files the
+  skill's own SKILL.md or references name as user tools.
+
+## 1.5.1
+
+Security patch for the image. No tool, parameter or behaviour change in s1-secops-mcp; the tool
+count stays 35.
+
+- **Image `sentinelone/secops-mcps:1.5.1`:** the bundled VirusTotal MCP fork is repinned to
+  `97ca2b8`, which overrides two transitive npm dependencies:
+  - `proxy-addr` 2.0.7 to 2.0.8, CVE-2026-90711 (critical, CVSS 9.1);
+  - `@modelcontextprotocol/sdk` 1.26.0 to 1.32.1, CVE-2026-104850 (high, CVSS 7.5).
+
+  Neither was reachable: the VirusTotal server runs on stdio, never loads Express or `proxy-addr`
+  (checked with a module-load hook through `tools/list`), and the SDK advisory excludes servers and
+  stdio clients. Both are fixed anyway so that image scans come back clean. The remaining Scout
+  findings are Debian 13 packages with no fixed version yet (expat, zlib, plus lows).
+- The launchers default to `sentinelone/secops-mcps:1.5.1`, and the docs pin it.
+- CI: `docker-publish.yml` carried `S1_MCP_VERSION: '1.4.0'`, which fails its own check against
+  `docker/build.sh`; it now matches. `docker/README.md` lists the actual VirusTotal and Purple
+  pins.
+
+## 1.5.0
+
+Credentials move to the OS keychain; plaintext files and the HTTP transport are gone.
+Every change below was verified live on an S-26.3.4 tenant on 2026-10-07/08 (A/B against
+1.4.0 and image 1.4.10). Tool count 35 (new: `s1_api_download`, `uam_set_verdict`,
+`uam_assign_alert`).
+
+### Breaking
+
+- **No credentials file, anywhere.** The `credentials.json` discovery chain (`S1_CREDS_FILE`,
+  `COWORK_WORKSPACE`, cwd walk-up, `~/mnt/*`, `CLAUDE_CONFIG_DIR/sentinelone`,
+  `~/.config/sentinelone`) is removed. Values resolve per name from environment variables,
+  then the OS keychain (service `sentinelone-mcp`, account `<profile>:<NAME>`, profile from
+  `S1_PROFILE`, default `default`). Migrate with `s1-secops-mcp setup --import-json <file>`,
+  check with `s1-secops-mcp status`, then delete the file.
+- **stdio only.** The Streamable HTTP transport, bearer tokens (`MCP_BEARER_TOKENS*`) and the
+  team VM deployment (`deploy/`: install.sh, systemd, Caddy, bridge) are removed.
+  `--transport http` and `MCP_TRANSPORT=http` now exit 2 instead of starting.
+- **Docker: secrets over stdin.** `-e S1_CONSOLE_API_TOKEN` still works but is readable through
+  `docker inspect`. The new host launcher `docker/s1-secops-mcp-launch.sh` (macOS/Linux) and
+  `.ps1` (Windows) read the keychain and send the values over stdin
+  (`S1_SECRETS_STDIN=1` in `entrypoint.sh`), so the MCP client config holds no secret.
+  Measured: secret hits in `docker inspect` and `ps eww` went from 3 to 0 per server.
+
+### New
+
+- Keychain backends: macOS `/usr/bin/security` (writes via `security -i` on stdin), Linux
+  `secret-tool` (stdin; headless, missing-tool, locked and timeout cases give a clear reason
+  and never fall back to a file), Windows Credential Manager via the optional
+  `@napi-rs/keyring` dependency. `S1_KEYCHAIN=off` disables it.
+- CLI: `setup` (no-echo prompts, or `NAME=value` lines on stdin; validates values; reads back
+  every write), `status` (source per value, secrets masked), `forget`, and `exec -- <cmd>`,
+  which runs purple-mcp or the VirusTotal MCP natively with keychain values mapped to
+  `PURPLEMCP_*` and `VT_API_KEY`.
+- purple-mcp threat intelligence enabled from the same keychain VT key. The launchers
+  (`s1-secops-mcp-launch.sh` / `.ps1`) now send `VIRUSTOTAL_API_KEY` to purple-mcp, the
+  entrypoint maps it to `PURPLEMCP_VT_API_KEY` for purple-mcp only and then unsets
+  `VIRUSTOTAL_API_KEY` / `VT_API_KEY` in that container, and `exec` sets
+  `PURPLEMCP_VT_API_KEY` too. Verified live 2026-10-08. The VirusTotal MCP stays the primary
+  enrichment and pivot server; use purple-mcp `threat_intel_search` for VT Intelligence hunts
+  and never call `threat_intel_get_file_relationships` or `threat_intel_get_file_behavior`
+  (0.8M to 27M characters per call). See docs/mcp-tools.md.
+- Redaction: configured secret values are masked in all tool output and logs; error output and
+  logs also mask `ApiToken`/`Bearer`/`Basic`/`Splunk` token-shaped values.
+- `powerquery_run`: `queryType: "LOG"` (raw events, every parsed field, `truncatedByServerCap`),
+  `slices` (2-15, parallel) with `merge {keys,sum,min,max}`; a trailing `| sort` / `| limit` is
+  applied after the merge, other post-group commands and non-additive aggregates are refused.
+  Live: 2/8/15 slices match unsliced exactly over 24h and 7d.
+- `outputFile` on `powerquery_run` (.csv/.jsonl/.json), `s1_api_get`, `ha_export_workflow` (ZIP),
+  and the new `s1_api_download` (binary GET to file). Paths must be absolute and inside
+  `S1_OUTPUT_DIRS` (default home and temp), no overwrite unless asked, no symlinks (including
+  dangling ones), files mode 0600, path validated before the API call.
+- `tokenKind: "single_scope"` on `s1_api_*` uses `S1_CONSOLE_API_TOKEN_SINGLE_SCOPE` (IOC
+  writes); never falls back to the default token.
+- Optional Claude Desktop extension (`mcpb/`), sensitive fields stored by Desktop in the OS store.
+- UAM alert management matches the console. `uam_set_verdict` (S1/alert/analystVerdictUpdate,
+  the 20 AnalystVerdict values, `TRUE_POSITIVE` / `FALSE_POSITIVE` / `SUSPICIOUS` refused before
+  any request) and `uam_assign_alert` (S1/alert/assignUser by numeric `userId`, by `email`
+  resolved through `GET /users?email=`, or `unassign: true`, which sends `value: null`). These
+  and `uam_set_status` send the console's `alertTriggerActions` document verbatim, captured from
+  a console HAR: `?opname=AlertTriggerActions`, `scope` = the alert's own account, `viewType:
+  ALL`, one action, filter by id. Each reads the alert first, re-reads it afterwards, and fails
+  unless the alert shows the requested value; the result has `outcome`
+  (`applied`/`already_set`/`scheduled`), `verified`, `before` and `after`. Optional
+  `scopeIds`/`scopeType` override the scope.
+- `MISSING_PERMISSION` names the RBAC permission for the alert type ("Unified Alerts > STAR /
+  Endpoint / Identity / Mobile / Generic Alerts: Manage", plus the legacy STAR Rule Alerts
+  permissions for STAR), the console path to grant it, and, when the token can read its own
+  role (`GET /user`, `GET /rbac/role/{id}`), which Manage permissions that role lacks. It also
+  re-reads the alert and reports that it is unchanged. Live: STAR alert writes succeeded and an
+  ingested alert's writes failed with a role that has no Unified Alerts Manage permission;
+  the request shape (with or without `scope` / `viewType`) did not change either outcome.
+
+### Fixed
+
+- Ids beyond 2^53 returned as JSON numbers (SDL shareResource dashboard ids) were rounded,
+  so a follow-up get or delete missed the dashboard. Responses are now parsed with exact
+  integers (`lib/json.js`), and `sdl_share_dashboard` returns the id it was given.
+- `powerquery_run` results are parsed the same way: ids and nanosecond timestamps beyond 2^53
+  come back as exact strings instead of rounded numbers, and sliced merges add and compare
+  them exactly (BigInt). Float literals such as `1e21` stay numbers.
+- LRQ launch retries 429/502/503/504 (not a plain 500, which SDL returns for some invalid
+  queries).
+- `edrStrict: true` no longer fails with "Unknown EDR field 'tag'": the metering filter is not
+  added to strict EDR queries.
+- `uam_list_alerts` `searchText` matched nothing (`fieldId '*'` is rejected); it now matches
+  `alertName`.
+- `s1_api_post` reports a GraphQL `errors[]` response with no data as an error.
+- LRQ: a poll answered 404 "Requested token=... not found" (seen in three A/B runs; a rerun
+  always succeeded) relaunches the query once instead of failing it. A second 404 is fatal.
+- `uam_set_status` now verifies by re-reading the alert, and an invalid status is refused before
+  any request.
+- `uam_get_alert` returns `assignee.userId` and `ticketId`.
+- `uam_available_actions` no longer offers `scopeType: GLOBAL` (the API rejects it);
+  `uam_list_alerts` accepts `viewType: DLP`.
+- `uam_post_alert`: the `alert` parameter description no longer tells callers to reference a
+  previously posted indicator by uid (that endpoint is gone); it describes the inline
+  `related_events[]` shape, the single `resources[]` entry and the Fingerprint-array hashes.
+
+## 1.4.0
+
+From the S-26.2.x / S-26.3.x release-note review, each verified on a live S-26.3.4 tenant on
+2026-10-05. Tool count stays 32.
+
+### `powerquery_run`: optional `edrStrict`
+
+`edrStrict: true` sends the LRQ launch with a top-level `scheme: "edr"`. An unknown or wrongly
+cased EDR field (for example `Endpoint.name`) then fails with HTTP 400 `Unknown EDR field: ...`
+instead of silently returning 0 rows; correct fields return the same rows (6,709 with or without
+it on the test query). Without it, and with an `i.scheme="edr"` filter inside the query, a typo
+still returns 0 rows. The parameter must be top level: inside `pq` the API answers 400
+`Invalid JSON`. Default off, so existing calls are unchanged.
+
+### `engines.node` is `>=24`
+
+Node 18 and 20 are end of life. CI and the image already run Node 24.
+
+## 1.3.10
+
+Fixes from a field smoke test (2026-10-02), each reproduced and verified on a live
+tenant on 2026-10-03. Tool count stays 32.
+
+### SDL ingest-metering rows are excluded by default
+
+Every ingest writes receive-time accounting rows under the source's own
+`dataSource.name`: `tag='logVolume'`, with `metric` / `value` / `path1`, and they also
+carry `sca:bytesToCharge` and `sca:ingestTime`. They inflated per-source counts and
+made a silent source look live. Over a fixed 12h window they were 7,390 of 383,044 rows.
+
+- `powerquery_run` and `powerquery_enumerate_sources` add `tag != 'logVolume'` to the
+  initial filter (new `lib/metering.js`), where dropping rows costs least, and return
+  `effectiveQuery`. `!=` keeps rows that have no `tag`; the older
+  `(tag != 'logVolume' OR !(tag = *))` form returned the same 375,654 rows. The filter
+  is not added when the query mentions `logVolume` or starts with `| datasource`,
+  `| dataset`, `| join` or `| union`. `includeMetering: true` opts out.
+- `powerquery_schema_discover` over-fetches and drops metering rows client-side, and
+  reports `excludedMeteringRows`. Before this, a sample could be partly or entirely
+  metering (42 to 64% of rows on 4 sources), so the reported schema included fields
+  the source doesn't have.
+
+### `sdl_create_dashboard`: tab label key is `tabName`
+
+A tab labelled with `name` was refused by the API as "one of the tabs in dashboard
+has a blank name", which doesn't say which key it wanted. The tool now catches this
+before sending and names the key. The description shows the `tabName` shape and the
+60-column panel grid.
+
+### `sdl_save_dashboard_layout` only moves and resizes panels
+
+Tested live on four dashboards: titles, markdown and queries in the payload were
+ignored, and only the layouts were applied, matched by position in the array. A
+shorter payload changed nothing, and a longer one was refused ("Index 4 out of bounds
+for length 4"). The tool now reads the tab first and refuses a payload whose panel
+count differs. It also warns when content changes would be dropped. The description
+no longer says the tool can add or remove panels.
+
 ## 1.3.9
 
 Three defects from a field smoke test, plus the delivery-channel fault that kept

@@ -19,7 +19,7 @@ description: Use whenever the user wants to author, edit, debug, validate, or ex
 
 This skill turns raw log samples into deployed, validated SDL parser definitions. A parser is an *augmented-JSON* file at `/logParsers/<name>` on the SDL tenant that extracts fields from each ingested line. The parser editor and the `Test Parser` button in the console run the parser client-side in JavaScript; this skill mirrors that workflow programmatically and finishes by ingesting a sample through the deployed parser to confirm the actual ingest path works.
 
-> **Sandbox proxy blocked?** If `putFile` or HEC ingest calls to `*.sentinelone.net` fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). Use `sdl_put_file` to deploy the parser and `hec_ingest` to run the ingest validation step, both execute from your machine, not the sandbox.
+> **Deploy and validate through the `s1-secops-mcp` MCP tools.** `sdl_get_file` / `sdl_put_file` read and deploy the parser, `powerquery_run` validates on the live stream, and `hec_ingest` runs the synthetic-ingest fallback. The server runs on the user's machine, so it reaches `*.sentinelone.net` where the Cowork sandbox cannot, and it reads credentials from environment variables or the OS keychain. If the tools are missing, point the user to the s1-secops-mcp README (`s1-secops-mcp/README.md` in the s1-secops-skills source repo, `mcp/s1-secops-mcp/README.md` in ai-siem; not shipped inside the plugin).
 
 ## Gate 0: can an SDL parser run on this source at all? (check this first)
 
@@ -73,8 +73,8 @@ These are the DSL traps that cost the most iteration cycles when authoring parse
 
 1. **Key=value catch-all REQUIRES leading `.*`**. The canonical form is `".*$_=identifier$=$_=quoteOrSpace$"` with `repeat: true`. Without the `.*` the format anchors at position 0 of the message and fires zero times on any line starting with a syslog priority `<NNN>`, a CEF header, an XML envelope, or a timestamp, i.e. virtually every real log source. The leading `.*` lets the engine scan forward to the first `key=value` pair and then `repeat: true` walks the rest. This is the same pattern the built-in `keyValue` parser uses. Also: **`{parse=keyValue}` is NOT a valid sub-parser directive**; built-in parsers like `keyValue` are only usable via root-level `aliasTo:`.
 2. **v1 mappings are FIRST-MATCH-WINS**, which means **renames must be duplicated into every per-subtype block** alongside the constants. A catch-all `predicate: "true"` rename block placed at the end NEVER fires for events that matched an earlier per-subtype block, only the truly-unmatched events get those renames. If you have per-subtype `constant` blocks for OCSF class/activity fan-out (e.g. `subtype=='forward'` → `activity_id=6`), you must put the full rename list inside EACH of those blocks. Verbose but correct.
-3. **v0 `constants:` block is REJECTED on the current tenant.** `putFile` returns `400: Syntax error at position -1: Assertion failed: Expected a field` whenever a v0 mapping body contains a `constants:` array. v0 `renames:` and `copies:` work fine; only `constants:` fails. Practical impact: prefer **v1** (`{ constant: { field, value } }`) for any new parser that needs OCSF class fan-out. Stay on v0 only when extending an existing v0 parser that doesn't add new constants.
-4. **Same-name rename silently NULLS the field.** Writing `{ rename: { from: "action", to: "action" } }` to "keep" a captured raw field under its own name actually deletes the value. The KV catch-all already extracts raw vendor field names directly into the event, to "keep" one, OMIT the rename. Only write a rename when the target name is genuinely different from the source.
+3. **v0 constants take `field`, not `output`.** A v0 `constants:` entry keyed `output` (the key v0 `renames:` and `copies:` use) is rejected by `putFile` ("Expected a field", surfaced by the MCP as "Content is invalid json"). Keyed `field` (`{ field: "class_uid", value: 4001, type: "int" }`) it deploys and applies, which is the shape every marketplace v0 parser uses. Live-validated 2026-10-13; this corrects an earlier note that all v0 `constants:` were rejected. For new parsers prefer **v1** (`{ constant: { field, value } }`) anyway.
+4. **Same-name v1 rename silently NULLS the field** (a same-name v0 `renames` entry keeps the value, live-validated 2026-10-13). Writing `{ rename: { from: "action", to: "action" } }` to "keep" a captured raw field under its own name actually deletes the value. The KV catch-all already extracts raw vendor field names directly into the event, to "keep" one, OMIT the rename. Only write a rename when the target name is genuinely different from the source.
 5. **Unquoted numerics from `quoteOrSpace` are auto-typed as NUMBER columns.** A FortiGate `srcport=44321 sentbyte=8421` line going through the KV catch-all produces `srcport: 44321` (number), `sentbyte: 8421` (number), queryable with `avg()` / `sum()` / `> N` without `number()` wrapping. Quoted values stay as strings even if they look numeric (`level="6"` → string). Caveat: SDL column type-locking still applies, so wrap numerics with `number()` in dashboard panels and STAR rule bodies if the column has ever been written as string in this tenant's history.
 
 Two related queryability rules (not DSL traps, but they matter for any consumer of the parser):
@@ -108,6 +108,7 @@ Follow this loop. Skipping steps 1 (catalog check) and 5 (end-to-end validation)
 2. **Inspect the sample.** Read every line the user pasted. Look for: leading priority/timestamp/host (syslog framing), the body shape (CEF | JSON | key=value | positional CSV | freeform), any obvious sub-structures (`uri=...`, embedded JSON, base64), and whether multiple physical lines belong to one logical event (stack traces, MySQL slow queries, Postgres SQL).
 3. **Decide on strategy.** See *Strategy decision tree* below. Most logs are one of: alias an existing built-in, single line format with `$field$` markers, repeating key/value catch-all, JSON parser with `discardAttributes`, line-grouper for multi-line, or a mapper for OCSF-style restructuring.
 4. **Draft the parser.** Use the templates in `examples/` as starting points, or (from step 1) a catalog parser as a base. Always start minimal, extract the *outer* frame first (timestamp + host + body), then add fragment formats or `{parse=...}` directives to crack the body open.
+4a. **Lint offline before you deploy.** Run `python3 scripts/lint_parser.py --new <parser-file>` (standard library only, no tenant, no credentials). It checks the parser against the known traps in this file (key=value catch-all without its leading `.*` or `repeat: true`, a v0 constant keyed `output`, `severity` plus `severity_id`, same-name v1 renames, a catch-all mapping that is not last, stripped `.*` at either end of a regex, an anchorless lazy prefix, alternation order, root-only scratch discards, escaped dots, the mandatory attributes, `claude_test_*` names, and four shapes `putFile` rejects outright: a transformation entry with a second key such as `_comment`, an unsupported op such as `regex`, a `{name=...}` matcher option, and `[]` in a predicate; each rule was validated on a live tenant) and exits non-zero on any ERROR. Fix every ERROR before `sdl_put_file`. `--rules` lists the rules with the section each comes from. A clean lint means none of the KNOWN traps are present; it does not prove the parser parses, so step 5 is still the definition of done. Drop `--new` to audit an inherited catalog parser, where the hard rules report as findings instead of errors.
 5. **Deploy in place and validate on the live stream (DEFAULT).** Update the SAME parser name the source already uses (`/logParsers/<name>`) via `sdl_put_file` with the current `expectedVersion` from `sdl_get_file`, bumping `metadata.version` on every deploy. Then validate against events the source is already sending: after ~3-5 min propagation, query `dataSource.name='<Name>' metadata.version='<new>'` and confirm the expected fields are populated and not null. Do NOT stand up a `claude_test_*` parser and do NOT synthetically HEC-ingest samples when the source is live, saved parser edits are non-destructive (they apply only to newly ingested events and never re-parse history), so editing the real parser is safe and the live feed is the authoritative test. The synthetic-ingest recipe in *Validation* is a FALLBACK, only for a source that is not currently ingesting. Before you deploy, commit the current live definition as a baseline, and after you deploy commit the new version, both to git in the **local project folder only** (see *Validation → Version control & rollback*). See *Validation* below. **Do not call this skill done before the live query shows the fields populated.**
 6. **Iterate.** If a field is missing or wrong, identify which format/rewrite/mapping was responsible, edit, bump `metadata.version`, redeploy the same parser, wait for propagation, and re-query the live stream filtering on the new `metadata.version`. (Only for a non-live source: re-ingest the sample with a fresh nonce.)
 7. **Hand off.** Show the user the final parser file (path + version), the sample they gave, and the parsed fields the query returned.
@@ -233,7 +234,7 @@ Clear *Gate 0* first: if the events do not carry both `message` and `parser`, no
 
 - **Double-escape every regex metacharacter.** `\\d`, `\\s`, `\\.`, `\\\\`. The augmented-JSON layer eats one backslash before the regex engine sees it.
 - **`severity` is a RESERVED field coerced to 0-6 integer.** The ingest pipeline maps `info`/`warn`/`error` strings to 0-6 using its own vocabulary. OCSF labels like `"Informational"` / `"Medium"` collide and get rewritten. For the OCSF string, emit `severity_name` (or any non-colliding name); for the integer, emit `severity_id` directly (int; the 0-6 range is validated, 99 "Other" is unvalidated). Never emit both `severity` and `severity_id` from the same parser. Tenant-validated April 2026.
-- **gron-captured dotted keys are FLAT, not nested.** A source JSON key like `"user.email": "alice"` becomes `unmapped.user.email` as a single flat field, mappings must reference it with `from: "unmapped.user.email"` (no escaping). `from: "unmapped.user\\.email"` does NOT match on current tenants, contrary to the escape-the-dots pattern in ai-siem's PARSER_TEMPLATE.conf.
+- **gron-captured dotted keys are FLAT, not nested.** A source JSON key like `"user.email": "alice"` becomes `unmapped.user.email` as a single flat field, mappings must reference it with `from: "unmapped.user.email"` (no escaping). `from: "unmapped.user\\.email"` does NOT match on current tenants (re-confirmed live 2026-10-13; lint rule R13).
 - **Saved parsers apply only to newly ingested events.** Historical logs are not re-parsed. So during iteration you must re-ingest the sample after every parser edit.
 - **A `parser=<name>`-tagged source with NO `/logParsers/<name>` file ingests raw (passthrough).** If events carry `parser='auditd'` but `dataSource.name` / `class_uid` are null, the named parser file does not exist yet: the collector tags the events but SDL has nothing to apply. Deploy `/logParsers/<name>` and NEW events get parsed. After deploy, the parser's root `attributes` (e.g. `dataSource.name`) are the canary that the parser is RUNNING AT ALL, if they are still null on fresh events the parser has not propagated yet (not a format bug); if they are populated but a captured field is null, that IS a format/mapping bug. `metadata.version` is the canary for WHICH version is live: bump it on every deploy so you can tell from the live stream when a specific change has propagated (poll `| group c=count() by metadata.version` until the new version appears). Propagation observed at ~3-5 min on this tenant. Tenant-validated 2026-06-01.
 - **`halt: true` stops the format engine after a match.** Use it for mutually exclusive formats (e.g., TCP vs UDP variants in pfSense). Without it, all matching formats merge their captures.
@@ -253,7 +254,8 @@ Clear *Gate 0* first: if the events do not carry both `message` and `parser`, no
 - **SDL strips the leading `.*` from a regex before passing it to the Java engine.** This means using `.*?` (non-greedy) at the start of a regex produces an orphaned `?` which the engine rejects as "Dangling meta character '?' near index 0". Use plain `.*` and rely on normal greedy matching. If you need non-greedy behaviour, restructure the capture into two segments (see below).
 - **Trailing `.*` at the END of a format string is also stripped (same root cause as leading `.*`).** A format ending in `$_body{regex=.*}$` or `$process.cmd_line{regex=.*}$` (the field marker is the last thing on the line, regex is exactly `.*`) silently captures the EMPTY STRING instead of "everything to end of line". The SDL leading-`.*`-strip rule applies regardless of whether the `.*` is the entire regex or merely starts it; with the `.*` stripped, the regex becomes empty and the field defaults to a zero-length capture. Tenant-validated 2026-05-26 on a linuxLogsParser sudo format: `COMMAND=$process.cmd_line{regex=.*}$` captured `""` (empty), whereas the same format with `regex=[\\s\\S]+` captured the full command-line including embedded spaces. Use `[\\s\\S]+` (one or more, including newlines) or `[\\s\\S]*` (zero or more, including newlines) at any field marker where you want "everything that remains on the line" semantics. Both forms avoid the leading-`.*` strip and survive intact.
 - **Regex alternation matches in DECLARATION ORDER, not longest-leftmost.** `regex=CRON|CROND` is a bug: `CRON` is tried first and matches the literal prefix of `CROND`, leaving `D` to fail against the next literal in the format string. The fix is to put the LONGER alternative FIRST: `regex=CROND|CRON|crond|cron`. This applies anywhere alternation appears (named patterns, inline `{regex=...}`, regex in rewrites). Tenant-validated 2026-05-26: linuxLogsParser cron_cmd format with `CRON|CROND` matched zero CROND events; same format with `CROND|CRON` matched every cron variant. General rule: when alternatives share a prefix, sort by length descending.
-- **`[\s\S]*?` (lazy) at the start of a prefix regex silently matches almost nothing, same family of bugs as `.*?`, but no error.** A fragment format like `$_pre{regex=[\s\S]*?}$$field{regex=PATTERN}$$_suf{regex=[\s\S]*}$` will fire on a tiny fraction of events instead of the expected matches, because the SDL regex engine does not backtrack across field boundaries when the prefix is lazy. The fix is the same shape as the multi-char-anchor rule: use greedy `[\s\S]*` plus a discriminating literal anchor inside the prefix regex itself (e.g. `[\s\S]*\"merchant_transaction_id\":\"` to anchor on a JSON key before capturing a CL transaction id). Tenant-validated 2026-05-13. If you actually need first-match semantics, anchor on a literal that only appears once per line (e.g. `\[log\.`, `\"url\":\"`), do not reach for `*?`.
+- **`[\s\S]*?` (lazy) at the start of a prefix regex silently matches almost nothing, same family of bugs as `.*?`, but no error.** A fragment format like `$_pre{regex=[\s\S]*?}$$field{regex=PATTERN}$$_suf{regex=[\s\S]*}$` will fire on a tiny fraction of events instead of the expected matches, because the SDL regex engine does not backtrack across field boundaries when the prefix is lazy. The fix is the same shape as the multi-char-anchor rule: use greedy `[\s\S]*` plus a discriminating literal anchor inside the prefix regex itself (e.g. `[\s\S]*\"merchant_transaction_id\":\"` to anchor on a JSON key before capturing a CL transaction id). Tenant-validated 2026-05-13. If you actually need first-match semantics, anchor on a literal that only appears once per line (e.g. `\[log\.`, `\"url\":\"`), do not reach for `*?`. Live-validated 2026-10-13: the anchorless form (`$_pre{regex=[\s\S]*?}$`) makes the whole format fail to match, while a lazy prefix WITH a literal anchor inside its own regex (`[\s\S]*?COMMAND=`) captures correctly.
+- **When no format matches an event, the parser's root `attributes` are not applied either** (live-validated 2026-10-13 on three independent failure shapes). A null `dataSource.name` on fresh events therefore means "no format matched" as often as "the parser has not propagated": check one before assuming the other.
 - **Two-segment sequential capture pattern for JSON values inside a raw string.** When a log line is a raw JSON string (with `\"` escaping) and you need to extract a field value, use a two-segment format with a `$$` transition. First segment grabs everything up to and including the opening quote of the value into a scratch field; second segment captures the value up to the closing quote. Example for extracting `severity_name` before SDL coerces it: `$_ps{regex=.*\\\"severity\\\":\\\"}$$severity_name{regex=[^\\\"]*}$`. The `$$` boundary: the first `$` closes seg 1, the second `$` opens seg 2. The scratch field (`_ps`) must be in the format's OWN `discardAttributes: ["_ps"]` array (per-format, alongside `format:`), parser-root `discardAttributes` does not reliably drop format-capture scratch fields on this tenant. This pattern works for any quoted string value in a JSON-encoded log line.
 - **`$pri{parse=syslogPriority}$` can cause silent event drops on some tenants.** If you suspect priority parsing is the culprit, capture the priority as a plain field (`$pri{regex=\\d+}$`) and skip the parse directive.
 - **Indexed positional access `attr[N]` only works in `mappings.version: 1`.** v0 mappings reject `attr[0]`/`attr[1]` syntax. If the source is positional CSV (Palo Alto Firewall is the canonical case), use v1. Reference: `parsers/sentinelone/marketplace-paloaltonetworksfirewall-latest/`.
@@ -309,9 +311,9 @@ Two syntaxes coexist on live tenants and both work. You must commit to one per p
 - **Ops are plural arrays on the mapping entry**: `renames: [...]`, `copies: [...]`, `constants: [...]`. No `transformations:` wrapper.
 - **Every op entry uses `inputs: [list]` + `output:` + `type:`**: even `rename`. `type: "string"` is the safe default.
 - **Predicates use `=`** (single equals) in v0, both on the mapping entry and inside `constants`.
-- **WARNING: v0 `constants:` block is rejected on the current S1 tenant.** `putFile` returns `400: Syntax error at position -1: Assertion failed: Expected a field` when a `constants:` array is present, even with the documented body shape `[{output, value, type}]`. v0 `renames:` and `copies:` work fine; only `constants:` fails. Tenant-validated 2026-05-26: identical mapping block with `constants` removed deploys cleanly, with `constants` present is rejected. If you need conditional `class_uid` / `activity_id` fan-out from one parser to multiple OCSF classes, use **v1**, the v1 `{ constant: { field, value } }` op works reliably. This means: prefer v1 for any new parser that needs OCSF class fan-out. Stay on v0 only if you're extending an existing v0 parser that doesn't add new constants.
+- **v0 `constants:` entries are keyed `field`, never `output`.** `[{output, value, type}]` is rejected by `putFile` with `Expected a field`; `[{field, value, type}]` deploys and the constant is applied to events. Live-validated 2026-10-13 (the 2026-05-26 note that every v0 `constants:` block is rejected was the `output` shape). `scripts/lint_parser.py` rule R03 flags the `output` shape.
 
-If you inherit a marketplace parser, keep it on v0 rather than rewriting (unless you need to add `constants`, then migrate to v1). For new parsers, pick v1. See `references/mappers.md` for the full side-by-side.
+If you inherit a marketplace parser, keep it on v0 rather than rewriting. For new parsers, pick v1. See `references/mappers.md` for the full side-by-side.
 
 **`constant` / `constants` op** (both versions) is the workhorse for conditional OCSF class/activity assignment, give it a `predicate` and it only fires when matched, so you can fan one vendor-native state code (`conn_state`, `action`, etc.) out into `activity_id` + `activity_name` + `type_uid` triples.
 
@@ -384,20 +386,21 @@ Always validate against the live tenant, the only authoritative test is "did the
 
 When the source is already ingesting (the normal case), **edit the real parser and validate on real traffic.** Do NOT create a `claude_test_*` parser and do NOT synthetically ingest, saved parser edits are non-destructive (they apply only to newly ingested events and never re-parse history), so editing the live parser is safe, and the feed the source is already sending is the authoritative test.
 
-```python
-# Use the s1-secops-mcp tools (sdl_get_file / sdl_put_file / powerquery_run).
-# 1. Read current version (for optimistic locking + rollback reference).
-cur = sdl_get_file("/logParsers/<name>")           # note cur["version"]
+```text
+MCP tool calls (s1-secops-mcp), in order:
 
-# 2. Deploy the edit to the SAME path. Bump metadata.version in the file first.
-sdl_put_file("/logParsers/<name>", content=parser_body, expectedVersion=cur["version"])
+1. sdl_get_file   {path: "/logParsers/<name>"}
+   -> note the returned version (optimistic locking + rollback reference)
 
-# 3. Wait ~3-5 min for propagation (activation is NOT instant on this tenant).
+2. sdl_put_file   {path: "/logParsers/<name>", content: <parser body>, expectedVersion: <version>}
+   -> deploy the edit to the SAME path; bump metadata.version in the file first
 
-# 4. Validate on the live stream, keyed on the NEW metadata.version so you only
-#    see events the new parser touched (SDL never re-parses history):
-#    dataSource.name='<Name>' metadata.version='<new>' | group count=count() by <subtype-field>
-#    then: dataSource.name='<Name>' metadata.version='<new>' | columns <expected_fields> | limit 10
+3. Wait ~3-5 min for propagation (activation is NOT instant on this tenant).
+
+4. powerquery_run {query: "dataSource.name='<Name>' metadata.version='<new>' | group count=count() by <subtype-field>", hours: 1}
+   powerquery_run {query: "dataSource.name='<Name>' metadata.version='<new>' | columns <expected_fields> | limit 10", hours: 1}
+   -> keyed on the NEW metadata.version so you only see events the new parser touched
+      (SDL never re-parses history)
 ```
 
 A successful validation means: (a) `sdl_put_file` returned `success`, (b) the live query returns rows tagged with the new `metadata.version`, (c) the expected fields are populated and not null. If a subtype is rare and no event has arrived yet, widen the window or wait for one; do NOT fall back to synthetic ingest just to force a row.
@@ -414,19 +417,21 @@ On every deploy:
 2. On the FIRST touch of an existing live parser, commit the current live definition (from `sdl_get_file`) as the baseline BEFORE your edit; this is the rollback point.
 3. After deploying, `git add` + `git commit` the new version there (commit message = the new `metadata.version` + what changed).
 
-Rollback is then a local operation: `git checkout <prior-commit> -- parsers/<name>.json`, then `sdl_put_file("/logParsers/<name>", content=..., expectedVersion=<current>)` to push the previous content back. Bump `metadata.version` on the rollback too so you can confirm from the live stream which definition is active.
+Rollback is then a local operation: `git checkout <prior-commit> -- parsers/<name>.json`, then `sdl_put_file` with `path: "/logParsers/<name>"`, the previous content and `expectedVersion: <current>` to push it back. Bump `metadata.version` on the rollback too so you can confirm from the live stream which definition is active.
 
 ### Fallback: synthetic HEC ingest (ONLY when the source is not live)
 
 Use this only for a brand-new source that is not ingesting yet, or a shape you cannot observe in the live stream. Deploy to the **real** parser name (still bump `metadata.version`), ingest the sample through it, and query back. Do not resurrect the `claude_test_*` throwaway-parser pattern.
 
-```python
-import time, uuid, json
-# Deploy to the real parser path (see Default above), then:
-hec_ingest(logContent=sample, parser="<name>", scope="<accountId>", endpoint="raw")
-time.sleep(8)  # ingest-to-search latency
-# Isolate the test rows with a unique nonce embedded in the sample, or filter on
-# parser='<name>' over a short recent window, then confirm the expected fields.
+```text
+MCP tool calls (s1-secops-mcp), after deploying to the real parser path (see Default above):
+
+1. hec_ingest     {logContent: <sample with a unique nonce>, parser: "<name>", endpoint: "raw"}
+   -> authenticates with the SDL Log Write Key (S1_HEC_TOKEN); the key's own scope fixes
+      where the events land, so no scope argument applies
+2. Wait ~8 s (ingest-to-search latency).
+3. powerquery_run {query: "parser='<name>' * contains '<nonce>' | columns <expected_fields>", hours: 1}
+   -> confirm the expected fields are populated
 ```
 
 ## Bundled references
@@ -444,6 +449,11 @@ When a question goes deeper than this file, read the relevant reference. Each is
 - `references/testing-workflow.md`: Detailed validation recipe with the `sdl-api` skill, including how to scope queries with a unique host tag, how to interpret common error responses, and how to clean up.
 - `references/per-app-sentinel.md`: The per-app sentinel pattern for a single parser that fans many services or applications out to their own OCSF classes: pattern overview, the add-a-service checklist, and the periodic catch-all audit query.
 - `references/onboarding-learnings.md`: Tenant-validated learnings from onboarding new sources via the `sdl-solutions` playbook (dotted-prefix JSON capture, `mappings` version requirement, account-level parser scope, activation latency, sourcetype binding, IP-keyed network-source enrichment).
+
+## Bundled scripts
+
+- `scripts/lint_parser.py`: offline parser lint (workflow step 4a). `--new` for a parser you are authoring, `--json` / `--csv` for a report over a directory, `--rules` to list the checks.
+- `scripts/parser_rules.py`: the rules themselves and a tolerant augmented-JSON reader. Single source of truth: the eval grader's `lint_clean` assertion imports it. Add a rule here only for a trap this file already records as tenant-validated, and give it a known-bad and known-good case in `tests/test_lint_parser.py`.
 
 ## Bundled examples
 
@@ -466,11 +476,11 @@ When a user pastes a log and asks you to parse it, you owe them: (1) a parser fi
 
 ## Parser deployment via s1-secops-mcp
 
-Parser deployment and validation use the `s1-secops-mcp` MCP tools, which bypass the
-Cowork sandbox proxy entirely. Use `sdl_put_file`, `sdl_get_file`, `sdl_list_files`,
-and `hec_ingest` directly instead of falling back to the `sdl-api`
-skill scripts. The MCP tools run locally on your machine and make direct HTTPS calls
-to `*.sentinelone.net` without proxy interference.
+Parser deployment and validation use the `s1-secops-mcp` MCP tools, which run on the
+user's machine and reach `*.sentinelone.net` where the Cowork sandbox cannot. Use
+`sdl_put_file`, `sdl_get_file`, `sdl_list_files`, `hec_ingest` and `powerquery_run`
+directly; the `sdl-api` skill's Python scripts are host-only. If a tool reports a missing
+credential, ask the user to run `s1-secops-mcp setup` on their machine.
 
 ## Per-app sentinel pattern (multi-tenant / multi-service parsers)
 

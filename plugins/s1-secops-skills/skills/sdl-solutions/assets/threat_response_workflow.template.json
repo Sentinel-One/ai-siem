@@ -1,5 +1,5 @@
 {
-  "_comment": "SOC threat-response playbook for an onboarded source's detections. Alert trigger -> extract IOCs -> VirusTotal enrich the external dst_ip -> gate on a malicious verdict -> contain (block IOC + network-quarantine the source endpoint) -> document on the alert + notify SOC. Internal-only alerts (no external IOC) branch to analyst triage. Tokens: {{SOURCE_LABEL}} (string used to match the rule names, e.g. 'Meraki'), {{ACCOUNT_ID}}, {{VT_API_KEY}}, {{NOTIFY_WEBHOOK_URL}}, {{IOC_TTL_HOURS_NEG}} (negative hours-forward for validUntil, e.g. -2160 for 90d). Confirm the alert field paths (dst_ip/src_ip/device_agentuuid) against a real fired alert. Keep run_automatically false until you trust the flow; set true for full auto. Bind the 'SentinelOne' mgmt connection (ApiToken) for S1 actions.",
+  "_comment": "SOC threat-response playbook for an onboarded source's detections. Alert trigger -> extract IOCs -> VirusTotal enrich the external dst_ip -> gate on a malicious verdict -> contain (block IOC + network-quarantine the source endpoint) -> document on the alert + notify SOC. Internal-only alerts (no external IOC) branch to analyst triage. Tokens: {{SOURCE_LABEL}} (string used to match the rule names, e.g. 'Meraki'), {{ACCOUNT_ID}}, {{NOTIFY_WEBHOOK_URL}}, {{IOC_TTL_HOURS_NEG}} (negative hours-forward for validUntil, e.g. -2160 for 90d). Confirm the alert field paths (dst_ip/src_ip/device_agentuuid) against a real fired alert. Keep run_automatically false until you trust the flow; set true for full auto. Bind the 'SentinelOne' mgmt connection (ApiToken) for S1 actions and a VirusTotal connection (Hyperautomation > Integrations > VirusTotal) for the enrichment step. The VirusTotal API key lives in that connection, never in the workflow JSON.",
   "name": "{{SOURCE_LABEL}} Threat Response",
   "description": "SOC analyst response playbook for the {{SOURCE_LABEL}} detections: enrich the external IOC, and on a VirusTotal-confirmed malicious verdict block the IP and network-quarantine the source endpoint, then document and notify. Internal-only alerts route to analyst triage.",
   "actions": [
@@ -52,7 +52,7 @@
         "snippet_workflow_id": null, "snippet_version_id": null,
         "data": {
           "name": "Has External dst_ip", "action_type": "condition", "condition_type": "multi", "condition": null,
-          "conditions": [ { "input_value": "{{local_var.dst_ip}}", "compared_value": "no-ip", "comparison_operator": "not_equals" }, {"input_value": "{{local_var.dst_ip_priv}}", "compared_value": "", "comparison_operator": "is_empty"} ],
+          "conditions": [ { "input_value": "{{local_var.dst_ip}}", "compared_value": "no-ip", "comparison_operator": "not_equals" }, {"input_value": "{{local_var.dst_ip_priv}}", "compared_value": "", "comparison_operator": "equals"} ],
           "conditions_relationship": "and"
         }
       },
@@ -66,13 +66,13 @@
         "client_data": { "position": { "x": -150, "y": 450 }, "dimensions": { "width": 256, "height": 76 }, "collapsed": false },
         "snippet_workflow_id": null, "snippet_version_id": null,
         "data": {
-          "name": "VirusTotal Enrich dst_ip", "action_type": "http_request", "public_action_id": null,
-          "method": "get", "url": "https://www.virustotal.com/api/v3/ip_addresses/{{local_var.dst_ip}}",
-          "url_path": null, "url_prefix": null, "payload": null,
+          "name": "VirusTotal Enrich dst_ip", "action_type": "http_request", "public_action_id": "25394f56-6862-4ba7-9843-5d6c5fa3ac04",
+          "method": "get", "url": "{{Connection.protocol}}{{Connection.url}}/api/v3/ip_addresses/{{local_var.dst_ip}}",
+          "url_path": "/api/v3/ip_addresses/{{local_var.dst_ip}}", "url_prefix": null, "payload": null,
           "parameters": [], "retry_on_status_code": null, "retry_on_status_codes": [500],
           "ssl_verification": true, "timeout": 60,
-          "headers": { "x-apikey": "{{VT_API_KEY}}", "Content-Type": "application/json" },
-          "use_authentication_data": false, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
+          "headers": { "Content-Type": "application/json" },
+          "use_authentication_data": true, "use_proxy": false, "redirect_follow": true, "continue_on_fail": true, "body_type": null
         }
       },
       "export_id": 3, "connected_to": [{ "target": 4, "custom_handle": null }], "parent_action": null

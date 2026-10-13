@@ -65,7 +65,7 @@ A parser cannot read the Asset Inventory live: the `datasource` command is rejec
 flow keeps it current automatically). If you want no stored table at all, enrich at query time by
 joining live against `datasource assets`, for example:
 
-```
+```text
 | join (dataSource.name='<source>' hostname=* | columns timestamp, hostname, username),
        (| datasource assets from 'surface/endpoint'
           | filter name = * | columns hostname=name, device_os=os, device_site=s1SiteName, device_crit=assetCriticality)

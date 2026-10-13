@@ -32,9 +32,11 @@ through Function.JQ with defaults, and the done-check is gated on stepsTotal gre
 0/0 first poll is not mistaken for a finished query.
 
 hec_action.json and connection.json written. It cannot reuse the SDL connection. The event
-collector takes an SDL Log Write Key, not the console API token: the write key returns HTTP 200
-and the console token returns HTTP 400 {"text":"Missing S1-Scope header","code":5}, and adding
-that header does not fix it. So this is a second Bearer connection whose api_key holds the Log
+collector takes an SDL Log Write Key. A connection holding the console token behaves like the
+console token, which differs per console: HTTP 400 {"text":"Missing S1-Scope header","code":5}
+without a scope header and accepted with one on some consoles,
+HTTP 403 {"text":"User token not allowed for this endpoint","code":4} either way on others. The write key returns HTTP 200 on both,
+so use the write key in both cases. So this is a second Bearer connection whose api_key holds the Log
 Write Key, and the collector action sends no scope header at all, since the key is minted for one
 account or site and that fixes where events land. The payload carries dataSource.name,
 dataSource.vendor and dataSource.category set to security, plus site_id and a flat dotted

@@ -115,6 +115,6 @@ collector flow ran end to end (6/6 actions, ~2.9s) and published clean risk even
 of 50.
 
 Full execution detail is in the Claude-facing playbook,
-[`skills/sdl-solutions/references/risk-based-alerting.md`](../../skills/sdl-solutions/references/risk-based-alerting.md).
+[`sdl-solutions/references/risk-based-alerting.md`](../../skills/sdl-solutions/references/risk-based-alerting.md).
 For the detection-rule mechanics see [detection-rule-types.md](../detection-rule-types.md) and
 [detection-asset-binding.md](../detection-asset-binding.md).

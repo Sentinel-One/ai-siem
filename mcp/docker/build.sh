@@ -6,7 +6,7 @@
 #   docker/build.sh                   # local single-arch build, tag secops-mcps:<version>
 #   PUSH=true docker/build.sh         # multi-arch build + push to Docker Hub
 #   TAG=dev docker/build.sh           # override tag
-#   VT_MCP_REF=<sha> docker/build.sh  # override a pin
+#   VT_MCP_REF=<sha> docker/build.sh  # override a pin (also SHODAN_MCP_REF, NODE_IMAGE)
 #
 # All pins live in the "Pinned MCP sources" block below. Bump them there and
 # in the GHA workflow at .github/workflows/docker-publish.yml, then re-run.
@@ -23,7 +23,7 @@ set -euo pipefail
 # commit you are building. S1_MCP_VERSION below is therefore a LABEL, not an
 # install target: keep it equal to the version in s1-secops-mcp/package.json so
 # the image label does not lie about what it carries.
-S1_MCP_VERSION="${S1_MCP_VERSION:-1.3.9}"
+S1_MCP_VERSION="${S1_MCP_VERSION:-1.5.4}"
 
 # virustotal-mcp: our fork of w0h1v/mcp-virustotal. The fork exists
 # because upstream publishes only to npm: it has a `prepublishOnly` build and
@@ -35,7 +35,7 @@ S1_MCP_VERSION="${S1_MCP_VERSION:-1.3.9}"
 # Must be a FULL 40-character commit SHA: the Dockerfile fetches the object by
 # id, and a branch name would silently un-pin the build.
 VT_MCP_REPO="${VT_MCP_REPO:-https://github.com/pmoses-s1/mcp-virustotal.git}"
-VT_MCP_REF="${VT_MCP_REF:-b3d847443f08c0a3fb1d5f34dc29770f6cec4d25}"
+VT_MCP_REF="${VT_MCP_REF:-97ca2b8fa696a798d8689aff13d9cb57cbd9067e}"
 
 # purple-mcp: our fork of Sentinel-One/purple-mcp at the v0.7.0 release commit,
 # plus one change. Upstream requires pandas, but imports it in exactly one place
@@ -45,15 +45,37 @@ VT_MCP_REF="${VT_MCP_REF:-b3d847443f08c0a3fb1d5f34dc29770f6cec4d25}"
 # optional `dataframe` extra, changing no behaviour. Upstream PR pending; repin
 # to Sentinel-One once it merges.
 PURPLE_MCP_REPO="${PURPLE_MCP_REPO:-https://github.com/pmoses-s1/purple-mcp.git}"
-PURPLE_MCP_REF="${PURPLE_MCP_REF:-b8a200d3ad3e52df9c349f427faa344cdc3a8470}"
+PURPLE_MCP_REF="${PURPLE_MCP_REF:-1390b8c00a8af847605739248b0b4514713298c4}"
+
+# shodan-mcp (optional server): our fork of w0h1v/mcp-shodan, vendored exactly
+# like the VirusTotal fork (same npm-only upstream, same missing `prepare`).
+# The fork also carries four small hardening patches, listed in its
+# FORK_NOTES.md: page cap, no redirects, API-key redaction, no dotenv.
+# See scripts/vendor-node-fork.sh. Full 40-character SHA, same rule as VT.
+SHODAN_MCP_REPO="${SHODAN_MCP_REPO:-https://github.com/pmoses-s1/mcp-shodan.git}"
+SHODAN_MCP_REF="${SHODAN_MCP_REF:-1b34db42dcefef781ffd0aad273e065700dcddc8}"
+
+# ── Base image ───────────────────────────────────────────────────────────────
+# Node 24 LTS, pinned by digest so a rebuild cannot silently pick up different
+# bytes. The Dockerfile asserts the major version is 24. To move to a newer
+# Node 24 patch: `docker buildx imagetools inspect node:24-trixie-slim`, copy
+# the index digest here and into .github/workflows/docker-publish.yml.
+# Resolved 2026-10-13: Node v24.21.0.
+NODE_IMAGE="${NODE_IMAGE:-node:24-trixie-slim@sha256:173f125896c3b47ddf056734c7ea789d04595a6a08769a8f78e0df642781fb66}"
 
 # Fail before a 4-minute build rather than after it.
-if ! echo "${VT_MCP_REF}" | grep -qE '^[0-9a-f]{40}$'; then
-  echo "error: VT_MCP_REF must be a full 40-char commit SHA, got '${VT_MCP_REF}'." >&2
-  echo "Fork w0h1v/mcp-virustotal, run scripts/vendor-vt-fork.sh against it," >&2
-  echo "push, then set VT_MCP_REF here and in .github/workflows/docker-publish.yml." >&2
-  exit 1
-fi
+for _pin in VT_MCP_REF SHODAN_MCP_REF; do
+  if ! echo "${!_pin}" | grep -qE '^[0-9a-f]{40}$'; then
+    echo "error: ${_pin} must be a full 40-char commit SHA, got '${!_pin}'." >&2
+    echo "Vendor the fork with scripts/vendor-node-fork.sh, push it, then set" >&2
+    echo "${_pin} here and in .github/workflows/docker-publish.yml." >&2
+    exit 1
+  fi
+done
+case "${NODE_IMAGE}" in
+  node:24-*@sha256:*) ;;
+  *) echo "error: NODE_IMAGE must be a node:24 tag pinned by digest, got '${NODE_IMAGE}'." >&2; exit 1 ;;
+esac
 
 # ── Image version ────────────────────────────────────────────────────────────
 # The version of THIS image. Its own counter, independent of the MCP pins above:
@@ -67,7 +89,7 @@ fi
 #   docker run --rm <image> versions
 # (That replaces the old `--entrypoint npm <image> ls -g --depth=0`. There is
 # no npm in the image any more, so that command now fails with "not found".)
-IMAGE_VERSION="${IMAGE_VERSION:-1.4.8}"
+IMAGE_VERSION="${IMAGE_VERSION:-1.5.4}"
 
 # ── Image identity ───────────────────────────────────────────────────────────
 REGISTRY="${REGISTRY:-docker.io/sentinelone}"
@@ -92,6 +114,8 @@ echo "MCP sources (all git, no npm registry):"
 echo "  s1-secops-mcp:   local source @ ${VCS_REF} (labelled ${S1_MCP_VERSION})"
 echo "  virustotal-mcp:  ${VT_MCP_REPO}@${VT_MCP_REF}"
 echo "  purple-mcp:      ${PURPLE_MCP_REPO}@${PURPLE_MCP_REF}"
+echo "  shodan-mcp:      ${SHODAN_MCP_REPO}@${SHODAN_MCP_REF}"
+echo "Base image:    ${NODE_IMAGE}"
 echo "Build date: ${BUILD_DATE}"
 echo "VCS ref:    ${VCS_REF}"
 echo
@@ -126,6 +150,9 @@ ARGS=(
   --build-arg "VT_MCP_REF=${VT_MCP_REF}"
   --build-arg "PURPLE_MCP_REPO=${PURPLE_MCP_REPO}"
   --build-arg "PURPLE_MCP_REF=${PURPLE_MCP_REF}"
+  --build-arg "SHODAN_MCP_REPO=${SHODAN_MCP_REPO}"
+  --build-arg "SHODAN_MCP_REF=${SHODAN_MCP_REF}"
+  --build-arg "NODE_IMAGE=${NODE_IMAGE}"
   --build-arg "BUILD_DATE=${BUILD_DATE}"
   --build-arg "VCS_REF=${VCS_REF}"
   --tag "${REGISTRY}/${IMAGE_NAME}:${TAG}"
@@ -140,6 +167,6 @@ else
   docker buildx build "${ARGS[@]}" --load .
   echo
   echo "Smoke test:"
-  echo "  docker run -i --rm ${IMAGE_NAME}:${TAG} help"
-  echo "  docker run -i --rm ${IMAGE_NAME}:${TAG} versions"
+  echo "  docker run -i --rm ${REGISTRY}/${IMAGE_NAME}:${TAG} help"
+  echo "  docker run -i --rm ${REGISTRY}/${IMAGE_NAME}:${TAG} versions"
 fi

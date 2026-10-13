@@ -11,17 +11,26 @@ Reading:
 - List with `GET /detection-library/platform-rules`, scoped via `scopeId` + `scopeLevel` (`global|group|account|site`). For `global`, OMIT `scopeId` (otherwise 400 "a tenant scope request should not include scope id").
 - The facet endpoints (`data-sources`, `surfaces`, `severities`, `statuses`) scope via `siteIds=`, not `scopeId`/`scopeLevel`.
 - `hideQuery=Shown` includes the `s1ql` body in each rule (enum is `Shown`/`Hidden`, not `true`/`false`).
-- `skip` is capped at 1000 ("Cannot display more than 1000 results, please refine your search"). To reach the full catalog, filter by `sources` (array). Source names are vendor-specific, e.g. `Mimecast`, `Palo Alto Networks Firewall`, `Zscaler Internet Access`, `Okta`. Not every ingested source has platform rules (Cisco Umbrella and Tenable had none on this tenant).
+- Posture in one call: `GET /detection-library/platform-rules/settings?scopeLevel=<account|site>&scopeId=<id>` returns `disableInheritance`, `inheritanceAvailable`, `core`/`coreCount`, `autoDefault`/`autoDefaultCount`, `emergingThreat`/`emergingThreatCount` and `smartDefault` (measured 2026-10-09 on 3 consoles).
+- Paging limits (measured 2026-10-09 on 3 consoles): `limit` max 1000 (`limit=1001` returns 400 "limit: Must be greater than or equal to 1 and less than or equal to 1000"); `skip` max 1000 (above it, 400 code 4000080 "Cannot display more than 1000 results"); the returned `nextCursor` is rejected on the next call (400 code 4000010 "Invalid cursor value received"), so cursor paging does not work; `sortBy`/`sortOrder` are refused (400 "Unknown field").
+- Full-catalog recipe: loop `severities` over `Info`, `Low`, `Medium`, `High`, `Critical`, each with `limit=1000` at `skip=0` and `skip=1000`, and assert the per-severity totals sum to the unfiltered `pagination.totalItems` (the sums matched exactly on 3 consoles: 2,300 / 2,380 / 2,758). Filtering by `sources` (array) remains a valid alternative. Source names are vendor-specific, e.g. `Mimecast`, `Palo Alto Networks Firewall`, `Zscaler Internet Access`, `Okta`. Not every ingested source has platform rules (Cisco Umbrella and Tenable had none on this tenant).
+- Labels: only SentinelOne rules carry `core` (66 rules: 44 `core` plus 22 `core` + `emergingThreat`, the same figure as `coreCount` in the settings read; 3 consoles, 2026-10-09). No third-party rule carries `core`: Okta, Windows Event Logs, AWS CloudTrail and Zscaler rules are unlabelled, apart from a few `emergingThreat` on one console. A filter on label `core` hides every third-party rule.
 
 Enabling / disabling:
 
 - `PUT /detection-library/platform-rules/enable`, FLAT body `{ "platformRuleIds": [<ids>], "scopeId": "<id>", "scopeLevel": "site" }`. `platformRuleIds` MUST be integers. String IDs return a misleading HTTP 500 "Server could not process the request". Response carries `data.affected`. Enable "creates a new rule and activates it" (a scoped active copy). `disable` uses the same body shape.
 - The enable/disable/settings body is FLAT, NOT wrapped in `{"data": ...}` (wrapping returns 400 "scopeLevel: Missing data for required field").
 - An account-scoped API user cannot enable at `global`/tenant scope (400 "can not create rule with higher scope ... tenant"). Enable at `account` or `site`.
+- A freshly enabled rule reads `Activating` and reached `Active` in 35 s. Poll for `Active`; `Activating` is not a failure.
+- Platform event rules evaluate only data ingested after the rule is `Active`. An event ingested before enabling never alerted; events ingested after `Active` alerted, including one whose `ts` was back-dated 2 h. The alert's `detectedAt`/`createdAt` is the ingest time, not the back-dated event time.
+- Asset on the alert: with no agent identity the asset comes from the event's own fields, per source (a Zscaler rule turned `device.hostname` and the user email into two "Device / Other Device" assets with `agentUuid: null`; a Windows Event Logs rule gave "Unknown Device" even with `device.hostname` set). `agent.uuid` of a real agent links the alert to that endpoint and moves it to the agent's site. Details in `../ASSET_LINKAGE.md`.
+- Audit or revert enables with activity type 3776, "Platform Rules - Platform Library Rule Enabled": `GET /web/api/v2.1/activities?activityTypes=3776` (3 consoles).
 
-Site-scope enable requires disabling inheritance FIRST (otherwise enable returns HTTP 500):
+Site-scope enable requires disabling inheritance FIRST (measured 2026-10-09):
 
-- `PUT /detection-library/platform-rules/settings`, FLAT body `{ "scopeId": "<site>", "scopeLevel": "site", "disableInheritance": true }`. Send ONLY `disableInheritance` plus scope. Including `core`/`autoDefault` in the same call returns 400 "cannot enable auto default when inheritance is enabled".
+- Enable at a site that still inherits returns HTTP 500 code 5000010 "Server could not process the request" (reproduced on 2 consoles). After `PUT /detection-library/platform-rules/settings` with FLAT body `{ "scopeId": "<site>", "scopeLevel": "site", "disableInheritance": true }`, the same enable returned 200 `{"data":{"affected":1}}`.
+- Send ONLY `disableInheritance` plus scope in that call. Including `core`/`autoDefault` returns 400 "cannot enable auto default when inheritance is enabled".
+- Disabling inheritance makes the site take its own copy of every rule it inherited as Active: they show `Activating`, then `Active`, and the activity log records one "enabled the Platform Library Rule ... on the Site" entry per rule. After that the scopes are independent: the rule enabled at the site stayed `Disabled` at the account.
 - Settings category toggles are `core`, `autoDefault`, `emergingThreat`, `smartDefault` (each `On`/`Off`); at least one of `core`/`autoDefault` is required when setting those, but omit them when only flipping inheritance.
 
 Permissions: reads need `Custom Rules.view`; enable/disable/settings need `Custom Rules.manage`.

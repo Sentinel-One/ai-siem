@@ -34,11 +34,14 @@ const TOOL_SKILL = {
   s1_api_put:                    'mgmt-console-api',
   s1_api_delete:                 'mgmt-console-api',
   s1_api_patch:                  'mgmt-console-api',
+  s1_api_download:               'mgmt-console-api',
   purple_ai_alert_summary:       'mgmt-console-api',
   uam_list_alerts:               'mgmt-console-api',
   uam_get_alert:                 'mgmt-console-api',
   uam_add_note:                  'mgmt-console-api',
   uam_set_status:                'mgmt-console-api',
+  uam_set_verdict:               'mgmt-console-api',
+  uam_assign_alert:              'mgmt-console-api',
   uam_available_actions:         'mgmt-console-api',
   // SDL API
   sdl_list_files:                'sdl-api / sdl-dashboard / sdl-log-parser',
@@ -66,7 +69,7 @@ const TOOL_SKILL = {
 
 const GROUPS = [
   { label: 'PowerQuery',       prefix: 'powerquery_' },
-  { label: 'Mgmt Console',     test: n => /^(s1_api_|purple_ai_|uam_(list|get|add|set|available))/.test(n) },
+  { label: 'Mgmt Console',     test: n => /^(s1_api_|purple_ai_|uam_(list|get|add|set|assign|available))/.test(n) },
   { label: 'SDL API',          test: n => n.startsWith('sdl_') || n === 'hec_ingest' },
   { label: 'Hyperautomation',  prefix: 'ha_' },
   { label: 'UAM Ingest',       test: n => /^(uam_ingest_|uam_post_)/.test(n) },

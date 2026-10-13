@@ -9,8 +9,8 @@
  * Run against a NON-PRODUCTION tenant. Writes are confined to the site given in
  * E2E_SITE_ID and every object created is deleted again before exit.
  *
- *   export S1_CONSOLE_URL=https://<console>.sentinelone.net
- *   export S1_CONSOLE_API_TOKEN=<token>
+ *   s1-secops-mcp setup                         # once: console URL + token in the OS keychain
+ *                                               # (or export S1_CONSOLE_URL / S1_CONSOLE_API_TOKEN)
  *   export E2E_SITE_ID=<scratch site id>        # required, receives the writes
  *   export E2E_ACCOUNT_ID=<account id>          # optional, read-only checks
  *   node tests/e2e-live.mjs
@@ -20,8 +20,8 @@
  * docs/release-process.md, and it is the only way to catch a packaging fault such as
  * a file missing from the "files" allowlist, which no working-tree run can see.
  *
- *   npm i --prefix /tmp/verify @pmoses-s1/s1-secops-mcp@<version>
- *   E2E_SERVER=/tmp/verify/node_modules/@pmoses-s1/s1-secops-mcp/index.js \
+ *   npm i --prefix /tmp/verify <package-name>@<version>
+ *   E2E_SERVER=/tmp/verify/node_modules/<package-name>/index.js \
  *     node tests/e2e-live.mjs
  *
  * Exit code is 0 only when every check passes.
@@ -37,13 +37,16 @@ const SERVER = process.env.E2E_SERVER
 // E2E_SERVER_CMD runs an arbitrary command as the server instead of `node <path>`,
 // so the container can be tested as shipped rather than the source it was built from.
 // The image is what users actually run, and a build can differ from its inputs.
-//   E2E_SERVER_CMD='docker run -i --rm -e S1_CONSOLE_URL -e S1_CONSOLE_API_TOKEN \
-//     sentinelone/secops-mcps:<tag> s1-secops-mcp'
+//   E2E_SERVER_CMD='S1_MCP_IMAGE=sentinelone/secops-mcps:<tag> \
+//     docker/s1-secops-mcp-launch.sh s1-secops-mcp'
+// (the launcher reads the keychain and passes secrets over stdin, as shipped)
 const SERVER_CMD = process.env.E2E_SERVER_CMD;
 const SITE = process.env.E2E_SITE_ID;
 const ACCOUNT = process.env.E2E_ACCOUNT_ID;
 
-for (const v of ['S1_CONSOLE_URL', 'S1_CONSOLE_API_TOKEN', 'E2E_SITE_ID']) {
+// Console credentials come from the environment or the OS keychain (the server
+// resolves them itself, exactly as in production), so only the site is required.
+for (const v of ['E2E_SITE_ID']) {
   if (!process.env[v]) {
     console.error(`missing ${v}. See the header of this file.`);
     process.exit(2);

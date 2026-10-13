@@ -38,10 +38,12 @@
     Two credentials, therefore two connections.
     Run Contributors -> /sdl/api/powerQuery keeps "SentinelOne SDL" (console JWT).
     Publish Risk Events -> /services/collector/event needs an SDL Log Write Key.
-    Your HTTP 400 {"text":"Missing S1-Scope header","code":5} is the wrong
-    credential, not a missing header, which is why adding the header changed
-    nothing. That action sends no S1-Scope header at all; the write key's scope
-    is fixed when it is minted.
+    Your HTTP 400 {"text":"Missing S1-Scope header","code":5} means the publish
+    step carried the console token without a scope header. Adding the header
+    would make the console token work on some consoles only; others refuse it
+    either way with HTTP 403 "User token not allowed for this endpoint" (code 4).
+    The fix is the write key in both cases. That action sends no S1-Scope header
+    at all; the write key's scope is fixed when it is minted.
     Sequence: import -> POST /hyper-automate/api/v1/workflows/{id}/publish in the
     SAME step (Private Draft is invisible to you until it is a Shared Draft) ->
     you bind both connections in the console -> activate -> run-now and confirm

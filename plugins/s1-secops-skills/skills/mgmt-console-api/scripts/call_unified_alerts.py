@@ -38,7 +38,13 @@ Examples:
   call_unified_alerts.py list --filter 'status=NEW,IN_PROGRESS' --first 20
   call_unified_alerts.py notes <alert-id>
   call_unified_alerts.py add-note <alert-id> "Investigating"
-  call_unified_alerts.py set-status --scope 12345 --alert-id <id> RESOLVED
+  call_unified_alerts.py set-status RESOLVED --scope 12345 --alert-id <id>
+  call_unified_alerts.py set-verdict FALSE_POSITIVE_BENIGN --scope 12345 --alert-id <id>
+  call_unified_alerts.py assign --scope 12345 --alert-id <id> --user-email analyst@example.com
+
+  The status / verdict goes before --scope and --alert-id: both take one or
+  more values and would otherwise swallow it.
+  call_unified_alerts.py assign --scope 12345 --alert-id <id> --unassign
   call_unified_alerts.py facets status severity detectionProduct
 """
 from __future__ import annotations
@@ -271,7 +277,8 @@ def cmd_set_verdict(c, args):
 def cmd_assign(c, args):
     r = uam.assign_alerts(
         c, scope_input=_build_scope(args),
-        alert_ids=args.alert_id, user_email=args.user_email,
+        alert_ids=args.alert_id, user_id=args.user_id,
+        user_email=args.user_email, unassign=args.unassign,
     )
     return _report_outcome(r)
 
@@ -502,15 +509,23 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("set-verdict", help="Convenience: analyst verdict on specific alerts")
     add_scope_flags(sp)
     sp.add_argument("--alert-id", nargs="+", required=True)
-    sp.add_argument("verdict")
+    sp.add_argument("verdict", choices=uam.ANALYST_VERDICTS, metavar="verdict",
+                    help="AnalystVerdict value, e.g. TRUE_POSITIVE_MALWARE, "
+                         "FALSE_POSITIVE_BENIGN, UNDEFINED (to clear)")
     sp.add_argument("--note", default=None)
     sp.set_defaults(func=cmd_set_verdict)
 
     # assign
-    sp = sub.add_parser("assign", help="Convenience: assign alerts to a user")
+    sp = sub.add_parser("assign", help="Convenience: assign alerts to a user, or unassign")
     add_scope_flags(sp)
     sp.add_argument("--alert-id", nargs="+", required=True)
-    sp.add_argument("--user-email", required=True)
+    who = sp.add_mutually_exclusive_group(required=True)
+    who.add_argument("--user-id", default=None,
+                     help="numeric console user id (what the console sends)")
+    who.add_argument("--user-email", default=None,
+                     help="resolved to exactly one user via GET /web/api/v2.1/users?email=")
+    who.add_argument("--unassign", action="store_true",
+                     help="clear the assignee (sends value null)")
     sp.set_defaults(func=cmd_assign)
 
     # group-by

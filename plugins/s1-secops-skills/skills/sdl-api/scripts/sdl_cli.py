@@ -142,7 +142,8 @@ def cmd_query(c, args):
 
 
 def cmd_power_query(c, args):
-    _print(c.power_query(query=args.query, start_time=args.start, end_time=args.end, priority=args.priority))
+    _print(c.power_query(query=args.query, start_time=args.start, end_time=args.end, priority=args.priority,
+                         recurring=True if args.recurring else None))
 
 
 def cmd_facet_query(c, args):
@@ -257,6 +258,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--start", default=None)
     sp.add_argument("--end", default=None)
     sp.add_argument("--priority", choices=("low", "high"), default=None)
+    sp.add_argument("--recurring", action="store_true",
+                    help="precompute the summary so repeat runs of this query are faster")
     sp.set_defaults(func=cmd_power_query)
 
     # facet-query

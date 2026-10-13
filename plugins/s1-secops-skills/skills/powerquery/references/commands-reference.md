@@ -361,7 +361,7 @@ field in (filter_expr | commands_that_yield_field)
 | outer_commands
 ```
 
-Runs the inner query first, collects one column of values, and filters the outer query to rows where `field` is in that set. Every rule below is pinned by a case in `tests/live/pq_live_cases.json` (ids `sq-*`); run `tools/pq_live_regression.py` to re-verify.
+Runs the inner query first, collects one column of values, and filters the outer query to rows where `field` is in that set. Every rule below is pinned by a case in `tests/live/pq_live_cases.json` (ids `sq-*`); run `tools/pq_live_regression.py` (source-repo maintainer harness, not shipped in the plugin) to re-verify.
 
 Rules (enforce them; these are where subqueries go wrong):
 

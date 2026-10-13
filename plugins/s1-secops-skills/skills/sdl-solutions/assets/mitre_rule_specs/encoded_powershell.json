@@ -1,0 +1,12 @@
+{
+  "name": "Encoded PowerShell execution",
+  "description": "PowerShell launched with an encoded command line on a Windows endpoint.",
+  "severity": "High",
+  "lookback_minutes": 60,
+  "interval_minutes": 60,
+  "query": "dataSource.name='SentinelOne' event.type='Process Creation' tgt.process.name in:anycase ('powershell.exe','pwsh.exe') tgt.process.cmdline contains:anycase ('-enc', '-encodedcommand') | group hits=count() by endpoint.name, tgt.process.cmdline | sort -hits | limit 50",
+  "mitre": [
+    {"tactic": "TA0002", "technique": "T1059.001", "technique_name": "PowerShell"},
+    {"tactic": "TA0005", "technique": "T1027", "technique_name": "Obfuscated Files or Information"}
+  ]
+}

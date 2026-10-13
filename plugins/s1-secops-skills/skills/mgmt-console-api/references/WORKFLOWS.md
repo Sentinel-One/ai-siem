@@ -1,6 +1,6 @@
 # Common workflows
 
-Ready-to-adapt multi-step recipes for the most common pre-sales / SecOps requests. Each lists the minimum set of endpoints you need to orchestrate, with the params that actually matter. All are written for the Python client (`S1Client`); for one-shot CLI use, translate to `scripts/call_endpoint.py`.
+Ready-to-adapt multi-step recipes for the most common pre-sales / SecOps requests. Each lists the minimum set of endpoints you need to orchestrate, with the params that actually matter. The snippets use the Python client's call shape (`c.get`, `c.post`, `c.put`, `c.iter_items`) because it reads compactly. In Cowork or any MCP client, run each call with the matching `s1-secops-mcp` tool: `c.get(path, params=...)` is `s1_api_get` with `path` and `params`, `c.post(path, json_body=...)` is `s1_api_post` with `path` and `body`, and so on; follow `pagination.nextCursor` for `iter_items`. The Python client itself (`S1Client`, `scripts/call_endpoint.py`) is host-only: it runs from Claude Code or a terminal on the user's machine with credentials from environment variables or the OS keychain.
 
 ---
 
@@ -21,6 +21,8 @@ agents = list(c.iter_items(
 ```
 
 Key params: `createdAt__gte` (ISO-8601), `resolved=false`, `incidentStatuses=unresolved`, `confidenceLevels=malicious,suspicious`, `mitigationStatuses=not_mitigated`.
+
+UAM alerts have a third confidence level, `INFORMATIONAL` (S-26.2.6): detections from pre-production or suppressed logic that never trigger automatic mitigation. They are **hidden from unfiltered UAM alert lists and from `| datasource alerts`**; filter `confidenceLevel` for `INFORMATIONAL` explicitly to see them. Include them in a full sweep and when explaining "why didn't this mitigate"; leave them out of an escalation queue unless corroborated. See `UNIFIED_ALERTS.md`, "Schema quirks".
 
 ---
 
@@ -65,6 +67,18 @@ Destructive: network quarantine has no undo beyond the corresponding `connect` a
 ## 4. Deep Visibility / PowerQuery hunt via LRQ
 
 The Deep Visibility endpoints (`/dv/init-query`, `/dv/query-status`, `/dv/events`, `/dv/events/pq`, `/dv/events/pq-ping`) are deprecated and sunset on 2027-02-15. Use the **Long Running Query (LRQ) API** for every programmatic query, whether S1QL log search or PowerQuery.
+
+**Use the `powerquery_run` MCP tool.** It runs the whole launch / poll / cancel cycle below in one call. Pass `queryType: "LOG"` for an S1QL-style raw event search (filter only, every parsed field per event), `slices` plus `merge` for windows past a day, and `outputFile` to keep a large result on disk instead of in context:
+
+```json
+{
+  "query": "dataSource.name='SentinelOne' dataSource.category='security' event.type='Process Creation' src.process.name='powershell.exe' | group ct=count() by endpoint.name, src.process.cmdline | sort -ct | limit 100",
+  "hours": 24,
+  "edrStrict": true
+}
+```
+
+The raw wire protocol, for reference and for host-only scripts:
 
 ```python
 import time, requests
@@ -127,7 +141,7 @@ Key points:
 
 - `queryType: "PQ"` runs a PowerQuery; `queryType: "LOG"` runs S1QL log search. Both replace the old `/dv/*` endpoints.
 - The `X-Dataset-Query-Forward-Tag` response header from the launch must be echoed on every subsequent GET/DELETE. GET/DELETE without it is rejected.
-- Per-user rate cap is 3 rps. For multi-slice parallel runs over long windows (7d+), see the `powerquery` skill's `references/lrq-api.md` for slicing, two-JWT round-robin, and merge patterns.
+- One token sustains about 30 calls/s; only launches are throttled (measured 2026-10-05). For multi-slice parallel runs over long windows (7d+), see the `powerquery` skill's `references/lrq-api.md` for slicing (15 x 2d with 15 in flight for 30 days) and merge patterns.
 - For interactive hunts over short windows, the Purple MCP `powerquery` tool is simpler; fall back to this LRQ pattern when the MCP times out or the window is longer than a few days.
 - **LOG queries have a different body shape than PQ.** A `LOG` body is `{queryType: "LOG", log: {filter, limit}}`, NOT `{pq: {query, resultType: "LOG"}}` (the latter returns HTTP 400). LOG also has a server-side `log.limit` cap (typically 5000) that silently truncates; detect cap-hit (`len(matches) == log.limit`) and subdivide the slice. For multi-slice or long-running LOG investigations, use the per-slice checkpoint pattern. Full LOG-specific guidance, including the investigation-noise separator (partition on `dataSource.name` presence) for identity hunts, is in `references/lrq-api.md`.
 
@@ -196,7 +210,7 @@ Exclusions v2.1 (`/exclusions-v2`) is the newer API; prefer it on modern tenants
 
 ## 9. Report a tenant's capability snapshot (perfect for pre-sales demos)
 
-Run the read-only smoke test sweep and capture which endpoints are reachable on this tenant:
+Run the read-only smoke test sweep from the user's host (it calls the tenant directly, so it does not run in the Cowork sandbox) and capture which endpoints are reachable on this tenant:
 
 ```bash
 python scripts/smoke_test_queries.py --workers 12
@@ -276,7 +290,7 @@ Key points:
 ## Anti-patterns to avoid
 
 - **Looping per-ID calls** when a `…/actions/...` filter-based endpoint exists. S1 is built for bulk filter ops; looping will hit rate limits fast.
-- **Manual `skip`/`limit` math**: the cursor cap kicks in at 1000 items. Use `client.paginate()` / `iter_items()` which cursor-pages automatically.
+- **Manual `skip`/`limit` math**: the cursor cap kicks in at 1000 items. Follow `pagination.nextCursor` with `s1_api_get`, or on the host use `client.paginate()` / `iter_items()`, which cursor-page automatically.
 - **Using the legacy `/dv/init-query` + `/dv/query-status` + `/dv/events` flow**: deprecated and sunset 2027-02-15. Use LRQ with `queryType="LOG"` instead (see Section 4).
 - **Trusting `totalItems`** on restricted-scope accounts: it reflects what the token can see, not the tenant total.
 - **Re-reading `spec/swagger_2_1.json`** (14 MB) into context. Use the per-tag reference file or `search_endpoints.py`.

@@ -16,7 +16,7 @@
         {
           "graphStyle": "number",
           "title": "Total Events (24h)",
-          "query": "dataSource.name='{{DATASOURCE_NAME}}' | group n=count() | limit 1",
+          "query": "dataSource.name='{{DATASOURCE_NAME}}' tag != 'logVolume' | group n=count() | limit 1",
           "options": { "format": "commas", "suffix": " events" },
           "sparklineConfig": { "enabled": true },
           "layout": { "w": 15, "h": 9, "x": 0, "y": 4 }
@@ -45,7 +45,7 @@
         {
           "graphStyle": "stacked_bar",
           "title": "Event Volume Over Time",
-          "query": "dataSource.name='{{DATASOURCE_NAME}}' | group events=count() by timestamp=timebucket('10m'), {{ACTION_FIELD}} | sort timestamp",
+          "query": "dataSource.name='{{DATASOURCE_NAME}}' tag != 'logVolume' | group events=count() by timestamp=timebucket('10m'), {{ACTION_FIELD}} | sort timestamp",
           "xAxis": "time",
           "layout": { "w": 40, "h": 12, "x": 0, "y": 13 }
         },

@@ -1,0 +1,310 @@
+{
+  "name": "Event Creation - Audit Workflow",
+  "description": "Current State: Passes notifications to dedicated MS Teams Chat Group + SNOW Email Submission.\n\nFuture State: Adds direct API POST to SNOW for Change Request.",
+  "actions": [
+    {
+      "action": {
+        "type": "singularity_response_trigger",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Singularity Response Trigger",
+          "action_type": "singularity_response_trigger",
+          "filter_groups": [
+            {
+              "condition": {
+                "input_value": "activityType",
+                "compared_value": "156829f1-5871-4851-8fde-038a462c2523",
+                "comparison_operator": "equals"
+              },
+              "is_disabled": false,
+              "run_automatically": true,
+              "event_type": "activity",
+              "event_subtypes": [
+                "CREATE",
+                "UPDATE"
+              ]
+            }
+          ]
+        },
+        "state": "active",
+        "description": null,
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 100
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 4,
+      "connected_to": [
+        {
+          "target": 0,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "CoreVars",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "Performed By",
+              "value": "{{Function.EXTRACT_EMAIL(singularity-response-trigger.data.data.username)}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "Scope",
+              "value": "{{singularity-response-trigger.data.data.fullScopeDetailsPath}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "SHA1",
+              "value": "{{singularity-response-trigger.data.data.fileContentHash}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "SHA256",
+              "value": "{{singularity-response-trigger.data.data.fileContentHashSha256}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "SourceSystem",
+              "value": "{{singularity-response-trigger.data.data.externalServiceId}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "Timestamp",
+              "value": "{{Function.FORMATTED_DATE(singularity-response-trigger.data.createdAt, \"%Y-%m-%d %H:%M:%S\")}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "ActivityUUID",
+              "value": "{{singularity-response-trigger.data.activityUuid}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "Description",
+              "value": "{{singularity-response-trigger.data.primaryDescription}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "global_var_workflow_access_type": null,
+          "global_var_workflow_access_workflow_ids": null
+        },
+        "state": "active",
+        "description": "Uses only fields already present in the trigger payload.",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 200.6772
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 0,
+      "connected_to": [
+        {
+          "target": 2,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "SNowVars",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "Caller",
+              "value": "{{local_var.Performed By}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            },
+            {
+              "name": "Correlation ID",
+              "value": "{{singularity-response-trigger.data.activityUuid}}",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "global_var_workflow_access_type": null,
+          "global_var_workflow_access_workflow_ids": null
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 377.35439999999994
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 2,
+      "connected_to": [
+        {
+          "target": 1,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "variable",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "MsgHTML",
+          "action_type": "variable",
+          "variables": [
+            {
+              "name": "HTML Payload",
+              "value": "<h2>SentinelOne Governance Activity</h2>\n\n<h3>Summary</h3>\n\n<table border=\"1\" cellpadding=\"5\" cellspacing=\"0\">\n<tr>\n<td><b>Activity</b></td>\n<td>Blocklist</td>\n</tr>\n<tr>\n<td><b>Scope</b></td>\n<td>{{local_var.Scope}}</td>\n</tr>\n<tr>\n<td><b>Performed By</b></td>\n<td>{{local_var.Performed By}}</td>\n</tr>\n<tr>\n<td><b>Source System</b></td>\n<td>{{local_var.SourceSystem}}</td>\n</tr>\n<tr>\n<td><b>Time (UTC)</b></td>\n<td>{{local_var.Timestamp}}</td>\n</tr>\n</table>\n\n<h3>Indicator</h3>\n\n<p><b>SHA-256</b></p>\n\n<code>{{local_var.SHA256}}</code>\n\n<p><b>SHA-1</b></p>\n\n<code>{{local_var.SHA1}}</code>\n\n<hr>\n\n<p><i>Generated automatically by SentinelOne HyperAutomation.</i></p>\n\n<hr>\n\n<p><b>Correlation ID:</b> {{local_var.ActivityUUID}}</p>",
+              "should_use_as_output": false,
+              "is_secret": false
+            }
+          ],
+          "variables_scope": "local",
+          "expire_in_unit": null,
+          "expire_in_value": null,
+          "expire_method": null,
+          "global_var_workflow_access_type": null,
+          "global_var_workflow_access_workflow_ids": null
+        },
+        "state": "active",
+        "description": "Formatted Message Body",
+        "client_data": {
+          "position": {
+            "x": 6.461502524271836,
+            "y": 557.2623512621358
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 1,
+      "connected_to": [
+        {
+          "target": 3,
+          "custom_handle": null,
+          "payload": null
+        }
+      ],
+      "parent_action": null
+    },
+    {
+      "action": {
+        "type": "send_email",
+        "tag": "core_action",
+        "connection_id": null,
+        "connection_name": null,
+        "use_connection_name": false,
+        "integration_id": null,
+        "data": {
+          "name": "Send Email",
+          "action_type": "send_email",
+          "subject": "[S1-GOV] Blocklist Entry Created | {{local_var.Scope}}",
+          "to": [
+            "{{local_var.Performed By}}"
+          ],
+          "cc": [],
+          "bcc": [
+            "kwe@service-now.com"
+          ],
+          "reply_to": [],
+          "mime_type": "text/html",
+          "body": "{{local_var.HTML Payload}}",
+          "attachments": [],
+          "continue_on_fail": false
+        },
+        "state": "active",
+        "description": "",
+        "client_data": {
+          "position": {
+            "x": 0,
+            "y": 730.7087999999999
+          },
+          "dimensions": {
+            "width": 256,
+            "height": 76
+          },
+          "collapsed": false
+        },
+        "snippet_workflow_id": null,
+        "snippet_version_id": null
+      },
+      "export_id": 3,
+      "connected_to": [],
+      "parent_action": null
+    }
+  ],
+  "notes": []
+}

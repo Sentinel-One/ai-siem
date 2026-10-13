@@ -7,13 +7,19 @@ response uses a slash-delimited hierarchy; `success` prefix = OK,
 `error/client` prefix = caller bug, `error/server` prefix = retry.
 
 The rows below refer to client methods on `SDLClient` (in `scripts/sdl_client.py`)
-and CLI subcommands (in `scripts/sdl_cli.py`).
+and CLI subcommands (in `scripts/sdl_cli.py`). Both are host-only: they run from
+Claude Code or a terminal on the user's machine, with credentials from
+environment variables or the OS keychain. From Cowork or any MCP client, use the
+`s1-secops-mcp` equivalents: `sdl_list_files` / `sdl_get_file` / `sdl_put_file` /
+`sdl_delete_file` for config files, `powerquery_run` (with `queryType: "LOG"` for
+raw events) instead of the deprecated V1 query methods, and
+`powerquery_schema_discover` for field discovery.
 
 ---
 
 ## Ingestion (moved to HEC)
 
-SDL raw-log ingestion (`uploadLogs`, `addEvents`) has been removed from this skill. Ingest raw logs/events via the **event collector** on the ingest host (`/services/collector/raw` and `/event`, with a named `parser`), which feeds Event Search, PowerQuery, and detection rules. That path authenticates with an SDL Log Write Key (`S1_HEC_TOKEN`), not the console API token, and the key's own scope fixes the ingest destination. UAM alert creation is separate: it lives in `mgmt-console-api` (`uam_*`, posted to `/v1/alerts` on the same host but a distinct API, still using the console API token), and indicators ride inline in the alert rather than having an endpoint of their own. This skill now covers queries and configuration files only.
+SDL raw-log ingestion (`uploadLogs`, `addEvents`) has been removed from this skill. Ingest raw logs/events via the **event collector** on the ingest host (`/services/collector/raw` and `/event`, with a named `parser`), which feeds Event Search, PowerQuery, and detection rules. That path authenticates with an SDL Log Write Key (`S1_HEC_TOKEN`), not the console API token, and the key's own scope fixes the ingest destination. UAM alert creation is separate: it lives in `mgmt-console-api` (`uam_*`, posted to `/v1/alerts` on the same host but a distinct API, still using the console API token), and indicators ride inline in the alert rather than having an endpoint of their own. This skill now covers queries and configuration files only. Hyperautomation flows that still call `addEvents`: see `integration_patterns.md` for its measured scope, `ts` and `attrs` behaviour.
 
 ---
 
@@ -24,7 +30,7 @@ All five methods consume the CPU leaky bucket described in `auth_and_limits.md`.
 
 ### `query`: `c.query(filter="", ...)` / `c.iter_query(...)`, CLI `query`
 
-**DEPRECATED.** The V1 `/api/query` endpoint sunsets on 2027-02-15. For log search in new code use the LRQ API with `queryType: "LOG"` - async, cursor-paged to unlimited rows, survives long windows. See the `powerquery` skill's `references/lrq-api.md`. This method is fine for legacy one-offs until the sunset date.
+**DEPRECATED.** The V1 `/api/query` endpoint sunsets on 2027-02-15. For log search in new code use the LRQ API with `queryType: "LOG"` (the `powerquery_run` tool's `queryType: "LOG"`), async and survives long windows. See the `powerquery` skill's `references/lrq-api.md`. This method is fine for legacy one-offs until the sunset date.
 
 Event search. Filter syntax matches the UI search bar.
 
@@ -66,6 +72,11 @@ Use `c.iter_query(...)` to iterate across pages automatically.
 Full pipeline query language (S1QL-style). `query` is limited to 10K chars; escape `"` with `\"`.
 
 Times default to past 24h if both omitted.
+
+`recurring` (optional, default `false`, platform S-26.2.6): set `True` (`--recurring` on the CLI) to
+enable precomputation and continuous updates of the query summary. Later calls with the same query
+then run faster and cheaper, even when `startTime` / `endTime` differ between calls. Use it for
+queries you run repeatedly: dashboard panels, scheduled checks, polling loops.
 
 Response:
 

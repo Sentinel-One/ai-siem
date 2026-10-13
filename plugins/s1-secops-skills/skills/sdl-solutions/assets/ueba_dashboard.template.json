@@ -16,7 +16,7 @@
         {
           "graphStyle": "number",
           "title": "Anomalies (|z| >= {{Z_HARD}})",
-          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg, baseline_stddev=baseline_stddev from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter baseline_avg=* | let sd = number(baseline_stddev) | let z = (sd > 0 ? (live_count - baseline_avg) / sd : (live_count == baseline_avg ? 0 : (live_count > baseline_avg ? 999 : -999))) | filter z >= {{Z_HARD}} OR z <= -{{Z_HARD}} | group n=count() | limit 1",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} tag != 'logVolume' | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg, baseline_stddev=baseline_stddev from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter baseline_avg=* | let sd = number(baseline_stddev) | let z = (sd > 0 ? (live_count - baseline_avg) / sd : (live_count == baseline_avg ? 0 : (live_count > baseline_avg ? 999 : -999))) | filter z >= {{Z_HARD}} OR z <= -{{Z_HARD}} | group n=count() | limit 1",
           "options": { "format": "commas", "precision": "0" },
           "layout": { "w": 20, "h": 8, "x": 0, "y": 4 }
         },
@@ -24,7 +24,7 @@
           "graphStyle": "number",
           "title": "New-behavior pairs (no baseline)",
           "description": "Pairs active now with no baseline row: genuinely new, or under 2 active days of history (too little to baseline). Flat-history (stddev 0) pairs are baselined with is_constant = 1 and scored by the anomaly panels, not listed here.",
-          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter !(baseline_avg=*) | group n=count() | limit 1",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} tag != 'logVolume' | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter !(baseline_avg=*) | group n=count() | limit 1",
           "options": { "format": "commas", "precision": "0" },
           "layout": { "w": 20, "h": 8, "x": 20, "y": 4 }
         },
@@ -54,14 +54,14 @@
         {
           "graphStyle": "table",
           "title": "Top SPIKE / DROP anomalies (by |z|)",
-          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg, baseline_stddev=baseline_stddev, is_constant=is_constant from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter baseline_avg=* | let sd = number(baseline_stddev) | let z = (sd > 0 ? (live_count - baseline_avg) / sd : (live_count == baseline_avg ? 0 : (live_count > baseline_avg ? 999 : -999))) | let az = abs(z) | filter az >= {{Z_HARD}} | let direction = (z >= 0 ? 'SPIKE' : 'DROP') | sort -az | columns principal_v, action_v, live_count, baseline_avg, baseline_stddev, is_constant, z, direction | limit 50",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} tag != 'logVolume' | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg, baseline_stddev=baseline_stddev, is_constant=is_constant from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter baseline_avg=* | let sd = number(baseline_stddev) | let z = (sd > 0 ? (live_count - baseline_avg) / sd : (live_count == baseline_avg ? 0 : (live_count > baseline_avg ? 999 : -999))) | let az = abs(z) | filter az >= {{Z_HARD}} | let direction = (z >= 0 ? 'SPIKE' : 'DROP') | sort -az | columns principal_v, action_v, live_count, baseline_avg, baseline_stddev, is_constant, z, direction | limit 50",
           "layout": { "w": 60, "h": 14, "x": 0, "y": 24 }
         },
         {
           "graphStyle": "table",
           "title": "New-behavior (active now, no baseline)",
           "description": "Pairs active now with no baseline row: genuinely new, or under 2 active days of history (too little to baseline). Flat-history (stddev 0) pairs are baselined with is_constant = 1 and scored by the anomaly panels, not listed here.",
-          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter !(baseline_avg=*) | sort -live_count | columns principal_v, action_v, live_count | limit 50",
+          "query": "dataSource.name='{{SOURCE}}' {{NOISE_FILTER}} tag != 'logVolume' | filter {{PRINCIPAL}}=* AND {{ACTION}}=* | group live_count=count() by action_v={{ACTION}}, principal_v={{PRINCIPAL}} | lookup baseline_avg=baseline_avg from {{BASELINE_TABLE}} by action_v=action_v, principal_v=principal_v | filter !(baseline_avg=*) | sort -live_count | columns principal_v, action_v, live_count | limit 50",
           "layout": { "w": 30, "h": 14, "x": 0, "y": 38 }
         },
         {

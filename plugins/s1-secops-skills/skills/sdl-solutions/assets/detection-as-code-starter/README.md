@@ -65,8 +65,11 @@ python3 scripts/dac_lint.py
 python3 scripts/dac_sync.py --dry-run detections
 
 # Deploy everything to a site (one-off, from a trusted host):
+# Read the token from the OS keychain (macOS shown; on Linux use
+# `secret-tool lookup service sentinelone-mcp username default:S1_CONSOLE_API_TOKEN`)
+# so it never lands in shell history or a file.
 export S1_CONSOLE_URL="https://your-tenant.sentinelone.net"
-export S1_CONSOLE_API_TOKEN="****"
+export S1_CONSOLE_API_TOKEN="$(security find-generic-password -s sentinelone-mcp -a default:S1_CONSOLE_API_TOKEN -w)"
 python3 scripts/dac_sync.py --sync --site "your-site"
 
 # Roll back a previous deploy:

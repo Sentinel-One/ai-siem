@@ -1,6 +1,6 @@
 # sdl-api (Claude skill)
 
-A Claude skill wrapping the SentinelOne **Singularity Data Lake (SDL) API** for query and configuration-file management on a Scalyr/SDL/XDR tenant. Covers the SDL query methods (`query`, `numericQuery`, `facetQuery`, `timeseriesQuery`, `powerQuery`) and the GraphQL configuration-file operations (`configFiles`, `configFile`, `addConfigFile`, `deleteConfigFile`) with a Python client, a CLI, and per-method reference docs. Raw-log ingestion has moved to the HEC path (see `mgmt-console-api`).
+A Claude skill wrapping the SentinelOne **Singularity Data Lake (SDL) API** for query and configuration-file management on a Scalyr/SDL/XDR tenant. Covers the SDL query methods (`query`, `numericQuery`, `facetQuery`, `timeseriesQuery`, `powerQuery`) and the GraphQL configuration-file operations (`configFiles`, `configFile`, `addConfigFile`, `deleteConfigFile`) through the `s1-secops-mcp` MCP tools, with per-method reference docs and a host-only Python client and CLI. Raw-log ingestion has moved to the HEC path (`hec_ingest`).
 
 ## Install
 
@@ -21,46 +21,39 @@ In Cowork/Claude Code, the path is:
 Two values, and only two. The SDL API lives under `<console>/sdl` on the Management
 Console host, so the console URL and the console API token are all it needs.
 
-### With s1-secops-mcp (recommended)
+The primary path is the `s1-secops-mcp` MCP server (`sdl_*`, `powerquery_*` and
+`hec_ingest` tools; see `s1-secops-mcp/README.md` in the s1-secops-skills source
+repo, not shipped in the plugin). It runs on your machine and is the only path that
+works from Cowork, whose sandbox cannot reach `*.sentinelone.net`. The Python client
+and CLI below are host-only (Claude Code or a terminal).
 
-Set them as environment variables in `claude_desktop_config.json` inside the
-`s1-secops-mcp` server entry. No `credentials.json` file is needed:
+Credentials live in environment variables or the OS keychain. There is no
+credentials file, and an MCP client config `env` block is plaintext, so do not put
+tokens there either. Store them once:
 
-```json
-"env": {
-  "S1_CONSOLE_URL":       "https://usea1-acme.sentinelone.net",
-  "S1_CONSOLE_API_TOKEN": "eyJ...your-token..."
-}
+```bash
+s1-secops-mcp setup     # prompts without echo, stores in the OS keychain, verifies read-back
+s1-secops-mcp status    # shows the source of each value, masked
 ```
 
-### Without s1-secops-mcp (direct skill use)
+The MCP server and the Python client both read environment variables first, then
+the keychain (service `sentinelone-mcp`, account `<profile>:<NAME>`).
 
-Drop a `credentials.json` into your Cowork project folder. The plugin's SessionStart
-hook auto-discovers it; run `bash scripts/bootstrap_creds.sh` to refresh manually:
-
-```json
-{
-  "S1_CONSOLE_URL":       "https://usea1-acme.sentinelone.net",
-  "S1_CONSOLE_API_TOKEN": "eyJ...your-token..."
-}
-```
-
-Generate the token in the S1 Console → Settings → Users → My User → **API Token**.
+Generate the token in the S1 Console → Settings → Users → Service Users (or My User) → **API Token**.
 
 ### Fields
 
 | Field | Required | Purpose |
 |---|---|---|
-| `S1_CONSOLE_URL` | yes | Console host. The client derives the SDL base as `<console>/sdl`. |
+| `S1_CONSOLE_URL` | yes | Console host. The SDL base is `<console>/sdl`. |
 | `S1_CONSOLE_API_TOKEN` | yes | Authorises every query and config method. Sent as `Authorization: Bearer`. |
-| `SDL_S1_SCOPE` | only when multi-scope | Set when the token spans multiple sites or accounts. Format `<accountId>:<siteId>` for site scope, `<accountId>` for account scope. |
+| `S1_SCOPE` | only when multi-scope | Set when the token spans multiple sites or accounts. Format `<accountId>:<siteId>` for site scope, `<accountId>` for account scope. |
+| `S1_HEC_INGEST_URL`, `S1_HEC_TOKEN` | only for log ingest | Ingest host and SDL Log Write Key for `hec_ingest`. |
 
 One token covers all of it: the query methods and the GraphQL configuration-file
 operations. The scoped SDL keys are retired.
 
-When using `s1-secops-mcp`, environment variables set in `claude_desktop_config.json` take priority. When using skills directly, environment variables set in your shell override the credentials file.
-
-## Quick test
+## Quick test (host only)
 
 ```bash
 pip install requests
@@ -70,7 +63,7 @@ python tests/smoke_test.py
 
 The smoke test exercises the query and configuration methods end-to-end: runs `query` / `facetQuery` / `numericQuery` / `timeseriesQuery` / `powerQuery`, then `configFiles` + `configFile` by udoId + a full `put_config_file` create→update→stale-version→delete round-trip on a throwaway `/lookups/sdl_skill_smoke_…` path. Reports a per-method pass/fail line.
 
-## CLI
+## CLI (host only)
 
 ```bash
 python scripts/sdl_cli.py config-files --prefix /dashboards/
@@ -91,7 +84,7 @@ The CLI subcommands are `config-files`, `config-file`, `put-config-file`, `delet
 
 **Log/event ingestion is not part of this CLI.** The former `upload-logs` and `add-events` subcommands were removed when ingestion moved to the event collector. To ingest raw logs or events, use the `hec_ingest` tool in `s1-secops-mcp` (posts to `S1_HEC_INGEST_URL` and applies a named parser via `sourcetype`). It authenticates with an SDL Log Write Key in `S1_HEC_TOKEN`, not the console API token, and the key's own scope fixes the ingest destination.
 
-## Python
+## Python (host only)
 
 ```python
 import sys; sys.path.insert(0, "scripts")
@@ -117,13 +110,12 @@ dash = [f for f in files if f["name"] == "/dashboards/SOC Overview"][0]
 c.put_config_file(udo_id=dash["udoId"], content=body, expected_version=dash["version"])
 ```
 
-The client picks the right key per method automatically, retries on 429/5xx/`error/server/backoff` with exponential backoff honouring `Retry-After`, and returns parsed JSON. Errors surface as `SDLAPIError` with `.status` and `.body`.
+The client reads credentials from the environment or the OS keychain, retries on 429/5xx/`error/server/backoff` with exponential backoff honouring `Retry-After`, and returns parsed JSON. Errors surface as `SDLAPIError` with `.status` and `.body`.
 
 ## Layout
 
 - `SKILL.md`: instructions Claude reads when the skill triggers
-- `scripts/bootstrap_creds.sh`: idempotent helper to copy workspace creds into the sandbox-local path
-- `scripts/sdl_client.py`: `SDLClient` (console token, `Bearer` auth, retries, `iter_query` pagination, GraphQL config-file operations)
+- `scripts/sdl_client.py`: host-only `SDLClient` (console token, `Bearer` auth, retries, `iter_query` pagination, GraphQL config-file operations)
 - `scripts/sdl_cli.py`: shell CLI covering every method
 - `references/methods.md`: per-method reference (params, defaults, response shape, field requirements)
 - `references/auth_and_limits.md`: key matrix, console-token + S1-Scope rules, CPU leaky-bucket model, daily caps, 2026-03-19 8 QPS cap

@@ -11,8 +11,13 @@
  *   uam_list_alerts         List/search UAM alerts via GraphQL
  *   uam_get_alert           Get full alert details (notes, history)
  *   uam_add_note            Add analyst note to an alert
- *   uam_set_status          Update alert status (NEW, IN_PROGRESS, RESOLVED)
+ *   uam_set_status          Update alert status (NEW, IN_PROGRESS, RESOLVED), verified
+ *   uam_set_verdict         Set the analyst verdict, verified
+ *   uam_assign_alert        Assign an alert to a console user, or unassign it, verified
  *   uam_available_actions   What actions this alert allows (isDisabled + reason)
+ *
+ * The three write tools send the console's exact alertTriggerActions request
+ * (HAR 2026-10-07) and re-read the alert to prove the change.
  *
  * REMOVED (2026-05-03: confirmed non-functional for API tokens):
  *   purple_ai_query        : requires browser-session teamToken from /sdl/v2/graphql that
@@ -20,7 +25,28 @@
  *   purple_ai_investigate  : same root cause (SERVICE_ERROR). Use Purple MCP instead.
  */
 
-import { apiGet, apiPost, apiPut, apiDelete, apiPatch, purpleAlertSummary, uamListAlerts, uamGetAlert, uamAddNote, uamSetStatus, uamAvailableActions } from '../lib/s1.js';
+import { writeOutput, resolveOutputPath } from '../lib/output.js';
+import {
+  apiGet, apiGetBinary, apiPost, apiPut, apiDelete, apiPatch, purpleAlertSummary,
+  uamListAlerts, uamGetAlert, uamAddNote, uamSetStatus, uamSetVerdict, uamAssignAlert, uamAvailableActions, alertScope,
+  UAM_STATUSES, UAM_ANALYST_VERDICTS,
+} from '../lib/s1.js';
+
+// Optional scope override shared by the UAM write tools. Default: the alert's
+// own account, read from the alert, which is what the console sends.
+const UAM_WRITE_SCOPE_PROPS = {
+  scopeIds: {
+    type: 'array',
+    items: { type: 'string' },
+    description: 'Optional. Scope ids for the write. Default: the alert\'s own account (read from the alert), exactly what the console sends.',
+  },
+  scopeType: {
+    type: 'string',
+    enum: ['ACCOUNT', 'SITE', 'GROUP'],
+    description: 'Optional. Scope type for scopeIds (default ACCOUNT).',
+  },
+};
+const UAM_WRITE_RESULT_NOTE = 'Sends the same alertTriggerActions request as the console (scope = the alert\'s account, viewType ALL, one action, filter by alert id), then re-reads the alert and fails unless it shows the requested value. Returns {outcome: applied|already_set|scheduled, verified, before, after}. A refusal fails loudly: errorType MISSING_PERMISSION means the role lacks "Unified Alerts > <alert type> Alerts: Manage" (STAR, Endpoint, Identity, Mobile or Generic), and the error names the role and the missing permissions when the token can read its own role. Measured 2026-10-08 with a role lacking every Unified Alerts Manage permission: writes on a native STAR alert succeeded (the role has the legacy STAR Rule Alerts update permissions) and writes on a /v1/alerts-ingested alert failed MISSING_PERMISSION, so ingested alerts most likely need Generic Alerts: Manage.';
 
 /**
  * Defensive normalization for GET /cloud-detection/rules calls.
@@ -69,14 +95,25 @@ export const tools = [
           description: 'Query string parameters as key-value pairs, e.g. {"limit": 20, "sortBy": "createdAt"}. For /cloud-detection/rules listings ALWAYS include {"isLegacy": false}; the handler auto-injects it as a safety net but explicit is better.',
           additionalProperties: true,
         },
+        outputFile: {
+          type: 'string',
+          description: 'Optional absolute path on the machine running this MCP server. The full JSON response is written there and only a summary (path, bytes, sha256, item count, pagination) is returned. Must be inside S1_OUTPUT_DIRS (default: home and temp). For binary responses use s1_api_download. Under the Docker launcher only the folder set with `install --output-dir` is shared with the host (Windows: pass paths under `/output`); if none is set, tell the user to run it rather than writing elsewhere.',
+        },
+        overwrite: { type: 'boolean', description: 'Allow outputFile to replace an existing file.' },
       },
       required: ['path'],
     },
-    async handler({ path, params = {} }) {
+    async handler({ path, params = {}, outputFile, overwrite }) {
       // Safety net: /cloud-detection/rules silently hides scheduled
       // PowerQuery rules unless isLegacy=false is passed.
+      if (outputFile) resolveOutputPath(outputFile, { overwrite: overwrite === true });
       const normalized = normalizeS1ApiGetParams(path, params);
       const result = await apiGet(path, normalized);
+      if (outputFile) {
+        const out = writeOutput(outputFile, JSON.stringify(result, null, 2), { overwrite: overwrite === true });
+        const items = Array.isArray(result?.data) ? result.data.length : undefined;
+        return JSON.stringify({ outputFile: out.path, bytesWritten: out.bytes, sha256: out.sha256, items, pagination: result?.pagination }, null, 2);
+      }
       return JSON.stringify(result, null, 2);
     },
   },
@@ -84,7 +121,7 @@ export const tools = [
   // ─── s1_api_post ──────────────────────────────────────────────────────────
   {
     name: 's1_api_post',
-    description: `Generic POST request to the SentinelOne Management Console REST API (v2.1). Use ONLY for write and action operations: create IOC, isolate agent, add exclusion, create custom detection rule, trigger RemoteOps, etc. The path should start with /web/api/v2.1/. NEVER use POST for listing, counting, or exporting; all reads are GET. POST to a read path returns HTTP 404 because the path does not exist in the API (e.g. POST /agents/ids, POST /threats/summary, POST /export/threats are all wrong). Before calling, verify the path exists with: python3 scripts/search_endpoints.py "<keyword>". The body is NOT auto-wrapped; pass the complete envelope, e.g. {"data": {...}, "filter": {...}}.`,
+    description: `Generic POST request to the SentinelOne Management Console REST API (v2.1). Use ONLY for write and action operations: create IOC, isolate agent, add exclusion, create custom detection rule, trigger RemoteOps, etc. The path should start with /web/api/v2.1/. NEVER use POST for listing, counting, or exporting; all reads are GET. POST to a read path returns HTTP 404 because the path does not exist in the API (e.g. POST /agents/ids, POST /threats/summary, POST /export/threats are all wrong). Before calling, verify the path exists with: python3 scripts/search_endpoints.py "<keyword>". The body is NOT auto-wrapped; pass the complete envelope, e.g. {"data": {...}, "filter": {...}}. IOC writes (/threat-intelligence/iocs) refuse a token whose user spans several accounts (HTTP 403, code 4030010): run them from an MCP entry whose token was minted at a single account or site (a separate keychain profile selected with S1_PROFILE).`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -103,6 +140,14 @@ export const tools = [
     },
     async handler({ path, body }) {
       const result = await apiPost(path, body);
+      // GraphQL returns HTTP 200 with errors[] when the operation failed. With no
+      // usable data that is a failure, so surface it as one (isError) rather than
+      // a success the caller has to inspect.
+      if (result && Array.isArray(result.errors) && result.errors.length) {
+        const d = result.data;
+        const noData = d === null || d === undefined || (typeof d === 'object' && Object.values(d).every(v => v === null));
+        if (noData) throw new Error(`GraphQL errors from ${path}: ${JSON.stringify(result.errors).slice(0, 2000)}`);
+      }
       return JSON.stringify(result, null, 2);
     },
   },
@@ -185,6 +230,42 @@ export const tools = [
     },
   },
 
+  // ─── s1_api_download ──────────────────────────────────────────────────────
+  {
+    name: 's1_api_download',
+    description: `Download a BINARY response from the Management Console REST API (v2.1) and save it to a file on the machine running this MCP server. Use for anything the JSON tools cannot carry: RemoteOps fetched files (/web/api/v2.1/remote-scripts/fetch-files), threat file fetch (/web/api/v2.1/threats/fetch-file), exports that return CSV or ZIP, download-from-cloud links. Returns path, size, sha256 and content type only; the bytes never enter the context window. GET only, same origin pinning as s1_api_get.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          pattern: '^/web/api/v2\\.1/',
+          description: 'API path starting with /web/api/v2.1/.',
+        },
+        params: {
+          type: 'object',
+          description: 'Query string parameters.',
+          additionalProperties: true,
+        },
+        outputFile: {
+          type: 'string',
+          description: 'Absolute path to write. Must be inside S1_OUTPUT_DIRS (default: home and temp). Created mode 0600. Under the Docker launcher only the folder set with `install --output-dir` is shared with the host (Windows: pass paths under `/output`); if none is set, tell the user to run it rather than writing elsewhere.',
+        },
+        overwrite: { type: 'boolean', description: 'Allow replacing an existing file.' },
+      },
+      required: ['path', 'outputFile'],
+    },
+    async handler({ path, params = {}, outputFile, overwrite }) {
+      resolveOutputPath(outputFile, { overwrite: overwrite === true });
+      const r = await apiGetBinary(path, params);
+      const out = writeOutput(outputFile, r.buffer, { overwrite: overwrite === true });
+      return JSON.stringify({
+        outputFile: out.path, bytesWritten: out.bytes, sha256: out.sha256,
+        contentType: r.contentType, contentDisposition: r.contentDisposition || undefined,
+      }, null, 2);
+    },
+  },
+
   // ─── purple_ai_alert_summary ──────────────────────────────────────────────
   {
     name: 'purple_ai_alert_summary',
@@ -208,7 +289,7 @@ export const tools = [
   // ─── uam_list_alerts ──────────────────────────────────────────────────────
   {
     name: 'uam_list_alerts',
-    description: `List UAM (Unified Alert Management) alerts via GraphQL. The PRIMARY alert API in S1, covers all alert types (EDR, STAR, cloud, identity, third-party). Uses the correct FilterInput schema: dateTimeRange { start, end } for time windows (epoch ms). USE THIS instead of Purple MCP search_alerts for time-scoped searches; the Purple MCP sends date_range (snake_case) which UAM rejects; this tool uses dateTimeRange (the actual schema field). Convenience params (status, severity, startTime, endTime) build FilterInputs automatically. For deeper analysis, follow up with uam_get_alert.`,
+    description: `List UAM (Unified Alert Management) alerts via GraphQL. The PRIMARY alert API in S1, covers all alert types (EDR, STAR, cloud, identity, third-party). Uses the correct FilterInput schema: dateTimeRange { start, end } for time windows (epoch ms). USE THIS instead of Purple MCP search_alerts for time-scoped searches; the Purple MCP sends date_range (snake_case) which UAM rejects; this tool uses dateTimeRange (the actual schema field). Convenience params (status, severity, startTime, endTime) build FilterInputs automatically. SCOPE: with a global or multi-account token an unscoped listing spans every account; pass scopeIds (and scopeType SITE for sites) for the account or site the user named. Each alert carries accountId and siteId. For deeper analysis, follow up with uam_get_alert.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -224,12 +305,12 @@ export const tools = [
         viewType: {
           type: 'string',
           description: 'Alert view scope.',
-          enum: ['ALL', 'ENDPOINT', 'IDENTITY', 'STAR', 'CUSTOM_ALERTS', 'CLOUD', 'THIRD_PARTY'],
+          enum: ['ALL', 'ENDPOINT', 'IDENTITY', 'STAR', 'CUSTOM_ALERTS', 'CLOUD', 'THIRD_PARTY', 'DLP'],
           default: 'ALL',
         },
         status: {
           type: 'string',
-          description: 'Filter by status. Uses stringEqual FilterInput. Valid values (confirmed against live tenant): "NEW", "IN_PROGRESS", "RESOLVED". "OPEN" is NOT a valid value and silently returns 0 results. "FALSE_POSITIVE" is an analystVerdict field, not a status; uam_set_status cannot set it. To set the analyst verdict, POST the raw alertTriggerActions mutation with the S1/alert/analystVerdictUpdate action via s1_api_post to /web/api/v2.1/unifiedalerts/graphql.',
+          description: 'Filter by status. Uses stringEqual FilterInput. Valid values (confirmed against live tenant): "NEW", "IN_PROGRESS", "RESOLVED". "OPEN" is NOT a valid value and silently returns 0 results. "FALSE_POSITIVE" is an analystVerdict field, not a status; uam_set_status cannot set it. Set the analyst verdict with uam_set_verdict.',
         },
         severity: {
           type: 'string',
@@ -241,7 +322,7 @@ export const tools = [
         },
         searchText: {
           type: 'string',
-          description: 'Full-text search across alert fields.',
+          description: 'Match against the alert name (UAM fieldId alertName). The API rejects an all-fields search.',
         },
         startTime: {
           type: 'string',
@@ -251,10 +332,20 @@ export const tools = [
           type: 'string',
           description: 'End of time window. ISO-8601 string or epoch ms. Defaults to now when startTime is provided.',
         },
+        scopeIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional. Account (or site) ids to list alerts for. A global or multi-account token lists alerts from EVERY account it can reach when this is omitted; pass the account the user named. Each alert in the response carries accountId and siteId.',
+        },
+        scopeType: {
+          type: 'string',
+          enum: ['ACCOUNT', 'SITE'],
+          description: 'Optional. Scope type for scopeIds (default ACCOUNT).',
+        },
       },
       required: [],
     },
-    async handler({ first = 20, after, viewType = 'ALL', status, severity, detectionProduct, searchText, startTime, endTime } = {}) {
+    async handler({ first = 20, after, viewType = 'ALL', status, severity, detectionProduct, searchText, startTime, endTime, scopeIds, scopeType } = {}) {
       // Convert string epoch ms to numbers if needed
       const parseTime = (v) => {
         if (!v) return null;
@@ -269,6 +360,7 @@ export const tools = [
         searchText: searchText || null,
         startTime: parseTime(startTime),
         endTime: parseTime(endTime),
+        scope: scopeIds?.length ? { scopeIds: scopeIds.map(String), scopeType: scopeType || 'ACCOUNT' } : null,
       });
       return JSON.stringify(result, null, 2);
     },
@@ -321,7 +413,7 @@ export const tools = [
   // ─── uam_set_status ───────────────────────────────────────────────────────
   {
     name: 'uam_set_status',
-    description: `Update the status of a UAM alert. Valid values: NEW (reopen), IN_PROGRESS (actively investigating), RESOLVED (threat contained and remediated). Note: FALSE_POSITIVE is NOT a status value on this API; it is an analystVerdict. To mark an alert as a false positive, add a note explaining why and set status to RESOLVED. Always add a note via uam_add_note before closing an alert.`,
+    description: `Update the status of a UAM alert. Valid values: NEW (reopen), IN_PROGRESS (actively investigating), RESOLVED (closed). FALSE_POSITIVE is NOT a status; it is an analyst verdict, set with uam_set_verdict. Always add a note via uam_add_note before closing an alert. ${UAM_WRITE_RESULT_NOTE}`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -332,13 +424,74 @@ export const tools = [
         status: {
           type: 'string',
           description: 'New status. Must be one of the confirmed enum values.',
-          enum: ['NEW', 'IN_PROGRESS', 'RESOLVED'],
+          enum: [...UAM_STATUSES],
         },
+        ...UAM_WRITE_SCOPE_PROPS,
       },
       required: ['alertId', 'status'],
     },
-    async handler({ alertId, status }) {
-      const result = await uamSetStatus(alertId, status);
+    async handler({ alertId, status, scopeIds, scopeType }) {
+      const result = await uamSetStatus(alertId, status, { scopeIds, scopeType });
+      return JSON.stringify(result, null, 2);
+    },
+  },
+
+  // ─── uam_set_verdict ──────────────────────────────────────────────────────
+  {
+    name: 'uam_set_verdict',
+    description: `Set the analyst verdict of a UAM alert (action S1/alert/analystVerdictUpdate). Values are the console's sub-verdicts, e.g. TRUE_POSITIVE_MALWARE, TRUE_POSITIVE_BENIGN, FALSE_POSITIVE_BENIGN, FALSE_POSITIVE_USER_ERROR, or UNDEFINED to clear. "TRUE_POSITIVE", "FALSE_POSITIVE" and "SUSPICIOUS" alone are NOT valid values and are refused before any request. Status is separate: closing an alert also needs uam_set_status RESOLVED. Record the evidence with uam_add_note first. ${UAM_WRITE_RESULT_NOTE}`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        alertId: {
+          type: 'string',
+          description: 'The UAM alert ID.',
+        },
+        verdict: {
+          type: 'string',
+          description: 'Analyst verdict (enum AnalystVerdict, introspected live).',
+          enum: [...UAM_ANALYST_VERDICTS],
+        },
+        ...UAM_WRITE_SCOPE_PROPS,
+      },
+      required: ['alertId', 'verdict'],
+    },
+    async handler({ alertId, verdict, scopeIds, scopeType }) {
+      const result = await uamSetVerdict(alertId, verdict, { scopeIds, scopeType });
+      return JSON.stringify(result, null, 2);
+    },
+  },
+
+  // ─── uam_assign_alert ─────────────────────────────────────────────────────
+  {
+    name: 'uam_assign_alert',
+    description: `Assign a UAM alert to a console user, or unassign it (action S1/alert/assignUser). Pass exactly one of: userId (numeric console user id, what the console sends), email (resolved to one user via GET /web/api/v2.1/users?email=), or unassign: true (sends value null). A service-user token can assign the alert to a human console user. ${UAM_WRITE_RESULT_NOTE}`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        alertId: {
+          type: 'string',
+          description: 'The UAM alert ID.',
+        },
+        userId: {
+          type: 'string',
+          pattern: '^[0-9]{1,20}$',
+          description: 'Numeric console user id (from GET /web/api/v2.1/users or an alert\'s assignee.userId).',
+        },
+        email: {
+          type: 'string',
+          description: 'Email of the console user; must match exactly one user visible to the token.',
+        },
+        unassign: {
+          type: 'boolean',
+          description: 'true to remove the current assignee.',
+        },
+        ...UAM_WRITE_SCOPE_PROPS,
+      },
+      required: ['alertId'],
+    },
+    async handler({ alertId, userId, email, unassign, scopeIds, scopeType }) {
+      const result = await uamAssignAlert(alertId, { userId, email, unassign: unassign === true, scopeIds, scopeType });
       return JSON.stringify(result, null, 2);
     },
   },
@@ -357,12 +510,12 @@ export const tools = [
         scopeIds: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Optional. Account or site ids for the scope. Defaults to every account visible to the token, resolved via GET /accounts.',
+          description: 'Optional. Account or site ids for the scope. Defaults to the alert\'s own account (read from the alert, as the writes do), or every account visible to the token when the alert carries none.',
         },
         scopeType: {
           type: 'string',
-          description: 'Optional. Scope type for scopeIds. Availability differs between ACCOUNT and SITE for some actions.',
-          enum: ['ACCOUNT', 'SITE', 'GROUP', 'GLOBAL'],
+          description: 'Optional. Scope type for scopeIds. Availability differs between ACCOUNT and SITE for some actions. GLOBAL is not a ScopeType (the API rejects it).',
+          enum: ['ACCOUNT', 'SITE', 'GROUP'],
         },
       },
       required: ['alertId'],
@@ -370,12 +523,12 @@ export const tools = [
     async handler({ alertId, scopeIds, scopeType }) {
       const scope = scopeIds?.length
         ? { scopeIds, scopeType: scopeType || 'ACCOUNT' }
-        : undefined;
+        : await alertScope(alertId);
       const actions = await uamAvailableActions(alertId, scope);
       return JSON.stringify(
         {
           alertId,
-          scope: scope || 'all accounts visible to the token (ACCOUNT)',
+          scope: scopeIds?.length ? scope : { ...scope, source: scope.scopeIds.length === 1 ? 'the alert\'s account' : 'every account visible to the token' },
           enabled: actions.filter((a) => !a.isDisabled).map((a) => a.id),
           disabled: actions
             .filter((a) => a.isDisabled)

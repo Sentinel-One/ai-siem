@@ -1,0 +1,11 @@
+{
+  "name": "Windows logon brute force",
+  "description": "More than 20 failed Windows logons (4625) for one account in the lookback window.",
+  "severity": "Medium",
+  "lookback_minutes": 60,
+  "interval_minutes": 30,
+  "query": "dataSource.name='Windows Event Logs' winEventLog.id=4625 | group failures=count() by winEventLog.data.event.system.computer | filter failures > 20 | sort -failures | limit 50",
+  "mitre": [
+    {"tactic": "TA0006", "technique": "T1110", "technique_name": "Brute Force"}
+  ]
+}

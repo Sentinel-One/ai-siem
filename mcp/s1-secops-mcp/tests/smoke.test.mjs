@@ -20,18 +20,21 @@ const EXPECTED_TOOLS = [
   'powerquery_enumerate_sources',
   'powerquery_run',
   'powerquery_schema_discover',
-  // Mgmt Console (10)
+  // Mgmt Console (14)
   's1_api_get',
   's1_api_post',
   's1_api_put',
   's1_api_delete',
   's1_api_patch',
+  's1_api_download',
   'purple_ai_alert_summary',
   'uam_list_alerts',
   'uam_get_alert',
   'uam_add_note',
   'uam_available_actions',
   'uam_set_status',
+  'uam_set_verdict',
+  'uam_assign_alert',
   // SDL API: config files (4)
   'sdl_list_files',
   'sdl_get_file',
@@ -61,8 +64,8 @@ test('server version matches package.json', () => {
   assert.equal(SERVER_INFO.version, PKG_VERSION);
 });
 
-test('ALL_TOOLS exposes exactly 32 tools', () => {
-  assert.equal(ALL_TOOLS.length, 32, `expected 32, got ${ALL_TOOLS.length}`);
+test('ALL_TOOLS exposes exactly 35 tools', () => {
+  assert.equal(ALL_TOOLS.length, 35, `expected 35, got ${ALL_TOOLS.length}`);
 });
 
 test('every expected tool is registered, no extras', () => {

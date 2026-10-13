@@ -2,7 +2,7 @@
 name: sdl-api
 author: Prithvi Moses <prithvi.moses@sentinelone.com>
 description: >-
-  Use whenever the user wants to read data and manage configuration through the SentinelOne Singularity Data Lake (SDL) API: run queries or manage configuration files (parsers, dashboards, alerts, lookups, datatables) on a Scalyr/SDL/XDR tenant. Trigger on "SDL", "SDL API", "Singularity Data Lake", "Scalyr", "DataSet", or any "*.sentinelone.net/sdl/api/*" URL, and on the method names "query", "powerQuery", "facetQuery", "timeseriesQuery", "numericQuery", "configFiles", "configFile", "addConfigFile", "deleteConfigFile", "getFile", "putFile", "listFiles". Also trigger on "udoId", "config file", "/sdl/v2/graphql", or a console display string of the form "/dashboards/id/{number}/{name}". Also trigger on tasks like "run a powerQuery", "list configuration files", "edit my parser via API", "deploy a dashboard JSON", "compute the rate of failures over time", or anything involving SDL Bearer-token auth or the S1-Scope header. Wraps every SDL method with a Python client and CLI.
+  Use whenever the user wants to read data and manage configuration through the SentinelOne Singularity Data Lake (SDL) API: run queries or manage configuration files (parsers, dashboards, alerts, lookups, datatables) on a Scalyr/SDL/XDR tenant. Trigger on "SDL", "SDL API", "Singularity Data Lake", "Scalyr", "DataSet", or any "*.sentinelone.net/sdl/api/*" URL, and on the method names "query", "powerQuery", "facetQuery", "timeseriesQuery", "numericQuery", "configFiles", "configFile", "addConfigFile", "deleteConfigFile", "getFile", "putFile", "listFiles". Also trigger on "udoId", "config file", "/sdl/v2/graphql", or a console display string of the form "/dashboards/id/{number}/{name}". Also trigger on tasks like "run a powerQuery", "list configuration files", "edit my parser via API", "deploy a dashboard JSON", "compute the rate of failures over time", or anything involving SDL Bearer-token auth or the S1-Scope header. Uses the s1-secops-mcp sdl_* tools; host-only Python client.
 ---
 # SentinelOne SDL API
 
@@ -18,26 +18,30 @@ description: >-
 > changes which files exist as far as the caller can tell.
 > Full detail: [`sdl-api/references/config-file-graphql.md`](../sdl-api/references/config-file-graphql.md)
 
-Wraps the Singularity Data Lake API (query and configuration-file methods) with a pre-built Python client, a CLI runner, and a per-method reference.
+Covers the Singularity Data Lake API (query and configuration-file methods) through the `s1-secops-mcp` MCP tools, with a per-method reference and a host-only Python client and CLI.
 
-The SDL API lives under `<console>/sdl` on the Management Console host. It speaks JSON over `Bearer` tokens (not `ApiToken`) and is the canonical path for querying the data lake and editing parsers/dashboards/alerts/lookups directly. Raw-log ingestion is via HEC (see the `mgmt-console-api` skill).
+The SDL API lives under `<console>/sdl` on the Management Console host. It speaks JSON over `Bearer` tokens (not `ApiToken`) and is the canonical path for querying the data lake and editing parsers/dashboards/alerts/lookups directly. Raw-log ingestion is via HEC (`hec_ingest`, see "Raw log ingestion" below).
 
-> **Sandbox proxy blocked?** If calls to `*.sentinelone.net` (SDL host or console host) fail with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). The MCP server exposes `sdl_list_files`, `sdl_get_file`, `sdl_put_file`, and `sdl_delete_file`, running directly from your machine against the SDL API. Raw-log ingestion uses HEC (see `mgmt-console-api`), not this skill.
+> **Primary path: the `s1-secops-mcp` MCP tools.** Config files: `sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`; dashboards: `sdl_list_dashboards`, `sdl_get_dashboard`, `sdl_create_dashboard`, `sdl_save_dashboard_layout`, `sdl_share_dashboard`, `sdl_delete_dashboard`; queries: `powerquery_run`, `powerquery_enumerate_sources`, `powerquery_schema_discover`; ingest: `hec_ingest`. The server runs on the user's machine, so it reaches `*.sentinelone.net` where the Cowork sandbox cannot. It reads credentials from environment variables or the OS keychain and masks tokens in all output. If the tools are missing, the user has not connected the server: point them to the s1-secops-mcp README (`s1-secops-mcp/README.md` in the s1-secops-skills source repo, `mcp/s1-secops-mcp/README.md` in ai-siem; not shipped inside the plugin).
+>
+> **`SDLClient` and `scripts/sdl_cli.py` are host-only.** They run from Claude Code or a terminal on the user's machine, with the same environment variables or keychain entries. They cannot reach the tenant from the Cowork sandbox; never treat a proxy error there as an empty result, because that is how a fabricated schema gets into every downstream panel.
 
-## IMPORTANT: query methods are deprecated, and LRQ is NOT available here
+## IMPORTANT: the V1 query methods are deprecated; run queries through LRQ
 
-The query methods on this skill (`query`, `powerQuery`, `facetQuery`, `timeseriesQuery`, `numericQuery`) wrap the V1 SDL endpoints (`/api/query`, `/api/powerQuery`, etc.) under `<console>/sdl`. Those endpoints are **deprecated and sunset on 2027-02-15** (also applies to the Deep Visibility `/web/api/v2.1/dv/events/pq` endpoint).
+The query methods on the host-only Python client (`query`, `powerQuery`, `facetQuery`, `timeseriesQuery`, `numericQuery`) wrap the V1 SDL endpoints (`/api/query`, `/api/powerQuery`, etc.) under `<console>/sdl`. Those endpoints are **deprecated and sunset on 2027-02-15** (also applies to the Deep Visibility `/web/api/v2.1/dv/events/pq` endpoint).
 
-**The LRQ API is NOT a replacement available through this skill.** LRQ runs at `POST /sdl/v2/api/queries` on the tenant's own **Management Console** host (e.g. `your-tenant.sentinelone.net`); it is part of the Mgmt Console API surface, not the SDL config/query API. To run PowerQueries programmatically, use the **`mgmt-console-api`** skill which holds the LRQ runner, auth pattern, and slicing strategy.
+**The replacement is the LRQ API**, `POST /sdl/v2/api/queries` on the tenant's own **Management Console** host (e.g. `your-tenant.sentinelone.net`). Run it with the `powerquery_run` MCP tool, which handles auth, the forward tag, polling, cancel, slicing (`slices` plus `merge`) and raw-event `LOG` queries. The wire details live in the `mgmt-console-api` skill (`references/lrq-api.md`).
 
-**SDL dashboard panels do not use LRQ either.** Dashboard panel queries are executed by the SDL console's own built-in rendering engine when a user loads the dashboard in their browser. The panel JSON just stores the query string; no API call is needed. Do not attempt to test or run dashboard panel queries via LRQ.
+**SDL dashboard panels are rendered in the browser.** The panel JSON stores the query string and the console executes it when a user loads the dashboard. To validate a panel before or after deploy, run its query once with `powerquery_run` at the same `scope` the dashboard uses (see the `sdl-dashboard` skill).
 
-| Task | Correct skill / path |
+| Task | Correct tool / path |
 |------|------|
-| PowerQuery programmatically (any range) | **`mgmt-console-api`** → LRQ at `POST /sdl/v2/api/queries` on console host |
-| Dashboard panel queries | SDL console renders them in-browser: no API needed |
-| Quick one-off stats under 24h (deprecated) | V1 methods on this skill still work until 2027-02-15 |
-| `get_file` / `put_file` / `list_files` (parsers, dashboards, lookups) | **This skill**, via GraphQL, see below |
+| PowerQuery programmatically (any range) | `powerquery_run` (LRQ at `POST /sdl/v2/api/queries` on the console host) |
+| Raw events with every parsed field | `powerquery_run` with `queryType: "LOG"` |
+| Field schema of a source | `powerquery_schema_discover` |
+| Dashboard panel validation | `powerquery_run` per panel, at the dashboard's scope |
+| Quick one-off stats under 24h (deprecated) | V1 methods on the host-only client still work until 2027-02-15 |
+| Config files (parsers, dashboards, lookups) | `sdl_list_files` / `sdl_get_file` / `sdl_put_file` / `sdl_delete_file`, GraphQL-backed, see below |
 
 ## STOP: config files are GraphQL, not the REST `/api/*File` endpoints
 
@@ -86,36 +90,23 @@ for a dashboard. Create a dashboard by name once (there is no `udoId` yet), then
 "There are conflicting changes in the file." and the stored content is left untouched. A
 `deleteConfigFile` returning `null` with no `errors` array is **success**, not failure.
 
-## Setup: configure credentials first
+## Setup: credentials live in the OS keychain or the environment
 
-Drop a `credentials.json` file directly into your Cowork project folder with the keys you need:
+There is no credentials file. The MCP server and the host-only Python client resolve each value from environment variables first, then the OS keychain (service `sentinelone-mcp`, account `<profile>:<NAME>`, profile from `S1_PROFILE`, default `default`). The user stores them once on their machine with `s1-secops-mcp setup` and checks them with `s1-secops-mcp status`.
 
-```json
-{
-  "S1_CONSOLE_API_TOKEN": "eyJ...your-token..."
-}
-```
+- `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` authorise every query and config method.
+- `S1_SCOPE` is the default `S1-Scope` (`<accountId>` or `<accountId>:<siteId>`) when the token spans several sites or accounts. Most tools also take a per-call `scope`.
+- `S1_HEC_INGEST_URL` and `S1_HEC_TOKEN` (the SDL Log Write Key) are needed only for raw log ingest.
 
-The plugin's SessionStart hook auto-discovers the file at the start of every session, so the SDL client picks it up with no preflight. To trigger a manual refresh:
-
-```bash
-bash scripts/bootstrap_creds.sh   # idempotent, returns the destination path
-```
-
-`S1_CONSOLE_API_TOKEN` authorises every query and config method. Set `SDL_S1_SCOPE` if the token spans multiple sites or accounts. (Legacy alias `SDL_CONSOLE_API_TOKEN` is still recognised.)
-
-Environment variables override the credentials file if set.
-
-Before running anything, confirm `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are set. If not, stop and ask the user to drop `credentials.json` into their Cowork project folder.
+If a tool reports a missing credential, stop and ask the user to run `s1-secops-mcp setup` on their machine. Never ask for a token in the chat and never write one to a file.
 
 ## Workflow
 
 When the user asks for something involving the SDL API:
 
-1. **Pick the method.** Check `references/methods.md` for the right call. For **configuration files**, this skill is the right tool, but use the **GraphQL** methods (`config_files`, `config_file`, `put_config_file`, `delete_config_file`), not the legacy REST ones, see the STOP section above and `references/config-file-graphql.md`. Raw-log ingestion is via HEC (see `mgmt-console-api`). For **queries**, use the V1 methods on this skill only for quick one-off stats under 24h; for anything programmatic or multi-day, switch to the **`mgmt-console-api`** skill and the LRQ API, LRQ is NOT available on the SDL config/query surface.
-2. **Use the client.** `from sdl_client import SDLClient` then call the named method (`query`, `power_query`, `facet_query`, `timeseries_query`, `numeric_query`, `config_files`, `config_file`, `put_config_file`, `delete_config_file`). The client picks the correct key, handles JSON encoding, retries 429/5xx/`error/server/backoff`, and returns parsed JSON. Note: `query` and `power_query` hit the deprecated V1 endpoints; they work until 2027-02-15 for quick lookups but should not be used for production query pipelines.
-3. **For ad-hoc shots, use the CLI.** `python scripts/sdl_cli.py <method> [args]`. The CLI mirrors the client.
-4. **Summarize for the user.** Don't dump raw JSON unless asked. For query results, prefer a concise table or CSV; for ingestion, confirm `bytesCharged` and the session ID; for config files, show path + version + (truncated) content.
+1. **Pick the operation.** Check `references/methods.md` for the semantics. For **configuration files**, use the GraphQL-backed MCP tools (`sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`), never the legacy REST ones, see the STOP section above and `references/config-file-graphql.md`. Raw-log ingestion is `hec_ingest`. For **queries**, use `powerquery_run` (LRQ); the V1 query methods are deprecated.
+2. **Call the MCP tool.** On the user's host only (Claude Code or a terminal), `from sdl_client import SDLClient` gives the same operations as Python methods (`config_files`, `config_file`, `put_config_file`, `delete_config_file`, plus the deprecated V1 `query`, `power_query`, `facet_query`, `timeseries_query`, `numeric_query`), and `python scripts/sdl_cli.py <method> [args]` mirrors the client.
+3. **Summarize for the user.** Don't dump raw JSON unless asked. For query results, prefer a concise table or CSV; for ingestion, confirm `bytesCharged` and the session ID; for config files, show path + version + (truncated) content.
 
 ## Schema discovery: the right way
 
@@ -138,60 +129,30 @@ hides the actual fields. `| columns *` returns HTTP 500. You can probe specific
 fields with `| columns f1, f2` but you have to already know what to ask for,
 which defeats the purpose of discovery.
 
-**Use the V1 `query` method instead.** It returns each match as the full event
-JSON with every populated attribute keyed in an `attributes` dict. That's the
-only built-in way to see what fields a source actually carries.
+**Use `powerquery_schema_discover` instead.** For each source returned by
+`powerquery_enumerate_sources`, call `powerquery_schema_discover` with the exact
+name as `dataSourceName` (`maxEvents` up to 50, `startTime` such as `"24h"` or `"7d"`, and the
+`scope` you will query at). It returns sample events as full attribute sets, so
+you see what fields the source actually carries, and it drops `logVolume`
+metering rows (`excludedMeteringRows` reports how many). Issue the calls for
+several sources in parallel in one turn. For a bigger sample, run
+`powerquery_run` with `queryType: "LOG"`, `query: "dataSource.name='<name>'"`
+and an `outputFile`, then read the field names from that file.
 
-`SDLClient` authenticates every method with `S1_CONSOLE_API_TOKEN`, which
-carries Log Read as well as config permissions, so no per-method credential
-selection is needed.
+Persist the result with the Write tool, for example
+`sdl_schemas_<YYYY-MM-DD>.json` in the outputs folder (or the project's schema
+cache file), shaped as `{"<source>": ["field.a", "field.b", ...]}`. Do not
+write a script that loops over sources from the sandbox; it cannot reach the
+tenant.
 
-```python
-from sdl_client import SDLClient
-c = SDLClient()
+If a discovery call fails (proxy, 401/403, timeout), report the failure.
+A failure treated as an empty result produces a fabricated schema, causing
+every downstream panel to silently query non-existent fields.
 
-schemas = {}
-for source in all_sources_from_step1_enumeration:
-    res = c.query(filter=f"dataSource.name=='{source}'", max_count=2, start_time="24h")
-    matches = res.get("matches") or []
-    if not matches:
-        continue
-    attrs = matches[0].get("attributes") or {}
-    schemas[source] = sorted(attrs.keys())
-
-import json, datetime
-out = f"outputs/sdl_schemas_{datetime.date.today().isoformat()}.json"
-json.dump(schemas, open(out, "w"), indent=2)
-```
-
-**Direct MCP tools bypass sandbox proxy entirely.**
-
-The Cowork sandboxed shell blocks all outbound HTTPS to `*.sentinelone.net`. Use the
-s1-secops-mcp MCP tools instead, which run locally and bypass the proxy:
-
-| Operation | s1-secops-mcp tool |
-|---|---|
-| PowerQuery | `mcp__s1-secops-mcp__powerquery_run` or `mcp__s1-secops-mcp__powerquery_schema_discover` |
-| `put_file` / `get_file` / `list_files` | `mcp__s1-secops-mcp__sdl_put_file`, `mcp__s1-secops-mcp__sdl_get_file`, `mcp__s1-secops-mcp__sdl_list_files` |
-
-All of these tools run on your local machine and make direct HTTPS calls to the console host
-without sandbox proxy interference. No fallback or workaround needed.
-
-```python
-# Example: use sdl_get_file MCP tool directly instead
-import sys, subprocess, json
-result = subprocess.run(["mdfind", "-name", "sdl_client.py"], capture_output=True, text=True)
-# Match either checkout name: the repo was renamed claude-skills -> s1-secops-skills,
-# and an existing local clone keeps whatever directory name it was cloned under.
-sdk_dir = [p for p in result.stdout.strip().split("\n")
-           if "s1-secops-skills" in p or "claude-skills" in p][0].rsplit("/", 1)[0]
-sys.path.insert(0, sdk_dir)
-from sdl_client import SDLClient
-c = SDLClient()
-# SDLClient.query(...) / put_file(...) / get_file(...) here
-```
-
-A proxy error treated as an empty result produces a fabricated schema, causing every downstream panel to silently query non-existent fields.
+Host-only alternative (Claude Code or a terminal on the user's machine):
+`SDLClient().query(filter=f"dataSource.name=='{source}'", max_count=2, start_time="24h")`
+returns each match's `attributes` dict over the deprecated V1 endpoint, and the
+`mgmt-console-api` skill's `scripts/inspect_source.py` does the same over LRQ.
 
 The `attributes` dict exposes nested arrays as flattened keys like
 `resources[0].name` and `vulnerabilities[0].cve.uid`. Those flattened keys are
@@ -212,9 +173,13 @@ Prefer numeric OCSF for filters; the string `severity_` is case-mixed
 
 Raw-log ingestion runs through the event collector (the `hec_ingest` tool; `POST {S1_HEC_INGEST_URL}/services/collector/raw` and `/event`).
 
-**Auth is an SDL Log Write Key, carried in `S1_HEC_TOKEN`.** The Management Console API token, service user or personal, is refused: on identical requests the write key returns `HTTP 200 {"text":"Success","code":0}` and the console token returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}`. Mint the key at Console > Singularity Data Lake > API Keys > Log Write Key; no API creates one. It is optional in config because only log ingest needs it.
+**Auth is an SDL Log Write Key, carried in `S1_HEC_TOKEN`,** sent as `Authorization: Splunk <key>` or `Authorization: Bearer <key>` (both accepted, live 2026-10-09 on 2 consoles). Mint it at Console > Singularity Data Lake > API Keys > Log Write Key; no API creates one. It is optional in config because only log ingest needs it. The key needs no `S1-Scope` header. (On one console both the key and the console token got `401`, so a 401 is not a sign that the other credential would work.)
 
-**The ingest scope cannot be overridden.** A Log Write Key is minted for exactly one account or site and writes only there, so the key itself fixes the destination. No `S1-Scope` header is sent for log ingest, and sending one has no effect. To write elsewhere, use a key minted for that scope.
+**The console API token is not a reliable substitute; its behaviour at the collector differs per console** (live 2026-10-09). On one console it returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without an `S1-Scope` header and is accepted with one (`HTTP 200 {"text":"Success","code":0}`, events stored), and the header then decides the landing scope: `<accountId>:<siteId>` gave `site.id`, `<accountId>` gave account-only data. On another console it is refused with or without the header: `HTTP 403 {"text":"User token not allowed for this endpoint","code":4}`. A `400 Missing S1-Scope header` means the call carried the console token without a scope header; a `403 code 4` means this console does not accept user tokens at the collector. Use the write key in both cases.
+
+**With a write key the ingest scope cannot be overridden: the key's mint scope decides where events land.** A Log Write Key is minted for exactly one account or site and writes only there. For a write key the collector ignores `S1-Scope`: a site-minted key's events carried `site.id` whether the header named the account, the site or nothing. An account-minted key lands account-only data (no `site.id`), which site-scoped detection rules do not see. To write elsewhere, use a key minted for that scope.
+
+**Check where data landed with PowerQuery:** `<filter> | group n=count() by account.id, site.id`. Do not use V1 `/api/query` attributes or LRQ LOG `values` for this: on `addEvents` and agent-shipped data, account and site sit at session level, so those omit them (LOG shows them under `serverInfo`), while HEC events carry `site.id` as an event attribute. The PowerQuery group and a `site.id='<site>'` filter see both kinds. `site.id` is a string on some events and a number on others; `site.id='<site>'` matches both.
 
 UAM alert ingest (`POST /v1/alerts` on the same host) and IOCs are a different path and still use the console API token (`S1_CONSOLE_API_TOKEN`); that client is documented with `mgmt-console-api`.
 
@@ -225,13 +190,14 @@ When injecting events into the data lake to validate a detection, these behaviou
 
 ## Files in this skill
 
-- `scripts/bootstrap_creds.sh`: idempotent helper that copies workspace creds into the sandbox-local path. Wired to the plugin's SessionStart hook; safe to re-run manually.
-- `scripts/sdl_client.py`: importable Python client (`SDLClient`). Picks the right key per method, retries with exponential backoff, exposes ergonomic method names.
-- `scripts/sdl_cli.py`: CLI runner: `python scripts/sdl_cli.py power-query "dataset='accesslog' | group count() by status" --start 1h`.
+- `scripts/sdl_client.py`: host-only importable Python client (`SDLClient`). Reads credentials from environment variables or the OS keychain, retries with exponential backoff, exposes ergonomic method names.
+- `scripts/sdl_cli.py`: host-only CLI runner: `python scripts/sdl_cli.py power-query "dataset='accesslog' | group count() by status" --start 1h`.
 - `references/methods.md`: single per-method reference (parameters, defaults, response shape, gotchas) for the SDL query and configuration-file endpoints.
 - `references/auth_and_limits.md`: key matrix, console-token rules, S1-Scope, leaky-bucket CPU rate-limit model, retry guidance, daily caps.
 
-## Using the client
+## Using the client (host only)
+
+In Cowork and any MCP client, use the MCP tools listed at the top of this skill. The Python client below is for Claude Code or a terminal on the user's machine.
 
 ```python
 import sys
@@ -279,30 +245,29 @@ c.put_config_file(udo_id=dash["udoId"], content=new_dashboard_json,
 
 ## Authentication
 
-Every request sets `Authorization: Bearer <token>`. The client picks the key per method using these chains (first non-empty wins):
+Every request sets `Authorization: Bearer <token>`, and every method authenticates with `S1_CONSOLE_API_TOKEN`.
 
-Every method authenticates with `S1_CONSOLE_API_TOKEN`.
-
-If a `console_api_token` is used and the user has access to multiple sites or accounts, set `s1_scope` (e.g. `"<account_id>:<site_id>"` for site scope, `"<account_id>"` for account scope). The client adds `S1-Scope` automatically when both conditions hold.
+If the token has access to multiple sites or accounts, set `S1_SCOPE` (e.g. `"<account_id>:<site_id>"` for site scope, `"<account_id>"` for account scope) or pass `scope` per MCP call. The `S1-Scope` header is then added automatically.
 
 A 401 with `error/client/noPermission` means the token is wrong or expired. SDL keys do not expire by default, but console user tokens do.
 
 ## Rate limits and retries
 
-The client retries automatically on HTTP 429, 5xx, and SDL `status: error/server/backoff` (which can come back inside a 200), honouring `Retry-After`. Things to know up-front:
+The MCP server and the Python client retry automatically on HTTP 429, 5xx, and SDL `status: error/server/backoff` (which can come back inside a 200), honouring `Retry-After`. Things to know up-front:
 
 - **Query budget is a leaky bucket of CPU seconds.** When `cpuUsageSecondsToWait` shows in a 429, back off by that many seconds. `priority: "low"` (the default) gets a more generous bucket than `"high"`. See `references/auth_and_limits.md` for the bucket model.
 - **From 19 March 2026, all query methods cap at 8 queries/sec per tenant.**
-- **Concurrency cap:** 12 simultaneous requests per API key (non-query). For loops, throttle in code.
+- **Per-IP cap, all SDL endpoints, from 10 September 2026: 60-request burst, 30 req/s refill** (was 1,600 / 800). Measured 2026-10-05 it was not yet enforced (40 req/s sustained on `/api/query`, 137 req/s bursts on `/api/listFiles`, all 200), but throttle to 30 req/s per egress IP anyway.
+- **Concurrency cap:** 12 simultaneous requests per API key (non-query). This is what actually returns 429 today (`Too many concurrent requests` at 100 parallel calls). For loops, throttle in code.
 
 For long-running ingest, use the binary truncated exponential backoff loop in `references/integration_patterns.md` rather than the client's default retries; it is designed to stop on `discardBuffer` and to slowly relax wait times after success.
 
 ## Destructive actions: confirm first
 
-`delete_config_file(...)` and `put_config_file(content=...)` overwriting an existing file can wipe a parser, dashboard, alert, or lookup table. Before any config-file write or delete:
+`sdl_delete_file` and `sdl_put_file` overwriting an existing file (Python: `delete_config_file(...)`, `put_config_file(content=...)`) can wipe a parser, dashboard, alert, or lookup table. Before any config-file write or delete:
 
-- Run `config_file(...)` first to read current `version` and content. Pass that version as `expected_version` on the write to fail-fast on a concurrent edit; a stale value is rejected with "There are conflicting changes in the file." on both address forms.
-- Address a dashboard by `udo_id`. A name-addressed write to an existing `/dashboards/` file creates a duplicate rather than updating it.
+- Run `sdl_get_file` first to read current `version` and content. Pass that version as `expectedVersion` on the write to fail-fast on a concurrent edit; a stale value is rejected with "There are conflicting changes in the file." on both address forms.
+- Address a dashboard by `udoId`. A name-addressed write to an existing `/dashboards/` file creates a duplicate rather than updating it.
 - For deletes, summarise the file name (and `udoId` for a dashboard) and get explicit confirmation. A `delete_config_file` returning `null` with no `errors` array is success.
 - Keep a backup in the working directory before overwriting non-trivial parsers or dashboards.
 
@@ -310,40 +275,35 @@ There is no undo. Configuration files are versioned but accidental deletes still
 
 ## Common high-value workflows
 
-- **Hunt with PowerQuery.** Use the **`mgmt-console-api`** skill, which holds the LRQ runner at `POST /sdl/v2/api/queries` on your console host. LRQ is NOT reachable via the SDL API (`xdr.<region>.sentinelone.net`). This skill's `c.power_query()` hits the deprecated V1 endpoint and should only be used for a quick ad-hoc one-off before 2027-02-15.
-- **Promote a parser/dashboard.** `config_file(name="/logParsers/Foo")` from staging → `put_config_file(name="/logParsers/Foo", content=..., expected_version=N)` on production. The `expected_version` guard catches concurrent edits. (Parser path is `/logParsers/`, `/parsers/` is API-accepted but not UI-visible.) Promote a dashboard by `udo_id` on the target tenant, creating it by name only the first time.
-- **Audit configuration drift.** `config_files()` then `config_file(name=...)` for each name-addressed file and `config_file(udo_id=...)` for each dashboard; diff against a checked-in copy.
-- **Quick stats panel.** `facet_query(field="srcIp", filter="status >= 500", start_time="1h")` returns the top offenders fast.
+- **Hunt with PowerQuery.** Use `powerquery_run`, which runs LRQ at `POST /sdl/v2/api/queries` on your console host. LRQ is NOT reachable via the old SDL host (`xdr.<region>.sentinelone.net`). The host-only client's `c.power_query()` hits the deprecated V1 endpoint and should only be used for a quick ad-hoc one-off before 2027-02-15.
+- **Promote a parser/dashboard.** `sdl_get_file` with `path: "/logParsers/Foo"` and the staging `scope` → `sdl_put_file` with the same path, the new content and `expectedVersion` on the production scope. The `expected_version` guard catches concurrent edits. (Parser path is `/logParsers/`, `/parsers/` is API-accepted but not UI-visible.) Promote a dashboard by `udo_id` on the target tenant, creating it by name only the first time.
+- **Audit configuration drift.** `sdl_list_files`, then `sdl_get_file` by `path` for each name-addressed file and by `udoId` for each dashboard; diff against a checked-in copy.
+- **Quick stats panel.** `powerquery_run` with `... | group n=count() by srcIp | sort -n | limit 20` returns the top offenders fast.
 
-For complex hunts and detection authoring use the `powerquery` skill for the query body, then call `c.power_query()` from this skill to execute it. For Mgmt Console resources (agents, threats, sites) use `mgmt-console-api`.
+For complex hunts and detection authoring use the `powerquery` skill for the query body, then run it with `powerquery_run`. For Mgmt Console resources (agents, threats, sites) use `mgmt-console-api`.
 
-## Using s1-secops-mcp tools for direct SDL operations
+## Why the MCP tools and not a script in the sandbox
 
-If a direct bash call to sdl_client.py fails with a proxy error, use the s1-secops-mcp MCP
-tools instead. They run on your local machine and bypass the sandbox proxy entirely:
+The Cowork sandbox blocks outbound HTTPS to `*.sentinelone.net`, so `sdl_client.py` run from the sandbox fails with a proxy error. That is not a credential issue: do not widen time windows or change query logic to debug it. Use the `s1-secops-mcp` tools, which run on the user's machine:
 
-- `mcp__s1-secops-mcp__sdl_get_file` for reading SDL configuration files
-- `mcp__s1-secops-mcp__sdl_put_file` for deploying parsers, dashboards, alerts, lookups
-- `mcp__s1-secops-mcp__sdl_list_files` for listing SDL configuration inventory
-- `mcp__s1-secops-mcp__powerquery_run` for executing PowerQueries against the Singularity Data Lake
-
-No Desktop Commander workaround is necessary when you use these tools.
-
-This is not a credential issue. Do not widen time windows or change query logic to debug this.
+- `sdl_get_file` for reading SDL configuration files
+- `sdl_put_file` for deploying parsers, dashboards, alerts, lookups
+- `sdl_list_files` for listing SDL configuration inventory
+- `powerquery_run` for executing PowerQueries against the Singularity Data Lake
+- `hec_ingest` for raw log ingest
 
 ## Raw log ingest (learnings)
 
-- **Auth is the SDL Log Write Key (`S1_HEC_TOKEN`), and the key fixes the scope.** The console API token is refused, `HTTP 400 {"text":"Missing S1-Scope header","code":5}` against the write key's `HTTP 200 {"text":"Success","code":0}`. A key writes only to the account or site it was minted for; no header overrides that. See "Raw log ingestion" above.
+- **Auth is the SDL Log Write Key (`S1_HEC_TOKEN`, `Splunk` or `Bearer` prefix), and the key fixes the scope.** The console API token is not a reliable substitute: on some consoles it gets `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without an `S1-Scope` header and is accepted with one, on others it gets `HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` either way. Use the write key in both cases. A key writes only to the account or site it was minted for; `S1-Scope` does not change where a key's events land. See "Raw log ingestion" above.
 - **Three mandatory attributes for the XDR / OCSF view:** `dataSource.name`, `dataSource.vendor`, `dataSource.category`. Set all three as query params on `POST {HEC}/services/collector/event?isParsed=true&dataSource.name=...&dataSource.vendor=...&dataSource.category=...`. With only `dataSource.name` the events land under **All Data** but are invisible under the **XDR** view (XDR-scoped dashboards and rules show nothing, while all-data API queries still return them).
 - **`dataSource.category` MUST be hard-coded to `security`. Do not derive it from the event's OCSF semantics.** This attribute is the ingestion routing category that places the event in the XDR / OCSF security pipeline where detections, STAR/scheduled rules, and Singularity Threat Intelligence IOC matching run. It is NOT the OCSF event category. Setting it from the log type (e.g. `network` for a firewall, `identity` for auth logs, `cloud` for CloudTrail) lands the event under All Data only: it stays fully queryable via all-data PowerQuery, but the security pipeline never evaluates it, so XDR detections and Threat Intelligence matches silently never fire. Always send `dataSource.category=security`. The OCSF `category_uid` / `category_name` inside the event body (e.g. `4` / `Network Activity` for a firewall) is a separate field and stays true to the event; only the ingest-time `dataSource.category` query param is pinned to `security`. Confirmed failure mode (2026-07): a Palo Alto OCSF event ingested with `dataSource.category=network` was queryable under All Data but produced no Threat Intelligence match; the fix is `dataSource.category=security`.
 - **Singularity Threat Intelligence IOC matching, ingest requirements:** for a HEC-ingested OCSF event to be eligible for a TI match it must (1) carry `metadata.version` with any non-empty value, this is the only "is OCSF" check the TI engine performs, it does NOT validate the full OCSF schema; (2) be ingested with `dataSource.category=security` (see above); and (3) carry the IOC value in the OCSF field the engine matches on, for an IP IOC that is `src_endpoint.ip` (also checks `dst_endpoint.ip`). A match generates a NEW event with `dataSource.name='Threat Intelligence'` and `metadata.labels[0]='s1_threat_intelligence_indicator'`; the event Name is the source data-source name. Matching is asynchronous, allow several minutes before querying for the match log.
 - **Backdating:** a top-level `time` field in **epoch SECONDS** backdates the event; a nested `event.time` (ms) does NOT. `isParsed=true` indexes the JSON keys directly as top-level attributes, so the field names you ingest are the field names you query (source-agnostic, no OCSF mapping needed).
 - **Query-time timestamp:** on HEC `isParsed` events `event.time` is NOT populated; the queryable event time is `timestamp` (epoch NANOSECONDS). Use `timestamp` for `newest()/oldest()`, `strftime()` hour-of-day, and time math; convert to ms with `number(ts)/1000000`.
-- **⚠ Back-dated events ALSO produce receive-time "shadow" copies. Known platform defect, do not go looking for a bug in your ingest code.** A POST with a back-dated top-level `time` indexes correctly at the requested timestamp AND writes one or more extra copies stamped at ingest time. The shadows carry the URL-supplied `dataSource.name` / `dataSource.vendor` but NOT the JSON body fields, so they are invisible to `field = *` filters and show up only in unfiltered counts. Full reproduction and impact analysis: `SUPPORT_TICKET_HEC_shadow_copies.md` at the repo root (observed 2026-07-29, re-confirmed 2026-08-09).
+- **⚠ Every HEC POST also writes receive-time ingest-metering rows (`tag='logVolume'`) under the same `dataSource.name`. These are NOT copies of your events.** They carry the URL-supplied `dataSource.name` / `dataSource.vendor` plus `metric` (`logBytes` / `logEvents`), `value` and `path1`, and no body fields. Back-dated and non-back-dated POSTs both produce them. Live re-test 2026-10-03: a single POST of 100 events back-dated 72h indexed exactly 100 events at the back-dated times, plus 40 `logVolume` rows at receive time whose `logEvents` values summed to 100. Earlier notes (2026-07-29, 2026-08-09) called these "shadow copies" from a platform defect; that reading is superseded. Evidence, probes and the old ticket text: [references/hec-backdated-ingest.md](references/hec-backdated-ingest.md).
 
   Consequences when building synthetic test data:
-  - Any count over a window that spans "now" is inflated. Volume baselines, ingest-health analytics and dashboards summing across the ingest moment double-count.
-  - A source you deliberately left EMPTY in the live window will not read as empty, so a detection requiring zero live events (e.g. a SILENT / anti-join watchdog) cannot be validated this way.
-  - Scale seen: a source sent 430 back-dated events and nothing live read ~500 events in the trailing 24h. It is not proportional to batch size and is unaffected by payload shape.
-  - **Already eliminated as causes, do not re-test these:** envelope vs flat payload, `isParsed` on/off, chunk size (100 vs 500), run-tag field name, timestamp recency, and same-source vs cross-source concurrency. All four payload forms behave identically.
-  - Workaround for assertions: tag every event you post and count with `<tag> = *`, which excludes shadows because they carry no body fields. Only use unfiltered counts when you specifically need what a DETECTION sees, and expect them to be inflated.
+  - Any unfiltered `dataSource.name='X'` count over a window that spans the ingest moment includes metering rows. Exclude them with `tag != 'logVolume'` (rows with no `tag` are kept).
+  - A source you deliberately left EMPTY in the live window will read as non-empty unless `logVolume` is excluded, so validate SILENT / anti-join watchdogs on the filtered count.
+  - A full-text `* contains '<nonce>'` search also matches your own `queryOutcome` / `audit` rows (the logged text of queries and config writes containing the nonce). Anchor on `dataSource.name` or a body field instead.
+  - Assertions: count `real = count(tag != 'logVolume')`, or tag every event and count with `<tag> = *`. Use unfiltered counts only when you specifically need what a detection over that source sees.

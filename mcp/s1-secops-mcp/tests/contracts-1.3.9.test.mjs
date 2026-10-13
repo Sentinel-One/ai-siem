@@ -17,7 +17,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 process.env.S1_CONSOLE_URL ||= 'https://tenant.sentinelone.net';
 process.env.S1_CONSOLE_API_TOKEN ||= 'test-token';
@@ -57,7 +57,20 @@ function stubFetch(responses) {
 // answered 422. Both artifacts were individually right; nothing executed one against
 // the other. This test does.
 
-const SKILL_MD = new URL('../../hyperautomation/SKILL.md', import.meta.url);
+// The same test file runs in two layouts: s1-secops-skills (flat, skills beside
+// s1-secops-mcp/) and ai-siem (mcp/s1-secops-mcp/ beside plugins/s1-secops-skills/skills/).
+// A single hard-coded relative path ENOENTs in one of them (ai-siem PR #100), so
+// resolve whichever exists and fail loudly if neither does.
+const SKILL_MD_CANDIDATES = [
+  new URL('../../hyperautomation/SKILL.md', import.meta.url),
+  new URL('../../../plugins/s1-secops-skills/skills/hyperautomation/SKILL.md', import.meta.url),
+];
+const SKILL_MD = SKILL_MD_CANDIDATES.find(u => existsSync(u)) ?? SKILL_MD_CANDIDATES[0];
+
+test('A: the hyperautomation SKILL.md resolves in this repo layout', () => {
+  assert.ok(existsSync(SKILL_MD),
+    `hyperautomation/SKILL.md not found at any of: ${SKILL_MD_CANDIDATES.map(u => u.pathname).join(', ')}`);
+});
 
 /** Every ```json block under the smoke-test heading, in document order. */
 function smokeTestExamples() {

@@ -77,6 +77,11 @@ The most powerful function. Reference: <https://jqlang.org/manual>
 
 Then use: `{{Function.JQ(local_var.data, local_var.jqFilter)}}`
 
+Measured 2026-10-09 on two consoles, each run `Completed`: `|=`, `map`, `with_entries`,
+`reduce ... setpath`, `strftime`, `floor` and `tostring` all work in the filter. A variable whose
+value is JSON text is stored already parsed, so pass it to `JQ` directly; wrapping it in
+`PARSE_JSON` fails ("only JSON string is allowed", see expressions-gotchas.md section 2).
+
 Common patterns:
 
 ```jq
@@ -158,7 +163,7 @@ Common patterns:
 | `REMOVE_TEXT(str, remove)` | Remove text | `{{Function.REMOVE_TEXT(str, to_remove)}}` |
 | `REMOVE_FIRST_TEXT(str, remove)` | Remove first occurrence | `{{Function.REMOVE_FIRST_TEXT(str, sub)}}` |
 | `RANDOM_STRING(length)` | Random alphanumeric | `{{Function.RANDOM_STRING(8)}}` |
-| `GENERATE_UUID4()` | Random UUID | `{{Function.GENERATE_UUID4()}}` |
+| `GENERATE_UUID4()` | Random UUID | `{{Function.GENERATE_UUID4()}}`. There is no `GENERATE_UUID`: it fails the run with "Function name GENERATE_UUID doesn't match any function name in the system." (3 consoles, 2026-10-09) |
 | `BASE64_ENCODE(str)` | Encode to Base64 | `{{Function.BASE64_ENCODE(str)}}` |
 | `BASE64_DECODE(b64)` | Decode from Base64 | `{{Function.BASE64_DECODE(b64)}}` |
 | `BASE64_DECODE_AS_BYTES(b64)` | Decode to bytes | `{{Function.BASE64_DECODE_AS_BYTES(b64)}}` ← used for COMPRESS |

@@ -17,10 +17,10 @@ Output:
     <out>/<basename>.evidence.md           human-readable markdown report
 
 Notes:
-    Auth falls through to the console JWT by default (the scoped log_read /
-    config_read keys are force-cleared so a `console_api_token` in
-    credentials.json is used instead). The console JWT has both query and
-    config-read permission, which is what dashboard validation needs.
+    Auth uses the console API token through sdl-api's SDLClient, which reads
+    S1_CONSOLE_URL and S1_CONSOLE_API_TOKEN from the environment, then the OS
+    keychain. The console token has both query and config-read permission,
+    which is what dashboard validation needs.
 
     The script is idempotent. If the evidence JSON already contains a key for a
     panel, that panel is skipped. Persistence happens after every panel so

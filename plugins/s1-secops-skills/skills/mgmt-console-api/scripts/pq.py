@@ -62,9 +62,10 @@ order:
 """
 from __future__ import annotations
 
+import re
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
@@ -244,6 +245,62 @@ def _cancel(base_url: str, jwt: str, qid: str, ftag: str, timeout: float
         pass
 
 
+# ------------------------------------------------- ingest-metering exclusion
+#
+# Every ingest writes receive-time accounting rows under the source's own
+# dataSource.name: tag='logVolume', metric logBytes|logEvents, value, path1,
+# no event fields. They inflate per-source counts and make a silent source look
+# live. run_pq excludes them by default by ANDing METERING_PREDICATE into the
+# INITIAL filter (the scan stage, the cheapest place to drop rows). `!=` keeps
+# rows that have no `tag`, so the older `(tag != 'logVolume' OR !(tag = *))`
+# form is redundant: live-verified 2026-10-03 over a fixed 12h window, both
+# returned 375,654 and unfiltered 383,044 minus 7,390 metering reconciles.
+# Mirrors s1-secops-mcp/lib/metering.js; keep the two in step.
+
+METERING_PREDICATE = "tag != 'logVolume'"
+_PASSTHROUGH_COMMANDS = {"datasource", "dataset", "join", "union",
+                         "inputlookup", "lookup", "savelookup"}
+
+
+def _first_top_level_pipe(q: str) -> int:
+    quote = None
+    i = 0
+    while i < len(q):
+        c = q[i]
+        if quote:
+            if c == "\\":
+                i += 2
+                continue
+            if c == quote:
+                quote = None
+        elif c in ("'", '"'):
+            quote = c
+        elif c == "|":
+            return i
+        i += 1
+    return -1
+
+
+def exclude_metering(query: str) -> Tuple[str, bool, str]:
+    """Return (query_to_send, applied, reason). Never raises."""
+    q = query or ""
+    if re.search(r"logVolume", q, re.IGNORECASE):
+        return q, False, "query references logVolume explicitly"
+    pipe = _first_top_level_pipe(q)
+    initial = (q if pipe == -1 else q[:pipe]).strip()
+    rest = "" if pipe == -1 else q[pipe:]
+    if not initial:
+        m = re.match(r"^\|\s*([A-Za-z_]+)", rest)
+        if not m:
+            return q, False, "empty query"
+        cmd = m.group(1).lower()
+        if cmd in _PASSTHROUGH_COMMANDS:
+            return q, False, f"query opens with | {cmd}, which does not scan the event stream directly"
+        return f"{METERING_PREDICATE} {rest}", True, "added as the initial filter"
+    tail = f" {rest}" if rest else ""
+    return f"{METERING_PREDICATE} and ({initial}\n){tail}", True, "ANDed into the initial filter"
+
+
 # ------------------------------------------------------------ public surface
 
 def run_pq(
@@ -261,8 +318,15 @@ def run_pq(
     poll_interval_s: float = 1.0,
     poll_deadline_s: float = 180.0,
     request_timeout_s: float = 30.0,
+    include_metering: bool = False,
+    edr_strict: bool = False,
 ) -> Dict[str, Any]:
     """Run one PowerQuery via the LRQ API and return the result.
+
+    SDL ingest-metering rows (tag='logVolume') are excluded by default; see
+    exclude_metering(). Pass include_metering=True for ingest-volume or
+    data-usage questions. The result carries `meteringExcluded` and, when
+    applied, `effectiveQuery` (the text actually sent).
 
     The ONE call that replaces hand-rolled launch/poll/cancel. Pass
     the same S1Client you use for REST; the JWT is reused with a
@@ -297,6 +361,12 @@ def run_pq(
         Wall-clock cap on how long to wait for completion.
     request_timeout_s : float, default 30.0
         Per-HTTP-call socket timeout.
+    edr_strict : bool, default False
+        Send top-level `scheme: "edr"` (platform S-26.2.6). An unknown or
+        wrongly cased EDR field then fails with HTTP 400 "Unknown EDR
+        field" (raised as PQError) instead of a silent matchCount=0.
+        Correct fields return the same rows. Use for SentinelOne EDR
+        queries only.
 
     Returns
     -------
@@ -326,6 +396,11 @@ def run_pq(
         hours=hours, days=days,
         start_time=start_time, end_time=end_time)
 
+    if include_metering:
+        metering_applied, metering_reason = False, "include_metering=True"
+    else:
+        query, metering_applied, metering_reason = exclude_metering(query)
+
     body: Dict[str, Any] = {
         "queryType": "PQ",
         "startTime": start_iso,
@@ -333,6 +408,8 @@ def run_pq(
         "queryPriority": priority,
         "pq": {"query": query, "resultType": result_type},
     }
+    if edr_strict:
+        body["scheme"] = "edr"
     if account_ids:
         body["accountIds"] = list(account_ids)
         body["tenant"] = False
@@ -397,6 +474,8 @@ def run_pq(
         "values": values,
         "rows": rows,
         "data": data_block,
+        "meteringExcluded": metering_applied,
+        **({"effectiveQuery": query} if metering_applied else {"meteringNote": metering_reason}),
     }
 
 

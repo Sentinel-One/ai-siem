@@ -22,7 +22,7 @@ PowerQuery (PQ) is SentinelOne's pipeline query language for the Singularity Dat
 
 Use this skill to write correct, efficient, runnable PowerQueries for threat hunting, investigations, detection rule bodies, and dashboards.
 
-> **Sandbox proxy blocked?** If the LRQ API at `POST /sdl/v2/api/queries` on your console host fails with a connection or proxy error inside the Claude sandbox, use the `s1-secops-mcp` server instead. It runs locally via `node` and bypasses the sandbox proxy entirely. Setup: add it to `claude_desktop_config.json` (see `s1-secops-mcp/README.md`). The MCP server exposes `powerquery_run`, `powerquery_enumerate_sources`, and `powerquery_schema_discover`, all running through the LRQ API on your machine.
+> **Run queries with the `s1-secops-mcp` MCP tools.** `powerquery_run` runs any PQ through the LRQ API (plus `queryType: "LOG"` for raw events, `slices` / `merge` for long windows, `outputFile` for bulk results), `powerquery_enumerate_sources` lists data sources, and `powerquery_schema_discover` samples a source's fields. The server runs on the user's machine, so it reaches `*.sentinelone.net` where the Cowork sandbox cannot, and it reads credentials from environment variables or the OS keychain. If the tools are missing, point the user to the s1-secops-mcp README (`s1-secops-mcp/README.md` in the s1-secops-skills source repo, `mcp/s1-secops-mcp/README.md` in ai-siem; not shipped inside the plugin). Python runners are host-only (Claude Code or a terminal).
 
 ## Workflow
 
@@ -30,8 +30,8 @@ When the user asks you to write or investigate with a PowerQuery:
 
 1. **Clarify the intent** if it's ambiguous (time range, data view, what the output should look like). A good PQ is scoped, not everything needs to be hunted over 30 days.
 2. **Draft the query** following the grammar below. Favor `filter | group | sort | limit | columns` as the default shape; it's what most real investigations need.
-3. **Run it against the tenant.** Default to the **Long Running Query (LRQ) API** at `POST /sdl/v2/api/queries` on the tenant's console URL. LRQ is the fastest, highest-limit, most reliable path for any programmatic use and supersedes both `/api/powerQuery` and the Deep Visibility `/dv/events/pq` endpoint (both deprecated; sunset Feb 15 2027). It is async, supports cursor paging to essentially unlimited rows, has a 100 req/sec per-account cap, and lets you parallelize across time slices. Reach for the Purple MCP `powerquery` tool only for a single quick exploratory check when no API client is already wired up. See "Running queries (LRQ API by default)" below and `references/lrq-api.md` for the canonical runner, body schema, auth, rate limits, and the gotchas that make it fail silently with 0 rows. If the user's request is clear and low-risk (read-only query), just run it; don't ask permission.
-4. **Iterate**: if the query errors or returns obviously wrong results, read the error, fix, rerun. If the query returns nothing, that is a legitimate result, don't blindly loosen it; check the time range and filter logic first. If you ran via the Purple MCP `powerquery` tool and it **timed out** or returned a server error (common for anything past 24h or with wide initial filters), don't retry and don't shrink the range to fit the MCP budget - switch to the LRQ API path (see "Fallback" under Running queries below).
+3. **Run it against the tenant** with `powerquery_run`, which uses the **Long Running Query (LRQ) API** at `POST /sdl/v2/api/queries` on the tenant's console URL. LRQ is the fastest, highest-limit, most reliable path for any programmatic use and supersedes both `/api/powerQuery` and the Deep Visibility `/dv/events/pq` endpoint (both deprecated; sunset Feb 15 2027). It is async and parallelizes across time slices (`slices` plus `merge`). Reach for the Purple MCP `powerquery` tool only for a single quick exploratory check. See "Running queries (LRQ API by default)" below and `references/lrq-api.md` for the body schema, auth, rate limits, and the gotchas that make it fail silently with 0 rows. If the user's request is clear and low-risk (read-only query), just run it; don't ask permission.
+4. **Iterate**: if the query errors or returns obviously wrong results, read the error, fix, rerun. If the query returns nothing, that is a legitimate result, don't blindly loosen it; check the time range and filter logic first. If you ran via the Purple MCP `powerquery` tool and it **timed out** or returned a server error (common for anything past 24h or with wide initial filters), don't retry and don't shrink the range to fit the MCP budget - switch to `powerquery_run` (see "Fallback" under Running queries below).
 5. **Explain the result briefly** and cite any fields you're relying on. If you used a non-obvious pattern (subquery, `savelookup`, `transpose`, `compare`), explain *why* you chose it.
 
 ## The grammar in one page
@@ -137,7 +137,7 @@ These are where queries go wrong. Internalize them before writing.
     ```
 
     The `(field = *) ? a : b` form (i.e. wrapping the field-presence test in parens before the ternary) **returns HTTP 500 inside `let`** on this engine, `field = *` is a filter operator, not a boolean expression usable in computed columns. Bare-field truthy is the only working coalesce idiom in PQ.
-17. **`if(...)` is not a function in aggregates.** `sum(if(cond, 1, 0))` returns 500. Use `count(<predicate>)` instead, `count(severity_id == 5)` evaluates the predicate per row and sums the truthy ones. Same for any "count where X" semantic.
+17. **`if(...)` is not a function in aggregates.** `sum(if(cond, 1, 0))` returns 500. Use `count(<predicate>)` instead, `count(severity_id == 5)` evaluates the predicate per row and sums the truthy ones. Same for any "count where X" semantic. **Field-presence counting uses `!= null`, not `= *`:** `count(user.name=*)` returns 400 "Don't understand [*]" because `= *` is a filter operator, while `count(user.name != null)` works (live-verified 2026-10-03: 1,000 of 1,016 Okta events).
 18. **Always filter `field=*` before projecting or inspecting any field.** `| limit N | columns field` returns the first N events regardless of whether the field is populated, most rows will be null. Add `field=*` to the initial filter to scope to events that actually carry the field:
 
     ```text
@@ -154,6 +154,8 @@ These are where queries go wrong. Internalize them before writing.
 
 20. **Parenthesise every negation.** `NOT src.process.name contains 'x'` and `NOT src.process.name = 'x'` apply the negation to the bare field and silently return 0 rows. Write `!(src.process.name contains 'x')`. Likewise `| filter x` on a bare field or variable is a text search, not a truthiness test; use `| filter bool(x)`.
 
+21. **Exclude SDL ingest-metering rows: `tag != 'logVolume'` in the initial filter.** Every ingest writes receive-time accounting rows (`tag='logVolume'`, fields `metric` / `value` / `path1`, plus `sca:bytesToCharge` and `sca:ingestTime`) under the source's own `dataSource.name`. Any query anchored only on `dataSource.name`, `dataSource.vendor`, `site.id` or `sca:*` counts them, and a silent source looks live (measured 2026-10-03: 7,390 of 383,044 rows in 12h, all carrying `sca:bytesToCharge`). Queries anchored on an event field (`class_uid`, `event.type`, a principal `=*`) are already immune. `powerquery_run` and `pq.run_pq()` add the predicate automatically (opt out with `includeMetering` / `include_metering=True`). For persisted queries (dashboard panels, STAR / scheduled rule bodies) write it yourself, in the initial filter where it is cheapest: `dataSource.name='X' tag != 'logVolume' | ...`. `!=` keeps rows that have no `tag`, so `OR !(tag = *)` is not needed in PowerQuery. Omit it only when the question is ingest volume or data usage. The console's XDR view already hides these rows; All Data does not.
+
 ## When to delegate baselining + anomaly detection to the mgmt-console-api skill
 
 If the user asks for any of the following, you need MORE than this skill, load the `mgmt-console-api` skill alongside, because the runner, the schema discovery, and the source-agnostic key picker live there:
@@ -164,17 +166,33 @@ If the user asks for any of the following, you need MORE than this skill, load t
 - Porting any moving-average + stddev / z-score / Prophet / Isolation Forest pattern
 - "Run this for all sources" / source-agnostic anomaly detection
 
-What `mgmt-console-api` adds:
+What to use:
 
-- `scripts/inspect_source.py`, auto-discovers field schema for any `dataSource.name` and classifies fields into `principal_user` / `principal_host` / `principal_ip` / `action` etc. via `pick_keys(schema)` → returns `(prim_key, action_key)`. This means you don't hand-hardcode `actor.user.email_addr` for every source, the right principal field is picked from whatever the source actually carries (Okta uses email, FortiGate uses IP, SentinelOne uses process user, etc.).
-- `scripts/pq.py`: `run_pq()` LRQ runner that handles auth, forward-tag, polling, slicing.
-- `scripts/baseline_anomaly.py`: source-agnostic 30-day-DoW-stratified baseliner that takes a `dataSource.name`, discovers the schema, and produces anomalies. Read its source for the canonical end-to-end pattern.
+- **Schema discovery:** `powerquery_schema_discover` per source, so you don't hand-hardcode `actor.user.email_addr` for every source; pick the principal field from whatever the source actually carries (Okta uses email, FortiGate uses IP, SentinelOne uses process user, etc.). On the host, `mgmt-console-api` `scripts/inspect_source.py` also classifies fields into `principal_user` / `principal_host` / `principal_ip` / `action` via `pick_keys(schema)`.
+- **Daily slices:** `powerquery_run` with `slices` and `merge` for a summed baseline, or one `powerquery_run` call per day issued in parallel when you need per-day rows for mean and stddev.
+- **Host-only productionised baseliner:** `mgmt-console-api` `scripts/baseline_anomaly.py` (30-day, DoW-stratified, takes a `dataSource.name`, discovers the schema, produces anomalies). Read its source for the canonical end-to-end pattern; run it from Claude Code or a terminal.
 
-Use `examples/behavioral-baselines.md` in THIS skill for the PQ building blocks (per-day slice, live slice, z-score math, silent-pair detector). Use the mgmt-console-api skill for the runner, schema discovery, and the productionised baseliner script. Don't reinvent the schema-discovery or the daily-slice runner, both already exist there.
+Use `examples/behavioral-baselines.md` in THIS skill for the PQ building blocks (per-day slice, live slice, z-score math, silent-pair detector).
 
 ## Running queries (LRQ API by default)
 
-The primary execution path is the Long Running Query API. It is async (launch + poll + cancel), handles queries that would time out on any other endpoint, scales cleanly to 30-day aggregates, and is the only path that stays supported after Feb 15 2027 when both `/api/powerQuery` and `/web/api/v2.1/dv/events/pq` retire.
+The primary execution path is the Long Running Query API, through the `powerquery_run` MCP tool. LRQ is async (launch + poll + cancel), handles queries that would time out on any other endpoint, scales cleanly to 30-day aggregates, and is the only path that stays supported after Feb 15 2027 when both `/api/powerQuery` and `/web/api/v2.1/dv/events/pq` retire.
+
+**`powerquery_run` parameters that matter:**
+
+| Parameter | Use |
+|---|---|
+| `query` | The PQ. With `queryType: "LOG"`, a filter expression only (no pipes). |
+| `hours` or `startTime` / `endTime` | Window. ISO-8601 UTC for explicit bounds. |
+| `queryType` | `"PQ"` (default) or `"LOG"`: raw events with every parsed field, server cap `logLimit` (max 5000) per query or slice; `truncatedByServerCap: true` means the window held more, so slice it. |
+| `slices` + `merge` | 2-15 parallel time slices for windows past a day. `merge: {"keys": [...], "sum": [...], "min": [...], "max": [...]}` re-aggregates a group-by; count, sum, min and max only. The tool refuses `estimate_distinct`, `avg`, percentiles, `top` and `savelookup` across slices. List every group-by column in `keys` with its exact output name: rows are combined on those keys, and the tool does not check them, so a misspelled or missing key silently collapses rows. A trailing `\| sort` / `\| limit` is applied after the merge; any other command after the last `\| group` is refused. Without `merge`, slice rows are concatenated. |
+| `maxRows` | Caps rows in the inline response (default 1000). With `outputFile` every row is written. |
+| `edrStrict` | Sends top-level `scheme: "edr"` so an unknown or wrongly cased EDR field returns HTTP 400 instead of silent 0 rows. |
+| `outputFile` (+ `overwrite`) | Absolute path on the user's machine; `.csv`, `.jsonl` or JSON. The full result is written there (mode 0600, must be inside `S1_OUTPUT_DIRS`, default home and temp; under the Docker launcher, inside the mounted `S1_OUTPUT_DIR`) and only a summary plus a 5-row preview returns. If the server refuses the path because no folder is shared with the container, tell the user to run `~/.local/bin/s1-secops-mcp-launch.sh install --output-dir <folder>` (Windows: `-OutputDir`) and restart Claude Desktop; do not ask them to set `S1_OUTPUT_DIRS`, which never reaches the container. |
+| `scope` | `"<accountId>"` or `"<accountId>:<siteId>"`; log reads are scope-filtered. |
+| `includeMetering` | Keep SDL `tag='logVolume'` ingest-metering rows (excluded by default). |
+
+The wire protocol below is what the tool does for you; it matters when you debug a result or write a host-only runner.
 
 **Three calls, in order:**
 
@@ -201,45 +219,38 @@ DELETE https://<console>.sentinelone.net/sdl/v2/api/queries/{id}     -> cancel w
 
 1. **Auth: `Authorization: Bearer <jwt>`**, not `ApiToken`. Same JWT from the mgmt console, different prefix. Wrong prefix returns HTTP 500 "Header must start with Bearer".
 2. **`queryType` is required.** Omit and you get 400 "Query type must be specified".
-3. **`tenant: true` is required** unless you pass `accountIds`. Without either, the query runs against a near-empty default scope and returns `matchCount=0`.
+3. **`tenant: true` is required** unless you pass `accountIds`. Without either, the query runs against a near-empty default scope and returns `matchCount=0`. On a global or multi-account token `tenant: true` spans EVERY account and the `S1-Scope` header does not narrow it: for one account send `tenant: false, accountIds: ["<accountId>"]`, for one site also add `site.id='<siteId>'` to the initial filter. With the MCP, pass `scope: "<accountId>[:<siteId>]"` to `powerquery_run` (1.5.3+) for the account or site the user named.
 4. **Echo `X-Dataset-Query-Forward-Tag`** from the POST response header on every poll and the cancel. GET/DELETE without it is rejected.
 5. **EDR filter for SentinelOne telemetry:** prepend `dataSource.name='SentinelOne' dataSource.category='security'` (or `i.scheme="edr"`) to your query. Without it you get Scalyr / infra logs mixed with everything, and on some tenants you get only infra.
+6. **Fail loud on EDR field typos:** add top-level `"scheme": "edr"` to the launch body for EDR queries. A wrongly cased or unknown field then returns HTTP 400 `Unknown EDR field: ...` instead of a silent `matchCount=0` (the `i.scheme` query filter does not do this). Correct fields return the same rows. Treat that 400 as "fix the query", never as "retry".
 
-**Rate limits:** 100 req/sec per account, **3 req/sec per user** (the tight one). A user token capped at 3 rps means a token-bucket limiter at ~2.5 rps with a pool of 3 parallel slices is the sweet spot. To push further, use two distinct service user JWTs and round-robin slices across them - each user identity has its own 3 rps budget.
+**Rate limits (measured 2026-10-05, S-26.3.4, one token, one IP):** about 30 calls/s sustained with zero 429s; 429s start around 35 calls/s and hit **only launches** (POST), never polls or cancels. The old "3 req/sec per user" figure is stale, and a second token is not needed for speed. Default to a token bucket at about 25 calls/s with 15 to 20 slices in flight, and retry a launch 429 with exponential backoff.
 
 **Query expires 30s after launch or 30s after the last poll.** Poll every 1-2s; don't let the deadline slip.
 
-**Sizing & parallelism.** Two bottlenecks stack: per-user rate cap first, then slowest-slice server runtime. Measured on `your-tenant` for a 30d count-by-event.type over 574M events:
+**Sizing & parallelism.** Time-slice long windows and run the slices in parallel, then merge. Measured 2026-10-05 for a 30d `| group n=count() by dataSource.name` over 14.1M events, one token at 25 calls/s: 1 x 30d **21 to 40 s**; 7 x ~4d in parallel **4.7 to 5.0 s**; 15 x 2d in parallel **4.9 to 5.2 s** (the sweet spot); 30 x 1d in parallel **10.2 s** (past about 15 to 20 in flight it slows down again). Merged totals matched the single query every time. Defaults table and the full benchmark live in `references/lrq-api.md`.
 
-- **1 token, 2.5 rps:** 30d serial 166s | 30x1d pool=3 87s | 6x5d pool=3 **66s** (best 1-token)
-- **2 tokens, ~5 rps combined, round-robin:** 30x1d pool=6 35s | 15x2d pool=6 **29s** | 10x3d pool=6 **29s** (best 2-token)
+**Runner.** `powerquery_run` is the runner (rate limiting, slice runner, aggregate merge across slices). For a host-only Python runner (Claude Code or a terminal), the design is documented in `references/lrq-api.md` and implemented in the `mgmt-console-api` skill's `scripts/pq.py` and the `sdl-solutions` skill's `scripts/lrq_sliced.py`. Do not write a new runner from scratch.
 
-Once two tokens are in play the per-user rate cap stops being the bottleneck and the slowest slice's backend runtime (p95 ~9-17s) becomes the floor. Push further by adding a third service-user JWT (pool=9, ~7.5 rps budget, expected 18-22s), swapping `| group` for `| top K` on huge ranges, or narrowing the initial filter. Defaults table and the full benchmark live in `references/lrq-api.md`.
+**Quick one-shot exploration:** the Purple MCP `mcp__purple-mcp__powerquery` tool is fine for an interactive 24h hunt. It wraps the same engine but with lower limits, tighter timeouts, and no parallelism. Pair it with `mcp__purple-mcp__get_timestamp_range(hours=24)` for ISO-8601 ranges, and `mcp__purple-mcp__purple_ai` when you need a starting-point query draft from natural language. Prefer `powerquery_run` for anything programmatic, multi-slice, over long windows, or producing results the user will use downstream.
 
-**Canonical runner.** The full Python implementation (rate limiter, two-token round-robin, aggregate merge across slices) is documented in `references/lrq-api.md`. Read that file before writing a new runner from scratch.
+**Fallback: when the Purple MCP `powerquery` tool times out or returns an error** (common for ranges > 24h, large aggregates, or wide initial filters), do NOT retry with a tighter time range as a first resort. Re-run the same query with `powerquery_run`. If the window is longer than a couple of days or the aggregate is heavy, add `slices` (15 for 30 days) and a `merge` spec; one token is enough. There's no need to shrink the user's requested range to fit the Purple MCP budget.
 
-**Quick one-shot exploration** (no API client wired up): the Purple MCP `mcp__purple-mcp__powerquery` tool is fine for an interactive 24h hunt. It wraps the same engine but with lower limits, tighter timeouts, and no parallelism. Pair it with `mcp__purple-mcp__get_timestamp_range(hours=24)` for ISO-8601 ranges, and `mcp__purple-mcp__purple_ai` when you need a starting-point query draft from natural language. Prefer LRQ for anything programmatic, multi-slice, over long windows, or producing results the user will use downstream.
-
-**Fallback: when the Purple MCP `powerquery` tool times out or returns an error** (common for ranges > 24h, large aggregates, or wide initial filters), do NOT retry with a tighter time range as a first resort. Instead, re-run the same query through the LRQ API. The mgmt console API's `S1Client` already holds a valid JWT (`S1Client().api_token`); swap the prefix from `ApiToken` to `Bearer` and POST to the same tenant's `/sdl/v2/api/queries`. Canonical inline fallback:
-
-```python
-# Starting from the already-loaded S1Client used by the mgmt-console-api skill:
-from sentinelone_sdl_lrq import LRQClient, run_lrq_pq, parallel_run_roundrobin, slice_window
-
-s1 = S1Client()                                # same client the mgmt skill uses
-jwt = s1.api_token                              # raw JWT - no prefix
-base = s1.base_url                              # e.g. https://your-tenant.sentinelone.net
-lrq = LRQClient(base, jwt, label="fallback", rps=2.5)
-result = run_lrq_pq(lrq, query, start_iso, end_iso)   # launches, polls 1s, cancels
+```json
+{
+  "query": "dataSource.name='SentinelOne' dataSource.category='security' event.type=* | group n = count() by event.type",
+  "startTime": "2026-09-07T00:00:00Z",
+  "endTime": "2026-10-07T00:00:00Z",
+  "slices": 15,
+  "merge": { "keys": ["event.type"], "sum": ["n"] }
+}
 ```
-
-If the window is longer than a couple of days or the aggregate is heavy, slice it and use `parallel_run_roundrobin` with two clients built from two service-user JWTs (see `references/lrq-api.md`). The LRQ path handles anything the MCP times out on; there's no need to shrink the user's requested range to fit the MCP budget.
 
 ## Reference files: read as needed
 
 Don't read these upfront. Read the one you need.
 
-- `references/lrq-api.md` - the canonical Long Running Query API runner: auth, body schema, forward-tag routing, rate-limit strategy, 30-second query expiration, slicing/parallelism patterns, two-JWT round-robin to exceed the per-user rate cap. Read before writing any programmatic PQ runner, or when a query silently returns `matchCount=0`.
+- `references/lrq-api.md` - the Long Running Query API that `powerquery_run` wraps: auth, body schema, forward-tag routing, measured rate limits, 30-second query expiration, slicing/parallelism patterns, LOG queries. Read when a query silently returns `matchCount=0`, or before writing a host-only runner.
 - `references/syntax-and-operators.md`: full operator reference, identifier rules, shortcut fields, regex dialect, date/time formats, short-circuit `||`.
 - `references/commands-reference.md`: deep dive on every command (join variants, subqueries, lookup / dataset / savelookup, transpose, compare, top, nolimit). Read before writing anything non-trivial with join, transpose, or compare.
 - `references/functions-reference.md`: all built-in functions: string, numeric, JSON, network, URL, aggregate, array (method chaining), geolocation, timestamp, time, string-formatting. Read when you need a function and can't remember the name.
@@ -320,8 +331,9 @@ Measured end to end on one tenant, same ingested events, two rules firing off th
 | `scheduled` with `entityMappings: [{"columnName": "probe_host"}]` | the real hostnames |
 
 That is the whole argument for preferring `scheduled` on non-EDR sources: it is
-the only type where you can make the alert name the asset. `tools/e2e_detection_rules.py`
-reproduces this.
+the only type where you can make the alert name the asset. The reproduction is
+`tools/e2e_detection_rules.py` at the root of the s1-secops-skills source repo; it is a
+maintainer harness and is not shipped inside the plugin.
 
 ### Correlation keys, including a custom one
 
@@ -336,14 +348,14 @@ reproduces this.
   by that identity.
 
 For a key the built-ins do not cover, set `entity: "custom"` and supply
-`entitiesAndFields`, **a list of lists, one inner list per sub-query, matched
-positionally**:
+`entitiesAndFields`, **a list of entity groups**: fields inside a group are OR'd
+(alternative names for the same identity), groups are AND'd (a compound key), and
+the number of groups does not depend on the number of sub-queries:
 
 ```json
 "correlationParams": {
   "entity": "custom",
-  "entitiesAndFields": [ ["src.process.parent.storyline.id"],
-                         ["tgt.process.storyline.id"] ],
+  "entitiesAndFields": [ ["src.process.parent.storyline.id", "tgt.process.storyline.id"] ],
   "matchInOrder": false,
   "timeWindow": {"windowMinutes": 10},
   "subQueries": [
@@ -353,18 +365,19 @@ positionally**:
 }
 ```
 
-That reads as "correlate sub-query 1's `src.process.parent.storyline.id` against
-sub-query 2's `tgt.process.storyline.id`", which is how you join two different
-field paths that hold the same identity.
+That reads as "the entity is the storyline id, whichever of the two fields holds
+it", which is how you join two different field paths that hold the same identity.
+**Do not split them into two groups** (`[["src..."], ["tgt..."]]`): that means
+"both fields, AND'd", the API accepts it, and it never fires when each event carries
+only one of the fields (live-validated 2026-10-05, see
+`references/detection-rules.md`, "Custom correlation key").
 
 Three things the API rejects, each confirmed by the error it returns:
 
 - the field is `entitiesAndFields`, not `customEntityKey` (`Unknown field`)
 - it is a list of lists; a flat list of strings fails with `Not a valid list` on element 0
-- **aliases must be unique across the whole structure.** Repeating the same field
-  path in two inner lists gives `entityFields contains duplicate alias(es)`. Two
-  sub-queries correlating on the same logical identity must name it by two
-  different field paths.
+- **a field path may appear in only one group.** Repeating it gives
+  `entityFields contains duplicate alias(es)`.
 
 Creating a rule at a scope above your token's returns
 `can not create rule with higher scope`; pass `filter.accountIds` rather than
@@ -419,10 +432,11 @@ Notice: filter early (`dst.ip.address = *` prunes events without a destination I
 
 ## PowerQuery execution via s1-secops-mcp
 
-PowerQuery execution uses the `s1-secops-mcp` MCP tools, which bypass the Cowork sandbox
-proxy entirely. Use `powerquery_run` and `powerquery_schema_discover` directly instead of
-falling back to the `mgmt-console-api` skill scripts. The MCP tools run locally
-on your machine and make direct HTTPS calls to `*.sentinelone.net` without proxy interference.
+PowerQuery execution uses the `s1-secops-mcp` MCP tools, which run on the user's machine and
+reach `*.sentinelone.net` where the Cowork sandbox cannot. Use `powerquery_run` and
+`powerquery_schema_discover` directly; the `mgmt-console-api` skill scripts are host-only. If a
+tool reports a missing credential, ask the user to run `s1-secops-mcp setup` on their machine;
+never ask for a token in the chat.
 
 ## Timestamp fields on HEC-ingested (isParsed) events (learnings)
 

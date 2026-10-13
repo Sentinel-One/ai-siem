@@ -1,5 +1,7 @@
 ## Using the client in Python: full examples
 
+The Python client is host-only. Run it from Claude Code or a terminal on the user's machine; it cannot reach `*.sentinelone.net` from the Cowork sandbox, where the `s1_api_*` MCP tools are the path. It reads each credential from the environment first, then from the OS keychain (service `sentinelone-mcp`, account `<profile>:<NAME>`, profile from `S1_PROFILE`), the same entries `s1-secops-mcp setup` writes. On Windows, keychain reads need the Python `keyring` package. There is no credentials file.
+
 ```python
 import sys
 sys.path.insert(0, "scripts")  # or set PYTHONPATH

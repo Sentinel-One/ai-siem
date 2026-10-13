@@ -2,7 +2,7 @@
 
 Complete reference for SDL dashboard JSON authoring. All entries are confirmed against a live tenant via the `panel-showcase` dashboard (`/dashboards/panel-showcase`).
 
-**Full working example:** [`sdl-dashboard/examples/panel-showcase.json`](../skills/sdl-dashboard/examples/panel-showcase.json) — a 3-tab, 23-panel dashboard covering every supported panel type and feature. Deploy it directly with `sdl_put_file` to `/dashboards/panel-showcase`.
+**Full working example:** [`sdl-dashboard/examples/panel-showcase.json`](../skills/sdl-dashboard/examples/panel-showcase.json), a 3-tab, 23-panel dashboard covering every supported panel type and feature. Deploy it directly with `sdl_put_file` to `/dashboards/panel-showcase`.
 
 ---
 
@@ -10,8 +10,8 @@ Complete reference for SDL dashboard JSON authoring. All entries are confirmed a
 
 | graphStyle | Use case | Query shape |
 |---|---|---|
-| `number` | Single KPI value | `\| group count=count()` — must return a single scalar |
-| `gauge` | Value vs. threshold bands | `\| group value=<scalar>` — field must be named `value` |
+| `number` | Single KPI value | `\| group count=count()`: must return a single scalar |
+| `gauge` | Value vs. threshold bands | `\| group value=<scalar>`: field must be named `value` |
 | `donut` | Part-of-whole distribution with center total | `\| group count=count() by label` |
 | `pie` | Part-of-whole distribution, no center total | `\| group count=count() by label` |
 | `stacked_bar` | Category comparison (`xAxis: "grouped_data"`) or time-series bars (`xAxis: "time"`) | `\| group count=count() by category` or `\| group count by category, timebucket() \| transpose` |
@@ -20,7 +20,7 @@ Complete reference for SDL dashboard JSON authoring. All entries are confirmed a
 | `area` | Multi-series filled area chart | `plots[]` array (not `query`) |
 | `heatmap` | 2D time density: category × time bucket, color = count | `\| group EventCount=count() by user, timestamp=timebucket('1h') \| transpose user on timestamp` |
 | `honeycomb` | Static cell density grid, color = magnitude | `\| group value=count() by label` |
-| `bullet` | KPI value vs. SLA target with color bands | `\| columns value, target, label` — all three columns required |
+| `bullet` | KPI value vs. SLA target with color bands | `\| columns value, target, label`: all three columns required |
 | `funnel` | Ordered step-down counts | `\| columns Step, Count` |
 | `sankey` | Flow between two node sets | `\| columns source, target, c` |
 | `scattered_bubble` | 3D outlier detection: x, y, bubble size, label | `\| columns x_col, y_col, size_col, label=field` |
@@ -33,6 +33,7 @@ Complete reference for SDL dashboard JSON authoring. All entries are confirmed a
 ## Panel-level features
 
 ### number panel
+
 ```json
 {
   "graphStyle": "number",
@@ -50,6 +51,7 @@ Complete reference for SDL dashboard JSON authoring. All entries are confirmed a
   "chartLinkConfig": { "url": "/incidents/unified-alerts" }
 }
 ```
+
 - `options.format`: `"commas"` adds thousands separators
 - `options.suffix`: appended after the value (e.g. `" alerts"`, `" GB"`)
 - `options.color`: hex color for the number text
@@ -58,6 +60,7 @@ Complete reference for SDL dashboard JSON authoring. All entries are confirmed a
 - `chartLinkConfig.url`: makes the number clickable, opens the given console path
 
 ### gauge panel
+
 ```json
 {
   "graphStyle": "gauge",
@@ -71,9 +74,11 @@ Complete reference for SDL dashboard JSON authoring. All entries are confirmed a
   }
 }
 ```
+
 The query result column **must** be named `value`. Color ranges define semantic zones (green/amber/red).
 
 ### donut panel
+
 ```json
 {
   "graphStyle": "donut",
@@ -82,14 +87,17 @@ The query result column **must** be named `value`. Color ranges define semantic 
   "totalNumberConfig": { "enabled": true }
 }
 ```
+
 - `maxPieSlices`: caps segments, remainder grouped as "Other"
 - `dataLabelType`: `"PERCENTAGE"` or `"VALUE"`
 - `totalNumberConfig.enabled`: shows sum in the center hole
 
 ### pie panel
+
 Same as donut but no `totalNumberConfig`. Use `pie` when center total is not meaningful.
 
 ### stacked_bar panel
+
 ```json
 {
   "graphStyle": "stacked_bar",
@@ -97,12 +105,15 @@ Same as donut but no `totalNumberConfig`. Use `pie` when center total is not mea
   "yScale": "linear"
 }
 ```
+
 - `xAxis: "grouped_data"`: horizontal category comparison
 - `xAxis: "time"`: time-series bars. Query must use `timebucket()` + `transpose`
 - `yScale`: `"linear"` or `"logarithmic"`
 
 ### line and area panels (plots array)
+
 Both use `plots[]` instead of `query` for multi-series without PowerQuery:
+
 ```json
 {
   "graphStyle": "line",
@@ -114,12 +125,14 @@ Both use `plots[]` instead of `query` for multi-series without PowerQuery:
   ]
 }
 ```
+
 - `lineSmoothing`: `"smoothCurves"` or `"straightLines"`
 - `plotNulls: "connected"`: bridges gaps in sparse series
 - `facet`: `"rate"` for events/sec, or a field name to aggregate
 - `color`: per-series hex color
 
 ### heatmap panel
+
 ```json
 {
   "graphStyle": "heatmap",
@@ -131,11 +144,13 @@ Both use `plots[]` instead of `query` for multi-series without PowerQuery:
   "heatmapRangeConfig": ["-∞", "", "", "", "", "∞"]
 }
 ```
+
 **Critical rule:** `rangesCreation: "automatic"` requires all middle elements of `heatmapRangeConfig` to be empty strings `""`. Providing explicit numeric values (e.g. `"50"`) conflicts with automatic mode and renders a blank panel with no error. The array must have N+1 elements for N ranges.
 
 Pre-filter to a fixed user/category set before `transpose` to keep the heatmap readable and avoid sparse null columns.
 
 ### honeycomb panel
+
 ```json
 {
   "graphStyle": "honeycomb",
@@ -144,9 +159,11 @@ Pre-filter to a fixed user/category set before `transpose` to keep the heatmap r
   "honeycombRangeConfig": [0, 1000, 10000, 100000]
 }
 ```
+
 Static cell grid. Result columns must be `value` (numeric) and `label` (string). `honeycombRangeConfig` defines explicit threshold boundaries.
 
 ### bullet panel
+
 ```json
 {
   "graphStyle": "bullet",
@@ -158,9 +175,11 @@ Static cell grid. Result columns must be `value` (numeric) and `label` (string).
   "numberOfRanges": 4
 }
 ```
+
 All three columns (`value`, `target`, `label`) are required. `coloringMode: "kpiReach"` colors the entire bar red if the KPI target is missed.
 
 ### funnel panel
+
 ```json
 {
   "graphStyle": "funnel",
@@ -169,9 +188,11 @@ All three columns (`value`, `target`, `label`) are required. `coloringMode: "kpi
   "funnelOptions": { "colorScheme": "default", "colorSchemeOrder": "standard", "autoScale": "true" }
 }
 ```
+
 Result must have `Step` (string label) and `Count` (numeric) columns. Use `| union` to assemble steps from separate queries.
 
 ### sankey panel
+
 ```json
 {
   "graphStyle": "sankey",
@@ -181,9 +202,11 @@ Result must have `Step` (string label) and `Count` (numeric) columns. Use `| uni
   "showNodeValues": "true"
 }
 ```
+
 Result must have exactly `source`, `target`, and a numeric weight column.
 
 ### scattered_bubble panel
+
 ```json
 {
   "graphStyle": "scattered_bubble",
@@ -191,9 +214,11 @@ Result must have exactly `source`, `target`, and a numeric weight column.
   "scatteredBubbleConfig": { "showLabel": true }
 }
 ```
+
 First three numeric columns map to x, y, bubble size. Fourth column is the label. Upper-right outliers = highest x and y values.
 
 ### distribution panel
+
 ```json
 {
   "graphStyle": "distribution",
@@ -201,9 +226,11 @@ First three numeric columns map to x, y, bubble size. Fourth column is the label
   "facet": "dst.port.number"
 }
 ```
-Uses `filter` and `facet` keys only — no `query`. The `facet` field must be numeric at the schema level. SDL auto-buckets the distribution.
+
+Uses `filter` and `facet` keys only; no `query`. The `facet` field must be numeric at the schema level. SDL auto-buckets the distribution.
 
 ### tabbed table panel
+
 ```json
 {
   "graphStyle": "",
@@ -217,15 +244,18 @@ Uses `filter` and `facet` keys only — no `query`. The `facet` field must be nu
   ]
 }
 ```
+
 Multiple query tabs inside a single panel widget. `tabVariant: "tile"` uses pill-style tab buttons. `showBarsColumn` toggles the inline bar column in the table.
 
 ### markdown panel
+
 ```json
 {
   "graphStyle": "markdown",
   "markdown": "**Bold text**, `code`, and regular prose. Use for section headers and context."
 }
 ```
+
 No query. Supports standard markdown formatting.
 
 ---
@@ -233,6 +263,7 @@ No query. Supports standard markdown formatting.
 ## Dashboard-level features
 
 ### TABBED dashboard
+
 ```json
 {
   "configType": "TABBED",
@@ -244,10 +275,12 @@ No query. Supports standard markdown formatting.
   ]
 }
 ```
+
 - `duration`: default time window shown on load
 - `description`: subtitle shown below the dashboard title
 
-### filters[] — live tab-scoped filter widget (TABBED only)
+### filters[]: live tab-scoped filter widget (TABBED only)
+
 ```json
 {
   "tabName": "Investigation",
@@ -258,9 +291,11 @@ No query. Supports standard markdown formatting.
   "graphs": [...]
 }
 ```
+
 Declared inside a tab object. Populates dropdown options from live field values in the current time range. Selecting a value automatically applies the filter to every panel in that tab. This is the correct interactive filtering mechanism for TABBED dashboards.
 
-### #VarName# substitution — flat (non-TABBED) dashboards only
+### #VarName# substitution: flat (non-TABBED) dashboards only
+
 ```json
 {
   "parameters": [
@@ -278,13 +313,17 @@ Declared inside a tab object. Populates dropdown options from live field values 
   ]
 }
 ```
+
 Only works in flat dashboards (no `configType`, no `tabs`). In TABBED dashboards `#VarName#` is passed literally and throws `Don't understand [#]`. String values must embed single quotes: `"'logVolume'"` so substitution produces `tag='logVolume'`.
 
 ### Panel layout
+
 Every panel requires explicit `layout`:
+
 ```json
 "layout": { "h": 22, "w": 30, "x": 0, "y": 15 }
 ```
+
 Grid is 60 units wide. `h`/`w` in grid units, `x`/`y` are top-left offsets. Panels in the same row must share the same `y` value.
 
 ---
@@ -316,6 +355,6 @@ Grid is 60 units wide. `h`/`w` in grid units, `x`/`y` are top-left offsets. Pane
 | Panel Features | EDR Event Rate by Category | `area` | `plots[]`, 4 series, per-series color |
 | Panel Features | Alerts by Product | `pie` | `maxPieSlices`, `dataLabelType: "PERCENTAGE"` |
 | Panel Features | Alerts by Title | `""` (table) | `showBarsColumn: true`, `filters[]` active |
-| All tabs | Tab filter widgets | — | `filters[]` with `facet` — Site, Data Source, Alert Product |
+| All tabs | Tab filter widgets | n/a | `filters[]` with `facet`: Site, Data Source, Alert Product |
 
 The complete JSON source for all panels above is in [`sdl-dashboard/examples/panel-showcase.json`](../skills/sdl-dashboard/examples/panel-showcase.json).

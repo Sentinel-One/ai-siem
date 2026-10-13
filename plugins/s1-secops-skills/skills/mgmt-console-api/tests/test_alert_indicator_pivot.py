@@ -25,9 +25,11 @@ falls back to a safe deterministic hash derived from the run_tag, the
 workflow (read alert → create IOC → link → delete) is still proven,
 just with a non-real-world hash.
 
-IMPORTANT: uses `token_kind="single_scope"` because
-`/threat-intelligence/iocs` rejects multi-scope tokens with code
-4030010 ("This page doesn't support multi-scopes users yet").
+IMPORTANT: `/threat-intelligence/iocs` rejects a token whose user spans
+several accounts with code 4030010 ("This page doesn't support
+multi-scopes users yet"). Run this test with S1_PROFILE set to a keychain
+profile that holds a token minted at a single account or site
+(`s1-secops-mcp setup --profile <name>`).
 
 Usage
 -----
@@ -164,8 +166,8 @@ def main() -> int:
                     help="do not delete the pinned IOC after")
     args = ap.parse_args()
 
-    # /iocs endpoint rejects multi-scope tokens; use the single-scope one.
-    client = S1Client(timeout=30, token_kind="single_scope")
+    # /iocs rejects multi-account tokens (4030010); see the module docstring.
+    client = S1Client(timeout=30)
     _log(f"tenant={client.base_url}  run_tag={RUN_TAG}")
 
     try:

@@ -195,7 +195,7 @@
       "id": 3,
       "name": "hec-collector-needs-its-own-connection",
       "prompt": "Add one action to that same workflow that ships a batch of OCSF events into AI SIEM through the HEC event collector. Since it is in the same flow as the SDL query actions, tell me plainly whether it can reuse that connection. Save the action object to `hec_action.json` and the connection-creation request body to `connection.json`, with a placeholder where the secret goes and never a real key.",
-      "expected_output": "It cannot reuse the SDL connection. `POST {HEC_INGEST_URL}/services/collector/event` takes an SDL Log Write Key, not the console API token: measured live, the write key returns HTTP 200 and the console token returns HTTP 400 `{\"text\":\"Missing S1-Scope header\",\"code\":5}`, and adding an `S1-Scope` header does not fix it. So a second Bearer connection is created whose `api_key` is the Log Write Key, and the collector action sends no `S1-Scope` header, because the key is minted for one account or site and that alone fixes where the events land. The event payload carries `dataSource.name`, `dataSource.vendor` and `dataSource.category` set to `security`, plus `site_id` and a FLAT dotted `\"event.type\"` key, since a nested `event: {...}` object is dropped on ingest (`event` is HEC-reserved). The key value in `connection.json` is a placeholder.",
+      "expected_output": "It cannot reuse the SDL connection. `POST {HEC_INGEST_URL}/services/collector/event` takes an SDL Log Write Key. A connection sends its credential as `Authorization: Bearer <value>`, so the console-token SDL connection behaves exactly like the console token, and that differs per console: on some it returns HTTP 400 `{\"text\":\"Missing S1-Scope header\",\"code\":5}` without an `S1-Scope` header and is accepted with one, on others it returns HTTP 403 `{\"text\":\"User token not allowed for this endpoint\",\"code\":4}` with or without the header. The write key returns HTTP 200 and needs no scope header, so use the write key in both cases. So a second Bearer connection is created whose `api_key` is the Log Write Key, and the collector action sends no `S1-Scope` header, because the key is minted for one account or site and that alone fixes where the events land. The event payload carries `dataSource.name`, `dataSource.vendor` and `dataSource.category` set to `security`, plus `site_id` and a FLAT dotted `\"event.type\"` key, since a nested `event: {...}` object is dropped on ingest (`event` is HEC-reserved). The key value in `connection.json` is a placeholder.",
       "assertions": [
         {
           "type": "json_parses",
@@ -240,6 +240,10 @@
         {
           "type": "output_matches",
           "pattern": "(?i)Missing S1-Scope header"
+        },
+        {
+          "type": "output_matches",
+          "pattern": "(?i)User token not allowed for this\\s+endpoint"
         },
         {
           "type": "output_matches",

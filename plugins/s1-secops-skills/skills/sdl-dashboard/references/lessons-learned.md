@@ -21,17 +21,17 @@ If the source the dashboard is meant to cover does not appear, the dashboard can
 
 ### 1.2 PowerQuery cannot discover a source's schema by itself
 
-`| limit N` against a parser-emitted source returns only `timestamp + message`. PowerQuery has no `| columns *` or wildcard projection. To enumerate the actual queryable attributes a parser emits for a source, use the V1 query endpoint (`/api/query`, returns full event JSON) via the SDL client. Force-clear the scoped keys so auth falls through to the console JWT:
+`| limit N` against a parser-emitted source returns only `timestamp + message`. PowerQuery has no `| columns *` or wildcard projection. To enumerate the actual queryable attributes a parser emits for a source, use `powerquery_schema_discover` (full event JSON per sample), or `powerquery_run` with `queryType: "LOG"` for a larger sample:
 
-```python
-
-res = c.query(filter=f"dataSource.name=='{source}'", max_count=50, start_time="7d")
-attrs = sorted({k for m in res["matches"] for k in (m.get("attributes") or {}).keys()})
+```json
+{ "dataSourceName": "<dataSource.name>", "maxEvents": 50, "startTime": "7d" }
 ```
+
+Collect the union of attribute names across the returned events and persist it with the Write tool.
 
 ### 1.3 Top-level parsed fields can be empty even when the data exists in `raw_data`
 
-Parsers vary in what they extract to the top-level OCSF / `unmapped.*` columns. A field plainly visible inside `raw_data` (the JSON envelope) may not be queryable as a structured column. Always probe a single sample event with the V1 query to confirm a field is queryable before authoring panels around it. The schema dump and the raw event are both ground truth, neither alone is sufficient.
+Parsers vary in what they extract to the top-level OCSF / `unmapped.*` columns. A field plainly visible inside `raw_data` (the JSON envelope) may not be queryable as a structured column. Always probe a single sample event (`powerquery_schema_discover` or a `LOG` query) to confirm a field is queryable before authoring panels around it. The schema dump and the raw event are both ground truth, neither alone is sufficient.
 
 If a field is only present in `raw_data`, it can still be filtered via full-text predicate but cannot be grouped or aggregated efficiently. See section 4 for the cost / availability tradeoff.
 
@@ -168,9 +168,9 @@ If the same `event.type` row repeats with different secondary-discriminator valu
 
 ## 7. Validation runner pattern (mandatory for every dashboard)
 
-Every dashboard delivered comes with an evidence report that replays each panel's query against live data and captures the result. The skill's `scripts/validate_dashboard.py` automates this; the shape it implements is below.
+Every dashboard delivered comes with an evidence report that replays each panel's query against live data and captures the result. From Cowork or any MCP client, do this with one `powerquery_run` call per panel, issued in parallel batches of about 10, then write the evidence JSON with the Write tool. On the user's host, the skill's `scripts/validate_dashboard.py` automates the same loop; the shape it implements is below.
 
-### 7.1 Runner anatomy
+### 7.1 Runner anatomy (host-only script)
 
 ```python
 panels = []
@@ -201,14 +201,14 @@ for p in panels:
 
 ### 7.2 Run in batches
 
-Each panel takes 1 to 4 seconds typical. Batch into chunks of about 10 per shell invocation if shell timeouts are tight. The runner is idempotent (skip keys already in `results`) so it resumes cleanly.
+Each panel takes 1 to 4 seconds typical. Batch into chunks of about 10 parallel `powerquery_run` calls per turn (or per shell invocation for the host script). Keep the evidence keyed on `tab::title` and skip keys already captured, so a run resumes cleanly.
 
 ### 7.3 Per-panel evidence captured
 
 For each panel, record:
 
 - `ok`: did the query execute?
-- `elapsed_s`: wall-clock time
+- `elapsed_s`: wall-clock time (null when replayed through `powerquery_run`, which does not report it)
 - `row_count`: number of result rows
 - `columns`: column names from the response (validates the panel-type expectation)
 - `sample_rows`: first 3 rows verbatim (this is the log evidence)
@@ -239,29 +239,21 @@ The PDF must include an Appendix that lists every empty-result panel with its SO
 
 ### 8.1 Resolve the udoId, then write with a CAS guard
 
-```python
-matches = [f for f in c.config_files() if f["name"] == name]
-if len(matches) > 1:
-    raise SystemExit(f"{len(matches)} copies share that name: {[m['udoId'] for m in matches]}")
-
-if matches:
-    cur = c.config_file(udo_id=matches[0]["udoId"])
-    res = c.put_config_file(udo_id=cur["udoId"], content=body, expected_version=cur["version"])
-else:
-    res = c.put_config_file(name=name, content=body)    # first create only
+```text
+sdl_list_files { pathPrefix: "/dashboards/" }  -> filter on name; more than one match: stop and ask
+one match:  sdl_get_file { udoId }  then  sdl_put_file { udoId, content, expectedVersion: <version> }
+no match:   sdl_put_file { path: "/dashboards/<name>", content }      # first create only
 ```
 
-`expected_version` is a CAS guard against concurrent writes from the SDL UI or another script, and
+`expectedVersion` is a CAS guard against concurrent writes from the SDL UI or another script, and
 is enforced on both address forms. A name-addressed write to an existing dashboard is refused
 because it creates a duplicate instead of updating.
 
 ### 8.2 Verify deployment by re-fetching
 
-```python
-verify = c.config_file(udo_id=udo_id)
-deployed_content = verify.get("content", "")
-assert verify.get("version") != cur_version, "version did not bump"
-assert "<canary-string-from-new-section>" in deployed_content, "deploy did not include new content"
+```text
+sdl_get_file { udoId }  -> version must differ from the pre-write version, and content must
+                           contain a canary string from the new section
 ```
 
 A successful write response does not guarantee the new content landed. Always re-read and grep for a known canary string from the change.
@@ -299,14 +291,14 @@ The end-to-end engagement shape that produces clean deliverables:
 
 1. Load every relevant skill upfront (`sdl-dashboard`, `powerquery`, `sdl-api`, plus `pdf` / `docx` for deliverables). Loading mid-task wastes turns.
 2. Session init in parallel: data-source enumeration query + alert / asset triage queries + `get_timestamp_range` in a single tool-call batch.
-3. Schema discovery for the target source. V1 query, dump fields to JSON, persist for the session.
+3. Schema discovery for the target source with `powerquery_schema_discover`; write the field list to JSON with the Write tool and keep it for the session.
 4. Identify discriminator fields. Run `group by event.type, <candidate-discriminator>` to confirm cardinality and partition behaviour.
 5. Author panel queries one at a time and validate each in isolation before committing them to the dashboard JSON. PQ-MCP timeouts at 60 seconds; SDL UI typically renders longer; choose the validation method per panel risk.
 6. Build the dashboard JSON with explicit `layout` coordinates, markdown headers explaining each section, and a clear naming convention (events vs activities, delivery vs runtime, etc.).
 7. Run `scripts/panel_safety_check.py` and resolve every flag.
-8. Deploy via `put_file` with `expected_version`, then re-fetch and grep for canaries.
-9. Run `scripts/validate_dashboard.py` and persist per-panel evidence to JSON + markdown.
-10. Render `scripts/render_validation_pdf.py`. The PDF goes to leadership; the markdown stays in the project repo.
+8. Deploy via `sdl_put_file` with `expectedVersion`, then re-fetch and check for canaries.
+9. Replay every panel with parallel `powerquery_run` calls (host-only alternative: `scripts/validate_dashboard.py`) and persist per-panel evidence to JSON + markdown.
+10. Render with `scripts/render_validation_pdf.py` (local, no network). The PDF goes to leadership; the markdown stays in the project repo.
 11. Document new gotchas back into this file. Each engagement should leave the skill better than it found it.
 
 ---
@@ -371,17 +363,17 @@ End of document. Treat this file as a living artefact: append new gotchas as the
 
 | Operation | s1-secops-mcp tool |
 |---|---|
-| PowerQuery | `mcp__s1-secops-mcp__powerquery_run` |
-| V1 `query` (full event JSON for schema discovery) | `mcp__s1-secops-mcp__powerquery_schema_discover` |
-| `put_file` / `get_file` (dashboard deploy) | `mcp__s1-secops-mcp__sdl_put_file`, `mcp__s1-secops-mcp__sdl_get_file` |
+| PowerQuery | `powerquery_run` |
+| Full event JSON for schema discovery | `powerquery_schema_discover` |
+| Dashboard deploy | `sdl_put_file`, `sdl_get_file` |
 
-These tools run locally and bypass the sandbox proxy entirely. Do not fall back to any other approach.
+These tools run on the user's machine and reach the tenant where the Cowork sandbox cannot. Do not fall back to a script in the sandbox.
 
 An earlier attempt at schema discovery in the same session ran inside the sandboxed Bash shell, which blocks all outbound HTTPS to `*.sentinelone.net`. The V1 query calls returned a proxy error. Because the error was not recognized as a sandbox-specific block, the empty output was interpreted as the source having no useful fields, and a plausible-looking but entirely fabricated field list was deployed into the GRC dashboard panels.
 
 The fabrication was only caught when the user asked to re-verify the schemas, at which point the operation was re-run using the s1-secops-mcp tools and returned the real data: 126 fields for `asset`, 41 fields for `ActivityFeed`.
 
-**Prevention:** Always use s1-secops-mcp tools for SDL operations. They bypass the sandbox proxy and succeed where direct bash calls would fail.
+**Prevention:** Always use s1-secops-mcp tools for SDL operations. They run outside the sandbox and succeed where direct bash calls fail. Treat any proxy error as a failure to report, never as an empty result.
 
 ### `dataSource.name='asset'`: 126-field rich endpoint inventory (OCSF class_uid 3004)
 
@@ -420,11 +412,11 @@ Useful for Hyperautomation workflow audit trails and compliance tracking. Not us
 
 ---
 
-## 12. Long-running scripts: always background-and-poll to avoid MCP timeout
+## 12. Long-running host scripts: always background-and-poll to avoid MCP timeout
 
-The MCP tool call layer imposes a hard ~2-minute timeout on any `start_process` call. Two operations that exceed this in typical engagements:
+Prefer many parallel MCP calls over one long script: schema discovery is one `powerquery_schema_discover` call per source and panel replay is one `powerquery_run` call per panel, about 10 per turn. This section applies only when you run a host-only script (Claude Code or a terminal, for example through a host shell tool), where the tool layer imposes a hard ~2-minute timeout on any one call. Two operations that exceed this in typical engagements:
 
-- **Schema discovery across many sources**: V1 `query` calls take 5-10s each. For 15+ sources that is 2+ minutes.
+- **Schema discovery across many sources**: 5-10 s per source. For 15+ sources that is 2+ minutes.
 - **`validate_dashboard.py` on large dashboards**: 63 panels at 8-25s each = 10-30 minutes.
 
 **Pattern: background the process, poll the output file with fast separate calls.**
@@ -496,7 +488,7 @@ During validation of stacked-bar panels using `| transpose <field> on timestamp`
 - `High + Critical Alerts per Day` stacked-bar panel using `| group count=count() by timestamp=timebucket('1d'), severity_id | transpose severity_id on timestamp` returned 0 rows via the same V1 API.
 - The browser renderer executed the same query without issue.
 
-**Rule:** when `validate_dashboard.py` marks a stacked-bar or line chart panel as empty (`row_count=0`), check whether the corresponding number panel for the same source shows data. If the number panel has data and the trend panel is empty, the empty result is a V1-API artefact, not a broken query. Document it as such in the evidence report Appendix with the note: `"0 rows via deprecated V1 API, confirmed live data from corresponding KPI panel; expect correct render in browser."`
+**Rule:** when panel replay (parallel `powerquery_run`, or `validate_dashboard.py` on the host) marks a stacked-bar or line chart panel as empty (`row_count=0`), check whether the corresponding number panel for the same source shows data. If the number panel has data and the trend panel is empty, the empty result is a V1-API artefact, not a broken query. Document it as such in the evidence report Appendix with the note: `"0 rows via deprecated V1 API, confirmed live data from corresponding KPI panel; expect correct render in browser."`
 
 Do not remove or rewrite trend panels based on V1 validation empty results alone. The final authority is the browser renderer.
 
@@ -678,7 +670,7 @@ All attempts to embed a literal `"` in the format string (single-quoted outer, d
 
 ## Render-only defects: validate with screenshots, not just the API
 
-`validate_dashboard.py` proves each panel's query returns rows. It does NOT prove the panel renders: the browser, not the API, is where a markdown tile shows "Untitled", a `let`-arithmetic panel shows "Couldn't load content", a number reads its unit twice, or a chart legend breaks. Query replay is blind to all of these.
+Panel replay (parallel `powerquery_run`, or `validate_dashboard.py` on the host) proves each panel's query returns rows. It does NOT prove the panel renders: the browser, not the API, is where a markdown tile shows "Untitled", a `let`-arithmetic panel shows "Couldn't load content", a number reads its unit twice, or a chart legend breaks. Query replay is blind to all of these.
 
 **Hard rule: after every dashboard deploy, ask the user for screenshots of each tab, read them, fix every visual defect in the JSON, and re-deploy, without being asked.** It is the final, mandatory deploy step, not optional polish.
 
@@ -725,7 +717,7 @@ For one site over 24h:
 | `site.id='<siteId>'` | 60,410 |
 | of those, `!(site.name = *)` | **510** |
 
-The 510 invisible-to-`site.name` rows: `ActivityFeed` 172, `asset` 111, unattributed 99, `SentinelOne` 70, `Windows Event Logs` 48, **`alert` 10**. So a `site.name` filter drops alert and asset records, the two sources a SOC dashboard most depends on, silently. `site.id` is additionally the same value as the `S1-Scope` `siteId` and `shareResource`'s `scopeId`, and it survives a rename. Rule S02 flags the substitution and is **not** suppressed by `--allow-account-scope-queries`, because it is wrong at any scope.
+The 510 invisible-to-`site.name` rows: `ActivityFeed` 172, `asset` 111, unattributed 99, `SentinelOne` 70, `Windows Event Logs` 48, **`alert` 10**. So a `site.name` filter drops alert and asset records, the two sources a SOC dashboard most depends on, silently. `site.id` is additionally the same value as the `S1-Scope` `siteId`, and it survives a rename. Rule S02 flags the substitution and is **not** suppressed by `--allow-account-scope-queries`, because it is wrong at any scope.
 
 `site.name` remains fine as a display column or `group by` key.
 

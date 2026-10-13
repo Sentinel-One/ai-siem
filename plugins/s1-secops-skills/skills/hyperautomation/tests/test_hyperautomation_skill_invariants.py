@@ -11,12 +11,18 @@ attached:
    worse than none, because it is what gets copied.
 3. The connection split: SDL query endpoints need `Bearer` and reject the mgmt
    `ApiToken` with HTTP 500; the HEC event collector needs its own connection
-   holding an SDL Log Write Key and refuses the console token with HTTP 400.
+   holding an SDL Log Write Key. A console-token connection gets HTTP 400
+   "Missing S1-Scope header" without a scope header (and is accepted with one)
+   on some consoles, HTTP 403 code 4 either way on others; the fix is the
+   write key in both cases.
 4. Approval gates fail CLOSED. A `not_equals` gate auto-runs the destructive
    action on a timeout, with nobody having approved anything.
 5. Action `type` strings are not invented: everything the building-blocks
    reference emits is in the observed-in-production list SKILL.md publishes.
 6. The eval suite is structurally gradable and every case grades something.
+7. Workflow and connection API behaviour measured live on 2026-10-09 stays
+   stated (run-now body, response-trigger limits, list/deactivate/delete/export
+   paths, connection create), and the claims it superseded stay gone.
 
 The PowerQuery linter is imported from `tools/run_evals.py`, never copied.
 
@@ -186,8 +192,19 @@ class ConnectionCredentialSplit(unittest.TestCase):
         for text, where in ((self.conn, "connections.md"), (SKILL, "SKILL.md")):
             self.assertRegex(
                 text, r"Missing\s+S1-Scope header",
-                f"{where} no longer records that the console token is refused "
-                f"by the event collector")
+                f"{where} no longer records the 400 a console-token connection "
+                f"gets from the event collector without a scope header")
+            self.assertRegex(
+                text, r"User token not allowed for this\s+endpoint",
+                f"{where} no longer records the per-console 403 code 4 refusal")
+            self.assertRegex(
+                text, r"(?i)use the write\s+key\s+in both cases",
+                f"{where} no longer says the write key is the fix for both errors")
+            # Live 2026-10-09: with S1-Scope the console token IS accepted on
+            # some consoles, so the old claim must not come back.
+            self.assertNotRegex(
+                text, r"(?i)S1-Scope`? header does\s+not\s+fix it",
+                f"{where} again claims an S1-Scope header does not fix it")
 
     def test_uam_alert_ingest_is_the_opposite_case(self):
         # /v1/alerts on the SAME host takes the console token AND S1-Scope.
@@ -207,6 +224,100 @@ class ImportIsNotCompleteUntilPublished(unittest.TestCase):
             SKILL, r"(?i)invisible in the console",
             "the why (an API import is owned by the token's user and nobody "
             "else can see it) is gone, leaving an unexplained extra call")
+
+
+def _section(text: str, start: str, end: str) -> str:
+    i = text.index(start)
+    return text[i:text.index(end, i)]
+
+
+class WorkflowApiMeasuredFacts(unittest.TestCase):
+    """Workflow API behaviour measured live on 2026-10-09."""
+
+    def setUp(self):
+        self.api = (REFS / "api-integration.md").read_text(encoding="utf-8")
+        self.run_now = _section(self.api, "### 9. Trigger a Manual Workflow",
+                                "### 10. List Workflow Executions")
+
+    def test_list_limit_and_name_filter(self):
+        self.assertRegex(self.api, r"Omitted, it returns 10 rows")
+        self.assertIn("limit=2000", self.api)
+        self.assertRegex(self.api, r"only `name__contains` is honoured")
+        self.assertRegex(self.api, r"`name`,\s+`search` and `query` are silently ignored")
+        self.assertIn("{id, workflow: {...}, actions: [{id, integration_id, type}]}",
+                      self.api)
+        self.assertIn("row.workflow", self.api)
+
+    def test_deactivate_and_delete_paths(self):
+        self.assertIn("/hyper-automate/api/v1/workflows/{id}/{version_id}/deactivate",
+                      self.api)
+        self.assertIn("/public/workflows/{id}/{version_id}/deactivate", self.api)
+        self.assertIn("`DELETE /hyper-automate/api/public/workflows/{id}` returns `404`",
+                      self.api)
+        self.assertIn("Active workflows cannot be archived", self.api)
+
+    def test_run_now_body_must_carry_data(self):
+        self.assertIn("the `data` object is REQUIRED", self.run_now)
+        self.assertRegex(self.run_now, r'`\{"data": \{\}\}` returned\s+(?:>\s*)?`201`')
+        self.assertRegex(self.run_now, r"empty `\{\}` body returned a bare `500")
+        self.assertRegex(self.run_now, r'422 "Field\s+(?:>\s*)?required"')
+        self.assertNotIn("(all fields optional)", self.run_now,
+                         "section 9 again says the run-now body is all optional")
+        self.assertNotIn("Send the full envelope even when", self.run_now,
+                         "the superseded full-envelope advice is back")
+
+    def test_response_trigger_cannot_run_on_demand(self):
+        self.assertRegex(self.run_now, r"On-demand execution is not supported for trigger"
+                                       r"\s+(?:>\s*)?type 'singularity_response_trigger'")
+        self.assertIn("run_automatically: true", self.run_now)
+        self.assertRegex(self.run_now, r"6 to 8 s")
+        self.assertIn('singularity_response_event_type: "alert"', self.run_now)
+
+    def test_converting_response_trigger_to_manual(self):
+        self.assertIn("`manual_trigger`", self.run_now)
+        self.assertRegex(self.run_now, r"invalid references")
+        self.assertIn("invalid_references", self.run_now)
+        self.assertIn("dynamic_properties.data.title: Field required", self.run_now)
+
+    def test_export_one_workflow_and_execution_rows(self):
+        self.assertIn("workflow-import-export/export?workflow_ids=<id>", self.api)
+        self.assertIn("/v1/workflows/single/{id}/{version_id}", self.api)
+        self.assertRegex(self.api, r"`state` \(not `status`\) and no `error_actions`")
+
+    def test_reimport_naming_documented_once(self):
+        self.assertIn("`Name (1)`, `Name (2)`", SKILL)
+        self.assertEqual(1, SKILL.count("Name (1)"),
+                         "the re-import naming rule is stated more than once")
+
+
+class ConnectionsCanBeCreatedByApi(unittest.TestCase):
+    """Measured 2026-10-09; supersedes the old "cannot be created" line."""
+
+    def setUp(self):
+        self.api = (REFS / "api-integration.md").read_text(encoding="utf-8")
+        self.conn = _section(self.api, "### 16. Integrations and connections", "\n---\n")
+
+    def test_create_endpoint_and_errors(self):
+        self.assertIn("POST /connections?siteIds=<site>", self.conn)
+        self.assertIn("`201`", self.conn)
+        for frag in ("Request body must include 'data'.",
+                     "url and protocol are required for non-webhook connections",
+                     "Connection name already exists",
+                     "Connection which is in use cannot be deleted"):
+            self.assertIn(frag, self.conn, f"connection error {frag!r} is gone")
+
+    def test_read_routes(self):
+        self.assertIn("default_connection_data", self.conn)
+        self.assertRegex(self.conn, r"`GET /connections` and `GET /integrations` return `405`")
+        self.assertIn("`GET /integrations/connections` returns `422`", self.conn)
+        self.assertIn("`GET /connections/{id}`", self.conn)
+
+    def test_skill_no_longer_says_connections_cannot_be_created(self):
+        self.assertNotRegex(SKILL, r"CANNOT be \*created\* via API",
+                            "SKILL.md again claims connections cannot be created")
+        self.assertRegex(SKILL, r"connection CAN be created via API")
+        conn_ref = (REFS / "connections.md").read_text(encoding="utf-8")
+        self.assertIn("Returns `201`", conn_ref)
 
 
 class ActionTypesAreNotInvented(unittest.TestCase):
@@ -317,6 +428,49 @@ class EvalSuiteIsGradable(unittest.TestCase):
         self.assertIn("Bearer", blob)
         self.assertIn("Log Write Key", blob)
         self.assertIn("parent_action", blob)
+
+
+class DestructiveFindings20261009(unittest.TestCase):
+    """Measured 2026-10-09 by import/activate/run/delete probes on three consoles."""
+
+    def setUp(self):
+        ref = SKILL_DIR / "references"
+        self.blocks = (ref / "building-blocks.md").read_text(encoding="utf-8")
+        self.fns = (ref / "functions-reference.md").read_text(encoding="utf-8")
+        self.api = (ref / "api-integration.md").read_text(encoding="utf-8")
+        self.conn = (ref / "connections.md").read_text(encoding="utf-8")
+
+    def test_llm_response_format_enum(self):
+        self.assertIn("Input should be 'off', 'auto' or 'strict'", self.blocks)
+        # LLM availability depends on pre-release feature access, so it is deliberately
+        # not documented per console.
+        self.assertNotIn("not available on every console", self.blocks)
+        self.assertNotIn("Insufficient Singularity Credits", self.blocks)
+
+    def test_send_email_is_per_console(self):
+        self.assertIn("MessageRejected", self.blocks)
+        self.assertIn("CompletedWithErrors", self.blocks)
+
+    def test_generate_uuid_does_not_exist(self):
+        self.assertIn("There is no `GENERATE_UUID`", self.fns)
+        self.assertIn("doesn't match any function name in the system", self.fns)
+        self.assertNotRegex(self.fns, r"Function\.GENERATE_UUID\(\)")
+
+    def test_jq_features_and_parsed_json_variables(self):
+        for feature in ("`|=`", "`with_entries`", "`reduce ... setpath`", "`strftime`", "`floor`", "`tostring`"):
+            self.assertIn(feature, self.fns)
+        self.assertIn("stored already parsed", self.fns)
+
+    def test_response_trigger_conversion_run_error(self):
+        self.assertIn("Attribute id not found in Action singularity-response-trigger", self.api)
+
+    def test_no_execution_output_route(self):
+        self.assertIn("There is no route for action outputs", self.api)
+
+    def test_connections_resolve_by_name_at_the_workflow_scope(self):
+        self.assertIn("resolved by name at the workflow's own scope, at run time", self.conn)
+        self.assertIn("Connection with name '<name>' could not\nbe found.", self.conn)
+        self.assertRegex(self.conn, r"activation does not check it")
 
 
 if __name__ == "__main__":

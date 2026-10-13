@@ -1,8 +1,10 @@
 # SentinelOne AI Analyst: Claude Skills
 
-A full-stack AI analyst for SentinelOne, built as a set of Claude skills, three MCP servers, and an operating persona (CLAUDE.md). Install once and Claude can hunt threats, triage alerts, write detections, deploy dashboards, author parsers, and build automation workflows, entirely from natural language.
+A full-stack AI analyst for SentinelOne, built as a set of Claude skills, three MCP servers (plus an optional fourth, Shodan), and an operating persona (CLAUDE.md). Install once and Claude can hunt threats, triage alerts, write detections, deploy dashboards, author parsers, and build automation workflows, entirely from natural language.
 
-> **Fastest way to get started: [Quick start (Docker)](#1-quick-start-docker).** One image bundles all three MCPs, no host-level Node, Python, or `uv` required. Pull, paste a config block, install the plugin, done. See [Installation](#installation) for all three install paths.
+> **Fastest way to get started: [Quick start (Docker)](#1-quick-start-docker).** One image bundles all four MCPs (Shodan optional), no host-level Node, Python, or `uv` required. Store your tokens in the OS keychain, point the config at the launcher, install the plugin, done. See [Installation](#installation) for both install paths.
+>
+> **Upgrading to 1.5.0?** It is a breaking release: no `credentials.json`, no HTTP transport, and a Docker launcher instead of `docker run -e`. Follow [docs/upgrading.md](./docs/upgrading.md#14x-to-150).
 >
 > **New here?** Start with the [Zero to Hero guide](./docs/zero-to-hero.md): a 20-minute onboarding walkthrough for customers and partners new to Claude Skills.
 
@@ -34,9 +36,12 @@ CLAUDE.md                       Main instruction layer: SOC Analyst persona, ses
                                 Decides what to do and invokes skills as needed.
        │  invokes skills
        ▼
-sdl-solutions       Umbrella orchestrator. On a "deploy / onboard / monitor a whole
-                                solution" request it runs first, collects parameters, previews,
-                                then drives the primitive skills below in dependency order.
+sdl-solutions                   Umbrella orchestrator for 10 packaged solutions. On a "deploy /
+                                onboard / monitor a whole solution" request it runs first, collects
+                                parameters, previews, then drives the primitive skills below in
+                                dependency order.
+soc-investigator                Investigation orchestrator: staged DFIR triage of an alert, or an
+                                alert-agnostic SWEEP for MITRE-mapped TTPs, with verdict gates.
        │  orchestrates
        ▼
 Primitive skills (SKILL.md)     Procedural knowledge: confirmed API schemas, field requirements, patterns
@@ -50,11 +55,12 @@ Primitive skills (SKILL.md)     Procedural knowledge: confirmed API schemas, fie
        ▼
 MCP Servers                     Live API access, outside the Cowork sandbox proxy
   s1-secops-mcp                 PowerQuery, SDL, Mgmt Console REST, UAM, Hyperautomation
-  purple-mcp                      Alert triage, Purple AI NLQ, Deep Visibility, assets, vulnerabilities
-  threat-intel-mcp                External IOC enrichment (required for CRITICAL classification)
+  purple-mcp                      Alert triage, Purple AI NLQ, Deep Visibility, assets, vulnerabilities, VT Intelligence search
+  threat-intel-mcp                External IOC enrichment and pivots (required for CRITICAL classification); shares its VirusTotal key with purple-mcp
+  shodan-mcp (optional)           Exposure intelligence for external IPs and domains: open ports, services, banners, TLS/JARM, host CVEs
 ```
 
-**CLAUDE.md** is the brain: it sets the operating persona and invokes skills as the task demands. **sdl-solutions** is the umbrella skill: for whole-solution work it runs first and orchestrates the primitive skills (PowerQuery, dashboard, parser, Hyperautomation, SDL API, Mgmt Console) in order, previewing before it deploys. **Skills** encode confirmed API behaviour, including field schemas validated against live tenants, so Claude doesn't guess field names, and they reach `*.sentinelone.net` through the **MCP servers**, which bypass the Cowork sandbox proxy. For a single query, dashboard, parser, or workflow, Claude calls the matching primitive skill directly without the umbrella.
+**CLAUDE.md** is the brain: it sets the operating persona and invokes skills as the task demands. **sdl-solutions** is the umbrella skill: for whole-solution work it runs first and orchestrates the primitive skills (PowerQuery, dashboard, parser, Hyperautomation, SDL API, Mgmt Console) in order, previewing before it deploys. **Skills** encode confirmed API behaviour, including field schemas validated against live tenants, so Claude doesn't guess field names, and they reach `*.sentinelone.net` through the **MCP servers**, which run on your machine, outside the Cowork sandbox proxy, and read credentials from the OS keychain. For a single query, dashboard, parser, or workflow, Claude calls the matching primitive skill directly without the umbrella.
 
 Full architecture details: [docs/architecture.md](./docs/architecture.md)
 
@@ -72,8 +78,8 @@ The plugin bundles every skill; installing it is sufficient. No individual skill
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. See [docs/sdl-dashboard.md](./docs/sdl-dashboard.md) for all supported panel types |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import. Includes interaction forms: pause a run to collect structured input from a person, then branch on their answers |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications), detection exclusions, Risk-Based Alerting, Detection as Code (author rules as TOML in Git and sync them to the Custom Detection API via CI), and alert noise reduction (find and quiet the sources flooding the alert queue: an ingestion-filter recommendation, an auto-resolve flow, and a noise-vs-signal dashboard). Orchestrates the skills above |
-| soc-investigator | Autonomous, staged DFIR investigation of SentinelOne alerts (SHORT / MEDIUM / LONG modes) with tool discovery, interactive intake, a previewed plan, IOC enrichment, per-endpoint PowerQuery forensics, and optional third-party correlation and anomaly detection. Carries the evidence-discipline and verdict gates from the SOC Analyst standard and the SDL hunt-and-correlation method. Authored by Joel Mora |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications), detection exclusions, Risk-Based Alerting, Detection as Code (author rules as TOML in Git and sync them to the Custom Detection API via CI), alert noise reduction (find and quiet the sources flooding the alert queue: an ingestion-filter recommendation, an auto-resolve flow, and a noise-vs-signal dashboard), custom detections with MITRE mapping (a watchdog flow that posts the alert with ATT&CK attached, since STAR rules cannot carry it), and query slicing (long-window PowerQuery as parallel time slices, merged). Ten solutions in all. Orchestrates the skills above |
+| soc-investigator | Autonomous, staged DFIR investigation of SentinelOne alerts (SHORT / MEDIUM / LONG modes), plus SWEEP, an alert-agnostic hunt of a time window for MITRE-mapped TTPs, with tool discovery, interactive intake, a previewed plan, IOC enrichment, per-endpoint PowerQuery forensics, and optional third-party correlation and anomaly detection. Carries the evidence-discipline and verdict gates from the SOC Analyst standard and the SDL hunt-and-correlation method. Authored by Joel Mora |
 
 ---
 
@@ -389,6 +395,10 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 - *"Scaffold a DaC repo with GitHub Actions and sync the example rules"*
 - *"Automate our detections as code: author in TOML, validate on PR, deploy on merge"*
 
+**Custom detections with MITRE mapping** (solution for custom detections to carry MITRE mapping: STAR rules have no MITRE field, so the detection runs as a scheduled Hyperautomation watchdog that posts the UAM alert with ATT&CK tactics and techniques attached; render from a small JSON rule spec or convert an existing scheduled rule). Full guide: [docs/solutions/custom-detection-mitre-mapping.md](./docs/solutions/custom-detection-mitre-mapping.md).
+
+**Query slicing** (run a long-window PowerQuery as parallel time slices through the LRQ API and merge the results: a 30-day aggregate in about 5 s instead of 21 to 40 s; zero-dependency runner). Full guide: [docs/solutions/query-slicing.md](./docs/solutions/query-slicing.md).
+
 **Alert noise reduction** (find the sources and signatures flooding the alert queue, separate ingested and already-actioned noise from real detections, recommend an ingestion-severity filter, auto-resolve already-mitigated alerts with a note, and ship a noise-vs-signal dashboard; everything discovered live, nothing hardcoded). Full guide: [docs/solutions/alert-noise-reduction.md](./docs/solutions/alert-noise-reduction.md).
 
 - *"My alert queue is flooded, reduce the noise"*
@@ -405,91 +415,90 @@ Everything installs from one Docker image. Pick the path that matches your scope
 
 | Path | Best for | Time |
 |---|---|---|
-| **[1. Quick start (Docker)](#1-quick-start-docker)** | Most users, including locked-down machines. One image, all three MCPs, Docker the only host dependency. | ~10 min |
-| **[2. Individual MCP / plugin / skill install](#2-individual-mcp--plugin--skill-install)** | You want one MCP rather than all three, or one skill rather than the whole plugin. | ~10 min |
+| **[1. Quick start (Docker)](#1-quick-start-docker)** | Most users, including locked-down machines. One image, all four MCPs (Shodan optional), Docker plus a small launcher script on the host. | ~10 min |
+| **[2. Individual MCP / plugin / skill install](#2-individual-mcp--plugin--skill-install)** | You want one MCP rather than all of them, one skill rather than the whole plugin, or a Node install without Docker. | ~10 min |
 
-Credentials are identical across both paths. What each key is and where to get it: **[docs/credentials.md](./docs/credentials.md)**.
+Credentials are identical across both paths and live in the OS keychain, never in a file or a client config. What each value is, where to get it, and how it is protected: **[docs/credentials.md](./docs/credentials.md)**. To change, check, remove or rotate a stored value, or to switch consoles with a profile, see [Changing credentials in the keychain](./docs/credentials.md#changing-credentials-in-the-keychain): re-run `setup` (Enter keeps the current value), then restart the MCP client.
 
 ---
 
 ### 1. Quick start (Docker)
 
-One image (`sentinelone/secops-mcps`) bundles all three MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`), version-locked together. Docker is the only thing you need on the host. It works the same on macOS, Windows, and Linux, including machines where IT policy blocks host-level package installs.
+One image (`sentinelone/secops-mcps`) bundles four MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, and the optional `shodan-mcp`), version-locked together. On the host you need Docker and the launcher script, which reads your OS keychain and hands the secrets to the container over stdin. It works the same on macOS, Windows, and Linux, including machines where IT policy blocks host-level package installs.
 
-Every bundled server is built from a pinned git source. Run `docker run --rm sentinelone/secops-mcps:1.4.8 versions` to see the exact repo and commit behind each one.
+**Step 1: Install Docker**
 
-**Step 1: Install Docker and confirm it is running**
-
-Docker Desktop (macOS/Windows) or Docker Engine (Linux).
+Docker Desktop (macOS/Windows) or Docker Engine (Linux). Start it and confirm it is running:
 
 ```bash
 docker info | head -3
 ```
 
-Expect a `Server Version:` line. If you get `Cannot connect to the Docker daemon`, start Docker Desktop and run it again.
+**Step 2: Install the launcher and connect Claude Desktop (one command)**
 
-You do not need to pull the image. Step 2 uses `--pull=missing`, so the first launch fetches it.
+macOS or Linux, in Terminal:
 
-**Step 2: Configure credentials**
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows). Paste the block below and replace every placeholder. All three MCPs reference the same image.
-
-```json
-{
-  "mcpServers": {
-    "s1-secops-mcp": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=missing",
-               "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN", "-e", "S1_HEC_INGEST_URL",
-               "-e", "S1_HEC_TOKEN",
-               "sentinelone/secops-mcps:1.4.8", "s1-secops-mcp"],
-      "env": {
-        "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
-        "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token...",
-        "S1_HEC_INGEST_URL":    "https://ingest.us1.sentinelone.net",
-        "S1_HEC_TOKEN":         "<SDL Log Write Key, optional; hec_ingest needs it>"
-      }
-    },
-    "purple-mcp": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=missing",
-               "-e", "S1_CONSOLE_URL", "-e", "S1_CONSOLE_API_TOKEN",
-               "sentinelone/secops-mcps:1.4.8", "purple-mcp"],
-      "env": {
-        "S1_CONSOLE_URL":       "https://usea1-yourorg.sentinelone.net",
-        "S1_CONSOLE_API_TOKEN": "eyJ...your-api-token..."
-      }
-    },
-    "virustotal": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "--pull=missing",
-               "-e", "VIRUSTOTAL_API_KEY",
-               "sentinelone/secops-mcps:1.4.8", "virustotal-mcp"],
-      "env": {
-        "VIRUSTOTAL_API_KEY": "your-virustotal-key"
-      }
-    }
-  }
-}
+```bash
+mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
 ```
 
-Only four variable names exist, and all three MCPs use the same ones.
+Windows, in PowerShell:
 
-Where to get each value:
+```powershell
+$f = "$env:TEMP\s1-secops-mcp-launch.ps1"; Invoke-WebRequest https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f install
+```
 
-| Placeholder | What it is | Where to get it |
+Already cloned this repo? Run `sh mcp/docker/s1-secops-mcp-launch.sh install` from the repo root instead (Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File mcp\docker\s1-secops-mcp-launch.ps1 install`).
+
+`install` does the whole setup and is safe to re-run:
+
+- copies the launcher to `~/.local/bin/` (Windows: `%USERPROFILE%\bin\`), outside `~/Documents`, `~/Desktop` and `~/Downloads`, where macOS stops Claude Desktop from running scripts;
+- adds the three core MCP servers to your Claude Desktop config with your real home path filled in, keeps every other server and setting, and saves a backup of the old file next to it. It adds the optional `shodan` entry only when a `SHODAN_API_KEY` is stored in the keychain, or when you pass `--with-shodan` (Windows: `-WithShodan`);
+- pulls `sentinelone/secops-mcps:1.5.4`;
+- asks for your credentials if none are stored yet, and stores them in the macOS login keychain, the Linux Secret Service or Windows Credential Manager (service `sentinelone-mcp`). Nothing is typed into a file.
+
+Where to get each value it asks for:
+
+| Name | What it is | Where to get it |
 |---|---|---|
 | `S1_CONSOLE_URL` | Your console URL | e.g. `https://usea1-yourorg.sentinelone.net` |
 | `S1_CONSOLE_API_TOKEN` | Mgmt Console API token | Settings → Users → Service Users → Create New Service User ([guide](https://community.sentinelone.com/s/article/000005291)) |
 | `S1_HEC_INGEST_URL` | Ingest host for your region | [Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) |
-| `S1_HEC_TOKEN` | SDL Log Write Key. Optional: only raw log ingest needs it, and the console API token does not work there. The key is bound to one account or site. A key minted for a different scope still returns `200 Success` and then discards every event, so read an event back before trusting an ingest | Console → Singularity Data Lake → API Keys → Log Write Key. No API mints one |
-| `VIRUSTOTAL_API_KEY` | VirusTotal API key (free tier is fine) | [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) |
+| `S1_HEC_TOKEN` | SDL Log Write Key. Optional: only raw log ingest needs it | Console → Singularity Data Lake → API Keys → Log Write Key. No API mints one |
+| `S1_SCOPE` | Optional default `S1-Scope` for SDL calls, needed when the token spans several accounts or sites: `<accountId>` or `<accountId>:<siteId>` | Account and site ids from `GET /web/api/v2.1/accounts` and `/web/api/v2.1/sites` |
+| `VIRUSTOTAL_API_KEY` | VirusTotal API key (free tier is fine). Serves both the VirusTotal MCP and purple-mcp's threat intelligence tools | [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) |
+| `SHODAN_API_KEY` | Optional. Shodan API key for the Shodan MCP (exposure intelligence). Press Enter to skip; without it the `shodan` entry is not installed | [account.shodan.io](https://account.shodan.io), Account page, API key |
 
-Full key reference, token types, and resolution order: **[docs/credentials.md](./docs/credentials.md)**. **Restart Claude Desktop** after saving.
+To add Shodan later, run `~/.local/bin/s1-secops-mcp-launch.sh setup` to store the key, run `install` again, and restart Claude Desktop.
 
-**Step 3: Install the plugin (all eight skills)**
+To change a value later, run `~/.local/bin/s1-secops-mcp-launch.sh setup` (Enter keeps the current value). With Node installed, `s1-secops-mcp setup` does the same and verifies each value by reading it back; `s1-secops-mcp status` shows where each value resolves from, masked. Coming from a `credentials.json`? Run `s1-secops-mcp setup --import-json /path/to/credentials.json`, check `status`, then delete the file.
 
-Download the latest [`s1-secops-skills-v*.plugin`](./dist/) in the `dist/` folder. In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All eight skills install in one step.
+> **IOC writes:** `/threat-intelligence/iocs` refuses a token whose user spans several accounts (HTTP 403, code 4030010). Use a console API token minted at a single account or site; store it in its own keychain profile (`s1-secops-mcp setup --profile <name>`) and run a second MCP entry with `S1_PROFILE=<name>` (or make that token your default).
+
+> **On `S1_HEC_TOKEN`:** the console API token does not work for raw log ingest. The write key is bound to one account or site, and a key minted for a different scope still returns `200 Success` while discarding every event. Read an event back before trusting an ingest.
+
+**Step 3: Restart Claude Desktop**
+
+Quit Claude Desktop completely (macOS: Cmd+Q; Windows: also quit it from the system tray) and open it again. Claude Desktop starts the MCPs itself (three, or four with Shodan), one container each, and removes them when it quits.
+
+> **Do I start the MCPs myself, or from Docker Desktop?** No. Docker Desktop only needs to be running. The containers you see in Docker Desktop while Claude is open are the ones Claude Desktop started through the launcher; starting the image from Docker Desktop gives you a container with no credentials and no connection to Claude.
+
+<details>
+<summary>Editing the config yourself, or using another MCP client</summary>
+
+`~/.local/bin/s1-secops-mcp-launch.sh config` prints the entries with this machine's real path, ready to paste into `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`; Windows: `%APPDATA%\Claude\`, or `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\` for a fresh install from the claude.ai installer, which is an MSIX package and reads only that copy) or any other MCP client. Do not type the path by hand: the config is JSON, which does not expand `~`, `$HOME` or `%USERPROFILE%`, so a path such as `/Users/you/...` must be your exact home folder. On Windows, run the same with `powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 config`.
+
+`install` and `config` take the same options: `--image IMG` to pin another tag, `--profile P` for a non-default keychain profile, `--output-dir DIR` so bulk results written with `outputFile` land in a folder you can open (macOS/Linux mount it at the same path in the container; Windows mounts it at `/output`), and `--claude-md FILE` to use your own CLAUDE.md. `install --config-path FILE` writes a config somewhere other than Claude Desktop's. On Windows the options are `-Image`, `-Profile`, `-OutputDir`, `-ClaudeMd` and `-ConfigPath`.
+
+In a hand-written entry, launcher options (`--image`, `--profile`) go **before** the server name: everything after the server name is passed to the server inside the container, which rejects an unknown argument.
+
+</details>
+
+> **Do not put tokens in the MCP config, and do not use `docker run -e`.** MCP client configs are plaintext, and `-e` values show in `docker inspect`. The same applies to `~/.claude.json`, `.mcp.json`, Cursor, Windsurf and Zed. See [docs/credentials.md](./docs/credentials.md#mcp-client-configs-are-not-a-secret-store).
+
+**Step 4: Install the plugin (all eight skills)**
+
+Download the latest `s1-secops-skills-v*.plugin` from [ai-siem `plugins/s1-secops-skills/dist/`](./dist/). In Claude Desktop: **Cowork → Customize → Browse plugins**, then upload the `.plugin` file. All eight skills install in one step.
 
 Then create a Cowork project named `PrincipalSOCAnalyst` and select a folder for it. The Docker image ships a default CLAUDE.md, so dropping your own [`CLAUDE.md`](./CLAUDE.md) into the folder is only needed if you want to customise the persona.
 
@@ -501,15 +510,15 @@ In the `PrincipalSOCAnalyst` project, start a session and run:
 smoke test s1 secops skills
 ```
 
-Claude checks all three MCPs, confirms each skill is loaded, and reports any missing credential or unreachable endpoint. You can also test the image straight from a terminal, no Claude Desktop required:
+Claude checks each installed MCP, confirms each skill is loaded, and reports any missing credential or unreachable endpoint. You can also test the image straight from a terminal, no Claude Desktop required:
 
 ```bash
-docker run -i --rm sentinelone/secops-mcps:1.4.8 help    # lists the three bundled servers
+docker run -i --rm sentinelone/secops-mcps:1.5.4 help    # lists the four bundled servers
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm sentinelone/secops-mcps:1.4.8 s1-secops-mcp
+  | ~/.local/bin/s1-secops-mcp-launch.sh s1-secops-mcp
 ```
 
-The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.3.9"`, the bundled MCP version rather than the `1.4.5` image tag, and stderr shows `Tools: 32 registered`.
+The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.5.4"`, and stderr shows `Tools: 35 registered` plus `configured` for each surface whose values are in the keychain.
 
 **Troubleshooting**
 
@@ -517,30 +526,39 @@ The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-
 |---|---|
 | MCP shows red in Cowork → MCP Servers | Confirm Docker is running: `docker info \| head -3`. Start Docker Desktop, then restart Claude Desktop. |
 | `Cannot connect to the Docker daemon` in the logs | Docker Desktop is not running. |
-| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.4.8`. |
-| `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The value did not reach the container. Check each `-e VAR` name has a matching key in the same block's `env`. |
-| `S1 Mgmt API: NOT configured` | No console token reached the container; check `S1_CONSOLE_URL` + `S1_CONSOLE_API_TOKEN`. |
+| `Couldn't start for Cowork and Code sessions. Error: Request timed out` (`shared-pool`) in the MCP log | On Windows, update the launcher: run the Step 2 command again. Launchers before this release held each request from Claude Desktop until it closed the connection, so the server answered only after Claude had given up (in the log, `Message from server: id=0 result` comes right after `notifications/cancelled`). If it persists with the current launcher, Claude Desktop's own readiness timeout may be involved ([anthropics/claude-code#92758](https://github.com/anthropics/claude-code/issues/92758)): restart Claude Desktop and open a new Cowork session. |
+| `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` in the MCP log (macOS) | The config points at a launcher under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Run the Step 2 command again: `install` copies the launcher to `~/.local/bin/` and rewrites the config. |
+| `ENOENT`, `No such file or directory` or `spawn ... s1-secops-mcp-launch` in the MCP log | The `command` path in the config does not exist, usually a hand-typed `/Users/you/...`. Run the Step 2 command again: `install` writes your real path. |
+| Windows: Settings → Developer shows "No servers added" after the config was edited | Claude Desktop from the claude.ai installer is an MSIX package that reads `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\`, not the `%APPDATA%\Claude\` file that **Edit config** opens. Run the Step 2 command again: `install` writes both. Or uninstall that build and install with the classic `Claude Setup.exe`, which reads `%APPDATA%\Claude\` like the rest of these docs describe (tested on Windows 11). |
+| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.5.4`. |
+| `VIRUSTOTAL_API_KEY ... required`, or a `PURPLEMCP_*` validation error | The value is not in the keychain, or the launcher could not read it. Re-run `~/.local/bin/s1-secops-mcp-launch.sh setup`; on Linux confirm the Secret Service is unlocked. |
+| `shodan` MCP shows red, or no `shodan` entry after `install` | The Shodan server refuses to start without `SHODAN_API_KEY`, and `install` writes the entry only when the key is stored (or with `--with-shodan`). Run `setup` to store the key, run `install` again, then restart Claude Desktop. |
+| `outputFile ... refused: no output folder is shared with this container`, or `... is outside the allowed output directories` | Under Docker, run `~/.local/bin/s1-secops-mcp-launch.sh install --output-dir <folder>` (Windows: `-OutputDir`), restart Claude Desktop, and write inside that folder (Windows: under `/output`). `S1_OUTPUT_DIRS` in the client config has no effect under Docker. With the Node server, write inside your home or temp directory, or set `S1_OUTPUT_DIRS`. |
+| `S1 Mgmt API: NOT configured` | No console token reached the server; check `s1-secops-mcp status` (or `security find-generic-password -s sentinelone-mcp -a default:S1_CONSOLE_API_TOKEN` on macOS). |
+| A skill asks you to run `s1-secops-mcp setup` | A value is missing. Run it in a terminal; never paste a token into the chat. |
 
-Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log`. Upgrading from 1.2.x? See **[docs/upgrading.md](./docs/upgrading.md)**.
+Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log` on macOS, and in the `logs` folder next to the config Claude Desktop reads on Windows (for an MSIX install, `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\logs\`). Upgrading from 1.4.x or older? See **[docs/upgrading.md](./docs/upgrading.md)**.
 
-Full troubleshooting flowchart, hand-testing with credentials, and rollback: **[docs/docker.md](./docs/docker.md)**.
+Full troubleshooting flowchart, hand-testing, and rollback: **[docs/docker.md](./docs/docker.md)**.
 
 ---
 
 ### 2. Individual MCP / plugin / skill install
 
-Only want one MCP instead of all three? Keep the single `mcpServers` entry you need from the Step 2 config block and drop the others. Every entry runs the same image; the last argument is the dispatcher name (`s1-secops-mcp`, `purple-mcp`, or `virustotal-mcp`), so one server costs you one block and no extra image.
+Only want one MCP instead of all of them? Run `~/.local/bin/s1-secops-mcp-launch.sh config`, keep the one `mcpServers` entry you need and drop the others (or run `install` and delete the ones you do not want). Every entry runs the same image through the same launcher; the last argument is the server name (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, or `shodan-mcp`), so one server costs you one block and no extra image.
 
-Only want one skill instead of the whole plugin? Each skill ships as a standalone `.skill` file in [`s1-secops-skills-plugin/dist/`](./dist/); upload the individual file via Cowork → Customize → Browse plugins. The eight files are listed in [docs/installation.md](./docs/installation.md#step-2-install-the-plugin).
+Prefer Node to Docker for `s1-secops-mcp`? Install it, store values with `s1-secops-mcp setup`, and use `{"command": "s1-secops-mcp"}` with no `env` block; it reads the keychain itself. Claude Desktop users who want the OS store without a terminal can install the optional `.mcpb` extension from `mcp/s1-secops-mcp/mcpb/`, whose token fields are marked sensitive. Details: [s1-secops-mcp/README.md](../../mcp/s1-secops-mcp/README.md).
 
-Full walkthrough (config block, prerequisites, project setup, upgrading): **[docs/installation.md](./docs/installation.md)**.
+Only want one skill instead of the whole plugin? Each skill ships as a standalone `.skill` file in [the ai-siem `dist/` folder](./dist/); upload the individual file via Cowork → Customize → Browse plugins. The eight files are listed in [docs/installation.md](./docs/installation.md#step-3-install-the-plugin).
+
+Full walkthrough (keychain setup, config block, prerequisites, project setup, upgrading): **[docs/installation.md](./docs/installation.md)**.
 
 ---
 
 ### Upgrading
 
-- **MCPs**: bump the pinned tag in `claude_desktop_config.json` to the current release (`:1.4.6`), run `docker pull sentinelone/secops-mcps:1.4.8`, and restart Claude Desktop. There is no moving tag to drift onto, so an upgrade is always an explicit, reviewable edit.
-- **Plugin**: download the newer `.plugin` from [`dist/`](./dist/), then Cowork → Customize → Browse plugins, upload, and click **Replace**.
+- **MCPs**: bump the pinned `--image` tag in `claude_desktop_config.json` to the current release (`1.5.4`), run `docker pull sentinelone/secops-mcps:1.5.4`, and restart Claude Desktop. To add the optional Shodan MCP, run the launcher's `setup` to store `SHODAN_API_KEY`, then `install` again. Coming from 1.4.x, also move credentials into the keychain and switch to the launcher. There is no moving tag to drift onto, so an upgrade is always an explicit, reviewable edit.
+- **Plugin**: download the newer `.plugin` from [the ai-siem `dist/` folder](./dist/), then Cowork → Customize → Browse plugins, upload, and click **Replace**.
 
 Step-by-step, including what to delete from an older config: **[docs/upgrading.md](./docs/upgrading.md)**.
 
@@ -550,7 +568,7 @@ Step-by-step, including what to delete from an older config: **[docs/upgrading.m
 
 This repo includes Windsurf workflow files in `.windsurf/workflows/`. Each workflow is a thin pointer that directs Cascade to read the canonical `SKILL.md` and reference docs in the matching skill folder, with no duplicated content.
 
-- `sentinelone-api.md`: Management Console API (agents, threats, alerts, sites, Purple AI, UAM).
+- `s1-api.md`: Management Console API (agents, threats, alerts, sites, Purple AI, UAM).
 - `powerquery.md`: PowerQuery authoring, debugging, and detection rules.
 - `sdl-api.md`: Singularity Data Lake API (ingest, query, config files).
 - `sdl-log-parser.md`: SDL log parser authoring with OCSF mapping.
@@ -562,12 +580,13 @@ This repo includes Windsurf workflow files in `.windsurf/workflows/`. Each workf
 | Doc | Contents |
 |---|---|
 | [docs/zero-to-hero.md](./docs/zero-to-hero.md) | Onboarding guide for customers and partners new to Claude Skills: concepts, install, first session, common workflows, troubleshooting |
-| [docs/docker.md](./docs/docker.md) | Full Docker reference: troubleshooting flowchart, hand-testing with credentials, CLAUDE.md override, upgrades, and build-from-source. The 3-step Docker quick start lives in [Installation](#installation) |
-| [docs/installation.md](./docs/installation.md) | Canonical four-step install: config block, plugin, project creation, verification, and upgrade paths |
+| [docs/docker.md](./docs/docker.md) | Full Docker reference: the keychain launcher, troubleshooting flowchart, hand-testing, CLAUDE.md override, upgrades, and build-from-source. The Docker quick start lives in [Installation](#installation) |
+| [docs/installation.md](./docs/installation.md) | Canonical install: keychain setup, launcher config, plugin, project creation, verification, and upgrade paths |
+| [docs/upgrading.md](./docs/upgrading.md) | Version-to-version upgrade steps, including the 1.4.x to 1.5.0 breaking changes |
 | [docs/architecture.md](./docs/architecture.md) | How the three layers fit together, data flow, auth patterns, sandbox proxy explanation |
 | [docs/skills.md](./docs/skills.md) | Per-skill capability reference, key scripts, and field requirements |
-| [docs/mcp-tools.md](./docs/mcp-tools.md) | All s1-secops-mcp and purple-mcp tools with usage notes and which to use when |
-| [docs/credentials.md](./docs/credentials.md) | Every credential key, where to find it, full `claude_desktop_config.json` reference |
+| [docs/mcp-tools.md](./docs/mcp-tools.md) | All s1-secops-mcp, purple-mcp and Shodan MCP tools with usage notes and which to use when |
+| [docs/credentials.md](./docs/credentials.md) | Every credential value, env and OS keychain resolution, `setup` / `status` / `forget`, changing and rotating stored values, migration from `credentials.json`, client-config warnings, and the security model |
 | [docs/testing.md](./docs/testing.md) | Full test coverage matrix, MCP tool validation results, and confirmed API field requirements |
 | [docs/sdl-dashboard.md](./docs/sdl-dashboard.md) | All supported panel types and dashboard features with confirmed JSON examples |
 | [docs/solutions/data-source-onboarding.md](./docs/solutions/data-source-onboarding.md) | SDL Solutions: onboard a raw source end to end (OCSF, enrichment, dashboard, detections, threat-response flow) from one prompt |

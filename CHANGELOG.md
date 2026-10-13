@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - read-only by default and third-party notices (image and MCP 1.5.5, s1-secops-skills v1.3.16)
+
+- **Read-only by default:** `s1-secops-mcp` starts in read-only mode (`S1_READ_ONLY`). Tools that change the tenant return a clear message with the steps to enable write; investigation, hunting and reporting are unchanged. Enable write with the launcher's `install --read-write` (Windows `-ReadWrite`), the `.mcpb` setting, or `"S1_READ_ONLY": "false"`. Each write is recorded in the server audit log. Details: [read-only.md](plugins/s1-secops-skills/docs/read-only.md).
+- **Third-party notices:** [THIRD_PARTY_NOTICES.md](plugins/s1-secops-skills/THIRD_PARTY_NOTICES.md) covers every bundled component, its license, and the VirusTotal and Shodan service terms. It ships in the image with the `s1-secops-mcp` license and a new `notices` command.
+- **Supply-chain attestations:** images are published with SLSA provenance and an SPDX SBOM.
+- **Skills (plugin 1.3.16):** read-only mode support in all eight skills, plus PowerQuery, dashboard and onboarding guidance.
+- Release notes: [secops-mcps 1.5.5](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.5.5.md).
+
 ### Added - optional Shodan MCP and outputFile fix (image and MCP 1.5.4, s1-secops-skills v1.3.15)
 
 - **Optional Shodan MCP** in `sentinelone/secops-mcps:1.5.4`: exposure intelligence for external IPs and domains (ports, services, banners, TLS/JARM, host CVEs) and Shodan CVEDB lookups. 11 read-only tools, stdio only, key isolated to that server. The launcher's `install` adds it only when `SHODAN_API_KEY` is stored (or with `--with-shodan` / `-WithShodan`).
 - **`outputFile` under Docker:** the server in the image refuses a path that is not inside the folder shared with `install --output-dir`, and says so, instead of reporting success for a file that is lost when the container exits.
 - **Image hardening:** base image pinned by digest (Node 24), `libexpat1` 2.9.0-1, and unused Debian packages with unfixed HIGH CVEs removed. 0 fixable HIGH or CRITICAL findings. VEX statements in `mcp/docker/vex/`.
 - **Skills (plugin 1.3.15):** `mgmt-console-api` and `powerquery` give the `install --output-dir` advice. Plugin 1.3.14 added the offline `sdl-log-parser` lint.
-- Release notes: [secops-mcps 1.5.4](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_mcps_v1.5.4.md).
+- Release notes: [secops-mcps 1.5.4](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.5.4.md).
 
 ### Security - credentials move to the OS keychain (s1-secops-skills v1.3.12, MCP and image 1.5.2)
 

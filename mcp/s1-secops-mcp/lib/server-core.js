@@ -23,6 +23,7 @@ import { tools as uamIngestTools }  from '../tools/uam-ingest.js';
 import { getCreds, hasS1Creds, hasSdlCreds, loadCredentials } from './credentials.js';
 import { hasHecCreds } from './uam-ingest.js';
 import { redact } from './redact.js';
+import { gate, describe, annotationsFor, modeSummary, readOnlyMode, accessOf, ReadOnlyError } from './access.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 
@@ -50,11 +51,25 @@ const SOC_CONTEXT = loadSocContext();
 
 export const ALL_TOOLS = [...pqTools, ...mgmtTools, ...sdlTools, ...haTools, ...uamIngestTools];
 
-export const TOOL_DEFS = ALL_TOOLS.map(t => ({
-  name: t.name,
-  description: t.description,
-  inputSchema: t.inputSchema,
-}));
+// Read-only gate (lib/access.js). Wrapped here, once, so it applies to every caller of a handler
+// (the MCP dispatcher and direct calls alike) and always runs before the handler's first request.
+for (const t of ALL_TOOLS) {
+  if (t.__gated) continue;
+  const inner = t.handler;
+  t.handler = async (args = {}) => { gate(t.name, args); return inner(args); };
+  t.__gated = true;
+}
+
+// Built per tools/list call: the description reflects the current read-only mode.
+export function toolDefs() {
+  return ALL_TOOLS.map(t => ({
+    name: t.name,
+    description: describe(t),
+    inputSchema: t.inputSchema,
+    annotations: annotationsFor(t.name),
+  }));
+}
+export const TOOL_DEFS = toolDefs();
 
 const HANDLERS = Object.fromEntries(ALL_TOOLS.map(t => [t.name, t.handler]));
 
@@ -94,7 +109,7 @@ const PROMPTS = [
 
 export const SERVER_INFO = {
   name: 's1-secops-mcp-server',
-  version: '1.5.4',
+  version: '1.5.5',
 };
 
 export const PROTOCOL_VERSION = '2024-11-05';
@@ -125,7 +140,10 @@ export async function dispatch(method, params, id) {
           prompts: { listChanged: false },
         },
         serverInfo: SERVER_INFO,
-        instructions: 'SentinelOne MCP server providing PowerQuery, Mgmt Console API, SDL API, and Hyperautomation tools. Load the "soc_analyst" prompt at session start for full operating context.',
+        instructions: 'SentinelOne MCP server providing PowerQuery, Mgmt Console API, SDL API, and Hyperautomation tools. Load the "soc_analyst" prompt at session start for full operating context. '
+          + (readOnlyMode()
+            ? 'This server is in READ-ONLY mode (S1_READ_ONLY): tools that change the tenant are refused. When a refusal says so, tell the user how to enable write (s1-secops-mcp-launch.sh install --read-write, then restart Claude Desktop) and do not look for another way to make the change.'
+            : 'WRITE IS ENABLED: tools can change the SentinelOne tenant. Confirm intent with the user before any action that creates, changes or deletes tenant objects.'),
       });
     }
 
@@ -148,6 +166,7 @@ export async function dispatch(method, params, id) {
         const c = getCreds();
         const { sources, keychain } = loadCredentials();
         const status = {
+          mode: modeSummary(),
           s1MgmtApi: {
             configured: hasS1Creds(),
             consoleUrl: c.S1_CONSOLE_URL ? c.S1_CONSOLE_URL.replace(/https?:\/\//, '').split('.')[0] + '...' : 'NOT SET',
@@ -222,7 +241,7 @@ Apply the SOC analyst context from the soc_analyst prompt throughout.`,
     }
 
     case 'tools/list': {
-      return ok(id, { tools: TOOL_DEFS });
+      return ok(id, { tools: toolDefs() });
     }
 
     case 'tools/call': {
@@ -248,7 +267,7 @@ Apply the SOC analyst context from the soc_analyst prompt throughout.`,
           isError: false,
         });
       } catch (e) {
-        log(`Tool error [${toolName}]:`, e.message);
+        log(e instanceof ReadOnlyError ? `Refused (read-only) [${toolName}]` : `Tool error [${toolName}]:`, e.message);
         return ok(id, {
           content: [{ type: 'text', text: redact(`Error: ${e.message}`) }],
           isError: true,

@@ -382,6 +382,12 @@ This pattern preserves first-match-wins semantics at the mapping-entry level (wh
 
 Always validate against the live tenant, the only authoritative test is "did the field actually appear in a query after the parser ran." Syntactic plausibility of the JSON is not validation.
 
+**Read-only mode.** From 1.5.5, s1-secops-mcp is read-only by default (`S1_READ_ONLY` unset or `true`). `sdl_put_file`, `sdl_delete_file` and `hec_ingest` are refused in that mode, so live validation needs write; `sdl_get_file`, `sdl_list_files` and every validation query still run. Check the mode before you start a put-ingest-query loop: read `mode.readOnly` from the `sentinelone://credentials-status` resource, or the server's initialize instructions.
+- If a write returns "s1-secops-mcp is in read-only mode (S1_READ_ONLY).", stop. Do not retry, and do not route around it with another tool (`s1_api_post` to a different endpoint, a hand-built GraphQL mutation).
+- Tell the user which action was refused and how to enable write: Docker launcher `s1-secops-mcp-launch.sh install --read-write` (Windows `-ReadWrite`), then restart Claude Desktop; `.mcpb` extension: turn off "Read-only mode (recommended)"; Node install: `"S1_READ_ONLY": "false"` in the server's `env` block. Detail: `docs/read-only.md` in the source repo (not shipped).
+- Offer the parser (and the sample log lines) as local files via the Write tool, and state plainly that the parser is unvalidated until it runs on the tenant.
+- Never enable write on the user's behalf by editing their MCP client config.
+
 ### Default: update the real parser in place, validate on the live stream
 
 When the source is already ingesting (the normal case), **edit the real parser and validate on real traffic.** Do NOT create a `claude_test_*` parser and do NOT synthetically ingest, saved parser edits are non-destructive (they apply only to newly ingested events and never re-parse history), so editing the live parser is safe, and the feed the source is already sending is the authoritative test.

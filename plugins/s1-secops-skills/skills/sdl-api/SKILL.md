@@ -273,6 +273,12 @@ For long-running ingest, use the binary truncated exponential backoff loop in `r
 
 There is no undo. Configuration files are versioned but accidental deletes still take effect immediately.
 
+**Read-only mode.** From 1.5.5, s1-secops-mcp is read-only by default (`S1_READ_ONLY` unset or `true`). `sdl_put_file`, `sdl_delete_file`, `hec_ingest`, the dashboard write tools and `powerquery_run` with `| savelookup` are refused in that mode; `sdl_get_file`, `sdl_list_files`, `powerquery_run` and `powerquery_schema_discover` still run. Check the mode before a multi-file change: read `mode.readOnly` from the `sentinelone://credentials-status` resource, or the server's initialize instructions.
+- If a write returns "s1-secops-mcp is in read-only mode (S1_READ_ONLY).", stop. Do not retry, and do not route around it with another tool (`s1_api_post` to a different endpoint, purple-mcp `powerquery` with `| savelookup`, a hand-built GraphQL mutation, the host Python client).
+- Tell the user which action was refused and how to enable write: Docker launcher `s1-secops-mcp-launch.sh install --read-write` (Windows `-ReadWrite`), then restart Claude Desktop; `.mcpb` extension: turn off "Read-only mode (recommended)"; Node install: `"S1_READ_ONLY": "false"` in the server's `env` block. Detail: `docs/read-only.md` in the source repo (not shipped).
+- Offer the file content (parser, lookup, dashboard JSON, events to ingest) as a local file via `outputFile` or the Write tool so nothing is lost.
+- Never enable write on the user's behalf by editing their MCP client config.
+
 ## Common high-value workflows
 
 - **Hunt with PowerQuery.** Use `powerquery_run`, which runs LRQ at `POST /sdl/v2/api/queries` on your console host. LRQ is NOT reachable via the old SDL host (`xdr.<region>.sentinelone.net`). The host-only client's `c.power_query()` hits the deprecated V1 endpoint and should only be used for a quick ad-hoc one-off before 2027-02-15.

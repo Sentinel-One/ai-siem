@@ -19,6 +19,7 @@
     s1-secops-mcp-launch.ps1 setup  [-Profile P]
     s1-secops-mcp-launch.ps1 status [-Profile P]
     s1-secops-mcp-launch.ps1 versions | help      image versions / entrypoint help
+    s1-secops-mcp-launch.ps1 notices              third-party notices and licenses
     s1-secops-mcp-launch.ps1 install [options]   copy to $HOME\bin, pull the image, add the
                                                  servers to the Claude Desktop config
                                                  (backup kept), then run setup if no token
@@ -26,13 +27,16 @@
                                                  script's absolute path (other clients)
       options: -Image IMG  -Profile P  -OutputDir DIR  -ClaudeMd FILE
                -WithShodan (add the optional shodan entry even with no key stored)
+               -ReadWrite (allow s1-secops-mcp tools that change the tenant;
+                           read-only is the default, see docs/read-only.md)
                -ConfigPath FILE (install only; default %APPDATA%\Claude\claude_desktop_config.json)
 
   Shodan is optional: install/config write the "shodan" entry only when
   SHODAN_API_KEY is stored for the profile, or with -WithShodan.
 
   Environment: S1_MCP_IMAGE, S1_PROFILE, S1_OUTPUT_DIR (mounted at /output),
-  S1_CLAUDE_MD_PATH (host CLAUDE.md, mounted read-only). S1_SCOPE is
+  S1_CLAUDE_MD_PATH (host CLAUDE.md, mounted read-only), S1_READ_ONLY (passed
+  to s1-secops-mcp when set; default inside is true). S1_SCOPE is
   <accountId> or <accountId>:<siteId>.
 
   MCP client config example (no secrets; JSON does not expand %USERPROFILE%,
@@ -44,12 +48,13 @@
   language mode, use the native server with `s1-secops-mcp setup` instead.
 #>
 param(
-  [string]$Image = $(if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.4' }),
+  [string]$Image = $(if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.5' }),
   [Alias('Profile')][string]$KeyProfile = $(if ($env:S1_PROFILE) { $env:S1_PROFILE } else { 'default' }),
   [string]$OutputDir,
   [string]$ClaudeMd,
   [string]$ConfigPath,
   [switch]$WithShodan,
+  [switch]$ReadWrite,
   [Parameter(Position = 0, Mandatory = $true)][string]$Command,
   [Parameter(Position = 1, ValueFromRemainingArguments = $true)][string[]]$ServerArgs
 )
@@ -161,6 +166,8 @@ function New-S1Entries([string]$Launcher) {
   $envMap = [ordered]@{}
   if ($OutputDir) { $envMap['S1_OUTPUT_DIR'] = $OutputDir }
   if ($ClaudeMd) { $envMap['S1_CLAUDE_MD_PATH'] = $ClaudeMd }
+  # Read-only is the default; only -ReadWrite writes the opt-out.
+  if ($ReadWrite) { $envMap['S1_READ_ONLY'] = 'false' }
   if ($envMap.Count) { $s1['env'] = $envMap }
   $entries = [ordered]@{
     's1-secops-mcp' = $s1
@@ -246,6 +253,8 @@ if ($Command -in 'install', 'config') {
     [IO.File]::WriteAllText($t, $m[1] + "`n", (New-Object System.Text.UTF8Encoding($false)))
     $kind = if ($t -match '[\\/]Packages[\\/]Claude_') { ' (MSIX install: the file Claude Desktop reads)' } else { '' }
     Write-Err "Claude Desktop config updated: $t$kind"
+    if ($ReadWrite) { Write-Err 'NOTICE: s1-secops-mcp is configured with write enabled (S1_READ_ONLY=false). Its tools can change your SentinelOne tenant; every change runs as the user that owns the API token and is written to the server audit log. Use a least-privilege service user. See docs/read-only.md.' }
+    else { Write-Err 's1-secops-mcp is configured read-only (the default): tools that change the tenant are refused. To allow them, run install again with -ReadWrite.' }
   }
 
   # Windows PowerShell 5.1 turns a native command's redirected stderr into
@@ -266,7 +275,13 @@ if ($Command -in 'install', 'config') {
     } catch { $dockerUp = $false } finally { $ErrorActionPreference = $eap }
   }
   if (-not $dockerUp) { Write-Err 's1-secops-mcp-launch: warning: Docker is not running. Start Docker Desktop before you open Claude Desktop.' }
-  elseif ($pullRc -ne 0) { Write-Err 's1-secops-mcp-launch: warning: pull failed; the first start will retry it' }
+  elseif ($pullRc -ne 0) {
+    # A locally built tag (e.g. a release candidate) is not on the registry; that is fine.
+    $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try { & docker image inspect $Image *> $null; $local = ($LASTEXITCODE -eq 0) } catch { $local = $false } finally { $ErrorActionPreference = $eap }
+    if ($local) { Write-Err "s1-secops-mcp-launch: $Image is not on the registry; using the local image." }
+    else { Write-Err 's1-secops-mcp-launch: warning: pull failed; the first start will retry it' }
+  }
 
   $hasToken = $true
   try { $hasToken = [bool](Get-Kc 'S1_CONSOLE_API_TOKEN') } catch { Write-Err "s1-secops-mcp-launch: warning: Credential Manager unavailable: $($_.Exception.Message)" }
@@ -312,9 +327,10 @@ switch -Regex ($Command) {
       $s = if (-not $v) { '-' } elseif (Test-Secret $n) { "set ($($v.Length) chars)" } else { $v }
       '{0,-34} {1}' -f $n, $s
     }
+    '{0,-34} {1}' -f 'S1_READ_ONLY', 'set in the MCP client config, not Credential Manager (default: read-only)'
     exit 0
   }
-  '^(versions|help)$' { & docker run --rm $Image $Command; exit $LASTEXITCODE }
+  '^(versions|help|notices)$' { & docker run --rm $Image $Command; exit $LASTEXITCODE }
   '^(s1-secops-mcp|s1)$' { $Names = 'S1_CONSOLE_URL','S1_CONSOLE_API_TOKEN','S1_HEC_INGEST_URL','S1_HEC_TOKEN','S1_SCOPE' }
   '^(purple-mcp|purple)$' { $Names = 'S1_CONSOLE_URL','S1_CONSOLE_API_TOKEN','VIRUSTOTAL_API_KEY' }  # VT key -> PURPLEMCP_VT_API_KEY
   '^(virustotal-mcp|virustotal|vt)$' { $Names = @('VIRUSTOTAL_API_KEY') }
@@ -332,6 +348,9 @@ if ($required) { Write-Err "s1-secops-mcp-launch: warning: not in Credential Man
 
 $cname = "s1mcp-$PID-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
 $dargs = @('run','-i','--rm','--name',$cname,'-e','S1_SECRETS_STDIN=1')
+# Read-only mode is decided inside the container (default true); forward the
+# client's setting only when it set one.
+if ($null -ne $env:S1_READ_ONLY) { $dargs += @('-e', "S1_READ_ONLY=$($env:S1_READ_ONLY)") }
 if ($env:S1_OUTPUT_DIR) {
   if (-not (Test-Path -LiteralPath $env:S1_OUTPUT_DIR -PathType Container)) { throw "S1_OUTPUT_DIR $($env:S1_OUTPUT_DIR) is not a directory" }
   # Windows paths cannot be mirrored inside a Linux container, so the directory is

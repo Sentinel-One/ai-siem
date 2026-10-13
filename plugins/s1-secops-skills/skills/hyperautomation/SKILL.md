@@ -195,6 +195,12 @@ If the workflow chains `Function.JQ` steps, builds a time window, or fails a run
 
 If the user wants to submit to a live console, read `references/api-integration.md`.
 
+**Read-only mode.** From 1.5.5, s1-secops-mcp is read-only by default (`S1_READ_ONLY` unset or `true`). `ha_import_workflow`, `ha_delete_workflow` and the `s1_api_post` calls for publish, activate, deactivate and run-now are refused in that mode; `ha_list_workflows`, `ha_get_workflow` and `ha_export_workflow` still run. Check the mode before an import-publish-activate sequence: read `mode.readOnly` from the `sentinelone://credentials-status` resource, or the server's initialize instructions.
+- If a write returns "s1-secops-mcp is in read-only mode (S1_READ_ONLY).", stop. Do not retry, and do not route around it with another tool (`s1_api_post` to a different endpoint, a hand-built GraphQL mutation).
+- Tell the user which action was refused and how to enable write: Docker launcher `s1-secops-mcp-launch.sh install --read-write` (Windows `-ReadWrite`), then restart Claude Desktop; `.mcpb` extension: turn off "Read-only mode (recommended)"; Node install: `"S1_READ_ONLY": "false"` in the server's `env` block. Detail: `docs/read-only.md` in the source repo (not shipped).
+- Offer the workflow JSON as a local file via the Write tool so the user can import it in the console or retry later.
+- Never enable write on the user's behalf by editing their MCP client config.
+
 **Credentials**: never read, paste or write a token yourself. The `s1-secops-mcp` server
 resolves `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` per value from environment variables
 first, then the OS keychain (service `sentinelone-mcp`, account `<profile>:<NAME>`, profile

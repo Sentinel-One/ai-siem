@@ -3,96 +3,309 @@
   "@id": "https://github.com/Sentinel-One/ai-siem/mcp/docker/vex/secops-mcps.openvex.json",
   "author": "Prithvi Moses <prithvi.moses@sentinelone.com>",
   "timestamp": "2026-10-13T08:00:00Z",
-  "version": 1,
+  "version": 2,
   "statements": [
     {
-      "vulnerability": { "name": "CVE-2026-77214" },
+      "vulnerability": {
+        "name": "CVE-2026-77214"
+      },
       "products": [
         {
           "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
-          "subcomponents": [ { "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13" } ]
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
         }
       ],
       "status": "fixed",
       "status_notes": "The image installs libexpat1 2.9.0-1 from Debian forky (Dockerfile EXPAT_FORKY_VERSION). The Debian security tracker lists 2.9.0-1 as the fixed version (upstream fix 4d9b1c4, R_2_9_0). Scanners flag it because the trixie advisory has no fixed version yet and they match on os_distro=trixie."
     },
     {
-      "vulnerability": { "name": "CVE-2026-93990" },
+      "vulnerability": {
+        "name": "CVE-2026-93990"
+      },
       "products": [
         {
           "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
-          "subcomponents": [ { "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13" } ]
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
         }
       ],
       "status": "fixed",
       "status_notes": "Fixed upstream in expat 2.8.5 (0cfd15b, 28fcfba); Debian lists forky 2.8.4-2 and sid 2.9.0-1 as fixed. The image ships 2.9.0-1."
     },
     {
-      "vulnerability": { "name": "CVE-2026-66046" },
-      "products": [ { "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4", "subcomponents": [ { "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13" } ] } ],
+      "vulnerability": {
+        "name": "CVE-2026-66046"
+      },
+      "products": [
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        }
+      ],
       "status": "fixed",
       "status_notes": "Affects expat through 2.8.3; Debian security tracker lists forky/sid 2.9.0-1 as fixed. The image ships 2.9.0-1."
     },
     {
-      "vulnerability": { "name": "CVE-2026-76956" },
-      "products": [ { "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4", "subcomponents": [ { "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13" } ] } ],
+      "vulnerability": {
+        "name": "CVE-2026-76956"
+      },
+      "products": [
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        }
+      ],
       "status": "fixed",
       "status_notes": "Affects libexpat 2.8.2 and 2.8.3, fixed in 2.8.4; Debian lists forky/sid 2.9.0-1 as fixed. The image ships 2.9.0-1."
     },
     {
-      "vulnerability": { "name": "CVE-2026-76957" },
-      "products": [ { "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4", "subcomponents": [ { "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13" } ] } ],
+      "vulnerability": {
+        "name": "CVE-2026-76957"
+      },
+      "products": [
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/expat@2.9.0-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        }
+      ],
       "status": "fixed",
       "status_notes": "Affects libexpat before 2.8.4; Debian lists forky/sid 2.9.0-1 as fixed. The image ships 2.9.0-1."
     },
     {
-      "vulnerability": { "name": "CVE-2026-19445" },
-      "products": [ { "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4", "subcomponents": [ { "@id": "pkg:deb/debian/python3.13@3.13.5-2+deb13u5?os_distro=trixie&os_name=debian&os_version=13" } ] } ],
+      "vulnerability": {
+        "name": "CVE-2026-19445"
+      },
+      "products": [
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/python3.13@3.13.5-2+deb13u5?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/python3.13@3.13.5-2+deb13u5?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        }
+      ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "The flaw is in a server-side SSLContext whose sni_callback switches contexts. The only Python process here (purple-mcp) is a TLS client over stdio and never creates a server-side SSLContext or sni_callback."
     },
     {
-      "vulnerability": { "name": "CVE-2026-19553" },
-      "products": [ { "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4", "subcomponents": [ { "@id": "pkg:deb/debian/python3.13@3.13.5-2+deb13u5?os_distro=trixie&os_name=debian&os_version=13" } ] } ],
+      "vulnerability": {
+        "name": "CVE-2026-19553"
+      },
+      "products": [
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/python3.13@3.13.5-2+deb13u5?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/python3.13@3.13.5-2+deb13u5?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        }
+      ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_in_execute_path",
       "impact_statement": "The flaw is SSLContext.wrap_bio() accepting a call without server_hostname. purple-mcp's HTTPS client is httpx/httpcore, whose sync backend calls wrap_bio(..., server_hostname=server_hostname) with the request origin (or SNI) host on every TLS connection (httpcore/_backends/sync.py, _sync/connection.py)."
     },
     {
-      "vulnerability": { "name": "CVE-2026-76642" },
-      "products": [ { "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4", "subcomponents": [ { "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13" } ] } ],
+      "vulnerability": {
+        "name": "CVE-2026-76642"
+      },
+      "products": [
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        }
+      ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_present",
       "impact_statement": "The flaw is in mount's external helper handling (util-linux source package). libuuid1 is built from the same source but contains only the UUID library; mount, util-linux and libmount1 are purged from the image."
     },
     {
-      "vulnerability": { "name": "CVE-2026-78408" },
-      "products": [ { "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4", "subcomponents": [ { "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13" } ] } ],
+      "vulnerability": {
+        "name": "CVE-2026-78408"
+      },
+      "products": [
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        }
+      ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_present",
       "impact_statement": "The flaw is in nsenter --join-cgroup (util-linux). libuuid1 does not contain nsenter, and the util-linux package is purged from the image."
     },
     {
-      "vulnerability": { "name": "CVE-2026-78409" },
-      "products": [ { "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4", "subcomponents": [ { "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13" } ] } ],
+      "vulnerability": {
+        "name": "CVE-2026-78409"
+      },
+      "products": [
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        }
+      ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_present",
       "impact_statement": "The flaw is in libmount X-mount.subdir resolution. libuuid1 contains no mount code; libmount1 and mount are purged from the image."
     },
     {
-      "vulnerability": { "name": "CVE-2026-78410" },
-      "products": [ { "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4", "subcomponents": [ { "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13" } ] } ],
+      "vulnerability": {
+        "name": "CVE-2026-78410"
+      },
+      "products": [
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/libuuid1@2.41.5-0%2Bdeb13u1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        }
+      ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_present",
       "impact_statement": "The flaw is in libmount restricted bind mounts. libuuid1 contains no mount code; libmount1 and mount are purged from the image."
     },
     {
-      "vulnerability": { "name": "CVE-2026-85091" },
+      "vulnerability": {
+        "name": "CVE-2026-85091"
+      },
       "products": [
         {
           "@id": "pkg:docker/sentinelone/secops-mcps@1.5.4",
-          "subcomponents": [ { "@id": "pkg:deb/debian/zlib@1%3A1.3.dfsg%2Breally1.3.1-1?os_distro=trixie&os_name=debian&os_version=13" } ]
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/zlib@1%3A1.3.dfsg%2Breally1.3.1-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:docker/sentinelone/secops-mcps@1.5.5",
+          "subcomponents": [
+            {
+              "@id": "pkg:deb/debian/zlib@1%3A1.3.dfsg%2Breally1.3.1-1?os_distro=trixie&os_name=debian&os_version=13"
+            }
+          ]
         }
       ],
       "status": "not_affected",

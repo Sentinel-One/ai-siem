@@ -7,8 +7,8 @@
 #
 # Examples:
 #   docker/smoke-test.sh secops-mcps:local-rc1
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.4 --expect-version 1.5.4
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.4 --platform linux/amd64
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.5 --expect-version 1.5.5
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.5 --platform linux/amd64
 #
 # Exit code is the number of failed tests, so `if docker/smoke-test.sh IMG` works
 # as a gate in CI or a release checklist.
@@ -46,6 +46,9 @@
 #   T30-T31  outputFile: with no shared folder it is refused with the
 #            `install --output-dir` advice (no silent loss in /tmp); with a
 #            shared folder the path is accepted.
+#   T32-T34  Read-only by default (1.5.5): a write tool and a savelookup query
+#            are refused with no network, and S1_READ_ONLY=false lifts it.
+#   T35-T36  Third-party notices and every bundled LICENSE ship in the image.
 #
 set -uo pipefail
 
@@ -373,6 +376,50 @@ else
   bad "T31 shared folder: outputFile path accepted" "$(printf '%s' "$R31" | cut -c1-200)"
 fi
 rm -rf "$SHARED"
+
+# ── Read-only by default (1.5.5) ─────────────────────────────────────────────
+# The gate runs before any handler or network call, so --network none proves a
+# refused write never left the container. T33 proves the opt-out reaches the
+# server: the same call then fails for another reason (no network), not mode.
+mcp_call() { # $1 tool, $2 arguments JSON, rest: extra docker args. Prints the id 5 reply.
+  t="$1"; a="$2"; shift 2
+  { printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
+    sleep 3
+    printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}'
+    printf '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"%s","arguments":%s}}\n' "$t" "$a"
+    sleep 5
+  } | docker run -i --rm --network none ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} -e S1_CONSOLE_URL=https://example.invalid -e S1_CONSOLE_API_TOKEN=dummy "$@" "$IMAGE" s1-secops-mcp 2>/dev/null \
+  | grep '"id":5'
+}
+R32="$(mcp_call sdl_delete_dashboard '{"id":"smoke-1"}')"
+if printf '%s' "$R32" | grep -q '"isError":true' && printf '%s' "$R32" | grep -q 'read-only mode (S1_READ_ONLY)' && printf '%s' "$R32" | grep -q 'install --read-write'; then
+  ok "T32 default: write tool refused in read-only mode, with how-to"
+else
+  bad "T32 default: write tool refused in read-only mode, with how-to" "$(printf '%s' "$R32" | cut -c1-200)"
+fi
+R33="$(mcp_call sdl_delete_dashboard '{"id":"smoke-1"}' -e S1_READ_ONLY=false)"
+if printf '%s' "$R33" | grep -q 'id":5' && ! printf '%s' "$R33" | grep -q 'read-only mode'; then
+  ok "T33 S1_READ_ONLY=false: write tool reaches its handler"
+else
+  bad "T33 S1_READ_ONLY=false: write tool reaches its handler" "$(printf '%s' "$R33" | cut -c1-200)"
+fi
+R34="$(mcp_call powerquery_run '{"query":"dataSource.name=* | savelookup \"smoke\""}')"
+if printf '%s' "$R34" | grep -q '"isError":true' && printf '%s' "$R34" | grep -q 'read-only mode'; then
+  ok "T34 default: PowerQuery savelookup refused"
+else
+  bad "T34 default: PowerQuery savelookup refused" "$(printf '%s' "$R34" | cut -c1-200)"
+fi
+
+# ── Licenses and third-party notices (1.5.5) ─────────────────────────────────
+NOTICES="$(docker run --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} "$IMAGE" notices 2>/dev/null)"
+if printf '%s' "$NOTICES" | grep -q 'Third-Party Notices' && printf '%s' "$NOTICES" | grep -q 'VirusTotal' \
+   && printf '%s' "$NOTICES" | grep -q 'Shodan' && printf '%s' "$NOTICES" | grep -q 'Non-affiliation'; then
+  ok "T35 notices command prints the third-party notices"
+else
+  bad "T35 notices command prints the third-party notices" "$(printf '%s' "$NOTICES" | head -3)"
+fi
+LIC="$(inimg 'for f in /opt/s1-secops-mcp/LICENSE /opt/mcp-virustotal/LICENSE /opt/mcp-shodan/LICENSE /opt/purple-mcp/lib/python3*/site-packages/purple_mcp-*.dist-info/licenses/LICENSE /usr/share/doc/secops-mcps/THIRD_PARTY_NOTICES.md; do [ -r "$f" ] || echo "missing $f"; done; grep -q "GNU AFFERO" /opt/s1-secops-mcp/LICENSE || echo "s1-secops-mcp LICENSE is not AGPL"')"
+[ -z "$LIC" ] && ok "T36 license files present and readable" || bad "T36 license files present and readable" "$LIC"
 
 EXPAT_V="$(inimg "dpkg-query -W -f='\${Version}' libexpat1")"
 [ "$EXPAT_V" = "2.9.0-1" ] && ok "T29 libexpat1 2.9.0-1 (fixes 5 HIGH)" \

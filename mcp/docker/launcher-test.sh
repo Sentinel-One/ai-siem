@@ -51,6 +51,23 @@ for SHELL_BIN in /bin/sh /usr/bin/dash /bin/dash /bin/bash; do
   if py "$T/c4.json" "sorted(j['mcpServers'])==['purple-mcp','s1-secops-mcp','shodan','virustotal'] and j['mcpServers']['shodan']['command']=='$SRC' and j['mcpServers']['shodan']['args'][-1]=='shodan-mcp' and j['mcpServers']['shodan']['args'][:2]==j['mcpServers']['virustotal']['args'][:2]"; then
     ok "config: --with-shodan adds the shodan entry"; else bad "config --with-shodan" "$T/c4.err"; fi
 
+  # Read-only is the default (no S1_READ_ONLY written); --read-write writes the
+  # opt-out on the s1-secops-mcp entry only.
+  run "$SRC" config --read-write > "$T/rw.json" 2> "$T/rw.err"
+  if py "$T/c.json" "'env' not in j['mcpServers']['s1-secops-mcp']" && py "$T/rw.json" "j['mcpServers']['s1-secops-mcp']['env']=={'S1_READ_ONLY':'false'} and 'env' not in j['mcpServers']['purple-mcp'] and 'env' not in j['mcpServers']['virustotal']"; then
+    ok "config: read-only by default, --read-write sets S1_READ_ONLY=false on s1-secops-mcp only"; else bad "config --read-write" "$T/rw.err"; fi
+
+  # Runtime: S1_READ_ONLY from the client env is forwarded to docker run; unset
+  # forwards nothing (the container default, read-only, applies).
+  mkdir -p "$T/recbin"
+  printf '#!/bin/sh\nprintf "%%s\\n" "$@" > "%s/argv"\ncat >/dev/null\nexit 0\n' "$T" > "$T/recbin/docker"; chmod 755 "$T/recbin/docker"
+  (cd "$T" && HOME="$H" S1_PROFILE=s1lt-nokey S1_KEYCHAIN_TIMEOUT=3 S1_READ_ONLY=false PATH="$T/recbin:$PATH" "$SHELL_BIN" "$SRC" s1-secops-mcp </dev/null) >/dev/null 2>&1
+  fwd_rw=$(grep -c '^S1_READ_ONLY=false$' "$T/argv" 2>/dev/null)
+  (cd "$T" && env -u S1_READ_ONLY HOME="$H" S1_PROFILE=s1lt-nokey S1_KEYCHAIN_TIMEOUT=3 PATH="$T/recbin:$PATH" "$SHELL_BIN" "$SRC" s1-secops-mcp </dev/null) >/dev/null 2>&1
+  fwd_def=$(grep -c '^S1_READ_ONLY' "$T/argv" 2>/dev/null)
+  if [ "$fwd_rw" = 1 ] && [ "$fwd_def" = 0 ]; then
+    ok "runtime: S1_READ_ONLY forwarded only when the client sets it"; else bad "runtime S1_READ_ONLY forwarding (set=$fwd_rw unset=$fwd_def)"; fi
+
   # a relative invocation still resolves to an absolute path
   (cd "$T/clone" && HOME="$H" "$SHELL_BIN" ./s1-secops-mcp-launch.sh config </dev/null) > "$T/c0.json" 2>/dev/null
   if py "$T/c0.json" "j['mcpServers']['purple-mcp']['command']=='$SRC'"; then ok "config: relative call gives absolute path"; else bad "config relative"; fi
@@ -69,8 +86,8 @@ for SHELL_BIN in /bin/sh /usr/bin/dash /bin/dash /bin/bash; do
   run "$SRC" install > "$T/i1.out" 2> "$T/i1.err"; rc=$?
   if [ "$rc" = 0 ] && [ -x "$DEST" ] && cmp -s "$SRC" "$DEST" && py "$CFG" "{v['command'] for v in j['mcpServers'].values()}=={'$DEST'}" && ! ls "$CFG".bak-* >/dev/null 2>&1; then
     ok "install: fresh config"; else bad "install fresh (rc=$rc)" "$T/i1.err"; fi
-  if grep -q "Docker is not running" "$T/i1.err" && grep -q "Quit Claude Desktop completely" "$T/i1.err"; then
-    ok "install: Docker warning and restart instruction"; else bad "install messages" "$T/i1.err"; fi
+  if grep -q "Docker is not running" "$T/i1.err" && grep -q "Quit Claude Desktop completely" "$T/i1.err" && grep -q "configured read-only (the default)" "$T/i1.err"; then
+    ok "install: Docker warning, read-only notice and restart instruction"; else bad "install messages" "$T/i1.err"; fi
 
   # install merges: keeps other servers and settings, replaces ours, drops an
   # old launcher entry under another name, keeps a backup
@@ -107,6 +124,11 @@ J
   run "$SRC" install --config-path "$T/alt/c.json" > /dev/null 2>&1
   if py "$T/alt/c.json" "len(j['mcpServers'])==3"; then ok "install: --config-path"; else bad "install --config-path"; fi
 
+  # --read-write: writes the opt-out and prints the write NOTICE
+  run "$SRC" install --read-write --config-path "$T/rwi/c.json" > /dev/null 2> "$T/i6.err"
+  if py "$T/rwi/c.json" "j['mcpServers']['s1-secops-mcp']['env']=={'S1_READ_ONLY':'false'}" && grep -q "NOTICE: s1-secops-mcp is configured with write enabled" "$T/i6.err"; then
+    ok "install: --read-write writes S1_READ_ONLY=false and the NOTICE"; else bad "install --read-write" "$T/i6.err"; fi
+
   # piped into the shell ($0 is the shell): refuse, never copy the shell binary
   rm -f "$DEST"
   (cd "$T" && HOME="$H" PATH="$ROOT/fakebin:$PATH" "$SHELL_BIN" -s install < "$SRC") > /dev/null 2> "$T/i4.err"; rc=$?
@@ -130,7 +152,7 @@ done
 # Live stdio check (Docker running and the image present): an MCP client keeps
 # stdin open, so the initialize reply must arrive before stdin closes. Piping
 # one line and closing stdin would hide a relay that buffers input.
-IMAGE=sentinelone/secops-mcps:1.5.4
+IMAGE=${S1_MCP_IMAGE:-sentinelone/secops-mcps:1.5.5}
 if command -v docker >/dev/null 2>&1 && docker image inspect "$IMAGE" >/dev/null 2>&1; then
   echo "== live stdio"
   L="$ROOT/live"; mkdir -p "$L"; mkfifo "$L/in"

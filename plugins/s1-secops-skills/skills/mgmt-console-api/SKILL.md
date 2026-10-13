@@ -174,6 +174,12 @@ Many endpoints are destructive or operationally sensitive: disconnect/reconnect 
 
 The safe pattern: run the matching `GET` with `countOnly=true` first to show the blast radius, then the mutating call.
 
+**Read-only mode.** From 1.5.5, s1-secops-mcp is read-only by default (`S1_READ_ONLY` unset or `true`). `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_post_alert` and `uam_ingest_alert` are refused in that mode, and `s1_api_post` runs only an allowlist of query POSTs and GraphQL `query` documents. `s1_api_get`, `uam_list_alerts`, `uam_get_alert` and `uam_available_actions` still run. Check the mode before a multi-step change: read `mode.readOnly` from the `sentinelone://credentials-status` resource, or the server's initialize instructions.
+- If a write returns "s1-secops-mcp is in read-only mode (S1_READ_ONLY).", stop. Do not retry, and do not route around it with another tool (`s1_api_post` to a different endpoint, a hand-built GraphQL mutation, the host Python client).
+- Tell the user which action was refused and how to enable write: Docker launcher `s1-secops-mcp-launch.sh install --read-write` (Windows `-ReadWrite`), then restart Claude Desktop; `.mcpb` extension: turn off "Read-only mode (recommended)"; Node install: `"S1_READ_ONLY": "false"` in the server's `env` block. Detail: `docs/read-only.md` in the source repo (not shipped).
+- Offer what you prepared (request body, rule body, note text, verdict and status) as a local file via `outputFile` or the Write tool so nothing is lost.
+- Never enable write on the user's behalf by editing their MCP client config.
+
 ## Purple AI: natural-language query, alert summary, and auto-investigation
 
 Purple AI covers natural-language to PowerQuery, per-alert summaries, and auto-investigation across three GraphQL endpoints. For API-token (service-account) workflows, `purpleLaunchQuery NATURAL_LANGUAGE` and `aiInvestigation/run` are non-functional because they need a browser-session teamToken; use `mcp__purple-mcp__purple_ai` instead. `purpleAlertSummary` (via `purple_ai_alert_summary`) does work for API tokens. Full endpoint map, GraphQL request shapes, end-to-end operation flows, Python CLI notes, domain boundary, and the API-token limitations table: [references/purple-ai.md](references/purple-ai.md).

@@ -13,6 +13,7 @@
 #   s1-secops-mcp-launch.sh setup  [--profile P]   store values (prompts, no echo)
 #   s1-secops-mcp-launch.sh status [--profile P]   show which values are stored
 #   s1-secops-mcp-launch.sh versions | help        image versions / entrypoint help
+#   s1-secops-mcp-launch.sh notices                third-party notices and licenses
 #   s1-secops-mcp-launch.sh install [options]      copy to ~/.local/bin, pull the image,
 #                                                  add the servers to the Claude
 #                                                  Desktop config (backup kept), then
@@ -21,6 +22,8 @@
 #                                                  launcher's absolute path (other clients)
 #     options: --image IMG  --profile P  --output-dir DIR  --claude-md FILE
 #              --with-shodan (add the optional shodan entry even with no key stored)
+#              --read-write (allow s1-secops-mcp tools that change the tenant;
+#                            read-only is the default, see docs/read-only.md)
 #              --config-path FILE (install only; default is Claude Desktop's config)
 #
 # Shodan is optional: install/config write the "shodan" entry only when
@@ -32,10 +35,11 @@
 #   "s1-secops-mcp": { "command": "/abs/path/s1-secops-mcp-launch.sh", "args": ["s1-secops-mcp"] }
 #
 # Environment
-#   S1_MCP_IMAGE   image (default sentinelone/secops-mcps:1.5.4)
+#   S1_MCP_IMAGE   image (default sentinelone/secops-mcps:1.5.5)
 #   S1_PROFILE     keychain profile (default "default")
 #   S1_OUTPUT_DIR  host directory mounted at the same path so outputFile works
 #   S1_CLAUDE_MD_PATH  host CLAUDE.md, mounted read-only into the container
+#   S1_READ_ONLY   passed to s1-secops-mcp when set (default inside: true)
 #   S1_KEYCHAIN_TIMEOUT  keychain call timeout in SECONDS (default 15); the
 #                  Node and Python clients read S1_KEYCHAIN_TIMEOUT_MS instead
 #
@@ -45,7 +49,7 @@
 set -eu
 
 SERVICE=sentinelone-mcp
-IMAGE=${S1_MCP_IMAGE:-sentinelone/secops-mcps:1.5.4}
+IMAGE=${S1_MCP_IMAGE:-sentinelone/secops-mcps:1.5.5}
 PROFILE=${S1_PROFILE:-default}
 
 die() { echo "s1-secops-mcp-launch: $*" >&2; exit 2; }
@@ -60,7 +64,7 @@ while [ $# -gt 0 ]; do
 done
 [ $# -ge 1 ] || die "missing server name (s1-secops-mcp | purple-mcp | virustotal-mcp | shodan-mcp | setup | status | install | config)"
 CMD=$1; shift
-OUTPUT_DIR=""; CLAUDE_MD=""; CONFIG_PATH=""; WITH_SHODAN=""
+OUTPUT_DIR=""; CLAUDE_MD=""; CONFIG_PATH=""; WITH_SHODAN=""; READ_WRITE=""
 # setup, status, install and config take their options after the command too
 # (`setup --profile P`); servers pass everything after the name through.
 case "$CMD" in
@@ -73,8 +77,9 @@ case "$CMD" in
     done ;;
   install|config)
     while [ $# -gt 0 ]; do
-      # The one flag without a value.
+      # The flags without a value.
       if [ "$1" = --with-shodan ]; then WITH_SHODAN=1; shift; continue; fi
+      if [ "$1" = --read-write ]; then READ_WRITE=1; shift; continue; fi
       [ $# -ge 2 ] || die "$1 needs a value"
       case "$1" in
         --image) IMAGE=$2 ;;
@@ -193,6 +198,8 @@ mcp_json() {
   [ "$PROFILE" = default ] || _p=", \"--profile\", $(json_str "$PROFILE")"
   [ -z "$OUTPUT_DIR" ] || _e="\"S1_OUTPUT_DIR\": $(json_str "$OUTPUT_DIR")"
   [ -z "$CLAUDE_MD" ] || _e="${_e:+$_e, }\"S1_CLAUDE_MD_PATH\": $(json_str "$CLAUDE_MD")"
+  # Read-only is the default; only --read-write writes the opt-out.
+  [ -z "$READ_WRITE" ] || _e="${_e:+$_e, }\"S1_READ_ONLY\": \"false\""
   printf '{\n  "mcpServers": {\n'
   printf '    "s1-secops-mcp": {\n      "command": %s,\n      "args": ["--image", %s%s, "s1-secops-mcp"]' "$_l" "$_i" "$_p"
   [ -z "$_e" ] || printf ',\n      "env": {%s}' "$_e"
@@ -306,6 +313,11 @@ case "$CMD" in
       fi
       printf '%s\n' "$MERGED" > "$CONFIG_PATH.tmp.$$" && mv -f "$CONFIG_PATH.tmp.$$" "$CONFIG_PATH"
       echo "Claude Desktop config updated: $CONFIG_PATH" >&2
+      if [ -n "$READ_WRITE" ]; then
+        echo "NOTICE: s1-secops-mcp is configured with write enabled (S1_READ_ONLY=false). Its tools can change your SentinelOne tenant; every change runs as the user that owns the API token and is written to the server audit log. Use a least-privilege service user. See docs/read-only.md." >&2
+      else
+        echo "s1-secops-mcp is configured read-only (the default): tools that change the tenant are refused. To allow them, run install again with --read-write." >&2
+      fi
     else
       echo "No JSON tool found (osascript or python3), so the config was not edited. Add these entries to your MCP client config:" >&2
       cat "$TMPD/new.json"
@@ -313,7 +325,14 @@ case "$CMD" in
 
     if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
       echo "Pulling $IMAGE ..." >&2
-      docker pull "$IMAGE" >&2 || echo "s1-secops-mcp-launch: warning: pull failed; the first start will retry it" >&2
+      if ! docker pull "$IMAGE" >&2; then
+        # A locally built tag (e.g. a release candidate) is not on the registry; that is fine.
+        if docker image inspect "$IMAGE" >/dev/null 2>&1; then
+          echo "s1-secops-mcp-launch: $IMAGE is not on the registry; using the local image." >&2
+        else
+          echo "s1-secops-mcp-launch: warning: pull failed; the first start will retry it" >&2
+        fi
+      fi
     else
       echo "s1-secops-mcp-launch: warning: Docker is not running. Start Docker Desktop (or the Docker service) before you open Claude Desktop." >&2
     fi
@@ -375,12 +394,13 @@ case "$CMD" in
       if [ -z "$v" ]; then s="-"; elif is_secret "$n"; then s="set (${#v} chars)"; else s=$v; fi
       printf '%-34s %s\n' "$n" "$s"
     done
+    printf '%-34s %s\n' "S1_READ_ONLY" "set in the MCP client config, not the keychain (default: read-only)"
     exit 0 ;;
   s1-secops-mcp|s1) NAMES="S1_CONSOLE_URL S1_CONSOLE_API_TOKEN S1_HEC_INGEST_URL S1_HEC_TOKEN S1_SCOPE" ;;
   purple-mcp|purple) NAMES="S1_CONSOLE_URL S1_CONSOLE_API_TOKEN VIRUSTOTAL_API_KEY" ;;  # VT key -> PURPLEMCP_VT_API_KEY (threat_intel_*)
   virustotal-mcp|virustotal|vt) NAMES="VIRUSTOTAL_API_KEY" ;;
   shodan-mcp|shodan) NAMES="SHODAN_API_KEY" ;;
-  versions|help) exec docker run --rm "$IMAGE" "$CMD" ;;
+  versions|help|notices) exec docker run --rm "$IMAGE" "$CMD" ;;
   *) die "unknown server '$CMD'" ;;
 esac
 
@@ -411,6 +431,11 @@ fi
 if [ -n "${S1_OUTPUT_DIR:-}" ]; then
   [ -d "$S1_OUTPUT_DIR" ] || die "S1_OUTPUT_DIR $S1_OUTPUT_DIR is not a directory"
   set -- -v "$S1_OUTPUT_DIR:$S1_OUTPUT_DIR" -e "S1_OUTPUT_DIRS=$S1_OUTPUT_DIR" "$@"
+fi
+# Read-only mode is decided inside the container (default true); forward the
+# client's setting only when it set one.
+if [ -n "${S1_READ_ONLY+x}" ]; then
+  set -- -e "S1_READ_ONLY=$S1_READ_ONLY" "$@"
 fi
 set -- run -i --rm --name "$CNAME" -e S1_SECRETS_STDIN=1 "$@"
 

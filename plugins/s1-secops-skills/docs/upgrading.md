@@ -3,11 +3,54 @@
 Three things move independently: the **MCP image** (or npm install), the **skills plugin**, and
 your **MCP client config**. Do them in that order.
 
-- [1.5.3 to 1.5.4](#153-to-154) (current release: image `1.5.4`, s1-secops-mcp `1.5.4`, plugin `1.3.15`)
+- [1.5.4 to 1.5.5](#154-to-155) (current release: image `1.5.5`, s1-secops-mcp `1.5.5`, plugin `1.3.16`)
+- [1.5.3 to 1.5.4](#153-to-154)
 - [1.5.0, 1.5.1 or 1.5.2 to 1.5.3](#150-151-or-152-to-153)
 - [1.4.x to 1.5.0](#14x-to-150)
 - [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
 - [Rolling back](#rolling-back)
+
+---
+
+## 1.5.4 to 1.5.5
+
+**s1-secops-mcp is now read-only by default.** Every tool call that would change your tenant is refused before any network request, with a message that explains how to enable write. Read and query tools are unchanged. purple-mcp, VirusTotal and Shodan are not affected, and their pins are the same as in 1.5.4.
+
+**What stops working until you opt in:**
+
+| Area | Refused while read-only |
+|---|---|
+| Alert triage | `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert` |
+| Alert ingest | `uam_post_alert`, `uam_ingest_alert` |
+| Content deployment | `sdl_put_file`, `sdl_delete_file`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `ha_import_workflow`, `ha_delete_workflow` |
+| Log ingest | `hec_ingest` |
+| Mgmt Console API | `s1_api_put`, `s1_api_patch`, `s1_api_delete`, and `s1_api_post` except allowlisted query POSTs (for example detection rule creation, IOC creation and endpoint actions are refused) |
+| PowerQuery | `powerquery_run` with `\| savelookup` |
+
+Skills that deploy content or triage alerts report the refusal and the steps to enable write. No data changes while read-only. If you only investigate, hunt and report, there is nothing to do beyond the image upgrade.
+
+**Upgrade:**
+
+1. Re-run the install command (macOS/Linux one-liner or the Windows one in [1.5.0, 1.5.1 or 1.5.2 to 1.5.3](#150-151-or-152-to-153)). It installs the newer launcher, rewrites your entries with `1.5.5` and pulls the image. Pass your usual options again (`--profile P`, `--output-dir DIR`, `--claude-md FILE`, `--with-shodan`).
+2. **To keep write access**, add `--read-write` (Windows: `-ReadWrite`) to that command. It writes `"S1_READ_ONLY": "false"` into the `s1-secops-mcp` entry and prints a NOTICE. Without the flag, `install` prints a read-only notice.
+3. Install plugin `1.3.16` (Cowork → Customize → Browse plugins → upload → **Replace**).
+4. Quit and reopen Claude Desktop.
+
+**Enable write for other install methods:**
+
+| Install method | Enable write | Return to read-only |
+|---|---|---|
+| Docker launcher, macOS or Linux | `~/.local/bin/s1-secops-mcp-launch.sh install --read-write` | Run `install` without the flag |
+| Docker launcher, Windows | `powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 install -ReadWrite` | Run `install` without the flag |
+| Claude Desktop extension (`.mcpb`) | Turn off **Read-only mode (recommended)** in the extension settings | Turn it back on |
+| Node install | Add `"S1_READ_ONLY": "false"` to the `env` block of the `s1-secops-mcp` entry | Remove the line |
+| Plain `docker run` | `-e S1_READ_ONLY=false` | Omit it |
+
+Restart Claude Desktop after any change. Any value other than `false`, `0`, `no` or `off` keeps read-only. Use a token whose console role covers only the changes you intend; the role, not this setting, is the authoritative control. Full reference: [read-only.md](./read-only.md).
+
+**Check:** the server's startup log shows a `Mode:` line; `~/.local/bin/s1-secops-mcp-launch.sh status` includes an `S1_READ_ONLY` line noting that the setting lives in the client config; `docker run --rm sentinelone/secops-mcps:1.5.5 versions` lists the bundled pins; `docker run --rm sentinelone/secops-mcps:1.5.5 notices` prints the new third-party notices.
+
+Nothing else to migrate: credentials, profiles, output folders and the CLAUDE.md override carry over unchanged.
 
 ---
 
@@ -181,7 +224,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
   | ~/.local/bin/s1-secops-mcp-launch.sh s1-secops-mcp
 ```
 
-Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.5.4"`, `Tools: 35 registered` on stderr, and `configured` for each surface whose values you stored. Confirm no token remains in your client config:
+Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.5.5"`, `Tools: 35 registered` on stderr, and `configured` for each surface whose values you stored. Confirm no token remains in your client config:
 
 ```bash
 grep -E 'eyJ|S1_CONSOLE_API_TOKEN|S1_HEC_TOKEN|VIRUSTOTAL_API_KEY' ~/Library/Application\ Support/Claude/claude_desktop_config.json || echo "clean"
@@ -240,7 +283,7 @@ done
 |---|---|---|
 | Server key | `"sentinelone-mcp"` | `"s1-secops-mcp"` |
 | Dispatcher argument | `sentinelone-mcp` | `s1-secops-mcp` |
-| Image | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.5.4` via the launcher |
+| Image | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.5.5` via the launcher |
 | purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` (the entrypoint derives the purple names) |
 
 Delete outright: `SDL_XDR_URL`, `SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`. Nothing replaces them. The console API token authorises every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as `<console>/sdl`.
@@ -260,7 +303,7 @@ Delete those lines. Nothing replaces them; the client uses the console token for
 
 | Symptom | Cause and fix |
 |---|---|
-| `manifest unknown` / image pull fails | Tag typo, or an MCP version used as an image tag. Use the exact image tag (`1.5.4`). |
+| `manifest unknown` / image pull fails | Tag typo, or an MCP version used as an image tag. Use the exact image tag (`1.5.5`). |
 | `entrypoint: unknown command 'sentinelone-mcp'` | The dispatcher argument still says the old name. Change it to `s1-secops-mcp`. |
 | Skills still mention `SDL_XDR_URL` or `c.keys[...]` | An old plugin cache. Re-check with the loop above. |
 | `AttributeError: 'SDLClient' object has no attribute 'keys'` | A script still force-clears scoped keys. See above. |
@@ -278,4 +321,4 @@ cd ~/Library/Application\ Support/Claude
 cp claude_desktop_config.json.bak claude_desktop_config.json
 ```
 
-**Rollback target: `1.4.10`.** `sentinelone/secops-mcps` carries `1.5.4`, `1.5.3`, `1.5.2`, `1.5.1`, `1.5.0` and `1.4.10`; tags are immutable, so `:1.4.10` is the exact earlier build. Note that 1.4.10 reads tokens from the config `env` block or a `credentials.json`, so rolling back puts plaintext tokens back on disk. Once you return to 1.5.x, delete the backup and run `s1-secops-mcp forget` only if you also want the keychain entries gone.
+**Rollback target: `1.4.10`.** `sentinelone/secops-mcps` carries `1.5.5`, `1.5.4`, `1.5.3`, `1.5.2`, `1.5.1`, `1.5.0` and `1.4.10`; tags are immutable, so `:1.4.10` is the exact earlier build. Any image before `1.5.5` has no read-only mode: every tool can write, whatever `S1_READ_ONLY` says. Note that 1.4.10 reads tokens from the config `env` block or a `credentials.json`, so rolling back puts plaintext tokens back on disk. Once you return to 1.5.x, delete the backup and run `s1-secops-mcp forget` only if you also want the keychain entries gone.

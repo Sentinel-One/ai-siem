@@ -32,7 +32,7 @@ jobs:
 
       - name: TruffleHog OSS
         id: trufflehog
-        uses: trufflesecurity/trufflehog@0d8c3335ed9321c2e198206f9279a31c8f2e3b67 # v3.76.0
+        uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9 # v3.99.2
         continue-on-error: true
         with:
           path: ./

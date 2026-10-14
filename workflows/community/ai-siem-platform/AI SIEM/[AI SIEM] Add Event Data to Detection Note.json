@@ -666,7 +666,7 @@
           "action_type": "http_request",
           "public_action_id": "3b276194-7801-476f-856f-8a8a997f779e",
           "method": "post",
-          "url": "{{Connection.protocol}}usea1-purple.sentinelone.net<@/sdl/api/powerQuery@>",
+          "url": "{{Connection.protocol}}{{Connection.url}}<@/sdl/api/powerQuery@>",
           "url_path": "/sdl/api/powerQuery",
           "url_prefix": null,
           "payload": "{\n  \"query\": \"{{local_var.rule.scheduledParams.query}}\",\n  \"startTime\": \"{{Function.DELTA(singularity-response-trigger.data.detectedAt, Function.DIV(local_var.rule.scheduledParams.lookbackWindowMinutes, 60))}}\",\n  \"endTime\": \"{{singularity-response-trigger.data.detectedAt}}\"\n}",

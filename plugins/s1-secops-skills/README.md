@@ -2,6 +2,10 @@
 
 A full-stack AI analyst for SentinelOne, built as a set of Claude skills, three MCP servers (plus an optional fourth, Shodan), and an operating persona (CLAUDE.md). Install once and Claude can hunt threats, triage alerts, write detections, deploy dashboards, author parsers, and build automation workflows, entirely from natural language.
 
+> **Read-only by default.** `s1-secops-mcp` refuses every action that changes your SentinelOne tenant (isolating, deleting, deploying, changing alert status) unless you turn write on. When you do, actions run with your API token's permissions, so use a least-privilege token. See [docs/read-only.md](./docs/read-only.md).
+>
+> **Support.** This is not a formal SentinelOne product. It is maintained by SentinelOne with community support. Report vulnerabilities privately, per the repository's [SECURITY.md](../../SECURITY.md).
+
 > **Fastest way to get started: [Quick start (Docker)](#1-quick-start-docker).** One image bundles all four MCPs (Shodan optional), no host-level Node, Python, or `uv` required. Store your tokens in the OS keychain, point the config at the launcher, install the plugin, done. See [Installation](#installation) for both install paths.
 >
 > **Upgrading to 1.5.0?** It is a breaking release: no `credentials.json`, no HTTP transport, and a Docker launcher instead of `docker run -e`. Follow [docs/upgrading.md](./docs/upgrading.md#14x-to-150).

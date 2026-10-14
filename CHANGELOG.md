@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - docs and scanner config cleanup
+
+- Removed `.trufflehogignore`: no workflow referenced it, so it had no effect, and its patterns (`*.md`, `tests/`, `fixtures/`) would have hidden exactly the places credentials leak if it were ever wired in. CI scans every path.
+- Plugin README: added a read-only-by-default and support banner at the top.
+- `mcp/docker/README.md`: verify examples now use image 1.5.6.
+
 ### Security - read-only checks follow the request URL (image and MCP 1.5.6)
 
 - `s1_api_post` now decides read or write from the exact path the request is sent to. Paths whose written and resolved forms could differ (`#` fragments, `;` parameters, backslashes, encoded separators, dot segments) are treated as writes and refused in read-only mode. All Management API tools reject `#` and `\` in a path. Plugin unchanged at 1.3.16.

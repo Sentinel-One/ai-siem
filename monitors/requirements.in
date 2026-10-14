@@ -4,5 +4,5 @@
 requests==2.32.4
 pandas==2.3.3
 numpy==1.26.4
-geoip2==4.8.1
-tabulate==0.10.0
+geoip2==5.3.0
+tabulate==0.9.0

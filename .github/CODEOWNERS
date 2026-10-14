@@ -1,3 +1,5 @@
-# Default reviewers for everything in the repo.
-# Narrow with path patterns (e.g. /parsers/ @handle) as ownership firms up.
-* @nate-smalls-s1 @pmoses-s1 @marcorottigni-s1
+# Default reviewers for everything in the repo: the ai-siem-team team
+# (Write access to this repository). Membership is managed in GitHub, not here.
+# Add path patterns above this line to give a directory its own owners; the
+# last matching pattern wins.
+* @Sentinel-One/ai-siem-team

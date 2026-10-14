@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - CODEOWNERS uses a team
+
+- `.github/CODEOWNERS` now assigns `*` to `@Sentinel-One/ai-siem-team` instead of three individual handles, so reviewer membership is managed in GitHub.
+
 ### Changed - docs and scanner config cleanup
 
 - Removed `.trufflehogignore`: no workflow referenced it, so it had no effect, and its patterns (`*.md`, `tests/`, `fixtures/`) would have hidden exactly the places credentials leak if it were ever wired in. CI scans every path.

@@ -1,0 +1,15 @@
+# Paths excluded from the TruffleHog secret scan. One regular expression per
+# line, matched against the file path (not shell globs). Used by
+# .github/workflows/main.yml via --exclude-paths.
+#
+# Keep this list as short as possible: every entry is a place the scanner is
+# blind. Each entry needs a reason.
+
+# Packaged plugin and skill bundles. They are archives built from source that
+# is already scanned, so they only duplicate findings from their sources.
+^plugins/s1-secops-skills/dist/
+
+# Hyperautomation action catalog. The last column of its tables is a
+# public_action_id (a vendor action-pack UUID, not a credential), and the
+# Opsgenie detector matches the UUID shape. See the table header in the file.
+^plugins/s1-secops-skills/skills/hyperautomation/references/integration-catalog\.md$

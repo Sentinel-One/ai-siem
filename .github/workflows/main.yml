@@ -38,7 +38,7 @@ jobs:
           path: ./
           base: ${{ github.event.before }}
           head: ${{ github.event.after || 'HEAD' }}
-          extra_args: --debug --only-verified
+          extra_args: --debug --exclude-paths .github/trufflehog-exclude.txt
 
       # --- Notifications on failure ---
 
@@ -55,7 +55,7 @@ jobs:
               `- Scanner version: ${process.env.TRUFFLEHOG_VERSION}`,
               `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               '',
-              'TruffleHog detected one or more **verified** secrets in this PR diff.',
+              'TruffleHog detected one or more potential secrets (verified or unverified) in this PR diff. If it is a false positive, add an inline `trufflehog:ignore` comment on that line or, for a whole file, an entry with a reason in `.github/trufflehog-exclude.txt`.',
               '',
               'Please rotate affected credentials and remove them from the code and git history.',
             ].join('\n');
@@ -81,7 +81,7 @@ jobs:
               `- Commit: ${context.sha}`,
               `- Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               '',
-              'TruffleHog detected one or more **verified** secrets in the changes.',
+              'TruffleHog detected one or more potential secrets (verified or unverified) in the changes.',
               '',
               'Watchers of this repository will receive notifications for this issue based on their GitHub notification settings.',
             ].join('\n');
@@ -97,7 +97,7 @@ jobs:
       - name: Fail if secrets found
         if: steps.trufflehog.outcome == 'failure'
         run: |
-          echo "TruffleHog ${TRUFFLEHOG_VERSION} found verified secrets."
+          echo "TruffleHog ${TRUFFLEHOG_VERSION} found potential secrets (verified or unverified)."
           exit 1
 
   release:

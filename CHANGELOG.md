@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed - docs and scanner config cleanup
 
 - Removed `.trufflehogignore`: no workflow referenced it, so it had no effect, and its patterns (`*.md`, `tests/`, `fixtures/`) would have hidden exactly the places credentials leak if it were ever wired in. CI scans every path.
+- Secret scan now reports unverified findings as well (removed `--only-verified`) and excludes exactly two paths via `.github/trufflehog-exclude.txt`: the packaged `plugins/s1-secops-skills/dist/` bundles (archives of already-scanned source) and `hyperautomation/references/integration-catalog.md` (public action-pack UUIDs that match a detector shape).
 - Plugin README: added a read-only-by-default and support banner at the top.
 - `mcp/docker/README.md`: verify examples now use image 1.5.6.
 

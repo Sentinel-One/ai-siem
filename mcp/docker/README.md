@@ -38,9 +38,9 @@ The image is published to `sentinelone/secops-mcps`. Tags are semver only. There
 
 ## Verify before you run
 
-- **Pull by digest, not just by tag.** Tags are immutable, but a digest is the strongest pin: `docker pull sentinelone/secops-mcps@sha256:<digest>`. Find the digest with `docker buildx imagetools inspect sentinelone/secops-mcps:1.5.4`.
-- **Check where it came from.** The image labels record the source repository and commit: `docker inspect --format '{{json .Config.Labels}}' sentinelone/secops-mcps:1.5.4` (see `org.opencontainers.image.source` and `org.opencontainers.image.revision`).
-- **Inspect the provenance and SBOM** attached to the index: `docker buildx imagetools inspect sentinelone/secops-mcps:1.5.4 --format '{{ json .Provenance }}'` and `--format '{{ json .SBOM }}'`. Images published before this was enabled do not carry them.
+- **Pull by digest, not just by tag.** Tags are immutable, but a digest is the strongest pin: `docker pull sentinelone/secops-mcps@sha256:<digest>`. Find the digest with `docker buildx imagetools inspect sentinelone/secops-mcps:1.5.5`.
+- **Check where it came from.** The image labels record the source repository and commit: `docker inspect --format '{{json .Config.Labels}}' sentinelone/secops-mcps:1.5.5` (see `org.opencontainers.image.source` and `org.opencontainers.image.revision`).
+- **Inspect the provenance and SBOM** attached to the index: `docker buildx imagetools inspect sentinelone/secops-mcps:1.5.5 --format '{{ json .Provenance }}'` and `--format '{{ json .SBOM }}'`. Images published before this was enabled do not carry them.
 - **Report a problem privately.** See [SECURITY.md](../../SECURITY.md); do not open a public issue for a vulnerability.
 
 ## Pinned sources
@@ -49,7 +49,7 @@ All four MCPs are pinned at build time. The pins live in `docker/build.sh`. If t
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.5.4` |
+| Image version (`IMAGE_VERSION`) | this repo | `1.5.6` |
 | Base image | Docker Hub, `node:24-trixie-slim` | pinned by digest in both stages; Node major 24 asserted at build time |
 | `s1-secops-mcp` | local `COPY` from this repo | whatever commit you build |
 | `virustotal-mcp` | git, maintained fork (repo in `build.sh`) | `97ca2b8` (vendored fork of `w0h1v/mcp-virustotal` v1.0.28; proxy-addr 2.0.8, MCP SDK 1.32.1) |
@@ -102,7 +102,7 @@ Kept on purpose:
 Because the number does not encode what is inside, verify rather than infer:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.5.4 versions
+docker run --rm sentinelone/secops-mcps:1.5.6 versions
 ```
 
 `versions.json` also records the `shodan-mcp` pin and the Node version (`node`).
@@ -113,25 +113,38 @@ docker run --rm sentinelone/secops-mcps:1.5.4 versions
 # Single-arch (matches your machine), tags sentinelone/secops-mcps:<IMAGE_VERSION>
 docker/build.sh
 
-# Full smoke suite, 35 assertions, exit code is the failure count. T17 checks the
+# Full smoke suite, 40 assertions, exit code is the failure count. T17 checks the
 # registry manifest: it skips on a local reference (no slash) and fails on a
 # Docker Hub reference that is not pushed yet. Before the push, test a local tag:
-#   docker tag sentinelone/secops-mcps:1.5.4 secops-mcps:1.5.4-local
-docker/smoke-test.sh secops-mcps:1.5.4-local --expect-version 1.5.4   # 34 pass, T17 skipped
-# After the push, the registry reference runs T17 too (35/35):
-docker/smoke-test.sh sentinelone/secops-mcps:1.5.4 --expect-version 1.5.4
+#   docker tag sentinelone/secops-mcps:1.5.6 secops-mcps:1.5.6-local
+docker/smoke-test.sh secops-mcps:1.5.6-local --expect-version 1.5.6   # 39 pass, T17 skipped
+# After the push, the registry reference runs T17 too (40/40):
+docker/smoke-test.sh sentinelone/secops-mcps:1.5.6 --expect-version 1.5.6
 
 # Or spot-check by hand:
-docker run -i --rm sentinelone/secops-mcps:1.5.4 help      # lists the four servers
-docker run -i --rm sentinelone/secops-mcps:1.5.4 versions
+docker run -i --rm sentinelone/secops-mcps:1.5.6 help      # lists the four servers
+docker run -i --rm sentinelone/secops-mcps:1.5.6 versions
+docker run --rm sentinelone/secops-mcps:1.5.6 notices      # third-party notices and licenses
 
 # There should be no npm in here. This must print "absent".
-docker run --rm --entrypoint sh sentinelone/secops-mcps:1.5.4 -c 'command -v npm || echo absent'
+docker run --rm --entrypoint sh sentinelone/secops-mcps:1.5.6 -c 'command -v npm || echo absent'
 ```
 
 The Shodan checks in the smoke suite: `tools/list` on `shodan-mcp` returns 11 tools, `help` lists four servers, `/opt/mcp-shodan` is readable with no `.git` or `.env`, and a container started with `MCP_TRANSPORT=httpStream` still speaks stdio.
 
-The dispatcher accepts `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, `shodan-mcp` (alias `shodan`), `versions`, or `help`.
+The read-only and license checks (1.5.5): T32 calls a write tool with `--network none` and expects the read-only refusal, T33 sets `S1_READ_ONLY=false` and expects the call to reach its handler, T34 expects a `| savelookup` query to be refused, T35 runs `notices`, and T36 checks that every bundled license file is present and readable. See [`docs/read-only.md`](../../plugins/s1-secops-skills/docs/read-only.md).
+
+The dispatcher accepts `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, `shodan-mcp` (alias `shodan`), `versions`, `notices` (aliases `licenses`, `license`), or `help`.
+
+## Licenses and attestations
+
+- [`THIRD_PARTY_NOTICES.md`](../../plugins/s1-secops-skills/THIRD_PARTY_NOTICES.md) is copied into the image at `/usr/share/doc/secops-mcps/THIRD_PARTY_NOTICES.md`, and the repo `LICENSE` (AGPL-3.0) at `/opt/s1-secops-mcp/LICENSE`. `notices` prints them.
+- `docker/build.sh` and the CI workflow build with `--provenance=mode=max --sbom=true`, so a pushed image carries SLSA provenance and an SPDX SBOM attestation on its index. Docker Hub lists the attestation manifests as an extra `unknown/unknown` platform; pulls ignore it. Build arguments appear in the provenance, which is public, so never pass a secret as a `--build-arg`.
+
+```bash
+docker buildx imagetools inspect sentinelone/secops-mcps:1.5.6 --format '{{ json .SBOM }}'
+docker buildx imagetools inspect sentinelone/secops-mcps:1.5.6 --format '{{ json .Provenance }}'
+```
 
 ## Push manually
 
@@ -156,7 +169,7 @@ On a slow or unreliable link, push with `skopeo copy --all --retry-times 20` fro
 # Then:
 docker/build.sh                                            # verify locally
 git push                                                   # no build, by design
-git tag -a s1-mcps-v1.5.4 -m "..." && git push origin s1-mcps-v1.5.4
+git tag -a s1-mcps-v1.5.6 -m "..." && git push origin s1-mcps-v1.5.6
 ```
 
 **Only a release tag builds an image.** A push to `main` does not, however much

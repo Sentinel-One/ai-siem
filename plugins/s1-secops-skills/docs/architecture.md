@@ -73,6 +73,8 @@ It exposes 35 MCP tools across five groups:
 
 Two credentials split the ingest surface. `hec_ingest` posts raw logs to the event collector and authenticates with an SDL Log Write Key (`S1_HEC_TOKEN`), which returns `HTTP 200 {"text":"Success","code":0}` with no `S1-Scope` header. The console API token is not a reliable substitute there: on some consoles it returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without an `S1-Scope` header and is accepted with one, on others it returns `HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` either way. Use the write key in both cases. The UAM Ingest tools post alerts to `/v1/alerts` and keep using the console API token (`S1_CONSOLE_API_TOKEN`). Indicators have no separate ingest path: they ride inside the alert, in `finding_info.related_events[]`.
 
+**Read-only by default (1.5.5).** One gate in the server (`lib/access.js`) classifies every tool as Read (15), Write (18) or Conditional (2: `s1_api_post`, `powerquery_run`). Unless `S1_READ_ONLY=false` is set, any call that would change the tenant is refused before a network request is made; read and query calls always run. When write is enabled, a write is still refused if no console token is configured (except `hec_ingest`) or the token is a JWT that has expired, and each allowed write logs one stderr audit line with no bodies or tokens. The console role of the token's user remains the authoritative control. Details: [read-only.md](./read-only.md); per-tool access: [mcp-tools.md](./mcp-tools.md#read-only-mode-155-and-later).
+
 Full tool reference: [mcp-tools.md](./mcp-tools.md)
 
 ### purple-mcp
@@ -85,15 +87,15 @@ A separate MCP server (Python, bundled in the `sentinelone/secops-mcps` image fr
 - `list_inventory_items`, `search_inventory_items`, `get_inventory_item`: asset inventory
 - `list_vulnerabilities`, `get_vulnerability`: CVE and patch gap reporting
 - `list_misconfigurations`, `get_misconfiguration`: agent config hygiene
-- `uam_add_note`, `uam_set_status`: alert annotation and triage
 
-purple-mcp is complementary to s1-secops-mcp. They share credentials but serve different roles:
+purple-mcp is complementary to s1-secops-mcp. They share credentials but serve different roles. s1-secops-mcp's read-only setting does not apply to purple-mcp; its `powerquery` can still run `| savelookup` (see [read-only.md](./read-only.md)).
 
 | Task | Use |
 |---|---|
 | SDL PowerQuery hunting | Either: `powerquery_run` (s1-secops-mcp) or `powerquery` (purple-mcp) |
 | Natural-language Purple AI queries | purple-mcp `purple_ai` only |
-| Alert triage, notes, status | purple-mcp is preferred (richer GraphQL fields); s1-secops-mcp UAM tools as fallback |
+| Alert triage reads (list, search, detail, notes, history) | purple-mcp is preferred (richer GraphQL fields); s1-secops-mcp UAM tools as fallback |
+| Alert notes, status, verdict, assignment (writes) | s1-secops-mcp UAM tools only, with write enabled |
 | Management Console REST ops (agents, threats, sites, exclusions, IOCs, detection rules) | s1-secops-mcp `s1_api_*` only |
 | SDL log ingest, parser/dashboard deploy | s1-secops-mcp SDL tools only |
 | Hyperautomation workflow import | s1-secops-mcp HA tools only |

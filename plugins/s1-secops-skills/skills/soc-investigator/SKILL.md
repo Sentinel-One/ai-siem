@@ -285,3 +285,9 @@ All phases write their artifacts into a single `investigation_<timestamp>/` dire
 8. **Deep-Dive (optional)**: User-driven interrogation of specific findings
 9. **Output**: All files saved to `investigation_<timestamp>/`
 10. **Review**: User reviews outputs for containment/hunting/reporting
+
+**Read-only mode.** From 1.5.5, s1-secops-mcp is read-only by default (`S1_READ_ONLY` unset or `true`). The investigation itself is read-only and unaffected: PowerQuery, schema discovery, `uam_list_alerts`, `uam_get_alert`, `s1_api_get` and local output files all run. Only optional write-back steps need write: `uam_add_note`, `uam_set_verdict`, `uam_set_status`, `uam_assign_alert`. Before offering a write-back, check `mode.readOnly` in the `sentinelone://credentials-status` resource or the server's initialize instructions.
+- If a write-back returns "s1-secops-mcp is in read-only mode (S1_READ_ONLY).", stop. Do not retry, and do not route around it with another tool (`s1_api_post` to a different endpoint, a hand-built GraphQL mutation, purple-mcp).
+- Tell the user which action was refused and how to enable write: Docker launcher `s1-secops-mcp-launch.sh install --read-write` (Windows `-ReadWrite`), then restart Claude Desktop; `.mcpb` extension: turn off "Read-only mode (recommended)"; Node install: `"S1_READ_ONLY": "false"` in the server's `env` block. Detail: `docs/read-only.md` in the source repo (not shipped).
+- Save the note text, proposed verdict and status into `investigation_<timestamp>/` so the analyst can apply them in the console.
+- Never enable write on the user's behalf by editing their MCP client config.

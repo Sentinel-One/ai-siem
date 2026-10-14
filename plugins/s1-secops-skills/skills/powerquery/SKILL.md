@@ -137,7 +137,7 @@ These are where queries go wrong. Internalize them before writing.
     ```
 
     The `(field = *) ? a : b` form (i.e. wrapping the field-presence test in parens before the ternary) **returns HTTP 500 inside `let`** on this engine, `field = *` is a filter operator, not a boolean expression usable in computed columns. Bare-field truthy is the only working coalesce idiom in PQ.
-17. **`if(...)` is not a function in aggregates.** `sum(if(cond, 1, 0))` returns 500. Use `count(<predicate>)` instead, `count(severity_id == 5)` evaluates the predicate per row and sums the truthy ones. Same for any "count where X" semantic. **Field-presence counting uses `!= null`, not `= *`:** `count(user.name=*)` returns 400 "Don't understand [*]" because `= *` is a filter operator, while `count(user.name != null)` works (live-verified 2026-10-03: 1,000 of 1,016 Okta events).
+17. **`if(...)` is not a function in aggregates.** `sum(if(cond, 1, 0))` returns 500. Use `count(<predicate>)` instead, `count(severity_id == 5)` evaluates the predicate per row and sums the truthy ones. Same for any "count where X" semantic. **Field-presence counting uses `!= null`, not `= *`:** `count(user.name=*)` returns 400 "Don't understand [*]" because `= *` is a filter operator, while `count(user.name != null)` works (live-verified 2026-10-03: 1,000 of 1,016 Okta events). Several presence counts in one pass: `| group n = count(), a = count(f1 != null), b = count(f2 != null)` (re-verified 2026-10-14).
 18. **Always filter `field=*` before projecting or inspecting any field.** `| limit N | columns field` returns the first N events regardless of whether the field is populated, most rows will be null. Add `field=*` to the initial filter to scope to events that actually carry the field:
 
     ```text
@@ -155,6 +155,10 @@ These are where queries go wrong. Internalize them before writing.
 20. **Parenthesise every negation.** `NOT src.process.name contains 'x'` and `NOT src.process.name = 'x'` apply the negation to the bare field and silently return 0 rows. Write `!(src.process.name contains 'x')`. Likewise `| filter x` on a bare field or variable is a text search, not a truthiness test; use `| filter bool(x)`.
 
 21. **Exclude SDL ingest-metering rows: `tag != 'logVolume'` in the initial filter.** Every ingest writes receive-time accounting rows (`tag='logVolume'`, fields `metric` / `value` / `path1`, plus `sca:bytesToCharge` and `sca:ingestTime`) under the source's own `dataSource.name`. Any query anchored only on `dataSource.name`, `dataSource.vendor`, `site.id` or `sca:*` counts them, and a silent source looks live (measured 2026-10-03: 7,390 of 383,044 rows in 12h, all carrying `sca:bytesToCharge`). Queries anchored on an event field (`class_uid`, `event.type`, a principal `=*`) are already immune. `powerquery_run` and `pq.run_pq()` add the predicate automatically (opt out with `includeMetering` / `include_metering=True`). For persisted queries (dashboard panels, STAR / scheduled rule bodies) write it yourself, in the initial filter where it is cheapest: `dataSource.name='X' tag != 'logVolume' | ...`. `!=` keeps rows that have no `tag`, so `OR !(tag = *)` is not needed in PowerQuery. Omit it only when the question is ingest volume or data usage. The console's XDR view already hides these rows; All Data does not.
+
+22. **No `round()`.** It is an unknown function: HTTP 400 "Unknown function 'round'". Round to one decimal with `floor(x * 10 + 0.5) / 10`; `floor` works (live-verified 2026-10-14).
+
+23. **A field cannot be defined twice.** Assigning the same name in two `let` stages, or twice in one `let`, is HTTP 400 "duplicate definition of field 'x'". Use a new name and rename it in `columns`: `| let x_r = floor(x * 10 + 0.5) / 10 | columns ..., x = x_r`. An offline render never catches this, so check panel and rule queries for repeated `let` names before deploying (live-verified 2026-10-14, both forms).
 
 ## When to delegate baselining + anomaly detection to the mgmt-console-api skill
 
@@ -437,6 +441,12 @@ reach `*.sentinelone.net` where the Cowork sandbox cannot. Use `powerquery_run` 
 `powerquery_schema_discover` directly; the `mgmt-console-api` skill scripts are host-only. If a
 tool reports a missing credential, ask the user to run `s1-secops-mcp setup` on their machine;
 never ask for a token in the chat.
+
+**Read-only mode.** From 1.5.5, s1-secops-mcp is read-only by default (`S1_READ_ONLY` unset or `true`). Every query runs, except that `powerquery_run` refuses a query containing `| savelookup`, because it writes a lookup table. Deploying a detection rule through `s1_api_post` is refused as well. Before a hunt or deployment that builds lookup tables, check `mode.readOnly` in the `sentinelone://credentials-status` resource or the server's initialize instructions.
+- If a call returns "s1-secops-mcp is in read-only mode (S1_READ_ONLY).", stop. Do not retry, and do not route around it with another tool (purple-mcp `powerquery` with `| savelookup`, `s1_api_post` to a different endpoint, a hand-built GraphQL mutation).
+- Tell the user which action was refused and how to enable write: Docker launcher `s1-secops-mcp-launch.sh install --read-write` (Windows `-ReadWrite`), then restart Claude Desktop; `.mcpb` extension: turn off "Read-only mode (recommended)"; Node install: `"S1_READ_ONLY": "false"` in the server's `env` block. Detail: `docs/read-only.md` in the source repo (not shipped).
+- Offer the query or rule body as a local file via `outputFile` or the Write tool. A read-only alternative often exists: drop the `| savelookup` and return the rows instead.
+- Never enable write on the user's behalf by editing their MCP client config.
 
 ## Timestamp fields on HEC-ingested (isParsed) events (learnings)
 

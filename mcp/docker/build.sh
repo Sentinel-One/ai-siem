@@ -24,7 +24,7 @@ set -euo pipefail
 # commit you are building. S1_MCP_VERSION below is therefore a LABEL, not an
 # install target: keep it equal to the version in s1-secops-mcp/package.json so
 # the image label does not lie about what it carries.
-S1_MCP_VERSION="${S1_MCP_VERSION:-1.5.4}"
+S1_MCP_VERSION="${S1_MCP_VERSION:-1.5.6}"
 
 # virustotal-mcp: our fork of w0h1v/mcp-virustotal. The fork exists
 # because upstream publishes only to npm: it has a `prepublishOnly` build and
@@ -90,7 +90,7 @@ esac
 #   docker run --rm <image> versions
 # (That replaces the old `--entrypoint npm <image> ls -g --depth=0`. There is
 # no npm in the image any more, so that command now fails with "not found".)
-IMAGE_VERSION="${IMAGE_VERSION:-1.5.4}"
+IMAGE_VERSION="${IMAGE_VERSION:-1.5.6}"
 
 # ── Image identity ───────────────────────────────────────────────────────────
 REGISTRY="${REGISTRY:-docker.io/sentinelone}"
@@ -158,6 +158,13 @@ ARGS=(
   --build-arg "VCS_REF=${VCS_REF}"
   --tag "${REGISTRY}/${IMAGE_NAME}:${TAG}"
   --file docker/Dockerfile
+  # Build attestations (1.5.5): SLSA provenance and an SPDX SBOM, attached to
+  # the pushed index as one attestation manifest per platform (Docker Hub lists
+  # it as "unknown/unknown"; pulls ignore it). mode=max records every
+  # --build-arg above in the provenance, which is public: never pass a secret
+  # as a build-arg, use --secret instead.
+  --provenance=mode=max
+  --sbom=true
 )
 
 if [ "${PUSH}" = "true" ]; then

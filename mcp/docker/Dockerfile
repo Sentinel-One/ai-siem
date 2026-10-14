@@ -271,6 +271,12 @@ COPY s1-secops-mcp/index.js      /opt/s1-secops-mcp/index.js
 COPY s1-secops-mcp/lib/          /opt/s1-secops-mcp/lib/
 COPY s1-secops-mcp/tools/        /opt/s1-secops-mcp/tools/
 COPY s1-secops-mcp/scripts/      /opt/s1-secops-mcp/scripts/
+# License and third-party notices (1.5.5). The AGPL-3.0 text travels with the
+# server it covers; the notices file lists every bundled component, its
+# license and the third-party services the optional servers call. Printed by
+# the dispatcher's `notices` command.
+COPY LICENSE                     /opt/s1-secops-mcp/LICENSE
+COPY THIRD_PARTY_NOTICES.md      /usr/share/doc/secops-mcps/THIRD_PARTY_NOTICES.md
 # A container has no OS keychain. Credentials arrive from the host launcher over
 # stdin (S1_SECRETS_STDIN=1, see entrypoint.sh) or as environment variables.
 # The optional @napi-rs/keyring dependency is deliberately not installed here.
@@ -288,7 +294,7 @@ ENV S1_IN_CONTAINER=1
 # Node 22 tolerates it, which is why this stayed hidden until the base image
 # moved. a+rX gives read to all and execute only where it already applied, so
 # directories stay traversable without making data files executable.
-RUN chmod -R a+rX /opt/s1-secops-mcp \
+RUN chmod -R a+rX /opt/s1-secops-mcp /usr/share/doc/secops-mcps \
     && chmod +x /opt/s1-secops-mcp/index.js \
     && ln -s /opt/s1-secops-mcp/index.js /usr/local/bin/s1-secops-mcp
 

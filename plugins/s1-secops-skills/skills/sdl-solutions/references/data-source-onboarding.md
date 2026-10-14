@@ -164,6 +164,39 @@ Mind the tenant dashboard pitfalls in the umbrella SKILL.md and the dashboard sk
 not `content:` for markdown panels; `stacked_bar`/`line` not `area` for query-driven series;
 nothing after `transpose`; spaces around `-` in arithmetic; `| limit 1` on number panels.
 
+### Prove a field mapping on a tenant that carries the source
+
+A mapping written from documentation or one sample is a hypothesis. Before shipping a dashboard
+panel or detection preset:
+
+1. Count field coverage over 24 hours, never values:
+   `dataSource.name = '<src>' tag != 'logVolume' | group n = count(), f1 = count(<field1> != null), f2 = count(<field2> != null) | limit 1`.
+   A field present on under 90% of the events the panel or rule reads is the wrong field.
+2. Run every rule and panel query that reads the source and record row counts. A rule that
+   returns hundreds of principals a day is a noise problem to fix before shipping, not a success.
+3. On a customer tenant print counts and value shapes only; never print or commit customer values.
+
+Observed on one customer tenant (2026-10-14), where five of six presets were wrong until checked
+this way. Treat these as starting hypotheses and re-measure on each tenant, because parsers differ:
+
+- Entra ID sign-ins name the user in `user.name` (`actor.user.name` on under 1%). Token refreshes
+  are logged as single-factor sign-ins (25,884 a day against 5,473 interactive), so MFA detections
+  must filter `unmapped.isInteractive = true`. Factor changes are audit events with the user in
+  `actor.user.name` and the change in `unmapped.activityDisplayName`; self-service enrolment ran
+  about 650 a day, so alert on deletions, admin changes and resets.
+- Netskope: URL in `web_resource.url_string`; site, action and category in `unmapped.site`,
+  `unmapped.action`, `unmapped.category`; no `http_request.*`.
+- Microsoft 365: result in `unmapped.ResultStatus` (Succeeded, PartiallySucceeded, Failed);
+  `status` is never set.
+- Proofpoint: click logs (`clicksPermitted`) carry `unmapped.url` and `unmapped.classification` but
+  no `email.from`; message logs carry the sender.
+- FortiGate: config changes are event logs with `unmapped.cfgpath` / `unmapped.logdesc`, not
+  `cfgpath` in `message`.
+
+Also measured on a demo tenant (2026-10-14): Palo Alto events whose verdict is only in
+`unmapped.action` (12 of 1,156, `action` empty); Zscaler `src_endpoint.hostname` on 259 of 1,023
+events; Mimecast URL Protect clicks with no `email.from` (0 of 37).
+
 ### Detections (load `mgmt-console-api` + `powerquery`)
 
 Identify the top detections that matter for this source class and author them as STAR scheduled

@@ -602,6 +602,11 @@ For any investigation culminating in deliverables:
 6. **Deploy live:** new dashboards via `sdl_create_dashboard {name, config, isPublic: true, scope}` (the default, and the only way to deploy to a site; pass `scope: "<accountId>:<siteId>"`). Updates: `sdl_get_file` by `udoId`, then `sdl_put_file {udoId, content, expectedVersion}`; a path-addressed write to an existing dashboard is refused because it duplicates. STAR rules via `s1_api_post` to `/web/api/v2.1/cloud-detection/rules`. Read the existing version first; pass `expectedVersion` on overwrite.
 7. **Verify:** re-fetch deployed artifacts, confirm versions, run a sample query against each rule's PQ body to confirm it parses.
 
+**Read-only by default (s1-secops-mcp 1.5.5+).** Every s1-secops-mcp call that changes the tenant (step 6 deploys, UAM notes/status/verdict/assignment, ingest, `| savelookup`) is refused unless the user enabled write. If a tool returns `s1-secops-mcp is in read-only mode (S1_READ_ONLY)`:
+- Do not retry it or work around it (no alternate `s1_api_post` route, no purple-mcp `powerquery` with `| savelookup`, no other MCP).
+- Tell the user exactly what was refused and how to enable write per `docs/read-only.md` (Docker launcher `install --read-write`, Windows `-ReadWrite`; `.mcpb` setting; Node `S1_READ_ONLY=false`; then restart Claude Desktop).
+- Offer the deliverable as a file instead (dashboard/parser/workflow JSON, rule body, note text) so the user can apply it themselves.
+
 ---
 
 ## PowerQuery Syntax Rules: Non-Negotiable

@@ -119,6 +119,8 @@ Then create a Cowork project named `PrincipalSOCAnalyst`, select a folder for it
 
 For the same steps at full length, with project creation and the upgrade path, see [`docs/installation.md`](./installation.md). Every credential value is documented in [`docs/credentials.md`](./credentials.md).
 
+**Read-only by default.** From release 1.5.5, s1-secops-mcp refuses any tool call that would change your tenant. Hunting, investigation and reporting need nothing more. Deploying dashboards, parsers, detections or workflows, ingesting data, and changing alert status, verdicts or notes need write access: run `install` again with `--read-write` (Windows: `-ReadWrite`) and restart Claude Desktop. Until then, Claude tells you what was refused and can hand you the deliverable as a file. See [`docs/read-only.md`](./read-only.md).
+
 ### Verify
 
 Open the **PrincipalSOCAnalyst** project, start a new session, and run:
@@ -296,6 +298,10 @@ If a skill should have triggered and didn't, ask Claude `which skills are loaded
 ### MCP server not connecting (red dot in Cowork)
 
 Most first-run failures are Docker not running, a value missing from the keychain, or (on macOS) a launcher stored under `~/Documents`, `~/Desktop` or `~/Downloads`, which Claude Desktop is not permitted to run (`Operation not permitted` in the MCP log; run the launcher's `install` again, which moves it to `~/.local/bin/`). Work through the troubleshooting table in the [README Quick start (Docker)](../README.md#1-quick-start-docker) first (Docker running, Docker Hub reachable, values present in the keychain per `s1-secops-mcp status`, restart Claude Desktop). For the full flowchart, per-MCP log tailing, and hand-testing the container with credentials, see [`docs/docker.md`](./docker.md#troubleshooting).
+
+### "s1-secops-mcp is in read-only mode"
+
+Expected: the server is read-only by default. If you intend to change the tenant, enable write as described in [`docs/read-only.md`](./read-only.md) and restart Claude Desktop.
 
 ### 401 / 403 errors
 

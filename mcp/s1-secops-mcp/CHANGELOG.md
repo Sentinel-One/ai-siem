@@ -1,5 +1,60 @@
 # Changelog
 
+## 1.5.6 (image `sentinelone/secops-mcps:1.5.6`), 2026-10-14
+
+### Security: read-only mode path handling
+
+- `s1_api_post` is now classified on the path the request is actually sent to. A path that could read one way and resolve another (a `#` fragment, `;` parameters, a backslash, whitespace, percent-encoded `#`, `;`, `/`, `\` or `.`, or `.` / `..` segments) is treated as a write and refused in read-only mode, before any network call.
+- All Management API tools reject a `#` or `\` in the path, read or write.
+- Tests: 2 new cases in `tests/readonly-1.5.5.test.mjs` covering 14 path forms; each asserts the refusal and that nothing is sent.
+- No change to the tools, the plugin (1.3.16) or the image contents beyond `s1-secops-mcp`.
+
+## 1.5.5 (image `sentinelone/secops-mcps:1.5.5`), 2026-10-14
+
+### Changed: read-only by default
+
+- **The server starts read-only.** `S1_READ_ONLY` unset, empty, `true`, `1`, `yes` or `on` is read-only; `false`, `0`, `no` or `off` enables write; any other value stays read-only and logs a warning (fails closed).
+- **Refused before any network call while read-only:**
+  - 18 write tools: `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_post_alert`, `uam_ingest_alert`, `hec_ingest`, `sdl_put_file`, `sdl_delete_file`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `ha_import_workflow`, `ha_delete_workflow`;
+  - `s1_api_post`, except an allowlist of query POSTs: GraphQL documents with only `query` operations, `/dv/init-query`, `/cloud-funnel/validate-query`, graph explorer queries, `available-actions` and `/xdr/assets/tags/count`. An endpoint missing from the allowlist is treated as a write;
+  - `powerquery_run` queries containing `| savelookup`.
+- The other 15 tools always run. Every tool stays listed; while read-only, write tool descriptions start with `[Disabled: read-only mode, S1_READ_ONLY]` and conditional ones with `[Read-only mode, S1_READ_ONLY: write forms are refused]`. Every tool carries the MCP annotations `readOnlyHint`, `destructiveHint` and `openWorldHint`.
+- The refusal names the tool and says how to enable write. Classification lives in one place, `lib/access.js`.
+- purple-mcp, the VirusTotal MCP and the Shodan MCP are not affected. purple-mcp's `powerquery` can still run `| savelookup`.
+
+### Added: controls when write is enabled
+
+- A write is refused when no console API token is configured (except `hec_ingest`, which uses the SDL Log Write Key) or when the token is a JWT whose expiry has passed. Startup warns when the token expires within 7 days.
+- Each allowed write logs one stderr line, `[s1-secops-mcp] WRITE <iso time> tool=<name> path=...`, with no request bodies, tokens or headers. The token's console role remains the authoritative control.
+- The startup log prints a `Mode:` line, and `credentials-status` returns a `mode` object.
+
+### Enabling write
+
+- Docker launcher: `s1-secops-mcp-launch.sh install --read-write` (Windows: `s1-secops-mcp-launch.ps1 install -ReadWrite`) writes `"S1_READ_ONLY": "false"` into the `s1-secops-mcp` entry; `install` without the flag returns to read-only. The launcher forwards `S1_READ_ONLY` to the container only when the client config sets it, and `status` reports that the setting lives in the client config.
+- `.mcpb` extension: new **Read-only mode (recommended)** setting, on by default.
+- Node install: `"S1_READ_ONLY": "false"` in the entry's `env` block. Plain `docker run`: `-e S1_READ_ONLY=false`.
+- Full reference: [docs/read-only.md](../../plugins/s1-secops-skills/docs/read-only.md).
+
+### Added: third-party notices and build attestations (image)
+
+- `THIRD_PARTY_NOTICES.md` at the repo root, copied into the image at `/usr/share/doc/secops-mcps/THIRD_PARTY_NOTICES.md`. The repo `LICENSE` (AGPL-3.0) is now in the image at `/opt/s1-secops-mcp/LICENSE`.
+- New dispatcher command `notices` (aliases `licenses`, `license`), also on both launchers. The entrypoint help mentions read-only mode and `notices`.
+- `docker/build.sh` and the CI workflow build with `--provenance=mode=max --sbom=true`: pushed images carry SLSA provenance and an SPDX SBOM attestation.
+
+### Tests
+
+- `tests/readonly-1.5.5.test.mjs`: 12 tests.
+- `docker/smoke-test.sh` T32 to T36: read-only refusal under `--network none`, `S1_READ_ONLY=false` lifts it, `| savelookup` refused, `notices`, license files present.
+- `docker/launcher-test.sh` and `launcher-test.ps1`: `--read-write` / `-ReadWrite` on `config` and `install`, and runtime forwarding of `S1_READ_ONLY`.
+
+### Skills (plugin 1.3.16)
+
+- Plugin 1.3.16 ships with this release. Install `s1-secops-skills-v1.3.16.plugin` (Cowork → Customize → Browse plugins → upload → **Replace**).
+- Read-only mode guidance in all eight skills: check the mode before a multi-step deployment, stop on the refusal (no retry, no workaround through another tool), tell the user how to enable write, and offer the artifact as a local file. Never enable write on the user's behalf. Enforced by the new `tools/check_skill_readonly.py`, which runs in CI and in the plugin build.
+- powerquery: two new rules, verified live: `round()` is an unknown function (use `floor(x * 10 + 0.5) / 10`), and a field cannot be defined twice in `let` (rename through `columns`). The presence-count rule gains a multi-field example.
+- sdl-dashboard: table panels need `layout.h` of at least 10 or they show headers only; measure vendor field coverage before grouping, with a fallback for absent fields; count "blocked" with `matches '(?i)block|deny|drop|reject'`, because vendors use different words.
+- sdl-solutions: prove a detection by its UAM alert, not a query match, and read each rule's `status` after deploy, since a rule left as Draft never alerts. The onboarding playbook adds a field-coverage check before shipping a preset, with field mappings observed for Entra ID, Netskope, Microsoft 365, Proofpoint, FortiGate, Palo Alto, Zscaler and Mimecast.
+
 ## 1.5.4 (image `sentinelone/secops-mcps:1.5.4`)
 
 ### Fixed

@@ -38,7 +38,7 @@ The Python tests are host-only: run them from a terminal or Claude Code on your 
 
 ## MCP tools validated (s1-secops-mcp)
 
-The s1-secops-mcp tools were exercised against the live demo tenant. The 1.5.x live A/B regression covered all 35 tools, both natively and in the Docker image (harness coverage line `coveredNew 35, coveredDocker 35`):
+The s1-secops-mcp tools were exercised against the live demo tenant. The 1.5.x live A/B regression covered all 35 tools, both natively and in the Docker image (harness coverage line `coveredNew 35, coveredDocker 35`). From 1.5.5 the server is read-only by default, so re-running the write rows below needs `S1_READ_ONLY=false` ([read-only.md](./read-only.md)):
 
 | Tool | Tested operation | Result |
 |---|---|---|
@@ -215,7 +215,17 @@ sh mcp/docker/launcher-test.sh                # macOS and Linux: every case unde
 pwsh -NoProfile -File mcp/docker/launcher-test.ps1   # Windows launcher, PowerShell 7 on any OS
 ```
 
-They cover: printed JSON is valid and carries the launcher's absolute path, the optional `shodan` entry (absent with no key stored for the profile, present with `--with-shodan` / `-WithShodan`), `--profile`/`--output-dir`/`--claude-md`/`--image`, a fresh install, a merge that keeps other servers and settings, replaces the three entries and drops older launcher entries, a backup identical to the previous file, idempotent re-runs, an invalid config left untouched, `--config-path`, a script piped into the shell refused without copying anything, and (Linux) the fallback that prints the entries when no JSON tool exists. On Windows, also run the `.ps1` test under Windows PowerShell 5.1 (`powershell -NoProfile -ExecutionPolicy Bypass -File mcp\docker\launcher-test.ps1`).
+They cover: printed JSON is valid and carries the launcher's absolute path, the optional `shodan` entry (absent with no key stored for the profile, present with `--with-shodan` / `-WithShodan`), read-only by default (no `S1_READ_ONLY` written) and `--read-write` / `-ReadWrite` writing `"S1_READ_ONLY": "false"` on the `s1-secops-mcp` entry only, plus the write NOTICE on `install`, `S1_READ_ONLY` forwarded to `docker run` only when the client sets it, `--profile`/`--output-dir`/`--claude-md`/`--image`, a fresh install, a merge that keeps other servers and settings, replaces the three entries and drops older launcher entries, a backup identical to the previous file, idempotent re-runs, an invalid config left untouched, `--config-path`, a script piped into the shell refused without copying anything, and (Linux) the fallback that prints the entries when no JSON tool exists. On Windows, also run the `.ps1` test under Windows PowerShell 5.1 (`powershell -NoProfile -ExecutionPolicy Bypass -File docker\launcher-test.ps1`).
+
+### Read-only mode and image checks (1.5.5)
+
+- **Unit tests:** `mcp/s1-secops-mcp/tests/readonly-1.5.5.test.mjs` (12 tests, part of `npm test`) covers the read-only gate in `lib/access.js`. No tenant needed.
+- **Image smoke tests:** `mcp/docker/smoke-test.sh <image> --expect-version 1.5.6` adds T32 to T36:
+  - T32: a write tool is refused in the default read-only mode, run with `--network none`, and the refusal says how to enable write;
+  - T33: with `S1_READ_ONLY=false` the same call reaches its handler;
+  - T34: a `powerquery_run` query containing `| savelookup` is refused;
+  - T35: the `notices` command prints the third-party notices;
+  - T36: every bundled license file and the notices file are present and readable.
 
 ---
 

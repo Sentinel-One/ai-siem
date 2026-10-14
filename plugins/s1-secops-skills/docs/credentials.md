@@ -183,8 +183,8 @@ Use the host launcher instead. It reads the keychain on the host and hands the v
 
 | Host | Launcher |
 |---|---|
-| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.5.4] [--profile P] <server>` |
-| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.5.4] [-Profile P] <server>` |
+| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.5.6] [--profile P] <server>` |
+| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.5.6] [-Profile P] <server>` |
 
 `<server>` is `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp` or `shodan-mcp`. Launcher options go before the server name; anything after it is passed to the server inside the container.
 
@@ -201,17 +201,17 @@ The resulting Claude Desktop config (`~/.local/bin/s1-secops-mcp-launch.sh confi
 ```json
 {
   "mcpServers": {
-    "s1-secops-mcp":  { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.4", "s1-secops-mcp"] },
-    "purple-mcp":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.4", "purple-mcp"] },
-    "virustotal":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.4", "virustotal-mcp"] },
-    "shodan":         { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.4", "shodan-mcp"] }
+    "s1-secops-mcp":  { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.6", "s1-secops-mcp"] },
+    "purple-mcp":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.6", "purple-mcp"] },
+    "virustotal":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.6", "virustotal-mcp"] },
+    "shodan":         { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.6", "shodan-mcp"] }
   }
 }
 ```
 
 The `shodan` entry is optional: `install` writes it only when `SHODAN_API_KEY` is stored in the keychain, or when you pass `--with-shodan` (Windows: `-WithShodan`). To add it later, run the launcher's `setup` to store the key, run `install` again, and restart Claude Desktop.
 
-The config holds no secrets. Run `install --output-dir DIR` (Windows: `-OutputDir`) if you want `outputFile` results written somewhere you can open; it sets `S1_OUTPUT_DIR` on the `s1-secops-mcp` entry, and the macOS/Linux launcher mounts it into the container at the same path, and the Windows launcher mounts it at `/output`. Full Docker details are in [docker.md](./docker.md).
+The config holds no secrets. `S1_READ_ONLY` is a setting, not a secret, and lives in the client config rather than the keychain: s1-secops-mcp is read-only unless the entry sets `"S1_READ_ONLY": "false"`, which `install --read-write` (Windows: `-ReadWrite`) writes. See [read-only.md](./read-only.md). Run `install --output-dir DIR` (Windows: `-OutputDir`) if you want `outputFile` results written somewhere you can open; it sets `S1_OUTPUT_DIR` on the `s1-secops-mcp` entry, and the macOS/Linux launcher mounts it into the container at the same path, and the Windows launcher mounts it at `/output`. Full Docker details are in [docker.md](./docker.md).
 
 All four servers read the same names. `purple-mcp` uses its own variable names internally and the image entrypoint derives them (`S1_CONSOLE_URL` → `PURPLEMCP_CONSOLE_BASE_URL`, `S1_CONSOLE_API_TOKEN` → `PURPLEMCP_CONSOLE_TOKEN`, `VIRUSTOTAL_API_KEY` → `PURPLEMCP_VT_API_KEY`).
 

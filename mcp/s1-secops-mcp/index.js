@@ -21,6 +21,7 @@ import { getCreds, hasS1Creds, hasSdlCreds, loadCredentials } from './lib/creden
 import { hasHecCreds } from './lib/uam-ingest.js';
 import { runCli, SUBCOMMANDS } from './lib/cli.js';
 import { redact } from './lib/redact.js';
+import { modeSummary } from './lib/access.js';
 
 function log(...args) {
   process.stderr.write(redact('[s1-secops-mcp] ' + args.join(' ')) + '\n');
@@ -61,6 +62,8 @@ CREDENTIALS (environment variables override the keychain, per value)
   VIRUSTOTAL_API_KEY                 Stored for the VirusTotal MCP (exec / Docker launcher)
 
 OTHER ENVIRONMENT
+  S1_READ_ONLY            Read-only mode, default true. Tools that change the tenant are
+                          refused unless this is set to false. See docs/read-only.md.
   S1_PROFILE              Keychain profile to read (default "default")
   S1_KEYCHAIN=off         Do not use the OS keychain (environment variables only)
   S1_KEYCHAIN_BACKEND     Force a backend: macos | linux | native
@@ -113,6 +116,18 @@ async function main() {
   log(`SDL API:      ${hasSdlCreds() ? 'configured (' + creds.S1_CONSOLE_URL + '/sdl)' : 'NOT configured'}`);
   log(`UAM Ingest:   ${hasHecCreds() ? 'configured (' + creds.S1_HEC_INGEST_URL + ')' : 'NOT configured (S1_HEC_INGEST_URL missing)'}`);
   log(`Tools:        ${ALL_TOOLS.length} registered`);
+  const mode = modeSummary();
+  if (mode.readOnly) {
+    log(`Mode:         READ-ONLY (${mode.setting}). Tools that change the tenant are refused; set S1_READ_ONLY=false (launcher: install --read-write) to allow them.`);
+  } else {
+    log(`Mode:         WRITE ENABLED (${mode.setting}).`);
+    log('NOTICE: write actions change your SentinelOne tenant and run as the user that owns this token; each one is recorded in this log. Use a least-privilege service user. See docs/read-only.md.');
+  }
+  if (mode.tokenExpiresInDays !== null && mode.tokenExpiresInDays < 0) {
+    log(`WARNING: the console API token expired on ${mode.tokenExpires}. Generate a new token and run setup again.`);
+  } else if (mode.tokenExpiresInDays !== null && mode.tokenExpiresInDays <= 7) {
+    log(`WARNING: the console API token expires in ${mode.tokenExpiresInDays} day(s), on ${mode.tokenExpires}.`);
+  }
 
   const { startStdio } = await import('./lib/stdio-transport.js');
   await startStdio(dispatch);

@@ -118,6 +118,9 @@ case "${1:-help}" in
     # not encode what is inside it, so read the manifest rather than infer.
     exec cat /etc/sentinelone/versions.json
     ;;
+  notices | licenses | license)
+    exec cat /usr/share/doc/secops-mcps/THIRD_PARTY_NOTICES.md
+    ;;
   help | --help | -h | "")
     cat <<'EOF'
 SentinelOne Claude Skills MCP Stack
@@ -130,6 +133,15 @@ Bundled servers (select one per `docker run`):
 
 Other commands:
   versions          Print the pinned source of every bundled server as JSON
+  notices           Print third-party notices, licenses and service terms
+
+Read-only by default: s1-secops-mcp refuses tools that change the tenant
+(create, update, delete, ingest, alert status or verdict changes) unless
+S1_READ_ONLY=false is set. Launcher: `install --read-write`. Write actions
+run as the API token's user; the server logs each one to its own log.
+
+VirusTotal and Shodan lookups go directly to those services under your own
+API keys and are subject to their terms. See `notices`.
 
 Usage (recommended): run through the host launcher, which reads the OS
 keychain and passes secrets over stdin so they never appear in
@@ -138,7 +150,7 @@ keychain and passes secrets over stdin so they never appear in
   s1-secops-mcp-launch.sh s1-secops-mcp    # what the MCP client runs
 
 Manual equivalent (secrets as the first stdin lines, then an empty line):
-  docker run -i --rm -e S1_SECRETS_STDIN=1 sentinelone/secops-mcps:1.5.4 s1-secops-mcp
+  docker run -i --rm -e S1_SECRETS_STDIN=1 sentinelone/secops-mcps:1.5.6 s1-secops-mcp
 
 Environment variables (-e S1_CONSOLE_URL -e S1_CONSOLE_API_TOKEN ...) still
 work but are readable by anyone who can run `docker inspect`.
@@ -151,7 +163,7 @@ EOF
     ;;
   *)
     echo "entrypoint: unknown command '$1'" >&2
-    echo "valid: s1-secops-mcp, purple-mcp, virustotal-mcp, shodan-mcp, versions, help" >&2
+    echo "valid: s1-secops-mcp, purple-mcp, virustotal-mcp, shodan-mcp, versions, notices, help" >&2
     exit 64
     ;;
 esac

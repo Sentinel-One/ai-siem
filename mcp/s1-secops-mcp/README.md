@@ -48,12 +48,14 @@ Each user runs their own instance on their own machine, with their own credentia
 | UAM Ingest | `uam_post_alert` | mgmt-console-api (UAM Alert Interface) |
 <!-- END AUTO-GENERATED TOOLS TABLE -->
 
+**Read-only by default (1.5.5 and later).** Every call that would change the tenant is refused before any network request: the 18 write tools (`s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_post_alert`, `uam_ingest_alert`, `hec_ingest`, `sdl_put_file`, `sdl_delete_file`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `ha_import_workflow`, `ha_delete_workflow`), `s1_api_post` outside its query allowlist, and `powerquery_run` with `| savelookup`. The other 15 tools always run. Tools stay listed; while read-only, write tool descriptions start with `[Disabled: read-only mode, S1_READ_ONLY]`, and every tool carries `readOnlyHint`, `destructiveHint` and `openWorldHint` annotations. Set `S1_READ_ONLY=false` to enable write (Docker launcher: `install --read-write`; `.mcpb`: turn off **Read-only mode (recommended)**; Node: `"S1_READ_ONLY": "false"` in the entry's `env` block). The classification lives in `lib/access.js`. Full reference: **[docs/read-only.md](../../plugins/s1-secops-skills/docs/read-only.md)**; per-tool access: [docs/mcp-tools.md](../../plugins/s1-secops-skills/docs/mcp-tools.md#read-only-mode-155-and-later).
+
 Per-tool parameters and usage notes, including the 1.5.0 additions (`powerquery_run` `queryType: "LOG"`, `slices` + `merge`, `outputFile`; `s1_api_download`; `outputFile` on `s1_api_get` and `ha_export_workflow`), are in **[docs/mcp-tools.md](../../plugins/s1-secops-skills/docs/mcp-tools.md)**.
 
 **2 resources:**
 
 - `sentinelone://soc-context`: `CLAUDE.md`, the Principal SOC Analyst operating instructions.
-- `sentinelone://credentials-status`: which credentials are configured (never their values) and which API surfaces are available.
+- `sentinelone://credentials-status`: which credentials are configured (never their values), which API surfaces are available, and a `mode` object (read-only or write enabled, token expiry when the token is a JWT).
 
 **2 prompts:**
 
@@ -79,11 +81,13 @@ mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-O
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.4", "s1-secops-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.6", "s1-secops-mcp"]
     }
   }
 }
 ```
+
+That entry runs read-only. `install --read-write` (Windows: `-ReadWrite`) adds `"env": {"S1_READ_ONLY": "false"}` to it; the launcher forwards `S1_READ_ONLY` to the container only when the client sets it.
 
 On macOS the launcher must not live under `~/Documents`, `~/Desktop` or `~/Downloads`: Claude Desktop's `/bin/sh` cannot run a script stored there, and the MCP log shows `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted`. `install` takes care of it.
 
@@ -107,11 +111,11 @@ node index.js status         # confirm where each value resolves from
 }
 ```
 
-`npm link` in this folder puts the same entry point on your `PATH` as `s1-secops-mcp`, which is the name the docs use for the CLI. No `env` block: the server reads the keychain. On Windows, the keychain backend is the optional `@napi-rs/keyring` package (`npm install @napi-rs/keyring` in this folder); without it, use the Docker launcher or environment variables from a secret manager. Claude Code: `claude mcp add s1-secops-mcp -- node /path/to/ai-siem/mcp/s1-secops-mcp/index.js`.
+`npm link` in this folder puts the same entry point on your `PATH` as `s1-secops-mcp`, which is the name the docs use for the CLI. No secrets in an `env` block: the server reads the keychain. The only `env` entry you may add is `"S1_READ_ONLY": "false"` to enable write. On Windows, the keychain backend is the optional `@napi-rs/keyring` package (`npm install @napi-rs/keyring` in this folder); without it, use the Docker launcher or environment variables from a secret manager. Claude Code: `claude mcp add s1-secops-mcp -- node /path/to/s1-secops-skills/s1-secops-mcp/index.js`.
 
 ### C. Claude Desktop Extension (`.mcpb`)
 
-An optional extension bundle lives in [`mcpb/`](./mcpb/). It declares the tokens as `user_config` fields with `"sensitive": true`, so Claude Desktop prompts for them in its UI and stores them in the OS keychain rather than in a config file.
+An optional extension bundle lives in [`mcpb/`](./mcpb/). It declares the tokens as `user_config` fields with `"sensitive": true`, so Claude Desktop prompts for them in its UI and stores them in the OS keychain rather than in a config file. Its **Read-only mode (recommended)** setting is on by default; turn it off to enable write.
 
 ## Credentials
 
@@ -170,7 +174,9 @@ s1-secops-mcp exec [--profile P] -- <command> [args...]
 s1-secops-mcp --help | --version
 ```
 
-Run `setup`, `status` and `forget` in a terminal on your own machine, never inside a chat. `--name` takes one of the six names in the table above, or `VIRUSTOTAL_API_KEY`. Other environment settings: `S1_PROFILE`, `S1_KEYCHAIN=off`, `S1_KEYCHAIN_BACKEND`, `S1_KEYCHAIN_TIMEOUT_MS` (keychain call timeout, default 15000), `S1_OUTPUT_DIRS`, `S1_CLAUDE_MD_PATH`.
+Run `setup`, `status` and `forget` in a terminal on your own machine, never inside a chat. `--name` takes one of the six names in the table above, or `VIRUSTOTAL_API_KEY`. Other environment settings: `S1_PROFILE`, `S1_KEYCHAIN=off`, `S1_KEYCHAIN_BACKEND`, `S1_KEYCHAIN_TIMEOUT_MS` (keychain call timeout, default 15000), `S1_OUTPUT_DIRS`, `S1_CLAUDE_MD_PATH`, `S1_READ_ONLY` (unset, `true`, `1`, `yes` or `on` is read-only; `false`, `0`, `no` or `off` enables write; any other value stays read-only with a warning).
+
+When write is enabled, a write is refused if no console token is configured (except `hec_ingest`) or the token is a JWT whose expiry has passed, startup warns when the token expires within 7 days, and each allowed write logs one stderr line, `[s1-secops-mcp] WRITE <time> tool=<name> path=...`, with no request bodies or tokens. The startup log always prints a `Mode:` line.
 
 ## Tool inputs and outputs
 

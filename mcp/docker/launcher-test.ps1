@@ -60,6 +60,13 @@ try {
   if (($names -join ',') -eq 's1-secops-mcp,purple-mcp,virustotal,shodan' -and $j.mcpServers.shodan.args[-1] -eq 'shodan-mcp' -and $j.mcpServers.shodan.args[4] -eq $launcher) {
     Ok 'config: -WithShodan adds the shodan entry' } else { Bad 'config -WithShodan' (ErrText) }
 
+  # Read-only is the default (no env written); -ReadWrite writes the opt-out on s1-secops-mcp only
+  $j0 = Invoke-Launcher $launcher @('config', '-Profile', 's1lt-nokey') | ConvertFrom-Json
+  $j = Invoke-Launcher $launcher @('config', '-Profile', 's1lt-nokey', '-ReadWrite') | ConvertFrom-Json
+  if (-not $j0.mcpServers.'s1-secops-mcp'.env -and $j.mcpServers.'s1-secops-mcp'.env.S1_READ_ONLY -eq 'false' -and
+      @($j.mcpServers.'s1-secops-mcp'.env.PSObject.Properties).Count -eq 1 -and -not $j.mcpServers.'purple-mcp'.env -and -not $j.mcpServers.virustotal.env) {
+    Ok 'config: read-only by default, -ReadWrite sets S1_READ_ONLY=false on s1-secops-mcp only' } else { Bad 'config -ReadWrite' (ErrText) }
+
   # config options
   $md = Join-Path $root 'CLAUDE.md'; Set-Content -Path $md -Value '# x'
   $out = Join-Path $root 'out dir'
@@ -75,7 +82,7 @@ try {
   $cmds = @($j.mcpServers.PSObject.Properties | ForEach-Object { $_.Value.args[4] } | Select-Object -Unique)
   if ($rc -eq 0 -and (Test-Path $dest) -and ($cmds -join '') -eq $dest -and -not (Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue)) {
     Ok 'install: fresh config under APPDATA, launcher copied to HOME\bin' } else { Bad "install fresh (rc=$rc)" (ErrText) }
-  if ((ErrText) -match 'QuitClaudeDesktopcompletely') { Ok 'install: restart instruction' } else { Bad 'install messages' (ErrText) }
+  if ((ErrText) -match 'QuitClaudeDesktopcompletely' -and (ErrText) -match 'configuredread-only\(thedefault\)') { Ok 'install: read-only notice and restart instruction' } else { Bad 'install messages' (ErrText) }
   if ((ErrText) -notmatch 'Startingsetup') { Ok 'install: no credential prompt when input is redirected' } else { Bad 'install prompted for credentials' (ErrText) }
 
   # install merge
@@ -120,6 +127,12 @@ try {
   [void](Invoke-Launcher $launcher @('install', '-ConfigPath', $alt))
   if (@((Get-Content -Raw $alt | ConvertFrom-Json).mcpServers.PSObject.Properties).Count -eq 3) { Ok 'install: -ConfigPath' } else { Bad 'install -ConfigPath' (ErrText) }
 
+  # -ReadWrite: writes the opt-out and prints the write NOTICE
+  $rwc = Join-Path $root 'rwi\c.json'
+  [void](Invoke-Launcher $launcher @('install', '-ReadWrite', '-ConfigPath', $rwc))
+  if ((Get-Content -Raw $rwc | ConvertFrom-Json).mcpServers.'s1-secops-mcp'.env.S1_READ_ONLY -eq 'false' -and (ErrText) -match 'NOTICE:s1-secops-mcpisconfiguredwithwriteenabled') {
+    Ok 'install: -ReadWrite writes S1_READ_ONLY=false and the NOTICE' } else { Bad 'install -ReadWrite' (ErrText) }
+
   # MSIX install (claude.ai installer): the packaged app reads its virtualized
   # copy, so install writes it too, keeping the app's own preferences.
   $msixCfg = Join-Path (Join-Path (Join-Path (Join-Path (Join-Path (Join-Path $localAppData 'Packages') 'Claude_pzs8sxrjxfjjc') 'LocalCache') 'Roaming') 'Claude') 'claude_desktop_config.json'
@@ -140,7 +153,7 @@ try {
   # Live stdio check (Windows with Docker running and the image present): an MCP
   # client keeps stdin open, so the initialize reply must arrive before stdin
   # closes. Piping one line and closing stdin hides a relay that buffers input.
-  $image = 'sentinelone/secops-mcps:1.5.4'
+  $image = if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.6' }
   $dockerOk = $false
   if ($env:OS -eq 'Windows_NT' -and (Get-Command docker -ErrorAction SilentlyContinue)) {
     $ErrorActionPreference = 'Continue'

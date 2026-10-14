@@ -1,7 +1,7 @@
 ## secops-mcps image 1.5.6
 
 Image **1.5.6** on `docker.io/sentinelone/secops-mcps` (linux/amd64, linux/arm64) is a security
-update to read-only mode in `s1-secops-mcp` 1.5.6. All 1.5.5 users should upgrade. The plugin
+update to read-only mode in `s1-secops-mcp` 1.5.6 and is recommended for all users. The plugin
 stays at `s1-secops-skills` 1.3.16, and the purple-mcp, VirusTotal and Shodan pins are unchanged.
 
 ### Security

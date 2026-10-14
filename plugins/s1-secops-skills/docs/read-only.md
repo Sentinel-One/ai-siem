@@ -59,7 +59,7 @@ To check the active mode, look for the `Mode:` line in the server log at startup
 
 | Tool | Allowed in read-only mode | Refused in read-only mode |
 |---|---|---|
-| `s1_api_post` | GraphQL documents that contain only `query` operations; Deep Visibility query launch (`/dv/init-query`); query validation (`/cloud-funnel/validate-query`); graph explorer queries; `available-actions`; tag counts | Every other POST, including GraphQL `mutation` and any endpoint not on the allowlist. An endpoint missing from the allowlist is treated as a write. The check uses the path the request is actually sent to (1.5.6): a path containing a `#` fragment, `;` parameters, a backslash, whitespace, percent-encoded separators or dots, or `.` / `..` segments is treated as a write. |
+| `s1_api_post` | GraphQL documents that contain only `query` operations; Deep Visibility query launch (`/dv/init-query`); query validation (`/cloud-funnel/validate-query`); graph explorer queries; `available-actions`; tag counts | Every other POST, including GraphQL `mutation` and any endpoint not on the allowlist. An endpoint missing from the allowlist is treated as a write. The check uses the path the request is actually sent to: a path containing a `#` fragment, `;` parameters, a backslash, whitespace, percent-encoded separators or dots, or `.` / `..` segments is treated as a write. |
 | `powerquery_run` | Every query that does not write | Queries containing `\| savelookup`, which creates or overwrites a lookup table |
 
 ### 3.3 Tools that never change the tenant (15)

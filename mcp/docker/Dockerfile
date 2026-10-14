@@ -22,9 +22,9 @@
 #   purple-mcp      pip install from a pinned git commit, isolated venv.
 #                    Python deps still resolve from PyPI; see docker/README.md.
 #
-# Pins are passed as build args by docker/build.sh and the GHA workflow at
-# .github/workflows/docker-publish.yml. Bumping a pin = one edit in build.sh
-# and one in the workflow env block, then re-run.
+# Pins are passed as build args by docker/build.sh. Bumping a pin = one edit in
+# build.sh, plus the same edit in any release pipeline that keeps its own copy
+# of the pins, then re-run.
 #
 # Layout inside the final image:
 #   /opt/s1-secops-mcp/                  (Node, from local source)

@@ -101,8 +101,30 @@ export function graphqlOperation(query) {
   return null;                                         // unknown shape: fail closed below
 }
 
+/**
+ * The pathname a POST will actually be sent to, or null when the path string could be read one
+ * way here and resolved another way by the URL parser (1.5.6). Classifying the raw string is not
+ * enough: `.../disconnect#/dv/init-query` ends in an allowlisted read path, but the fragment is
+ * dropped and the request goes to `/disconnect`. So refuse anything that makes the two differ:
+ * fragments, matrix parameters, backslashes, whitespace, percent-encoded separators or dots, and
+ * dot segments. Everything else is classified on the parsed pathname, the same URL safeUrl()
+ * fetches. A null result is treated as a write, so an ambiguous path is refused in read-only mode.
+ */
+export function resolvedPostPath(path) {
+  const raw = String(path || '');
+  if (/[#;\\\s]/.test(raw)) return null;
+  if (/%(2[3eEfF]|3[bB]|5[cC]|00)/.test(raw)) return null;
+  if (/(^|\/)\.{1,2}(\/|\?|$)/.test(raw)) return null;
+  let u;
+  try { u = new URL(raw, 'https://console.invalid'); } catch { return null; }
+  if (u.origin !== 'https://console.invalid' || u.hash) return null;
+  return u.pathname;
+}
+
 export function postIsRead(path, body) {
-  const p = String(path || '').split('?')[0].replace(/\/+$/, '');
+  const resolved = resolvedPostPath(path);
+  if (resolved === null) return false;
+  const p = resolved.replace(/\/+$/, '');
   if (/\/graphql$/.test(p)) {
     const docs = [];
     const add = b => { if (b && typeof b === 'object') docs.push(b.query); };

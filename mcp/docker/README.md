@@ -49,7 +49,7 @@ All four MCPs are pinned at build time. The pins live in `docker/build.sh`. If t
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.5.5` |
+| Image version (`IMAGE_VERSION`) | this repo | `1.5.6` |
 | Base image | Docker Hub, `node:24-trixie-slim` | pinned by digest in both stages; Node major 24 asserted at build time |
 | `s1-secops-mcp` | local `COPY` from this repo | whatever commit you build |
 | `virustotal-mcp` | git, maintained fork (repo in `build.sh`) | `97ca2b8` (vendored fork of `w0h1v/mcp-virustotal` v1.0.28; proxy-addr 2.0.8, MCP SDK 1.32.1) |
@@ -102,7 +102,7 @@ Kept on purpose:
 Because the number does not encode what is inside, verify rather than infer:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.5.5 versions
+docker run --rm sentinelone/secops-mcps:1.5.6 versions
 ```
 
 `versions.json` also records the `shodan-mcp` pin and the Node version (`node`).
@@ -116,18 +116,18 @@ docker/build.sh
 # Full smoke suite, 40 assertions, exit code is the failure count. T17 checks the
 # registry manifest: it skips on a local reference (no slash) and fails on a
 # Docker Hub reference that is not pushed yet. Before the push, test a local tag:
-#   docker tag sentinelone/secops-mcps:1.5.5 secops-mcps:1.5.5-local
-docker/smoke-test.sh secops-mcps:1.5.5-local --expect-version 1.5.5   # 39 pass, T17 skipped
+#   docker tag sentinelone/secops-mcps:1.5.6 secops-mcps:1.5.6-local
+docker/smoke-test.sh secops-mcps:1.5.6-local --expect-version 1.5.6   # 39 pass, T17 skipped
 # After the push, the registry reference runs T17 too (40/40):
-docker/smoke-test.sh sentinelone/secops-mcps:1.5.5 --expect-version 1.5.5
+docker/smoke-test.sh sentinelone/secops-mcps:1.5.6 --expect-version 1.5.6
 
 # Or spot-check by hand:
-docker run -i --rm sentinelone/secops-mcps:1.5.5 help      # lists the four servers
-docker run -i --rm sentinelone/secops-mcps:1.5.5 versions
-docker run --rm sentinelone/secops-mcps:1.5.5 notices      # third-party notices and licenses
+docker run -i --rm sentinelone/secops-mcps:1.5.6 help      # lists the four servers
+docker run -i --rm sentinelone/secops-mcps:1.5.6 versions
+docker run --rm sentinelone/secops-mcps:1.5.6 notices      # third-party notices and licenses
 
 # There should be no npm in here. This must print "absent".
-docker run --rm --entrypoint sh sentinelone/secops-mcps:1.5.5 -c 'command -v npm || echo absent'
+docker run --rm --entrypoint sh sentinelone/secops-mcps:1.5.6 -c 'command -v npm || echo absent'
 ```
 
 The Shodan checks in the smoke suite: `tools/list` on `shodan-mcp` returns 11 tools, `help` lists four servers, `/opt/mcp-shodan` is readable with no `.git` or `.env`, and a container started with `MCP_TRANSPORT=httpStream` still speaks stdio.
@@ -142,8 +142,8 @@ The dispatcher accepts `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, `shodan-
 - `docker/build.sh` and the CI workflow build with `--provenance=mode=max --sbom=true`, so a pushed image carries SLSA provenance and an SPDX SBOM attestation on its index. Docker Hub lists the attestation manifests as an extra `unknown/unknown` platform; pulls ignore it. Build arguments appear in the provenance, which is public, so never pass a secret as a `--build-arg`.
 
 ```bash
-docker buildx imagetools inspect sentinelone/secops-mcps:1.5.5 --format '{{ json .SBOM }}'
-docker buildx imagetools inspect sentinelone/secops-mcps:1.5.5 --format '{{ json .Provenance }}'
+docker buildx imagetools inspect sentinelone/secops-mcps:1.5.6 --format '{{ json .SBOM }}'
+docker buildx imagetools inspect sentinelone/secops-mcps:1.5.6 --format '{{ json .Provenance }}'
 ```
 
 ## Push manually
@@ -169,7 +169,7 @@ On a slow or unreliable link, push with `skopeo copy --all --retry-times 20` fro
 # Then:
 docker/build.sh                                            # verify locally
 git push                                                   # no build, by design
-git tag -a s1-mcps-v1.5.5 -m "..." && git push origin s1-mcps-v1.5.5
+git tag -a s1-mcps-v1.5.6 -m "..." && git push origin s1-mcps-v1.5.6
 ```
 
 **Only a release tag builds an image.** A push to `main` does not, however much

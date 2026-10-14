@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security - read-only checks follow the request URL (image and MCP 1.5.6)
+
+- `s1_api_post` now decides read or write from the exact path the request is sent to. Paths whose written and resolved forms could differ (`#` fragments, `;` parameters, backslashes, encoded separators, dot segments) are treated as writes and refused in read-only mode. All Management API tools reject `#` and `\` in a path. Plugin unchanged at 1.3.16.
+- Release notes: [secops-mcps 1.5.6](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.5.6.md).
+
 ### Changed - read-only by default and third-party notices (image and MCP 1.5.5, s1-secops-skills v1.3.16)
 
 - **Read-only by default:** `s1-secops-mcp` starts in read-only mode (`S1_READ_ONLY`). Tools that change the tenant return a clear message with the steps to enable write; investigation, hunting and reporting are unchanged. Enable write with the launcher's `install --read-write` (Windows `-ReadWrite`), the `.mcpb` setting, or `"S1_READ_ONLY": "false"`. Each write is recorded in the server audit log. Details: [read-only.md](plugins/s1-secops-skills/docs/read-only.md).

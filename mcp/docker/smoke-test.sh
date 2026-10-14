@@ -7,8 +7,8 @@
 #
 # Examples:
 #   docker/smoke-test.sh secops-mcps:local-rc1
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.5 --expect-version 1.5.5
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.5 --platform linux/amd64
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.6 --expect-version 1.5.6
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.6 --platform linux/amd64
 #
 # Exit code is the number of failed tests, so `if docker/smoke-test.sh IMG` works
 # as a gate in CI or a release checklist.
@@ -49,6 +49,7 @@
 #   T32-T34  Read-only by default (1.5.5): a write tool and a savelookup query
 #            are refused with no network, and S1_READ_ONLY=false lifts it.
 #   T35-T36  Third-party notices and every bundled LICENSE ship in the image.
+#   T37      1.5.6: an s1_api_post path with a fragment is refused in read-only mode.
 #
 set -uo pipefail
 
@@ -408,6 +409,13 @@ if printf '%s' "$R34" | grep -q '"isError":true' && printf '%s' "$R34" | grep -q
   ok "T34 default: PowerQuery savelookup refused"
 else
   bad "T34 default: PowerQuery savelookup refused" "$(printf '%s' "$R34" | cut -c1-200)"
+fi
+
+R37="$(mcp_call s1_api_post '{"path":"/web/api/v2.1/agents/actions/disconnect#/dv/init-query","body":{}}')"
+if printf '%s' "$R37" | grep -q '"isError":true' && printf '%s' "$R37" | grep -q 'read-only mode'; then
+  ok "T37 default: s1_api_post path with a fragment is refused (1.5.6)"
+else
+  bad "T37 default: s1_api_post path with a fragment is refused (1.5.6)" "$(printf '%s' "$R37" | cut -c1-200)"
 fi
 
 # ── Licenses and third-party notices (1.5.5) ─────────────────────────────────

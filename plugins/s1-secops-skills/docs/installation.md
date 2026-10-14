@@ -58,7 +58,7 @@ What `install` does, in order (safe to re-run):
 
 1. Copies the launcher to `~/.local/bin/s1-secops-mcp-launch.sh` (Windows: `%USERPROFILE%\bin\s1-secops-mcp-launch.ps1`) and clears the download quarantine flag. On macOS this keeps it out of `~/Documents`, `~/Desktop` and `~/Downloads`, where privacy protection stops Claude Desktop's `/bin/sh` from running it (`Operation not permitted` in the MCP log).
 2. Adds `s1-secops-mcp`, `purple-mcp` and `virustotal` to `claude_desktop_config.json` (Step 2) with the launcher's real path, keeps every other server and setting, removes older entries that ran the launcher under another name, and saves the previous file as `claude_desktop_config.json.bak-<date>`. A config that is not valid JSON is left untouched and reported. It also adds the optional `shodan` entry, but only when `SHODAN_API_KEY` is already stored in the keychain or you pass `--with-shodan` (Windows: `-WithShodan`).
-3. Pulls `sentinelone/secops-mcps:1.5.5`, or warns that Docker is not running.
+3. Pulls `sentinelone/secops-mcps:1.5.6`, or warns that Docker is not running.
 4. If no console token is stored for the profile, runs `setup`: it prompts for each value without echo and stores it in the OS keychain under service `sentinelone-mcp`, account `default:<NAME>`.
 5. Prints whether s1-secops-mcp is configured read-only (the default) or with write enabled.
 
@@ -91,19 +91,19 @@ On macOS the output looks like this, with your own home folder in place of `<hom
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.5", "s1-secops-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.6", "s1-secops-mcp"]
     },
     "purple-mcp": {
       "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.5", "purple-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.6", "purple-mcp"]
     },
     "virustotal": {
       "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.5", "virustotal-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.6", "virustotal-mcp"]
     },
     "shodan": {
       "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.5", "shodan-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.6", "shodan-mcp"]
     }
   }
 }
@@ -120,7 +120,7 @@ On Windows the entries use the PowerShell launcher (`powershell -NoProfile -Exec
   "command": "powershell.exe",
   "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
            "<home>\\bin\\s1-secops-mcp-launch.ps1",
-           "-Image", "sentinelone/secops-mcps:1.5.5", "s1-secops-mcp"]
+           "-Image", "sentinelone/secops-mcps:1.5.6", "s1-secops-mcp"]
 }
 ```
 
@@ -137,9 +137,9 @@ Optional: to get `outputFile` results (bulk query exports, binary downloads, wor
 - Region URLs vary. Look up your region in the [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) article.
 - The VirusTotal MCP shown is one example. Replace it with your organisation's approved threat intel MCP if different.
 - The Shodan MCP is optional exposure intelligence (open ports, services, banners, TLS/JARM, host CVEs) that complements VirusTotal; it does not replace it. It receives only `SHODAN_API_KEY`, speaks stdio only, and reaches only `api.shodan.io` and `cvedb.shodan.io`. Tools and credit costs: [mcp-tools.md → Shodan MCP](./mcp-tools.md#shodan-mcp-optional).
-- Every install is pinned. There is no `:latest`, and the repository has immutable tags enabled, so `1.5.5` always means the same bytes.
+- Every install is pinned. There is no `:latest`, and the repository has immutable tags enabled, so `1.5.6` always means the same bytes.
 - s1-secops-mcp is read-only by default; purple-mcp, VirusTotal and Shodan are not affected by that setting. Details: [read-only.md](./read-only.md).
-- Third-party components, licenses and service terms: [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md), or `docker run --rm sentinelone/secops-mcps:1.5.5 notices`.
+- Third-party components, licenses and service terms: [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md), or `docker run --rm sentinelone/secops-mcps:1.5.6 notices`.
 
 ---
 
@@ -192,9 +192,9 @@ Claude verifies connectivity to `s1-secops-mcp`, `purple-mcp`, and the threat in
 You can also test the image straight from a terminal, with no Claude Desktop involved:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.5.5 versions   # what is inside the image
+docker run --rm sentinelone/secops-mcps:1.5.6 versions   # what is inside the image
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm sentinelone/secops-mcps:1.5.5 s1-secops-mcp
+  | docker run -i --rm sentinelone/secops-mcps:1.5.6 s1-secops-mcp
 ```
 
 The second command needs no credentials. It returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"`, and stderr shows `Tools: 35 registered` and a `Mode:` line (`READ-ONLY` by default). The `version` it reports is the bundled MCP's own version, not the image tag.
@@ -217,7 +217,7 @@ To confirm the active plugin version: `which version of s1-secops-skills is inst
 
 ## Upgrading
 
-**MCP servers** (`s1-secops-mcp`, `purple-mcp`, `virustotal`, and `shodan` if installed): the config pins `1.5.5`, so restarting Claude Desktop keeps that exact image. To upgrade, run the [Step 1](#step-1-install-the-launcher-and-store-credentials) command again: it downloads the current launcher, whose default image is the current release, rewrites the entries with that tag (adding `shodan` when its key is stored), pulls the image and keeps your stored credentials. Pass `--read-write` (Windows: `-ReadWrite`) again if you use write access; without it the rewritten entry is read-only. To move to a specific tag instead, run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:<tag>`. Then restart Claude Desktop.
+**MCP servers** (`s1-secops-mcp`, `purple-mcp`, `virustotal`, and `shodan` if installed): the config pins `1.5.6`, so restarting Claude Desktop keeps that exact image. To upgrade, run the [Step 1](#step-1-install-the-launcher-and-store-credentials) command again: it downloads the current launcher, whose default image is the current release, rewrites the entries with that tag (adding `shodan` when its key is stored), pulls the image and keeps your stored credentials. Pass `--read-write` (Windows: `-ReadWrite`) again if you use write access; without it the rewritten entry is read-only. To move to a specific tag instead, run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:<tag>`. Then restart Claude Desktop.
 
 **Plugin**: download the new `.plugin` from [the ai-siem `dist/` folder](../dist/), open Cowork → Customize → Browse plugins, upload, click **Replace** when prompted.
 
@@ -235,7 +235,7 @@ Moving to 1.5.5 makes s1-secops-mcp read-only by default: see [upgrading.md → 
 - **`S1_OUTPUT_DIR`** (Docker launcher) / **`S1_OUTPUT_DIRS`** (server): where `outputFile` may write. The server default is your home and temp directories. Under Docker set it with `install --output-dir`; `S1_OUTPUT_DIRS` in the client config does not reach the container. Without it, files the server writes stay inside the container and are lost when it exits, so from 1.5.4 the server in the image refuses `outputFile` and says to run `install --output-dir`.
 - **`S1_CLAUDE_MD_PATH`:** points the server at a custom CLAUDE.md (both the macOS/Linux and the Windows launcher mount the host file read-only into the container).
 - **`S1_KEYCHAIN_TIMEOUT`** (sh launcher, seconds, default 15) / **`S1_KEYCHAIN_TIMEOUT_MS`** (native server and Python clients, milliseconds, default 15000): how long a keychain read may wait before it is treated as unavailable.
-- **`S1_MCP_IMAGE`:** the launcher's default image when no `--image` is passed (`sentinelone/secops-mcps:1.5.5`).
+- **`S1_MCP_IMAGE`:** the launcher's default image when no `--image` is passed (`sentinelone/secops-mcps:1.5.6`).
 - **`S1_READ_ONLY`:** read-only mode for s1-secops-mcp. Unset or `true` (the default) refuses every call that changes the tenant; `false` enables write. Set it with `install --read-write` (Windows: `-ReadWrite`), the `.mcpb` extension's **Read-only mode (recommended)** setting, or `"S1_READ_ONLY": "false"` in the `env` block for a Node install. It lives in the client config, not the keychain. Full reference: [read-only.md](./read-only.md).
 
 The two values you always need are `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN`, which between them authorise parser and dashboard deployment and every other SDL operation; add `S1_HEC_INGEST_URL` for alert ingest and `S1_HEC_TOKEN` for raw log ingest.

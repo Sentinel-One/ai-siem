@@ -35,7 +35,7 @@
 #   "s1-secops-mcp": { "command": "/abs/path/s1-secops-mcp-launch.sh", "args": ["s1-secops-mcp"] }
 #
 # Environment
-#   S1_MCP_IMAGE   image (default sentinelone/secops-mcps:1.5.5)
+#   S1_MCP_IMAGE   image (default sentinelone/secops-mcps:1.5.6)
 #   S1_PROFILE     keychain profile (default "default")
 #   S1_OUTPUT_DIR  host directory mounted at the same path so outputFile works
 #   S1_CLAUDE_MD_PATH  host CLAUDE.md, mounted read-only into the container
@@ -49,7 +49,7 @@
 set -eu
 
 SERVICE=sentinelone-mcp
-IMAGE=${S1_MCP_IMAGE:-sentinelone/secops-mcps:1.5.5}
+IMAGE=${S1_MCP_IMAGE:-sentinelone/secops-mcps:1.5.6}
 PROFILE=${S1_PROFILE:-default}
 
 die() { echo "s1-secops-mcp-launch: $*" >&2; exit 2; }

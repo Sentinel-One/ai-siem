@@ -81,7 +81,7 @@ mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-O
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.5", "s1-secops-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.5.6", "s1-secops-mcp"]
     }
   }
 }

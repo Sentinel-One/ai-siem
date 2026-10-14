@@ -138,6 +138,52 @@ test('s1_api_post read-only allowlist: GraphQL queries and listed query endpoint
   for (const [p, b] of writes) assert.equal(access.callWrites('s1_api_post', { path: p, body: b }), true, `${p} should be a write`);
 }));
 
+test('s1_api_post: a path that resolves somewhere other than it reads is refused, and nothing is sent (1.5.6)', () => withEnv({ S1_READ_ONLY: 'true' }, async () => {
+  const W = '/web/api/v2.1/agents/actions/disconnect';
+  const bypasses = [
+    [`${W}#/dv/init-query`, { filter: {} }],                      // fragment dropped by the URL parser
+    [`${W}#/graphql`, { query: 'query { a }' }],                  // fragment + harmless GraphQL query body
+    [`${W}?x=1#/dv/init-query`, {}],
+    [`${W};/dv/init-query`, {}],                                  // matrix parameter
+    [`${W}%23/dv/init-query`, {}],                                // encoded '#'
+    [`${W}%3b/dv/init-query`, {}],                                // encoded ';'
+    [`${W}%2fdv%2finit-query`, {}],                               // encoded '/'
+    [`${W}%5c..%5cdv/init-query`, {}],                            // encoded '\'
+    [`${W}/%2e%2e/dv/init-query`, {}],                            // encoded dot segment
+    [`${W}\\..\\dv/init-query`, {}],                              // backslash
+    ['/web/api/v2.1/dv/init-query/../../agents/actions/disconnect', {}],
+    ['/web/api/v2.1/agents/actions/disconnect/../../dv/init-query', {}], // dot segments refused even when they resolve to a read
+    ['/web/api/v2.1/./dv/init-query', {}],
+    [`${W} /dv/init-query`, {}],                                  // whitespace
+  ];
+  for (const [p, b] of bypasses) {
+    assert.equal(access.resolvedPostPath(p), null, `${JSON.stringify(p)} should not resolve`);
+    assert.equal(access.callWrites('s1_api_post', { path: p, body: b }), true, `${JSON.stringify(p)} should be treated as a write`);
+    const f = stubFetch();
+    try {
+      await assert.rejects(() => tool('s1_api_post').handler({ path: p, body: b }), /read-only mode/);
+      assert.equal(f.calls.length, 0, `${JSON.stringify(p)} must not reach the network`);
+    } finally { f.restore(); }
+  }
+  // Plain allowlisted reads still resolve to themselves, with or without a query string.
+  assert.equal(access.resolvedPostPath('/web/api/v2.1/dv/init-query'), '/web/api/v2.1/dv/init-query');
+  assert.equal(access.callWrites('s1_api_post', { path: '/web/api/v2.1/dv/init-query?accountIds=1', body: {} }), false);
+}));
+
+test('safeUrl refuses a fragment or backslash for every Mgmt API tool, read or write (1.5.6)', () => withEnv({ S1_READ_ONLY: 'false' }, async () => {
+  for (const [name, args] of [
+    ['s1_api_get', { path: '/web/api/v2.1/agents#x' }],
+    ['s1_api_get', { path: '/web/api/v2.1/agents\\x' }],
+    ['s1_api_post', { path: '/web/api/v2.1/agents/actions/disconnect#/dv/init-query', body: {} }],
+  ]) {
+    const f = stubFetch();
+    try {
+      await assert.rejects(() => tool(name).handler(args), /may not contain "#" or "\\"/);
+      assert.equal(f.calls.length, 0);
+    } finally { f.restore(); }
+  }
+}));
+
 test('powerquery_run: savelookup is refused in read-only mode, ordinary queries are not gated', () => withEnv({ S1_READ_ONLY: 'true' }, async () => {
   assert.equal(access.callWrites('powerquery_run', { query: "dataSource.name='x' | group n=count() by a" }), false);
   assert.equal(access.callWrites('powerquery_run', { query: "dataSource.name='x' | group n=count() by a | savelookup 'mytable'" }), true);

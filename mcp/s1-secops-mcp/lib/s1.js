@@ -68,6 +68,11 @@ function safeUrl(path) {
   if (u.origin !== origin) {
     throw new Error(`S1 API path may not change the request origin (resolved to ${u.origin})`);
   }
+  // A fragment never reaches the server and a backslash is rewritten by the URL parser, so either
+  // makes the path a caller sees differ from the one fetched (1.5.6). The API uses neither.
+  if (/[#\\]/.test(path)) {
+    throw new Error(`S1 API path may not contain "#" or "\\" (got: ${JSON.stringify(path).slice(0, 80)})`);
+  }
   return u;
 }
 

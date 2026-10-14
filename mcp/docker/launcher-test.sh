@@ -152,7 +152,7 @@ done
 # Live stdio check (Docker running and the image present): an MCP client keeps
 # stdin open, so the initialize reply must arrive before stdin closes. Piping
 # one line and closing stdin would hide a relay that buffers input.
-IMAGE=${S1_MCP_IMAGE:-sentinelone/secops-mcps:1.5.5}
+IMAGE=${S1_MCP_IMAGE:-sentinelone/secops-mcps:1.5.6}
 if command -v docker >/dev/null 2>&1 && docker image inspect "$IMAGE" >/dev/null 2>&1; then
   echo "== live stdio"
   L="$ROOT/live"; mkdir -p "$L"; mkfifo "$L/in"

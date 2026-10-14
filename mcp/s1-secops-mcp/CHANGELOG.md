@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.6 (image `sentinelone/secops-mcps:1.5.6`), 2026-10-14
+
+### Security: read-only mode path handling
+
+- `s1_api_post` is now classified on the path the request is actually sent to. A path that could read one way and resolve another (a `#` fragment, `;` parameters, a backslash, whitespace, percent-encoded `#`, `;`, `/`, `\` or `.`, or `.` / `..` segments) is treated as a write and refused in read-only mode, before any network call.
+- All Management API tools reject a `#` or `\` in the path, read or write.
+- Tests: 2 new cases in `tests/readonly-1.5.5.test.mjs` covering 14 path forms; each asserts the refusal and that nothing is sent.
+- No change to the tools, the plugin (1.3.16) or the image contents beyond `s1-secops-mcp`.
+
 ## 1.5.5 (image `sentinelone/secops-mcps:1.5.5`), 2026-10-14
 
 ### Changed: read-only by default

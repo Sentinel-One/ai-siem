@@ -36,7 +36,10 @@ jobs:
         continue-on-error: true
         with:
           path: ./
-          base: ${{ github.event.before }}
+          # PRs: scan only the PR's own commits (their base). github.event.before is
+          # empty on a branch's first run, which made the action scan the whole history.
+          # Pushes to main: scan the commits in the push.
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
           head: ${{ github.event.after || 'HEAD' }}
           extra_args: --debug --exclude-paths .github/trufflehog-exclude.txt
 

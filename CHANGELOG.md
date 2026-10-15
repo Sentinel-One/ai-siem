@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security - removed real tenant identifiers from examples
+
+- Replaced the `usea1-purple` and `usea1-partners` tenant hostnames, a real alert ID and a tenant `accountId` in four example files with placeholders (`your-console.sentinelone.net`, all-zero UUID, `1000000000000000000`). The Hyperautomation "Add Event Data to Detection Note" workflow now builds its SDL URL from `{{Connection.url}}` like its sibling actions instead of a hardcoded host.
+- PR template: added write-capable component, pinned-version and tracking-ticket checks, and tenant hostnames and alert/account IDs to the no-real-identifiers check.
+
 ### Changed - docs and scanner config cleanup
 
 - Removed `.trufflehogignore`: no workflow referenced it, so it had no effect, and its patterns (`*.md`, `tests/`, `fixtures/`) would have hidden exactly the places credentials leak if it were ever wired in. CI scans every path.

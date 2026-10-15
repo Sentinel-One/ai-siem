@@ -3,7 +3,7 @@
   "event_subtype": "CREATE",
   "mgmt_id": 19488,
   "data": {
-    "id": "019c43ea-8c7f-77e1-909f-5bcc7656d27e",
+    "id": "00000000-0000-0000-0000-000000000000",
     "name": "mimikatz.exe detected as Infostealer",
     "description": "Windows file events analysis detected a malicious file known to SentinelOne's Cloud Intelligence",
     "externalId": "2411197684524952174",
@@ -88,7 +88,7 @@
     "realTime": {
       "scope": {
         "account": {
-          "id": "1472380766023399132",
+          "id": "1000000000000000000",
           "name": "Cloudflare"
         },
         "site": {
@@ -103,7 +103,7 @@
     },
     "detectionTime": {
       "scope": {
-        "accountId": "1472380766023399132",
+        "accountId": "1000000000000000000",
         "accountName": "Cloudflare",
         "siteName": "Default site",
         "groupName": "Default Group"
@@ -124,7 +124,7 @@
       "assets": [
         {
           "scope": {
-            "accountId": "1472380766023399132",
+            "accountId": "1000000000000000000",
             "accountName": "Cloudflare",
             "siteName": "Default site",
             "groupName": "Default Group"
@@ -226,7 +226,7 @@
     "preemptiveMitigationType": null,
     "relatedAlerts": [],
     "exclusionHash": null,
-    "selfLink": "https://usea1-partners.sentinelone.net/incidents/unified-alerts?alertId=019c43ea-8c7f-77e1-909f-5bcc7656d27e",
+    "selfLink": "https://your-console.sentinelone.net/incidents/unified-alerts?alertId=00000000-0000-0000-0000-000000000000",
     "labels": []
   }
 }

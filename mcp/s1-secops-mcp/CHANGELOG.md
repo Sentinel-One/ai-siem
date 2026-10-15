@@ -13,9 +13,8 @@ No change to `s1-secops-mcp` or the image (1.5.6).
   not accept the `llm` action, the user is pointed to their account team to enable it.
 - mgmt-console-api: new `references/licences.md` (account then site, site `PUT` rejects
   `settings`, console label to module name, audit against a golden account).
-- sdl-solutions: one site per account when a site must see its own platform alerts.
 - CLAUDE.md: Investigation Hygiene section.
-- Tests: new invariant cases in the hyperautomation, mgmt-console-api and sdl-solutions suites.
+- Tests: new invariant cases in the hyperautomation and mgmt-console-api suites.
 
 ## 1.5.6 (image `sentinelone/secops-mcps:1.5.6`), 2026-10-14
 

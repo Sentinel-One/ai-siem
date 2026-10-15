@@ -446,11 +446,5 @@ class EvalSuiteIsGradable(unittest.TestCase):
                                r"log write key")
 
 
-class SecondSiteWarning(unittest.TestCase):
-    def test_platform_alerts_go_to_the_default_site(self):
-        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("One site per account when platform alerts matter.", text)
-
-
 if __name__ == "__main__":
     unittest.main()

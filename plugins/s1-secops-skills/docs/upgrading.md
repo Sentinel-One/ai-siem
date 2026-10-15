@@ -28,7 +28,6 @@ What it adds:
   re-bind loop for editing a deployed flow; hash and scope extraction from the raw alert; if a
   console does not accept the `llm` action, contact your SentinelOne account team to enable it.
 - **mgmt-console-api:** account and site licences (`references/licences.md`).
-- **sdl-solutions:** one site per account when a site must see its own platform alerts.
 - **CLAUDE.md:** an Investigation Hygiene section.
 
 ---

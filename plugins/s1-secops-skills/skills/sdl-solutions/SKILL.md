@@ -79,7 +79,6 @@ This skill orchestrates the SentinelOne primitive skills. Load the ones a playbo
 
 - **Naming prefix.** Every artifact a deployment creates is prefixed with a customer or solution code so multiple deployments coexist cleanly: tables `<prefix>IdentityLookup` / `<prefix>EndpointLookup`, parser `<prefix>_enrich`, workflow `<prefix> Asset Lookups`.
 - **Scope by site.** Deploy to the customer's site. Resolve the name to a siteId and pass it on every scoped call. The HA import, activation, and deactivation all require the scope parameter.
-- **One site per account when platform alerts matter.** Alerts from third-party platform rules (for example Okta, Proofpoint, Zscaler, CloudTrail, O365, FortiGate) are filed under the account's default site in UAM, even though the SDL events carry the correct `site.id`. A site that must see its own platform alerts should be the only site in its account; confirm this before deploying a per-site solution to a second site.
 - **Empty suppression.** Inventory empties (for example `riskFactors` as the string `"[]"`) are converted to null in the savelookup so enrichment never writes an empty field.
 - **Preview before deploy.** Always show rendered config and an example enriched record first.
 - **Idempotence.** Read the current version of any SDL config file before overwriting, and pass it as the expected version. Hyperautomation import always creates a new workflow, so to update one, replace it rather than re-import blindly.

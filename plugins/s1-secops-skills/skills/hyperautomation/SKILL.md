@@ -241,6 +241,7 @@ A workflow imported or created via the API is a **Private Draft owned by the tok
 | `references/api-integration.md` | User wants to import/export/submit to a live console |
 | `references/snippets.md` | Building or calling a **snippet** (reusable sub-workflow): authoring rules, static vs dynamic `snippet_20` calls, and the snippet lifecycle API |
 | `references/autonomous-soc-template.md` | Building an **autonomous SOC** / auto-response workflow: canonical alert→investigate→triage→decide→respond shape, the analyst-approved-remediation variant, the Purple AI agentic investigation calls, converting a markdown investigation report into email or Slack, the reusable response-snippet library, dynamic-snippet dispatch, and a branded SOC-email snippet example |
+| `references/l1-triage-template.md` | Building an **L1 triage** pass over the alert queue: indicators re-derived from the account's own data, guardrails before and after the AI, a strict `llm` close-or-keep decision, guarded close with note + verdict + status, and a start-here handover note |
 | `references/interaction-forms.md` | Building a **form-based interaction** (S-26.2.6+): collect structured input from a person mid-run. Product behaviour and limits, the `form_schema` shape, the response schema, and the mandatory `Function.DEFAULT` guard on optional fields |
 | `references/connections.md` | Creating an integration **connection** via API (endpoint + body), cloning a connection across sites, and the integration-vs-connection binding rule |
 
@@ -264,6 +265,7 @@ table to jump straight to the right starting point:
 | "Create a Threat Intelligence indicator" | B9 (TI IOC create) | B4 accumulator inside loop |
 | "Add a note on the alert" | B6 (UAM GraphQL addAlertNote) | always wrap text in `Function.HTML_ENCODE` |
 | "Auto-investigate and respond to alerts end to end" | `references/autonomous-soc-template.md` | reusable response snippets + dynamic `snippet_20` dispatch, poll-until-complete loop |
+| "Close benign alerts in the queue with evidence, hand the rest to a human" / "L1 triage" | `references/l1-triage-template.md` | indicator PowerQueries, UAM alertsRawData, strict `llm` decision, guarded `alertTriggerActions` close |
 | "Reuse this step across several flows" / "stop copy-pasting this logic" | `references/snippets.md` (author a snippet, call it with `snippet_20`) | `use_latest_snippet_version` to auto-track edits |
 
 **Reuse via snippets is the default for shared logic.** Whenever the same action graph would appear in more than one workflow (a response action, a notification, a poll loop), build it once as a snippet and call it with a `snippet_20` node instead of duplicating it. See `references/snippets.md`.
@@ -289,6 +291,7 @@ Annotated real examples to use as structural references:
 - `references/building-blocks-catalog.md`: patterns mined from 1,205 production workflows. Atomic node shapes (Section A), composite idioms such as condition branches with success/fail notes, loops with APPEND and BREAK logic, and integration-backed HTTP requests with connection placeholders (Section B), plus full use-case recipes (Section C) and anti-patterns (Section E).
 - `references/snippets.md`: authoring and calling reusable snippets, with worked `snippet_trigger`, `snippet_output`, and `snippet_20` node shapes.
 - `references/autonomous-soc-template.md`: the canonical end-to-end investigate-decide-respond workflow template, plus the analyst-approved-remediation variant and the Purple AI agentic investigation call shapes.
+- `references/l1-triage-template.md`: the L1 triage pass over the alert queue (close benign alerts with the evidence attached, hand the rest to a human).
 - `references/interaction-forms.md`: form-based interactions end to end, product behaviour plus the tenant-validated JSON layer.
 
 ---
@@ -464,9 +467,18 @@ every account the token can reach, and `siteIds` alone misses account-level work
   scope rule applies to `activation`, `deactivate`, `publish`, and `DELETE`, append
   `?siteIds=<id>` or `?accountIds=<acct>` to match where the workflow lives.
 - **There is no in-place update.** Import always creates a NEW workflow. Re-importing a name that
-  already exists succeeds and creates `Name (1)`, `Name (2)`, … (re-confirmed 2026-10-09). To "edit" a
-  deployed workflow you must delete the old one (REST `DELETE`, see below) and re-import (or edit it
-  in the UI).
+  already exists succeeds and creates `Name (1)`, `Name (2)`, … (re-confirmed 2026-10-09). To edit a
+  deployed workflow from code: (1) export it; (2) patch only the JSON values, never renaming an
+  action or variable; (3) deactivate, then delete the old flow; (4) import; (5) re-bind the
+  integration connections on its `http_request` actions; (6) activate. The workflow id changes, so
+  anything that stored the old id (run-now scripts, docs) must look it up again by name. Skipping
+  step 5 can still return `204` on activation and then fail at run time. Or edit it in the UI.
+- **A console that does not accept the `llm` action** does not have the AI feature enabled. Tell
+  the user to contact their SentinelOne account team to turn it on, and offer the flow without the
+  `llm` step meanwhile (see `references/building-blocks.md`).
+- **An account-scope list includes other sites' workflows.** `accountIds=<acct>` also returns the
+  site-level workflows of every site in the account. Before any delete-by-name, skip a workflow
+  whose `scope_level == "site"` and whose `scope_id` is not the target site.
 - **Delete a workflow with a REST `DELETE`.** `DELETE /hyper-automate/api/v1/workflows/{id}?accountIds=<acct>`
   returns `204` (soft, recoverable delete). Validated end to end (import → publish → delete → gone
   from list). A `404 "Object not found"` on delete means the id is not under that scope (or already

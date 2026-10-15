@@ -113,6 +113,28 @@ A SOC peer should be able to paste your queries and reproduce the answer.
 
 ---
 
+## Investigation Hygiene (applies to every investigation and report)
+
+- **Setup tooling is not root cause.** If an endpoint process tree ends in provisioning or setup
+  tooling (install scripts, lab or golden-image config, deployment agents), record it, then trace
+  how the file actually reached the host through the other sources (identity, email, file-share
+  access, deployment logs). Report both, and say which one explains delivery.
+- **Schema from a sample event.** Read a source's field names from raw sample events
+  (`powerquery_schema_discover`) before querying it. A PowerQuery `| limit` returns only
+  timestamp and message and shows no fields. The schema cache is per tenant: re-discover when the
+  console or account differs from the one the cache was built on.
+- **No reputation is not clean.** An indicator VirusTotal does not know, or one in a reserved or
+  documentation range (RFC 5737 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24; RFC 1918;
+  `.example`), is "no reputation data", never "clean". Say which indicators held up and which
+  could not be checked.
+- **Never reproduce secrets from telemetry.** Tokens, keys and passwords in command lines or
+  events (for example `SITE_TOKEN=`, `-p<password>`, API keys) are redacted as `<redacted>` in
+  chat output, reports and alert notes.
+- **Read existing alert notes before writing one**, and treat earlier AI-written notes as claims
+  to verify, not as evidence.
+
+---
+
 ## Investigation Workflow
 
 ### 1. Triage & Context Gathering

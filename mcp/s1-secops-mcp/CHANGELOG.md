@@ -1,5 +1,22 @@
 # Changelog
 
+## Plugin 1.3.17 (skills only), 2026-10-16
+
+No change to `s1-secops-mcp` or the image (1.5.6).
+
+- hyperautomation: new `references/l1-triage-template.md`. `llm` `json_schema` is a JSON string
+  (`""` with `response_format: "off"`) and output is read at `<slug>.data`; strict-output branching
+  with a safe default; `run_automatically` is per filter group; account-scope workflow lists include
+  site-level workflows of every site, filter on `scope_level` / `scope_id` before a delete-by-name;
+  the export, patch, re-import, re-bind loop; raw-alert hash and `S1-Scope` extraction; an
+  approval-email placeholder for shared flows; two new validation-rule checks; when a console does
+  not accept the `llm` action, the user is pointed to their account team to enable it.
+- mgmt-console-api: new `references/licences.md` (account then site, site `PUT` rejects
+  `settings`, console label to module name, audit against a golden account).
+- sdl-solutions: one site per account when a site must see its own platform alerts.
+- CLAUDE.md: Investigation Hygiene section.
+- Tests: new invariant cases in the hyperautomation, mgmt-console-api and sdl-solutions suites.
+
 ## 1.5.6 (image `sentinelone/secops-mcps:1.5.6`), 2026-10-14
 
 ### Security: read-only mode path handling

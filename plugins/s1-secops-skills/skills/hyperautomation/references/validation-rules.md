@@ -19,6 +19,8 @@ Run this checklist before outputting any workflow JSON.
 - [ ] `"tag"` is `"core_action"` for built-in actions, `"integration"` for integration-backed
 - [ ] `"state"` is `"active"` (not `"draft"` or `"inactive"`)
 - [ ] `"snippet_workflow_id"` and `"snippet_version_id"` are `null` unless action is a snippet referencing another workflow
+- [ ] `llm`: `json_schema` is a string (`json.dumps`), not an object; `""` when `response_format` is `"off"`
+- [ ] `llm`: later steps read the output at `<slug>.data`, not `<slug>.body`
 
 ## Trigger rules
 

@@ -306,5 +306,17 @@ class OutputFileUnderDocker(unittest.TestCase):
         self.assertIn("do not ask them to set `S1_OUTPUT_DIRS`", note)
 
 
+class Licences(unittest.TestCase):
+    """Account and site licence PUTs, measured October 2026."""
+
+    def test_reference_exists_and_is_linked(self):
+        ref = (SKILL_DIR / "references" / "licences.md").read_text(encoding="utf-8")
+        self.assertIn("`PUT /sites` does not take `licenses.settings`", ref)
+        self.assertIn('403 "Action limited to global users"', ref)
+        self.assertIn("| Network Discovery | `ranger` |", ref)
+        self.assertIn("Stop the deploy on any gap", ref)
+        self.assertIn("references/licences.md", (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()

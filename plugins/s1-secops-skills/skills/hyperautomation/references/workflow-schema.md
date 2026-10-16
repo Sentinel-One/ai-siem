@@ -159,6 +159,11 @@ Conditions within a group use the `operator` field ("and" or "or").
 `run_automatically: true` = workflow fires automatically on matching events.
 `run_automatically: false` = workflow appears as on-demand option in alert UI.
 
+`run_automatically` is per group: if any one group has it `true`, the flow runs on every alert
+that group matches, including third-party and platform-rule alerts. For an expensive or
+destructive flow, use a single group scoped by alert name and severity with
+`run_automatically: false`, and after any import re-export the flow to check every group's value.
+
 Common `input_value` field names: `"detectionSource.product"`, `"severity"`, `"name"`,
 `"status"`, `"analytics.category"`
 

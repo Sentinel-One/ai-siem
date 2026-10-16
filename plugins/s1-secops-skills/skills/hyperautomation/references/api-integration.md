@@ -348,6 +348,11 @@ Measured 2026-10-09: of the name filters tested, only `name__contains` is honour
 same. Each row is `{id, workflow: {...}, actions: [{id, integration_id, type}]}`: name, state,
 `version_id` and scope live under `row.workflow`, not at the top of the row.
 
+**An account-scope list includes every site's workflows.** `accountIds=<acct>` returns the
+account's own workflows and the site-level workflows of every site in that account. Before any
+delete-by-name, skip a row whose `workflow.scope_level == "site"` and whose `workflow.scope_id` is
+not the target site.
+
 ---
 
 ### 6. List Workflow Versions
@@ -445,6 +450,9 @@ still-active flow first returned the 400 above.
 
 **Query params**: `accountIds` or `siteIds`, match where the workflow lives. A `404 "Object not
 found"` means the id is not under that scope (or already deleted).
+
+**Cleanup by name:** resolve the ids from a list scoped to the target, and drop rows whose
+`workflow.scope_level` / `workflow.scope_id` belong to another site (see section 5).
 
 Delete exists only on the v1 base: `DELETE /hyper-automate/api/v1/workflows/{id}` works and
 `DELETE /hyper-automate/api/public/workflows/{id}` returns `404` (measured 2026-10-09).

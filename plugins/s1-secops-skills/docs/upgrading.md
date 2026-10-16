@@ -3,13 +3,32 @@
 Three things move independently: the **MCP image** (or npm install), the **skills plugin**, and
 your **MCP client config**. Do them in that order.
 
-- [1.5.5 to 1.5.6](#155-to-156) (current release: image `1.5.6`, s1-secops-mcp `1.5.6`, plugin `1.3.16`)
+- [Plugin 1.3.16 to 1.3.17](#plugin-1316-to-1317) (current release: image `1.5.6`, s1-secops-mcp `1.5.6`, plugin `1.3.17`)
+- [1.5.5 to 1.5.6](#155-to-156)
 - [1.5.4 to 1.5.5](#154-to-155)
 - [1.5.3 to 1.5.4](#153-to-154)
 - [1.5.0, 1.5.1 or 1.5.2 to 1.5.3](#150-151-or-152-to-153)
 - [1.4.x to 1.5.0](#14x-to-150)
 - [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
 - [Rolling back](#rolling-back)
+
+---
+
+## Plugin 1.3.16 to 1.3.17
+
+Skills only. The image and `s1-secops-mcp` stay at 1.5.6, and nothing in your config changes.
+Install plugin `1.3.17` (Cowork → Customize → Browse plugins → upload → **Replace**).
+
+What it adds:
+
+- **hyperautomation:** an L1 triage template (`references/l1-triage-template.md`); `llm` actions
+  take `json_schema` as a JSON string and their output is read at `.data`; branching on a strict
+  output with a safe default; per-group `run_automatically`; account-scope workflow lists include
+  every site's workflows, so filter before a delete-by-name; the export, patch, re-import and
+  re-bind loop for editing a deployed flow; hash and scope extraction from the raw alert; if a
+  console does not accept the `llm` action, contact your SentinelOne account team to enable it.
+- **mgmt-console-api:** account and site licences (`references/licences.md`).
+- **CLAUDE.md:** an Investigation Hygiene section.
 
 ---
 

@@ -36,7 +36,8 @@ a snippet whenever you notice the same action graph appearing in more than one w
 
 ## Canonical shape (alert-triggered)
 
-1. **Singularity Response Trigger**: fire on the target alert (filter by name / severity).
+1. **Singularity Response Trigger**: fire on the target alert (filter by name / severity). See
+   "Trigger scope" below before adding a second filter group.
 2. **Trigger Agentic Investigation**: `http_request` to Unified Alerts GraphQL (see the agentic
    investigation section below for the exact payloads and binding).
 3. **Pause for Investigation Completion**: a **static** snippet call that polls until the
@@ -57,6 +58,43 @@ a snippet whenever you notice the same action graph appearing in more than one w
     `dynamic_snippet_name: "{{response-decision.data}}"`) that dispatches to the chosen response
     snippet, passing the shared input contract.
 12. **Wrap-up**: `llm` action summary → update alert notes → update the collaboration channel.
+
+## Trigger scope: one auto-run group makes the whole flow automatic
+
+A `singularity_response_trigger` can hold several `filter_groups`. Any group with
+`run_automatically: true` runs the flow on every alert it matches, including third-party and
+platform-rule alerts. For an investigation or remediation flow, use one group scoped by alert name
+and severity, with `run_automatically: false` unless every match should trigger it. After any
+import, re-export the flow and list every group with its `run_automatically` value.
+
+## Alert context: hash and scope from the raw alert
+
+The trigger does not always carry the file hash, and alerts store it in different places:
+
+- EDR alerts: `evidences[].process.file.hashes[]`, the entry with `algorithm_id == 3` (OCSF SHA-256).
+- Alerts posted through `/v1/alerts` (or replayed): an observable whose name ends in `sha256`.
+- The trigger's `data.process.file.sha256`, when present, wins.
+
+Fetch the raw alert with Unified Alerts GraphQL
+`query { alertsRawData(alertIds: ["{{local_var.alert_id}}"]) { alertId rawData } }`
+(action `Fetch Alert Evidence`), keep the jq in variables, and resolve each field with
+`{{Function.JQ(fetch-alert-evidence.body, local_var.jq_hash, true)}}`:
+
+```text
+jq_hash:
+"{{local_var.sha256}}" as $t | if ($t | length) == 64 then $t else
+(([(.data.alertsRawData // [])[0].rawData | .. | objects | select((.algorithm_id? // 0) == 3) | .value]
+ + [(.data.alertsRawData // [])[0].rawData | .. | objects | select(((.name? // "") | tostring) | test("sha256$")) | .value])
+ | map(select(type == "string" and length == 64)) | first) // "no-hash" end
+
+jq_scope:
+(((.data.alertsRawData // [])[0].rawData // {}).s1_detection_metadata // {}) as $m
+| (($m.account_id // "") | tostring) + ":" + (($m.site_id // "") | tostring)
+```
+
+`jq_scope` gives the alert's own `<accountId>:<siteId>`, ready for an SDL `S1-Scope` header.
+`local_var.sha256` is the trigger value, set in Alert Context with a `"no-hash"` default. Each jq
+must live in a variable that runs after Alert Context, because it embeds that value.
 
 ## Variant: analyst-approved remediation (human in the loop)
 
@@ -92,6 +130,11 @@ rather than composing from scratch. Capture both `ai_recommended` and the analys
 Approval gates fail closed (`timeout equals "false"` AND `approve equals "true"`). See
 `interaction-forms.md` for the form schema, the response shape, and the mandatory
 `Function.DEFAULT` guard on optional fields.
+
+**Approval email recipient in a shared or template flow:** ship the `send_email` To field as
+`REPLACE-WITH-YOUR-EMAIL@example.com`. The `example.com` domain is reserved, so an unedited run
+emails nobody and the approval times out with no action taken. To set the real address: open the
+workflow, click Edit, change the To field, then Activate.
 
 ## Purple AI agentic investigation: the two calls
 
@@ -164,7 +207,7 @@ target format:
   "data": {
     "name": "Brief For Approval", "action_type": "llm", "model": "<model id>",
     "prompt": "Convert the investigation report below into a short decision brief.\n\nOUTPUT RULES:\n- Return ONLY HTML list item tags, for example <li>text</li><li>text</li>\n- No markdown, no hash characters, no asterisks, no code fences, no ul wrapper, no commentary\n- Exactly 5 items, each under 22 words\n- Cover in order: what was detected, whether it executed, blast radius, key evidence gap, confidence\n\nREPORT:\n{{local_var.inv_result}}",
-    "response_format": "off", "json_schema": null
+    "response_format": "off", "json_schema": ""
   }
 }
 ```

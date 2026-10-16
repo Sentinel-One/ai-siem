@@ -721,7 +721,7 @@ integration-backed. It needs no connection: `integration_id`, `connection_id` an
     "model": "019c981f-3ffe-7741-8c40-5babcc3f4432",
     "prompt": "Look at the results at {{local_var.auth_details}} and summarise with your verdict at the end.",
     "response_format": "off",
-    "json_schema": null
+    "json_schema": ""
   }
 }
 ```
@@ -730,10 +730,20 @@ integration-backed. It needs no connection: `integration_id`, `connection_id` an
 |---|---|---|
 | `model` | yes | Console-assigned model UUID. **Tenant-specific, do not hard-code across tenants**; read it off an existing `llm` action in the target console. The literal string `"deep"` also appears in the corpus, so the field is not strictly a UUID. |
 | `prompt` | yes | Free text; interpolate prior step output with the normal `{{...}}` expressions. |
-| `response_format` | yes | One of `"off"`, `"auto"`, `"strict"`; any other value is refused at import with 422 "Input should be 'off', 'auto' or 'strict'" (3 consoles). `"off"` in every observed action (16/16). |
-| `json_schema` | yes | Present but `null` in every observed action. Pairs with a structured `response_format`. |
+| `response_format` | yes | One of `"off"`, `"auto"`, `"strict"`; any other value is refused at import with 422 "Input should be 'off', 'auto' or 'strict'" (3 consoles). Use `"strict"` with a schema when a later step branches on the output. |
+| `json_schema` | yes | A JSON **string**, never an object: build it with `json.dumps(schema, indent=2)`. The console editor stores the schema as text, so an object only opens there after it is re-saved as a string. With `"off"`, use `""` (what the UI saves); `null` also appears in the corpus. |
 
-Reference the output like any other action: `{{ai-summary.body}}`.
+Read the output at `.data`, not `.body`: `{{ai-summary.data}}`.
+
+**Branching on a strict output.** Read each field with JQ and a fail-safe default, one variable
+per field, then branch on the variable:
+`{{Function.DEFAULT(Function.JQ(ai-triage.data, local_var.jq_triage_route, true), "investigate")}}`.
+Make the default the safe route (investigate or escalate), never the destructive one.
+
+**If the console does not accept the `llm` action** (the import, activation or run is refused
+because of that step), the AI feature is not enabled for that tenant. Tell the user to contact
+their SentinelOne account team to turn it on, and offer the same flow without the `llm` step in
+the meantime.
 
 Use it for: alert triage verdicts, human-readable incident summaries, and picking one response
 action by name from a fixed list (see `autonomous-soc-template.md`). It is rare in the corpus

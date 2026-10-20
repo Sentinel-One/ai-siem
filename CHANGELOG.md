@@ -7,10 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Security - removed real tenant identifiers from examples
+### Changed - CODEOWNERS uses a team
 
-- Replaced the `usea1-purple` and `usea1-partners` tenant hostnames, a real alert ID and a tenant `accountId` in four example files with placeholders (`your-console.sentinelone.net`, all-zero UUID, `1000000000000000000`). The Hyperautomation "Add Event Data to Detection Note" workflow now builds its SDL URL from `{{Connection.url}}` like its sibling actions instead of a hardcoded host.
-- PR template: added write-capable component, pinned-version and tracking-ticket checks, and tenant hostnames and alert/account IDs to the no-real-identifiers check.
+- `.github/CODEOWNERS` now assigns `*` to `@Sentinel-One/ai-siem-team` instead of three individual handles, so reviewer membership is managed in GitHub.
 
 ### Changed - docs and scanner config cleanup
 

@@ -183,8 +183,8 @@ Use the host launcher instead. It reads the keychain on the host and hands the v
 
 | Host | Launcher |
 |---|---|
-| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.5.6] [--profile P] <server>` |
-| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.5.6] [-Profile P] <server>` |
+| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.5.7] [--profile P] <server>` |
+| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.5.7] [-Profile P] <server>` |
 
 `<server>` is `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp` or `shodan-mcp`. Launcher options go before the server name; anything after it is passed to the server inside the container.
 
@@ -201,10 +201,10 @@ The resulting Claude Desktop config (`~/.local/bin/s1-secops-mcp-launch.sh confi
 ```json
 {
   "mcpServers": {
-    "s1-secops-mcp":  { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.6", "s1-secops-mcp"] },
-    "purple-mcp":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.6", "purple-mcp"] },
-    "virustotal":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.6", "virustotal-mcp"] },
-    "shodan":         { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.6", "shodan-mcp"] }
+    "s1-secops-mcp":  { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.7", "s1-secops-mcp"] },
+    "purple-mcp":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.7", "purple-mcp"] },
+    "virustotal":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.7", "virustotal-mcp"] },
+    "shodan":         { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.7", "shodan-mcp"] }
   }
 }
 ```

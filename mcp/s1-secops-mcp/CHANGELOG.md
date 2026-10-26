@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.5.7 (image `sentinelone/secops-mcps:1.5.7`), 2026-10-26
+
+### Security: dependency and base-image updates
+
+- Base image `node:24-trixie-slim` moves to Node.js 24.22.1.
+- Debian packages are fetched over HTTPS during the image build.
+- purple-mcp environment: certifi 2026.10.23, fastmcp 4.1.2 or later, OpenTelemetry 1.45.1 or later, setuptools 84.1.0 or later. The build runs `pip check` after the upgrades.
+- VirusTotal and Shodan MCPs: zod 4.6.7, follow-redirects 1.16.1, undici 7.30.1, body-parser 2.4.0, fast-uri 3.1.9, hono 4.13.13, ip-address 10.7.4. `npm audit` reports 0 vulnerabilities in both. IP-address validation now uses Node's `net.isIP`.
+- Docker Scout: no fixable vulnerabilities remain. The one remaining HIGH (zlib1g, CVE-2026-85091) has no upstream fix and is covered by the VEX statements.
+- No change to `s1-secops-mcp` behaviour or the plugin (1.3.17).
+
 ## Plugin 1.3.17 (skills only), 2026-10-16
 
 No change to `s1-secops-mcp` or the image (1.5.6).

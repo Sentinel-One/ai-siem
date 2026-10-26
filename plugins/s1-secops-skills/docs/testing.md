@@ -220,7 +220,7 @@ They cover: printed JSON is valid and carries the launcher's absolute path, the 
 ### Read-only mode and image checks (1.5.5)
 
 - **Unit tests:** `mcp/s1-secops-mcp/tests/readonly-1.5.5.test.mjs` (12 tests, part of `npm test`) covers the read-only gate in `lib/access.js`. No tenant needed.
-- **Image smoke tests:** `mcp/docker/smoke-test.sh <image> --expect-version 1.5.6` adds T32 to T36:
+- **Image smoke tests:** `mcp/docker/smoke-test.sh <image> --expect-version 1.5.7` adds T32 to T36:
   - T32: a write tool is refused in the default read-only mode, run with `--network none`, and the refusal says how to enable write;
   - T33: with `S1_READ_ONLY=false` the same call reaches its handler;
   - T34: a `powerquery_run` query containing `| savelookup` is refused;

@@ -1,6 +1,6 @@
 {
   "name": "@pmoses-s1/s1-secops-mcp",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "description": "MCP server orchestrating SentinelOne skills, APIs, and SOC analyst context. Stdio transport; credentials from environment variables or the OS keychain, never a plaintext file.",
   "type": "module",
   "main": "index.js",

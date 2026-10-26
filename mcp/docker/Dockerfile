@@ -47,7 +47,7 @@
 # Base image: Node 24 LTS pinned by digest (docker/build.sh owns the value and
 # passes it in; this default only matters for a bare `docker build`). Both
 # stages use the same bytes. The runtime stage asserts the major version.
-ARG NODE_IMAGE=node:24-trixie-slim@sha256:173f125896c3b47ddf056734c7ea789d04595a6a08769a8f78e0df642781fb66
+ARG NODE_IMAGE=node:24-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea
 
 FROM ${NODE_IMAGE} AS fetch
 
@@ -57,6 +57,14 @@ ARG SHODAN_MCP_REPO
 ARG SHODAN_MCP_REF
 ARG PURPLE_MCP_REPO
 ARG PURPLE_MCP_REF
+
+# Debian packages are fetched over HTTPS (1.5.7). The slim base image has no CA
+# bundle yet, so a bundle from a digest-pinned alpine image is used for this first
+# apt run only; Debian's ca-certificates package replaces it when installed below.
+# Package integrity still comes from the signed Debian archive keyring.
+COPY --from=alpine:3.22@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+RUN sed -i "s#http://deb.debian.org#https://deb.debian.org#g" /etc/apt/sources.list.d/debian.sources \
+ && echo "Acquire::https::CaInfo \"/etc/ssl/certs/ca-certificates.crt\";" > /etc/apt/apt.conf.d/99-https-cainfo
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       python3 python3-venv python3-pip \
@@ -127,7 +135,12 @@ RUN python3 -m venv /opt/purple-mcp \
     && /opt/purple-mcp/bin/pip install --no-cache-dir \
         "purple-mcp @ git+${PURPLE_MCP_REPO}@${PURPLE_MCP_REF}" \
     && /opt/purple-mcp/bin/pip install --no-cache-dir --upgrade \
-        "setuptools>=78" "msgpack>=1.1.3" \
+        "setuptools>=84.1.0" "msgpack>=1.1.3" "certifi>=2026.10.19" \
+        "fastmcp>=4.1.2" "fastmcp-slim>=4.1.2" \
+        "opentelemetry-api>=1.45.1" "opentelemetry-sdk>=1.45.1" \
+        "opentelemetry-exporter-otlp-proto-http>=1.45.1" \
+        "opentelemetry-instrumentation-httpx" "opentelemetry-instrumentation-starlette" \
+    && /opt/purple-mcp/bin/pip check \
     && rm -rf /opt/purple-mcp/lib/python*/site-packages/pip \
               /opt/purple-mcp/lib/python*/site-packages/pip-*.dist-info \
               /opt/purple-mcp/bin/pip /opt/purple-mcp/bin/pip3 /opt/purple-mcp/bin/pip3.* \
@@ -136,11 +149,10 @@ RUN python3 -m venv /opt/purple-mcp \
     && find /opt/purple-mcp/lib/python*/site-packages \
          -type f -name "*.pyi" -delete
 
-# setuptools and msgpack carry the only fixable HIGH CVEs that are not Debian's.
-# They are transitive deps of purple-mcp, resolved from PyPI into OUR venv, so we
-# upgrade them here rather than forking upstream: a fork would mean maintaining a
-# divergent copy of someone else's server to change two pins we already control.
-# Upstream is still pinned by commit; only these two are floated forward.
+# Transitive deps of purple-mcp with fixable CVEs (setuptools, msgpack, certifi,
+# fastmcp, OpenTelemetry), resolved from PyPI into OUR venv, are upgraded here
+# rather than by forking upstream. `pip check` fails the build if an upgrade breaks
+# a declared requirement. Upstream is still pinned by commit; only these float.
 #
 # Test suites bundled inside site-packages are stripped (~53 MB). They are dead
 # weight in a runtime image.
@@ -211,6 +223,14 @@ LABEL org.opencontainers.image.title="SentinelOne Claude Skills MCP Stack" \
 # was built. The base tag lags: on 2026-10-05 node:24-trixie-slim still carried
 # libpcre2-8-0 10.46-1~deb13u2 (CVE-2026-103111, HIGH) when u3 was available,
 # which fails the Trivy fixable-HIGH gate on an otherwise clean build.
+# Debian packages are fetched over HTTPS (1.5.7). The slim base image has no CA
+# bundle yet, so a bundle from a digest-pinned alpine image is used for this first
+# apt run only; Debian's ca-certificates package replaces it when installed below.
+# Package integrity still comes from the signed Debian archive keyring.
+COPY --from=alpine:3.22@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+RUN sed -i "s#http://deb.debian.org#https://deb.debian.org#g" /etc/apt/sources.list.d/debian.sources \
+ && echo "Acquire::https::CaInfo \"/etc/ssl/certs/ca-certificates.crt\";" > /etc/apt/apt.conf.d/99-https-cainfo
+
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends \
       python3 ca-certificates tini \
@@ -230,7 +250,7 @@ RUN apt-get update && apt-get upgrade -y --no-install-recommends \
 # upgrade` above will then supply it.
 ARG EXPAT_FORKY_VERSION=2.9.0-1
 RUN set -eu; \
-    echo 'deb http://deb.debian.org/debian forky main' > /etc/apt/sources.list.d/forky-expat.list; \
+    echo 'deb https://deb.debian.org/debian forky main' > /etc/apt/sources.list.d/forky-expat.list; \
     printf 'Package: *\nPin: release n=forky\nPin-Priority: 100\n\nPackage: libexpat1\nPin: release n=forky\nPin-Priority: 990\n' > /etc/apt/preferences.d/forky-expat; \
     apt-get update; \
     extra="$(apt-get -s install -y --no-install-recommends "libexpat1=${EXPAT_FORKY_VERSION}" | awk '/^Inst / && $2 != "libexpat1" {print $2}')"; \

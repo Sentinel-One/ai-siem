@@ -7,8 +7,8 @@
 #
 # Examples:
 #   docker/smoke-test.sh secops-mcps:local-rc1
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.6 --expect-version 1.5.6
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.6 --platform linux/amd64
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.7 --expect-version 1.5.7
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.7 --platform linux/amd64
 #
 # Exit code is the number of failed tests, so `if docker/smoke-test.sh IMG` works
 # as a gate in CI or a release checklist.

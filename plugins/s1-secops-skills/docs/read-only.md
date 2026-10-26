@@ -1,6 +1,6 @@
 # Read-Only Mode and Write Access
 
-**Applies to:** s1-secops-mcp 1.5.5 and later, image `sentinelone/secops-mcps:1.5.6` and later, plugin 1.3.16 and later
+**Applies to:** s1-secops-mcp 1.5.5 and later, image `sentinelone/secops-mcps:1.5.7` and later, plugin 1.3.16 and later
 
 > **WARNING: WRITE ACCESS CHANGES YOUR SENTINELONE TENANT**
 >

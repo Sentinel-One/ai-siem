@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security - dependency and base-image updates (image and MCP 1.5.7)
+
+- Updated the Node base image to v24.22.1, the bundled VirusTotal and Shodan MCP dependencies (zod 4, patched transitive packages) and the purple-mcp Python dependencies. Debian packages are fetched over HTTPS during the image build. No tool, configuration or behaviour changes. Plugin unchanged at 1.3.17.
+- Release notes: [secops-mcps 1.5.7](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.5.7.md).
+
 ### Changed - CODEOWNERS uses a team
 
 - `.github/CODEOWNERS` now assigns `*` to `@Sentinel-One/ai-siem-team` instead of three individual handles, so reviewer membership is managed in GitHub.

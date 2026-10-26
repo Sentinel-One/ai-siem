@@ -153,7 +153,7 @@ try {
   # Live stdio check (Windows with Docker running and the image present): an MCP
   # client keeps stdin open, so the initialize reply must arrive before stdin
   # closes. Piping one line and closing stdin hides a relay that buffers input.
-  $image = if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.6' }
+  $image = if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.7' }
   $dockerOk = $false
   if ($env:OS -eq 'Windows_NT' -and (Get-Command docker -ErrorAction SilentlyContinue)) {
     $ErrorActionPreference = 'Continue'

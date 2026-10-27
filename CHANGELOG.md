@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Windows launcher configures Claude-Data installs (image and MCP unchanged at 1.5.7)
+
+- `s1-secops-mcp-launch.ps1 install` also writes the Claude Desktop config in `%LOCALAPPDATA%\Claude-Data\<package id>\`, used by some Claude Desktop builds in place of the MSIX package copy, so the MCP servers appear on those installs.
+- `install` warns when it finds no existing Claude Desktop config and explains how to point it at the right file with `-ConfigPath`. Folder discovery works on Windows PowerShell 5.1.
+- README and `docs/installation.md` describe the three Windows config locations and the `-ConfigPath` fallback.
+
 ### Security - dependency and base-image updates (image and MCP 1.5.7)
 
 - Updated the Node base image to v24.22.1, the bundled VirusTotal and Shodan MCP dependencies (zod 4, patched transitive packages) and the purple-mcp Python dependencies. Debian packages are fetched over HTTPS during the image build. No tool, configuration or behaviour changes. Plugin unchanged at 1.3.17.

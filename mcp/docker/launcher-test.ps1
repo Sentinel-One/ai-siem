@@ -142,10 +142,28 @@ try {
   [void](Invoke-Launcher $launcher @('install'))
   $m = Get-Content -Raw $msixCfg | ConvertFrom-Json
   $a2 = Get-Content -Raw $cfg | ConvertFrom-Json
-  if ($rc -eq 0 -and $m.preferences.sidebarMode -eq 'chat' -and $m.mcpServers.'s1-secops-mcp'.args[4] -eq $dest -and $a2.mcpServers.'purple-mcp'.args[4] -eq $dest -and (ErrText) -match 'MSIXinstall') {
+  if ($rc -eq 0 -and $m.preferences.sidebarMode -eq 'chat' -and $m.mcpServers.'s1-secops-mcp'.args[4] -eq $dest -and $a2.mcpServers.'purple-mcp'.args[4] -eq $dest -and (ErrText) -match 'MSIXpackagecopy') {
     Ok 'install: MSIX install gets the virtualized config too, preferences kept' } else { Bad 'install MSIX' (ErrText) }
   Remove-Item -Recurse -Force (Join-Path $localAppData 'Packages')
   Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue | Remove-Item
+
+  # Claude-Data per-account folder (user data kept outside the MSIX package).
+  $cdCfg = Join-Path (Join-Path (Join-Path $localAppData 'Claude-Data') 'claude_pzs8sxrjxfjjc') 'claude_desktop_config.json'
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $cdCfg) | Out-Null
+  [IO.File]::WriteAllText($cdCfg, '{"userDataOutsidePackageAnswer": true}')
+  [IO.File]::WriteAllText((Join-Path (Join-Path $localAppData 'Claude-Data') 'README.txt'), 'x')
+  [void](Invoke-Launcher $launcher @('install'))
+  $c = Get-Content -Raw $cdCfg | ConvertFrom-Json
+  if ($rc -eq 0 -and $c.userDataOutsidePackageAnswer -eq $true -and $c.mcpServers.'s1-secops-mcp'.args[4] -eq $dest -and (ErrText) -match 'Claude-Dataper-accountfolder' -and (ErrText) -notmatch 'noexistingClaudeDesktopconfig') {
+    Ok 'install: Claude-Data config gets the servers too, settings kept' } else { Bad 'install Claude-Data' (ErrText) }
+  Remove-Item -Recurse -Force (Join-Path $localAppData 'Claude-Data')
+  Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue | Remove-Item
+
+  # No config anywhere: install still writes %APPDATA% and warns how to point it elsewhere.
+  Remove-Item -Force $cfg -ErrorAction SilentlyContinue
+  [void](Invoke-Launcher $launcher @('install'))
+  if ($rc -eq 0 -and (Test-Path -LiteralPath $cfg) -and (ErrText) -match 'noexistingClaudeDesktopconfigwasfound') {
+    Ok 'install: warns when no existing config was found' } else { Bad 'install no-config warning' (ErrText) }
 
   # -ConfigPath is install-only
   [void](Invoke-Launcher $launcher @('config', '-ConfigPath', $alt))

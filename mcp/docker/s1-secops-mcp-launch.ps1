@@ -199,23 +199,36 @@ if ($Command -in 'install', 'config') {
   $dest = Join-Path $binDir 's1-secops-mcp-launch.ps1'
   New-Item -ItemType Directory -Force -Path $binDir | Out-Null
   if ([IO.Path]::GetFullPath($PSCommandPath) -ne [IO.Path]::GetFullPath($dest)) { Copy-Item -LiteralPath $PSCommandPath -Destination $dest -Force }
-  if (Get-Command Unblock-File -ErrorAction SilentlyContinue) { Unblock-File -LiteralPath $dest }
+  if (Get-Command Unblock-File -ErrorAction SilentlyContinue) { try { Unblock-File -LiteralPath $dest } catch { } }  # not supported off Windows
   Write-Err "Launcher installed: $dest"
 
-  # Which config Claude Desktop reads depends on how it was installed. The
-  # claude.ai installer now ships an MSIX package (Claude_<publisher id>): a
-  # fresh install reads its file-system-virtualized copy under
-  # %LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude, while an install
-  # that found a real %APPDATA%\Claude from an earlier version keeps reading that
-  # one (and Settings > Developer > Edit config always opens the %APPDATA% copy).
-  # So write every location that applies; each is merged on its own.
+  # Which config Claude Desktop reads depends on how it was installed:
+  #   %APPDATA%\Claude                                    classic install, or an MSIX
+  #                                                       install that found it in place
+  #   %LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude
+  #                                                       MSIX file-system virtualization
+  #   %LOCALAPPDATA%\Claude-Data\<package id>             per-account data folder kept
+  #                                                       outside the MSIX package
+  # Write every location that applies; each is merged on its own. Directories are
+  # listed one level at a time (no wildcard mid-path) so Windows PowerShell 5.1
+  # finds them too.
+  $existed = 0
   if ($ConfigPath) { $targets = @($ConfigPath) } else {
     if (-not $env:APPDATA) { throw 'APPDATA is not set; pass -ConfigPath <path to claude_desktop_config.json>' }
     $targets = @(Join-Path (Join-Path $env:APPDATA 'Claude') 'claude_desktop_config.json')
-    if ($env:LOCALAPPDATA -and (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'Packages'))) {
-      Get-ChildItem -LiteralPath (Join-Path $env:LOCALAPPDATA 'Packages') -Directory -Filter 'Claude_*' -ErrorAction SilentlyContinue |
-        ForEach-Object { $targets += Join-Path (Join-Path (Join-Path (Join-Path $_.FullName 'LocalCache') 'Roaming') 'Claude') 'claude_desktop_config.json' }
+    if ($env:LOCALAPPDATA) {
+      $pkgRoot = Join-Path $env:LOCALAPPDATA 'Packages'
+      if (Test-Path -LiteralPath $pkgRoot -PathType Container) {
+        Get-ChildItem -LiteralPath $pkgRoot -Directory -Filter 'Claude_*' -ErrorAction SilentlyContinue |
+          ForEach-Object { $targets += Join-Path (Join-Path (Join-Path (Join-Path $_.FullName 'LocalCache') 'Roaming') 'Claude') 'claude_desktop_config.json' }
+      }
+      $dataRoot = Join-Path $env:LOCALAPPDATA 'Claude-Data'
+      if (Test-Path -LiteralPath $dataRoot -PathType Container) {
+        Get-ChildItem -LiteralPath $dataRoot -Directory -ErrorAction SilentlyContinue |
+          ForEach-Object { $targets += Join-Path $_.FullName 'claude_desktop_config.json' }
+      }
     }
+    foreach ($t in $targets) { if (Test-Path -LiteralPath $t -PathType Leaf) { $existed++ } }
   }
   $new = New-S1Entries $dest
   # Merge every target first, so one invalid file stops the run before any file is written.
@@ -251,10 +264,13 @@ if ($Command -in 'install', 'config') {
       Write-Err "Backup of your previous config: $bak"
     }
     [IO.File]::WriteAllText($t, $m[1] + "`n", (New-Object System.Text.UTF8Encoding($false)))
-    $kind = if ($t -match '[\\/]Packages[\\/]Claude_') { ' (MSIX install: the file Claude Desktop reads)' } else { '' }
+    $kind = if ($t -match '[\\/]Packages[\\/]Claude_') { ' (MSIX package copy)' } elseif ($t -match '[\\/]Claude-Data[\\/]') { ' (Claude-Data per-account folder)' } else { '' }
     Write-Err "Claude Desktop config updated: $t$kind"
     if ($ReadWrite) { Write-Err 'NOTICE: s1-secops-mcp is configured with write enabled (S1_READ_ONLY=false). Its tools can change your SentinelOne tenant; every change runs as the user that owns the API token and is written to the server audit log. Use a least-privilege service user. See docs/read-only.md.' }
     else { Write-Err 's1-secops-mcp is configured read-only (the default): tools that change the tenant are refused. To allow them, run install again with -ReadWrite.' }
+  }
+  if (-not $ConfigPath -and $existed -eq 0) {
+    Write-Err 'warning: no existing Claude Desktop config was found, so new ones were created. If the servers do not appear under Settings > Developer after a restart, open Settings > Developer > Edit Config, note the path of the file it opens, and run install again with -ConfigPath "<that path>".'
   }
 
   # Windows PowerShell 5.1 turns a native command's redirected stderr into

@@ -1,5 +1,11 @@
 # Changelog
 
+## Windows launcher update (image and MCP unchanged at 1.5.7), 2026-10-28
+
+- `install` also writes the Claude Desktop config in `%LOCALAPPDATA%\Claude-Data\<package id>\`, the per-account data folder some Claude Desktop builds use instead of the MSIX package copy. Previously the servers did not appear on those installs.
+- `install` warns when it finds no existing Claude Desktop config, and explains how to target the right file with `-ConfigPath`.
+- Folder discovery works on Windows PowerShell 5.1.
+
 ## 1.5.7 (image `sentinelone/secops-mcps:1.5.7`), 2026-10-26
 
 ### Security: dependency and base-image updates

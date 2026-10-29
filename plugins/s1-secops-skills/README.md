@@ -137,6 +137,8 @@ Open the **PrincipalSOCAnalyst** project and start a new chat. Claude reads `CLA
 
 **Claude Code (terminal)**
 
+Register the MCPs once with `~/.local/bin/s1-secops-mcp-launch.sh install --claude-code` (macOS, Linux and WSL; see [docs/installation.md](./docs/installation.md#claude-code-cli-macos-linux-and-wsl)), then:
+
 ```bash
 cd ~/path/to/s1-secops-skills   # any folder containing CLAUDE.md
 claude                        # CLAUDE.md is read automatically on startup

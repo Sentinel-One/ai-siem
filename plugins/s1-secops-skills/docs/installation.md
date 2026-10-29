@@ -76,6 +76,21 @@ Upgrading from a `credentials.json` setup? Run `s1-secops-mcp setup --import-jso
 
 ## Step 2: Configure MCP servers
 
+### Claude Code (CLI), macOS, Linux and WSL
+
+Run the installer in your own terminal, not through a `!` command in Claude Code, so it can prompt for the keys:
+
+```bash
+mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install --claude-code
+```
+
+`--claude-code` registers `s1-secops-mcp`, `purple-mcp` and `virustotal` with `claude mcp add-json --scope user` instead of editing the Claude Desktop config, and sets `MCP_TIMEOUT` to 120 s in `~/.claude/settings.json`. It is chosen automatically when `install` runs inside Claude Code. Add `--read-write` for write access. Restart Claude Code; `/mcp` lists the servers.
+
+- **WSL:** without a Linux Secret Service, the launcher stores and reads keys in Windows Credential Manager through `powershell.exe`, the same items the Windows launcher and Cowork use. Turn on **Docker Desktop → Settings → Resources → WSL integration** for your distro, and add yourself to the `docker` group (`sudo usermod -aG docker $USER`, then `wsl --shutdown`).
+- **Slow starts:** set `S1_LAUNCH_TRACE=/tmp/s1.trace` to log each launcher stage with timestamps (no values are logged).
+
+### Claude Desktop
+
 Step 1 already did this. Quit Claude Desktop completely (macOS: Cmd+Q; Windows: also quit it from the system tray) and open it again: Claude Desktop starts the MCPs itself through the launcher (three, or four with Shodan), one container each, and removes them when it quits. Docker Desktop only needs to be running; do not start the image from Docker Desktop, because a container started there has no credentials and no connection to Claude.
 
 The config lives at `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS and `%APPDATA%\Claude\claude_desktop_config.json` on Windows. A fresh Windows install from the claude.ai installer is an MSIX package that reads its own copy under `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\` instead, while **Settings → Developer → Edit config** still opens the `%APPDATA%` file. Some builds keep user data outside the package in `%LOCALAPPDATA%\Claude-Data\<package id>\claude_desktop_config.json`. `install` writes all three locations, so any of these installs picks up the servers, and it warns when it finds no existing config. If the servers still do not appear after a restart, open **Edit config**, note the path of the file it opens, and run `install -ConfigPath "<that path>"`. If you would rather have one file that **Edit config** also opens, uninstall the MSIX build and install with the classic `Claude Setup.exe`, which reads `%APPDATA%\Claude\`; re-run `install` afterwards (tested on Windows 11). To see what `install` wrote, or to configure another MCP client by hand, print the entries for this machine:

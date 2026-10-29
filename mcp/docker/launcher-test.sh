@@ -165,6 +165,38 @@ if command -v docker >/dev/null 2>&1 && docker image inspect "$IMAGE" >/dev/null
   exec 4>&-
   w=0; while kill -0 "$LPID" 2>/dev/null && [ $w -lt 200 ]; do sleep 0.1; w=$((w + 1)); done
   kill "$LPID" 2>/dev/null || true
+  # Claude Code connects stdio servers over a Unix socketpair, not pipes. Some
+  # coreutils (uutils cat) never forward socket input, so test that path too.
+  if command -v python3 >/dev/null 2>&1; then
+    if python3 - "$LAUNCHER" "$IMAGE" > "$L/sock" 2>&1 <<'PY'
+import json, socket, subprocess, sys, time
+launcher, image = sys.argv[1:3]
+init = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "launcher-test", "version": "0"}}}) + "\n"
+a, b = socket.socketpair()
+p = subprocess.Popen(["sh", launcher, "--image", image, "s1-secops-mcp"], stdin=b, stdout=b, stderr=subprocess.DEVNULL)
+b.close(); a.sendall(init.encode()); a.settimeout(45)
+t0 = time.time(); buf = b""
+try:
+    while b"\n" not in buf:
+        c = a.recv(65536)
+        if not c:
+            break
+        buf += c
+except socket.timeout:
+    pass
+print("%.1f" % (time.time() - t0))
+a.shutdown(socket.SHUT_WR)
+try:
+    p.wait(20)
+except subprocess.TimeoutExpired:
+    p.kill()
+sys.exit(0 if b'"serverInfo"' in buf else 1)
+PY
+    then ok "stdio over a Unix socket (how Claude Code connects): initialize answered in about $(tail -1 "$L/sock") s"
+    else bad "stdio over a Unix socket: no initialize reply within 45 s" "$L/sock"; fi
+  else
+    echo "  skip socket stdio: needs python3"
+  fi
 else
   echo "  skip stdio: needs Docker running and $IMAGE pulled"
 fi

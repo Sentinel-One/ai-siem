@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated the Node base image to v24.22.1, the bundled VirusTotal and Shodan MCP dependencies (zod 4, patched transitive packages) and the purple-mcp Python dependencies. Debian packages are fetched over HTTPS during the image build. No tool, configuration or behaviour changes. Plugin unchanged at 1.3.17.
 - Release notes: [secops-mcps 1.5.7](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.5.7.md).
 
+### Security - monitors/ Python dependencies
+
+- Recompiled `monitors/requirements.txt` to clear 15 Snyk vulnerabilities (1 Critical, 7 High, 7 Medium) in aiohttp, certifi, multidict, requests and urllib3. Only the certifi MPL-2.0 license notice remains.
+- Cleaned `monitors/requirements.in`: removed duplicate and conflicting pins and aligned it with the lockfile. The lockfile now also includes `typing-extensions`, which was missing. numpy 2.5.4 requires Python 3.12 or later.
+
 ### Changed - CODEOWNERS uses a team
 
 - `.github/CODEOWNERS` now assigns `*` to `@Sentinel-One/ai-siem-team` instead of three individual handles, so reviewer membership is managed in GitHub.

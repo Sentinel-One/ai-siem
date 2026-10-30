@@ -3,6 +3,7 @@
 Three things move independently: the **MCP image** (or npm install), the **skills plugin**, and
 your **MCP client config**. Do them in that order.
 
+- [Launcher update for Claude Code, Linux and WSL](#launcher-update-for-claude-code-linux-and-wsl) (image and plugin unchanged)
 - [1.5.6 to 1.5.7](#156-to-157) (current release: image `1.5.7`, s1-secops-mcp `1.5.7`, plugin `1.3.17`)
 - [Plugin 1.3.16 to 1.3.17](#plugin-1316-to-1317)
 - [1.5.5 to 1.5.6](#155-to-156)
@@ -30,6 +31,23 @@ What it adds:
   console does not accept the `llm` action, contact your SentinelOne account team to enable it.
 - **mgmt-console-api:** account and site licences (`references/licences.md`).
 - **CLAUDE.md:** an Investigation Hygiene section.
+
+---
+
+## Launcher update for Claude Code, Linux and WSL
+
+The launcher script changed; the image (`1.5.7`) and the plugin (`1.3.17`) did not. MCP clients run the installed copy in `~/.local/bin`, so a fresh download alone does not apply the fix: run `install` again.
+
+1. Download the launcher and re-run `install` with your usual options (add `--read-write` again if you use write access):
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o /tmp/s1-secops-mcp-launch.sh && sh /tmp/s1-secops-mcp-launch.sh install
+   ```
+
+2. **Claude Code users** (macOS, Linux, WSL): add `--claude-code` so the servers are registered with Claude Code. This also sets `MCP_TIMEOUT` to 120 s in `~/.claude/settings.json`, which applies to every MCP server in Claude Code. Then restart Claude Code.
+3. **WSL users:** credentials are read from Windows Credential Manager when no Linux Secret Service is available, so values already stored by the Windows launcher or Cowork are reused. Turn on Docker Desktop's WSL integration for the distro and add your user to the `docker` group.
+
+**Check:** `~/.local/bin/s1-secops-mcp-launch.sh status` lists your stored values, and `/mcp` in Claude Code shows the servers connected.
 
 ---
 

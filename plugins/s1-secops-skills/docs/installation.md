@@ -84,7 +84,7 @@ Run the installer in your own terminal, not through a `!` command in Claude Code
 mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install --claude-code
 ```
 
-`--claude-code` registers `s1-secops-mcp`, `purple-mcp` and `virustotal` with `claude mcp add-json --scope user` instead of editing the Claude Desktop config, and sets `MCP_TIMEOUT` to 120 s in `~/.claude/settings.json`. It is chosen automatically when `install` runs inside Claude Code. Add `--read-write` for write access. Restart Claude Code; `/mcp` lists the servers.
+`--claude-code` registers `s1-secops-mcp`, `purple-mcp` and `virustotal` with `claude mcp add-json --scope user` instead of editing the Claude Desktop config, and sets `MCP_TIMEOUT` to 120 s in `~/.claude/settings.json` (a larger value is kept; the setting applies to every MCP server in Claude Code). It is chosen automatically when `install` runs inside Claude Code, in which case the Claude Desktop config is left unchanged. Add `--read-write` for write access. Restart Claude Code; `/mcp` lists the servers.
 
 - **WSL:** without a Linux Secret Service, the launcher stores and reads keys in Windows Credential Manager through `powershell.exe`, the same items the Windows launcher and Cowork use. Turn on **Docker Desktop → Settings → Resources → WSL integration** for your distro, and add yourself to the `docker` group (`sudo usermod -aG docker $USER`, then `wsl --shutdown`).
 - **Slow starts:** set `S1_LAUNCH_TRACE=/tmp/s1.trace` to log each launcher stage with timestamps (no values are logged).

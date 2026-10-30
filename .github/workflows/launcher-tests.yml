@@ -1,0 +1,38 @@
+name: Launcher Tests
+
+on:
+  pull_request:
+    paths:
+      - 'mcp/docker/s1-secops-mcp-launch.sh'
+      - 'mcp/docker/launcher-test.sh'
+      - '.github/workflows/launcher-tests.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'mcp/docker/s1-secops-mcp-launch.sh'
+      - 'mcp/docker/launcher-test.sh'
+      - '.github/workflows/launcher-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  launcher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Shellcheck the launcher
+        run: shellcheck -s sh mcp/docker/s1-secops-mcp-launch.sh
+
+      # The live checks (initialize over a pipe and over a Unix socket) need the
+      # image; without it they are skipped and the hermetic cases still run.
+      # The runner has pwsh, so the WSL credential path is covered too.
+      - name: Pull the image
+        run: docker pull sentinelone/secops-mcps:1.5.7
+
+      - name: Run launcher-test.sh
+        run: sh mcp/docker/launcher-test.sh

@@ -145,7 +145,8 @@ tty_usable() { [ -z "${CLAUDECODE:-}" ] && (true </dev/tty) 2>/dev/null; }
 # same items s1-secops-mcp-launch.ps1 and Cowork on Windows read and write
 # ("<profile>:<NAME>.sentinelone-mcp", generic, UTF-16 blob).
 IS_WSL=""
-if [ "$OS" = Linux ] && grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null && command -v powershell.exe >/dev/null 2>&1; then
+# S1_OSRELEASE_FILE overrides the kernel release file (tests only).
+if [ "$OS" = Linux ] && grep -qi microsoft "${S1_OSRELEASE_FILE:-/proc/sys/kernel/osrelease}" 2>/dev/null && command -v powershell.exe >/dev/null 2>&1; then
   IS_WSL=1
 fi
 WC_CS='using System;
@@ -211,10 +212,11 @@ wc_load() {
   _wt0=$(date +%s)
   powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand "$_wcmd" </dev/null >"$_wdir/out" 2>/dev/null &
   _wp=$!
-  _wt=0
+  # The deadline is wall-clock time, so the limit holds whether or not this
+  # system's sleep accepts fractions.
   while kill -0 "$_wp" 2>/dev/null; do
-    if [ "$_wt" -ge $((KC_TIMEOUT * 10)) ]; then kill "$_wp" 2>/dev/null; _wrc=143; break; fi
-    sleep 0.1 2>/dev/null || sleep 1; _wt=$((_wt + 1))
+    if [ $(( $(date +%s) - _wt0 )) -ge "$KC_TIMEOUT" ]; then kill "$_wp" 2>/dev/null; _wrc=143; break; fi
+    sleep 0.1 2>/dev/null || sleep 1
   done
   [ "$_wrc" = 143 ] || wait "$_wp" || _wrc=$?
   WC_CACHE=$(tr -d '\r' <"$_wdir/out" 2>/dev/null)
@@ -416,7 +418,10 @@ case "$CMD" in
     # Claude Code: register the servers with `claude mcp add-json` (user scope)
     # instead of editing Claude Desktop's file. Chosen with --claude-code, or
     # automatically when install runs inside Claude Code (CLAUDECODE is set).
-    if [ -z "$CONFIG_PATH" ] && [ -n "${CLAUDECODE:-}" ]; then CLAUDE_CODE=1; fi
+    if [ -z "$CONFIG_PATH" ] && [ -z "$CLAUDE_CODE" ] && [ -n "${CLAUDECODE:-}" ]; then
+      CLAUDE_CODE=1
+      echo "Running inside Claude Code: registering the servers with Claude Code. The Claude Desktop config is not changed; to configure Claude Desktop too, run install again from a terminal without --claude-code." >&2
+    fi
     if [ -n "$CLAUDE_CODE" ]; then
       TMPD=$(mktemp -d "${TMPDIR:-/tmp}/s1mcp.XXXXXX")
       trap 'rm -rf "$TMPD"' EXIT
@@ -430,8 +435,16 @@ for k,v in json.load(open(sys.argv[1]))["mcpServers"].items():
         die "python3 is needed to register servers with Claude Code"
       fi
       if command -v claude >/dev/null 2>&1; then
+        # Older names are removed only when they run this launcher, so a user's
+        # own server with one of those names is left alone. Our own names are
+        # replaced, as the Claude Desktop merge does.
+        for _old in virustotal-mcp sentinelone-mcp; do
+          if claude mcp get "$_old" 2>/dev/null | grep -q 's1-secops-mcp-launch'; then
+            claude mcp remove --scope user "$_old" >/dev/null 2>&1 && echo "Claude Code: removed old entry $_old" >&2
+          fi
+        done
         while IFS="$(printf '\t')" read -r _name _json; do
-          for _old in "$_name" virustotal-mcp sentinelone-mcp; do claude mcp remove --scope user "$_old" >/dev/null 2>&1 || true; done
+          claude mcp remove --scope user "$_name" >/dev/null 2>&1 || true
           claude mcp add-json --scope user "$_name" "$_json" >/dev/null || die "claude mcp add-json $_name failed"
           echo "Claude Code: registered $_name (user scope)" >&2
         done < "$TMPD/servers.tsv"
@@ -444,11 +457,12 @@ for k,v in json.load(open(sys.argv[1]))["mcpServers"].items():
       # Claude Code allows 30 s for a server to connect. A cold Docker start plus a
       # credential read (powershell.exe under WSL can take several seconds) can
       # exceed that, so raise MCP_TIMEOUT to 120 s in ~/.claude/settings.json
-      # unless the user already set a larger value.
+      # unless the user already set a larger value. MCP_TIMEOUT applies to every
+      # MCP server in Claude Code. A symlinked settings file is updated in place.
       CC_SETTINGS="$HOME/.claude/settings.json"
       mkdir -p "$HOME/.claude"
       if python3 -I -c 'import json,os,sys
-p=sys.argv[1]
+p=os.path.realpath(sys.argv[1])
 try:
     raw=open(p,encoding="utf-8").read()
 except FileNotFoundError:
@@ -462,7 +476,7 @@ if cur>=120000: sys.exit(0)
 env["MCP_TIMEOUT"]="120000"; cfg["env"]=env
 tmp=p+".tmp"
 open(tmp,"w",encoding="utf-8").write(json.dumps(cfg,indent=2)+"\n"); os.replace(tmp,p)' "$CC_SETTINGS"; then
-        echo "Claude Code: MCP connect timeout set to 120 s in $CC_SETTINGS" >&2
+        echo "Claude Code: MCP connect timeout is at least 120 s ($CC_SETTINGS, env.MCP_TIMEOUT; applies to all MCP servers)" >&2
       else
         echo "s1-secops-mcp-launch: warning: could not update $CC_SETTINGS; start Claude Code with MCP_TIMEOUT=120000 claude" >&2
       fi

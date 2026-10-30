@@ -135,6 +135,50 @@ J
   if [ "$rc" = 2 ] && [ ! -e "$DEST" ] && grep -q "Download it to a file first" "$T/i4.err"; then
     ok "install: piped script refused, nothing copied"; else bad "install piped (rc=$rc)" "$T/i4.err"; fi
 
+  # --claude-code: a stub `claude` records every call; `claude mcp get NAME`
+  # reports this launcher only for names listed in STUB_OURS.
+  CCB="$T/ccbin"; mkdir -p "$CCB"
+  cat > "$CCB/claude" <<'STUB'
+#!/bin/sh
+echo "$*" >> "$STUB_LOG"
+if [ "$1 $2" = "mcp get" ]; then
+  case " ${STUB_OURS:-} " in *" $3 "*) echo "  Command: /x/.local/bin/s1-secops-mcp-launch.sh" ;; *) echo "  Command: /usr/bin/other-server" ;; esac
+fi
+exit 0
+STUB
+  chmod 755 "$CCB/claude"
+  STUB_OURS=""
+  run_cc() { (cd "$T" && HOME="$H" XDG_CONFIG_HOME= S1_PROFILE=s1lt-nokey STUB_LOG="$T/cc.log" STUB_OURS="$STUB_OURS" PATH="$CCB:$ROOT/fakebin:$PATH" "$SHELL_BIN" "$@" </dev/null); }
+  rm -f "$CFG" "$T/cc.log"; rm -rf "$H/.claude"; mkdir -p "$H/.claude"
+  printf '{"model":"opus","env":{"FOO":"1"}}\n' > "$H/.claude/settings.json"
+  STUB_OURS="virustotal-mcp"
+  run_cc "$SRC" install --claude-code --read-write > /dev/null 2> "$T/cc1.err"
+  STUB_OURS=""
+  grep '^mcp add-json --scope user ' "$T/cc.log" | sed 's/^mcp add-json --scope user //' > "$T/cc.adds"
+  if [ "$(wc -l < "$T/cc.adds" | tr -d ' ')" = 3 ] && python3 -I -c 'import json,sys
+d={}
+for l in open(sys.argv[1]):
+    n,j=l.rstrip("\n").split(" ",1); d[n]=json.loads(j)
+assert sorted(d)==["purple-mcp","s1-secops-mcp","virustotal"]
+assert all(v["type"]=="stdio" and v["command"].endswith("/.local/bin/s1-secops-mcp-launch.sh") for v in d.values())
+assert d["s1-secops-mcp"]["env"]=={"S1_READ_ONLY":"false"} and "env" not in d["purple-mcp"] and "env" not in d["virustotal"]' "$T/cc.adds" 2>/dev/null; then
+    ok "install --claude-code: three user-scope entries, write opt-out on s1-secops-mcp only"; else bad "install --claude-code entries" "$T/cc1.err"; fi
+  if grep -qx 'mcp remove --scope user virustotal-mcp' "$T/cc.log" && ! grep -qx 'mcp remove --scope user sentinelone-mcp' "$T/cc.log"; then
+    ok "install --claude-code: removes an old entry only when it runs this launcher"; else bad "install --claude-code old-entry removal" "$T/cc.log"; fi
+  if [ ! -e "$CFG" ] && py "$H/.claude/settings.json" "j['env']=={'FOO':'1','MCP_TIMEOUT':'120000'} and j['model']=='opus'"; then
+    ok "install --claude-code: Claude Desktop config untouched, MCP_TIMEOUT 120 s merged into settings"; else bad "install --claude-code settings" "$T/cc1.err"; fi
+  # A larger timeout is kept, and a symlinked settings file stays a symlink.
+  printf '{"env":{"MCP_TIMEOUT":"300000"}}\n' > "$T/real-settings.json"
+  rm -f "$H/.claude/settings.json"; ln -s "$T/real-settings.json" "$H/.claude/settings.json"
+  run_cc "$SRC" install --claude-code > /dev/null 2>&1
+  if [ -L "$H/.claude/settings.json" ] && py "$T/real-settings.json" "j['env']['MCP_TIMEOUT']=='300000'"; then
+    ok "install --claude-code: larger MCP_TIMEOUT kept, symlinked settings preserved"; else bad "install --claude-code symlink/timeout"; fi
+  # Inside Claude Code (CLAUDECODE set) the mode is chosen automatically and says so.
+  rm -f "$T/cc.log"
+  (cd "$T" && HOME="$H" XDG_CONFIG_HOME= S1_PROFILE=s1lt-nokey STUB_LOG="$T/cc.log" CLAUDECODE=1 PATH="$CCB:$ROOT/fakebin:$PATH" "$SHELL_BIN" "$SRC" install </dev/null) > /dev/null 2> "$T/cc2.err"
+  if [ "$(grep -c '^mcp add-json' "$T/cc.log")" = 3 ] && grep -q "The Claude Desktop config is not changed" "$T/cc2.err" && [ ! -e "$CFG" ]; then
+    ok "install inside Claude Code: registers with Claude Code and reports the Desktop config was skipped"; else bad "install inside Claude Code" "$T/cc2.err"; fi
+
   # Linux without python3: print the entries, do not write
   if [ "$(uname -s)" != Darwin ]; then
     mkdir -p "$T/nopy"
@@ -148,6 +192,49 @@ J
       ok "install: no JSON tool prints the entries instead"; else bad "install without python3 (rc=$rc)" "$T/i5.err"; fi
   fi
 done
+
+# WSL credentials (Linux only): a stand-in powershell.exe and a fake kernel
+# release file put the launcher on its Windows Credential Manager path. With
+# pwsh installed, the stand-in runs the launcher's real PowerShell script
+# against a file store in place of the Win32 credential calls.
+if [ "$(uname -s)" = Linux ]; then
+  echo "== WSL credential path"
+  W="$ROOT/wsl"; mkdir -p "$W/bin" "$W/store" "$W/home"
+  echo "5.15.0-microsoft-standard-WSL2" > "$W/osrelease"
+  wsl_run() { (cd "$W" && HOME="$W/home" XDG_CONFIG_HOME= S1_OSRELEASE_FILE="$W/osrelease" PATH="$W/bin:$ROOT/fakebin:/usr/bin:/bin" sh "$LAUNCHER" "$@" </dev/null); }
+  # Never answers: the read must give up at S1_KEYCHAIN_TIMEOUT and report it.
+  printf '#!/bin/sh\nsleep 30\n' > "$W/bin/powershell.exe"; chmod 755 "$W/bin/powershell.exe"
+  s=$(date +%s); S1_KEYCHAIN_TIMEOUT=2 wsl_run status > /dev/null 2> "$W/hang.err"; e=$(( $(date +%s) - s ))
+  if [ "$e" -le 6 ] && grep -q "Windows Credential Manager unreachable" "$W/hang.err"; then
+    ok "wsl: a powershell.exe that never answers is abandoned after the timeout (${e}s)"; else bad "wsl: hang protection (${e}s)" "$W/hang.err"; fi
+  if command -v pwsh >/dev/null 2>&1 && command -v iconv >/dev/null 2>&1 && command -v base64 >/dev/null 2>&1; then
+    cat > "$W/bin/powershell.exe" <<'STUB'
+#!/bin/sh
+enc=""; while [ $# -gt 0 ]; do [ "$1" = -EncodedCommand ] && enc=$2; shift; done
+body=$(printf '%s' "$enc" | base64 -d | iconv -f UTF-16LE -t UTF-8 | sed 's/\[S1Cred\]::/[FakeCred]::/g')
+f=$(mktemp); printf '%s\n%s\n' 'class FakeCred { static [string] Read([string]$t) { $f=Join-Path $env:S1_FAKE_STORE $t; if (Test-Path -LiteralPath $f) { return [IO.File]::ReadAllText($f) } return $null }
+ static [void] Write([string]$t,[string]$u,[string]$v) { [IO.File]::WriteAllText((Join-Path $env:S1_FAKE_STORE $t),$v) } }' "$body" > "$f.ps1"
+pwsh -NoProfile -NonInteractive -File "$f.ps1"; rc=$?; rm -f "$f" "$f.ps1"; exit $rc
+STUB
+    chmod 755 "$W/bin/powershell.exe"
+    export S1_FAKE_STORE="$W/store"
+    printf 'https://usea1-test.sentinelone.net' > "$W/store/default:S1_CONSOLE_URL.sentinelone-mcp"
+    printf 'tok_abcdefghijklmnopqrstuvwxyz' > "$W/store/default:S1_CONSOLE_API_TOKEN.sentinelone-mcp"
+    for i in 1 2 3; do wsl_run status > "$W/st$i.out" 2>&1 & done; wait
+    if grep -q 'S1_CONSOLE_URL *https://usea1-test.sentinelone.net' "$W/st1.out" && grep -q 'S1_CONSOLE_API_TOKEN *set (30 chars)' "$W/st2.out" && grep -q 'S1_CONSOLE_API_TOKEN *set (30 chars)' "$W/st3.out" && ! grep -q 'tok_' "$W"/st*.out; then
+      ok "wsl: three concurrent reads from Windows Credential Manager, token never printed"; else bad "wsl: credential read" "$W/st1.out"; fi
+    if command -v script >/dev/null 2>&1 && script -qec true /dev/null >/dev/null 2>&1; then
+      printf '\n\n\n\n\nvtkey_abcdefghijklmnopqrstuv\n\n' > "$W/setup.in"
+      (cd "$W" && HOME="$W/home" S1_OSRELEASE_FILE="$W/osrelease" PATH="$W/bin:$ROOT/fakebin:/usr/bin:/bin" script -qec "sh '$LAUNCHER' setup" /dev/null < "$W/setup.in") > "$W/setup.out" 2>&1
+      if grep -q "stored VIRUSTOTAL_API_KEY" "$W/setup.out" && [ "$(cat "$W/store/default:VIRUSTOTAL_API_KEY.sentinelone-mcp" 2>/dev/null)" = vtkey_abcdefghijklmnopqrstuv ]; then
+        ok "wsl: setup writes to Windows Credential Manager and reads it back"; else bad "wsl: setup write" "$W/setup.out"; fi
+    else
+      echo "  skip wsl setup write: needs util-linux script"
+    fi
+  else
+    echo "  skip wsl read/write: needs pwsh, iconv and base64"
+  fi
+fi
 
 # Live stdio check (Docker running and the image present): an MCP client keeps
 # stdin open, so the initialize reply must arrive before stdin closes. Piping

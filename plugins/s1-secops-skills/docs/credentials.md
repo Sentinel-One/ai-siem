@@ -51,6 +51,7 @@ There is no third step. The old file discovery (`S1_CREDS_FILE`, `COWORK_WORKSPA
 |---|---|---|
 | macOS | Login keychain via `/usr/bin/security` | Nothing to install. Writes go through `security -i` on stdin, so the secret never appears in a process argument list. |
 | Linux | Secret Service via `secret-tool` (libsecret) | Install `libsecret-tools` (Debian, Ubuntu) or `libsecret` (Fedora, Arch). Needs a D-Bus session and an unlocked keyring (GNOME Keyring or KeePassXC). Headless hosts without one should use environment variables. |
+| WSL (Linux launcher) | Windows Credential Manager via `powershell.exe`, when no Secret Service is available | The launcher reads and writes the same `<profile>:<NAME>.sentinelone-mcp` items as the Windows launcher and Cowork. Values travel on stdin and stdout only; needs WSL interop (on by default). |
 | Windows | Credential Manager | The Node server uses the optional `@napi-rs/keyring` package (`npm install @napi-rs/keyring`); the Python clients use the `keyring` package. |
 
 All backends use the same service and account names, so the MCP server, the Docker launcher and the Python clients find the same entries on macOS and Linux. On Windows, see the Python `keyring` caveat under [Storing values](#storing-values-setup-status-forget).
@@ -145,6 +146,7 @@ The items are ordinary keychain entries, so the OS tools can view and delete the
 |---|---|---|
 | macOS | **Keychain Access** app, login keychain, search for `SentinelOne MCP` | Name `SentinelOne MCP <profile> <NAME>`, Account `<profile>:<NAME>`, Where `sentinelone-mcp` |
 | Linux | `secret-tool lookup service sentinelone-mcp username <profile>:<NAME>` to read, `secret-tool clear service sentinelone-mcp username <profile>:<NAME>` to delete, or **Seahorse** (Passwords and Keys) | Label `SentinelOne MCP <profile> <NAME>` |
+| WSL | Same items as Windows (below); `~/.local/bin/s1-secops-mcp-launch.sh status` from WSL lists them | Generic credential `<profile>:<NAME>.sentinelone-mcp` |
 | Windows | **Credential Manager** > Windows Credentials > Generic Credentials, or `cmdkey /delete:<profile>:<NAME>.sentinelone-mcp` | Generic credential `<profile>:<NAME>.sentinelone-mcp` |
 
 On Windows, store and change values with `s1-secops-mcp-launch.ps1 setup [-Profile P]` (or `s1-secops-mcp setup` when the Node server is installed with `@napi-rs/keyring`). Both write the same Generic credentials.

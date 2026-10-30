@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - launcher connects under Claude Code on Linux and WSL (image and MCP unchanged at 1.5.7)
+
+- `mcp/docker/s1-secops-mcp-launch.sh` forwards stdin with `dd` instead of `cat`. Claude Code connects stdio servers over a Unix socket, and the uutils `cat` in recent Ubuntu releases does not forward socket input, so servers timed out on connect.
+- `install --claude-code` registers the servers with Claude Code (`claude mcp add-json --scope user`) and sets `MCP_TIMEOUT` to at least 120 s in `~/.claude/settings.json` (applies to all MCP servers; a symlinked settings file is preserved). Older entry names are removed only when they run this launcher. Chosen automatically when run inside Claude Code, with a message that the Claude Desktop config is unchanged.
+- On WSL without a Linux Secret Service, credentials use Windows Credential Manager through `powershell.exe`, shared with the Windows launcher and Cowork. Reads have a wall-clock timeout (`S1_KEYCHAIN_TIMEOUT`).
+- Clearer guidance when no terminal is available for prompts or Docker WSL integration is off; optional `S1_LAUNCH_TRACE` stage timing.
+- `launcher-test.sh` covers stdio over a Unix socket, `--claude-code` against a stub `claude`, and (Linux) the WSL credential path against a stand-in `powershell.exe`. New workflow `.github/workflows/launcher-tests.yml` runs shellcheck and the launcher tests.
+- Docs: `upgrading.md`, `docker.md` (options and troubleshooting), README, `credentials.md`, `installation.md` and `testing.md`.
+
 ### Fixed - Windows launcher configures Claude-Data installs (image and MCP unchanged at 1.5.7)
 
 - `s1-secops-mcp-launch.ps1 install` also writes the Claude Desktop config in `%LOCALAPPDATA%\Claude-Data\<package id>\`, used by some Claude Desktop builds in place of the MSIX package copy, so the MCP servers appear on those installs.

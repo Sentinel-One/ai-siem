@@ -49,14 +49,14 @@ Usage:
 
 ```bash
 s1-secops-mcp-launch.sh [--image IMG] [--profile P] <server> [server args...]   # server: s1-secops-mcp | purple-mcp | virustotal-mcp | shodan-mcp
-s1-secops-mcp-launch.sh [--profile P] setup     # store values with security (macOS) or secret-tool (Linux), no echo
+s1-secops-mcp-launch.sh [--profile P] setup     # store values with security (macOS), secret-tool (Linux) or Windows Credential Manager (WSL), no echo
 s1-secops-mcp-launch.sh [--profile P] status    # which values are stored (secrets shown as a length only)
 s1-secops-mcp-launch.sh versions                # docker run --rm IMG versions
 s1-secops-mcp-launch.sh notices                 # third-party notices and licenses (docker run --rm IMG notices)
-s1-secops-mcp-launch.sh install [options]       # copy to ~/.local/bin, write the Claude Desktop config, pull, run setup if needed
+s1-secops-mcp-launch.sh install [options]       # copy to ~/.local/bin, write the Claude Desktop config (or register with Claude Code), pull, run setup if needed
 s1-secops-mcp-launch.sh config  [options]       # print the mcpServers JSON with this launcher's real path
 s1-secops-mcp-launch.sh --help
-# install/config options: --image IMG  --profile P  --output-dir DIR  --claude-md FILE  --read-write  (install only: --config-path FILE, --with-shodan)
+# install/config options: --image IMG  --profile P  --output-dir DIR  --claude-md FILE  --read-write  (install only: --config-path FILE, --with-shodan, --claude-code)
 ```
 
 Install it with one command, which needs no clone (from a clone, run `sh mcp/docker/s1-secops-mcp-launch.sh install` instead):
@@ -183,6 +183,10 @@ Common signatures:
 | Log line | Meaning |
 |---|---|
 | `Cannot connect to the Docker daemon` | Docker Desktop is not running, see step 1 |
+| Claude Code: `MCP server ... connection timed out` (Linux, WSL) | Run `install --claude-code` again to get the current launcher. If it persists, set `S1_LAUNCH_TRACE=/tmp/s1.trace` before starting Claude Code and check which stage the trace reaches. |
+| WSL: `The command 'docker' could not be found in this WSL 2 distro` | Docker Desktop → Settings → Resources → WSL integration: switch on the distro, Apply & restart, open a new WSL terminal |
+| WSL: `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock` | `sudo usermod -aG docker $USER`, then `wsl --shutdown` from Windows and open a new WSL terminal |
+| WSL: `Windows Credential Manager unreachable through powershell.exe` | WSL interop is off or `powershell.exe` is not on `PATH`. Check `command -v powershell.exe`; interop is on by default (`/etc/wsl.conf`, `[interop] enabled=true`) |
 | `Couldn't start for Cowork and Code sessions. Error: Request timed out` (`shared-pool`) | On Windows, run `install` again to get the current launcher. Earlier Windows launchers held each request until Claude Desktop closed stdin, so `Message from server: id=0 result` appears right after `notifications/cancelled`. Check with `mcp/docker/launcher-test.ps1`: its last case sends `initialize` with stdin held open and expects the reply within seconds (0.6 s on Windows 11). Piping one line and closing stdin does not test this, because closing stdin releases the held request. If the current launcher passes and the error persists, see [anthropics/claude-code#92758](https://github.com/anthropics/claude-code/issues/92758). |
 | `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` (macOS) | The config points at a launcher under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Run `install` again (see [the launcher](#secrets-the-launcher-never--e)): it copies the launcher to `~/.local/bin/` and rewrites the config. |
 | `ENOENT`, `No such file or directory` or `spawn ... s1-secops-mcp-launch` | The `command` path in the config does not exist, usually a hand-typed `/Users/you/...`. Run `install` again, which writes the real path. |

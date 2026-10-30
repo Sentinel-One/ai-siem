@@ -137,6 +137,8 @@ Open the **PrincipalSOCAnalyst** project and start a new chat. Claude reads `CLA
 
 **Claude Code (terminal)**
 
+Register the MCPs once with `~/.local/bin/s1-secops-mcp-launch.sh install --claude-code` (macOS, Linux and WSL; see [docs/installation.md](./docs/installation.md#claude-code-cli-macos-linux-and-wsl)), then:
+
 ```bash
 cd ~/path/to/s1-secops-skills   # any folder containing CLAUDE.md
 claude                        # CLAUDE.md is read automatically on startup
@@ -510,7 +512,7 @@ Quit Claude Desktop completely (macOS: Cmd+Q; Windows: also quit it from the sys
 
 `~/.local/bin/s1-secops-mcp-launch.sh config` prints the entries with this machine's real path, ready to paste into `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`; Windows: `%APPDATA%\Claude\`, or `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\` for a fresh install from the claude.ai installer, which is an MSIX package and reads only that copy) or any other MCP client. Do not type the path by hand: the config is JSON, which does not expand `~`, `$HOME` or `%USERPROFILE%`, so a path such as `/Users/you/...` must be your exact home folder. On Windows, run the same with `powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 config`.
 
-`install` and `config` take the same options: `--image IMG` to pin another tag, `--profile P` for a non-default keychain profile, `--output-dir DIR` so bulk results written with `outputFile` land in a folder you can open (macOS/Linux mount it at the same path in the container; Windows mounts it at `/output`), `--claude-md FILE` to use your own CLAUDE.md, and `--read-write` to allow s1-secops-mcp tools that change the tenant ([docs/read-only.md](./docs/read-only.md)). `install --config-path FILE` writes a config somewhere other than Claude Desktop's. On Windows the options are `-Image`, `-Profile`, `-OutputDir`, `-ClaudeMd`, `-ReadWrite` and `-ConfigPath`.
+`install` and `config` take the same options (`install` also takes `--config-path FILE` and `--claude-code`, which registers the servers with Claude Code instead of Claude Desktop): `--image IMG` to pin another tag, `--profile P` for a non-default keychain profile, `--output-dir DIR` so bulk results written with `outputFile` land in a folder you can open (macOS/Linux mount it at the same path in the container; Windows mounts it at `/output`), `--claude-md FILE` to use your own CLAUDE.md, and `--read-write` to allow s1-secops-mcp tools that change the tenant ([docs/read-only.md](./docs/read-only.md)). `install --config-path FILE` writes a config somewhere other than Claude Desktop's. On Windows the options are `-Image`, `-Profile`, `-OutputDir`, `-ClaudeMd`, `-ReadWrite` and `-ConfigPath`.
 
 In a hand-written entry, launcher options (`--image`, `--profile`) go **before** the server name: everything after the server name is passed to the server inside the container, which rejects an unknown argument.
 

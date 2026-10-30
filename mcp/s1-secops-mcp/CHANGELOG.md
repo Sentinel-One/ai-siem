@@ -1,5 +1,15 @@
 # Changelog
 
+## Launcher update for Claude Code, Linux and WSL (image and MCP unchanged at 1.5.7), 2026-10-30
+
+- Fixed: servers started by Claude Code on Linux timed out on connect. Claude Code connects stdio servers over a Unix socket, and the uutils `cat` shipped by recent Ubuntu releases does not forward socket input. The launcher now forwards stdin with `dd`, which handles pipes and sockets alike.
+- `install --claude-code` registers the servers with `claude mcp add-json --scope user` and sets `MCP_TIMEOUT` to 120 s in `~/.claude/settings.json` (applies to every MCP server; a larger value and a symlinked settings file are preserved). Older entries are removed only when they run this launcher. Chosen automatically when `install` runs inside Claude Code, which reports that the Claude Desktop config was left unchanged.
+- WSL: without a Linux Secret Service, credentials are stored in and read from Windows Credential Manager through `powershell.exe`, shared with the Windows launcher and Cowork.
+- `install` and `setup` prompt through the terminal when stdin is a pipe, and print one clear `setup` command when no terminal is available. Missing Docker WSL integration is reported with the setting to change.
+- `S1_LAUNCH_TRACE=<file>` logs launcher stages with timestamps for diagnosing slow starts (no values are logged).
+- The Windows Credential Manager read has a wall-clock deadline (`S1_KEYCHAIN_TIMEOUT`).
+- `launcher-test.sh` checks the initialize handshake over a Unix socket as well as a pipe, `--claude-code` against a stub `claude`, and the WSL credential path against a stand-in `powershell.exe`. CI runs shellcheck and `launcher-test.sh`.
+
 ## Windows launcher update (image and MCP unchanged at 1.5.7), 2026-10-28
 
 - `install` also writes the Claude Desktop config in `%LOCALAPPDATA%\Claude-Data\<package id>\`, the per-account data folder some Claude Desktop builds use instead of the MSIX package copy. Previously the servers did not appear on those installs.

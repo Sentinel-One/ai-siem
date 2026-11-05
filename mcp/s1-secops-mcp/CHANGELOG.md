@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.6.0 (image `sentinelone/secops-mcps:1.6.0`, plugin 1.4.0), 2026-11-05
+
+### New: built-in Purple AI and threat intelligence
+
+- `purple_ai_query`: natural-language Purple AI questions (`purpleLaunchQuery`, synchronous) with the console API token. Returns `resultType` (`MESSAGE` or `POWER_QUERY`), the answer, and any generated PowerQuery with its time range; the query is not run. Read-only, always listed when the console is configured.
+- `ti_vt_lookup` and `ti_vt_relationship`: VirusTotal API v3 reports and one relationship page per call, with an allowlist of relationships per indicator type. Listed only when `VIRUSTOTAL_API_KEY` is set.
+- `ti_shodan_host` and `ti_shodan_dns`: Shodan host information and DNS resolve or reverse. Listed only when `SHODAN_API_KEY` is set.
+- The threat-intel client (`lib/ti.js`) uses Node's `fetch` only, pins each request to its service origin, validates and refangs indicators, retries 429 and network errors, and never puts a key in an error message. 40 tools are registered; 36 are listed with no threat-intel keys.
+- `SHODAN_API_KEY` is a keychain name (Node and Python clients) and appears in `setup`, `status` and the credentials-status resource.
+
+### Changed: one server, distroless image
+
+- The image runs only `s1-secops-mcp`. The bundled `purple-mcp`, VirusTotal MCP and Shodan MCP servers are removed. Starting one of those names exits 78 with the update instruction.
+- Base image `gcr.io/distroless/nodejs24-debian13` (Node.js 24.22.2), pinned by digest: no shell, no package manager, no npm, no Python, runs as uid 65532. `libssl3t64`, `zlib1g`, `libzstd1` and `libgomp1` are removed at build time because Node compiles in its own OpenSSL and zlib; a build step proves crypto, TLS and zlib still work. Docker Scout: 12 packages, 0 critical, 0 high, 0 medium, 7 low. Image size 224 MB.
+- The stdin secrets preamble (`S1_SECRETS_STDIN=1`) is read by the server (`lib/stdio-transport.js`); the wire format is unchanged. The dispatcher is `docker/container-entry.mjs` (`s1-secops-mcp`, `versions`, `notices`, `help`). The server handles SIGTERM itself.
+- Launchers: `install` and `config` write the `s1-secops-mcp` entry only and remove older entries that ran the launcher. `--with-shodan` / `-WithShodan` are accepted and have no effect. Install reports which built-in tools are on.
+- `uam_list_alerts` description no longer refers to another server.
+
+### Skills and docs (plugin 1.4.0)
+
+- CLAUDE.md, soc-investigator, mgmt-console-api and powerquery use the built-in tools: `ti_vt_lookup` / `ti_vt_relationship` for enrichment (any connected threat-intel provider still satisfies the enrichment rule), `purple_ai_query` for Purple AI, `uam_get_alert` for alert notes and history.
+- `mgmt-console-api/scripts/purple_ai.py` sends the request shape that works for API tokens.
+- New `docs/connect-optional-tools.md`: adding VirusTotal's hosted MCP, SentinelOne's open-source purple-mcp or another provider from its official source. `docs/upgrading.md` has a 1.5.7 to 1.6.0 section with a tool-rename table.
+
+### Tests
+
+- New `tests/ti-1.6.0.test.mjs` (14 cases): indicator parsing, key-gated listing, read-only classification, request paths and headers, 404/429/401 handling, key redaction, Purple AI request shape and error handling.
+- `docker/smoke-test.sh` rewritten for the distroless image (32 checks). Launcher tests cover the single entry, removal of pre-1.6.0 entries and the removed server names.
+
 ## Launcher update for Claude Code, Linux and WSL (image and MCP unchanged at 1.5.7), 2026-10-30
 
 - Fixed: servers started by Claude Code on Linux timed out on connect. Claude Code connects stdio servers over a Unix socket, and the uutils `cat` shipped by recent Ubuntu releases does not forward socket input. The launcher now forwards stdin with `dd`, which handles pipes and sockets alike.

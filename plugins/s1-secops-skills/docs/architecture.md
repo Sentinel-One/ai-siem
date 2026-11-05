@@ -32,11 +32,11 @@ Primitive skills (SKILL.md)     Procedural knowledge Claude reads when a request
   mgmt-console-api   Mgmt Console REST, UAM, Purple AI, HA
        |  call MCP tools, which reach the APIs
        v
-MCP Servers                     Live API access, outside the Cowork sandbox proxy:
-  s1-secops-mcp                PowerQuery, SDL API, Hyperautomation, Mgmt REST, UAM, UAM ingest
-  purple-mcp                     alert triage, Purple AI NLQ, Deep Visibility, assets, vulnerabilities
-  threat-intel-mcp               external IOC enrichment (required for CRITICAL classification)
-  shodan-mcp (optional)          exposure intelligence for external IPs and domains, Shodan CVEDB lookups
+MCP Server                      Live API access, outside the Cowork sandbox proxy:
+  s1-secops-mcp                 PowerQuery, SDL API, Hyperautomation, Mgmt REST, UAM, UAM ingest,
+                                Purple AI questions, built-in VirusTotal and Shodan lookups
+  optional (your choice)        other MCP servers from their official sources, e.g. another
+                                threat-intel provider (see connect-optional-tools.md)
 ```
 
 ---
@@ -61,50 +61,36 @@ A local Node.js process (or the Docker image, started by the host launcher) that
 
 Bulk results do not have to pass through the model's context: `powerquery_run`, `s1_api_get`, `s1_api_download` and `ha_export_workflow` take an `outputFile` (an absolute path inside `S1_OUTPUT_DIRS`, default home and temp; files are created mode 0600 and never overwritten unless `overwrite` is true) and return a summary instead.
 
-It exposes 35 MCP tools across five groups:
+It registers 40 MCP tools across six groups. The four VirusTotal and Shodan tools are listed only when their API key is stored, so a client sees 36 tools with no threat-intel keys, 38 with VirusTotal only, and 40 with both:
 
 | Group | Tools | API surface |
 |---|---|---|
 | PowerQuery | `powerquery_enumerate_sources`, `powerquery_run` (PQ or LOG, `slices` + `merge`, `outputFile`), `powerquery_schema_discover` | SDL LRQ API |
-| Mgmt Console | `s1_api_get`, `s1_api_post`, `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_available_actions`, `purple_ai_alert_summary` | S1 REST API v2.1 + UAM GraphQL |
+| Mgmt Console | `s1_api_get`, `s1_api_post`, `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_available_actions`, `purple_ai_alert_summary`, `purple_ai_query` | S1 REST API v2.1 + UAM GraphQL + Purple AI GraphQL |
+| Threat intelligence | `ti_vt_lookup`, `ti_vt_relationship` (with `VIRUSTOTAL_API_KEY`), `ti_shodan_host`, `ti_shodan_dns` (with `SHODAN_API_KEY`) | VirusTotal API v3, Shodan API |
 | SDL | `sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `hec_ingest` | SDL config + dashboards + event collector |
 | Hyperautomation | `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, `ha_export_workflow`, `ha_delete_workflow` | HA public + v1 API |
 | UAM Ingest | `uam_ingest_alert`, `uam_post_alert` | UAM Alert Interface (`/v1/alerts`) |
 
 Two credentials split the ingest surface. `hec_ingest` posts raw logs to the event collector and authenticates with an SDL Log Write Key (`S1_HEC_TOKEN`), which returns `HTTP 200 {"text":"Success","code":0}` with no `S1-Scope` header. The console API token is not a reliable substitute there: on some consoles it returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without an `S1-Scope` header and is accepted with one, on others it returns `HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` either way. Use the write key in both cases. The UAM Ingest tools post alerts to `/v1/alerts` and keep using the console API token (`S1_CONSOLE_API_TOKEN`). Indicators have no separate ingest path: they ride inside the alert, in `finding_info.related_events[]`.
 
-**Read-only by default (1.5.5).** One gate in the server (`lib/access.js`) classifies every tool as Read (15), Write (18) or Conditional (2: `s1_api_post`, `powerquery_run`). Unless `S1_READ_ONLY=false` is set, any call that would change the tenant is refused before a network request is made; read and query calls always run. When write is enabled, a write is still refused if no console token is configured (except `hec_ingest`) or the token is a JWT that has expired, and each allowed write logs one stderr audit line with no bodies or tokens. The console role of the token's user remains the authoritative control. Details: [read-only.md](./read-only.md); per-tool access: [mcp-tools.md](./mcp-tools.md#read-only-mode-155-and-later).
+**Read-only by default (1.5.5).** One gate in the server (`lib/access.js`) classifies every tool as Read (20), Write (18) or Conditional (2: `s1_api_post`, `powerquery_run`). Unless `S1_READ_ONLY=false` is set, any call that would change the tenant is refused before a network request is made; read and query calls always run. When write is enabled, a write is still refused if no console token is configured (except `hec_ingest`) or the token is a JWT that has expired, and each allowed write logs one stderr audit line with no bodies or tokens. The console role of the token's user remains the authoritative control. Details: [read-only.md](./read-only.md); per-tool access: [mcp-tools.md](./mcp-tools.md).
 
 Full tool reference: [mcp-tools.md](./mcp-tools.md)
 
-### purple-mcp
+### Purple AI and built-in threat intelligence
 
-A separate MCP server (Python, bundled in the `sentinelone/secops-mcps` image from a pinned git commit; a native install runs it as `s1-secops-mcp exec -- purple-mcp --mode stdio`, see [credentials.md](./credentials.md#storing-values-setup-status-forget)) that provides the Purple AI investigation surface. It covers:
+These tools are part of s1-secops-mcp, written in this repo with Node's built-in `fetch` and no dependencies. All of them are read-only.
 
-- `purple_ai`: natural-language queries against SDL telemetry
-- `powerquery`: run raw PowerQuery strings via the SDL LRQ engine
-- `list_alerts`, `search_alerts`, `get_alert`, `get_alert_history`, `get_alert_notes`: UAM alert access
-- `list_inventory_items`, `search_inventory_items`, `get_inventory_item`: asset inventory
-- `list_vulnerabilities`, `get_vulnerability`: CVE and patch gap reporting
-- `list_misconfigurations`, `get_misconfiguration`: agent config hygiene
+- **`purple_ai_query`** sends a natural-language question to Purple AI (`purpleLaunchQuery` on `/web/api/v2.1/graphql`) with the console API token, so it needs no extra key and is listed whenever the console is configured. It returns `MESSAGE` (a written answer) or `POWER_QUERY` (a PowerQuery plus time range). Purple AI does not run the query: Claude reviews it and runs it with `powerquery_run`. Each call is a new conversation and takes about 5 to 15 s.
+- **`ti_vt_lookup` and `ti_vt_relationship`** call the VirusTotal API with `VIRUSTOTAL_API_KEY`: a report for a hash, IP, domain or URL (defanged input accepted), and one page of a relationship such as contacted domains, resolutions or related threat actors. `found:false` means VirusTotal has no record, not that the indicator is benign. A free key allows 4 lookups a minute and 500 a day, and some relationships need a premium key.
+- **`ti_shodan_host` and `ti_shodan_dns`** call the Shodan API with `SHODAN_API_KEY`: open ports, services, CVEs, owner and tags for an external IP, and forward or reverse DNS for up to 25 names or IPs. Neither spends Shodan query credits. Shodan applies only to external (non-RFC1918) addresses.
 
-purple-mcp is complementary to s1-secops-mcp. They share credentials but serve different roles. s1-secops-mcp's read-only setting does not apply to purple-mcp; its `powerquery` can still run `| savelookup` (see [read-only.md](./read-only.md)).
+At startup the server logs which of these are on, for example `Threat intel: Purple AI on, VirusTotal on, Shodan off (no SHODAN_API_KEY)`.
 
-| Task | Use |
-|---|---|
-| SDL PowerQuery hunting | Either: `powerquery_run` (s1-secops-mcp) or `powerquery` (purple-mcp) |
-| Natural-language Purple AI queries | purple-mcp `purple_ai` only |
-| Alert triage reads (list, search, detail, notes, history) | purple-mcp is preferred (richer GraphQL fields); s1-secops-mcp UAM tools as fallback |
-| Alert notes, status, verdict, assignment (writes) | s1-secops-mcp UAM tools only, with write enabled |
-| Management Console REST ops (agents, threats, sites, exclusions, IOCs, detection rules) | s1-secops-mcp `s1_api_*` only |
-| SDL log ingest, parser/dashboard deploy | s1-secops-mcp SDL tools only |
-| Hyperautomation workflow import | s1-secops-mcp HA tools only |
+### Optional MCP servers
 
-### shodan-mcp (optional)
-
-A fourth MCP server (Node.js, bundled in the same image from a pinned commit of a maintained fork of `w0h1v/mcp-shodan`, repo in `mcp/docker/build.sh`) that adds exposure intelligence: open ports, services, banners, TLS/JARM and host CVEs for an external IP or domain, plus CVE and CPE lookups in Shodan's CVEDB. Its 11 tools are all read-only and it has no scan, alert or monitor tools, so it never starts an active scan. It talks only to `api.shodan.io` and `cvedb.shodan.io`, and always over stdio: the entrypoint unsets the upstream HTTP transport variables before starting it.
-
-It complements the threat-intel MCP and does not replace it: VirusTotal stays the primary IOC enrichment, and Shodan applies only to external (non-RFC1918) IPs and domains. It needs `SHODAN_API_KEY` and refuses to start without one, so the launcher installs its Claude Desktop entry (`shodan`) only when that key is stored or `--with-shodan` is passed. Tool reference: [mcp-tools.md](./mcp-tools.md#shodan-mcp-optional).
+Any other MCP server runs next to s1-secops-mcp as its own entry in the client, installed by the user from its official source and supported by its own maintainers: the VirusTotal hosted MCP for VT Intelligence search and sandbox behaviour, SentinelOne's open-source purple-mcp, or another threat-intel provider. The skills are written provider-agnostic, so they use whichever threat-intel tools are connected. s1-secops-mcp's read-only setting does not apply to those servers. Setup per client: [connect-optional-tools.md](./connect-optional-tools.md).
 
 ### Skills (SKILL.md files)
 
@@ -135,16 +121,18 @@ S1_CONSOLE_API_TOKEN  ──► S1 Mgmt REST API    (Authorization: ApiToken <jw
 
 S1_HEC_TOKEN          ──► HEC log ingest       (Authorization: Bearer <write-key>, host S1_HEC_INGEST_URL, no S1-Scope)
 
+VIRUSTOTAL_API_KEY    ──► VirusTotal API v3    (optional, ti_vt_* tools)
+SHODAN_API_KEY        ──► Shodan API           (optional, ti_shodan_* tools)
 ```
 
 `S1_CONSOLE_API_TOKEN` authorises every SDL config read, config write and log read, plus UAM alert ingest on `/v1/alerts` (which additionally requires an `S1-Scope` header) and the IOC endpoints. `hec_ingest` is the one surface it does not reliably cover: raw log ingest to the event collector uses the SDL Log Write Key (`S1_HEC_TOKEN`) and sends no `S1-Scope` header. The console token there gets `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without a scope header, and with one it is accepted on some consoles and refused on others (`HTTP 403 {"text":"User token not allowed for this endpoint","code":4}`); the write key returns `HTTP 200 {"text":"Success","code":0}`. The two ingest paths are separate; do not substitute one credential for the other.
 
 Credential resolution, per value (highest priority first):
 
-1. Environment variables (`S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `S1_HEC_INGEST_URL`, `S1_HEC_TOKEN`, `S1_SCOPE`, `VIRUSTOTAL_API_KEY`)
+1. Environment variables (`S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `S1_HEC_INGEST_URL`, `S1_HEC_TOKEN`, `S1_SCOPE`, `VIRUSTOTAL_API_KEY`, `SHODAN_API_KEY`)
 2. The OS keychain: service `sentinelone-mcp`, account `<profile>:<NAME>`, profile from `S1_PROFILE` (default `default`). macOS login keychain, Linux Secret Service, Windows Credential Manager.
 
-There is no file fallback. Values are stored with `s1-secops-mcp setup` (or the Docker launcher's `setup` mode). Under Docker, the host launcher reads the keychain and passes the values to the container over stdin, so the MCP client config carries no secrets. The optional `SHODAN_API_KEY` is stored by the launcher's `setup` under the same service (`<profile>:SHODAN_API_KEY`) and passed only to `shodan-mcp`. Details, the migration from `credentials.json`, and the limits of keychain protection: [credentials.md](./credentials.md).
+There is no file fallback. Values are stored with `s1-secops-mcp setup` (or the Docker launcher's `setup` mode). Under Docker, the host launcher reads the keychain and passes the values to the container over stdin, so the MCP client config carries no secrets. The optional `VIRUSTOTAL_API_KEY` and `SHODAN_API_KEY` are stored by `setup` under the same service (`<profile>:<NAME>`). Details, the migration from `credentials.json`, and the limits of keychain protection: [credentials.md](./credentials.md).
 
 ---
 
@@ -164,23 +152,24 @@ User: "Investigate alert abc-123"
        ▼
 Claude reads CLAUDE.md instructions for investigation protocol
        │
-       ├── purple-mcp: get_alert(abc-123) → alert details, notes, history
-       ├── purple-mcp: get_inventory_item(agent_uuid) → asset criticality
+       ├── s1-secops-mcp: uam_get_alert(abc-123) → alert details, notes, history
+       ├── s1-secops-mcp: s1_api_get(/agents, uuid) → asset context
        ├── s1-secops-mcp: s1_api_get(/threats, filter=alert) → threat context
        │
        ▼
 Claude reads powerquery SKILL.md → writes hunt query
        │
        ├── s1-secops-mcp: powerquery_enumerate_sources → confirm data sources present
+       ├── s1-secops-mcp: purple_ai_query(question) → suggested PowerQuery (optional)
        └── s1-secops-mcp: powerquery_run(hunt_query) → corroborating telemetry
               │
               ▼
        IOC extracted from telemetry
               │
-              ├── threat-intel-mcp: get_file_report(hash) → multi-engine verdict
-              └── threat-intel-mcp: get_ip_report(ip) → threat actor attribution
-              (use your org's approved threat intel MCP; VirusTotal shown as example)
-              └── shodan-mcp (optional): ip_lookup(ip) → exposed ports, services, host CVEs
+              ├── s1-secops-mcp: ti_vt_lookup(hash) → multi-engine verdict
+              ├── s1-secops-mcp: ti_vt_relationship(ip, related_threat_actors) → attribution
+              └── s1-secops-mcp: ti_shodan_host(ip) → exposed ports, services, host CVEs
+              (or your org's approved threat-intel MCP, connected next to s1-secops-mcp)
                      │
                      ▼
               Claude generates SOC report (.docx) with verdict, MITRE mapping,
@@ -191,26 +180,40 @@ Claude reads powerquery SKILL.md → writes hunt query
 
 ## Directory layout
 
+The SecOps skills and their MCP server live in two folders of the ai-siem repo:
+
 ```text
-s1-secops-skills/
-  CLAUDE.md                     SOC Analyst persona and operating instructions
-  README.md                     High-level overview (this project)
-  docs/                         Detailed documentation (this folder)
-    architecture.md             How all layers fit together (this file)
-    skills.md                   Per-skill capability reference
-    mcp-tools.md                All MCP tool schemas and usage notes
-    credentials.md              Credential values, env + keychain resolution, setup, security model
-    testing.md                  Test coverage: what was validated, gotchas per surface
-  mgmt-console-api/ Skill: Management Console REST + SDL + UAM + Purple AI
-  powerquery/       Skill: PowerQuery authoring and execution
-  sdl-api/          Skill: SDL log ingest and config file operations
-  sdl-dashboard/    Skill: SDL dashboard authoring and deployment
-  sdl-log-parser/   Skill: SDL log parser authoring and validation
-  hyperautomation/  Skill: Hyperautomation workflow authoring and import
-  sdl-solutions/    Skill: repeatable SDL solution deployment (onboarding, enrichment)
-  soc-investigator/             Skill: autonomous DFIR alert investigation and correlation
-  s1-secops-mcp/              MCP server (Node.js): 35 tools, stdio
-  docker/                       Image build (four MCPs), entrypoint, and the host keychain launchers
-  s1-secops-skills-plugin/    Distributable plugin bundle (all 8 skills)
-  assets/                       Screenshots and images for documentation
+ai-siem/
+  .claude-plugin/marketplace.json   Plugin marketplace entry
+  plugins/s1-secops-skills/
+    CLAUDE.md                       SOC Analyst persona and operating instructions
+    README.md                       Overview, install and upgrade
+    THIRD_PARTY_NOTICES.md          Third-party components, licenses and service terms
+    docs/                           Detailed documentation (this folder)
+      architecture.md               How all layers fit together (this file)
+      installation.md               Install with Docker or Node
+      docker.md                     The image and the host launchers
+      credentials.md                Credential values, env + keychain resolution, setup, security model
+      mcp-tools.md                  All MCP tool schemas and usage notes
+      connect-optional-tools.md     Adding other MCP servers from their official sources
+      read-only.md                  Read-only default and turning write on
+      skills.md                     Per-skill capability reference
+      testing.md                    Test coverage: what was validated, gotchas per surface
+      upgrading.md                  Version-to-version upgrade steps
+      solutions/                    SDL solution guides
+      release-notes/                Release notes per version
+    skills/
+      mgmt-console-api/             Management Console REST + SDL + UAM + Purple AI
+      powerquery/                   PowerQuery authoring and execution
+      sdl-api/                      SDL log ingest and config file operations
+      sdl-dashboard/                SDL dashboard authoring and deployment
+      sdl-log-parser/               SDL log parser authoring and validation
+      hyperautomation/              Hyperautomation workflow authoring and import
+      sdl-solutions/                Repeatable SDL solution deployment (onboarding, enrichment)
+      soc-investigator/             Autonomous DFIR alert investigation and correlation
+    scripts/build.sh                Builds the plugin and the per-skill .skill files
+    dist/                           The .plugin bundle and the eight .skill files
+  mcp/
+    s1-secops-mcp/                  MCP server (Node.js): 40 tools, stdio
+    docker/                         Image build (one server, distroless), dispatcher, host keychain launchers and their tests
 ```

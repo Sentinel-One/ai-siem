@@ -6,8 +6,8 @@ often needs when proving UAM / XDR telemetry end-to-end: indicator
 prevalence, outbound command-and-control, login-failure triage, and
 storyline rollups. Each recipe states what it finds, the fields it
 relies on, and the PowerQuery body. Paste into Event Search, the
-PowerQuery Alerts composer, or run through the Purple MCP
-`powerquery` tool.
+PowerQuery Alerts composer, or run through the s1-secops-mcp
+`powerquery_run` tool.
 
 For the PowerQuery language reference, see the `powerquery`
 skill. The conventions below (filter early, group narrow, explicit
@@ -176,11 +176,11 @@ r = c.powerQuery(
 )
 ```
 
-For natural-language query generation, use the Purple MCP
-(`mcp__purple-mcp__purple_ai`). The `purple_query()` Python helper is
-non-functional for API tokens (requires browser-session teamToken;
-confirmed SERVICE_ERROR 2026-05-03). The Purple MCP handles both the
-NL-to-PQ step and execution.
+For natural-language query generation, use the s1-secops-mcp
+`purple_ai_query` tool. It returns the generated PQ but does not run
+it: review the query, then run it with `powerquery_run`. The
+`purple_query()` Python helper sends an older request shape that
+failed for API tokens (SERVICE_ERROR, 2026-05-03).
 
 ## Field reference quick-glance
 

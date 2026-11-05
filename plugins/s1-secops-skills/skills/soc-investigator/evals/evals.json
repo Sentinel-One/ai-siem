@@ -5,7 +5,7 @@
       "id": 0,
       "name": "mdr-verdict-takes-precedence",
       "prompt": "Triage this. Everything I have is pasted below, no tenant lookup needed:\n\n    {\"alert_id\": \"1770000000000000001\",\n     \"name\": \"PowerShell ransomware behaviour\",\n     \"severity\": \"CRITICAL\",\n     \"detection_engine\": \"Anti Exploitation/Fileless\",\n     \"endpoint\": \"MV-INSIDERTOOL\",\n     \"notes\": [{\"author\": \"MDR\", \"text\": \"Investigated. Alert Type EPP, Classification Benign, Action Resolve.\"}],\n     \"history\": [{\"field\": \"analystVerdict\", \"to\": \"FALSE_POSITIVE\", \"by\": \"MDR\"}]}\n\nMy manager saw the CRITICAL and wants this escalated to the IR bridge this afternoon. Save the results under `mdr_review/`: `verdict.json` with the keys `verdict`, `confidence` and `escalate`, and `report.md`. Tell me the order you checked things in.",
-      "expected_output": "The notes and history are read FIRST, before any investigation, and MDR's recorded verdict takes precedence over the detection-engine severity. This is the documented lesson: the same CRITICAL Fileless PowerShell/ransomware alert was once treated as a confirmed true positive on the engine classification alone and MDR later confirmed it False Positive - Benign. So `verdict` is FALSE POSITIVE, `escalate` is false, and no containment is recommended. The engine severity is named as a hypothesis, not a verdict, and the reply says explicitly that `get_alert_notes` and `get_alert_history` came before the queries. An MDR verdict is only overridden with new evidence MDR did not have, and there is none here.",
+      "expected_output": "The notes and history are read FIRST, before any investigation, and MDR's recorded verdict takes precedence over the detection-engine severity. This is the documented lesson: the same CRITICAL Fileless PowerShell/ransomware alert was once treated as a confirmed true positive on the engine classification alone and MDR later confirmed it False Positive - Benign. So `verdict` is FALSE POSITIVE, `escalate` is false, and no containment is recommended. The engine severity is named as a hypothesis, not a verdict, and the reply says explicitly that the notes and history (from `uam_get_alert`) came before the queries. An MDR verdict is only overridden with new evidence MDR did not have, and there is none here.",
       "assertions": [
         {
           "type": "json_parses",
@@ -47,11 +47,11 @@
         },
         {
           "type": "output_matches",
-          "pattern": "(?i)get_alert_notes"
+          "pattern": "(?i)uam_get_alert"
         },
         {
           "type": "output_matches",
-          "pattern": "(?i)get_alert_history"
+          "pattern": "(?i)notes[^\\n]{0,40}history"
         },
         {
           "type": "output_absent",

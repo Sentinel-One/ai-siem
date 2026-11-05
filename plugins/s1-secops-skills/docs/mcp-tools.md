@@ -1,20 +1,22 @@
 # MCP Tools Reference
 
-Full reference for all tools exposed by `s1-secops-mcp`, `purple-mcp` and the optional `shodan-mcp`. For architecture context see [architecture.md](./architecture.md).
+Full reference for the tools exposed by `s1-secops-mcp`, the one MCP server in the `sentinelone/secops-mcps` image from 1.6.0. For architecture context see [architecture.md](./architecture.md).
+
+From 1.6.0 the image no longer bundles `purple-mcp`, the VirusTotal MCP or the Shodan MCP. Purple AI questions, VirusTotal enrichment and Shodan exposure lookups are built into `s1-secops-mcp` (`purple_ai_query`, `ti_vt_*`, `ti_shodan_*`). To add another MCP server yourself from its official source (for example VirusTotal's hosted MCP for VT Intelligence search, sandbox behaviour summaries and collections), see [connect-optional-tools.md](./connect-optional-tools.md).
 
 ---
 
 ## s1-secops-mcp
 
-Runs on the user's machine over stdio, as a Node.js process or from the Docker image via the host launcher. Source: `mcp/s1-secops-mcp/index.js`. 35 tools. Credentials resolve per value from environment variables, then the OS keychain; there is no credentials file and no HTTP transport. Setup: [credentials.md](./credentials.md).
+Runs on the user's machine over stdio, as a Node.js process or from the Docker image via the host launcher. Source: `mcp/s1-secops-mcp/index.js`. 40 tools are registered. The four threat-intelligence tools are listed only when their key is stored, so a client sees 36 tools with no threat-intelligence key, 38 with `VIRUSTOTAL_API_KEY` only and 40 with both `VIRUSTOTAL_API_KEY` and `SHODAN_API_KEY`. Credentials resolve per value from environment variables, then the OS keychain; there is no credentials file and no HTTP transport. Setup: [credentials.md](./credentials.md).
 
 ### Read-only mode (1.5.5 and later)
 
-s1-secops-mcp is **read-only by default**. Every call that would change the tenant is refused before any network request, with a message that explains how to enable write (`S1_READ_ONLY=false`; launcher `install --read-write`, Windows `-ReadWrite`). All 35 tools stay listed. While read-only, the description of each Write tool starts with `[Disabled: read-only mode, S1_READ_ONLY]`, and each Conditional tool's with `[Read-only mode, S1_READ_ONLY: write forms are refused]`. Every tool carries the MCP annotations `readOnlyHint`, `destructiveHint` and `openWorldHint`. Enabling write, accepted values and the controls that apply when write is on: [read-only.md](./read-only.md). purple-mcp, VirusTotal and Shodan are not affected by this setting; note that purple-mcp's `powerquery` can still run `| savelookup`.
+s1-secops-mcp is **read-only by default**. Every call that would change the tenant is refused before any network request, with a message that explains how to enable write (`S1_READ_ONLY=false`; launcher `install --read-write`, Windows `-ReadWrite`). Every tool stays listed in read-only mode (the threat-intelligence tools still depend on their keys, as above). While read-only, the description of each Write tool starts with `[Disabled: read-only mode, S1_READ_ONLY]`, and each Conditional tool's with `[Read-only mode, S1_READ_ONLY: write forms are refused]`. Every tool carries the MCP annotations `readOnlyHint`, `destructiveHint` and `openWorldHint`. Enabling write, accepted values and the controls that apply when write is on: [read-only.md](./read-only.md). Any other MCP server you connect yourself is not covered by this setting.
 
 | Access | Meaning | Tools |
 |---|---|---|
-| Read | Always runs | `s1_api_get`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_available_actions`, `purple_ai_alert_summary`, `powerquery_enumerate_sources`, `powerquery_schema_discover`, `sdl_list_files`, `sdl_get_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `ha_list_workflows`, `ha_get_workflow`, `ha_export_workflow` (15) |
+| Read | Always runs | `s1_api_get`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_available_actions`, `purple_ai_alert_summary`, `purple_ai_query`, `ti_vt_lookup`, `ti_vt_relationship`, `ti_shodan_host`, `ti_shodan_dns`, `powerquery_enumerate_sources`, `powerquery_schema_discover`, `sdl_list_files`, `sdl_get_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `ha_list_workflows`, `ha_get_workflow`, `ha_export_workflow` (20) |
 | Conditional | Read forms run; write forms are refused while read-only | `s1_api_post`: allowed for GraphQL documents with only `query` operations, `/dv/init-query`, `/cloud-funnel/validate-query`, graph explorer queries, `available-actions` and `/xdr/assets/tags/count`; every other POST is treated as a write. `powerquery_run`: refused when the query contains `\| savelookup` (2) |
 | Write | Refused while read-only | `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_post_alert`, `uam_ingest_alert`, `hec_ingest`, `sdl_put_file`, `sdl_delete_file`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `ha_import_workflow`, `ha_delete_workflow` (18) |
 
@@ -104,6 +106,9 @@ All three write tools also take optional `scopeIds` (default: the alert's own ac
 **`purple_ai_alert_summary`** [Read]
 Generate a Purple AI natural-language summary for a specific UAM alert. Pass the alert's OCSF JSON (as returned by `uam_get_alert`) and receive a `{ token, summary }` result that's identical to what the Purple AI card surfaces in the console alert detail. Synchronous; no polling.
 
+**`purple_ai_query`** [Read] (1.6.0)
+Ask Purple AI a question in natural language (`purpleLaunchQuery` at `/web/api/v2.1/graphql`, synchronous, about 5 to 15 s). Uses the console API token; available whenever the console is configured, no extra key. Parameters: `question` (required, up to 4000 characters), `hours` (default 24) or `startTime` / `endTime` (ISO 8601 or epoch milliseconds) for the time range Purple scopes a generated query to. Returns `{resultType, message, summary, powerQuery {query, timeRange, viewSelector}, starRule, suggestedQuestions}`. `resultType` is `MESSAGE` for a written answer (for example "What is T1059?") or `POWER_QUERY` for a hunt question. Purple does **not** run the query: review `powerQuery.query`, then run it with `powerquery_run`. Purple can AND fields from different schema families (for example `event.type` with `winEventLog.id`), which returns nothing; split such a query by `dataSource.name`. Each call is a new conversation with no memory of earlier calls. Purple AI auto-investigation (`aiInvestigation/run`) still needs a browser session and is not exposed.
+
 **`uam_ingest_alert`** [Write]
 Ingest a synthetic alert via the UAM Alert Interface. For creating test/synthetic alerts. One round-trip: a single `POST /v1/alerts` carrying its indicator inline in `finding_info.related_events[]`. That inline copy is what populates `alert.indicators`, the field the console Indicators tab renders. Requires `S1_HEC_INGEST_URL` and `S1_CONSOLE_API_TOKEN`. Parameters: `scope` (required, `<accountId>` or `<accountId>:<siteId>`), `title` (default `MCP Test Alert`), `description`, `hostname` (default `mcp-test-host`), `filename` (default `test-payload.exe`), `sha256` (64 lowercase hex; a zeroed placeholder when omitted). `inline` is accepted for backward compatibility and ignored: indicators always ride inline.
 
@@ -182,127 +187,45 @@ Delete one or more workflows via `DELETE /workflows/{id}` (soft, recoverable). S
 
 ---
 
-## purple-mcp
+<a id="shodan-mcp-optional"></a><a id="threat-intelligence-which-server-to-use"></a>
 
-Bundled in the `sentinelone/secops-mcps` image (built from a pinned git commit of `github.com/Sentinel-One/purple-mcp`) and started through the same launcher (`s1-secops-mcp-launch.sh purple-mcp`), which passes it `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` and `VIRUSTOTAL_API_KEY` from the keychain (the entrypoint maps the VirusTotal key to `PURPLEMCP_VT_API_KEY`). A native install can read the same keychain entries through `s1-secops-mcp exec -- purple-mcp --mode stdio`, which sets `PURPLEMCP_VT_API_KEY` the same way.
+### Threat-intelligence tools (1.6.0)
 
-### Alert tools
+Built into s1-secops-mcp: our own read-only code that calls the VirusTotal API v3 and the Shodan API directly with the operator's own keys (`www.virustotal.com` and `api.shodan.io` only, GET only). No third-party MCP server or package is involved. Each tool is listed only when its key is stored: `VIRUSTOTAL_API_KEY` for the two `ti_vt_*` tools, `SHODAN_API_KEY` for the two `ti_shodan_*` tools. `s1-secops-mcp setup` (or the launcher's `setup`) prompts for both; see [credentials.md](./credentials.md). Key values are redacted from every response and error. Enrich external indicators only: RFC1918 addresses and internal hostnames are enrichment-not-applicable.
 
-**`list_alerts`**
-List UAM alerts with rich filter support (status, severity, detection product, date range). Returns paginated alert summaries.
+**`ti_vt_lookup`** [Read]
+VirusTotal report for one indicator. Parameters: `indicator` (a file hash (MD5, SHA-1 or SHA-256), IP, domain or URL; defanged input such as `hxxp://` and `[.]` is accepted) and optional `type` (`auto` default, `file`, `hash`, `ip`, `domain`, `url`). Returns `lastAnalysisStats` (malicious, suspicious, harmless, undetected), `detections` (the engines that flagged it malicious or suspicious), `reputation`, `communityVotes`, `tags`, `lastAnalysisDate` and a `link` to the VirusTotal page, plus per type:
 
-**`search_alerts`**
-Text-search across alerts. Returns matching alerts with relevance context.
+| Type | Extra fields |
+|---|---|
+| file | `sha256`, `sha1`, `md5`, `meaningfulName`, `names`, `typeDescription`, `size`, `threatLabel`, `threatCategories`, `threatNames`, `sandboxVerdicts`, `signature`, `yaraRules`, `sigmaStats`, `firstSubmission`, `lastSubmission` |
+| ip | `asOwner`, `asn`, `country`, `network`, `jarm` |
+| domain | `registrar`, `creationDate`, `categories`, `lastDnsRecords` |
+| url | `finalUrl`, `title`, `httpResponseCode`, `redirectionChain` |
 
-**`get_alert`**
-Full alert detail: indicators, assets, threat info, agent, analyst notes, history.
+`found: false` means VirusTotal has no record of the indicator. That is not a benign verdict; report it as "no VirusTotal record".
 
-**`get_alert_history`**
-Audit log of all status and verdict changes for an alert.
+**`ti_vt_relationship`** [Read]
+One page of one VirusTotal relationship, to pivot from an indicator. Parameters: `indicator`, `relationship`, optional `type`, `limit` (1 to 40, default 10) and `cursor` (the `nextCursor` of a previous page). Items are trimmed to the fields used for pivoting (ids, names, detection counts). One relationship per call: to see contacted IPs and dropped files, make two calls.
 
-**`get_alert_notes`**
-All analyst notes added to an alert (includes MDR closure notes and analyst verdicts).
+| Indicator type | Allowed relationships |
+|---|---|
+| file | `contacted_domains`, `contacted_ips`, `contacted_urls`, `dropped_files`, `execution_parents`, `bundled_files`, `embedded_domains`, `embedded_ips`, `embedded_urls`, `itw_urls`, `related_threat_actors`, `similar_files`, `comments` |
+| ip | `communicating_files`, `downloaded_files`, `referrer_files`, `resolutions`, `urls`, `related_threat_actors`, `historical_ssl_certificates`, `comments` |
+| domain | `communicating_files`, `downloaded_files`, `referrer_files`, `resolutions`, `subdomains`, `siblings`, `urls`, `related_threat_actors`, `historical_ssl_certificates`, `comments` |
+| url | `contacted_domains`, `contacted_ips`, `downloaded_files`, `communicating_files`, `redirects_to`, `redirecting_urls`, `last_serving_ip_address`, `related_threat_actors`, `comments` |
 
-**`get_alert_investigation_report`**
-The Purple AI Auto Investigation report for one alert (`alert_id`): findings, evidence, recommended actions and the final verdict, in markdown. Returns nothing when no report exists for the alert.
+Some relationships (for example `related_threat_actors` and `similar_files`) need a premium VirusTotal key; on a free key the call returns a 403 that says so.
 
-### Asset and inventory tools
+**VirusTotal limits.** A free key allows 4 lookups per minute and 500 per day. Each `ti_vt_lookup` and each `ti_vt_relationship` page counts as one lookup. A 429 is retried after a short wait; enrich the indicators that decide the verdict first.
 
-**`list_inventory_items`** / **`search_inventory_items`** / **`get_inventory_item`**
-Agent inventory: OS, version, network interfaces, groups, policy, last-seen, agent UUID. Use `get_inventory_item(agent_uuid)` to get asset criticality context during alert triage.
+**`ti_shodan_host`** [Read]
+Shodan host information for one IP (`ip`, IPv4 or IPv6, defanged accepted): `org`, `isp`, `asn`, location, `os`, `hostnames`, `domains`, `tags` (for example `vpn`, `tor`, `honeypot`), `ports`, `vulns` (CVE ids Shodan associates with the host) and up to 25 services with product, version, HTTP title and TLS certificate. `found: false` means Shodan has not seen the IP, which is not a benign verdict. Does not spend query credits.
 
-### Vulnerability tools
+**`ti_shodan_dns`** [Read]
+Resolve up to 25 `hostnames` to IP addresses, or reverse-resolve up to 25 `ips` to hostnames. Pass one list, not both. Does not spend query credits. Shodan allows about 1 request per second; a 429 is retried after a short wait.
 
-**`list_vulnerabilities`** / **`get_vulnerability`** / **`get_vulnerability_history`** / **`get_vulnerability_notes`**
-CVE and patch gap data per agent. Filter by severity, exploitability, CVE ID.
-
-**`search_vulnerabilities`**
-Filtered vulnerability search: `filters` is a JSON array of `{fieldId, filterType, isNegated}` objects using flattened camelCase field names (`cveId`, `cveKevAvailable`, `cveExploitedInTheWild`, `assetName`, not `cve.id`), plus `fields`, `first` (1 to 100, default 10) and `after` for paging.
-
-### Misconfiguration tools
-
-**`list_misconfigurations`** / **`get_misconfiguration`** / **`get_misconfiguration_history`** / **`get_misconfiguration_notes`**
-Agent configuration hygiene findings (missing EDR, outdated agent, policy gaps).
-
-**`search_misconfigurations`**
-Filtered misconfiguration search, same filter shape as `search_vulnerabilities` (flattened camelCase `fieldId`s such as `severity`, `assetCriticality`, `assetCloudRegion`), plus `view_type` (`ALL`, `CLOUD`, `KUBERNETES` and so on), `fields`, `first` (1 to 100, default 10) and `after`.
-
-### Purple AI tools
-
-**`purple_ai`**
-Natural-language query against SDL telemetry. Sends the question to the Purple AI LLM, which returns a PowerQuery string plus an English summary. Claude then executes the returned query via `powerquery_run`. Requires Purple AI tenant entitlement.
-
-**`powerquery`**
-Run a raw PowerQuery string via the SDL LRQ engine (purple-mcp version). Equivalent to s1-secops-mcp `powerquery_run`.
-
-### Timestamp tools
-
-**`get_timestamp_range`**
-Convert human-readable time ranges ("last 7 days", "yesterday") to epoch milliseconds for use in queries.
-
-**`iso_to_unix_timestamp`**
-Convert ISO 8601 timestamps to Unix milliseconds.
-
-### Threat intelligence and CVE tools
-
-**`threat_intel_by_hash`** / **`threat_intel_by_url`** / **`threat_intel_by_domain`** / **`threat_intel_by_ip`** / **`threat_intel_search`** / **`threat_intel_get_file_relationships`** / **`threat_intel_get_file_behavior`**
-VirusTotal-backed lookups. They need `PURPLEMCP_VT_API_KEY`, which the launcher and `s1-secops-mcp exec` supply from the keychain's `VIRUSTOTAL_API_KEY`. See [Threat intelligence: which server to use](#threat-intelligence-which-server-to-use) before calling them.
-
-**`cve_search_by_id`** / **`cve_search_by_vendor`** / **`cve_database_status`**
-CVE lookups against cve-search.org (CIRCL). No key needed.
-
----
-
-## Shodan MCP (optional)
-
-Bundled in the `sentinelone/secops-mcps` image from 1.5.4, built from a pinned commit (`1b34db4`) of a maintained fork (repo in `mcp/docker/build.sh`) of [`w0h1v/mcp-shodan`](https://github.com/w0h1v/mcp-shodan) (npm `@burtthecoder/mcp-shodan` v1.0.34, MIT). Started through the same launcher (`s1-secops-mcp-launch.sh shodan-mcp`, alias `shodan`); the Claude Desktop entry is named `shodan`, so tools appear as `mcp__shodan__*`.
-
-It is optional exposure intelligence: open ports, services, banners, TLS/JARM and host CVEs, plus CVE and CPE lookups in Shodan's CVEDB. It complements VirusTotal reputation and does not replace it: the VirusTotal MCP stays the primary IOC enrichment server. Use it only for external (non-RFC1918) IPs and domains.
-
-- **Credential:** `SHODAN_API_KEY`, optional, from [account.shodan.io](https://account.shodan.io) (Account page, API key). The server refuses to start without it, so the launcher's `install` writes the `shodan` entry only when the key is stored or `--with-shodan` (Windows: `-WithShodan`) is passed. The key reaches this server only.
-- **Read-only.** All 11 tools carry `readOnlyHint`. There are no scan, alert or monitor tools, so it never starts an active scan or spends scan credits.
-- **Network:** `api.shodan.io` and `cvedb.shodan.io` only, over stdio only (the entrypoint unsets the upstream HTTP transport variables).
-- **Fork patches** (see the fork's `FORK_NOTES.md`): `page` capped at 10 on `shodan_search` and `domain_info`; HTTP redirects disabled; the API key is redacted from every error string; no `.env` loading; dead code (the `mcp-proxy` CLI and its `pipenet` tunnel library) stripped from the vendored tree.
-- **Plans and limits:** Shodan gates endpoints by plan, and the free tier is not consistent.
-  - On a free ("oss") key, the CVEDB tools, `shodan_count`, `search_filters` and `api_info` work reliably.
-  - `ip_lookup` and the DNS tools work for some targets and return "Requires membership or higher to access" for others. On 2026-10-14, `1.1.1.1` answered and `8.8.8.8` did not.
-  - `shodan_search` needs a membership or higher.
-  - `domain_info` is billed at 1 query credit per lookup.
-  - Every Shodan API plan is limited to 1 request per second.
-  - Use a membership or higher key for dependable results. When a tool returns the membership error, report it as a plan limit, not as missing data.
-
-| Tool | What it returns | Credit cost |
-|---|---|---|
-| `ip_lookup` | Host information for an IPv4 or IPv6 address: ports, banners, OS, CVEs, TLS/JARM. Options `history`, `minify` | No query credits |
-| `shodan_search` | Device search with Shodan query syntax and facets | 1 query credit when the query uses filters, plus 1 per page past the first (`page` max 10) |
-| `shodan_count` | Total and facet breakdown, without results | Free |
-| `dns_lookup` | Forward DNS | Free |
-| `reverse_dns_lookup` | Reverse DNS | Free |
-| `domain_info` | Subdomains and DNS records for a domain | 1 query credit per lookup (`page` max 10) |
-| `api_info` | Plan, query credits and scan credits | Free |
-| `search_filters` | Valid search filters and facets | Free |
-| `cve_lookup` | CVE detail from Shodan CVEDB: CVSS v3/v4, EPSS, KEV, CPEs (capped at 50) | Free, no key used |
-| `cpe_lookup` | CPE search in CVEDB | Free |
-| `cves_by_product` | CVEs for a product or CPE 2.3, with KEV and EPSS sorting and a date range | Free |
-
-Prefer `shodan_count` before `shodan_search` to size a query without spending credits, and `ip_lookup` for a single external IOC.
-
----
-
-## Threat intelligence: which server to use
-
-Both the VirusTotal MCP and purple-mcp read the same stored `VIRUSTOTAL_API_KEY`, but they are not interchangeable. A live side-by-side evaluation (2026-10-08) kept the VirusTotal MCP as the primary enrichment server:
-
-| Task | Use | Why |
-|---|---|---|
-| IOC enrichment (hash, IP, domain, URL) | VirusTotal MCP: `get_file_report`, `get_ip_report`, `get_domain_report`, `get_url_report` | Full reports with relationship summaries and threat-actor names. |
-| Relationship pivots (contacted IPs, resolutions, communicating files, related threat actors, collections) | VirusTotal MCP: `get_*_relationship`, `get_file_behaviour_summary`, `get_collection` | purple-mcp has no IP, domain or URL relationship pivots, returns only a `belongs_to_threat_actor` flag (no actor names) for network IOCs, and has no collection lookup. |
-| VT Intelligence hunting (for example `type:peexe positives:10+`) | purple-mcp `threat_intel_search` (premium key) | The VirusTotal MCP's `search_vt` returned 0 results for Intelligence query syntax. |
-| Single-IOC verdict when the VirusTotal MCP is unavailable | purple-mcp `threat_intel_by_hash` / `_url` / `_domain` / `_ip` | Acceptable fallback: detection ratio, reputation and whois. |
-| File relationships or sandbox behaviour | VirusTotal MCP only. **Never** call purple-mcp `threat_intel_get_file_relationships` or `threat_intel_get_file_behavior` | They return raw VirusTotal objects of 0.8M to 27M characters per call, far beyond MCP output limits. |
-| CVE details | purple-mcp `cve_search_by_id` / `cve_search_by_vendor` | No key needed. |
-| Exposure of an external IP or domain (open ports, services, banners, TLS/JARM, host CVEs) | Shodan MCP (optional): `ip_lookup`, `domain_info` | Complements the VirusTotal verdict; not a substitute for it. External (non-RFC1918) IOCs only. |
-| CVE detail with EPSS and KEV, or CVEs for a product/CPE | Shodan MCP (optional): `cve_lookup`, `cves_by_product`, `cpe_lookup` | Free CVEDB lookups. |
+**Not built in.** VT Intelligence search (query syntax such as `type:peexe positives:10+`), file sandbox behaviour summaries, collections (threat-actor, campaign and report objects), IOC submission or upload, Shodan device search and the Shodan CVEDB lookups. For those, connect an MCP server from its official source, for example VirusTotal's hosted MCP: see [connect-optional-tools.md](./connect-optional-tools.md).
 
 ---
 
@@ -310,13 +233,13 @@ Both the VirusTotal MCP and purple-mcp read the same stored `VIRUSTOTAL_API_KEY`
 
 | Task | Tool |
 |---|---|
-| Hunt for process/network/file events in SDL | `powerquery_run` or purple-mcp `powerquery` |
+| Hunt for process/network/file events in SDL | `powerquery_run` |
 | Long-window aggregate (past about 24 h) | `powerquery_run` with `slices` + `merge` |
 | Every parsed field of raw events, evidence export | `powerquery_run` with `queryType: "LOG"` and `outputFile` |
 | Field schema of a source | `powerquery_schema_discover` |
-| Natural-language investigation query | purple-mcp `purple_ai` |
-| List/triage/annotate alerts | purple-mcp alert tools (richer); s1-secops-mcp UAM tools as fallback |
-| Get agent inventory, vulnerability, misconfiguration | purple-mcp |
+| Natural-language question or a draft hunt query | `purple_ai_query`, then review the query and run it with `powerquery_run` |
+| List, triage or annotate alerts (notes and history included) | `uam_list_alerts`, `uam_get_alert`; writes with `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert` |
+| Agent inventory, vulnerabilities, misconfigurations | `s1_api_get` / `s1_api_post` (read) on the endpoints in the mgmt-console-api skill |
 | Agents, threats, sites, groups, policies (REST) | `s1_api_get` / `s1_api_post` |
 | Create/update/delete detection rules or exclusions | `s1_api_post` / `s1_api_put` / `s1_api_delete` |
 | Create or delete IOCs | `s1_api_post` / `s1_api_delete` from an MCP entry whose token is minted at a single account or site (`S1_PROFILE`) |
@@ -324,8 +247,9 @@ Both the VirusTotal MCP and purple-mcp read the same stored `VIRUSTOTAL_API_KEY`
 | Deploy parser or dashboard to SDL | `sdl_put_file` |
 | Ingest custom log events | `hec_ingest` |
 | Import Hyperautomation workflow | `ha_import_workflow` |
-| Enrich IOC (IP, hash, domain, URL) and pivot on relationships | Threat-intel MCP tools (default bundle: virustotal-mcp; substitute your provider's tools if different). See [Threat intelligence: which server to use](#threat-intelligence-which-server-to-use) |
-| VT Intelligence hunt (search syntax) | purple-mcp `threat_intel_search` |
-| What an external IP or domain exposes to the internet | Shodan MCP (optional) `ip_lookup` / `domain_info`. See [Shodan MCP](#shodan-mcp-optional) |
+| Enrich an IOC (hash, IP, domain, URL) | `ti_vt_lookup` (needs `VIRUSTOTAL_API_KEY`), or another threat-intel provider you have connected |
+| Pivot on an IOC's relationships | `ti_vt_relationship`, one relationship per call |
+| What an external IP exposes to the internet | `ti_shodan_host` (needs `SHODAN_API_KEY`); DNS with `ti_shodan_dns` |
+| VT Intelligence search, sandbox behaviour summaries, collections | Not built in: a connected VirusTotal MCP ([connect-optional-tools.md](./connect-optional-tools.md)) |
 
 Rows that create, update, delete, deploy, ingest, import or annotate through s1-secops-mcp need write enabled; in the default read-only mode those calls are refused. See [Read-only mode](#read-only-mode-155-and-later).

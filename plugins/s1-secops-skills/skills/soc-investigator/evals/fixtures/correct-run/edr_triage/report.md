@@ -11,7 +11,7 @@ corroborated across two independent sources. None is present:
 
 - External enrichment is opt-in and you declined it for this tenant, so it was skipped
   and no indicator left SentinelOne. That is a deliberate gap, recorded, not an oversight.
-- `get_alert_notes` and `get_alert_history` both return empty. No MDR verdict exists.
+- The notes and history returned by `uam_get_alert` are both empty. No MDR verdict exists.
 - One engine firing once is not multi-source corroboration.
 
 Asset criticality (a finance workstation) raises the priority of the next collection step.

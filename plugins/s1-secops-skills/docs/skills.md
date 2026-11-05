@@ -14,7 +14,7 @@ Every skill reaches the tenant through the `s1-secops-mcp` MCP tools first. They
 
 - Generic REST wrapper (`s1_api_get/post/put/patch/delete`, plus `s1_api_download` for binary responses) over 781 Management Console operations across 113 API tags. Endpoints that refuse a multi-account token (IOC writes, error 4030010) need a token minted at a single account or site, run from a second MCP entry with `S1_PROFILE=<name>`
 - Unified Alert Management (UAM): GraphQL-based multi-source alert inbox with filter, triage, note, status, and verdict mutations
-- Purple AI: natural-language query interface over SDL telemetry (NLQ → PowerQuery → results)
+- Purple AI: natural-language questions with `purple_ai_query` (a written answer, or a suggested PowerQuery that Claude reviews and runs with `powerquery_run`), and alert summaries with `purple_ai_alert_summary`
 - Hyperautomation: workflow list/get/import/export/delete
 - UAM Alert Interface: OCSF-format alert ingest via `POST /v1/alerts`, with indicators carried inline in `finding_info.related_events[]`. There is no separate indicator endpoint
 - Behavioural baselining + anomaly detection pipeline (`baseline_anomaly.py`): source-agnostic, auto-discovers principal/action fields, day-of-week stratification, three anomaly classes (spike, drop, silent pair, new behaviour)
@@ -156,7 +156,7 @@ Full reference: `sdl-solutions/SKILL.md`
 - Non-negotiable evidence discipline and verdict gates inherited from the Purple SOC Analyst standard and the SDL threat-hunt-and-correlation method: reconcile to ground truth, enrich every external IOC before a verdict, no CRITICAL / TRUE POSITIVE without threat-intel or MDR confirmation, calibrated confidence, and MITRE mapping. Detail in `references/evidence-and-verdict-discipline.md` and `references/correlation-and-hunt-methodology.md`.
 - Structured, file-based outputs per investigation (entities, timelines, threat intel, enriched and forensic timelines, and reports).
 
-**Depends on:** `mgmt-console-api`, `powerquery`, `sdl-api`, `sdl-log-parser`, `sdl-dashboard`, `hyperautomation`, and the purple / VirusTotal threat-intel MCP. Authored by Joel Mora (<joelm@sentinelone.com>).
+**Depends on:** `mgmt-console-api`, `powerquery`, `sdl-api`, `sdl-log-parser`, `sdl-dashboard`, `hyperautomation`, and threat intelligence: the built-in `ti_vt_*` and `ti_shodan_*` tools, or any provider MCP you connect. Authored by Joel Mora (<joelm@sentinelone.com>).
 
 Full reference: `soc-investigator/SKILL.md`
 
@@ -172,7 +172,7 @@ It defines:
 - **Evidence rules:** no fabrication, cite every fact to its tool call, mark every assumption explicitly
 - **Anomaly checklist:** frequency, timing, geolocation, baseline deviation, new entity, privilege, chain
 - **Classification gate:** no CRITICAL or TRUE POSITIVE verdict without independent threat intelligence confirmation
-- **Optional exposure intel:** when the Shodan MCP is installed, external IPs and domains can also be checked for open ports, services, banners, TLS/JARM and host CVEs; this complements the VirusTotal verdict and never replaces it ([mcp-tools.md → Shodan MCP](./mcp-tools.md#shodan-mcp-optional))
+- **Optional exposure intel:** when `SHODAN_API_KEY` is stored, external IPs can also be checked with `ti_shodan_host` for open ports, services, CVEs, owner and tags; this complements the VirusTotal verdict and never replaces it ([mcp-tools.md](./mcp-tools.md))
 - **Confidence language:** "confirmed" / "consistent with" / "suggests" / "possible", calibrated to evidence weight
 - **Investigation workflow:** triage → enrichment → infrastructure pivot → cross-source correlation → MITRE mapping → composite risk score → report
 

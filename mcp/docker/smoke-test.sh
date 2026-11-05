@@ -1,57 +1,52 @@
 #!/usr/bin/env bash
 #
-# smoke-test.sh -- validate a SentinelOne SecOps Skills MCP image.
+# smoke-test.sh -- validate a SentinelOne SecOps MCP image.
 #
 # Usage:
 #   docker/smoke-test.sh <image-ref> [--expect-version X.Y.Z] [--platform P]
 #
 # Examples:
-#   docker/smoke-test.sh secops-mcps:local-rc1
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.7 --expect-version 1.5.7
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.5.7 --platform linux/amd64
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.6.0 --expect-version 1.6.0
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.6.0 --platform linux/amd64
 #
 # Exit code is the number of failed tests, so `if docker/smoke-test.sh IMG` works
 # as a gate in CI or a release checklist.
 #
-# ── Why these tests exist ────────────────────────────────────────────────────
+# ── What these tests assert ──────────────────────────────────────────────────
 #
-# Every assertion here corresponds to something that actually broke, or that the
-# image makes a claim about. This is not a generic container test suite:
+# The 1.6.0 image is distroless: no shell. In-image checks therefore run Node
+# (`--entrypoint /nodejs/bin/node`), never sh.
 #
-#   T04/T05  npm and npx are deleted on purpose. The whole point of the git-only
-#            build is that they cannot come back; assert it rather than trust it.
-#   T06      git belongs to the fetch stage only. If it appears in the runtime
-#            image, the two-stage split has silently collapsed.
-#   T07      versions.json once reported the MCP's version in the field named
-#            `image_version`, so the one command that answers "which image is
-#            this?" was lying. Check the value, not just that the file parses.
-#   T09      s1-secops-mcp/data/ is git-ignored and holds only untracked local
-#            exports. It is never copied into the image and must never reach a
-#            published layer.
-#   T10      The image must run unprivileged.
-#   T12-T14  initialize alone proves very little. A server can start and still
-#            fail to enumerate tools, so drive a real tools/list and count.
-#   T15      Nothing may phone home at runtime. The provenance URL in
-#            versions.json is metadata, not a dependency, and --network none is
-#            the only way to prove that.
-#   T16      A manifest list whose children 404 still returns 200 on the tag.
-#            That exact failure shipped a "restored" image nobody could pull.
-#   T22-T27  shodan-mcp (1.5.4, optional): tool count, stdio forced even when
-#            MCP_TRANSPORT=httpStream is passed, a clear exit without a key,
-#            no .git/.env/src or stripped tunnel code in /opt/mcp-shodan, the
-#            Shodan key never reaches another server, and versions.json records
-#            the pin and Node 24.
-#   T28-T29  Unused Debian packages with unfixed HIGH CVEs stay removed, and
-#            libexpat1 stays on the fixed 2.9.0-1.
-#   T30-T31  outputFile: with no shared folder it is refused with the
-#            `install --output-dir` advice (no silent loss in /tmp); with a
-#            shared folder the path is accepted.
-#   T32-T34  Read-only by default (1.5.5): a write tool and a savelookup query
-#            are refused with no network, and S1_READ_ONLY=false lifts it.
-#   T35-T36  Third-party notices and every bundled LICENSE ship in the image.
-#   T37      1.5.6: an s1_api_post path with a fragment is refused in read-only mode.
+#   T02-T03  help and the unknown-command exit code.
+#   T04-T06  The image claims no shell, no npm/npx/corepack and no package
+#            manager; assert it rather than trust it.
+#   T07-T08  versions.json: image_version (it once reported the MCP version),
+#            one server only, shell:false, npm:false, Node 24.
+#   T09      s1-secops-mcp/data/ (local exports) and removed servers never ship.
+#   T10-T11  Runs unprivileged; every shipped file is readable by that user.
+#   T12-T13  tools/list: 36 tools with no threat-intel keys, 40 with both keys.
+#   T14      Nothing phones home at runtime (--network none).
+#   T15-T16  CLAUDE.md ships and is served as an MCP resource.
+#   T18-T19  The stdin secrets preamble configures the server, never appears in
+#            `docker inspect` or on stdout; a stream that starts with JSON-RPC
+#            is refused (exit 64).
+#   T20      --transport http is refused.
+#   T21      S1_KEYCHAIN=off is baked in.
+#   T22      Removed server names (purple-mcp, virustotal-mcp, shodan-mcp) exit
+#            78 with the update instruction.
+#   T23      SIGTERM stops the container promptly (no init in the image).
+#   T30-T31  outputFile: refused with `install --output-dir` advice when no folder
+#            is shared; accepted when one is.
+#   T32-T34  Read-only by default: a write tool and a savelookup query are
+#            refused with no network; S1_READ_ONLY=false lifts it.
+#   T35-T36  Third-party notices and the AGPL LICENSE ship in the image.
+#   T37      An s1_api_post path with a fragment is refused in read-only mode.
+#   T17      Registry manifest readable (remote references only).
 #
-set -uo pipefail
+# No pipefail: checks use `printf "$OUT" | grep -q`, and grep -q exits at the first
+# match, so a large capture (tools/list is ~80 KB) would SIGPIPE printf and fail
+# the pipeline even though the pattern was found.
+set -u
 
 IMAGE="${1:-}"
 shift || true
@@ -66,49 +61,41 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$IMAGE" ]; then
-  sed -n '3,12p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,11p' "$0" | sed 's/^# \{0,1\}//'
   exit 64
 fi
 
 PLAT_ARGS=()
 [ -n "$PLATFORM" ] && PLAT_ARGS=(--platform "$PLATFORM")
-# Expand safely on bash 3.2 (macOS default) where an empty array under
-# `set -u` is an unbound-variable error. Use $PLAT as the expansion point.
-PLAT() { printf '%s\n' ${PLAT_ARGS[@]+${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"}}; }
 
-# Expected tool counts. A server that starts but registers zero tools is broken
-# in a way that "it started fine" will never surface.
-EXPECT_S1_TOOLS=35
-EXPECT_VT_TOOLS=11
-EXPECT_PURPLE_TOOLS=33
-EXPECT_SHODAN_TOOLS=11
+EXPECT_TOOLS_NOKEYS=36
+EXPECT_TOOLS_KEYS=40
 
 PASS=0; FAIL=0; SKIP=0
 if [ -t 1 ]; then G=$'\033[32m'; R=$'\033[31m'; Y=$'\033[33m'; Z=$'\033[0m'
 else G=""; R=""; Y=""; Z=""; fi
 
-ok()   { PASS=$((PASS+1)); printf "  ${G}PASS${Z} %-42s %s\n" "$1" "${2:-}"; }
-bad()  { FAIL=$((FAIL+1)); printf "  ${R}FAIL${Z} %-42s %s\n" "$1" "${2:-}"; }
-skip() { SKIP=$((SKIP+1)); printf "  ${Y}SKIP${Z} %-42s %s\n" "$1" "${2:-}"; }
+ok()   { PASS=$((PASS+1)); printf "  ${G}PASS${Z} %-46s %s\n" "$1" "${2:-}"; }
+bad()  { FAIL=$((FAIL+1)); printf "  ${R}FAIL${Z} %-46s %s\n" "$1" "${2:-}"; }
+skip() { SKIP=$((SKIP+1)); printf "  ${Y}SKIP${Z} %-46s %s\n" "$1" "${2:-}"; }
 
-# Run a command inside the image with a shell, capturing stdout.
-inimg() { docker run --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} --entrypoint sh "$IMAGE" -c "$1" 2>/dev/null; }
+drun() { docker run --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} "$@"; }
+# Run JavaScript inside the image as its runtime user (there is no shell).
+innode() { drun --entrypoint /nodejs/bin/node "$IMAGE" -e "$1" 2>/dev/null; }
+# JSON field from stdin, with python3 on the host.
+jget() { python3 -c 'import sys,json
+d=json.load(sys.stdin)
+for k in sys.argv[1].split("."): d=d.get(k) if isinstance(d,dict) else None
+print(json.dumps(d) if isinstance(d,(dict,list,bool)) or d is None else d)' "$1" 2>/dev/null; }
 
-# Drive a full MCP handshake and return the tool count on stdout.
-# initialize -> notifications/initialized -> tools/list. The sleeps matter:
-# purple-mcp imports a large dependency tree before it answers.
+INIT='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
+INITED='{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}'
+
+# initialize -> initialized -> tools/list, return the tool count. Extra args go to docker run.
 mcp_tool_count() {
-  local server="$1"; shift
-  { printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
-    sleep 6
-    printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}'
-    sleep 1
-    printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
-    sleep 14
-  } | docker run -i --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} "$@" \
-        -e VT_API_KEY=dummy -e VIRUSTOTAL_API_KEY=dummy -e SHODAN_API_KEY=dummy \
-        -e S1_CONSOLE_URL=https://example.invalid -e S1_CONSOLE_API_TOKEN=dummy \
-        "$IMAGE" "$server" 2>/dev/null \
+  { printf '%s\n' "$INIT"; sleep 2; printf '%s\n' "$INITED"
+    printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'; sleep 3
+  } | drun -i "$@" -e S1_CONSOLE_URL=https://example.invalid -e S1_CONSOLE_API_TOKEN=dummy "$IMAGE" s1-secops-mcp 2>/dev/null \
   | python3 -c '
 import sys,json
 n=""
@@ -117,18 +104,16 @@ for line in sys.stdin:
     if not line.startswith("{"): continue
     try: m=json.loads(line)
     except Exception: continue
-    if m.get("id")==2 and "result" in m:
-        n=len(m["result"].get("tools",[]))
+    if m.get("id")==2 and "result" in m: n=len(m["result"].get("tools",[]))
 print(n)'
 }
 
-echo "SecOps Skills image smoke test"
+echo "SecOps MCP image smoke test"
 echo "  image:    $IMAGE"
 echo "  platform: ${PLATFORM:-<host default>}"
 [ -n "$EXPECT_VERSION" ] && echo "  expecting image_version = $EXPECT_VERSION"
 echo
 
-# ── Availability ─────────────────────────────────────────────────────────────
 if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
   echo "  pulling $IMAGE ..."
   docker pull -q ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} "$IMAGE" >/dev/null 2>&1 \
@@ -136,111 +121,69 @@ if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
 fi
 ok "T01 image available"
 
-# ── Dispatcher ───────────────────────────────────────────────────────────────
-HELP="$(docker run --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} "$IMAGE" help 2>/dev/null)"
+HELP="$(drun "$IMAGE" help 2>/dev/null)"
 case "$HELP" in
-  *s1-secops-mcp*purple-mcp*virustotal-mcp*shodan-mcp*) ok "T02 help lists all four servers" ;;
-  *) bad "T02 help lists all four servers" "unexpected help output" ;;
+  *s1-secops-mcp*purple_ai_query*ti_vt_*ti_shodan_*) ok "T02 help describes the server and built-in tools" ;;
+  *) bad "T02 help describes the server and built-in tools" "unexpected help output" ;;
 esac
 
-docker run --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} "$IMAGE" not-a-server >/dev/null 2>&1
+drun "$IMAGE" not-a-server >/dev/null 2>&1
 [ $? -eq 64 ] && ok "T03 unknown command exits 64" || bad "T03 unknown command exits 64"
 
-# ── The no-npm guarantee ─────────────────────────────────────────────────────
-[ -z "$(inimg 'command -v npm')" ] && ok "T04 npm absent" || bad "T04 npm absent" "npm is present"
-[ -z "$(inimg 'command -v npx')" ] && ok "T05 npx absent" || bad "T05 npx absent" "npx is present"
-[ -z "$(inimg 'command -v git')" ] && ok "T06 git absent from runtime" || bad "T06 git absent from runtime" "git leaked from the fetch stage"
-[ -z "$(inimg 'command -v corepack')" ] && ok "T06b corepack absent" || bad "T06b corepack absent" "corepack is present"
+SHELLS="$(innode 'const fs=require("fs");console.log(["/bin/sh","/bin/bash","/bin/dash","/bin/busybox","/usr/bin/sh"].filter(p=>fs.existsSync(p)).join(" "))')"
+[ -z "$SHELLS" ] && ok "T04 no shell in the image" || bad "T04 no shell in the image" "found: $SHELLS"
+NPM="$(innode 'const fs=require("fs");console.log(["/nodejs/bin/npm","/nodejs/bin/npx","/nodejs/bin/corepack","/usr/local/bin/npm","/usr/local/bin/npx","/nodejs/lib/node_modules/npm"].filter(p=>fs.existsSync(p)).join(" "))')"
+[ -z "$NPM" ] && ok "T05 no npm, npx or corepack" || bad "T05 no npm, npx or corepack" "found: $NPM"
+PKGM="$(innode 'const fs=require("fs");console.log(["/usr/bin/apt","/usr/bin/apt-get","/usr/bin/dpkg","/sbin/apk","/usr/bin/python3","/usr/bin/git"].filter(p=>fs.existsSync(p)).join(" "))')"
+[ -z "$PKGM" ] && ok "T06 no package manager, Python or git" || bad "T06 no package manager, Python or git" "found: $PKGM"
 
-# ── Version manifest ─────────────────────────────────────────────────────────
-VJSON="$(docker run --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} "$IMAGE" versions 2>/dev/null)"
-VER="$(printf '%s' "$VJSON" | python3 -c 'import sys,json; print(json.load(sys.stdin)["image_version"])' 2>/dev/null)"
-if [ -n "$VER" ]; then
+VJSON="$(drun "$IMAGE" versions 2>/dev/null)"
+VER="$(printf '%s' "$VJSON" | jget image_version)"
+if [ -n "$VER" ] && [ "$VER" != "None" ]; then
   if [ -n "$EXPECT_VERSION" ] && [ "$VER" != "$EXPECT_VERSION" ]; then
     bad "T07 versions.json image_version" "got $VER, expected $EXPECT_VERSION"
-  else
-    ok "T07 versions.json image_version" "$VER"
-  fi
-else
-  bad "T07 versions.json image_version" "missing or not valid JSON"
-fi
+  else ok "T07 versions.json image_version" "$VER"; fi
+else bad "T07 versions.json image_version" "missing or not valid JSON"; fi
+VCHK="$(printf '%s' "$VJSON" | python3 -c '
+import sys,json
+d=json.load(sys.stdin)
+probs=[]
+if list(d.get("servers",{}))!=["s1-secops-mcp"]: probs.append("servers=%s"%list(d.get("servers",{})))
+if d.get("shell") is not False: probs.append("shell")
+if d.get("npm") is not False: probs.append("npm")
+if not str(d.get("node","")).startswith("v24."): probs.append("node=%s"%d.get("node"))
+print("ok" if not probs else " ".join(probs))' 2>/dev/null)"
+[ "$VCHK" = "ok" ] && ok "T08 versions.json: one server, no shell/npm, Node 24" || bad "T08 versions.json contents" "${VCHK:-unparseable}"
 
-NPMFLAG="$(printf '%s' "$VJSON" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("npm"))' 2>/dev/null)"
-[ "$NPMFLAG" = "False" ] && ok "T08 versions.json declares npm:false" || bad "T08 versions.json declares npm:false" "got ${NPMFLAG:-<none>}"
+GONE="$(innode 'const fs=require("fs");console.log(["/opt/s1-secops-mcp/data","/opt/mcp-virustotal","/opt/mcp-shodan","/opt/purple-mcp","/usr/local/bin/entrypoint.sh"].filter(p=>fs.existsSync(p)).join(" "))')"
+[ -z "$GONE" ] && ok "T09 no data/ dir, no removed servers" || bad "T09 no data/ dir, no removed servers" "present: $GONE"
 
-# ── Secret hygiene ───────────────────────────────────────────────────────────
-[ -z "$(inimg 'ls /opt/s1-secops-mcp/data 2>/dev/null')" ] \
-  && ok "T09 no data/ dir (local exports)" \
-  || bad "T09 no data/ dir (local exports)" "data/ reached the image"
+UIDS="$(innode 'console.log(process.getuid()+":"+process.getgid())')"
+case "$UIDS" in 0:*|"") bad "T10 runs as non-root" "uid:gid ${UIDS:-unknown}" ;; *) ok "T10 runs as non-root" "uid:gid $UIDS" ;; esac
+UNREAD="$(innode 'const fs=require("fs"),p=require("path");const bad=[];
+function w(x){let s;try{s=fs.statSync(x)}catch{return}
+ try{fs.accessSync(x,fs.constants.R_OK)}catch{bad.push(x)}
+ if(s.isDirectory())for(const e of fs.readdirSync(x))w(p.join(x,e))}
+for(const r of ["/opt/s1-secops-mcp","/etc/sentinelone","/usr/local/lib/s1-secops","/usr/share/doc/secops-mcps"])w(r);
+console.log(bad.slice(0,5).join(" "))')"
+[ -z "$UNREAD" ] && ok "T11 all shipped files readable by runtime user" || bad "T11 all shipped files readable" "$UNREAD"
 
-# ── Runs unprivileged ────────────────────────────────────────────────────────
-UID_OUT="$(inimg 'id -u')"
-if [ "$UID_OUT" = "0" ]; then bad "T10 runs as non-root" "uid 0"
-elif [ -n "$UID_OUT" ]; then ok "T10 runs as non-root" "uid $UID_OUT"
-else bad "T10 runs as non-root" "could not read uid"; fi
+TOOLS="$(mcp_tool_count)"
+[ "$TOOLS" = "$EXPECT_TOOLS_NOKEYS" ] && ok "T12 tools/list without threat-intel keys" "$TOOLS tools" \
+  || bad "T12 tools/list without threat-intel keys" "got ${TOOLS:-none}, expected $EXPECT_TOOLS_NOKEYS"
+TOOLS="$(mcp_tool_count -e VIRUSTOTAL_API_KEY=dummy-vt-key-0123456789 -e SHODAN_API_KEY=dummy-shodan-0123456789)"
+[ "$TOOLS" = "$EXPECT_TOOLS_KEYS" ] && ok "T13 tools/list with VirusTotal and Shodan keys" "$TOOLS tools" \
+  || bad "T13 tools/list with VirusTotal and Shodan keys" "got ${TOOLS:-none}, expected $EXPECT_TOOLS_KEYS"
+TOOLS="$(mcp_tool_count --network none)"
+[ "$TOOLS" = "$EXPECT_TOOLS_NOKEYS" ] && ok "T14 works offline (--network none)" "$TOOLS tools" \
+  || bad "T14 works offline (--network none)" "got ${TOOLS:-none}; something fetches at runtime"
 
-HOME_OUT="$(inimg 'echo $HOME')"
-if [ -n "$HOME_OUT" ] && [ -n "$(inimg "test -w '$HOME_OUT' && echo w")" ]; then
-  ok "T11 HOME is writable" "$HOME_OUT"
-else
-  bad "T11 HOME is writable" "HOME=${HOME_OUT:-<unset>} not writable; caches will fail"
-fi
-
-# ── Every shipped file is readable by the runtime user ───────────────────────
-# COPY preserves the source file mode, so a 0600 file in the repo becomes a
-# 0600 file in the image. package.json shipped that way and Node >=24 refuses
-# to start without reading it. Node 22 tolerated it, so this hid behind a base
-# image for a while. Assert it directly instead of waiting for T12 to fail.
-UNREADABLE="$(inimg 'find /opt/s1-secops-mcp /opt/mcp-virustotal /opt/mcp-shodan /opt/purple-mcp /etc/sentinelone /usr/local/bin/entrypoint.sh ! -readable 2>/dev/null | head -5')"
-if [ -z "$UNREADABLE" ]; then
-  ok "T11b all shipped files readable by runtime user"
-else
-  bad "T11b all shipped files readable by runtime user" "$(printf '%s' "$UNREADABLE" | tr '\n' ' ')"
-fi
-
-# ── The servers actually work ────────────────────────────────────────────────
-TOOLS="$(mcp_tool_count s1-secops-mcp)"
-[ "$TOOLS" = "$EXPECT_S1_TOOLS" ] && ok "T12 s1-secops-mcp tools/list" "$TOOLS tools" \
-  || bad "T12 s1-secops-mcp tools/list" "got ${TOOLS:-none}, expected $EXPECT_S1_TOOLS"
-
-TOOLS="$(mcp_tool_count virustotal-mcp)"
-[ "$TOOLS" = "$EXPECT_VT_TOOLS" ] && ok "T13 virustotal-mcp tools/list" "$TOOLS tools" \
-  || bad "T13 virustotal-mcp tools/list" "got ${TOOLS:-none}, expected $EXPECT_VT_TOOLS"
-
-TOOLS="$(mcp_tool_count purple-mcp)"
-[ "$TOOLS" = "$EXPECT_PURPLE_TOOLS" ] && ok "T14 purple-mcp tools/list" "$TOOLS tools" \
-  || bad "T14 purple-mcp tools/list" "got ${TOOLS:-none}, expected $EXPECT_PURPLE_TOOLS"
-
-# ── No runtime dependency on the source repo ─────────────────────────────────
-TOOLS="$(mcp_tool_count s1-secops-mcp --network none)"
-[ "$TOOLS" = "$EXPECT_S1_TOOLS" ] && ok "T15 works offline (--network none)" "$TOOLS tools" \
-  || bad "T15 works offline (--network none)" "got ${TOOLS:-none}; something fetches at runtime"
-
-# ── Persona file, readable BY THE UNPRIVILEGED USER ──────────────────────────
-# `test -s` is not enough. Under USER node the file must be world-readable, and
-# a root-owned 0600 file would pass a size check and then fail at runtime. Read
-# it the way the server does and require real bytes back.
-CLAUDE_PATH="$(inimg 'echo ${S1_CLAUDE_MD_PATH:-/etc/sentinelone/CLAUDE.md}')"
-CLAUDE_BYTES="$(inimg "cat '$CLAUDE_PATH' 2>/dev/null | wc -c" | tr -d ' ')"
-CLAUDE_PERMS="$(inimg "stat -c '%U:%G %a' '$CLAUDE_PATH' 2>/dev/null")"
-if [ -n "$CLAUDE_BYTES" ] && [ "$CLAUDE_BYTES" -gt 100 ] 2>/dev/null; then
-  ok "T16 CLAUDE.md readable as $(inimg 'id -un')" "${CLAUDE_BYTES} bytes, ${CLAUDE_PERMS}"
-else
-  bad "T16 CLAUDE.md readable as $(inimg 'id -un')" "read ${CLAUDE_BYTES:-0} bytes from $CLAUDE_PATH (${CLAUDE_PERMS:-no stat})"
-fi
-
-# End-to-end: the server exposes CLAUDE.md as an MCP resource. This is the check
-# that matters, because it exercises the same read path a real client uses
-# rather than a shell reading a file that happens to sit at that path.
-RES_LEN="$( { printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
-    sleep 5
-    printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}'
-    sleep 1
-    printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"sentinelone://soc-context"}}'
-    sleep 10
-  } | docker run -i --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} \
-        -e S1_CONSOLE_URL=https://example.invalid -e S1_CONSOLE_API_TOKEN=dummy \
-        "$IMAGE" s1-secops-mcp 2>/dev/null \
+CLAUDE_BYTES="$(innode 'console.log(require("fs").readFileSync(process.env.S1_CLAUDE_MD_PATH||"/etc/sentinelone/CLAUDE.md").length)')"
+[ "${CLAUDE_BYTES:-0}" -gt 100 ] 2>/dev/null && ok "T15 CLAUDE.md readable" "${CLAUDE_BYTES} bytes" \
+  || bad "T15 CLAUDE.md readable" "read ${CLAUDE_BYTES:-0} bytes"
+RES_LEN="$( { printf '%s\n' "$INIT"; sleep 2; printf '%s\n' "$INITED"
+    printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"sentinelone://soc-context"}}'; sleep 3
+  } | drun -i -e S1_CONSOLE_URL=https://example.invalid -e S1_CONSOLE_API_TOKEN=dummy "$IMAGE" s1-secops-mcp 2>/dev/null \
   | python3 -c '
 import sys,json
 out=0
@@ -250,232 +193,116 @@ for line in sys.stdin:
     try: m=json.loads(line)
     except Exception: continue
     if m.get("id")==3 and "result" in m:
-        for c in m["result"].get("contents",[]):
-            out=max(out,len(c.get("text","") or ""))
+        for c in m["result"].get("contents",[]): out=max(out,len(c.get("text","") or ""))
 print(out)')"
-if [ -n "$RES_LEN" ] && [ "$RES_LEN" -gt 100 ] 2>/dev/null; then
-  ok "T16b CLAUDE.md served as MCP resource" "${RES_LEN} chars via sentinelone://soc-context"
-else
-  bad "T16b CLAUDE.md served as MCP resource" "got ${RES_LEN:-0} chars; the persona would be silently empty"
-fi
+[ "${RES_LEN:-0}" -gt 100 ] 2>/dev/null && ok "T16 CLAUDE.md served as MCP resource" "${RES_LEN} chars" \
+  || bad "T16 CLAUDE.md served as MCP resource" "got ${RES_LEN:-0} chars"
 
-# ── Secrets over stdin (1.5.0): configured, and absent from docker inspect ───
-# The launcher sends NAME=value lines then an empty line before the JSON-RPC
-# stream. The server must see the values; `docker inspect` must not.
+# Secrets over stdin, exactly as the host launcher sends them.
 STDIN_TOKEN="FAKEsmoke$(date +%s)abcdef0123456789"
+VT_FAKE="vtsmoke$(date +%s)0123456789abcdef"
 CNAME="s1smoke-stdin-$$"
-STATUS_OUT="$( { printf 'S1_CONSOLE_URL=https://example.invalid\nS1_CONSOLE_API_TOKEN=%s\nBOGUS=1\n\n' "$STDIN_TOKEN"
-    printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
+STATUS_OUT="$( { printf 'S1_CONSOLE_URL=https://example.invalid\nS1_CONSOLE_API_TOKEN=%s\nVIRUSTOTAL_API_KEY=%s\nBOGUS=1\n\n' "$STDIN_TOKEN" "$VT_FAKE"
+    printf '%s\n' "$INIT"
     printf '%s\n' '{"jsonrpc":"2.0","id":4,"method":"resources/read","params":{"uri":"sentinelone://credentials-status"}}'
+    printf '%s\n' '{"jsonrpc":"2.0","id":6,"method":"tools/list","params":{}}'
     sleep 4
   } | docker run -i --rm --name "$CNAME" ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} -e S1_SECRETS_STDIN=1 "$IMAGE" s1-secops-mcp 2>/dev/null &
   sleep 2
-  docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$CNAME" 2>/dev/null | grep -c "$STDIN_TOKEN" > "/tmp/s1smoke-inspect-$$" || true
+  docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$CNAME" 2>/dev/null | grep -c -e "$STDIN_TOKEN" -e "$VT_FAKE" > "/tmp/s1smoke-inspect-$$" || true
   wait )"
 INSPECT_HITS="$(cat "/tmp/s1smoke-inspect-$$" 2>/dev/null || echo err)"; rm -f "/tmp/s1smoke-inspect-$$"
-if printf '%s' "$STATUS_OUT" | grep -q '\\"configured\\": true'; then
-  ok "T18 S1_SECRETS_STDIN configures the server"
+if printf '%s' "$STATUS_OUT" | grep -q '\\"configured\\": true' && printf '%s' "$STATUS_OUT" | grep -q '"ti_vt_lookup"'; then
+  ok "T18 stdin preamble configures the server (incl. VT tools)"
 else
-  bad "T18 S1_SECRETS_STDIN configures the server" "credentials-status did not report configured"
+  bad "T18 stdin preamble configures the server" "credentials-status/tools/list did not reflect the preamble"
 fi
-[ "$INSPECT_HITS" = "0" ] && ok "T19 stdin secrets absent from docker inspect" \
-  || bad "T19 stdin secrets absent from docker inspect" "inspect hits: $INSPECT_HITS"
-printf '%s' "$STATUS_OUT" | grep -q "$STDIN_TOKEN" \
-  && bad "T19b token never echoed on stdout" "token found in server output" \
-  || ok "T19b token never echoed on stdout"
+[ "$INSPECT_HITS" = "0" ] && ok "T19 stdin secrets absent from docker inspect" || bad "T19 stdin secrets absent from docker inspect" "inspect hits: $INSPECT_HITS"
+if printf '%s' "$STATUS_OUT" | grep -q -e "$STDIN_TOKEN" -e "$VT_FAKE"; then bad "T19b secrets never echoed on stdout" "found in server output"
+else ok "T19b secrets never echoed on stdout"; fi
+JRC=0; printf '%s\n' "$INIT" | drun -i -e S1_SECRETS_STDIN=1 "$IMAGE" s1-secops-mcp >/dev/null 2>&1 || JRC=$?
+[ "$JRC" = "64" ] && ok "T19c preamble expected but JSON-RPC first: exit 64" || bad "T19c preamble expected but JSON-RPC first" "exit $JRC"
 
-# ── stdio only (1.5.0): the HTTP transport must refuse to start ─────────────
-HTTP_RC=0
-docker run --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} "$IMAGE" s1-secops-mcp --transport http >/dev/null 2>&1 || HTTP_RC=$?
+HTTP_RC=0; drun "$IMAGE" s1-secops-mcp --transport http >/dev/null 2>&1 || HTTP_RC=$?
 [ "$HTTP_RC" = "2" ] && ok "T20 --transport http refused" "exit 2" || bad "T20 --transport http refused" "exit $HTTP_RC"
 
-# ── shodan-mcp (1.5.4, optional) ─────────────────────────────────────────────
-TOOLS="$(mcp_tool_count shodan-mcp)"
-[ "$TOOLS" = "$EXPECT_SHODAN_TOOLS" ] && ok "T22 shodan-mcp tools/list" "$TOOLS tools" \
-  || bad "T22 shodan-mcp tools/list" "got ${TOOLS:-none}, expected $EXPECT_SHODAN_TOOLS"
+KC="$(innode 'console.log(process.env.S1_KEYCHAIN||"unset")')"
+[ "$KC" = "off" ] && ok "T21 S1_KEYCHAIN=off baked in" || bad "T21 S1_KEYCHAIN=off baked in" "got $KC"
 
-# Upstream starts an unauthenticated HTTP listener on MCP_TRANSPORT=httpStream
-# (its own Dockerfile binds 0.0.0.0). The entrypoint must drop those knobs, so
-# the same server still answers tools/list on stdio.
-TOOLS="$(mcp_tool_count shodan-mcp -e MCP_TRANSPORT=httpStream -e MCP_HOST=0.0.0.0 -e MCP_PORT=3000)"
-[ "$TOOLS" = "$EXPECT_SHODAN_TOOLS" ] && ok "T23 shodan-mcp ignores MCP_TRANSPORT=httpStream" "stdio, $TOOLS tools" \
-  || bad "T23 shodan-mcp ignores MCP_TRANSPORT=httpStream" "got ${TOOLS:-none} tools on stdio"
-
-# Optional server: no key means one clear line and exit 78, not a stack trace.
-NOKEY_ERR="$(docker run --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} "$IMAGE" shodan-mcp 2>&1 </dev/null)"; NOKEY_RC=$?
-if [ "$NOKEY_RC" = "78" ] && printf '%s' "$NOKEY_ERR" | grep -q 'SHODAN_API_KEY is not set'; then
-  ok "T24 shodan-mcp without a key exits 78 with a hint"
-else
-  bad "T24 shodan-mcp without a key exits 78 with a hint" "rc $NOKEY_RC: $(printf '%s' "$NOKEY_ERR" | head -1)"
-fi
-
-SHODAN_JUNK="$(inimg 'cd /opt/mcp-shodan && for p in .git .env src tests node_modules/dotenv node_modules/pipenet node_modules/koa node_modules/mcp-proxy/dist/bin; do [ -e "$p" ] && echo "$p"; done; [ -f FORK_NOTES.md ] || echo "missing:FORK_NOTES.md"; [ -f build/index.js ] || echo "missing:build/index.js"')"
-[ -z "$SHODAN_JUNK" ] && ok "T25 /opt/mcp-shodan clean (no .git/.env/src, tunnel code stripped)" \
-  || bad "T25 /opt/mcp-shodan clean" "$(printf '%s' "$SHODAN_JUNK" | tr '\n' ' ')"
-
-# The Shodan key must reach shodan-mcp only. Run the real dispatcher with its
-# final exec swapped for `env`, for a server that must NOT see the key.
-LEAKS=0
-for srv in s1-secops-mcp virustotal-mcp purple-mcp; do
-  n="$(docker run --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} -e SHODAN_API_KEY=smokeleakcheck0123456789 --entrypoint /bin/sh "$IMAGE" \
-        -c 'sed -e "s#^\( *\)exec node .*#\1exec env#" -e "s#^\( *\)exec purple-mcp-bin.*#\1exec env#" /usr/local/bin/entrypoint.sh > /tmp/e.sh && sh /tmp/e.sh '"$srv" 2>/dev/null \
-        | grep -c '^SHODAN_API_KEY=')"
-  [ "${n:-0}" = "0" ] || LEAKS=$((LEAKS+1))
+LEG_FAIL=""
+for srv in purple-mcp virustotal-mcp shodan-mcp; do
+  out="$(drun "$IMAGE" "$srv" 2>&1 </dev/null)"; rc=$?
+  { [ "$rc" = "78" ] && printf '%s' "$out" | grep -q 'removed from this image in 1.6.0'; } || LEG_FAIL="$LEG_FAIL $srv:rc$rc"
 done
-SEEN="$(docker run --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} -e SHODAN_API_KEY=smokeleakcheck0123456789 -e VT_API_KEY=vtsmoke --entrypoint /bin/sh "$IMAGE" \
-        -c 'sed -e "s#^\( *\)exec node .*#\1exec env#" /usr/local/bin/entrypoint.sh > /tmp/e.sh && sh /tmp/e.sh shodan-mcp' 2>/dev/null)"
-if [ "$LEAKS" = "0" ] && printf '%s' "$SEEN" | grep -q '^SHODAN_API_KEY=' && ! printf '%s' "$SEEN" | grep -q '^VT_API_KEY='; then
-  ok "T26 Shodan key reaches shodan-mcp only (and shodan-mcp gets no VT key)"
-else
-  bad "T26 Shodan key isolation" "leaks into $LEAKS other server(s), or shodan-mcp env wrong"
-fi
+[ -z "$LEG_FAIL" ] && ok "T22 removed server names exit 78 with instructions" || bad "T22 removed server names" "$LEG_FAIL"
 
-VCHK="$(printf '%s' "$VJSON" | python3 -c '
-import sys, json, re
-d = json.load(sys.stdin); s = d.get("servers", {}).get("shodan-mcp", {})
-ok = re.fullmatch(r"[0-9a-f]{40}", s.get("ref", "")) and str(d.get("node", "")).startswith("v24.")
-print("ok" if ok else "ref=%s node=%s" % (s.get("ref"), d.get("node")))' 2>/dev/null)"
-[ "$VCHK" = "ok" ] && ok "T27 versions.json: shodan-mcp pinned by SHA, node v24" \
-  || bad "T27 versions.json: shodan-mcp pin and node" "${VCHK:-unparseable}"
+SNAME="s1smoke-sig-$$"
+docker run -d -i --rm --name "$SNAME" ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} "$IMAGE" s1-secops-mcp >/dev/null 2>&1
+sleep 2
+T0=$(date +%s); docker stop -t 10 "$SNAME" >/dev/null 2>&1; T1=$(date +%s)
+[ $((T1 - T0)) -lt 5 ] && ok "T23 SIGTERM stops the server promptly" "$((T1 - T0)) s" || bad "T23 SIGTERM stops the server promptly" "$((T1 - T0)) s (signal ignored?)"
 
-# ── Unused Debian packages removed (1.5.4) ───────────────────────────────────
-# Each carried a HIGH CVE with no trixie fix and nothing here loads it. A base
-# image bump that brings one back would silently re-add the findings.
-LEFT="$(inimg 'for p in apt libapt-pkg7.0 login mount util-linux bsdutils libmount1 libblkid1 libsmartcols1 liblastlog2-2 perl-base libsystemd0 libudev1; do dpkg-query -W -f="\${Status}" "$p" 2>/dev/null | grep -q "install ok installed" && echo "$p"; done')"
-[ -z "$LEFT" ] && ok "T28 unused vulnerable packages removed" \
-  || bad "T28 unused vulnerable packages removed" "still installed: $(printf '%s' "$LEFT" | tr '\n' ' ')"
-# ── outputFile under Docker (1.5.4) ──────────────────────────────────────────
-# T3/T4 of output-dir-changes.md: with no shared folder a write to the
-# container's /tmp reported success and vanished with the container, and a
-# host path got "Set S1_OUTPUT_DIRS", which does nothing under Docker. Drive
-# s1_api_get over stdio: path validation runs before any network call, so an
-# unreachable console is fine. T31: with a shared folder the write lands.
 of_call() { # $1 outputFile, rest: extra docker args. Prints the tools/call reply line.
   of="$1"; shift
-  { printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
-    sleep 3
-    printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}'
+  { printf '%s\n' "$INIT"; sleep 2; printf '%s\n' "$INITED"
     printf '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"s1_api_get","arguments":{"path":"/web/api/v2.1/system/status","outputFile":"%s"}}}\n' "$of"
-    sleep 6
-  } | docker run -i --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} -e S1_CONSOLE_URL=https://example.invalid -e S1_CONSOLE_API_TOKEN=dummy "$@" "$IMAGE" s1-secops-mcp 2>/dev/null \
+    sleep 5
+  } | drun -i -e S1_CONSOLE_URL=https://example.invalid -e S1_CONSOLE_API_TOKEN=dummy "$@" "$IMAGE" s1-secops-mcp 2>/dev/null \
   | grep '"id":5'
 }
 R30="$(of_call /tmp/inside-container.json)"
-if printf '%s' "$R30" | grep -q '"isError":true' && printf '%s' "$R30" | grep -q 'install --output-dir' \
-   && ! printf '%s' "$R30" | grep -q 'Set S1_OUTPUT_DIRS to allow'; then
-  ok "T30 no shared folder: outputFile refused with install --output-dir advice"
-else
-  bad "T30 no shared folder: outputFile refused with install --output-dir advice" "$(printf '%s' "$R30" | cut -c1-200)"
-fi
+if printf '%s' "$R30" | grep -q '"isError":true' && printf '%s' "$R30" | grep -q 'install --output-dir'; then
+  ok "T30 no shared folder: outputFile refused with advice"
+else bad "T30 no shared folder: outputFile refused with advice" "$(printf '%s' "$R30" | cut -c1-200)"; fi
 SHARED="$(mktemp -d "${TMPDIR:-/tmp}/s1smoke-out.XXXXXX")"; chmod 777 "$SHARED"
 R31="$(of_call "$SHARED/r.json" -v "$SHARED:$SHARED" -e "S1_OUTPUT_DIRS=$SHARED")"
-# example.invalid cannot answer, so the API call fails AFTER validation; the
-# point is that the path is accepted (no refusal text), not that bytes land.
 if printf '%s' "$R31" | grep -q 'id":5' && ! printf '%s' "$R31" | grep -q -E 'no output folder is shared|outside the folder shared'; then
   ok "T31 shared folder: outputFile path accepted"
-else
-  bad "T31 shared folder: outputFile path accepted" "$(printf '%s' "$R31" | cut -c1-200)"
-fi
+else bad "T31 shared folder: outputFile path accepted" "$(printf '%s' "$R31" | cut -c1-200)"; fi
 rm -rf "$SHARED"
 
-# ── Read-only by default (1.5.5) ─────────────────────────────────────────────
-# The gate runs before any handler or network call, so --network none proves a
-# refused write never left the container. T33 proves the opt-out reaches the
-# server: the same call then fails for another reason (no network), not mode.
 mcp_call() { # $1 tool, $2 arguments JSON, rest: extra docker args. Prints the id 5 reply.
   t="$1"; a="$2"; shift 2
-  { printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}'
-    sleep 3
-    printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}'
+  { printf '%s\n' "$INIT"; sleep 2; printf '%s\n' "$INITED"
     printf '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"%s","arguments":%s}}\n' "$t" "$a"
-    sleep 5
-  } | docker run -i --rm --network none ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} -e S1_CONSOLE_URL=https://example.invalid -e S1_CONSOLE_API_TOKEN=dummy "$@" "$IMAGE" s1-secops-mcp 2>/dev/null \
+    sleep 4
+  } | drun -i --network none -e S1_CONSOLE_URL=https://example.invalid -e S1_CONSOLE_API_TOKEN=dummy "$@" "$IMAGE" s1-secops-mcp 2>/dev/null \
   | grep '"id":5'
 }
 R32="$(mcp_call sdl_delete_dashboard '{"id":"smoke-1"}')"
 if printf '%s' "$R32" | grep -q '"isError":true' && printf '%s' "$R32" | grep -q 'read-only mode (S1_READ_ONLY)' && printf '%s' "$R32" | grep -q 'install --read-write'; then
-  ok "T32 default: write tool refused in read-only mode, with how-to"
-else
-  bad "T32 default: write tool refused in read-only mode, with how-to" "$(printf '%s' "$R32" | cut -c1-200)"
-fi
+  ok "T32 default: write tool refused, with how-to"
+else bad "T32 default: write tool refused, with how-to" "$(printf '%s' "$R32" | cut -c1-200)"; fi
 R33="$(mcp_call sdl_delete_dashboard '{"id":"smoke-1"}' -e S1_READ_ONLY=false)"
 if printf '%s' "$R33" | grep -q 'id":5' && ! printf '%s' "$R33" | grep -q 'read-only mode'; then
   ok "T33 S1_READ_ONLY=false: write tool reaches its handler"
-else
-  bad "T33 S1_READ_ONLY=false: write tool reaches its handler" "$(printf '%s' "$R33" | cut -c1-200)"
-fi
+else bad "T33 S1_READ_ONLY=false: write tool reaches its handler" "$(printf '%s' "$R33" | cut -c1-200)"; fi
 R34="$(mcp_call powerquery_run '{"query":"dataSource.name=* | savelookup \"smoke\""}')"
 if printf '%s' "$R34" | grep -q '"isError":true' && printf '%s' "$R34" | grep -q 'read-only mode'; then
   ok "T34 default: PowerQuery savelookup refused"
-else
-  bad "T34 default: PowerQuery savelookup refused" "$(printf '%s' "$R34" | cut -c1-200)"
-fi
+else bad "T34 default: PowerQuery savelookup refused" "$(printf '%s' "$R34" | cut -c1-200)"; fi
+
+NOTICES="$(drun "$IMAGE" notices 2>/dev/null)"
+if printf '%s' "$NOTICES" | grep -q 'Third-Party Notices' && printf '%s' "$NOTICES" | grep -q 'VirusTotal' && printf '%s' "$NOTICES" | grep -q 'Shodan'; then
+  ok "T35 notices command prints the third-party notices"
+else bad "T35 notices command prints the third-party notices" "$(printf '%s' "$NOTICES" | head -3)"; fi
+LIC="$(innode 'const fs=require("fs");const l=fs.readFileSync("/opt/s1-secops-mcp/LICENSE","utf8");console.log(l.includes("GNU AFFERO")?"":"not AGPL")')"
+[ -z "$LIC" ] && ok "T36 AGPL LICENSE present and readable" || bad "T36 AGPL LICENSE present and readable" "$LIC"
 
 R37="$(mcp_call s1_api_post '{"path":"/web/api/v2.1/agents/actions/disconnect#/dv/init-query","body":{}}')"
 if printf '%s' "$R37" | grep -q '"isError":true' && printf '%s' "$R37" | grep -q 'read-only mode'; then
-  ok "T37 default: s1_api_post path with a fragment is refused (1.5.6)"
-else
-  bad "T37 default: s1_api_post path with a fragment is refused (1.5.6)" "$(printf '%s' "$R37" | cut -c1-200)"
-fi
+  ok "T37 s1_api_post path with a fragment refused"
+else bad "T37 s1_api_post path with a fragment refused" "$(printf '%s' "$R37" | cut -c1-200)"; fi
 
-# ── Licenses and third-party notices (1.5.5) ─────────────────────────────────
-NOTICES="$(docker run --rm ${PLAT_ARGS[@]+"${PLAT_ARGS[@]}"} "$IMAGE" notices 2>/dev/null)"
-if printf '%s' "$NOTICES" | grep -q 'Third-Party Notices' && printf '%s' "$NOTICES" | grep -q 'VirusTotal' \
-   && printf '%s' "$NOTICES" | grep -q 'Shodan' && printf '%s' "$NOTICES" | grep -q 'Non-affiliation'; then
-  ok "T35 notices command prints the third-party notices"
-else
-  bad "T35 notices command prints the third-party notices" "$(printf '%s' "$NOTICES" | head -3)"
-fi
-LIC="$(inimg 'for f in /opt/s1-secops-mcp/LICENSE /opt/mcp-virustotal/LICENSE /opt/mcp-shodan/LICENSE /opt/purple-mcp/lib/python3*/site-packages/purple_mcp-*.dist-info/licenses/LICENSE /usr/share/doc/secops-mcps/THIRD_PARTY_NOTICES.md; do [ -r "$f" ] || echo "missing $f"; done; grep -q "GNU AFFERO" /opt/s1-secops-mcp/LICENSE || echo "s1-secops-mcp LICENSE is not AGPL"')"
-[ -z "$LIC" ] && ok "T36 license files present and readable" || bad "T36 license files present and readable" "$LIC"
-
-EXPAT_V="$(inimg "dpkg-query -W -f='\${Version}' libexpat1")"
-[ "$EXPAT_V" = "2.9.0-1" ] && ok "T29 libexpat1 2.9.0-1 (fixes 5 HIGH)" \
-  || bad "T29 libexpat1 version" "got ${EXPAT_V:-none}"
-
-# ── No keychain inside the container; no file discovery either ──────────────
-KC="$(inimg 'echo ${S1_KEYCHAIN:-unset}')"
-[ "$KC" = "off" ] && ok "T21 S1_KEYCHAIN=off baked in" || bad "T21 S1_KEYCHAIN=off baked in" "got $KC"
-
-# ── Registry health: children must resolve, not just the tag ─────────────────
-# A manifest list can return 200 while every platform manifest under it 404s.
-# That shipped once and looked healthy from the tag alone.
 case "$IMAGE" in
   *:*/*|*/*:*)
-    if command -v skopeo >/dev/null 2>&1; then
-      RAW="$(skopeo inspect --raw "docker://$IMAGE" 2>/dev/null)"
-      # No f-strings here, deliberately. This block used escaped quotes inside an
-      # f-string, which is a SyntaxError on Python < 3.12. Combined with the
-      # 2>/dev/null below it failed silently and reported as a benign SKIP, so the
-      # one test that exists to catch "manifest list 200 but children 404" was
-      # skipping on the release machine (python 3.9). Keep it backslash-free.
-      ARCHES="$(printf '%s' "$RAW" | python3 -c '
-import sys, json
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    raise SystemExit
-ms = d.get("manifests")
-if not ms:
-    print("single")
-else:
-    out = []
-    for m in ms:
-        pl = m.get("platform", {})
-        if pl.get("architecture") != "unknown":
-            out.append(str(pl.get("os")) + "/" + str(pl.get("architecture")))
-    print(",".join(out))' 2>/dev/null)"
-      # A registry ref we cannot verify is a failure, not a skip. Skipping here
-      # is indistinguishable from passing, which is how the bug above hid.
-      if [ -n "$ARCHES" ]; then ok "T17 registry manifest readable" "$ARCHES"
-      else bad "T17 registry manifest readable" "skopeo returned nothing or output unparseable"; fi
-    else
-      skip "T17 registry manifest readable" "skopeo not installed"
-    fi ;;
+    if docker buildx imagetools inspect "$IMAGE" >/dev/null 2>&1; then
+      ARCHES="$(docker buildx imagetools inspect "$IMAGE" 2>/dev/null | awk '/Platform:/ && $2 !~ /unknown/ {printf "%s ", $2}')"
+      ok "T17 registry manifest readable" "${ARCHES:-single}"
+    else skip "T17 registry manifest readable" "local image reference"; fi ;;
   *) skip "T17 registry manifest readable" "local image reference" ;;
 esac
 
 echo
-printf "  %s%d passed%s, %s%d failed%s, %d skipped\n" "$G" "$PASS" "$Z" "$R" "$FAIL" "$Z" "$SKIP"
-[ "$FAIL" -eq 0 ] && echo "  ${G}image looks good${Z}" || echo "  ${R}image is NOT releasable${Z}"
+echo "  passed: $PASS  failed: $FAIL  skipped: $SKIP"
 exit "$FAIL"

@@ -38,6 +38,7 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import time
 from typing import Any, Dict, List, Optional
 
@@ -94,27 +95,31 @@ def _build_query(
     variable (safer, because it's the one field that comes from the
     caller's untrusted natural-language input).
     """
+    # 1.6.0: the shape that answers for a console API token carries the same
+    # tenantDetails block at request.tenantDetails AND request.inputContent.tenantDetails
+    # (as the official Sentinel-One/purple-mcp sends it; live-verified 2026-11-05 through
+    # the MCP's purple_ai_query). Dynamic values go through json.dumps, which escapes them.
     async_literal = "true" if is_async else "false"
+    if view_selector not in VIEW_SELECTORS:
+        raise ValueError(f"view_selector must be one of {VIEW_SELECTORS}")
+    tenant = (
+        "tenantDetails: {\n"
+        f"      userDetails: {{ sessionId: null emailAddress: null userAgent: {json.dumps('s1-mgmt-skill')} buildDate: null buildHash: null }}\n"
+        f"      consoleDetails: {{ consoleId: null tenantId: null accountId: null siteId: null baseUrl: {json.dumps(base_url)} version: null }}\n"
+        "    }"
+    )
     return f"""query PurpleLaunch($input: String!) {{
   purpleLaunchQuery(request: {{
     isAsync: {async_literal}
     contentType: NATURAL_LANGUAGE
-    consoleDetails: {{ baseUrl: "{base_url}" version: "S" }}
-    conversation: {{ id: "{conversation_id}", messages: [], entitlements: null }}
+    {tenant}
+    conversation: {{ id: {json.dumps(conversation_id)}, messages: [], entitlements: null }}
     inputContent: {{
       userInput: $input
-      displayedTimeRange: {{ start: {start_ms}, end: {end_ms} }}
+      displayedTimeRange: {{ start: {int(start_ms)}, end: {int(end_ms)} }}
       viewSelector: {view_selector}
       contentType: NATURAL_LANGUAGE
-      userDetails: {{
-        accountId: ""
-        teamToken: ""
-        sessionId: "skill-session"
-        emailAddress: null
-        userAgent: "s1-mgmt-skill"
-        buildDate: null
-        buildHash: null
-      }}
+      {tenant}
     }}
   }}) {{
     result {{

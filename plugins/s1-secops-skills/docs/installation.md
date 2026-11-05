@@ -2,7 +2,9 @@
 
 Five steps from zero to a working PrincipalSOCAnalyst session: one command that installs the launcher, connects Claude Desktop and stores credentials; a restart; the plugin; the Cowork project; verify.
 
-All four MCP servers (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, and the optional `shodan-mcp`) ship in one Docker image, `sentinelone/secops-mcps`, version-locked together. On the host you need Docker plus the small launcher script that reads your keychain and starts the container. The MCP client config holds no secrets.
+The `s1-secops-mcp` server ships in one Docker image, `sentinelone/secops-mcps`. Besides PowerQuery, SDL, Mgmt Console, UAM and Hyperautomation tools, it carries Purple AI questions (`purple_ai_query`) and built-in VirusTotal and Shodan lookups (`ti_vt_*`, `ti_shodan_*`), which are listed when their API keys are stored. On the host you need Docker plus the small launcher script that reads your keychain and starts the container. The MCP client config holds no secrets.
+
+Other MCP servers (the VirusTotal hosted MCP, SentinelOne's open-source purple-mcp, another threat-intel provider) are optional and install from their official sources: [connect-optional-tools.md](./connect-optional-tools.md).
 
 The same steps in condensed form are in the [README Quick start (Docker)](../README.md#1-quick-start-docker). The full Docker reference (tags, troubleshooting flowchart, CLAUDE.md override, building from source) is [`docker.md`](./docker.md). Every credential, the resolution order and the security model are in [`credentials.md`](./credentials.md).
 
@@ -26,8 +28,8 @@ The same steps in condensed form are in the [README Quick start (Docker)](../REA
 | An OS keychain | macOS: built in. Linux: `secret-tool --version` plus an unlocked Secret Service (GNOME Keyring or KeePassXC). Windows: Credential Manager, built in. | Linux: `libsecret-tools` (Debian, Ubuntu) or `libsecret` (Fedora, Arch) |
 | SentinelOne API token | Settings → Users → Service Users | [Community guide](https://community.sentinelone.com/s/article/000005291) |
 | SDL Log Write Key (only for raw log ingest) | Singularity Data Lake → API Keys | [Community guide](https://community.sentinelone.com/s/article/000006763) |
-| VirusTotal API key | [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) | Free tier is sufficient |
-| Shodan API key (optional, Shodan MCP only) | [account.shodan.io](https://account.shodan.io), Account page, API key | A free ("oss") key reliably covers CVEDB, counts and filters. Host lookups and DNS return "Requires membership or higher" for some targets, and `shodan_search` needs a membership or higher. Use a membership or higher key for dependable results |
+| VirusTotal API key (optional, built-in `ti_vt_*` tools) | [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey) | A free key allows 4 lookups a minute and 500 a day. Some relationships (`related_threat_actors`, `similar_files`) need a premium key |
+| Shodan API key (optional, built-in `ti_shodan_*` tools) | [account.shodan.io](https://account.shodan.io), Account page, API key | The two tools spend no query credits. A free key may get "Requires membership or higher" for some hosts; a membership or higher key gives dependable results |
 | The launcher script | `mcp/docker/s1-secops-mcp-launch.sh` (macOS, Linux) or `mcp/docker/s1-secops-mcp-launch.ps1` (Windows) | Nothing to do: Step 1 downloads and installs it |
 
 A headless Linux host with no D-Bus session cannot use the keychain; pass values as environment variables from a secret manager instead (see [credentials.md](./credentials.md)).
@@ -57,18 +59,18 @@ From a clone of this repo, `sh mcp/docker/s1-secops-mcp-launch.sh install` (Wind
 What `install` does, in order (safe to re-run):
 
 1. Copies the launcher to `~/.local/bin/s1-secops-mcp-launch.sh` (Windows: `%USERPROFILE%\bin\s1-secops-mcp-launch.ps1`) and clears the download quarantine flag. On macOS this keeps it out of `~/Documents`, `~/Desktop` and `~/Downloads`, where privacy protection stops Claude Desktop's `/bin/sh` from running it (`Operation not permitted` in the MCP log).
-2. Adds `s1-secops-mcp`, `purple-mcp` and `virustotal` to `claude_desktop_config.json` (Step 2) with the launcher's real path, keeps every other server and setting, removes older entries that ran the launcher under another name, and saves the previous file as `claude_desktop_config.json.bak-<date>`. A config that is not valid JSON is left untouched and reported. It also adds the optional `shodan` entry, but only when `SHODAN_API_KEY` is already stored in the keychain or you pass `--with-shodan` (Windows: `-WithShodan`).
-3. Pulls `sentinelone/secops-mcps:1.5.7`, or warns that Docker is not running.
+2. Adds the `s1-secops-mcp` entry to `claude_desktop_config.json` (Step 2) with the launcher's real path, keeps every other server and setting, removes older `purple-mcp`, `virustotal` and `shodan` entries that ran this launcher (servers you added yourself with other commands are kept), and saves the previous file as `claude_desktop_config.json.bak-<date>`. A config that is not valid JSON is left untouched and reported.
+3. Pulls `sentinelone/secops-mcps:1.6.0`, or warns that Docker is not running.
 4. If no console token is stored for the profile, runs `setup`: it prompts for each value without echo and stores it in the OS keychain under service `sentinelone-mcp`, account `default:<NAME>`.
-5. Prints whether s1-secops-mcp is configured read-only (the default) or with write enabled.
+5. Prints whether s1-secops-mcp is configured read-only (the default) or with write enabled, and which built-in tools are on, for example `Built-in tools: Purple AI on, VirusTotal on, Shodan off (no SHODAN_API_KEY)`.
 
 > **Read-only by default (1.5.5 and later).** s1-secops-mcp refuses every tool call that would change your tenant (alert status, verdicts and notes, dashboards, parsers, lookup tables, Hyperautomation workflows, ingest) until you opt in. Investigation, hunting and reporting need nothing more. To deploy content or triage alerts from Claude, run `install` again with `--read-write` (Windows: `-ReadWrite`) and restart Claude Desktop. Read [read-only.md](./read-only.md) before you enable write.
 
-Values: `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `S1_HEC_INGEST_URL`, `S1_HEC_TOKEN` (SDL Log Write Key) and `S1_SCOPE`, plus `VIRUSTOTAL_API_KEY` (used by both the VirusTotal MCP and purple-mcp's threat intelligence tools), and the optional `SHODAN_API_KEY` for the Shodan MCP (press Enter to skip). What each one is for: [credentials.md → The values](./credentials.md#the-values).
+Values: `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `S1_HEC_INGEST_URL`, `S1_HEC_TOKEN` (SDL Log Write Key) and `S1_SCOPE`, plus the optional `VIRUSTOTAL_API_KEY` and `SHODAN_API_KEY` for the built-in threat-intel tools (press Enter to skip either). What each one is for: [credentials.md → The values](./credentials.md#the-values).
 
 To change values later, run `~/.local/bin/s1-secops-mcp-launch.sh setup` (Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 setup`, which stores them in Credential Manager). For a non-default profile, add `--profile P` (Windows: `-Profile P`) to `install` or `setup`. If you have Node and the `s1-secops-mcp` CLI, `s1-secops-mcp setup` does the same and also verifies each value by reading it back; `s1-secops-mcp status` shows where every value resolves from, masked.
 
-Skipped Shodan and want it later? Run the launcher's `setup` to store `SHODAN_API_KEY`, run `install` again so it writes the `shodan` entry, then restart Claude Desktop.
+Skipped a VirusTotal or Shodan key and want it later? Run the launcher's `setup` to store it, then restart Claude Desktop. No second `install` is needed: the tools are listed as soon as the server starts with the key.
 
 Upgrading from a `credentials.json` setup? Run `s1-secops-mcp setup --import-json /path/to/credentials.json`, check `s1-secops-mcp status`, then delete the file. See [credentials.md → Migrating](./credentials.md#migrating-from-a-credentials-file).
 
@@ -84,16 +86,16 @@ Run the installer in your own terminal, not through a `!` command in Claude Code
 mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install --claude-code
 ```
 
-`--claude-code` registers `s1-secops-mcp`, `purple-mcp` and `virustotal` with `claude mcp add-json --scope user` instead of editing the Claude Desktop config, and sets `MCP_TIMEOUT` to 120 s in `~/.claude/settings.json` (a larger value is kept; the setting applies to every MCP server in Claude Code). It is chosen automatically when `install` runs inside Claude Code, in which case the Claude Desktop config is left unchanged. Add `--read-write` for write access. Restart Claude Code; `/mcp` lists the servers.
+`--claude-code` registers `s1-secops-mcp` with `claude mcp add-json --scope user` instead of editing the Claude Desktop config, removes older `purple-mcp`, `virustotal` and `shodan` entries only when they run this launcher (a server of that name you installed yourself is kept), and sets `MCP_TIMEOUT` to 120 s in `~/.claude/settings.json` (a larger value is kept; the setting applies to every MCP server in Claude Code). It is chosen automatically when `install` runs inside Claude Code, in which case the Claude Desktop config is left unchanged. Add `--read-write` for write access. Restart Claude Code; `/mcp` lists `s1-secops-mcp`.
 
 - **WSL:** without a Linux Secret Service, the launcher stores and reads keys in Windows Credential Manager through `powershell.exe`, the same items the Windows launcher and Cowork use. Turn on **Docker Desktop → Settings → Resources → WSL integration** for your distro, and add yourself to the `docker` group (`sudo usermod -aG docker $USER`, then `wsl --shutdown`).
 - **Slow starts:** set `S1_LAUNCH_TRACE=/tmp/s1.trace` to log each launcher stage with timestamps (no values are logged).
 
 ### Claude Desktop
 
-Step 1 already did this. Quit Claude Desktop completely (macOS: Cmd+Q; Windows: also quit it from the system tray) and open it again: Claude Desktop starts the MCPs itself through the launcher (three, or four with Shodan), one container each, and removes them when it quits. Docker Desktop only needs to be running; do not start the image from Docker Desktop, because a container started there has no credentials and no connection to Claude.
+Step 1 already did this. Quit Claude Desktop completely (macOS: Cmd+Q; Windows: also quit it from the system tray) and open it again: Claude Desktop starts the MCP server itself through the launcher, in one container, and removes it when it quits. Docker Desktop only needs to be running; do not start the image from Docker Desktop, because a container started there has no credentials and no connection to Claude.
 
-The config lives at `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS and `%APPDATA%\Claude\claude_desktop_config.json` on Windows. A fresh Windows install from the claude.ai installer is an MSIX package that reads its own copy under `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\` instead, while **Settings → Developer → Edit config** still opens the `%APPDATA%` file. Some builds keep user data outside the package in `%LOCALAPPDATA%\Claude-Data\<package id>\claude_desktop_config.json`. `install` writes all three locations, so any of these installs picks up the servers, and it warns when it finds no existing config. If the servers still do not appear after a restart, open **Edit config**, note the path of the file it opens, and run `install -ConfigPath "<that path>"`. If you would rather have one file that **Edit config** also opens, uninstall the MSIX build and install with the classic `Claude Setup.exe`, which reads `%APPDATA%\Claude\`; re-run `install` afterwards (tested on Windows 11). To see what `install` wrote, or to configure another MCP client by hand, print the entries for this machine:
+The config lives at `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS and `%APPDATA%\Claude\claude_desktop_config.json` on Windows. A fresh Windows install from the claude.ai installer is an MSIX package that reads its own copy under `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\` instead, while **Settings → Developer → Edit config** still opens the `%APPDATA%` file. Some builds keep user data outside the package in `%LOCALAPPDATA%\Claude-Data\<package id>\claude_desktop_config.json`. `install` writes all three locations, so any of these installs picks up the server, and it warns when it finds no existing config. If the server still does not appear after a restart, open **Edit config**, note the path of the file it opens, and run `install -ConfigPath "<that path>"`. If you would rather have one file that **Edit config** also opens, uninstall the MSIX build and install with the classic `Claude Setup.exe`, which reads `%APPDATA%\Claude\`; re-run `install` afterwards (tested on Windows 11). To see what `install` wrote, or to configure another MCP client by hand, print the entry for this machine:
 
 ```bash
 ~/.local/bin/s1-secops-mcp-launch.sh config
@@ -106,36 +108,24 @@ On macOS the output looks like this, with your own home folder in place of `<hom
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.7", "s1-secops-mcp"]
-    },
-    "purple-mcp": {
-      "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.7", "purple-mcp"]
-    },
-    "virustotal": {
-      "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.7", "virustotal-mcp"]
-    },
-    "shodan": {
-      "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.7", "shodan-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.6.0", "s1-secops-mcp"]
     }
   }
 }
 ```
 
-The `shodan` entry is present only when `SHODAN_API_KEY` is stored or `--with-shodan` was passed. With `--read-write` (Windows: `-ReadWrite`), the `s1-secops-mcp` entry also carries `"env": {"S1_READ_ONLY": "false"}`; see [read-only.md](./read-only.md).
+With `--read-write` (Windows: `-ReadWrite`), the `s1-secops-mcp` entry also carries `"env": {"S1_READ_ONLY": "false"}`; see [read-only.md](./read-only.md).
 
 Copy what the command prints, not this sample. The config is JSON, which does not expand `~`, `$HOME` or `%USERPROFILE%`, so the path has to be the exact one for your account; a hand-typed `/Users/you/...` is the most common reason a server stays red.
 
-On Windows the entries use the PowerShell launcher (`powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 config` prints them):
+On Windows the entry uses the PowerShell launcher (`powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 config` prints it):
 
 ```json
 "s1-secops-mcp": {
   "command": "powershell.exe",
   "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
            "<home>\\bin\\s1-secops-mcp-launch.ps1",
-           "-Image", "sentinelone/secops-mcps:1.5.7", "s1-secops-mcp"]
+           "-Image", "sentinelone/secops-mcps:1.6.0", "s1-secops-mcp"]
 }
 ```
 
@@ -147,14 +137,13 @@ Optional: to get `outputFile` results (bulk query exports, binary downloads, wor
 
 **Notes:**
 
-- purple-mcp reads the same `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN`; the image entrypoint maps them onto `PURPLEMCP_CONSOLE_BASE_URL` and `PURPLEMCP_CONSOLE_TOKEN`.
-- purple-mcp also receives the stored `VIRUSTOTAL_API_KEY`, which the entrypoint maps to `PURPLEMCP_VT_API_KEY` for its threat intelligence tools. No separate setup: the one key you stored in Step 1 serves both the VirusTotal MCP and purple-mcp. Which server to use for which task: [mcp-tools.md → Threat intelligence: which server to use](./mcp-tools.md#threat-intelligence-which-server-to-use).
+- `purple_ai_query` uses the stored console URL and token; it needs no extra key. It returns either a written answer or a PowerQuery that Purple AI suggests but does not run (run it with `powerquery_run`).
+- The built-in VirusTotal tools (`ti_vt_lookup`, `ti_vt_relationship`) use the stored `VIRUSTOTAL_API_KEY`, and the Shodan tools (`ti_shodan_host`, `ti_shodan_dns`) use `SHODAN_API_KEY`. Each pair is listed only when its key is stored. Tool details: [mcp-tools.md](./mcp-tools.md).
 - Region URLs vary. Look up your region in the [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961) article.
-- The VirusTotal MCP shown is one example. Replace it with your organisation's approved threat intel MCP if different.
-- The Shodan MCP is optional exposure intelligence (open ports, services, banners, TLS/JARM, host CVEs) that complements VirusTotal; it does not replace it. It receives only `SHODAN_API_KEY`, speaks stdio only, and reaches only `api.shodan.io` and `cvedb.shodan.io`. Tools and credit costs: [mcp-tools.md → Shodan MCP](./mcp-tools.md#shodan-mcp-optional).
-- Every install is pinned. There is no `:latest`, and the repository has immutable tags enabled, so `1.5.7` always means the same bytes.
-- s1-secops-mcp is read-only by default; purple-mcp, VirusTotal and Shodan are not affected by that setting. Details: [read-only.md](./read-only.md).
-- Third-party components, licenses and service terms: [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md), or `docker run --rm sentinelone/secops-mcps:1.5.7 notices`.
+- Your organisation uses a different threat-intel provider? Add that provider's MCP from its official source next to `s1-secops-mcp`: [connect-optional-tools.md](./connect-optional-tools.md). The skills are written provider-agnostic.
+- Every install is pinned. There is no `:latest`, and the repository has immutable tags enabled, so `1.6.0` always means the same bytes.
+- s1-secops-mcp is read-only by default. `purple_ai_query` and the built-in threat-intel tools are read-only, so they always run. Details: [read-only.md](./read-only.md).
+- Third-party components, licenses and service terms: [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md), or `docker run --rm sentinelone/secops-mcps:1.6.0 notices`.
 
 ---
 
@@ -183,7 +172,7 @@ If the plugin upload fails, install individual `.skill` files from the same `dis
 2. Name it `PrincipalSOCAnalyst`
 3. Click **Select Folder** and choose any folder on your machine (this becomes the project workspace)
 4. Optionally drop a copy of [`CLAUDE.md`](../CLAUDE.md) from this repo into the project folder. The image ships a default persona at `/etc/sentinelone/CLAUDE.md`, so this step is only needed when you want to customise it. To point the container at your own copy, re-run `install --claude-md <path to your CLAUDE.md>` (Windows: `-ClaudeMd`), which sets `S1_CLAUDE_MD_PATH` in the `s1-secops-mcp` entry with the full path (the launchers mount it read-only), see [docker.md → CLAUDE.md customization](./docker.md#claudemd-customization).
-5. Confirm `s1-secops-skills` appears under **Personal plugins**, and that `s1-secops-mcp`, `purple-mcp`, your threat intel MCP and, if installed, `shodan` appear under **MCP Servers**
+5. Confirm `s1-secops-skills` appears under **Personal plugins**, and that `s1-secops-mcp` (plus any optional server you added) appears under **MCP Servers**
 
 Do not put tokens in the project folder. The skills reach the tenant only through the MCP servers, which read the keychain; the Cowork sandbox itself cannot reach `*.sentinelone.net`.
 
@@ -202,21 +191,21 @@ Run a smoke test to confirm everything is wired up:
 smoke test s1 secops skills
 ```
 
-Claude verifies connectivity to `s1-secops-mcp`, `purple-mcp`, and the threat intel MCP, confirms each skill is loaded, and reports any missing credentials or unreachable endpoints.
+Claude verifies connectivity to `s1-secops-mcp` and its built-in tools (and any optional MCP you added), confirms each skill is loaded, and reports any missing credentials or unreachable endpoints.
 
 You can also test the image straight from a terminal, with no Claude Desktop involved:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.5.7 versions   # what is inside the image
+docker run --rm sentinelone/secops-mcps:1.6.0 versions   # what is inside the image
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
-  | docker run -i --rm sentinelone/secops-mcps:1.5.7 s1-secops-mcp
+  | docker run -i --rm sentinelone/secops-mcps:1.6.0 s1-secops-mcp
 ```
 
-The second command needs no credentials. It returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"`, and stderr shows `Tools: 35 registered` and a `Mode:` line (`READ-ONLY` by default). The `version` it reports is the bundled MCP's own version, not the image tag.
+The second command needs no credentials. It returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"`, and stderr shows a `Threat intel:` line, a `Tools:` line (36 listed of 40 registered with no threat-intel keys; 38 with a VirusTotal key, 40 with both) and a `Mode:` line (`READ-ONLY` by default). The `version` it reports is the bundled MCP's own version, not the image tag.
 
 If anything is red, check:
 
-- Every installed MCP (three, or four with Shodan) is listed and green under MCP Servers in the Cowork session panel
+- `s1-secops-mcp` is listed and green under MCP Servers in the Cowork session panel. A red `purple-mcp`, `virustotal` or `shodan` entry is left over from before 1.6.0: run the [Step 1](#step-1-install-the-launcher-and-store-credentials) command again to remove it
 - Docker is running: `docker info | head -3`
 - On macOS, the MCP log (`~/Library/Logs/Claude/mcp-server-<name>.log`) does not show `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted`. If it does, the config points at a launcher under `~/Documents`, `~/Desktop` or `~/Downloads`; run the [Step 1](#step-1-install-the-launcher-and-store-credentials) command again, which installs it to `~/.local/bin/` and rewrites the config
 - The MCP log does not show `ENOENT` or `No such file or directory` for the launcher. If it does, the `command` path was typed by hand and does not exist; run the Step 1 command again, which writes your real path
@@ -224,7 +213,7 @@ If anything is red, check:
 - The API token has the right scope (Viewer or higher for read; IR Team or higher for response actions)
 - A tool reply that starts `s1-secops-mcp is in read-only mode (S1_READ_ONLY)` is the expected default, not a fault. Enable write only if you need it: [read-only.md](./read-only.md)
 
-Full troubleshooting flowchart and per-MCP log tailing: [docker.md → Troubleshooting](./docker.md#troubleshooting).
+Full troubleshooting flowchart and MCP log tailing: [docker.md → Troubleshooting](./docker.md#troubleshooting).
 
 To confirm the active plugin version: `which version of s1-secops-skills is installed?`
 
@@ -232,13 +221,13 @@ To confirm the active plugin version: `which version of s1-secops-skills is inst
 
 ## Upgrading
 
-**MCP servers** (`s1-secops-mcp`, `purple-mcp`, `virustotal`, and `shodan` if installed): the config pins `1.5.7`, so restarting Claude Desktop keeps that exact image. To upgrade, run the [Step 1](#step-1-install-the-launcher-and-store-credentials) command again: it downloads the current launcher, whose default image is the current release, rewrites the entries with that tag (adding `shodan` when its key is stored), pulls the image and keeps your stored credentials. Pass `--read-write` (Windows: `-ReadWrite`) again if you use write access; without it the rewritten entry is read-only. To move to a specific tag instead, run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:<tag>`. Then restart Claude Desktop.
+**MCP server** (`s1-secops-mcp`): the config pins `1.6.0`, so restarting Claude Desktop keeps that exact image. To upgrade, run the [Step 1](#step-1-install-the-launcher-and-store-credentials) command again: it downloads the current launcher, whose default image is the current release, rewrites the entry with that tag, removes entries from older releases that ran this launcher, pulls the image and keeps your stored credentials. Pass `--read-write` (Windows: `-ReadWrite`) again if you use write access; without it the rewritten entry is read-only. To move to a specific tag instead, run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:<tag>`. Then restart Claude Desktop.
 
 **Plugin**: download the new `.plugin` from [the ai-siem `dist/` folder](../dist/), open Cowork → Customize → Browse plugins, upload, click **Replace** when prompted.
 
 **CLAUDE.md**: if you customised it, your project-folder copy stays as-is. To pick up upstream improvements, diff against the latest [`CLAUDE.md`](../CLAUDE.md) in this repo.
 
-Moving to 1.5.5 makes s1-secops-mcp read-only by default: see [upgrading.md → 1.5.4 to 1.5.5](./upgrading.md#154-to-155). Moving from 1.4.x to 1.5.0 is a breaking change (no `credentials.json`, no HTTP transport, Docker launcher instead of `-e`). Step-by-step instructions, including what to delete from an older config: [upgrading.md](./upgrading.md).
+Moving to 1.6.0 replaces the `purple-mcp`, `virustotal` and `shodan` entries with built-in tools and renames some tools: see [upgrading.md → 1.5.7 to 1.6.0](./upgrading.md#157-to-160). Moving to 1.5.5 makes s1-secops-mcp read-only by default: see [upgrading.md → 1.5.4 to 1.5.5](./upgrading.md#154-to-155). Moving from 1.4.x to 1.5.0 is a breaking change (no `credentials.json`, no HTTP transport, Docker launcher instead of `-e`). Step-by-step instructions, including what to delete from an older config: [upgrading.md](./upgrading.md).
 
 ---
 
@@ -250,10 +239,10 @@ Moving to 1.5.5 makes s1-secops-mcp read-only by default: see [upgrading.md → 
 - **`S1_OUTPUT_DIR`** (Docker launcher) / **`S1_OUTPUT_DIRS`** (server): where `outputFile` may write. The server default is your home and temp directories. Under Docker set it with `install --output-dir`; `S1_OUTPUT_DIRS` in the client config does not reach the container. Without it, files the server writes stay inside the container and are lost when it exits, so from 1.5.4 the server in the image refuses `outputFile` and says to run `install --output-dir`.
 - **`S1_CLAUDE_MD_PATH`:** points the server at a custom CLAUDE.md (both the macOS/Linux and the Windows launcher mount the host file read-only into the container).
 - **`S1_KEYCHAIN_TIMEOUT`** (sh launcher, seconds, default 15) / **`S1_KEYCHAIN_TIMEOUT_MS`** (native server and Python clients, milliseconds, default 15000): how long a keychain read may wait before it is treated as unavailable.
-- **`S1_MCP_IMAGE`:** the launcher's default image when no `--image` is passed (`sentinelone/secops-mcps:1.5.7`).
+- **`S1_MCP_IMAGE`:** the launcher's default image when no `--image` is passed (`sentinelone/secops-mcps:1.6.0`).
 - **`S1_READ_ONLY`:** read-only mode for s1-secops-mcp. Unset or `true` (the default) refuses every call that changes the tenant; `false` enables write. Set it with `install --read-write` (Windows: `-ReadWrite`), the `.mcpb` extension's **Read-only mode (recommended)** setting, or `"S1_READ_ONLY": "false"` in the `env` block for a Node install. It lives in the client config, not the keychain. Full reference: [read-only.md](./read-only.md).
 
-The two values you always need are `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN`, which between them authorise parser and dashboard deployment and every other SDL operation; add `S1_HEC_INGEST_URL` for alert ingest and `S1_HEC_TOKEN` for raw log ingest.
+The two values you always need are `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN`, which between them authorise parser and dashboard deployment and every other SDL operation; add `S1_HEC_INGEST_URL` for alert ingest and `S1_HEC_TOKEN` for raw log ingest. `VIRUSTOTAL_API_KEY` and `SHODAN_API_KEY` are optional and turn on the built-in threat-intel tools.
 
 ---
 

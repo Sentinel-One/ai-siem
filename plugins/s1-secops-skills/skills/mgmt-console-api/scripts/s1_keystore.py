@@ -47,12 +47,14 @@ KEY_NAMES: Tuple[str, ...] = (
     "S1_HEC_TOKEN",
     "S1_SCOPE",
     "VIRUSTOTAL_API_KEY",
+    "SHODAN_API_KEY",
 )
 
 SECRET_NAMES = frozenset({
     "S1_CONSOLE_API_TOKEN",
     "S1_HEC_TOKEN",
     "VIRUSTOTAL_API_KEY",
+    "SHODAN_API_KEY",
 })
 
 # Environment variables checked for each name, in order.
@@ -63,6 +65,7 @@ ENV_ALIASES: Dict[str, Tuple[str, ...]] = {
     "S1_HEC_TOKEN": ("S1_HEC_TOKEN",),
     "S1_SCOPE": ("S1_SCOPE", "SDL_S1_SCOPE"),
     "VIRUSTOTAL_API_KEY": ("VIRUSTOTAL_API_KEY", "VT_API_KEY"),
+    "SHODAN_API_KEY": ("SHODAN_API_KEY",),
 }
 
 _PROFILE_RE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")

@@ -6,7 +6,7 @@
 .DESCRIPTION
   Reads Generic credentials written by `s1-secops-mcp setup` (or by this
   script's `setup` command) and hands them to the container over stdin
-  (entrypoint S1_SECRETS_STDIN=1). Secrets never appear on a command line, in
+  (S1_SECRETS_STDIN=1, read by the server). Secrets never appear on a command line, in
   the MCP client config, or in `docker inspect`.
 
   Credential naming matches @napi-rs/keyring (keyring-rs) on Windows:
@@ -14,25 +14,25 @@
     Type = CRED_TYPE_GENERIC, blob = UTF-16LE.
 
   Usage:
-    s1-secops-mcp-launch.ps1 [-Image IMG] [-Profile P] <server> [server args...]
-      server: s1-secops-mcp | purple-mcp | virustotal-mcp | shodan-mcp
+    s1-secops-mcp-launch.ps1 [-Image IMG] [-Profile P] s1-secops-mcp [server args...]
     s1-secops-mcp-launch.ps1 setup  [-Profile P]
     s1-secops-mcp-launch.ps1 status [-Profile P]
-    s1-secops-mcp-launch.ps1 versions | help      image versions / entrypoint help
+    s1-secops-mcp-launch.ps1 versions | help      image versions / image help
     s1-secops-mcp-launch.ps1 notices              third-party notices and licenses
-    s1-secops-mcp-launch.ps1 install [options]   copy to $HOME\bin, pull the image, add the
-                                                 servers to the Claude Desktop config
+    s1-secops-mcp-launch.ps1 install [options]   copy to $HOME\bin, pull the image, add
+                                                 s1-secops-mcp to the Claude Desktop config
                                                  (backup kept), then run setup if no token
     s1-secops-mcp-launch.ps1 config  [options]   print the mcpServers JSON with this
                                                  script's absolute path (other clients)
       options: -Image IMG  -Profile P  -OutputDir DIR  -ClaudeMd FILE
-               -WithShodan (add the optional shodan entry even with no key stored)
                -ReadWrite (allow s1-secops-mcp tools that change the tenant;
                            read-only is the default, see docs/read-only.md)
                -ConfigPath FILE (install only; default %APPDATA%\Claude\claude_desktop_config.json)
 
-  Shodan is optional: install/config write the "shodan" entry only when
-  SHODAN_API_KEY is stored for the profile, or with -WithShodan.
+  From 1.6.0 the image runs one server, s1-secops-mcp. Purple AI, VirusTotal and
+  Shodan are built-in tools: the VirusTotal and Shodan tools appear when
+  VIRUSTOTAL_API_KEY / SHODAN_API_KEY are stored (setup). install removes older
+  purple-mcp, virustotal and shodan entries that ran this launcher.
 
   Environment: S1_MCP_IMAGE, S1_PROFILE, S1_OUTPUT_DIR (mounted at /output),
   S1_CLAUDE_MD_PATH (host CLAUDE.md, mounted read-only), S1_READ_ONLY (passed
@@ -48,12 +48,12 @@
   language mode, use the native server with `s1-secops-mcp setup` instead.
 #>
 param(
-  [string]$Image = $(if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.7' }),
+  [string]$Image = $(if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.6.0' }),
   [Alias('Profile')][string]$KeyProfile = $(if ($env:S1_PROFILE) { $env:S1_PROFILE } else { 'default' }),
   [string]$OutputDir,
   [string]$ClaudeMd,
   [string]$ConfigPath,
-  [switch]$WithShodan,
+  [switch]$WithShodan,   # accepted for old scripts; no effect from 1.6.0 (Shodan is built in)
   [switch]$ReadWrite,
   [Parameter(Position = 0, Mandatory = $true)][string]$Command,
   [Parameter(Position = 1, ValueFromRemainingArguments = $true)][string[]]$ServerArgs
@@ -152,13 +152,9 @@ function ConvertTo-WinArg([string]$a) {
   '"' + ([regex]::Replace($a, '(\\*)"', { param($m) $m.Groups[1].Value * 2 + '\"' }) -replace '(\\+)$', '$1$1') + '"'
 }
 
-# Shodan is optional: its entry is written only when a key is stored for this
-# profile or -WithShodan was given (without a key the server refuses to start).
-function Test-WantShodan {
-  if ($WithShodan) { return $true }
-  try { return [bool](Get-Kc 'SHODAN_API_KEY') } catch { return $false }
-}
-# The Claude Desktop entries for launcher $Launcher. No secrets: paths and names only.
+# The Claude Desktop entry for launcher $Launcher. No secrets: paths and names only.
+# One server from 1.6.0; the merge below removes older purple-mcp, virustotal and
+# shodan entries that ran this launcher.
 function New-S1Entries([string]$Launcher) {
   $pre = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Launcher, '-Image', $Image)
   if ($KeyProfile -ne 'default') { $pre += @('-Profile', $KeyProfile) }
@@ -169,16 +165,11 @@ function New-S1Entries([string]$Launcher) {
   # Read-only is the default; only -ReadWrite writes the opt-out.
   if ($ReadWrite) { $envMap['S1_READ_ONLY'] = 'false' }
   if ($envMap.Count) { $s1['env'] = $envMap }
-  $entries = [ordered]@{
-    's1-secops-mcp' = $s1
-    'purple-mcp'    = [ordered]@{ command = 'powershell.exe'; args = @($pre + 'purple-mcp') }
-    'virustotal'    = [ordered]@{ command = 'powershell.exe'; args = @($pre + 'virustotal-mcp') }
-  }
-  if (Test-WantShodan) { $entries['shodan'] = [ordered]@{ command = 'powershell.exe'; args = @($pre + 'shodan-mcp') } }
-  $entries
+  [ordered]@{ 's1-secops-mcp' = $s1 }
 }
 
 if ($Command -in 'install', 'config') {
+  if ($WithShodan) { Write-Err 's1-secops-mcp-launch: -WithShodan is no longer needed: Shodan is built into s1-secops-mcp and is on when SHODAN_API_KEY is stored (setup).' }
   if (-not $PSCommandPath) { throw "cannot find this script on disk. Save it to a file first, then run: powershell -NoProfile -ExecutionPolicy Bypass -File <file> $Command" }
   if ($ConfigPath -and $Command -ne 'install') { throw '-ConfigPath is for install only' }
   if ($OutputDir) {
@@ -244,8 +235,9 @@ if ($Command -in 'install', 'config') {
     if ($cfg -isnot [System.Management.Automation.PSCustomObject]) { throw "config not changed: $t is not a JSON object" }
     $servers = $cfg.mcpServers
     if ($servers -isnot [System.Management.Automation.PSCustomObject]) { $servers = [pscustomobject]@{} }
-    # Keep every other server and setting, replace our three entries, and drop
-    # older entries that ran this launcher under another name (e.g. "virustotal-mcp").
+    # Keep every other server and setting, replace our entry, and drop older
+    # entries that ran this launcher under another name (purple-mcp, virustotal,
+    # shodan before 1.6.0; virustotal-mcp earlier still).
     foreach ($p in @($servers.PSObject.Properties)) {
       if (-not $new.Contains($p.Name) -and (($p.Value | ConvertTo-Json -Depth 20 -Compress) -match 's1-secops-mcp-launch')) {
         $servers.PSObject.Properties.Remove($p.Name); Write-Err "removed old entry $($p.Name) from $t"
@@ -270,7 +262,7 @@ if ($Command -in 'install', 'config') {
     else { Write-Err 's1-secops-mcp is configured read-only (the default): tools that change the tenant are refused. To allow them, run install again with -ReadWrite.' }
   }
   if (-not $ConfigPath -and $existed -eq 0) {
-    Write-Err 'warning: no existing Claude Desktop config was found, so new ones were created. If the servers do not appear under Settings > Developer after a restart, open Settings > Developer > Edit Config, note the path of the file it opens, and run install again with -ConfigPath "<that path>".'
+    Write-Err 'warning: no existing Claude Desktop config was found, so new ones were created. If s1-secops-mcp does not appear under Settings > Developer after a restart, open Settings > Developer > Edit Config, note the path of the file it opens, and run install again with -ConfigPath "<that path>".'
   }
 
   # Windows PowerShell 5.1 turns a native command's redirected stderr into
@@ -310,9 +302,12 @@ if ($Command -in 'install', 'config') {
     }
     else { Write-Err "Next: store your credentials with: powershell -NoProfile -ExecutionPolicy Bypass -File `"$dest`" setup" }
   }
-  if (Test-WantShodan) { Write-Err 'Shodan: entry added (optional server).' }
-  else { Write-Err "Shodan: skipped (optional). To add it: run setup (enter SHODAN_API_KEY), then install again." }
-  Write-Err 'Done. Quit Claude Desktop completely (also from the system tray) and open it again: it starts the MCPs itself. Nothing needs starting in Docker Desktop.'
+  try {
+    $vt = if (Get-Kc 'VIRUSTOTAL_API_KEY') { 'on' } else { 'off (no VIRUSTOTAL_API_KEY)' }
+    $sh = if (Get-Kc 'SHODAN_API_KEY') { 'on' } else { 'off (no SHODAN_API_KEY)' }
+    Write-Err "Built-in tools: Purple AI on, VirusTotal $vt, Shodan $sh. To add a key: run setup, then restart Claude Desktop."
+  } catch { Write-Err 'Built-in tools: Purple AI on; the VirusTotal and Shodan tools appear once their keys are stored (run setup).' }
+  Write-Err 'Done. Quit Claude Desktop completely (also from the system tray) and open it again: it starts s1-secops-mcp itself. Nothing needs starting in Docker Desktop.'
   exit 0
 }
 
@@ -347,10 +342,12 @@ switch -Regex ($Command) {
     exit 0
   }
   '^(versions|help|notices)$' { & docker run --rm $Image $Command; exit $LASTEXITCODE }
-  '^(s1-secops-mcp|s1)$' { $Names = 'S1_CONSOLE_URL','S1_CONSOLE_API_TOKEN','S1_HEC_INGEST_URL','S1_HEC_TOKEN','S1_SCOPE' }
-  '^(purple-mcp|purple)$' { $Names = 'S1_CONSOLE_URL','S1_CONSOLE_API_TOKEN','VIRUSTOTAL_API_KEY' }  # VT key -> PURPLEMCP_VT_API_KEY
-  '^(virustotal-mcp|virustotal|vt)$' { $Names = @('VIRUSTOTAL_API_KEY') }
-  '^(shodan-mcp|shodan)$' { $Names = @('SHODAN_API_KEY') }
+  '^(s1-secops-mcp|s1)$' { $Names = 'S1_CONSOLE_URL','S1_CONSOLE_API_TOKEN','S1_HEC_INGEST_URL','S1_HEC_TOKEN','S1_SCOPE','VIRUSTOTAL_API_KEY','SHODAN_API_KEY' }
+  '^(purple-mcp|purple|virustotal-mcp|virustotal|vt|shodan-mcp|shodan)$' {
+    # Removed in 1.6.0. A client still configured for the old entry gets one clear log line.
+    Write-Err "s1-secops-mcp-launch: '$Command' was removed in 1.6.0. Purple AI, VirusTotal and Shodan are now built-in tools of s1-secops-mcp. Run install again to update your MCP client config, then restart the client."
+    exit 78
+  }
   default { throw "unknown server '$Command'" }
 }
 
@@ -358,8 +355,9 @@ $payload = New-Object System.Text.StringBuilder
 $missing = @()
 foreach ($n in $Names) { $v = Get-Kc $n; if ($v) { [void]$payload.Append("$n=$v`n") } else { $missing += $n } }
 [void]$payload.Append("`n")
-# Warn only for what a server cannot run without (as the sh launcher does).
-$required = $missing | Where-Object { $_ -in 'S1_CONSOLE_API_TOKEN','VIRUSTOTAL_API_KEY' }
+# Warn only for what the server cannot run without (as the sh launcher does): the
+# VirusTotal and Shodan keys are optional, their tools are simply not listed.
+$required = $missing | Where-Object { $_ -in 'S1_CONSOLE_API_TOKEN' }
 if ($required) { Write-Err "s1-secops-mcp-launch: warning: not in Credential Manager for profile ${KeyProfile}: $($required -join ', ') (run: s1-secops-mcp-launch.ps1 setup)" }
 
 $cname = "s1mcp-$PID-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
@@ -391,7 +389,7 @@ if ($psi.PSObject.Properties.Name -contains 'ArgumentList' -and $null -ne $psi.A
 $psi.UseShellExecute = $false
 $psi.RedirectStandardInput = $true
 # No UTF-8 BOM in front of the payload (.NET Framework can write one when the
-# console input code page is 65001); the entrypoint also strips one defensively.
+# console input code page is 65001); the server also strips one defensively.
 try { [Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false) } catch { }
 $proc = [System.Diagnostics.Process]::Start($psi)
 $utf8 = New-Object System.Text.UTF8Encoding($false)

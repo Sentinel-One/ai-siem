@@ -126,13 +126,13 @@ class NotesAndHistoryComeFirst(unittest.TestCase):
     def test_both_calls_are_named(self):
         for text, where in ((SKILL, "SKILL.md"),
                             (DISCIPLINE, "evidence-and-verdict-discipline.md")):
-            self.assertIn("get_alert_notes", text, where)
-            self.assertIn("get_alert_history", text, where)
+            self.assertIn("uam_get_alert", text, where)
+            self.assertRegex(text, r"(?i)notes and history", where)
 
     def test_they_are_ordered_before_the_investigation(self):
         self.assertRegex(
-            DISCIPLINE, r"(?i)check `get_alert_notes` and `get_alert_history` "
-                        r"FIRST",
+            DISCIPLINE, r"(?i)check the alert's notes and history "
+                        r"\(`uam_get_alert` returns both\)\s+FIRST",
             "the ordering (notes and history BEFORE investigating) is gone; "
             "read late, an MDR verdict arrives after the analysis has already "
             "committed to a conclusion")

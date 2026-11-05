@@ -8,8 +8,8 @@
 #
 # The Dockerfile COPYs only: s1-secops-mcp/package.json, s1-secops-mcp/index.js,
 # s1-secops-mcp/lib/, s1-secops-mcp/tools/, s1-secops-mcp/scripts/, CLAUDE.md,
-# LICENSE, THIRD_PARTY_NOTICES.md and docker/entrypoint.sh. Nothing below may
-# match those paths.
+# LICENSE, THIRD_PARTY_NOTICES.md and docker/container-entry.mjs. Nothing below
+# may match those paths.
 
 .git
 .github

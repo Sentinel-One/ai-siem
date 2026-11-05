@@ -20,6 +20,7 @@ import { tools as mgmtTools }       from '../tools/mgmt-console.js';
 import { tools as sdlTools }        from '../tools/sdl-api.js';
 import { tools as haTools }         from '../tools/hyperautomation.js';
 import { tools as uamIngestTools }  from '../tools/uam-ingest.js';
+import { tools as tiTools }         from '../tools/threat-intel.js';
 import { getCreds, hasS1Creds, hasSdlCreds, loadCredentials } from './credentials.js';
 import { hasHecCreds } from './uam-ingest.js';
 import { redact } from './redact.js';
@@ -49,7 +50,12 @@ const SOC_CONTEXT = loadSocContext();
 
 // ─── Tool registry ────────────────────────────────────────────────────────────
 
-export const ALL_TOOLS = [...pqTools, ...mgmtTools, ...sdlTools, ...haTools, ...uamIngestTools];
+export const ALL_TOOLS = [...pqTools, ...mgmtTools, ...sdlTools, ...haTools, ...uamIngestTools, ...tiTools];
+
+/** A tool with an `available()` check (the threat-intel tools) is listed only when it returns true. */
+export function isListed(t) {
+  try { return typeof t.available === 'function' ? !!t.available() : true; } catch { return false; }
+}
 
 // Read-only gate (lib/access.js). Wrapped here, once, so it applies to every caller of a handler
 // (the MCP dispatcher and direct calls alike) and always runs before the handler's first request.
@@ -62,7 +68,7 @@ for (const t of ALL_TOOLS) {
 
 // Built per tools/list call: the description reflects the current read-only mode.
 export function toolDefs() {
-  return ALL_TOOLS.map(t => ({
+  return ALL_TOOLS.filter(isListed).map(t => ({
     name: t.name,
     description: describe(t),
     inputSchema: t.inputSchema,
@@ -109,7 +115,7 @@ const PROMPTS = [
 
 export const SERVER_INFO = {
   name: 's1-secops-mcp-server',
-  version: '1.5.7',
+  version: '1.6.0',
 };
 
 export const PROTOCOL_VERSION = '2024-11-05';
@@ -182,6 +188,12 @@ export async function dispatch(method, params, id) {
             tokenPresent: !!c.S1_CONSOLE_API_TOKEN,
           },
           hecTokenPresent: !!c.S1_HEC_TOKEN,
+          // Built-in threat intelligence (1.6.0): each ti_* tool is listed only when its key is set.
+          threatIntel: {
+            virustotal: !!c.VIRUSTOTAL_API_KEY,
+            shodan: !!c.SHODAN_API_KEY,
+            purpleAi: hasS1Creds(),
+          },
           // Where each value came from (env:<VAR> or keychain:<backend>). Never the value.
           sources,
           keychain: { backend: keychain.backend, available: !keychain.error, note: keychain.error || undefined },

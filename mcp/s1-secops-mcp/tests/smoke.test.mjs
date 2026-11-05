@@ -20,7 +20,7 @@ const EXPECTED_TOOLS = [
   'powerquery_enumerate_sources',
   'powerquery_run',
   'powerquery_schema_discover',
-  // Mgmt Console (14)
+  // Mgmt Console (15)
   's1_api_get',
   's1_api_post',
   's1_api_put',
@@ -28,6 +28,7 @@ const EXPECTED_TOOLS = [
   's1_api_patch',
   's1_api_download',
   'purple_ai_alert_summary',
+  'purple_ai_query',
   'uam_list_alerts',
   'uam_get_alert',
   'uam_add_note',
@@ -58,14 +59,20 @@ const EXPECTED_TOOLS = [
   // UAM Ingest (3)
   'uam_ingest_alert',
   'uam_post_alert',
+  // Built-in threat intelligence (4): listed only when their key is set
+  'ti_vt_lookup',
+  'ti_vt_relationship',
+  'ti_shodan_host',
+  'ti_shodan_dns',
 ];
+const KEY_GATED = new Set(['ti_vt_lookup', 'ti_vt_relationship', 'ti_shodan_host', 'ti_shodan_dns']);
 
 test('server version matches package.json', () => {
   assert.equal(SERVER_INFO.version, PKG_VERSION);
 });
 
-test('ALL_TOOLS exposes exactly 35 tools', () => {
-  assert.equal(ALL_TOOLS.length, 35, `expected 35, got ${ALL_TOOLS.length}`);
+test('ALL_TOOLS registers exactly 40 tools', () => {
+  assert.equal(ALL_TOOLS.length, 40, `expected 40, got ${ALL_TOOLS.length}`);
 });
 
 test('every expected tool is registered, no extras', () => {
@@ -84,8 +91,10 @@ test('every tool has name, description, inputSchema, handler', () => {
   }
 });
 
-test('TOOL_DEFS matches ALL_TOOLS shape and excludes handlers', () => {
-  assert.equal(TOOL_DEFS.length, ALL_TOOLS.length);
+test('TOOL_DEFS lists every tool except key-gated ones without a key, and excludes handlers', () => {
+  // The suite runs with no VirusTotal or Shodan key (setup.mjs turns the keychain off).
+  assert.equal(TOOL_DEFS.length, ALL_TOOLS.filter(t => !KEY_GATED.has(t.name)).length);
+  assert.ok(!TOOL_DEFS.some(d => KEY_GATED.has(d.name)));
   for (const def of TOOL_DEFS) {
     assert.ok(def.name);
     assert.ok(def.description);
@@ -95,9 +104,9 @@ test('TOOL_DEFS matches ALL_TOOLS shape and excludes handlers', () => {
 });
 
 test('no removed tools sneak back in', () => {
-  // These were removed 2026-05-03 because the underlying API requires a
-  // browser-session teamToken that service-account API tokens never obtain.
-  const removed = ['purple_ai_query', 'purple_ai_investigate'];
+  // purple_ai_investigate (aiInvestigation/run) needs a browser-session teamToken that service-account
+  // API tokens never obtain. purple_ai_query returned in 1.6.0 with a request shape that works.
+  const removed = ['purple_ai_investigate'];
   const names = new Set(ALL_TOOLS.map(t => t.name));
   for (const r of removed) {
     assert.ok(!names.has(r), `removed tool reintroduced: ${r}`);

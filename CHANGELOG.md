@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - s1-secops-skills: MCP 1.6.0, image 1.6.0, plugin 1.4.0
+
+- `s1-secops-mcp` adds built-in `purple_ai_query` (Purple AI questions with the console token) and read-only threat-intel tools: `ti_vt_lookup` and `ti_vt_relationship` (VirusTotal), `ti_shodan_host` and `ti_shodan_dns` (Shodan). The threat-intel tools are listed once the user stores that service's key.
+- Image `sentinelone/secops-mcps:1.6.0` runs `s1-secops-mcp` only, on a distroless Node 24 base with no shell, package manager or npm. The bundled purple-mcp, VirusTotal and Shodan servers are removed. Docker Scout reports 0 critical, high or medium findings.
+- The launchers write a single `s1-secops-mcp` entry and remove the older entries they created. `--with-shodan` is accepted and has no effect.
+- New `plugins/s1-secops-skills/docs/connect-optional-tools.md`. Skills, CLAUDE.md and docs use the built-in tools. `docs/upgrading.md` covers 1.5.7 to 1.6.0, including the tool renames.
+- `plugins/s1-secops-skills/.upstream.json` records the source commit of each sync.
+- Release notes: [s1-secops-skills 1.6.0](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.6.0.md).
+
 ### Fixed - launcher connects under Claude Code on Linux and WSL (image and MCP unchanged at 1.5.7)
 
 - `mcp/docker/s1-secops-mcp-launch.sh` forwards stdin with `dd` instead of `cat`. Claude Code connects stdio servers over a Unix socket, and the uutils `cat` in recent Ubuntu releases does not forward socket input, so servers timed out on connect.

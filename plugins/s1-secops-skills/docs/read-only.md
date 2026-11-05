@@ -1,6 +1,6 @@
 # Read-Only Mode and Write Access
 
-**Applies to:** s1-secops-mcp 1.5.5 and later, image `sentinelone/secops-mcps:1.5.7` and later, plugin 1.3.16 and later
+**Applies to:** s1-secops-mcp 1.5.5 and later, image `sentinelone/secops-mcps:1.5.5` and later (current: `1.6.0`), plugin 1.3.16 and later
 
 > **WARNING: WRITE ACCESS CHANGES YOUR SENTINELONE TENANT**
 >
@@ -19,7 +19,7 @@
 
 From 1.5.5, s1-secops-mcp starts in **read-only mode**. All tools remain listed, so the assistant can explain what it would do, but any tool call that would change the tenant is refused **before a network request is made**. The refusal tells the user how to enable write access.
 
-Read-only mode covers s1-secops-mcp only. purple-mcp, the VirusTotal MCP and the Shodan MCP expose query tools and are unaffected by this setting.
+Read-only mode covers every s1-secops-mcp tool. `purple_ai_query` and the built-in VirusTotal and Shodan tools are read-only, so they always run. Other MCP servers you add yourself ([connect-optional-tools.md](./connect-optional-tools.md)) are outside this setting.
 
 | Mode | What runs | What is refused |
 |---|---|---|
@@ -62,15 +62,15 @@ To check the active mode, look for the `Mode:` line in the server log at startup
 | `s1_api_post` | GraphQL documents that contain only `query` operations; Deep Visibility query launch (`/dv/init-query`); query validation (`/cloud-funnel/validate-query`); graph explorer queries; `available-actions`; tag counts | Every other POST, including GraphQL `mutation` and any endpoint not on the allowlist. An endpoint missing from the allowlist is treated as a write. The check uses the path the request is actually sent to: a path containing a `#` fragment, `;` parameters, a backslash, whitespace, percent-encoded separators or dots, or `.` / `..` segments is treated as a write. |
 | `powerquery_run` | Every query that does not write | Queries containing `\| savelookup`, which creates or overwrites a lookup table |
 
-### 3.3 Tools that never change the tenant (15)
+### 3.3 Tools that never change the tenant (20)
 
-`s1_api_get`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_available_actions`, `purple_ai_alert_summary`, `powerquery_enumerate_sources`, `powerquery_schema_discover`, `sdl_list_files`, `sdl_get_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `ha_list_workflows`, `ha_get_workflow`, `ha_export_workflow`.
+`s1_api_get`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_available_actions`, `purple_ai_alert_summary`, `purple_ai_query`, `powerquery_enumerate_sources`, `powerquery_schema_discover`, `sdl_list_files`, `sdl_get_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `ha_list_workflows`, `ha_get_workflow`, `ha_export_workflow`, and the built-in threat-intel tools `ti_vt_lookup`, `ti_vt_relationship`, `ti_shodan_host` and `ti_shodan_dns` (these call VirusTotal and Shodan, not your tenant).
 
 Each tool also carries MCP annotations (`readOnlyHint`, `destructiveHint`) so clients that honour them can ask for confirmation before a write.
 
-### 3.4 purple-mcp `savelookup`
+### 3.4 Other MCP servers and `savelookup`
 
-purple-mcp's `powerquery` tool is outside this setting. A PowerQuery containing `| savelookup` sent through purple-mcp writes a lookup table even when s1-secops-mcp is read-only. If that matters in your environment, give purple-mcp a token whose role cannot write to the Data Lake.
+An MCP server you add yourself is outside this setting. For example, the official purple-mcp's `powerquery` tool sends a PowerQuery containing `| savelookup` as written, which writes a lookup table even when s1-secops-mcp is read-only. If that matters in your environment, give that server a token whose role cannot write to the Data Lake.
 
 ## 4. Controls when write is enabled
 

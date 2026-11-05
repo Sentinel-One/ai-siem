@@ -183,4 +183,4 @@ The exact field names on the platform-audit records are themselves discoverable 
 1. Always pre-filter on `dataSource.name`. M365 sources can be very high-volume; an initial filter without a source pin pulls in unrelated traffic and pushes the query past timeout.
 2. Prefer `<recordtype_field> = N` over `<operation_field> in (long_list)` for coarse category pre-filtering. The numeric form is cheaper.
 3. For value-anywhere identity hunts, `* contains 'value'` in the initial filter beats `message contains 'value'` by a wide margin. See `references/pitfalls.md` → "Reaching for `message contains` on a JSON-blob source".
-4. Long-window hunts over M365 sources should run via the LRQ API with daily slices, not via interactive PQ. The Purple MCP path will time out on anything over a few days against high-volume M365 sources.
+4. Long-window hunts over M365 sources should run via the LRQ API with daily slices (`powerquery_run` with `slices`), not as one unsliced query, which can time out on anything over a few days against high-volume M365 sources.

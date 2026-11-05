@@ -238,6 +238,6 @@ Source: used throughout the `sdl-solutions` ingest-health-monitoring templates (
 
 If you don't know the field name, either:
 
-1. **Use Purple AI first.** `mcp__purple-mcp__purple_ai(query="show me processes that accessed lsass.exe")`; it knows the schema and returns a working PQ.
+1. **Use Purple AI first.** `purple_ai_query(question="show me processes that accessed lsass.exe")`; it knows the schema and returns a draft PQ in `powerQuery.query`. Purple does not run it: review it, then run it with `powerquery_run`.
 2. **Explore a single event.** `event.type = 'Registry Value Modified' | limit 1`, the Event Search UI will show every parsed field; in the MCP call, follow up with `| columns registry.keyPath, registry.valueName, registry.value, timestamp` to confirm your guesses.
 3. **Use `* contains 'value'` as an initial filter** to find which fields mention a known value, then pivot.

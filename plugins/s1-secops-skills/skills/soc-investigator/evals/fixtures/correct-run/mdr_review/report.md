@@ -4,8 +4,8 @@
 
 ## Order of checks
 
-1. `get_alert_notes` - MDR: "Investigated. Alert Type EPP, Classification Benign, Action Resolve."
-2. `get_alert_history` - `analystVerdict` moved to `FALSE_POSITIVE`, by MDR.
+1. Notes (`uam_get_alert`) - MDR: "Investigated. Alert Type EPP, Classification Benign, Action Resolve."
+2. History (`uam_get_alert`) - `analystVerdict` moved to `FALSE_POSITIVE`, by MDR.
 3. Telemetry review, only after the above.
 
 An MDR or analyst verdict already recorded on an alert takes precedence over the

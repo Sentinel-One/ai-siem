@@ -6,8 +6,9 @@
  * No required runtime dependencies (optional: @napi-rs/keyring, used for the
  * Windows Credential Manager).
  *
- * Exposes 35 tools across PowerQuery, Mgmt Console REST, UAM, SDL API,
- * Hyperautomation, and UAM Ingest; plus 2 resources and 2 prompts.
+ * Exposes 40 tools across PowerQuery, Mgmt Console REST, UAM, Purple AI, SDL API,
+ * Hyperautomation, UAM Ingest and built-in threat intelligence (VirusTotal and Shodan
+ * tools are listed only when their keys are set); plus 2 resources and 2 prompts.
  *
  * Credentials come from environment variables, then the OS keychain. There is
  * no file fallback. Store them once with `s1-secops-mcp setup`.
@@ -16,7 +17,7 @@
  * 1.5.0; this server is stdio only.
  */
 
-import { dispatch, SERVER_INFO, ALL_TOOLS } from './lib/server-core.js';
+import { dispatch, SERVER_INFO, ALL_TOOLS, isListed } from './lib/server-core.js';
 import { getCreds, hasS1Creds, hasSdlCreds, loadCredentials } from './lib/credentials.js';
 import { hasHecCreds } from './lib/uam-ingest.js';
 import { runCli, SUBCOMMANDS } from './lib/cli.js';
@@ -37,8 +38,9 @@ USAGE
   s1-secops-mcp status [--profile P]  Show where each value comes from (secrets masked)
   s1-secops-mcp forget [options]      Remove stored credentials
   s1-secops-mcp exec   [--profile P] -- <command> [args...]
-                                      Run another MCP server (purple-mcp, VirusTotal)
-                                      with the keychain values in its environment
+                                      Run another MCP server you installed yourself
+                                      (e.g. the official purple-mcp) with the keychain
+                                      values in its environment
 
 SETUP OPTIONS
   --profile <name>        Keychain profile (default: "default", or S1_PROFILE)
@@ -59,7 +61,8 @@ CREDENTIALS (environment variables override the keychain, per value)
   S1_HEC_INGEST_URL                  HEC ingest host for uam_ingest_alert, uam_post_alert, hec_ingest
   S1_HEC_TOKEN                       SDL Log Write Key, for hec_ingest only
   S1_SCOPE                           Default S1-Scope for SDL requests
-  VIRUSTOTAL_API_KEY                 Stored for the VirusTotal MCP (exec / Docker launcher)
+  VIRUSTOTAL_API_KEY                 Optional. Enables the built-in ti_vt_* tools
+  SHODAN_API_KEY                     Optional. Enables the built-in ti_shodan_* tools
 
 OTHER ENVIRONMENT
   S1_READ_ONLY            Read-only mode, default true. Tools that change the tenant are
@@ -109,13 +112,22 @@ async function main() {
 
   log(`Starting ${SERVER_INFO.name} v${SERVER_INFO.version} (node ${process.version})`);
 
+  // With S1_SECRETS_STDIN=1 the credentials arrive as the first stdin lines, so report
+  // them once the transport has read that preamble.
+  const secretsPreamble = process.env.S1_SECRETS_STDIN === '1';
+  const { startStdio } = await import('./lib/stdio-transport.js');
+  await startStdio(dispatch, { secretsPreamble, onReady: startupReport });
+}
+
+function startupReport() {
   const creds = getCreds();
   const { keychain } = loadCredentials();
   log(`Credentials:  env, then keychain (${keychain.backend}${keychain.error ? ': unavailable, ' + keychain.error : ''})`);
   log(`S1 Mgmt API:  ${hasS1Creds() ? 'configured (' + creds.S1_CONSOLE_URL + ')' : 'NOT configured (run `s1-secops-mcp setup`)'}`);
   log(`SDL API:      ${hasSdlCreds() ? 'configured (' + creds.S1_CONSOLE_URL + '/sdl)' : 'NOT configured'}`);
   log(`UAM Ingest:   ${hasHecCreds() ? 'configured (' + creds.S1_HEC_INGEST_URL + ')' : 'NOT configured (S1_HEC_INGEST_URL missing)'}`);
-  log(`Tools:        ${ALL_TOOLS.length} registered`);
+  log(`Threat intel: Purple AI ${hasS1Creds() ? 'on' : 'off (no console token)'}, VirusTotal ${creds.VIRUSTOTAL_API_KEY ? 'on' : 'off (no VIRUSTOTAL_API_KEY)'}, Shodan ${creds.SHODAN_API_KEY ? 'on' : 'off (no SHODAN_API_KEY)'}`);
+  log(`Tools:        ${ALL_TOOLS.filter(isListed).length} listed (${ALL_TOOLS.length} registered)`);
   const mode = modeSummary();
   if (mode.readOnly) {
     log(`Mode:         READ-ONLY (${mode.setting}). Tools that change the tenant are refused; set S1_READ_ONLY=false (launcher: install --read-write) to allow them.`);
@@ -128,9 +140,6 @@ async function main() {
   } else if (mode.tokenExpiresInDays !== null && mode.tokenExpiresInDays <= 7) {
     log(`WARNING: the console API token expires in ${mode.tokenExpiresInDays} day(s), on ${mode.tokenExpires}.`);
   }
-
-  const { startStdio } = await import('./lib/stdio-transport.js');
-  await startStdio(dispatch);
 }
 
 main().catch(e => {

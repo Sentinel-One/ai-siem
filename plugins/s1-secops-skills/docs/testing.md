@@ -38,7 +38,7 @@ The Python tests are host-only: run them from a terminal or Claude Code on your 
 
 ## MCP tools validated (s1-secops-mcp)
 
-The s1-secops-mcp tools were exercised against the live demo tenant. The 1.5.x live A/B regression covered all 35 tools, both natively and in the Docker image (harness coverage line `coveredNew 35, coveredDocker 35`). From 1.5.5 the server is read-only by default, so re-running the write rows below needs `S1_READ_ONLY=false` ([read-only.md](./read-only.md)):
+The s1-secops-mcp tools were exercised against the live demo tenant. The 1.5.x live A/B regression covered the 35 tools of that release, both natively and in the Docker image. The five tools added in 1.6.0 (`purple_ai_query`, `ti_vt_lookup`, `ti_vt_relationship`, `ti_shodan_host`, `ti_shodan_dns`) were verified live with real keys on 2026-11-05, bringing the total to 40. From 1.5.5 the server is read-only by default, so re-running the write rows below needs `S1_READ_ONLY=false` ([read-only.md](./read-only.md)):
 
 | Tool | Tested operation | Result |
 |---|---|---|
@@ -59,6 +59,11 @@ The s1-secops-mcp tools were exercised against the live demo tenant. The 1.5.x l
 | `uam_assign_alert` | Assign an alert to a console user (the tool verifies by re-read) | PASSED |
 | `uam_available_actions` | Read the actions offered on an alert | PASSED |
 | `purple_ai_alert_summary` | Generate natural-language summary of a UAM alert | PASSED |
+| `purple_ai_query` | A knowledge question (MESSAGE result) and a hunt question (POWER_QUERY result, query then run with `powerquery_run`), with the console API token | PASSED |
+| `ti_vt_lookup` | Hash, IP, domain and URL reports, including defanged input and a `found:false` miss | PASSED |
+| `ti_vt_relationship` | Relationship pages for a file, IP and domain; a premium-only relationship returns a 403 that says so | PASSED |
+| `ti_shodan_host` | Host lookup for a public IP | PASSED |
+| `ti_shodan_dns` | Forward and reverse lookups | PASSED |
 | `uam_ingest_alert` | POST one OCSF alert carrying its indicator inline | PASSED |
 | `uam_post_alert` | POST OCSF alert envelope | PASSED |
 | `sdl_list_files` | List `/logParsers/` and `/dashboards/` | PASSED |
@@ -78,21 +83,7 @@ The s1-secops-mcp tools were exercised against the live demo tenant. The 1.5.x l
 | `ha_export_workflow` | Export all workflows as ZIP | PASSED |
 | `ha_delete_workflow` | Delete workflow (REST DELETE) | PASSED (`DELETE /workflows/{id}?accountIds=`, 204) |
 
-## MCP tools validated (purple-mcp)
-
-| Tool | Tested operation | Result |
-|---|---|---|
-| `purple_ai` | Natural-language hunt query | PASSED |
-| `powerquery` | Raw PowerQuery execution | PASSED |
-| `list_alerts` | List open alerts with filter | PASSED |
-| `search_alerts` | Text search across alerts | PASSED |
-| `get_alert` | Full alert detail by UUID | PASSED |
-| `get_alert_history` | Alert status change log | PASSED |
-| `get_alert_notes` | Alert analyst notes | PASSED |
-| `list_inventory_items` | Agent inventory list | PASSED |
-| `get_inventory_item` | Single agent detail | PASSED |
-| `list_vulnerabilities` | CVE list by agent | PASSED |
-| `list_misconfigurations` | Config gap list | PASSED |
+The unit suite `mcp/s1-secops-mcp/tests/ti-1.6.0.test.mjs` (part of `npm test`) covers the threat-intel tools offline: listing by key, input validation and defanging, and error mapping. No tenant or key needed.
 
 ---
 
@@ -167,8 +158,9 @@ Tested with throwaway workflow id `3085c7ef-4157-4a82-8a93-1ac0dc2c7484` (accoun
 
 ### Purple AI (GraphQL)
 
-- `purpleLaunchQuery NATURAL_LANGUAGE` requires a browser-session `teamToken`; service-account tokens are not supported for this operation
-- Use the purple-mcp `purple_ai` tool (which handles auth correctly) instead of calling the GraphQL directly
+- `purpleLaunchQuery` at `/web/api/v2.1/graphql` works with a console API token when sent in the request shape `purple_ai_query` uses. Call the tool rather than hand-rolling the GraphQL
+- The result is either `MESSAGE` (a written answer) or `POWER_QUERY` (a generated query and time range). Purple AI does not run the query; run it with `powerquery_run` after reviewing it
+- Each call is a new conversation, and a call takes about 5 to 15 s
 - Purple AI answers questions about SDL telemetry; use REST or UAM for questions about console entities
 
 ---
@@ -215,17 +207,21 @@ sh mcp/docker/launcher-test.sh                # macOS and Linux: every case unde
 pwsh -NoProfile -File mcp/docker/launcher-test.ps1   # Windows launcher, PowerShell 7 on any OS
 ```
 
-They cover: printed JSON is valid and carries the launcher's absolute path, the optional `shodan` entry (absent with no key stored for the profile, present with `--with-shodan` / `-WithShodan`), read-only by default (no `S1_READ_ONLY` written) and `--read-write` / `-ReadWrite` writing `"S1_READ_ONLY": "false"` on the `s1-secops-mcp` entry only, plus the write NOTICE on `install`, `S1_READ_ONLY` forwarded to `docker run` only when the client sets it, `--profile`/`--output-dir`/`--claude-md`/`--image`, a fresh install, a merge that keeps other servers and settings, replaces the three entries and drops older launcher entries, a backup identical to the previous file, idempotent re-runs, an invalid config left untouched, `--config-path`, a script piped into the shell refused without copying anything, (Linux) the fallback that prints the entries when no JSON tool exists, `--claude-code` against a stub `claude` (three user-scope entries, the write opt-out on `s1-secops-mcp` only, older entries removed only when they run this launcher, `MCP_TIMEOUT` merged into settings with a larger value and a symlinked file preserved, automatic selection inside Claude Code), (Linux) the WSL credential path against a stand-in `powershell.exe` (timeout on a hung call, concurrent reads, `setup` write and read-back, with pwsh), and, with Docker and the image present, the `initialize` handshake over a pipe and over a Unix socket, which is how Claude Code connects. On Windows, also run the `.ps1` test under Windows PowerShell 5.1 (`powershell -NoProfile -ExecutionPolicy Bypass -File mcp\docker\launcher-test.ps1`).
+They cover: printed JSON is valid, carries the launcher's absolute path and holds the one `s1-secops-mcp` entry, `--with-shodan` / `-WithShodan` accepted with no effect, the removed server names exiting 78, read-only by default (no `S1_READ_ONLY` written) and `--read-write` / `-ReadWrite` writing `"S1_READ_ONLY": "false"` on the `s1-secops-mcp` entry only, plus the write NOTICE on `install`, `S1_READ_ONLY` forwarded to `docker run` only when the client sets it, `--profile`/`--output-dir`/`--claude-md`/`--image`, a fresh install, a merge that keeps other servers and settings (including a user's own purple-mcp that does not run this launcher), writes the `s1-secops-mcp` entry and drops the pre-1.6.0 `purple-mcp`, `virustotal` and `shodan` entries and older launcher entries, the `Built-in tools:` summary line, a backup identical to the previous file, idempotent re-runs, an invalid config left untouched, `--config-path`, a script piped into the shell refused without copying anything, (Linux) the fallback that prints the entry when no JSON tool exists, `--claude-code` against a stub `claude` (one user-scope entry, the write opt-out on `s1-secops-mcp` only, older entries removed only when they run this launcher, `MCP_TIMEOUT` merged into settings with a larger value and a symlinked file preserved, automatic selection inside Claude Code), (Linux) the WSL credential path against a stand-in `powershell.exe` (timeout on a hung call, concurrent reads, `setup` write and read-back, with pwsh), and, with Docker and the image present, the `initialize` handshake over a pipe and over a Unix socket, which is how Claude Code connects. On Windows, also run the `.ps1` test under Windows PowerShell 5.1 (`powershell -NoProfile -ExecutionPolicy Bypass -File mcp\docker\launcher-test.ps1`).
 
-### Read-only mode and image checks (1.5.5)
+### Read-only mode and image checks
 
-- **Unit tests:** `mcp/s1-secops-mcp/tests/readonly-1.5.5.test.mjs` (12 tests, part of `npm test`) covers the read-only gate in `lib/access.js`. No tenant needed.
-- **Image smoke tests:** `mcp/docker/smoke-test.sh <image> --expect-version 1.5.7` adds T32 to T36:
+- **Unit tests:** `mcp/s1-secops-mcp/tests/readonly-1.5.5.test.mjs` (part of `npm test`) covers the read-only gate in `lib/access.js`. No tenant needed.
+- **Image smoke tests:** `mcp/docker/smoke-test.sh <image> --expect-version 1.6.0` runs 32 checks against the distroless image. It has no shell, so in-image checks run with `--entrypoint /nodejs/bin/node`. Among them:
+  - T04 to T06: no shell, no npm, no package manager, Python or git in the image;
+  - T12 and T13: `tools/list` returns 36 tools with no threat-intel keys and 40 with both keys;
+  - T22: the server names removed in 1.6.0 exit 78 with the update instruction;
   - T32: a write tool is refused in the default read-only mode, run with `--network none`, and the refusal says how to enable write;
   - T33: with `S1_READ_ONLY=false` the same call reaches its handler;
   - T34: a `powerquery_run` query containing `| savelookup` is refused;
-  - T35: the `notices` command prints the third-party notices;
-  - T36: every bundled license file and the notices file are present and readable.
+  - T35 and T36: the notices and the AGPL LICENSE ship in the image.
+
+  The full list is in [`docker/README.md`](../../../mcp/docker/README.md#build-locally).
 
 ---
 
@@ -234,6 +230,6 @@ They cover: printed JSON is valid and carries the launcher's absolute path, the 
 - **HA delete:** delete a workflow with `DELETE /api/v1/workflows/{id}?accountIds=<acct>` (204, soft/recoverable). The older `POST /workflows/archive` returns 500 on this tenant; do not use it.
 - **UAM indicator ingest:** there is no separate indicator POST. `/v1/indicators` refuses the console user token and the SDL Log Write Key alike, so indicators must ride inline in the alert's `finding_info.related_events[]`. Both UAM Alert Interface tests were rewritten onto the single-call shape: each makes one `post_alerts([alert], scope=...)` call with the indicators inline, and asserts that exactly one request went out.
 - **XDR graph query format:** The format is proprietary and server-validated. The test discovers it by reading an existing saved query. If no saved queries exist on the tenant, the test skips gracefully. Save one query via the XDR Graph Explorer UI to enable the test.
-- **Purple AI NLQ via API token:** `purpleLaunchQuery NATURAL_LANGUAGE` requires a browser-session `teamToken`; service-account tokens are not supported. Use purple-mcp for NLQ.
+- **Purple AI questions:** use `purple_ai_query`, which sends `purpleLaunchQuery` in the shape that works with a console API token. Each call is a new conversation; there is no follow-up context between calls.
 
 Full field reference per endpoint is in `mgmt-console-api/tests/README.md` and `mgmt-console-api/SKILL.md`.

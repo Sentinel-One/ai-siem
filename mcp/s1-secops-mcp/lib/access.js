@@ -39,7 +39,8 @@ export const CONDITIONAL_TOOLS = new Set(['s1_api_post', 'powerquery_run']);
 // machine, under the existing output-folder rules, and are allowed in read-only mode.
 export const READ_TOOLS = new Set([
   's1_api_get', 's1_api_download',
-  'uam_list_alerts', 'uam_get_alert', 'uam_available_actions', 'purple_ai_alert_summary',
+  'uam_list_alerts', 'uam_get_alert', 'uam_available_actions', 'purple_ai_alert_summary', 'purple_ai_query',
+  'ti_vt_lookup', 'ti_vt_relationship', 'ti_shodan_host', 'ti_shodan_dns',
   'powerquery_enumerate_sources', 'powerquery_schema_discover',
   'sdl_list_files', 'sdl_get_file', 'sdl_list_dashboards', 'sdl_get_dashboard',
   'ha_list_workflows', 'ha_get_workflow', 'ha_export_workflow',

@@ -8,6 +8,7 @@
  *   UAM GraphQL     → Authorization: ApiToken <jwt>   (POST /web/api/v2.1/unifiedalerts/graphql)
  */
 
+import { randomBytes } from 'crypto';
 import { getCreds, setupHint } from './credentials.js';
 import { parseJsonExact } from './json.js';
 import { scopeHeaders } from './sdl.js';
@@ -526,11 +527,107 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
 //   Purple AI LLM  → POST /web/api/v2.1/graphql       (ApiToken auth)
 //   SDL/History    → POST <base>/sdl/v2/graphql        (Bearer auth, same token)
 //
-// The dead exports purpleAiQuery and purpleAiInvestigate were deleted
-// 2026-07-31. Their MCP tools were removed 2026-05-03: purpleLaunchQuery
-// NATURAL_LANGUAGE and aiInvestigation/run both require a browser-session
-// teamToken that service-account API tokens never obtain (AsimovError /
-// SERVICE_ERROR). purpleAlertSummary (ALERT_ENTRY) has no such limitation.
+// purpleLaunchQuery (1.6.0): a synchronous NATURAL_LANGUAGE query works with a console API
+// token when the request carries the same tenantDetails block twice, at request.tenantDetails and
+// at request.inputContent.tenantDetails (the shape the official Sentinel-One/purple-mcp sends).
+// Measured 2026-11-05 on usea1-purple: HTTP 200 in about 6 s, resultType POWER_QUERY for a hunt
+// question and MESSAGE for a knowledge question. The 2026-05-03 attempt that failed with
+// AsimovError / SERVICE_ERROR sent a different request shape. aiInvestigation/run still needs a
+// browser session and is not exposed.
+
+/** Result types purpleLaunchQuery returns in resultType. */
+export const PURPLE_RESULT_TYPES = Object.freeze(['MESSAGE', 'POWER_QUERY', 'STAR_RULE', 'SUGGESTED_QUESTIONS']);
+
+function purpleTenantDetails(baseUrl) {
+  // GraphQL input literal. Every dynamic value goes through JSON.stringify, which escapes it.
+  return `tenantDetails: {
+      userDetails: { sessionId: null emailAddress: null userAgent: ${JSON.stringify('s1-secops-mcp')} buildDate: null buildHash: null }
+      consoleDetails: { consoleId: null tenantId: null accountId: null siteId: null baseUrl: ${JSON.stringify(baseUrl)} version: null }
+    }`;
+}
+
+/**
+ * Ask Purple AI a natural-language question (purpleLaunchQuery, isAsync false). Read-only: Purple
+ * returns text and, for hunt questions, a PowerQuery it does NOT run. Run that query with
+ * lrqRun / powerquery_run.
+ *
+ * @param {string} question
+ * @param {{hours?: number, startTime?: number|string, endTime?: number|string}} [opts]
+ *        Time range Purple scopes its PowerQuery to (default: the last 24 hours).
+ * @returns {{resultType, message, summary, powerQuery, starRule, suggestedQuestions, conversationId}}
+ */
+export async function purpleLaunchQuery(question, { hours = 24, startTime, endTime } = {}) {
+  const q = String(question ?? '').trim();
+  if (!q) throw new Error('purple_ai_query: question is required.');
+  if (q.length > 4000) throw new Error('purple_ai_query: question is longer than 4000 characters.');
+  const w = resolveLrqWindow({ startTime, endTime, hours });
+  const startMs = new Date(w.startTime).getTime();
+  const endMs = new Date(w.endTime).getTime();
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || startMs >= endMs) {
+    throw new Error('purple_ai_query: startTime must be before endTime (ISO 8601 or epoch milliseconds).');
+  }
+  const baseUrl = base();
+  const tenant = purpleTenantDetails(baseUrl);
+  const conversationId = `S1SECOPS${randomBytes(8).toString('hex')}`;
+  const query = `query PurpleQuery($input: String!) {
+  purpleLaunchQuery(request: {
+    isAsync: false
+    contentType: NATURAL_LANGUAGE
+    ${tenant}
+    conversation: { id: ${JSON.stringify(conversationId)}, messages: [], entitlements: null }
+    inputContent: {
+      userInput: $input
+      displayedTimeRange: { start: ${startMs}, end: ${endMs} }
+      viewSelector: EDR
+      contentType: NATURAL_LANGUAGE
+      ${tenant}
+    }
+  }) {
+    result {
+      message
+      summary
+      powerQuery { query timeRange { start end } viewSelector }
+      starRule
+      suggestedQuestions { question powerQuery }
+    }
+    resultType
+    status { state error { errorDetail errorType origin } }
+  }
+}`;
+  // A read: Purple only answers. allowRetry re-sends on 429/5xx, which is safe for a query.
+  const data = await apiPost('/web/api/v2.1/graphql', { query, variables: { input: q } }, { allowRetry: true });
+  if (data?.errors?.length) {
+    throw new Error(`Purple AI error: ${data.errors.map(e => e?.message).filter(Boolean).slice(0, 3).join('; ')}`);
+  }
+  const p = data?.data?.purpleLaunchQuery;
+  if (!p || typeof p !== 'object') throw new Error('Purple AI returned no purpleLaunchQuery result.');
+  const err = p.status?.error;
+  if (err && (err.errorType || err.errorDetail)) {
+    const why = [err.errorType, err.errorDetail].filter(Boolean).join(': ');
+    const hint = err.errorType === 'UNKNOWN' ? ' Rephrase the question and try again.' : '';
+    throw new Error(`Purple AI could not answer (${why}).${hint}`);
+  }
+  const r = p.result || {};
+  const pq = r.powerQuery?.query
+    ? {
+        query: r.powerQuery.query,
+        timeRange: r.powerQuery.timeRange || { start: startMs, end: endMs },
+        viewSelector: r.powerQuery.viewSelector || null,
+      }
+    : null;
+  return {
+    resultType: p.resultType || null,
+    state: p.status?.state || null,
+    message: r.message || null,
+    summary: r.summary || null,
+    powerQuery: pq,
+    starRule: r.starRule || null,
+    suggestedQuestions: Array.isArray(r.suggestedQuestions)
+      ? r.suggestedQuestions.filter(s => s && (s.question || s.powerQuery)).slice(0, 10)
+      : [],
+    conversationId,
+  };
+}
 
 /**
  * Get a Purple AI natural-language summary for a specific UAM alert.
@@ -618,8 +715,7 @@ export async function uamGraphql(query, variables = {}, operationName, { readOnl
  * For dates: dateTimeRange: { start: <epoch_ms>, end: <epoch_ms> }
  *   NOT dateRange, NOT date_range, NOT { from, to }
  *
- * Purple MCP bug: its search_alerts sends date_range (snake_case) → UAM rejects.
- * Use this function instead for time-scoped searches.
+ * date_range (snake_case) and dateRange are rejected by UAM; always build dateTimeRange.
  */
 export async function uamListAlerts({
   first = 20,

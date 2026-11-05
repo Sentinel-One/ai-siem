@@ -3,8 +3,13 @@
 Three things move independently: the **MCP image** (or npm install), the **skills plugin**, and
 your **MCP client config**. Do them in that order.
 
-- [Launcher update for Claude Code, Linux and WSL](#launcher-update-for-claude-code-linux-and-wsl) (image and plugin unchanged)
-- [1.5.6 to 1.5.7](#156-to-157) (current release: image `1.5.7`, s1-secops-mcp `1.5.7`, plugin `1.3.17`)
+Every install command on this page downloads or runs the current launcher, which installs the
+current release (image `1.6.0`). If you are several releases behind, read the sections in between
+for what changed, then follow [1.5.7 to 1.6.0](#157-to-160).
+
+- [1.5.7 to 1.6.0](#157-to-160) (current release: image `1.6.0`, s1-secops-mcp `1.6.0`, plugin `1.4.0`)
+- [Launcher update for Claude Code, Linux and WSL](#launcher-update-for-claude-code-linux-and-wsl)
+- [1.5.6 to 1.5.7](#156-to-157)
 - [Plugin 1.3.16 to 1.3.17](#plugin-1316-to-1317)
 - [1.5.5 to 1.5.6](#155-to-156)
 - [1.5.4 to 1.5.5](#154-to-155)
@@ -13,6 +18,83 @@ your **MCP client config**. Do them in that order.
 - [1.4.x to 1.5.0](#14x-to-150)
 - [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
 - [Rolling back](#rolling-back)
+
+---
+
+## 1.5.7 to 1.6.0
+
+**The image now runs one MCP server, `s1-secops-mcp`.** The `purple-mcp`, `virustotal` and
+`shodan` servers are no longer in the image. What they were used for is now built into
+`s1-secops-mcp`, using your own keys:
+
+| Built-in tool | What it does | Needs |
+|---|---|---|
+| `purple_ai_query` | Ask Purple AI a question in natural language. Returns a written answer, or a PowerQuery plus time range that Purple AI suggests but does not run (run it with `powerquery_run`). Each call is a new conversation; expect 5 to 15 s | The console token you already store; always listed |
+| `ti_vt_lookup`, `ti_vt_relationship` | VirusTotal report for a hash, IP, domain or URL (defanged input accepted), and one relationship page (contacted domains, resolutions, related threat actors and so on) | `VIRUSTOTAL_API_KEY` |
+| `ti_shodan_host`, `ti_shodan_dns` | Open ports, services, CVEs, owner and tags for an IP; resolve up to 25 hostnames or reverse up to 25 IPs. Neither spends query credits | `SHODAN_API_KEY` |
+
+The image is also smaller and simpler: a distroless Node 24 base with no shell, no package manager
+and no Python, running as an unprivileged user. Credentials, profiles, output folders, read-only
+mode and the CLAUDE.md override carry over unchanged.
+
+**Upgrade:**
+
+1. **Re-run `install`** with your usual options (add `--read-write` again if you use write access).
+   It installs the current launcher, writes the `s1-secops-mcp` entry with `1.6.0`, removes the old
+   `purple-mcp`, `virustotal` and `shodan` entries that ran this launcher, and pulls the image.
+   Servers you added yourself with other commands are kept. macOS or Linux:
+
+   ```bash
+   mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
+   ```
+
+   Windows (PowerShell):
+
+   ```powershell
+   $f = "$env:TEMP\s1-secops-mcp-launch.ps1"; Invoke-WebRequest https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f install
+   ```
+
+   Claude Code users: add `--claude-code`. It registers `s1-secops-mcp` and removes the old
+   entries only when they ran this launcher. `--with-shodan` (Windows: `-WithShodan`) is still
+   accepted but does nothing.
+2. **Optional: store threat-intel keys.** Your stored `VIRUSTOTAL_API_KEY` is reused as is. To add
+   or change a key, run `~/.local/bin/s1-secops-mcp-launch.sh setup` (Windows:
+   `powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 setup`),
+   which prompts for `VIRUSTOTAL_API_KEY` and `SHODAN_API_KEY`; press Enter to keep a value or skip
+   it. The end of `install` shows which tools are on, for example
+   `Built-in tools: Purple AI on, VirusTotal on, Shodan off (no SHODAN_API_KEY)`.
+3. **Install plugin `1.4.0`** (Cowork → Customize → Browse plugins → upload → **Replace**).
+4. **Restart the client** (quit Claude Desktop completely and open it again, or restart Claude Code).
+
+**Tool names that changed.** If you have saved prompts, scripts or runbooks that name tools from
+the old servers, update them:
+
+| Old tool (server) | Use now |
+|---|---|
+| `get_file_report`, `get_ip_report`, `get_domain_report`, `get_url_report` (VirusTotal MCP) | `ti_vt_lookup` |
+| `get_file_relationship`, `get_ip_relationship`, `get_domain_relationship`, `get_url_relationship` (VirusTotal MCP) | `ti_vt_relationship` |
+| `purple_ai` (purple-mcp) | `purple_ai_query` |
+| `powerquery` (purple-mcp) | `powerquery_run` |
+| `list_alerts`, `search_alerts` (purple-mcp) | `uam_list_alerts` |
+| `get_alert` (purple-mcp) | `uam_get_alert` |
+| `threat_intel_by_hash`, `threat_intel_by_ip`, `threat_intel_by_domain`, `threat_intel_by_url` (purple-mcp) | `ti_vt_lookup` |
+
+The built-in VirusTotal tools cover reports and the common relationships. A free VirusTotal key
+allows 4 lookups a minute and 500 a day, and some relationships (`related_threat_actors`,
+`similar_files`) need a premium key. For VirusTotal features the built-in tools leave out (VT
+Intelligence search, sandbox behaviour, collections), or to keep using purple-mcp's own tools, add
+those servers from their official sources: [connect-optional-tools.md](./connect-optional-tools.md).
+
+**Check:**
+
+- The client lists `s1-secops-mcp` and no `purple-mcp`, `virustotal` or `shodan` entry from this
+  launcher. An old entry left behind fails with `'<name>' was removed in 1.6.0 ... run install again`
+  in its log; run `install` again.
+- The server log (`~/Library/Logs/Claude/mcp-server-s1-secops-mcp.log` on macOS) shows
+  `Threat intel: Purple AI on, VirusTotal on|off, Shodan on|off` and a `Tools:` line: 36 listed with
+  no threat-intel keys, 38 with VirusTotal only, 40 with both.
+- `docker run --rm sentinelone/secops-mcps:1.6.0 versions` shows `image_version` `1.6.0` and one
+  server.
 
 ---
 
@@ -36,7 +118,7 @@ What it adds:
 
 ## Launcher update for Claude Code, Linux and WSL
 
-The launcher script changed; the image (`1.5.7`) and the plugin (`1.3.17`) did not. MCP clients run the installed copy in `~/.local/bin`, so a fresh download alone does not apply the fix: run `install` again.
+A launcher fix for Claude Code on Linux and WSL, released after 1.5.7. The current launcher includes it and installs image `1.6.0`, so following these steps today also performs the [1.5.7 to 1.6.0](#157-to-160) upgrade. MCP clients run the installed copy in `~/.local/bin`, so a fresh download alone does not apply the fix: run `install` again.
 
 1. Download the launcher and re-run `install` with your usual options (add `--read-write` again if you use write access):
 
@@ -44,10 +126,10 @@ The launcher script changed; the image (`1.5.7`) and the plugin (`1.3.17`) did n
    curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o /tmp/s1-secops-mcp-launch.sh && sh /tmp/s1-secops-mcp-launch.sh install
    ```
 
-2. **Claude Code users** (macOS, Linux, WSL): add `--claude-code` so the servers are registered with Claude Code. This also sets `MCP_TIMEOUT` to 120 s in `~/.claude/settings.json`, which applies to every MCP server in Claude Code. Then restart Claude Code.
+2. **Claude Code users** (macOS, Linux, WSL): add `--claude-code` so the server is registered with Claude Code. This also sets `MCP_TIMEOUT` to 120 s in `~/.claude/settings.json`, which applies to every MCP server in Claude Code. Then restart Claude Code.
 3. **WSL users:** credentials are read from Windows Credential Manager when no Linux Secret Service is available, so values already stored by the Windows launcher or Cowork are reused. Turn on Docker Desktop's WSL integration for the distro and add your user to the `docker` group.
 
-**Check:** `~/.local/bin/s1-secops-mcp-launch.sh status` lists your stored values, and `/mcp` in Claude Code shows the servers connected.
+**Check:** `~/.local/bin/s1-secops-mcp-launch.sh status` lists your stored values, and `/mcp` in Claude Code shows `s1-secops-mcp` connected.
 
 ---
 
@@ -102,7 +184,7 @@ Skills that deploy content or triage alerts report the refusal and the steps to 
 
 **Upgrade:**
 
-1. Re-run the install command (macOS/Linux one-liner or the Windows one in [1.5.0, 1.5.1 or 1.5.2 to 1.5.3](#150-151-or-152-to-153)). It installs the newer launcher, rewrites your entries with `1.5.5` and pulls the image. Pass your usual options again (`--profile P`, `--output-dir DIR`, `--claude-md FILE`, `--with-shodan`).
+1. Re-run the install command (macOS/Linux one-liner or the Windows one in [1.5.0, 1.5.1 or 1.5.2 to 1.5.3](#150-151-or-152-to-153)). It installs the newer launcher, rewrites your entries with the current tag and pulls the image. Pass your usual options again (`--profile P`, `--output-dir DIR`, `--claude-md FILE`).
 2. **To keep write access**, add `--read-write` (Windows: `-ReadWrite`) to that command. It writes `"S1_READ_ONLY": "false"` into the `s1-secops-mcp` entry and prints a NOTICE. Without the flag, `install` prints a read-only notice.
 3. Install plugin `1.3.16` (Cowork → Customize → Browse plugins → upload → **Replace**).
 4. Quit and reopen Claude Desktop.
@@ -127,10 +209,10 @@ Nothing else to migrate: credentials, profiles, output folders and the CLAUDE.md
 
 ## 1.5.3 to 1.5.4
 
-Image 1.5.4 adds a fourth, **optional** MCP server, Shodan (`shodan-mcp`), for exposure
-intelligence on external IPs and domains: open ports, services, banners, TLS/JARM and host CVEs,
-plus Shodan CVEDB lookups. It complements VirusTotal, which stays the primary IOC enrichment.
-Tools and credit costs: [mcp-tools.md → Shodan MCP](./mcp-tools.md#shodan-mcp-optional).
+Image 1.5.4 added a fourth, **optional** MCP server, Shodan (`shodan-mcp`). From 1.6.0 that server
+is gone and Shodan host and DNS lookups are built-in tools of `s1-secops-mcp`
+([1.5.7 to 1.6.0](#157-to-160)), so steps 2 and 3 below now only store the key: no `shodan` entry
+is written.
 
 The bundled s1-secops-mcp moves to 1.5.4 for one fix. In the image, `outputFile` used to report
 success for a path inside the container (`/tmp`, `/home/node`), and the file was lost when the
@@ -139,23 +221,15 @@ refusal says to run that. If you write exports, pass `--output-dir` in step 1.
 
 1. **Pull the new tag** by re-running the install command (macOS/Linux one-liner or the Windows one in
    [1.5.0, 1.5.1 or 1.5.2 to 1.5.3](#150-151-or-152-to-153)). It installs the newer launcher,
-   rewrites your entries with `1.5.4` and pulls the image. Pass your usual options again
+   rewrites your entries with the current tag and pulls the image. Pass your usual options again
    (`--profile P`, `--output-dir DIR`, `--claude-md FILE`).
 2. **To add Shodan, store the key:** run `~/.local/bin/s1-secops-mcp-launch.sh setup` (Windows:
    `powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 setup`)
    and enter `SHODAN_API_KEY` from [account.shodan.io](https://account.shodan.io) (Account page,
    API key). Press Enter at every other prompt to keep the current values, and at the Shodan prompt
    to skip it.
-3. **Re-run `install`.** It writes the `shodan` entry only when `SHODAN_API_KEY` is stored (or with
-   `--with-shodan`, Windows `-WithShodan`). Then quit and reopen Claude Desktop.
-
-Without a Shodan key you need only step 1; the three existing entries move to `1.5.4` and no
-`shodan` entry is added. A free ("oss") key reliably covers the CVEDB tools, counts and filters.
-Host lookups and DNS return "Requires membership or higher" for some targets, and `shodan_search`
-needs a membership or higher. Use a membership or higher key for dependable results.
-
-Check what you have with `docker run --rm sentinelone/secops-mcps:1.5.4 versions`: it now also
-lists the `shodan-mcp` pin and the Node version.
+3. Quit and reopen Claude Desktop. With the key stored, the built-in `ti_shodan_host` and
+   `ti_shodan_dns` tools are listed.
 
 ---
 
@@ -200,8 +274,9 @@ Windows (PowerShell):
 $f = "$env:TEMP\s1-secops-mcp-launch.ps1"; Invoke-WebRequest https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f install
 ```
 
-It rewrites the `s1-secops-mcp`, `purple-mcp` and `virustotal` entries with the current tag and your real
-path, keeps your other servers, saves a backup of the old config, pulls the image and keeps your
+It rewrites the `s1-secops-mcp` entry with the current tag and your real path, removes the old
+`purple-mcp`, `virustotal` and `shodan` entries (from 1.6.0 those are built-in tools), keeps your
+other servers, saves a backup of the old config, pulls the image and keeps your
 stored credentials. If you used `S1_PROFILE`, an output folder or your own CLAUDE.md, pass them
 again (`--profile P`, `--output-dir DIR`, `--claude-md FILE`). Then quit and reopen the client.
 
@@ -269,11 +344,12 @@ Install plugin `1.3.13` (Cowork → Customize → Browse plugins → upload → 
 
 ### Step 4: the config
 
-Step 2 already replaced the `s1-secops-mcp`, `purple-mcp` and `virustotal` entries, and removed
-older entries that ran the launcher under another name. Open the config and delete any token still
+Step 2 already wrote the `s1-secops-mcp` entry, and removed older entries that ran the launcher
+under another name (including `purple-mcp`, `virustotal` and `shodan`, which are built-in tools
+from 1.6.0). Open the config and delete any token still
 left in other entries, then delete the `.bak-` copy `install` made once the new setup works, because
 it may still hold tokens. To see the entries for this machine, or to configure another client by
-hand, run `~/.local/bin/s1-secops-mcp-launch.sh config`: it prints them with your real path (JSON
+hand, run `~/.local/bin/s1-secops-mcp-launch.sh config`: it prints the entry with your real path (JSON
 does not expand `~` or `$HOME`, so never type the path yourself). Keep `--image` before the server
 name in a hand-written entry: anything after the server name is passed to the server inside the
 container, which rejects it.
@@ -295,7 +371,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
   | ~/.local/bin/s1-secops-mcp-launch.sh s1-secops-mcp
 ```
 
-Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.5.7"`, `Tools: 35 registered` on stderr, and `configured` for each surface whose values you stored. Confirm no token remains in your client config:
+Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.6.0"`, a `Tools:` line on stderr (40 registered; 36 to 40 listed depending on the threat-intel keys you stored), and `configured` for each surface whose values you stored. Confirm no token remains in your client config:
 
 ```bash
 grep -E 'eyJ|S1_CONSOLE_API_TOKEN|S1_HEC_TOKEN|VIRUSTOTAL_API_KEY' ~/Library/Application\ Support/Claude/claude_desktop_config.json || echo "clean"
@@ -354,8 +430,8 @@ done
 |---|---|---|
 | Server key | `"sentinelone-mcp"` | `"s1-secops-mcp"` |
 | Dispatcher argument | `sentinelone-mcp` | `s1-secops-mcp` |
-| Image | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.5.7` via the launcher |
-| purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` (the entrypoint derives the purple names) |
+| Image | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.6.0` via the launcher |
+| purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` in the keychain. purple-mcp is no longer in the image; Purple AI questions are the built-in `purple_ai_query` tool |
 
 Delete outright: `SDL_XDR_URL`, `SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`. Nothing replaces them. The console API token authorises every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as `<console>/sdl`.
 
@@ -374,7 +450,7 @@ Delete those lines. Nothing replaces them; the client uses the console token for
 
 | Symptom | Cause and fix |
 |---|---|
-| `manifest unknown` / image pull fails | Tag typo, or an MCP version used as an image tag. Use the exact image tag (`1.5.7`). |
+| `manifest unknown` / image pull fails | Tag typo, or an MCP version used as an image tag. Use the exact image tag (`1.6.0`). |
 | `entrypoint: unknown command 'sentinelone-mcp'` | The dispatcher argument still says the old name. Change it to `s1-secops-mcp`. |
 | Skills still mention `SDL_XDR_URL` or `c.keys[...]` | An old plugin cache. Re-check with the loop above. |
 | `AttributeError: 'SDLClient' object has no attribute 'keys'` | A script still force-clears scoped keys. See above. |
@@ -392,4 +468,6 @@ cd ~/Library/Application\ Support/Claude
 cp claude_desktop_config.json.bak claude_desktop_config.json
 ```
 
-**Rollback target: `1.4.10`.** `sentinelone/secops-mcps` carries `1.5.7`, `1.5.6`, `1.5.5`, `1.5.4`, `1.5.3`, `1.5.2`, `1.5.1`, `1.5.0` and `1.4.10`; tags are immutable, so `:1.4.10` is the exact earlier build. Any image before `1.5.5` has no read-only mode: every tool can write, whatever `S1_READ_ONLY` says. Note that 1.4.10 reads tokens from the config `env` block or a `credentials.json`, so rolling back puts plaintext tokens back on disk. Once you return to 1.5.x, delete the backup and run `s1-secops-mcp forget` only if you also want the keychain entries gone.
+**Back to 1.5.7.** Restore the `.bak-` config copy that `install` saved before the 1.6.0 upgrade (it still has the `purple-mcp`, `virustotal` and `shodan` entries), or run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.5.7` for the `s1-secops-mcp` entry alone. Then restart the client. The 1.6.0 launcher refuses the removed server names, so restoring those three entries also needs the 1.5.7 launcher.
+
+**Rollback target: `1.4.10`.** `sentinelone/secops-mcps` carries `1.6.0`, `1.5.7`, `1.5.6`, `1.5.5`, `1.5.4`, `1.5.3`, `1.5.2`, `1.5.1`, `1.5.0` and `1.4.10`; tags are immutable, so `:1.4.10` is the exact earlier build. Any image before `1.5.5` has no read-only mode: every tool can write, whatever `S1_READ_ONLY` says. Note that 1.4.10 reads tokens from the config `env` block or a `credentials.json`, so rolling back puts plaintext tokens back on disk. Once you return to 1.5.x, delete the backup and run `s1-secops-mcp forget` only if you also want the keychain entries gone.

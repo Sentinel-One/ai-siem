@@ -36,7 +36,8 @@ const TOOL_SKILL = {
   s1_api_patch:                  'mgmt-console-api',
   s1_api_download:               'mgmt-console-api',
   purple_ai_alert_summary:       'mgmt-console-api',
-  uam_list_alerts:               'mgmt-console-api',
+  purple_ai_query:               'mgmt-console-api / powerquery / soc-investigator',
+  uam_list_alerts:              'mgmt-console-api',
   uam_get_alert:                 'mgmt-console-api',
   uam_add_note:                  'mgmt-console-api',
   uam_set_status:                'mgmt-console-api',
@@ -65,6 +66,11 @@ const TOOL_SKILL = {
   // UAM Ingest
   uam_ingest_alert:              'mgmt-console-api (UAM Alert Interface)',
   uam_post_alert:                'mgmt-console-api (UAM Alert Interface)',
+  // Threat intelligence (1.6.0; listed only when the key is stored)
+  ti_vt_lookup:                  'soc-investigator (VIRUSTOTAL_API_KEY)',
+  ti_vt_relationship:            'soc-investigator (VIRUSTOTAL_API_KEY)',
+  ti_shodan_host:                'soc-investigator (SHODAN_API_KEY)',
+  ti_shodan_dns:                 'soc-investigator (SHODAN_API_KEY)',
 };
 
 const GROUPS = [
@@ -73,6 +79,7 @@ const GROUPS = [
   { label: 'SDL API',          test: n => n.startsWith('sdl_') || n === 'hec_ingest' },
   { label: 'Hyperautomation',  prefix: 'ha_' },
   { label: 'UAM Ingest',       test: n => /^(uam_ingest_|uam_post_)/.test(n) },
+  { label: 'Threat Intel',     prefix: 'ti_' },
 ];
 
 function groupOf(name) {
@@ -96,7 +103,7 @@ function buildTable() {
     });
 
   const lines = [];
-  lines.push(`**${ALL_TOOLS.length} tools** across PowerQuery, Mgmt Console, SDL API, Hyperautomation, and UAM Ingest:`);
+  lines.push(`**${ALL_TOOLS.length} tools** across PowerQuery, Mgmt Console, SDL API, Hyperautomation, UAM Ingest, and Threat Intel (the Threat Intel tools are listed only when their key is stored):`);
   lines.push('');
   lines.push('| Group | Tool | Skill |');
   lines.push('|-------|------|-------|');

@@ -11,7 +11,7 @@ Every time somebody rolls their own `requests.post(...)` for a PowerQuery, one o
 | Triage/filter/note/status/verdict/assignee on an existing alert | `uam_list_alerts` / `uam_get_alert` / `uam_add_note` / `uam_set_status` / `uam_set_verdict` / `uam_assign_alert` (UAM GraphQL; host-only Python: `scripts/unified_alerts.py`) | Alerts are entities, not log events. UAM filter syntax is GraphQL `FilterInput`, NOT PowerQuery. Do not confuse the two. |
 | Legacy STAR/cloud-detection alert REST shape | `s1_api_get` on `/web/api/v2.1/cloud-detection/alerts` | Only when you need `agentDetectionInfo` / `sourceProcess` etc. Otherwise UAM. |
 | A console entity: threat, agent, site, policy, IOC, group | `s1_api_get` / `s1_api_post` (host-only Python: `s1_client.py`) | Not a log query. `GET /web/api/v2.1/{threats,agents,sites,...}`. |
-| Natural-language hunt that can be hand-reviewed | `mcp__purple-mcp__purple_ai`, then run the returned PQ with `powerquery_run` | Purple generates PQ text; `powerquery_run` runs it. |
+| Natural-language hunt that can be hand-reviewed | `purple_ai_query`, then run the returned `powerQuery.query` with `powerquery_run` | Purple generates PQ text but does not run it; `powerquery_run` runs it. Review it first: Purple can AND fields across schema families. |
 
 If the user names a vendor ("Example Source", "Zscaler", "Okta", "FortiGate") and says "query" or "search logs", that is always the PQ path, never UAM filter syntax.
 
@@ -133,7 +133,7 @@ If you ever have to read a raw LRQ response (e.g. debugging), know:
 
 ### Step 4: when NOT to use `powerquery_run`
 
-- If the user said "purple mcp", defer to `mcp__purple-mcp__powerquery` first; `powerquery_run` is the backup path when that tool times out or 5xxs.
+- If the user asked a natural-language question rather than giving a query, start with `purple_ai_query` for a draft PQ; then come back to `powerquery_run` to run it.
 - If the user is working with alerts as entities (listing, filtering, note, status), that's UAM GraphQL (`uam_*` tools), not PowerQuery. UAM filter syntax is `[{fieldId, stringEqual: {...}}]`; it is NOT PowerQuery `| filter` syntax. Mixing them is a common trap in screenshot-driven debugging.
 
 ### Checklist before running a PQ programmatically
@@ -613,7 +613,7 @@ The collector creates `reports/<slug>_<window>/` on first run. The `reports/` di
 - **Threat triage (legacy)**: `GET /threats` filtered by `createdAt__gte` + `resolved=false`; enrich with agent details from `/agents?ids=...`; output a table.
 - **Endpoint isolation**: find agent IDs (`/agents` with name/IP filter), confirm count, `POST /agents/actions/disconnect` with filter.
 - **Hunt across DV / PowerQuery** -- `POST /sdl/v2/api/queries` with `queryType="LOG"` (S1QL) or `queryType="PQ"` (PowerQuery), then poll `GET /sdl/v2/api/queries/{id}` echoing the `X-Dataset-Query-Forward-Tag` response header. Auth is Bearer, not ApiToken. `powerquery_run` (with `queryType: "LOG"` or the default `"PQ"`) does all of this. Legacy `/dv/init-query` + `/dv/query-status` + `/dv/events` + `/dv/events/pq` flows are deprecated (sunset 2027-02-15). See `references/WORKFLOWS.md` Section 4 for the canonical runner.
-- **Natural-language hunt via Purple AI** -- Use `mcp__purple-mcp__purple_ai` (Purple MCP). The `purple_query()` Python helper and `scripts/call_purple.py` are non-functional for API tokens (`purpleLaunchQuery NATURAL_LANGUAGE` requires a browser-session teamToken, confirmed 2026-05-03). Only for SDL-telemetry questions; route entity questions to REST.
+- **Natural-language hunt via Purple AI**: use the `purple_ai_query` MCP tool, review the returned PQ, then run it with `powerquery_run`. The `purple_query()` Python helper and `scripts/call_purple.py` send an older request shape that failed for API tokens (2026-05-03). Only for SDL-telemetry questions; route entity questions to REST or UAM.
 - **Site/Group inventory**: `/sites`, `/groups`, `/accounts` are the tenant-structure endpoints; many resources require filtering by `siteIds` / `accountIds`.
 - **Bulk action audit**: `/activities` is the system-wide audit log; filter by `activityTypes` and `createdAt__gte`.
 - **Push alerts INTO UAM** -- build one OCSF alert carrying its indicators inline in `finding_info.related_events[]`, then call `uam_post_alert` (host-only Python: `UAMAlertInterfaceClient.post_alerts([alert], scope=...)`) once per alert (loop for many). There is no separate indicator POST: `/v1/indicators` refuses every credential. See "UAM Alert Interface" above for the required fields and the multi-alert silent-drop trap. Use for pipeline integrations, synthetic-alert generation, and detection testing.

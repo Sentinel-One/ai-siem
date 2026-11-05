@@ -1,8 +1,8 @@
 === soc-investigator: correct-run transcript (fixture) ===
 
 [0] Alert 1770000000000000001 (MV-INSIDERTOOL)
-    Checked in this order, before any telemetry: get_alert_notes, then
-    get_alert_history. MDR left "Alert Type EPP, Classification Benign, Action
+    Checked before any telemetry: the notes, then the history, both
+    from uam_get_alert. MDR left "Alert Type EPP, Classification Benign, Action
     Resolve" and moved analystVerdict to FALSE_POSITIVE.
     That verdict takes precedence over the engine's CRITICAL label, which
     describes the threat class, not an outcome. Verdict: FALSE POSITIVE.

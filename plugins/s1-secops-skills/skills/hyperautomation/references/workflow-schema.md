@@ -157,7 +157,10 @@ Multiple filter_groups = OR logic between groups.
 Conditions within a group use the `operator` field ("and" or "or").
 
 `run_automatically: true` = workflow fires automatically on matching events.
-`run_automatically: false` = workflow appears as on-demand option in alert UI.
+`run_automatically: false` = workflow appears as an on-demand option on the alert (or
+vulnerability) page. **Not valid for `event_type: "activity"`**: activities have no page to run a
+workflow from, the console only offers an automatic activity trigger, and an imported activity
+group with `run_automatically: false` never runs. Activity groups must use `true`.
 
 `run_automatically` is per group: if any one group has it `true`, the flow runs on every alert
 that group matches, including third-party and platform-rule alerts. For an expensive or

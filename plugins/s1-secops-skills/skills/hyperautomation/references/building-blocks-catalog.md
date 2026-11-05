@@ -38,7 +38,7 @@ below before concluding a type does not exist at all.
 | 5 | `singularity_response_trigger` | 706 | Trigger | core |
 | 6 | `send_email` | 602 | I/O | core |
 | 7 | `break_loop` | 347 | Control | core |
-| 8 | `data_formation` | 328 | State | core |
+| 8 | `data_formation` (not GA: never emit, use `variable`) | 328 | State | core |
 | 9 | `manual_trigger` | 267 | Trigger | core |
 | 10 | `snippet` | 259 | Composition | core |
 | 11 | `delay` | 227 | Control | core |
@@ -70,7 +70,17 @@ workflow, and read the `type` off the exported action; then document it here.
 
 Every other action described in the S-26.2 docs (HTTP Request, Loop, Break, Condition, Send
 Email, Delay, Create Interaction, Wait for Interaction, Variables, and all five trigger types) is
-covered by the table above, so SQL is the single known blind spot.
+covered by the table above.
+
+### Released after the corpus: Switch (26.3.6)
+
+The **Switch** action (`"type": "switch"`) shipped in release 26.3.6, after the corpus was mined,
+so it has no count above. It is a real product type, not an invention; see **A18** below and
+`building-blocks.md` → **Switch**. Three of its fields are still unconfirmed from an export.
+
+### In the table but not GA: `data_formation`
+
+`data_formation` is in old workflows (rank 8) but never reached GA. Never emit it; see **A11**.
 
 ---
 
@@ -490,29 +500,13 @@ job (RemoteOps, scan) finish before polling its status; staging notifications.
 
 ---
 
-### A11. Data Formation
+### A11. Data Formation: not GA, never emit
 
-**Purpose**: build a structured object on the fly without using a Variable. Most often used as a
-scratchpad to assemble payloads from multiple sources.
-
-**Real shape (most-cloned: "Generate UUID", 75 occurrences)**:
-
-```json
-{
-  "type": "data_formation",
-  "tag": "core_action",
-  "data": {
-    "name": "Generate UUID",
-    "action_type": "data_formation",
-    "data": { "uuid": "{{Function.SUBSTRING(Function.GENERATE_UUID4(), 6)}}" }
-  }
-}
-```
-
-Reference: `{{generate-uuid.data.uuid}}`.
-
-Other real uses observed: `Channel Info` (build a Slack channel-config dict from alert fields),
-custom note bodies, normalized event objects for SDL ingest.
+`data_formation` appears in older workflows (328 actions in the corpus) but never reached general
+availability. Do not generate it or copy it from an export. Rewrite it as a Variable action
+(**A6**): put the value or JSON object in a variable's `value` and read it as
+`{{local_var.<name>}}`. The Variable form of the "Generate UUID" idiom is in `building-blocks.md`
+under **Data Formation: not GA, never emit**, and in **B13** below.
 
 ---
 
@@ -772,6 +766,48 @@ choice. The corpus predates this, so every mined example above is `choice` with
 response schema, and the `Function.DEFAULT` guard that optional fields REQUIRE are in
 `interaction-forms.md`. Canonical SOC placement (the form gates the remediation, after the AI
 investigation) is in `autonomous-soc-template.md`.
+
+---
+
+### A18. Switch (multi-way branch, release 26.3.6)
+
+**Purpose**: route one step into up to 20 named cases plus a Default branch, instead of chaining
+Condition actions (A7). Typical use: handle alerts differently by severity, source or alert name.
+
+**Rules that matter when composing**:
+
+- Each case has its own condition (grouped form, same builder as Condition).
+- Case names: at most 20 characters, unique, letters, numbers and spaces only.
+- Evaluation: *First matching branch* or *All matching branches*. With all-match, several branches
+  run, so do not put mutually destructive actions on overlapping cases.
+- Default runs when no case matches. Point it at the safe route (escalate or note), never a
+  destructive action.
+- Downstream steps read `{{<switch-slug>.data.switch_cases_matches.<case-key>}}`, where the key is
+  the case name in lowercase with spaces as hyphens (`High Sev` becomes `high-sev`). Renaming a case
+  changes its key, so treat case names like variable names.
+
+**Shape**: the confirmed part, and the three fields to copy from a console export, are in
+`building-blocks.md` → **Switch**. Do not hand-write the evaluation-mode field, the Default branch
+or the per-case `custom_handle`.
+
+---
+
+### A19. LLM (native AI step)
+
+**Purpose**: summarise, classify, extract or choose inside the workflow, with no API key or
+connection. It runs on Singularity Credits (every run, including editor test runs, costs at least
+1 credit) and an admin must enable it per scope under Settings > AI Management > Hyperautomation.
+
+**Shape**: `type` and `action_type` `"llm"`; `data` holds `model`, `prompt`, `response_format`
+and `json_schema`. Full field rules are in `building-blocks.md` → **LLM**. On a demo console with
+111 `llm` actions (2026-11-05), `response_format` was `off` 65 times, `auto` 41 and `strict` 5,
+and `model` was a console-assigned UUID (read it off an existing `llm` action in the target
+console; never copy one across consoles).
+
+**Reach for it when**: a later step needs a decision (`strict` with a schema, read with JQ and a
+safe default), or a human-readable summary for a note, email or ticket (`off`). Do not loop it
+over a large collection, and chain two LLM steps only when the second needs data the first could
+not see.
 
 ---
 
@@ -1052,16 +1088,44 @@ Then assign `{{open-ai.body.choices[0].message.content}}` to a Variable and feed
 
 ```json
 {
-  "type": "data_formation",
+  "type": "variable",
+  "tag": "core_action",
   "data": {
     "name": "Generate UUID",
-    "data": { "uuid": "{{Function.SUBSTRING(Function.GENERATE_UUID4(), 6)}}" }
+    "action_type": "variable",
+    "variables": [
+      {"name": "uuid", "value": "{{Function.SUBSTRING(Function.GENERATE_UUID4(), 6)}}", "should_use_as_output": false, "is_secret": false}
+    ],
+    "variables_scope": "local"
   }
 }
 ```
 
+Reference: `{{local_var.uuid}}`. Older flows did this with `data_formation`, which never reached
+GA; use the Variable form.
+
 The `SUBSTRING(..., 6)` is a corpus convention, it trims the first 5 chars to keep the ID
 shorter for human-readable channel names (Slack channel-name length cap).
+
+---
+
+### B14. Trigger an Agentic Investigation and act on the verdict
+
+Purple AI Agentic Investigations are driven through the **SentinelOne GraphQL** integration's
+packaged actions (`integration-catalog.md` → SentinelOne GraphQL): **Trigger Agentic
+Investigation** and **Get Agentic Investigation Summary** (status, verdict and report). Both POST
+to `{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql`.
+
+```text
+Singularity Response Trigger (alert)                        [A1]
+  → Trigger Agentic Investigation (SentinelOne GraphQL)     [A13]
+  → Loop (while) + Delay → Get Agentic Investigation Summary [A8, A10, A13]
+       → Condition: status complete → Break Loop            [A7, A9]
+  → Switch on the verdict (malicious / benign / Default)    [A18]
+```
+
+Requires Agentic Investigations enabled on the account and a SentinelOne GraphQL connection. The
+full investigate, decide and respond shape is in `autonomous-soc-template.md`.
 
 ---
 
@@ -1124,7 +1188,7 @@ Manual Trigger (dynamic, Hostname text input)               [A2]
   → HTTP POST PowerQuery (filter src.endpoint.name = ...)    [B8]
   → Variable (rows = body.matches)
   → Loop over local_var.rows                                  [A8]
-       (inner) Data Formation (build summary row)             [A11]
+       (inner) Variable (build summary row)                   [A6]
                  → Variable (results = APPEND)                [B4]
   → (after loop) Send Email with HTML table                   [A14]
 ```
@@ -1174,7 +1238,9 @@ This is the shape of the "UEBA - User Baselines" active flow.
 | Phishing inbox triage | A5 | A12 (URL defang) + B6 | rare |
 | Backstop for failing API call | any | A12 + A7 (status_code) + A6 + B6 | B2 |
 | Page through paginated API | any | A6 + A8 (while) + A7 + A9 | B3 |
-| Free-text summary of evidence | any | B12 + B6 | adds analyst-friendly note |
+| Free-text summary of evidence | any | A19 (`llm`, `off`) + B6 | prefer the native LLM step over B12 |
+| Route by severity, source or alert name | any | A18 (Switch) | replaces chained A7 conditions |
+| AI verdict, then automated response | A1 | B14 + A18 | Agentic Investigation via GraphQL |
 
 ---
 
@@ -1233,6 +1299,22 @@ The Hyperautomation API has no endpoint to transfer or share workflow ownership.
 imported with a Service User token is invisible to humans in the UI. Always use a personal
 Console User API token for `S1_CONSOLE_API_TOKEN`. (Repeated here because it's the #1 cause
 of "where did my workflow go?" support tickets.)
+
+### E9. Emitting `data_formation`
+
+It never reached GA, even though old flows carry it and some consoles still import it. Use a
+Variable action (A6, B13).
+
+### E10. On-demand activity trigger
+
+`"event_type": "activity"` with `run_automatically: false` imports but never runs: on-demand runs
+start from an alert or vulnerability page, and activities have none. Activity groups are always
+`run_automatically: true`.
+
+### E11. Chaining Condition actions for a multi-way choice
+
+Three or four nested Conditions to route by severity or source are hard to read and easy to
+mis-wire. Use one Switch (A18) with a Default branch.
 
 ---
 

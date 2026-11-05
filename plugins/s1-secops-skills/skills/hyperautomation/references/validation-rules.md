@@ -21,6 +21,9 @@ Run this checklist before outputting any workflow JSON.
 - [ ] `"snippet_workflow_id"` and `"snippet_version_id"` are `null` unless action is a snippet referencing another workflow
 - [ ] `llm`: `json_schema` is a string (`json.dumps`), not an object; `""` when `response_format` is `"off"`
 - [ ] `llm`: later steps read the output at `<slug>.data`, not `<slug>.body`
+- [ ] No `data_formation` action: it never reached GA. Rewrite it as a `variable` action
+- [ ] `switch`: 1 to 20 cases; case names unique, at most 20 characters, letters, numbers and spaces only
+- [ ] `switch`: downstream references use `switch_cases_matches` keys derived from the case name (lowercase, spaces to hyphens)
 
 ## Trigger rules
 
@@ -29,6 +32,7 @@ Run this checklist before outputting any workflow JSON.
 - [ ] Trigger's `connected_to` points to the first action in the flow
 - [ ] `singularity_response_trigger`: `filter_groups` is a non-empty array
 - [ ] `singularity_response_trigger`: each filter_group has `event_type`, `event_subtypes`, `condition`, `is_disabled`, `run_automatically`
+- [ ] `singularity_response_trigger`: a group with `"event_type": "activity"` has `"run_automatically": true` (on-demand activity triggers import but never run)
 - [ ] `manual_trigger`: `trigger_type` is `"static"` or `"dynamic"`; if dynamic, `dynamic_properties` is a non-empty object
 
 ## Loop rules

@@ -97,6 +97,9 @@ for SHELL_BIN in /bin/sh /usr/bin/dash /bin/dash /bin/bash; do
   # install merges: keeps other servers and settings, replaces ours, drops the
   # pre-1.6.0 purple-mcp/virustotal/shodan entries and an older-named entry that ran
   # this launcher, keeps a user's own purple-mcp-like server that does not, keeps a backup.
+  # The fixture below is a DELIBERATE pre-1.6.0 config, not what 1.6.0 writes: the test
+  # asserts install removes the old entries that ran this launcher (virustotal-mcp,
+  # purple-mcp, virustotal, shodan) and keeps the user's own servers (my-purple, other).
   cat > "$CFG" <<'J'
 {"globalShortcut": "Alt+Space",
  "mcpServers": {
@@ -162,6 +165,8 @@ STUB
   rm -f "$CFG" "$T/cc.log"; rm -rf "$H/.claude"; mkdir -p "$H/.claude"
   printf '{"model":"opus","env":{"FOO":"1"}}\n' > "$H/.claude/settings.json"
   # The pre-1.6.0 entries run this launcher; "shodan" is the user's own server here.
+  # DELIBERATE pre-1.6.0 state: the test asserts --claude-code removes the old entries
+  # that ran this launcher and leaves the user's own servers alone.
   STUB_OURS="purple-mcp virustotal virustotal-mcp"
   run_cc "$SRC" install --claude-code --read-write > /dev/null 2> "$T/cc1.err"
   STUB_OURS=""

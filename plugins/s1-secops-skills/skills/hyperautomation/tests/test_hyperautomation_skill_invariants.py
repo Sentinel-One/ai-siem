@@ -327,7 +327,13 @@ class ActionTypesAreNotInvented(unittest.TestCase):
         m = re.search(r"action types \*\*observed in production\*\*.*?are:\n(.*?)\n\n",
                       SKILL, re.S | re.I)
         self.assertIsNotNone(m, "the observed-action-type list is gone from SKILL.md")
-        return set(re.findall(r"`([a-z0-9_]+)`", m.group(1)))
+        observed = set(re.findall(r"`([a-z0-9_]+)`", m.group(1)))
+        # Types shipped in a release but not yet seen in the corpus (e.g. `switch`, 26.3.6) are
+        # listed separately, so the observed list stays honest.
+        r = re.search(r"action types \*\*documented in release notes\*\*.*?are:\n(.*?)\n\n",
+                      SKILL, re.S | re.I)
+        released = set(re.findall(r"^`([a-z0-9_]+)`", r.group(1), re.M)) if r else set()
+        return observed | released
 
     def test_the_list_is_still_published(self):
         self.assertGreaterEqual(len(self._documented()), 15)
@@ -528,6 +534,41 @@ class October2026FlowLearnings(unittest.TestCase):
         self.assertIn('test("sha256$")', self.soc)
         self.assertIn("s1_detection_metadata", self.soc)
         self.assertIn("REPLACE-WITH-YOUR-EMAIL@example.com", self.soc)
+
+
+class November2026HAFieldFindings(unittest.TestCase):
+    """Field findings, 2026-11-05: data_formation never reached GA, activity triggers cannot be
+    on-demand, and the Switch action shipped in release 26.3.6."""
+
+    def setUp(self):
+        ref = SKILL_DIR / "references"
+        self.blocks = (ref / "building-blocks.md").read_text(encoding="utf-8")
+        self.catalog = (ref / "building-blocks-catalog.md").read_text(encoding="utf-8")
+        self.rules = (ref / "validation-rules.md").read_text(encoding="utf-8")
+        self.schema = (ref / "workflow-schema.md").read_text(encoding="utf-8")
+        self.skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+
+    def test_no_data_formation_template_is_offered(self):
+        # Neither reference may show a data_formation action as something to emit.
+        for text in (self.blocks, self.catalog):
+            self.assertNotRegex(text, r'"type":\s*"data_formation"')
+            self.assertNotRegex(text, r'"action_type":\s*"data_formation"')
+        self.assertIn("never reached GA", self.blocks)
+        self.assertIn("No `data_formation` action", self.rules)
+        self.assertIn("`data_formation` never reached GA", self.skill)
+
+    def test_activity_trigger_must_be_automatic(self):
+        self.assertIn("Activity triggers are automatic only", self.blocks)
+        self.assertIn('Not valid for `event_type: "activity"`', self.schema)
+        self.assertIn('"event_type": "activity"` has `"run_automatically": true`', self.rules)
+
+    def test_switch_action_documented_without_guessing(self):
+        self.assertIn("### Switch (multi-branch, release 26.3.6)", self.blocks)
+        self.assertIn('"switch_cases"', self.blocks)
+        self.assertIn("switch_cases_matches", self.blocks)
+        self.assertIn("`Case 1` becomes `case-1`", self.blocks)
+        self.assertIn("Not yet confirmed\nfrom an export", self.blocks.replace("**", ""))
+        self.assertIn("1 to 20 cases", self.rules)
 
 
 if __name__ == "__main__":

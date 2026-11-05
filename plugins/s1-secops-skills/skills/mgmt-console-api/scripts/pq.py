@@ -263,7 +263,14 @@ _PASSTHROUGH_COMMANDS = {"datasource", "dataset", "join", "union",
 
 
 def _first_top_level_pipe(q: str) -> int:
+    """Index of the first `|` outside quotes and at parenthesis depth 0, or -1.
+
+    Depth matters: a subquery in the initial filter
+    (`f in (a | group 1 by f) | group n=count()`) has its own `|`, and splitting
+    there produced unbalanced parentheses and HTTP 400 `Expected ")"`.
+    """
     quote = None
+    depth = 0
     i = 0
     while i < len(q):
         c = q[i]
@@ -275,7 +282,11 @@ def _first_top_level_pipe(q: str) -> int:
                 quote = None
         elif c in ("'", '"'):
             quote = c
-        elif c == "|":
+        elif c == "(":
+            depth += 1
+        elif c == ")":
+            depth = max(0, depth - 1)
+        elif c == "|" and depth == 0:
             return i
         i += 1
     return -1

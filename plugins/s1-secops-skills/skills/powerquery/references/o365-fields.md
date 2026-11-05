@@ -7,7 +7,7 @@ Where the data actually lives on an M365 / Exchange / Teams / SharePoint audit s
 **Never hardcode an M365 field path.** Run schema discovery first, every time, on the tenant you're about to query. The right helpers already exist:
 
 - `powerquery_schema_discover` (s1-secops-mcp) samples a `dataSource.name` and returns its populated fields. On the user's host, `mgmt-console-api/scripts/inspect_source.py` also classifies them into role buckets (principal user, principal host, principal IP, action, etc.) and returns `(prim_key, action_key)`. Use one of them before writing any filter against a source you haven't queried recently.
-- For an ad-hoc check inside a query, `dataSource.name='<m365_source>' | limit 1 | columns *` shows every parsed field on one event. `| group ct=count() by <candidate_field> | sort -ct | limit 20` confirms which fields actually carry data on this tenant.
+- For an ad-hoc look at every parsed field on one event, run a raw-event query: `powerquery_run` with `{"query": "dataSource.name='<m365_source>'", "queryType": "LOG", "logLimit": 1}`. (`| columns *` is rejected with `Don't understand [*]`, and a PQ with no `columns` returns only `timestamp` and `message`.) `| group ct=count() by <candidate_field> | sort -ct | limit 20` confirms which fields actually carry data on this tenant.
 
 Treat the names below as conceptual placeholders. Discover the real ones each time.
 
@@ -25,8 +25,9 @@ M365 audit events arrive as a hybrid: a thin layer of OCSF-normalized scalars on
 // 1. Confirm the source string and event volume on this tenant.
 | group ct=count() by dataSource.name | sort -ct | limit 50
 
-// 2. Pick one event from the source and dump every field.
-dataSource.name='<m365_source>' | limit 1 | columns *
+// 2. Pick one event from the source and dump every field: run it as a raw-event
+//    (LOG) query, not a PQ, i.e. powerquery_run with queryType "LOG", logLimit 1:
+dataSource.name='<m365_source>'
 
 // 3. For a candidate principal-user field, confirm it's populated.
 dataSource.name='<m365_source>'
@@ -75,8 +76,9 @@ Conceptually you'll typically see at minimum: a per-user mailbox send, a delegat
 M365 audit records carry an integer category code. The exact integer-to-category mapping is documented by Microsoft and is stable across tenants; the field name carrying it on the SDL side is the variable part. Discover the field name once, then use the integer for cheap pre-filters:
 
 ```text
-// discover the field name carrying the M365 RecordType integer
-dataSource.name='<m365_source>' | limit 1 | columns *
+// discover the field name carrying the M365 RecordType integer:
+// raw-event (LOG) query, powerquery_run with queryType "LOG", logLimit 1
+dataSource.name='<m365_source>'
 
 // once known, pre-filter coarse categories cheaply
 dataSource.name='<m365_source>' <recordtype_field> = 2     // Exchange item
@@ -118,16 +120,16 @@ Always partition the result set on `dataSource.name` presence and report the two
 
 ```text
 * contains 'user@example.com'
-| let category = (dataSource.name = *) ? 'subject_activity' : 'investigation_noise'
+| let category = dataSource.name ? 'subject_activity' : 'investigation_noise'
 | group ct=count() by category
 ```
 
-To inspect what the investigation-noise records actually look like on this tenant, drill in:
+The bare-field ternary is the working form; `(dataSource.name = *) ? ... : ...` fails with `Don't understand [*]` (SKILL.md rule 16). `| group ct=count() by has_source = dataSource.name != null` also works.
+
+To inspect what the investigation-noise records actually look like on this tenant, drill in with a raw-event (LOG) query, `powerquery_run` with `queryType: "LOG"` and a small `logLimit`, which returns every parsed field:
 
 ```text
-* contains 'user@example.com'
-| filter !(dataSource.name = *)
-| limit 5 | columns *
+* contains 'user@example.com' !(dataSource.name = *)
 ```
 
 ## Pattern: "user appears in data but never as actor"

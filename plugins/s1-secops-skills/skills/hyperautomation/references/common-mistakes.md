@@ -4,6 +4,19 @@ Moved out of `SKILL.md` to keep it under the 500-line authoring limit. The conte
 
 ## Common mistakes to avoid
 
+- ❌ Emitting a `data_formation` action, or copying one from an older exported flow. It never
+  reached GA, even though some consoles still import it.
+  ✅ Use a `variable` action: put the value or JSON object in `value`, read it as
+  `{{local_var.<name>}}`. See `references/building-blocks.md` → **Data Formation: not GA**.
+- ❌ An on-demand activity trigger: a `singularity_response_trigger` group with
+  `"event_type": "activity"` and `"run_automatically": false`. The import accepts it, but there is
+  no activity page to start it from, so the flow never runs.
+  ✅ On-demand runs exist only for alerts and vulnerabilities. Activity groups use
+  `"run_automatically": true`.
+- ❌ Chaining Condition actions to make a multi-way choice (severity, source, alert type).
+  ✅ Use the Switch action (release 26.3.6): up to 20 cases plus a Default branch, first-match or
+  all-match. Take the evaluation-mode, default-branch and case-edge fields from a console export.
+
 - ❌ Hand-assembling a workflow JSON action by action. The action envelope has far more required
   keys than a hand-written one will carry, and a flow missing any of them imports with HTTP 200 and
   then fails at runtime, with no per-action error surface to point at the cause.

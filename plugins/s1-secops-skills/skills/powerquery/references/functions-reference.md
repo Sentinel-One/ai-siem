@@ -137,7 +137,7 @@ The result is an estimate that never exceeds either input (regression case `inte
 **Avoid** on general tenants (return 500 error on this deployment even though docs list them):
 
 - `percentile(x, N)`: use `p50` / `p95` / `p99` instead.
-- `first(x)` / `last(x)`: use `min_by(x, timestamp)` / `max_by(x, timestamp)`. These are more explicit and always work.
+- `first(x)` / `last(x)` without a `sort` earlier in the pipeline: they fail with `grouping function "first" requires a previous sort command`. Add `| sort timestamp` before the `group`, or use `min_by(x, timestamp)` / `max_by(x, timestamp)`, which need no sort and state the ordering explicitly.
 
 ### Row-level / overall (no `group` needed)
 

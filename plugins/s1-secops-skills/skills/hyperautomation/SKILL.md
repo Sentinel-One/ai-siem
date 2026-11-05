@@ -282,6 +282,10 @@ MSSQL) that appears in zero workflows in the corpus, so its JSON `type` string i
 Before emitting an action type outside the 19, confirm it by building one in the console UI and
 exporting the workflow to read its `type`. Do not guess the string.
 
+Correction: `data_formation` never reached GA; it survives in old workflows, never emit it, use a
+`variable`. Action types **documented in release notes** but not yet in the corpus are:
+`switch` (26.3.6: up to 20 cases plus Default; see `references/building-blocks.md` → **Switch**).
+
 > **Snippet node types.** *Calling* a snippet from a workflow uses a `snippet_20` node (not `snippet`). *Authoring* a snippet uses a `snippet_trigger` (inputs) + `snippet_output` (returns) in place of a normal trigger. See `references/snippets.md`.
 
 ## Example patterns (in references/)

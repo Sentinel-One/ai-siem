@@ -100,9 +100,9 @@ dataSource.name = *                      // "field is present/non-null"; use as 
 indicator.category = *                   // same pattern; works for any field
 !(indicator.category = *)               // field is null / missing
 
-// 2. ALL-COLUMN TEXT SEARCH (initial filter only)
-* contains 'evil.com'                    // find text in ANY indexed field, initial filter only
-* matches 'regex'                        // regex across all indexed fields, initial filter only
+// 2. ALL-COLUMN TEXT SEARCH (cheapest in the initial filter)
+* contains 'evil.com'                    // find text in ANY indexed field
+* matches 'regex'                        // regex across all indexed fields
 $"regex"                                 // shorthand for message matches "regex" (initial filter only)
 
 // 3. EMPTY INITIAL FILTER (all events)
@@ -113,7 +113,7 @@ Key facts about `*`:
 
 - `*` by itself is NOT a valid filter. `*` alone returns HTTP 500 ("Don't understand [*]"). Never use `*` as the only initial token.
 - **`field = *`** (attribute wildcard) checks whether a specific field is present/non-null. Use `dataSource.name=*` as a query-opener for aggregations over all events that have that field. Confirmed working on live tenant.
-- **`* contains` / `* matches`** (all-column search) searches across ALL indexed fields. Only works in the **initial filter** (before the first `|`). Not valid in `| filter …` after a pipe, not in Alerts, not in dashboards. Much faster than `message contains` on JSON-blob sources.
+- **`* contains` / `* matches`** (all-column search) searches across ALL indexed fields. Cheapest in the **initial filter** (before the first `|`). It also works in `| filter …` on raw events, but there it runs after the scan (live-verified 2026-11-05: `event.type='Process Creation' | filter * contains 'svchost'` returned the same count as the initial-filter form; regression case `allfield-search-after-pipe`). Not valid in Alerts; use after `| group` / `| columns` and in dashboards was not tested. Much faster than `message contains` on JSON-blob sources.
 - These two idioms are NOT interchangeable: `dataSource.name=*` checks a specific field for null; `* contains 'value'` searches all fields for a substring.
 
 ### Phrasebook: natural-language asks to canonical operator
@@ -122,8 +122,8 @@ When a user describes the search in English, the phrasing usually maps to one of
 
 | User asks for | Canonical PQ |
 |---|---|
-| "all column search" / "search all fields" / "search everything for X" / "anywhere in the event" / "wherever it appears" | `* contains 'value'` (initial filter only) |
-| "regex across every field" / "pattern match anywhere" | `* matches 'regex'` (initial filter only) |
+| "all column search" / "search all fields" / "search everything for X" / "anywhere in the event" / "wherever it appears" | `* contains 'value'` (in the initial filter, where it is cheapest) |
+| "regex across every field" / "pattern match anywhere" | `* matches 'regex'` (in the initial filter, where it is cheapest) |
 | "query all events for a source" / "aggregate over all logs" / "group by field across everything" | `dataSource.name=* \| group count=count() by dataSource.name`: field presence as opener |
 | "is this field set" / "rows where X is populated" | `field = *` |
 | "field is missing / null / empty" | `!(field = *)` |
@@ -199,10 +199,11 @@ Shortcuts work in EDR and XDR data views. They are not supported for command nam
 
 ## 5. Regex dialect and escaping levels
 
-The engine uses `java.util.regex` semantics (also compatible with Python `re`). Some operations are unavailable:
+The engine uses `java.util.regex` semantics (also compatible with Python `re`):
 
-- **Lookaheads and lookbehinds are NOT supported** (performance reasons).
-- **Named capture groups are NOT supported.** Use positional groups and `\1`, `\2` (in agent parsers) or `$1`, `$2` (in SDL parsers).
+- **Lookaheads (`(?=…)`, `(?!…)`) and named groups (`(?<name>…)`) are accepted** by `matches` (live-verified 2026-11-05 on two tenants; regression cases `regex-lookahead-accepted`, `regex-lookahead-negative-control` and `regex-named-group-accepted`). Lookbehinds were not tested. They cost more than plain patterns, so keep them out of high-volume initial filters where a simpler pattern works.
+- **Lazy quantifiers (`.*?`, `+?`) are accepted and match lazily** (regression case `regex-lazy-is-lazy`). A negated character class (`[^"]*`) is still cheaper and clearer.
+- For back-references in replacements use positional groups: `$1`, `$2` in `replace()` and SDL parsers, `\1`, `\2` in agent parsers.
 - Default is case-insensitive. Append `:matchcase` for case-sensitive.
 - Max regex length: 1,000 bytes.
 

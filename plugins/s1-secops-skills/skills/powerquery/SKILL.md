@@ -43,7 +43,7 @@ initial-filter-expression
 | …
 ```
 
-**Initial filter** (everything before the first `|`) is the only place where `* contains "x"` and `* matches "regex"` multi-field search works. It can be empty, start the query with `|` and it is treated as "all events" (e.g., `| group ct=count() by event.type`).
+**Initial filter** (everything before the first `|`) is the cheapest place for `* contains "x"` and `* matches "regex"` multi-field search. They also work in `| filter` on raw events, but there they run after the scan. The initial filter can be empty, start the query with `|` and it is treated as "all events" (e.g., `| group ct=count() by event.type`).
 
 **Commands** (each starts with `|`):
 
@@ -86,10 +86,20 @@ Strings need quotes (`'foo'` or `"foo"`); numbers and booleans don't. Underscore
 
 ## BANNED functions: do not use, ever
 
-These function names do not exist in PowerQuery. Using any of them produces `Unknown function '<name>'` (HTTP 500). Do not invent plausible-sounding names, if a function isn't in `references/functions-reference.md`, it doesn't exist.
+These function names and forms do not exist in PowerQuery. A missing function produces `Unknown function '<name>'`; the other rows show the error each form returns. Do not invent plausible-sounding names, if a function isn't in `references/functions-reference.md`, it doesn't exist.
 
 | Do NOT write | Write this instead |
 |---|---|
+| `count(distinct x)` (`Expected ")"`) / `count_distinct(x)` (`Unknown function`) | `estimate_distinct(x)` |
+| `date_format(...)` | `strftime(ts, pattern)` |
+| `bin(...)` | `timebucket('1h')` |
+| `day_of_week(ts)` | `strftime(ts, '%a')` |
+| `substring(...)` | `substr(x, start[, len])` |
+| `lowercase(x)` / `uppercase(x)` | `lower(x)` / `upper(x)` |
+| `replace_all(...)` | `replace(x, regex, repl)` |
+| `contains_any(...)` (`Expected ")"`) | `f contains ('a', 'b')` |
+| `f[0]` (`Unable to parse the entire query`) | `array_get(f, 0)` |
+| `\| columns *` (`Don't understand [*]`) | `queryType: "LOG"` in `powerquery_run`, which returns every parsed field per event |
 | `formattime(...)` | `strftime(ts)` / `strftime(ts, pattern)` |
 | `formatdate(...)` | `strftime(ts)` / `simpledateformat(ts, pattern)` |
 | `floor_time(...)` | `bucket=timebucket(unit)` in `group by` |
@@ -98,11 +108,19 @@ These function names do not exist in PowerQuery. Using any of them produces `Unk
 | `ifnull(a, b)` | `a ? a : b` |
 | `if(cond, a, b)` inside aggregates | `count(predicate)` |
 | `percentile(x, N)` | `p50(x)` / `p95(x)` / `p99(x)` |
-| `first(x)` / `last(x)` | `min_by(x, timestamp)` / `max_by(x, timestamp)` |
+| `first(x)` / `last(x)` with no `sort` before them (`grouping function "first" requires a previous sort command`) | `min_by(x, timestamp)` / `max_by(x, timestamp)`, or put `\| sort timestamp` earlier in the pipeline |
 | `sort count desc` / `sort field asc` | `sort -count` / `sort +field`: PowerQuery uses `-`/`+` prefix, NOT SQL-style `desc`/`asc`. Using `desc` or `asc` causes HTTP 500 "Unable to parse the entire query". Purple AI frequently generates this wrong; always correct before running. |
 | `` `field.name` `` (backtick-quoted identifiers) | `field.name`: dotted field names are written bare, no backticks. Using backtick quoting returns HTTP 500 "Don't understand [`]". |
 
 The only valid date/time functions are: `strftime`, `simpledateformat`, `strptime`, `simpledateparse`, `timebucket`, `querystart`, `queryend`, `queryspan`.
+
+**Verified behaviours worth knowing** (live-verified 2026-11-05):
+
+- `pct(95, x)` works, as well as `p95(x)`.
+- `| limit` with no number returns 10 rows.
+- A query with no `columns` or `group` returns only `timestamp` and `message`. To see every field of an event, use `queryType: "LOG"`.
+- An unaliased function used as a group key becomes a column literally named after the call, for example `timebucket('1h')`. Always alias it: `by bucket = timebucket('1h')`.
+- `n / 0` returns the string `Infinity` with no error. Guard divisions: `(d > 0 ? n / d : 0)`.
 
 ---
 
@@ -112,10 +130,10 @@ These are where queries go wrong. Internalize them before writing.
 
 1. **`*` alone is NOT a valid initial filter.** `* | limit 5` returns a 500 error ("Don't understand [*]"). There are three distinct `*` idioms, pick the right one for your intent:
    - **Field presence / attribute wildcard:** `dataSource.name=*` means "field is present/non-null". Use as a query-opener for aggregations, e.g. `dataSource.name=* | group count=count() by dataSource.name`. This is NOT an all-column search.
-   - **All-column text search:** `* contains 'evil.com'` or `* matches 'regex'` in the **initial filter** (before the first `|`) searches ALL indexed fields; use when you need to find text anywhere in the event. Dramatically faster than `message contains`. Only works before the first `|`; not valid in `| filter …` after a pipe, and not valid in Alerts.
+   - **All-column text search:** `* contains 'evil.com'` or `* matches 'regex'` in the **initial filter** (before the first `|`) searches ALL indexed fields; use when you need to find text anywhere in the event. Dramatically faster than `message contains`. Put it before the first `|`, where it is cheapest; it also works in `| filter …` on raw events, but runs after the scan there. Not valid in Alerts.
    - **Empty filter (all events):** start the query with `|`, e.g. `| group ct=count() by event.type`.
 2. **Double-escape regex almost everywhere.** `src.process.cmdline matches "\\d+"`, `tgt.file.path matches '^C:\\\\Windows\\\\Temp\\\\[a-z]{8}\\.tmp$'`. The only place you don't double-escape is the `$"…"` shorthand (searches `message`).
-3. **Regex lazy quantifiers (`?`) are not supported.** The SDL regex engine does not support lazy (non-greedy) quantifiers: `.*?`, `.+?`, `[^x]*?` etc. all return HTTP 500 "Dangling meta character '?'". Use a negated character class instead: `[^"]*` in place of `.*?"`, `[^ ]*` in place of `.*?`, etc.
+3. **Lazy quantifiers are accepted.** `.*?` and `+?` parse and match lazily (live-verified 2026-11-05 on two tenants: `replace('aXbXc', 'a(.*?)X.*', '[$1]')` returns `[]` where the greedy form returns `[Xb]`). A negated character class (`[^"]*` rather than `.*?"`) is still cheaper and clearer, so prefer it in detections and dashboards. "Dangling meta character '?'" means a `?` with nothing before it to quantify.
 4. **After `columns` or `group`, previous fields are gone.** These commands create an entirely new record set. If you'll need a field later, carry it through: `group ct=count(), host=any(endpoint.name) by src.process.storyline.id`; don't expect `endpoint.name` to still be addressable after that `group` unless you aggregate it.
 5. **Subqueries can't go after `group`, `sort`, or `limit`.** And the subquery must itself produce the column named in the `in (...)` expression (via `columns` or `group`, an alias counts). `user in (action='login' | group 1 by user)` is valid; `user in (action='login')` is not. Subqueries match one raw field only (`any(a, b) in (subquery)` is HTTP 400 `Subquery requires a literal field name`): on a `let` field they silently return 0 rows, they never match null, and `!(x in (<empty inner>))` returns every row. Details in `references/commands-reference.md` §14.
 6. **`compare` and `transpose` must be the LAST command.** Put `sort` before `compare` if you want to order the non-shifted side.
@@ -125,7 +143,7 @@ These are where queries go wrong. Internalize them before writing.
 10. **Performance: filter early, group narrow.** Push filters above the first pipe when possible. In `group`, prefer low-cardinality fields; for long ranges, consider `| top K …` instead (probabilistic but orders of magnitude faster).
 11. **Alerts and Dashboards have tighter limits.** A PowerQuery Alert is capped at 1,000 rows intermediate / 1 MB RAM. Don't put `nolimit` in a dashboard panel.
 12. **Shortcut fields (`#cmdline`, `#name`, `#hash`, …) don't work as initial filters on every tenant.** They're documented but return 500 on many deployments. Prefer explicit field names (`src.process.cmdline contains 'x'`); they're as terse and always work. Save shortcuts for exploratory Event Search where you're not scripting against the API.
-13. **Aggregates to prefer: `min_by` / `max_by` over `first` / `last`.** `first(x)` and `last(x)` are sometimes listed as aggregates but fail on many tenants. Use `min_by(x, timestamp)` and `max_by(x, timestamp)`; they're explicit about ordering and always work.
+13. **`first(x)` / `last(x)` need a `sort` earlier in the pipeline**; without it the query fails with `grouping function "first" requires a previous sort command`. Prefer `min_by(x, timestamp)` / `max_by(x, timestamp)`, which need no sort and state the ordering explicitly.
 14. **Percentiles: use `p50`/`p95`/`p99`, not `percentile(x, N)`.** The latter isn't a real function and returns 500.
 15. **Null-filter at the wrong stage: `filter x = null` before `x` is computed returns 500.** Use `filter !(x =*)` for is-null until after a `let`/`join`/`lookup` has produced `x`.
 16. **Coalesce-style fallback uses bare-field truthy test, NOT `(field = *) ? a : b`.** PQ has no `coalesce()` / `ifnull()` / `nvl()`. To pick the first non-null of several fields inside a `let`, chain bare-field ternaries; they evaluate the field's truthiness directly:
@@ -155,6 +173,8 @@ These are where queries go wrong. Internalize them before writing.
 20. **Parenthesise every negation.** `NOT src.process.name contains 'x'` and `NOT src.process.name = 'x'` apply the negation to the bare field and silently return 0 rows. Write `!(src.process.name contains 'x')`. Likewise `| filter x` on a bare field or variable is a text search, not a truthiness test; use `| filter bool(x)`.
 
 21. **Exclude SDL ingest-metering rows: `tag != 'logVolume'` in the initial filter.** Every ingest writes receive-time accounting rows (`tag='logVolume'`, fields `metric` / `value` / `path1`, plus `sca:bytesToCharge` and `sca:ingestTime`) under the source's own `dataSource.name`. Any query anchored only on `dataSource.name`, `dataSource.vendor`, `site.id` or `sca:*` counts them, and a silent source looks live (measured 2026-10-03: 7,390 of 383,044 rows in 12h, all carrying `sca:bytesToCharge`). Queries anchored on an event field (`class_uid`, `event.type`, a principal `=*`) are already immune. `powerquery_run` and `pq.run_pq()` add the predicate automatically (opt out with `includeMetering` / `include_metering=True`). For persisted queries (dashboard panels, STAR / scheduled rule bodies) write it yourself, in the initial filter where it is cheapest: `dataSource.name='X' tag != 'logVolume' | ...`. `!=` keeps rows that have no `tag`, so `OR !(tag = *)` is not needed in PowerQuery. Omit it only when the question is ingest volume or data usage. The console's XDR view already hides these rows; All Data does not.
+
+    **Known issue (s1-secops-mcp 1.6.0):** the automatic predicate is added by wrapping the text before the first `|` in parentheses (`tag != 'logVolume' and (<initial filter>) | ...`). If the initial filter contains a subquery (`f in (... | group 1 by f)`), that first `|` is inside the subquery, and the rewrite breaks the query with HTTP 400 `Expected ")"`. Write `tag != 'logVolume'` yourself in the outer initial filter; the tool then leaves the query alone (regression case `subquery-in-initial-filter-with-metering`). Alternatively pass `includeMetering: true`. The tool fix, inserting the predicate at the first `|` at parenthesis depth 0, is tracked for s1-secops-mcp.
 
 22. **No `round()`.** It is an unknown function: HTTP 400 "Unknown function 'round'". Round to one decimal with `floor(x * 10 + 0.5) / 10`; `floor` works (live-verified 2026-10-14).
 
@@ -194,7 +214,7 @@ The primary execution path is the Long Running Query API, through the `powerquer
 | `edrStrict` | Sends top-level `scheme: "edr"` so an unknown or wrongly cased EDR field returns HTTP 400 instead of silent 0 rows. |
 | `outputFile` (+ `overwrite`) | Absolute path on the user's machine; `.csv`, `.jsonl` or JSON. The full result is written there (mode 0600, must be inside `S1_OUTPUT_DIRS`, default home and temp; under the Docker launcher, inside the mounted `S1_OUTPUT_DIR`) and only a summary plus a 5-row preview returns. If the server refuses the path because no folder is shared with the container, tell the user to run `~/.local/bin/s1-secops-mcp-launch.sh install --output-dir <folder>` (Windows: `-OutputDir`) and restart Claude Desktop; do not ask them to set `S1_OUTPUT_DIRS`, which never reaches the container. |
 | `scope` | `"<accountId>"` or `"<accountId>:<siteId>"`; log reads are scope-filtered. |
-| `includeMetering` | Keep SDL `tag='logVolume'` ingest-metering rows (excluded by default). |
+| `includeMetering` | Keep SDL `tag='logVolume'` ingest-metering rows (excluded by default). Known issue in 1.6.0: with a subquery in the initial filter, the automatic exclusion breaks the query (`Expected ")"`); write `tag != 'logVolume'` into the outer initial filter yourself, or pass `includeMetering: true`. See rule 21. |
 
 The wire protocol below is what the tool does for you; it matters when you debug a result or write a host-only runner.
 

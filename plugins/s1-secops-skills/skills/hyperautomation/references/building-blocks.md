@@ -162,6 +162,12 @@ Reference incoming data: `{{http-trigger.body.someField}}`
 `"vulnerability"` (10), `"activity"` (3).
 `event_subtypes` options: `"CREATE"` (434), `"UPDATE"` (26).
 
+**Activity triggers are automatic only.** An on-demand run (`run_automatically: false`) is
+started from the record's page, which exists for alerts and vulnerabilities but not for
+activities. The console UI only offers an automatic activity trigger. The import API still
+accepts `"event_type": "activity"` with `run_automatically: false`, and the flow then never runs.
+Always emit `run_automatically: true` for an `activity` group.
+
 > **`compared_value` format trap**: when `comparison_operator` is `"in"`, `compared_value` must
 > be a **JSON-encoded string of an array** (e.g. `"[\"HIGH\",\"CRITICAL\"]"`), not a raw JSON
 > array. Every active production flow uses this string-encoded format.
@@ -384,6 +390,58 @@ Operators (with usage counts in active corpus):
 > **For `comparison_operator: "in"`**, encode `compared_value` as a JSON string of an array
 > (e.g. `"[\"HIGH\",\"CRITICAL\"]"`), not a raw array.
 
+### Switch (multi-branch, release 26.3.6)
+
+Routes a workflow into several branches from one step, instead of chaining Condition actions.
+Use it for "handle alerts differently by severity or source" and any other multi-way choice.
+
+What the product guarantees (release 26.3.6 notes and the HA team announcement, 2026-11-05):
+
+- **Cases:** 1 to 20. Each case has a name and its own condition, built with the same condition
+  builder as Condition, including several condition groups. Case names are at most 20
+  characters, unique, and contain only letters, numbers and spaces. Order matters.
+- **Evaluation mode:** *First matching branch* (cases in order, take the first true one) or *All
+  matching branches* (take every true case).
+- **Default branch:** always present; runs when no case matches.
+- **Output:** `switch_cases_matches`, an object mapping each case to `true` / `false`. The key is
+  the case name in lowercase with spaces replaced by hyphens (`Case 1` becomes `case-1`), so
+  renaming a case changes its key. Read it downstream as
+  `{{<switch-slug>.data.switch_cases_matches.case-1}}`.
+- **Execution view:** the branches that ran are highlighted on the canvas.
+
+JSON, as far as it is confirmed. The start of the action input is visible in the release notes:
+
+```json
+{
+  "type": "switch",
+  "action_type": "switch",
+  "switch_cases": [
+    {
+      "id": "<uuid>",
+      "label": "Case 1",
+      "condition": {
+        "operator": "and",
+        "conditions": [
+          {
+            "operator": "and",
+            "conditions": [
+              {"input_value": "{{manual-trigger.data.something}}", "compared_value": "1", "comparison_operator": "equals"}
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+A case's `condition` is the grouped form (an outer `operator` with condition groups inside), not
+the flat `conditions` / `conditions_relationship` form of a Condition action. **Not yet confirmed
+from an export:** the field that holds the evaluation mode, how the Default branch is represented,
+and the `connected_to[].custom_handle` value that ties each case to its downstream action
+(Condition uses `"true"` / `"false"`). Until those are confirmed, build the Switch in the console,
+export the workflow and copy its shape; do not guess those three fields.
+
 ### Delay
 
 ```json
@@ -457,28 +515,41 @@ For attachments, use the keys **`file_name`** and **`file_content`** (NOT `name`
 99% of active flows send to a single recipient. `to` and friends are arrays of strings; each
 element can be a literal or a `{{...}}` expression.
 
-### Data Formation
+### Data Formation: not GA, never emit
+
+`data_formation` never reached GA (Hyperautomation team, #ask-hyperautomation-team, 2026-11-05). Old workflows on some consoles still carry it, and an import may accept it, but it is
+not in the product: do not generate it and do not copy it from an exported flow. Rewrite any
+`data_formation` step you meet as a **Variable** action.
+
+The common "Generate UUID" case as a Variable:
 
 ```json
 {
-  "type": "data_formation",
+  "type": "variable",
   "tag": "core_action",
   "data": {
     "name": "Generate UUID",
-    "action_type": "data_formation",
-    "data": {
-      "uuid": "{{Function.SUBSTRING(Function.GENERATE_UUID4(), 6)}}"
-    }
+    "action_type": "variable",
+    "variables": [
+      {
+        "name": "uuid",
+        "value": "{{Function.SUBSTRING(Function.GENERATE_UUID4(), 6)}}",
+        "should_use_as_output": false,
+        "is_secret": false
+      }
+    ],
+    "variables_scope": "local",
+    "expire_in_unit": null,
+    "expire_in_value": null,
+    "expire_method": null,
+    "workflows_acl": null
   }
 }
 ```
 
-Builds a structured object on the fly without paying for a Variable action. `data` is an
-object whose values can be literals or `{{...}}` expressions; reference downstream as
-`{{generate-uuid.data.uuid}}`. Real corpus uses include: building Slack channel-config dicts,
-shaping note bodies, normalizing event objects before SDL ingest. **75 of 249 data_formation
-actions in the corpus are exactly the "Generate UUID" template above**, copy it verbatim
-when you need a correlation ID.
+Reference it as `{{local_var.uuid}}`. To build a structured object (a Slack channel-config dict, a
+note body, an event for SDL ingest), put the JSON in a variable's `value`; variables holding JSON
+are stored already parsed (see `functions-reference.md`).
 
 ### HTTP Request (core: no integration)
 

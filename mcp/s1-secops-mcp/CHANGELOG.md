@@ -1,5 +1,28 @@
 # Changelog
 
+## Plugin 1.4.1 (skills only; image and s1-secops-mcp unchanged at 1.6.0), 2026-11-05
+
+### powerquery
+
+- Rule 3: lazy quantifiers are accepted and match lazily. Lookaheads and named groups are accepted by `matches`; lookbehinds are untested.
+- `* contains` / `* matches` also work in `| filter` after a pipe; the initial filter is still cheaper.
+- Rule 13: `first()` / `last()` need a `sort` earlier in the pipeline; prefer `min_by` / `max_by`. Same correction in the three identical `lrq-api.md` copies (powerquery, sdl-api, mgmt-console-api).
+- `| columns *` is rejected (HTTP 400); the O365 example and reference use `queryType: "LOG"` instead. The O365 recipe that used the banned `(field = *) ? a : b` form uses the bare-field ternary.
+- BANNED table: `count(distinct x)`, `count_distinct`, `date_format`, `bin`, `day_of_week`, `substring`, `lowercase` / `uppercase`, `replace_all`, `contains_any`, `f[0]`, `| columns *`, each with what to write instead. New verified-behaviours list (`pct()`, bare `limit`, default projection, unaliased group keys, `n / 0`).
+- Rule 21 known issue: `powerquery_run` in s1-secops-mcp 1.6.0 breaks queries with a subquery in the initial filter (`Expected ")"`). Workaround: write `tag != 'logVolume'` yourself, or `includeMetering: true`. The tool fix (split at the first top-level `|`) is planned for the next s1-secops-mcp release.
+- 12 new live regression cases. Backtest on 2026-11-05: 65 of 65 non-fixture cases pass with the query unchanged; through the 1.6.0 rewrite, the 16 subquery cases fail as described above and everything else passes. `tools/pq_live_regression.py --mcp-rewrite` reproduces the tool's rewrite.
+
+### mgmt-console-api
+
+- `scripts/pq.py`: the automatic metering predicate is inserted at the first `|` at parenthesis depth 0, so subqueries in the initial filter no longer break (5 new unit tests; verified live).
+- `sdl-api`: `| columns *` is documented as HTTP 400 "Don't understand [*]", as measured.
+
+### hyperautomation
+
+- `data_formation` never reached GA: no template generates it; the Generate UUID idiom and the catalog recipes use a Variable action, and a validation rule and a common-mistakes entry forbid it.
+- Activity triggers are automatic only: `"event_type": "activity"` with `run_automatically: false` imports but never runs. Documented in the schema, building blocks and validation rules.
+- New Switch action (release 26.3.6): cases, limits, evaluation modes, Default branch, the `switch_cases_matches` output and the confirmed start of its JSON. The evaluation-mode field, the Default-branch representation and the per-case edge handle are marked as unconfirmed, to be taken from a console export.
+
 ## 1.6.0 (image `sentinelone/secops-mcps:1.6.0`, plugin 1.4.0), 2026-11-05
 
 ### New: built-in Purple AI and threat intelligence

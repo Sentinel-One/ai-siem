@@ -10,8 +10,10 @@ Before any M365 hunt, confirm the source string, the actor / operation field nam
 // Confirm the source name.
 | group ct=count() by dataSource.name | sort -ct | limit 50
 
-// Inspect one event end-to-end.
-dataSource.name='<m365_source>' | limit 1 | columns *
+// Inspect one event end-to-end: run this filter as a raw-event query,
+// powerquery_run with queryType "LOG" and logLimit 1, which returns every
+// parsed field (| columns * is rejected with "Don't understand [*]").
+dataSource.name='<m365_source>'
 
 // Confirm the actor and operation fields are populated and which form
 // (OCSF or unmapped.*) carries the data on this tenant.
@@ -164,19 +166,19 @@ When the search predicate is an identity string (email, user id, IP), partition 
 
 ```text
 * contains 'user@example.com'
-| let category = (dataSource.name = *) ? 'subject_activity' : 'investigation_noise'
+| let category = dataSource.name ? 'subject_activity' : 'investigation_noise'
 | group ct=count(), first_seen=min(timestamp), last_seen=max(timestamp) by category
 ```
 
-To inspect what the investigation-noise records carry on this tenant:
+Use the bare-field ternary: `(dataSource.name = *) ? ... : ...` fails with `Don't understand [*]` (SKILL.md rule 16; regression case `bare-field-ternary-category`). `| group ct=count() by has_source = dataSource.name != null` also works.
+
+To inspect what the investigation-noise records carry on this tenant, run this filter as a raw-event query (`powerquery_run` with `queryType: "LOG"` and a small `logLimit`), which returns every parsed field:
 
 ```text
-* contains 'user@example.com'
-| filter !(dataSource.name = *)
-| limit 5 | columns *
+* contains 'user@example.com' !(dataSource.name = *)
 ```
 
-The exact field names on the platform-audit records are themselves discoverable via `| columns *`; do not assume them.
+The exact field names on the platform-audit records are discoverable with a `queryType: "LOG"` query; do not assume them.
 
 ## Performance notes specific to M365 hunts
 

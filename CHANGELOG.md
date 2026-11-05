@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - s1-secops-skills plugin 1.4.1 (image and MCP unchanged at 1.6.0)
+
+- PowerQuery skill:
+  - corrections from live testing (lazy quantifiers, lookaheads and named groups work; `* contains` works after a pipe; `first()`/`last()` need a `sort`; `| columns *` is rejected);
+  - more banned names with replacements, and 12 new live regression cases;
+  - documents the s1-secops-mcp 1.6.0 subquery metering issue and its workaround;
+  - the skill's Python client inserts the metering filter at the first top-level pipe.
+- Hyperautomation skill:
+  - `data_formation` (never GA) replaced by a Variable action;
+  - activity triggers must be automatic;
+  - the Switch action (26.3.6) is documented;
+  - the catalog gains Switch, LLM and Agentic Investigation entries.
+
 ### Changed - s1-secops-skills: MCP 1.6.0, image 1.6.0, plugin 1.4.0
 
 - `s1-secops-mcp` adds built-in `purple_ai_query` (Purple AI questions with the console token) and read-only threat-intel tools: `ti_vt_lookup` and `ti_vt_relationship` (VirusTotal), `ti_shodan_host` and `ti_shodan_dns` (Shodan). The threat-intel tools are listed once the user stores that service's key.

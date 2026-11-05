@@ -7,7 +7,8 @@ Every install command on this page downloads or runs the current launcher, which
 current release (image `1.6.0`). If you are several releases behind, read the sections in between
 for what changed, then follow [1.5.7 to 1.6.0](#157-to-160).
 
-- [1.5.7 to 1.6.0](#157-to-160) (current release: image `1.6.0`, s1-secops-mcp `1.6.0`, plugin `1.4.0`)
+- [Plugin 1.4.0 to 1.4.1](#plugin-140-to-141) (current release: image `1.6.0`, s1-secops-mcp `1.6.0`, plugin `1.4.1`)
+- [1.5.7 to 1.6.0](#157-to-160)
 - [Launcher update for Claude Code, Linux and WSL](#launcher-update-for-claude-code-linux-and-wsl)
 - [1.5.6 to 1.5.7](#156-to-157)
 - [Plugin 1.3.16 to 1.3.17](#plugin-1316-to-1317)
@@ -18,6 +19,28 @@ for what changed, then follow [1.5.7 to 1.6.0](#157-to-160).
 - [1.4.x to 1.5.0](#14x-to-150)
 - [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
 - [Rolling back](#rolling-back)
+
+---
+
+## Plugin 1.4.0 to 1.4.1
+
+Skills only: the image and `s1-secops-mcp` stay at `1.6.0`, so there is nothing to reinstall.
+Download the new `.plugin` and replace the old one (Cowork → Customize → Browse plugins → upload →
+**Replace**). What changed:
+
+- **powerquery:** corrections from about 500 live queries. Lazy quantifiers, lookaheads and named
+  groups work; `* contains` also works after a pipe (slower); `first()` / `last()` need an earlier
+  `sort`; `| columns *` is rejected, so use `queryType: "LOG"` to see every field. More functions
+  are listed as banned, with what to write instead.
+- **Subqueries and the metering filter:** with s1-secops-mcp 1.6.0, `powerquery_run` breaks a
+  query that has a subquery in its initial filter (HTTP 400 `Expected ")"`). Write
+  `tag != 'logVolume'` in the initial filter yourself, or pass `includeMetering: true`. The skill's
+  Python client (`mgmt-console-api/scripts/pq.py`) no longer has this bug.
+- **hyperautomation:**
+  - `data_formation` never reached GA and is no longer generated; use a Variable action.
+  - Activity triggers must be automatic: an on-demand activity trigger imports but never runs.
+  - The new **Switch** action (release 26.3.6) is documented, with the fields to take from a
+    console export until its full JSON is confirmed.
 
 ---
 
@@ -63,7 +86,7 @@ mode and the CLAUDE.md override carry over unchanged.
    which prompts for `VIRUSTOTAL_API_KEY` and `SHODAN_API_KEY`; press Enter to keep a value or skip
    it. The end of `install` shows which tools are on, for example
    `Built-in tools: Purple AI on, VirusTotal on, Shodan off (no SHODAN_API_KEY)`.
-3. **Install plugin `1.4.0`** (Cowork → Customize → Browse plugins → upload → **Replace**).
+3. **Install plugin `1.4.1`** (1.4.0 or later; Cowork → Customize → Browse plugins → upload → **Replace**).
 4. **Restart the client** (quit Claude Desktop completely and open it again, or restart Claude Code).
 
 **Tool names that changed.** If you have saved prompts, scripts or runbooks that name tools from

@@ -37,5 +37,42 @@ class TestMeteringExclusion(unittest.TestCase):
                 self.assertEqual(q, want)
 
 
+class TestFirstTopLevelPipe(unittest.TestCase):
+    """The split point must ignore pipes inside quotes and inside parentheses.
+
+    Regression: a subquery in the initial filter used to be split at its own `|`,
+    which sent unbalanced parentheses and got HTTP 400 `Expected ")"`.
+    """
+
+    def test_subquery_in_initial_filter(self):
+        q = "f in (a='x' | group 1 by f) | group n=count()"
+        self.assertEqual(pq._first_top_level_pipe(q), q.index(") |") + 2)
+        sent, applied, _ = pq.exclude_metering(q)
+        self.assertTrue(applied)
+        self.assertEqual(
+            sent,
+            "tag != 'logVolume' and (f in (a='x' | group 1 by f)\n) | group n=count()")
+        self.assertEqual(sent.count("("), sent.count(")"))
+
+    def test_quoted_pipe(self):
+        q = "cmd contains 'a|b' and x=\"c|d\" | limit 5"
+        self.assertEqual(pq._first_top_level_pipe(q), q.index(" | limit") + 1)
+
+    def test_escaped_quote_inside_string(self):
+        q = "cmd contains 'it\\'s | here' | limit 1"
+        self.assertEqual(pq._first_top_level_pipe(q), q.index(" | limit") + 1)
+
+    def test_pipe_in_parentheses_in_later_stage_untouched(self):
+        q = "a=1 | filter b in (c=2 | group 1 by b) | limit 3"
+        self.assertEqual(pq._first_top_level_pipe(q), q.index(" | filter") + 1)
+        sent, applied, _ = pq.exclude_metering(q)
+        self.assertTrue(applied)
+        self.assertEqual(
+            sent, "tag != 'logVolume' and (a=1\n) | filter b in (c=2 | group 1 by b) | limit 3")
+
+    def test_no_pipe(self):
+        self.assertEqual(pq._first_top_level_pipe("a=1 and (b=2 or c=3)"), -1)
+
+
 if __name__ == "__main__":
     unittest.main()

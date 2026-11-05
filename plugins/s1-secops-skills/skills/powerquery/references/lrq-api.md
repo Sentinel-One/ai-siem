@@ -162,7 +162,7 @@ LRQ returning `matchCount=0` with HTTP 200 is the most common silent-failure mod
 ## PQ functions that fail on the LRQ engine
 
 - `count_distinct(x)` - not supported on the DV/LRQ engine. Use `estimate_distinct(x)` or drop it.
-- `first(x)` / `last(x)` - flaky. Use `min_by(x, timestamp)` / `max_by(x, timestamp)`.
+- `first(x)` / `last(x)` - need a `sort` earlier in the pipeline; without one the query fails with `grouping function "first" requires a previous sort command`. Or use `min_by(x, timestamp)` / `max_by(x, timestamp)`, which need no sort.
 - `percentile(x, N)` - not real. Use `p50(x)`, `p95(x)`, `p99(x)`.
 - `filter x = null` before `x` has been defined - HTTP 500. Use `filter !(x = *)` instead.
 

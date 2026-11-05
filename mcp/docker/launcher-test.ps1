@@ -83,7 +83,9 @@ try {
   if ((ErrText) -match 'QuitClaudeDesktopcompletely' -and (ErrText) -match 'configuredread-only\(thedefault\)' -and (ErrText) -match 'Built-intools:PurpleAIon') { Ok 'install: read-only notice, built-in tools line and restart instruction' } else { Bad 'install messages' (ErrText) }
   if ((ErrText) -notmatch 'Startingsetup') { Ok 'install: no credential prompt when input is redirected' } else { Bad 'install prompted for credentials' (ErrText) }
 
-  # install merge
+  # install merge. The fixture below is a DELIBERATE pre-1.6.0 config, not what 1.6.0
+  # writes: the test asserts install removes the old entries that ran this launcher
+  # (virustotal-mcp, purple-mcp, shodan) and keeps the user's own servers (my-purple, other).
   $orig = @'
 {"globalShortcut": "Alt+Space",
  "mcpServers": {

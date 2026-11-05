@@ -126,7 +126,7 @@
       "id": 3,
       "name": "asset-schema-discovery",
       "prompt": "I am building a dashboard on top of `dataSource.name='asset'` and I need the real field list, not a guess. Discover the schema live, write the script to `scripts/discover_asset_schema.py` and the result to `schema.json` as an object keyed by data source name with a sorted array of field names as the value. Tell me how many fields it actually carries and what the agent UUID field is called.",
-      "expected_output": "PowerQuery is the wrong tool for discovery: its default projection returns only `timestamp` and `message`, and `| columns *` returns HTTP 500, so probing requires already knowing the field names. The V1 `query` method is used instead, because it returns each match as full event JSON with every populated attribute keyed in an `attributes` dict; the script reads `matches[0][\"attributes\"].keys()`. `asset` carries 126 fields. The agent UUID is `device.agent.uuid`; a bare `agent.uuid` does not exist on this source, and neither do `entity.uid` or `agent.health.online`.",
+      "expected_output": "PowerQuery is the wrong tool for discovery: its default projection returns only `timestamp` and `message`, and `| columns *` is rejected with HTTP 400, so probing requires already knowing the field names. The V1 `query` method is used instead, because it returns each match as full event JSON with every populated attribute keyed in an `attributes` dict; the script reads `matches[0][\"attributes\"].keys()`. `asset` carries 126 fields. The agent UUID is `device.agent.uuid`; a bare `agent.uuid` does not exist on this source, and neither do `entity.uid` or `agent.health.online`.",
       "assertions": [
         {
           "type": "file_matches",

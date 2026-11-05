@@ -125,7 +125,7 @@ parser edits, reserved-field rewrites, and ingestion changes.
 
 **Why PowerQuery is the wrong tool for this:** PowerQuery's default projection
 returns `timestamp + message` only. Naive `dataSource.name='alert' | limit 1`
-hides the actual fields. `| columns *` returns HTTP 500. You can probe specific
+hides the actual fields. `| columns *` is rejected (HTTP 400 "Don't understand [*]"). You can probe specific
 fields with `| columns f1, f2` but you have to already know what to ask for,
 which defeats the purpose of discovery.
 

@@ -714,6 +714,110 @@
       "expect": {
         "max_rows": 0
       }
+    },
+    {
+      "id": "allfield-search-after-pipe",
+      "doc": "syntax-and-operators.md all-column search",
+      "query": "event.type='Process Creation' | filter * contains 'svchost' | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' * contains 'svchost' | group n=count()"
+      }
+    },
+    {
+      "id": "regex-lazy-is-lazy",
+      "doc": "SKILL.md rule 3",
+      "query": "event.type='Process Creation' | limit 1 | let s = replace('aXbXc', 'a(.*?)X.*', '[$1]'), g = replace('aXbXc', 'a(.*)X.*', '[$1]') | columns s, g",
+      "expect": {
+        "first_row": {
+          "s": "[]",
+          "g": "[Xb]"
+        }
+      }
+    },
+    {
+      "id": "regex-lazy-in-filter",
+      "doc": "SKILL.md rule 3",
+      "query": "event.type='Process Creation' src.process.name matches '^sv.*?host\\\\.exe$' | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' src.process.name in:anycase ('svchost.exe') | group n=count()"
+      }
+    },
+    {
+      "id": "regex-lookahead-accepted",
+      "doc": "syntax-and-operators.md 5",
+      "query": "event.type='Process Creation' src.process.name matches 'svchost(?=\\\\.exe)' | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' src.process.name matches 'svchost\\\\.exe' | group n=count()"
+      }
+    },
+    {
+      "id": "regex-lookahead-negative-control",
+      "doc": "syntax-and-operators.md 5",
+      "query": "event.type='Process Creation' src.process.name matches 'svchost(?=\\\\.zzz)' | group n=count()",
+      "expect": {
+        "max_rows": 0
+      }
+    },
+    {
+      "id": "regex-named-group-accepted",
+      "doc": "syntax-and-operators.md 5",
+      "query": "event.type='Process Creation' src.process.name matches '(?<p>svc)host\\\\.exe' | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' src.process.name matches 'svchost\\\\.exe' | group n=count()"
+      }
+    },
+    {
+      "id": "first-needs-sort",
+      "doc": "SKILL.md rule 13",
+      "query": "event.type='Process Creation' | group f=first(src.process.name)",
+      "expect": {
+        "error_contains": "requires a previous sort command"
+      }
+    },
+    {
+      "id": "first-after-sort-works",
+      "doc": "SKILL.md rule 13",
+      "query": "event.type='Process Creation' | sort timestamp | group f=first(src.process.name), l=last(src.process.name)",
+      "expect": {
+        "exact_rows": 1
+      }
+    },
+    {
+      "id": "presence-ternary-in-let-rejected",
+      "doc": "SKILL.md rule 16",
+      "query": "event.type='Process Creation' | let u = (tgt.process.user = *) ? tgt.process.user : 'x' | group n=count()",
+      "expect": {
+        "error_contains": "Don't understand [*]"
+      }
+    },
+    {
+      "id": "bare-field-ternary-category",
+      "doc": "examples/o365-email-hunting.md recipe 7",
+      "query": "event.type='Process Creation' | let c = tgt.process.user ? 'has_user' : 'no_user' | group n=count() by c",
+      "expect": {
+        "min_rows": 1
+      }
+    },
+    {
+      "id": "columns-star-rejected",
+      "doc": "references/o365-fields.md",
+      "query": "event.type='Process Creation' | limit 2 | columns *",
+      "expect": {
+        "error_contains": "Don't understand [*]"
+      }
+    },
+    {
+      "id": "subquery-in-initial-filter-with-metering",
+      "doc": "SKILL.md rule 21; remove the tag predicate to reproduce the s1-secops-mcp 1.6.0 rewrite bug",
+      "query": "event.type='Process Creation' tag != 'logVolume' src.process.name in (event.type='Process Creation' src.process.name='svchost.exe' | group 1 by src.process.name) | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' src.process.name='svchost.exe' | group n=count()"
+      }
     }
   ]
 }

@@ -26,7 +26,7 @@ This is NOT an all-column text search; it checks whether a specific attribute is
 
 **2. All-column text search: `* contains 'value'` or `* matches 'regex'`**
 
-Searches ALL indexed fields across the event. Use when you need to find a specific string anywhere in the event, what users describe as "search all logs for X", "all column search", "find this text anywhere". Only valid as the **initial filter** (before the first `|`). Not valid in `| filter …` after a pipe, and not valid in Alerts.
+Searches ALL indexed fields across the event. Use when you need to find a specific string anywhere in the event, what users describe as "search all logs for X", "all column search", "find this text anywhere". Cheapest as the **initial filter** (before the first `|`). It also works in `| filter …` on raw events, but runs after the scan there. Not valid in Alerts.
 
 ```text
 dataSource.name='MySource' * contains 'evil.com'      // string in any field on a source
@@ -249,13 +249,13 @@ These function names do not exist in PowerQuery and return `Unknown function '<n
 
 The valid date/time functions are: `strftime`, `simpledateformat`, `strptime`, `simpledateparse`, `timebucket`, `querystart`, `queryend`, `queryspan`. If you need a date function and aren't sure of the name, check `functions-reference.md §9` before writing the query.
 
-### `first(x)` / `last(x)` / `percentile(x, N)` return 500
+### `first(x)` / `last(x)` without a sort, and `percentile(x, N)`
 
-Some docs list these as aggregate functions, but they fail on many tenants. Use the reliable forms instead:
+`first(x)` and `last(x)` need a `sort` earlier in the pipeline; without it the query fails with `grouping function "first" requires a previous sort command`. With `| sort timestamp` before the `group` they work (regression cases `first-needs-sort` and `first-after-sort-works`). `percentile(x, N)` does not exist. Use:
 
-- `first(x)` → `min_by(x, timestamp)`
-- `last(x)` → `max_by(x, timestamp)`
-- `percentile(x, 0.95)` → `p95(x)` (also `p50`, `p99`)
+- `first(x)` → `min_by(x, timestamp)` (no sort needed, ordering explicit), or `| sort timestamp` first
+- `last(x)` → `max_by(x, timestamp)`, or `| sort timestamp` first
+- `percentile(x, 0.95)` → `p95(x)` (also `p50`, `p99`, or `pct(95, x)`)
 
 ### Ternary parsed as an identifier
 
@@ -624,7 +624,7 @@ Same rule applies to value-anywhere lookups regardless of the source: when a use
 
 Three caveats worth remembering:
 
-- `* contains` / `* matches` only work in the **initial** filter: before the first `|`. They cannot be used in `| filter …` after a pipe, in Alerts, or after a `| group` / `| columns` that has reshaped the row.
+- `* contains` / `* matches` are cheapest in the **initial** filter: before the first `|`. They are slower in `| filter …` after a pipe, because they run after the scan there. They are not valid in Alerts, and do not use them after a `| group` / `| columns` that has reshaped the row (not tested).
 - If the value really only lives inside a JSON blob (e.g., a deeply nested key not exposed as a parsed field), neither `* contains` nor `message contains` will surface it efficiently. Pull rows with a narrower predicate (event type, actor, time slice) and post-process the blob in Python.
 - Negation against a JSON blob (e.g., "recipients NOT in `<owned_domain>`") is not expressible inline. Filter by the positive predicate, then post-process to apply the exclusion.
 

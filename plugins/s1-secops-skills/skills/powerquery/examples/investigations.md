@@ -351,7 +351,7 @@ endpoint.name = 'EC2AMAZ-4158GRS'
 
 **Note**, `net.bytes.tx` is a tenant-specific placeholder: it is not documented in `references/fields-and-schema.md` and silently returns null if the field does not exist on this tenant. Confirm the byte-counter field via schema discovery before trusting the `bytes` column.
 **Tune**, replace `endpoint.name = '…'` with a broader filter for tenant-wide; that may need a longer window or tighter port filter.
-**Pivot**, the heavy-hitter destination IPs go straight into the configured threat-intel MCP for an IP reputation lookup (in the default bundle that's `mcp__virustotal__get_ip_report`; substitute the equivalent tool if you've connected a different provider).
+**Pivot**, the heavy-hitter external destination IPs go straight into threat intel for an IP reputation lookup (by default the built-in `ti_vt_lookup`, listed when `VIRUSTOTAL_API_KEY` is stored; substitute the equivalent tool if you've connected a different provider). `ti_shodan_host` adds what each IP exposes.
 
 ### Persistent traffic to the same destination
 

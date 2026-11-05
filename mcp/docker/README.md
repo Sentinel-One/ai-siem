@@ -1,100 +1,83 @@
-# Docker image: SentinelOne Claude Skills MCP Stack
+# Docker image: SentinelOne SecOps MCP
 
-Single image bundling all four MCPs (`s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, and the optional `shodan-mcp`) so end users only need Docker installed. No Node, no Python, no `uv`, no `npm install`. This is the documented install path; see [`docs/installation.md`](../../plugins/s1-secops-skills/docs/installation.md).
+One image, one MCP server: `s1-secops-mcp`, on a distroless Node 24 base. Purple AI questions (`purple_ai_query`), VirusTotal lookups (`ti_vt_lookup`, `ti_vt_relationship`) and Shodan lookups (`ti_shodan_host`, `ti_shodan_dns`) are built-in tools of that server, written in this repo and calling each service with the user's own keys. End users need only Docker: no Node, no Python, no `uv`, no `npm install`. This is the documented install path; see [`docs/installation.md`](../../plugins/s1-secops-skills/docs/installation.md).
 
-End-user reference: [`docs/docker.md`](../../plugins/s1-secops-skills/docs/docker.md). This file is for image maintainers.
+End-user reference: [`docs/docker.md`](../../plugins/s1-secops-skills/docs/docker.md). This file is for image maintainers. Other MCP servers are never shipped in this image; users add them from their official sources ([`docs/connect-optional-tools.md`](../../plugins/s1-secops-skills/docs/connect-optional-tools.md)).
 
-## No npm
+## What is in the image
 
-Every server in this image comes from a pinned git source. Nothing in the build resolves a package from the npm registry, and the `npm` and `npx` binaries are deleted from the final image. That last part is the load-bearing one: it turns "we do not use the npm registry" from a convention someone has to remember into a property of the image. A future `RUN npm install ...` fails at build time rather than quietly reintroducing a registry dependency.
+The base is `gcr.io/distroless/nodejs24-debian13`, pinned by digest (Node v24.22.2 at the current pin). It holds Node, glibc, libstdc++, CA certificates and tzdata, and nothing else:
 
-Node itself is untouched. It is what runs the three JavaScript servers (`s1-secops-mcp`, `virustotal-mcp`, `shodan-mcp`). The base image is `node:24-trixie-slim`, pinned by digest in both stages; the build asserts Node major 24 and records the Node version in `versions.json` (field `node`).
+- **No shell, no package manager, no npm, no Python, no init.** A future `RUN npm install ...` or shell-form `RUN` fails at build time. Every `RUN` in the Dockerfile uses the exec form.
+- **No registry resolution.** `s1-secops-mcp` declares no runtime dependencies (its one optional dependency, the Windows keychain binding, is unused in a container), so the `COPY`'d source is the install.
+- **Four unused base packages are removed at build time:** `libssl3t64`, `zlib1g`, `libzstd1` and `libgomp1`. The official Node binary compiles in its own OpenSSL and zlib, so nothing loads them, and they carried the base image's only scanner findings. The build step deletes their files and dpkg records, then `__image_verify` proves crypto, TLS and zlib still work and that none of the removed libraries is mapped.
+- **Runs as `nonroot`** (uid/gid 65532, home `/home/nonroot`). Nothing writes inside the container; the server reads its code from `/opt` and speaks JSON-RPC over stdio. Node handles SIGINT and SIGTERM itself, so no init is needed.
 
-One registry does remain: **purple-mcp's Python dependencies still resolve from PyPI** during the fetch stage. The server itself is pinned to a git commit, but its dependency tree is not vendored. Removing that too means vendoring wheels the same way the VirusTotal and Shodan forks vendor `node_modules`; it has not been done.
+Docker Scout, 2026-11-05: 12 packages, 0 critical, 0 high, 0 medium, 7 low (old disputed glibc entries with no fix). Image size: 224 MB.
+
+[`docker/vex/secops-mcps.openvex.json`](vex/secops-mcps.openvex.json) holds the VEX statements for earlier 1.5.x images; pass it with `docker scout cves --vex-location docker/vex` or `trivy image --vex docker/vex/secops-mcps.openvex.json` when scanning those tags.
 
 ## Layout
 
-```bash
+```text
 docker/
-├── Dockerfile                 # 2-stage, multi-arch, all 4 MCPs from pinned git sources
-├── entrypoint.sh              # dispatcher: argv[1] selects which MCP to run; reads secrets from stdin when S1_SECRETS_STDIN=1
-├── s1-secops-mcp-launch.sh    # host launcher (macOS, Linux): keychain -> container stdin
+├── Dockerfile                 # one stage, distroless Node 24 base pinned by digest, exec-form RUN only
+├── container-entry.mjs        # dispatcher (ENTRYPOINT): s1-secops-mcp | versions | notices | help
+├── s1-secops-mcp-launch.sh    # host launcher (macOS, Linux, WSL): keychain -> container stdin
 ├── s1-secops-mcp-launch.ps1   # host launcher (Windows): Credential Manager -> container stdin
 ├── launcher-test.sh           # hermetic tests for the launcher's install/config (macOS, Linux)
 ├── launcher-test.ps1          # the same for the Windows launcher (pwsh or Windows PowerShell)
-├── build.sh                   # local + push build wrapper
-├── smoke-test.sh              # image smoke test (tool count, stdin secrets, docker inspect, stdio only)
+├── build.sh                   # local + push build wrapper; owns BASE_IMAGE and IMAGE_VERSION
+├── smoke-test.sh              # image smoke test (32 checks; probes with --entrypoint /nodejs/bin/node)
 ├── Dockerfile.dockerignore    # build-context exclusions; BuildKit reads <Dockerfile>.dockerignore, patterns are repo-root relative
+├── vex/                       # OpenVEX statements for earlier images
 └── README.md                  # this file
 ```
 
-The stdin secret contract: when `S1_SECRETS_STDIN=1`, the entrypoint reads `NAME=value` lines up to the first empty line before it starts the server, exports only the known names (`S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `S1_HEC_INGEST_URL`, `S1_HEC_TOKEN`, `S1_SCOPE`, `VIRUSTOTAL_API_KEY`, `VT_API_KEY`, `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN`, `PURPLEMCP_VT_API_KEY`, `SHODAN_API_KEY`) and ignores any other name with a warning that does not echo it. The empty line is mandatory: without it the entrypoint keeps consuming the JSON-RPC stream. The image sets `S1_KEYCHAIN=off`.
+Inside the image:
 
-`SHODAN_API_KEY` reaches only `shodan-mcp`; the entrypoint unsets it for the other servers. Before starting Shodan it also unsets `MCP_TRANSPORT`, `MCP_HOST`, `MCP_PORT` and `MCP_ENDPOINT`, so upstream's unauthenticated HTTP transport cannot be enabled and the server always speaks stdio.
+```text
+/opt/s1-secops-mcp/                    the server, from this repo
+/usr/local/lib/s1-secops/entry.mjs     dispatcher (docker/container-entry.mjs)
+/etc/sentinelone/CLAUDE.md             default SOC analyst persona
+/etc/sentinelone/versions.json         what is actually inside this image
+/usr/share/doc/secops-mcps/THIRD_PARTY_NOTICES.md
+```
 
-The Dockerfile is two stages. The **fetch** stage holds everything needing git or network; the **runtime** stage copies the results, so neither `git` nor any clone metadata ships in the published image.
+The dispatcher accepts `s1-secops-mcp` (alias `s1`), `versions`, `notices` (aliases `licenses`, `license`) and `help`. An unknown command exits 64. The server names removed in 1.6.0 (`purple-mcp`, `virustotal-mcp`, `shodan-mcp` and their aliases) exit 78 with one line telling the user to run the launcher's `install` again, so an MCP client still configured for an old entry logs a clear instruction.
+
+## The stdin secrets contract
+
+When `S1_SECRETS_STDIN=1`, the server itself (`s1-secops-mcp/lib/stdio-transport.js`) reads `NAME=value` lines up to the first empty line before it handles any JSON-RPC. It accepts only `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN`, `S1_HEC_INGEST_URL`, `S1_HEC_TOKEN`, `S1_SCOPE`, `VIRUSTOTAL_API_KEY` (alias `VT_API_KEY`) and `SHODAN_API_KEY`, and ignores any other name with a warning that does not echo it. The empty line is mandatory. A stream that starts with JSON-RPC while the preamble is expected is refused with exit 64. The image sets `S1_KEYCHAIN=off`.
+
+The host launchers write exactly this preamble, so secrets never appear on a command line, in the MCP client config, or in `docker inspect`.
+
+## Publishing rules
 
 The image is published to `sentinelone/secops-mcps`. Tags are semver only. There is deliberately no `:latest`: the tag was deleted and the repository has immutable tags enabled, so a published tag can never be repointed at different bytes. Images are built and published by the maintainers' release pipeline. Pushes made with `PUSH=true docker/build.sh` also attach BuildKit provenance and an SBOM to the image index.
 
 ## Verify before you run
 
-- **Pull by digest, not just by tag.** Tags are immutable, but a digest is the strongest pin: `docker pull sentinelone/secops-mcps@sha256:<digest>`. Find the digest with `docker buildx imagetools inspect sentinelone/secops-mcps:1.5.7`.
-- **Check where it came from.** The image labels record the source repository and commit: `docker inspect --format '{{json .Config.Labels}}' sentinelone/secops-mcps:1.5.7` (see `org.opencontainers.image.source` and `org.opencontainers.image.revision`).
-- **Inspect the provenance and SBOM** attached to the index: `docker buildx imagetools inspect sentinelone/secops-mcps:1.5.7 --format '{{ json .Provenance }}'` and `--format '{{ json .SBOM }}'`. Images published before this was enabled do not carry them.
+- **Pull by digest, not just by tag.** Tags are immutable, but a digest is the strongest pin: `docker pull sentinelone/secops-mcps@sha256:<digest>`. Find the digest with `docker buildx imagetools inspect sentinelone/secops-mcps:1.6.0`.
+- **Check where it came from.** The image labels record the source repository and commit: `docker inspect --format '{{json .Config.Labels}}' sentinelone/secops-mcps:1.6.0` (see `org.opencontainers.image.source` and `org.opencontainers.image.revision`).
+- **Inspect the provenance and SBOM** attached to the index: `docker buildx imagetools inspect sentinelone/secops-mcps:1.6.0 --format '{{ json .Provenance }}'` and `--format '{{ json .SBOM }}'`. Images published before this was enabled do not carry them.
 - **Report a problem privately.** See [SECURITY.md](../../SECURITY.md); do not open a public issue for a vulnerability.
 
-## Pinned sources
+## Pins
 
-All four MCPs are pinned at build time. The pins live in `docker/build.sh`. If the release pipeline that publishes the image keeps its own copy of any pin (it is maintained outside this repository), update that copy in the same change so the two cannot drift.
+Two values are pinned: the image version and the base image digest. Both live in `docker/build.sh`. The release pipeline that publishes the image is maintained outside this repository and keeps its own copy of both, so a change to either is made in both places.
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.5.7` |
-| Base image | Docker Hub, `node:24-trixie-slim` | pinned by digest in both stages; Node major 24 asserted at build time |
+| Image version (`IMAGE_VERSION`) | this repo | `1.6.0` |
+| Base image (`BASE_IMAGE`) | `gcr.io/distroless/nodejs24-debian13` | pinned by index digest; `build.sh` rejects anything that is not `gcr.io/distroless/nodejs24-*@sha256:...`, and the setup step asserts Node major 24 |
 | `s1-secops-mcp` | local `COPY` from this repo | whatever commit you build |
-| `virustotal-mcp` | git, maintained fork (repo in `build.sh`) | `97ca2b8` (vendored fork of `w0h1v/mcp-virustotal` v1.0.28; proxy-addr 2.0.8, MCP SDK 1.32.1) |
-| `shodan-mcp` | git, maintained fork (repo in `build.sh`) | `1b34db4` (vendored fork of `w0h1v/mcp-shodan`, npm `@burtthecoder/mcp-shodan` v1.0.34, upstream commit `08bf8ee`, MIT) |
-| `purple-mcp` | git, maintained fork (repo in `build.sh`) | `1390b8c` (fork of `Sentinel-One/purple-mcp` v0.7.0, pandas made optional) |
 
-**`s1-secops-mcp` has no pin** because it is not fetched. Its source is in this repo and the Dockerfile `COPY`s it, so the image always carries the commit being built. This is possible only because the package declares zero `dependencies` and zero `devDependencies`: there is nothing to resolve, so the source *is* the install. `S1_MCP_VERSION` in `build.sh` is now purely a **label** for the image, and CI asserts it equals the `version` in `s1-secops-mcp/package.json` so it cannot drift into a lie.
+**`s1-secops-mcp` has no pin** because it is not fetched. Its source is in this repo and the Dockerfile `COPY`s it path by path, mirroring the `files` allowlist in `s1-secops-mcp/package.json`. `S1_MCP_VERSION` in `build.sh` is a **label** for the image, and the setup step fails the build if it differs from the `version` in `package.json`.
 
-Two consequences of that switch, both handled in the workflow: a commit under `s1-secops-mcp/` now changes the image (so it is in the build-trigger path list and the `IMAGE_VERSION` bump guard), and the Dockerfile `COPY`s path by path rather than copying the directory. The directory can also contain a git-ignored `data/` tree that holds only untracked local exports and is referenced by no code. The Dockerfile never names it, and `docker/Dockerfile.dockerignore` excludes it from the build context as well. Builds use the repo root as context (`docker/build.sh` and CI both pass `.` with `-f docker/Dockerfile`), so Docker reads `<context>/.dockerignore` or, with BuildKit, `docker/Dockerfile.dockerignore`; this repo uses the second, and its patterns are relative to the repo root. Smoke test T09 asserts `data/` never reaches the image.
+The package directory can also contain a git-ignored `data/` tree that holds only untracked local exports. The Dockerfile never names it, and `docker/Dockerfile.dockerignore` excludes it from the build context as well. Builds use the repo root as context (`docker/build.sh` and CI both pass `.` with `-f docker/Dockerfile`), so BuildKit reads `docker/Dockerfile.dockerignore`, whose patterns are relative to the repo root. Smoke test T09 asserts `data/` never reaches the image.
 
-**`virustotal-mcp` needs a vendored fork.** Upstream `w0h1v/mcp-virustotal` publishes only to npm: `main` is `build/index.js`, `build/` is not committed, and the build runs under `prepublishOnly` rather than `prepare`. npm runs `prepare` on git installs, so installing upstream from git fetches TypeScript, compiles nothing, and installs a bin pointing at a missing file. The fork fixes this by committing its compiled `build/` and its production `node_modules/`, which is what lets this image install it with `git clone` alone. The maintainers produce that state with a vendoring script that prints the SHA to pin. The Dockerfile asserts both `build/index.js` and `node_modules/` are present and fails the build with a pointer to that script if not, rather than shipping a container that dies on its first JSON-RPC call.
-
-**`shodan-mcp` is vendored the same way.** The maintained fork (repo in `build.sh`) commits its compiled `build/` and production `node_modules/`, so the image installs it with `git clone` alone and no npm. The vendoring script is generalised to `scripts/vendor-node-fork.sh <dir>` in the upstream `s1-secops-skills` repo, which runs inside the image's digest-pinned `node:24` container with lifecycle scripts disabled and fails on any HIGH or CRITICAL `npm audit` finding; `scripts/vendor-vt-fork.sh` remains as a wrapper for the VirusTotal fork. The fork carries four code patches and one vendoring change, documented in its `FORK_NOTES.md`:
-
-- `page` is capped at 10 on `shodan_search` and `domain_info`, because each extra page costs a query credit;
-- axios redirects are disabled (`maxRedirects: 0`);
-- the API key (the `key=` query parameter) is redacted from every error string;
-- dotenv is removed, so the server never loads a `.env` file;
-- `vendor-strip.txt` removes dead code from the vendored tree: the `mcp-proxy` CLI and the `pipenet` tunnel library it imports ("expose your local server to the public internet") plus its Koa dependency closure, 26 packages the stdio server never loads.
-
-The smoke test checks that `/opt/mcp-shodan` is readable and contains no `.git` or `.env`.
-
-**`libexpat1` comes from Debian forky, temporarily.** Trixie's expat 2.8.3-1~deb13u1 has two HIGH CVEs with no trixie fix yet: CVE-2026-77214 and CVE-2026-93990. The runtime stage installs `libexpat1=2.9.0-1` from forky. The source is pinned so that only that package outranks trixie. The build fails if apt would pull any other forky package, and the forky source is removed again afterwards. Remove the block (`EXPAT_FORKY_VERSION` in the Dockerfile) once trixie-security publishes a fixed expat, at which point `apt-get upgrade` supplies it. Scanners still match expat against trixie's "no fix" advisory and will keep flagging 2.9.0-1. [`docker/vex/secops-mcps.openvex.json`](vex/secops-mcps.openvex.json) records why each such finding is fixed or not affected; pass it with `docker scout cves --vex-location docker/vex` or `trivy image --vex docker/vex/secops-mcps.openvex.json`.
-
-**Unused Debian packages are removed.** The final root step purges packages that carry HIGH CVEs with no trixie fix and that nothing in the image loads:
-
-- the util-linux family (`login`, `mount`, `util-linux`, `bsdutils`, `libmount1`, `libblkid1`, `libsmartcols1`, `liblastlog2-2`);
-- `perl-base`;
-- `libsystemd0` and `libudev1`;
-- `apt` and `libapt-pkg7.0`, which depend on the previous two and are pointless in an immutable image.
-
-The list comes from the shared-library closure of every runtime: node, python3.13 and every extension module, tini, dash, cat, env and sed. The build re-checks node, the purple-mcp imports, the shell tools, bash and tini after the purge and fails if any broke. Smoke tests T28 and T29 keep the packages out and `libexpat1` on 2.9.0-1.
-
-Kept on purpose:
-
-- `libacl1` (coreutils, sed);
-- `libtinfo6` (bash, and Python readline, which `websockets` and `cyclopts` import);
-- `libuuid1` (Python `_uuid`);
-- python3.13 (purple-mcp).
-
-`VT_MCP_REF` must be a full 40-character SHA, and so must the Shodan pin. A branch name would look fine and silently un-pin every subsequent build, so `build.sh` and CI both reject anything else.
-
-`purple-mcp` is pinned to a commit on our fork rather than a floating `main`, per upstream's security guidance. The fork sits on the `v0.7.0` release commit plus one change: upstream imports pandas at module scope for `SDLTableResultData.to_df()`, a method no MCP tool calls, so every install carried pandas and numpy (~141 MB) for a code path the server never runs. The fork makes it an optional `dataframe` extra, changing no behaviour. An upstream PR is open; repin to `Sentinel-One/purple-mcp` once it merges. When a newer release ships, repin here, in `docker/build.sh`, and in the workflow env block.
-
-`IMAGE_VERSION` is the version tag the image is published under. It is its own counter, independent of the MCP versions inside: bump it whenever anything that changes the image bytes changes, which is the Dockerfile, the dispatcher, the bundled `CLAUDE.md`, the `s1-secops-mcp` source now that it is `COPY`'d, or any pin above.
+`IMAGE_VERSION` is the version tag the image is published under. It is its own counter, independent of the server version inside: bump it whenever anything that changes the image bytes changes, which is the server source, the Dockerfile, the dispatcher, the bundled `CLAUDE.md`, or the base image pin.
 
 <!-- sync:literal: the version below is history, the tag that was republished -->
 **Two rules, both enforced in CI.** It must strictly increase, and a published value is never reused. `s1-mcps:1.3.3` shipped npm 1.3.3, then 1.3.7, then 1.3.8, and the image version once moved backwards from 1.3.7 to 1.3.3. Anyone running `--pull=missing` against an unchanged tag string keeps a months-old build indefinitely with nothing to signal it. Deleting a tag from the registry does not make it reusable, because someone already pulled it.
@@ -102,10 +85,10 @@ Kept on purpose:
 Because the number does not encode what is inside, verify rather than infer:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.5.7 versions
+docker run --rm sentinelone/secops-mcps:1.6.0 versions
 ```
 
-`versions.json` also records the `shodan-mcp` pin and the Node version (`node`).
+`versions.json` records `image_version`, `node`, `base`, the one entry under `servers`, the `builtin_tools`, the `removed_base_packages`, and `shell: false`, `npm: false`.
 
 ## Build locally
 
@@ -113,37 +96,47 @@ docker run --rm sentinelone/secops-mcps:1.5.7 versions
 # Single-arch (matches your machine), tags sentinelone/secops-mcps:<IMAGE_VERSION>
 docker/build.sh
 
-# Full smoke suite, 40 assertions, exit code is the failure count. T17 checks the
-# registry manifest: it skips on a local reference (no slash) and fails on a
-# Docker Hub reference that is not pushed yet. Before the push, test a local tag:
-#   docker tag sentinelone/secops-mcps:1.5.7 secops-mcps:1.5.7-local
-docker/smoke-test.sh secops-mcps:1.5.7-local --expect-version 1.5.7   # 39 pass, T17 skipped
-# After the push, the registry reference runs T17 too (40/40):
-docker/smoke-test.sh sentinelone/secops-mcps:1.5.7 --expect-version 1.5.7
+# Full smoke suite, exit code is the failure count. T17 checks the registry
+# manifest: it skips on a local reference (no slash) and fails on a Docker Hub
+# reference that is not pushed yet. Before the push, test a local tag:
+#   docker tag sentinelone/secops-mcps:1.6.0 secops-mcps:1.6.0-local
+docker/smoke-test.sh secops-mcps:1.6.0-local --expect-version 1.6.0   # T17 skipped
+# After the push, the registry reference runs T17 too:
+docker/smoke-test.sh sentinelone/secops-mcps:1.6.0 --expect-version 1.6.0
 
 # Or spot-check by hand:
-docker run -i --rm sentinelone/secops-mcps:1.5.7 help      # lists the four servers
-docker run -i --rm sentinelone/secops-mcps:1.5.7 versions
-docker run --rm sentinelone/secops-mcps:1.5.7 notices      # third-party notices and licenses
-
-# There should be no npm in here. This must print "absent".
-docker run --rm --entrypoint sh sentinelone/secops-mcps:1.5.7 -c 'command -v npm || echo absent'
+docker run -i --rm sentinelone/secops-mcps:1.6.0 help      # the server and its built-in tools
+docker run -i --rm sentinelone/secops-mcps:1.6.0 versions
+docker run --rm sentinelone/secops-mcps:1.6.0 notices      # third-party notices and licenses
 ```
 
-The Shodan checks in the smoke suite: `tools/list` on `shodan-mcp` returns 11 tools, `help` lists four servers, `/opt/mcp-shodan` is readable with no `.git` or `.env`, and a container started with `MCP_TRANSPORT=httpStream` still speaks stdio.
+There is no shell to debug with. Run Node instead:
 
-The read-only and license checks (1.5.5): T32 calls a write tool with `--network none` and expects the read-only refusal, T33 sets `S1_READ_ONLY=false` and expects the call to reach its handler, T34 expects a `| savelookup` query to be refused, T35 runs `notices`, and T36 checks that every bundled license file is present and readable. See [`docs/read-only.md`](../../plugins/s1-secops-skills/docs/read-only.md).
+```bash
+docker run --rm --entrypoint /nodejs/bin/node sentinelone/secops-mcps:1.6.0 \
+  -e 'console.log(process.version, require("fs").readdirSync("/opt/s1-secops-mcp"))'
+```
 
-The dispatcher accepts `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp`, `shodan-mcp` (alias `shodan`), `versions`, `notices` (aliases `licenses`, `license`), or `help`.
+What the smoke suite asserts, by group:
+
+- T02 to T06: `help` describes the server and its built-in tools; an unknown command exits 64; the image has no shell, no npm, npx or corepack, and no package manager, Python or git.
+- T07 to T09: `versions.json` carries the expected `image_version`, one server, no shell or npm, Node 24; no `data/` tree and no removed server ships.
+- T10 and T11: runs as non-root, and every shipped file is readable by that user.
+- T12 to T14: `tools/list` returns 36 tools with no threat-intel keys and 40 with both keys, and works with `--network none`.
+- T15 and T16: CLAUDE.md ships and is served as an MCP resource.
+- T18 to T21: the stdin preamble configures the server and never appears in `docker inspect` or on stdout; JSON-RPC first is refused with exit 64; `--transport http` is refused; `S1_KEYCHAIN=off` is baked in.
+- T22 and T23: removed server names exit 78 with the update instruction; SIGTERM stops the container promptly.
+- T30 to T37: `outputFile` advice and acceptance, the read-only default (a write tool and a `| savelookup` query are refused, `S1_READ_ONLY=false` lifts it), notices and the AGPL LICENSE ship, and an `s1_api_post` path with a fragment is refused in read-only mode. See [`docs/read-only.md`](../../plugins/s1-secops-skills/docs/read-only.md).
+- T17: the registry manifest is readable (remote references only).
 
 ## Licenses and attestations
 
-- [`THIRD_PARTY_NOTICES.md`](../../plugins/s1-secops-skills/THIRD_PARTY_NOTICES.md) is copied into the image at `/usr/share/doc/secops-mcps/THIRD_PARTY_NOTICES.md`, and the repo `LICENSE` (AGPL-3.0) at `/opt/s1-secops-mcp/LICENSE`. `notices` prints them.
+- [`THIRD_PARTY_NOTICES.md`](../../plugins/s1-secops-skills/THIRD_PARTY_NOTICES.md) is copied into the image at `/usr/share/doc/secops-mcps/THIRD_PARTY_NOTICES.md`, and the repo `LICENSE` (AGPL-3.0) at `/opt/s1-secops-mcp/LICENSE`. `notices` prints them, including the terms of the VirusTotal and Shodan services the built-in tools call.
 - `docker/build.sh` and the CI workflow build with `--provenance=mode=max --sbom=true`, so a pushed image carries SLSA provenance and an SPDX SBOM attestation on its index. Docker Hub lists the attestation manifests as an extra `unknown/unknown` platform; pulls ignore it. Build arguments appear in the provenance, which is public, so never pass a secret as a `--build-arg`.
 
 ```bash
-docker buildx imagetools inspect sentinelone/secops-mcps:1.5.7 --format '{{ json .SBOM }}'
-docker buildx imagetools inspect sentinelone/secops-mcps:1.5.7 --format '{{ json .Provenance }}'
+docker buildx imagetools inspect sentinelone/secops-mcps:1.6.0 --format '{{ json .SBOM }}'
+docker buildx imagetools inspect sentinelone/secops-mcps:1.6.0 --format '{{ json .Provenance }}'
 ```
 
 ## Push manually
@@ -160,17 +153,20 @@ You need `docker login docker.io` first, with a Docker Hub access token that has
 
 On a slow or unreliable link, push with `skopeo copy --all --retry-times 20` from an OCI archive rather than `docker push`. Docker Hub expires a blob upload session 30 minutes after it starts, so a large layer on a slow connection fails with `broken pipe` just before finishing. Completed blobs are retained, so re-running resumes rather than restarting.
 
-## Bump a pin
+## Move the base image to a newer build
 
 ```bash
-# Edit docker/build.sh: change VT_MCP_REF, SHODAN_MCP_REF, PURPLE_MCP_REF or NODE_IMAGE
-# If the release pipeline keeps its own copy of the pins, make the same change there
+docker buildx imagetools inspect gcr.io/distroless/nodejs24-debian13:latest   # copy the index digest
+# Edit docker/build.sh: BASE_IMAGE default
+# Make the same change in the release pipeline's copy (maintained outside this repository)
 # Bump IMAGE_VERSION in docker/build.sh
-# Then:
-docker/build.sh                                            # verify locally
+docker/build.sh                                            # verify locally (setup asserts Node 24)
+docker/smoke-test.sh secops-mcps:<version>-local --expect-version <version>
 git push                                                   # no build, by design
-git tag -a s1-mcps-v1.5.7 -m "..." && git push origin s1-mcps-v1.5.7
+git tag -a s1-mcps-v<version> -m "..." && git push origin s1-mcps-v<version>
 ```
+
+If a newer base build adds a package to the base, check whether Node loads it before keeping it; `UNUSED_PACKAGES` in `container-entry.mjs` lists the ones removed and `__image_verify` proves Node still works without them.
 
 **Only a release tag builds an image.** A push to `main` does not, however much
 it changes: pushing and releasing are separate acts. That is a deliberate cost
@@ -178,54 +174,12 @@ control, because the arm64 half of a multi-arch build is emulated on the amd64
 runner and a slow build burns a private repo's metered minutes. Use
 `[skip ci]` on a commit if you want to skip even the PR check.
 
-There is no `s1-secops-mcp` pin to bump: edit the source in `s1-secops-mcp/`, bump the `version` in its `package.json`, and set `S1_MCP_VERSION` to match (CI checks the two agree).
+There is no `s1-secops-mcp` pin to bump: edit the source in `s1-secops-mcp/`, bump the `version` in its `package.json`, and set `S1_MCP_VERSION` to match (the build checks the two agree).
 
-## Refresh the VirusTotal fork against upstream
+<!-- Anchors kept for links in older release notes: the forks they described are gone. -->
+<a id="refresh-the-shodan-fork-against-upstream"></a>
+<a id="refresh-the-virustotal-fork-against-upstream"></a>
 
-```bash
-git clone https://github.com/<your-org>/mcp-virustotal.git ~/src/mcp-virustotal
-cd ~/src/mcp-virustotal
-git remote add upstream https://github.com/w0h1v/mcp-virustotal.git
-git fetch upstream && git merge upstream/main     # resolve any conflict in build/ by rebuilding
+## Why one server?
 
-cd -                                              # back to s1-secops-skills
-scripts/vendor-vt-fork.sh ~/src/mcp-virustotal    # rebuild, prune, commit
-```
-
-The script prints the commit SHA to put in `docker/build.sh` and the workflow env block. Merge conflicts will land in `build/` and `node_modules/` because those are committed artefacts; take either side and let the script's rebuild produce the correct content.
-
-Upstream is `w0h1v/mcp-virustotal`. It is widely referenced as `BurtTheCoder/mcp-virustotal`, which is the same repository under a former account name; GitHub redirects it. Use the `w0h1v` form so the remote does not depend on a redirect.
-
-The vendored tree was checked for portability before pinning: zero native `.node` addons and zero packages declaring `os`/`cpu` constraints, so one vendoring run on any platform is valid for both published architectures. Re-check that after a dependency bump, since a new transitive dep with a native component would silently make the fork host-specific.
-
-## Refresh the Shodan fork against upstream
-
-```bash
-git clone https://github.com/<your-org>/mcp-shodan.git ~/src/mcp-shodan
-cd ~/src/mcp-shodan
-git remote add upstream https://github.com/w0h1v/mcp-shodan.git
-git fetch upstream && git merge upstream/main     # resolve any conflict in build/ by rebuilding
-
-cd -                                              # back to s1-secops-skills
-scripts/vendor-node-fork.sh ~/src/mcp-shodan      # rebuild, prune, commit (runs in a node:24 container)
-```
-
-The script prints the commit SHA to put in `docker/build.sh` and the workflow env block. As with the VirusTotal fork, conflicts land in the committed `build/` and `node_modules/`; take either side and let the rebuild produce the correct content. After a merge, confirm the four fork patches listed in `FORK_NOTES.md` (page cap, `maxRedirects: 0`, key redaction, no dotenv) survived, and re-run the portability check above on the new tree.
-
-Upstream is `w0h1v/mcp-shodan`, published to npm as `@burtthecoder/mcp-shodan` (the fork is based on v1.0.34, upstream commit `08bf8ee`, MIT).
-
-## Why one image with four entrypoints?
-
-One entry per MCP in `claude_desktop_config.json` (three, or four with Shodan) all reference the same image and tag, so a single `docker pull` covers every MCP and the versions stay in lockstep. A "router" MCP that exposes all bundled tools through one process was rejected because the MCP spec has no tool-namespacing convention; tool name collisions across `s1-secops-mcp` and `purple-mcp` would force ad-hoc renaming.
-
-## Why install pip-style for purple-mcp instead of via uv?
-
-`uv tool install` puts the binary at a path that depends on internal layout decisions and varies by uv version. A simple `python3 -m venv /opt/purple-mcp && pip install` gives a deterministic binary location at `/opt/purple-mcp/bin/purple-mcp` and the venv is fully self-contained. End users who run `purple-mcp` outside the container start it with `s1-secops-mcp exec -- purple-mcp --mode stdio`, which hands it the keychain values; see [`docs/credentials.md`](../../plugins/s1-secops-skills/docs/credentials.md#storing-values-setup-status-forget).
-
-The venv is created in the fetch stage at the same absolute path it occupies at runtime, then copied wholesale. Same path and same base image means the paths baked into the venv stay valid, and the runtime stage needs only `python3` (no `pip`, no `python3-venv`).
-
-## Why vendor node_modules rather than build from a lockfile?
-
-A multi-stage build running `npm ci` from a committed lockfile would also give a reproducible tree, and would keep the fork small. It would not remove the npm registry from the build path: `npm ci` still downloads every tarball. Committing the resolved tree moves that fetch to a maintainer's machine, once, at vendoring time, which is what makes the image buildable without registry access at all.
-
-The costs are real and worth stating: the fork is tens of megabytes larger, dependency updates are a manual re-run of the vendoring script rather than a Dependabot bump, and `node_modules` in version control is a thing most reviewers will flinch at. Committed artefacts also guarantee merge conflicts when syncing with upstream. If registry-free builds stop being a requirement, `npm ci --omit=dev` in the fetch stage is the smaller design.
+One server means one client entry, one container per client session, and one codebase to review, patch and scan. The threat-intel tools need only an HTTPS call with the user's key, which Node's built-in `fetch` covers with no dependencies, so carrying third-party MCP servers and their dependency trees in the image bought little and cost a large attack surface (1.5.7 was 868 MB with 397 packages). Users who want a provider's full MCP feature set install that provider's own server, at their choice and under the provider's support ([`docs/connect-optional-tools.md`](../../plugins/s1-secops-skills/docs/connect-optional-tools.md)).

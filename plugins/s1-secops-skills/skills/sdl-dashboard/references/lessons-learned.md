@@ -290,7 +290,7 @@ Ingested source telemetry (XDR-attributed) renders under either scope, which is 
 The end-to-end engagement shape that produces clean deliverables:
 
 1. Load every relevant skill upfront (`sdl-dashboard`, `powerquery`, `sdl-api`, plus `pdf` / `docx` for deliverables). Loading mid-task wastes turns.
-2. Session init in parallel: data-source enumeration query + alert / asset triage queries + `get_timestamp_range` in a single tool-call batch.
+2. Session init in parallel: data-source enumeration query + alert / asset triage queries, each with an explicit time window, in a single tool-call batch.
 3. Schema discovery for the target source with `powerquery_schema_discover`; write the field list to JSON with the Write tool and keep it for the session.
 4. Identify discriminator fields. Run `group by event.type, <candidate-discriminator>` to confirm cardinality and partition behaviour.
 5. Author panel queries one at a time and validate each in isolation before committing them to the dashboard JSON. PQ-MCP timeouts at 60 seconds; SDL UI typically renders longer; choose the validation method per panel risk.

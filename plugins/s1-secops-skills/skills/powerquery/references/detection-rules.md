@@ -710,7 +710,7 @@ Do not ingest, do not judge a rule "not firing", and do not strip attributes to 
 
 ## Testing a rule body before deploying
 
-1. Run it with the Purple MCP `powerquery` tool over the last 24 hours. Confirm it parses and returns 0-N rows (not an error, not thousands).
+1. Run it with `powerquery_run` over the last 24 hours. Confirm it parses and returns 0-N rows (not an error, not thousands).
 2. Confirm the threshold (`filter count >= N`) doesn't zero out the result for a known-good example, walk `N` down until you see a row, then set `N` slightly above what a benign environment would produce.
 3. Run it over 7 days for baseline volume: expected row count × 7 ≈ what a week of alerting will look like.
 4. If the `group`-intermediate ever exceeds 1,000 rows in a 24-hour window, tighten the initial filter.

@@ -40,6 +40,7 @@ export const KEY_NAMES = [
   'S1_HEC_TOKEN',
   'S1_SCOPE',
   'VIRUSTOTAL_API_KEY',
+  'SHODAN_API_KEY',
 ];
 
 /** Names whose values are secrets (masked in status, prompted without echo). */
@@ -47,6 +48,7 @@ export const SECRET_NAMES = new Set([
   'S1_CONSOLE_API_TOKEN',
   'S1_HEC_TOKEN',
   'VIRUSTOTAL_API_KEY',
+  'SHODAN_API_KEY',
 ]);
 
 export class KeychainUnavailableError extends Error {

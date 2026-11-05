@@ -4,44 +4,43 @@
 #
 # Secrets are read from the macOS login keychain (/usr/bin/security) or the
 # Linux Secret Service (secret-tool) and handed to the container over stdin
-# (entrypoint S1_SECRETS_STDIN=1). They never appear on a command line, in the
+# (S1_SECRETS_STDIN=1, read by the server). They never appear on a command line, in the
 # MCP client config, or in `docker inspect`.
 #
 # Usage
-#   s1-secops-mcp-launch.sh [--image IMG] [--profile P] <server> [server args...]
-#       server: s1-secops-mcp | purple-mcp | virustotal-mcp | shodan-mcp
+#   s1-secops-mcp-launch.sh [--image IMG] [--profile P] s1-secops-mcp [server args...]
 #   s1-secops-mcp-launch.sh setup  [--profile P]   store values (prompts, no echo)
 #   s1-secops-mcp-launch.sh status [--profile P]   show which values are stored
-#   s1-secops-mcp-launch.sh versions | help        image versions / entrypoint help
+#   s1-secops-mcp-launch.sh versions | help        image versions / image help
 #   s1-secops-mcp-launch.sh notices                third-party notices and licenses
 #   s1-secops-mcp-launch.sh install [options]      copy to ~/.local/bin, pull the image,
-#                                                  add the servers to the Claude
+#                                                  add s1-secops-mcp to the Claude
 #                                                  Desktop config (backup kept), then
 #                                                  run setup if no token is stored
 #   s1-secops-mcp-launch.sh config  [options]      print the mcpServers JSON with this
 #                                                  launcher's absolute path (other clients)
 #     options: --image IMG  --profile P  --output-dir DIR  --claude-md FILE
-#              --with-shodan (add the optional shodan entry even with no key stored)
 #              --read-write (allow s1-secops-mcp tools that change the tenant;
 #                            read-only is the default, see docs/read-only.md)
 #              --config-path FILE (install only; default is Claude Desktop's config)
-#              --claude-code (install only; register the servers with
+#              --claude-code (install only; register the server with
 #                             `claude mcp add-json --scope user` instead; automatic
 #                             when install runs inside Claude Code)
 #
 # Credentials live in the macOS keychain, the Linux Secret Service, or, under
 # WSL without a Secret Service, Windows Credential Manager via powershell.exe.
 #
-# Shodan is optional: install/config write the "shodan" entry only when
-# SHODAN_API_KEY is stored for the profile, or with --with-shodan. To add it
-# later: setup (enter the key), then install again, then restart the client.
+# From 1.6.0 the image runs one server, s1-secops-mcp. Purple AI, VirusTotal and
+# Shodan are built-in tools: the VirusTotal and Shodan tools appear when
+# VIRUSTOTAL_API_KEY / SHODAN_API_KEY are stored (setup). install removes older
+# purple-mcp, virustotal and shodan entries that ran this launcher.
 #
 # MCP client config (Claude Desktop example; no secrets in it). JSON does not
 # expand ~ or $HOME, which is why `install` and `config` write the real path:
 #   "s1-secops-mcp": { "command": "/abs/path/s1-secops-mcp-launch.sh", "args": ["s1-secops-mcp"] }
 #
 # Environment
-#   S1_MCP_IMAGE   image (default sentinelone/secops-mcps:1.5.7)
+#   S1_MCP_IMAGE   image (default sentinelone/secops-mcps:1.6.0)
 #   S1_PROFILE     keychain profile (default "default")
 #   S1_OUTPUT_DIR  host directory mounted at the same path so outputFile works
 #   S1_CLAUDE_MD_PATH  host CLAUDE.md, mounted read-only into the container
@@ -55,7 +54,7 @@
 set -eu
 
 SERVICE=sentinelone-mcp
-IMAGE=${S1_MCP_IMAGE:-sentinelone/secops-mcps:1.5.7}
+IMAGE=${S1_MCP_IMAGE:-sentinelone/secops-mcps:1.6.0}
 PROFILE=${S1_PROFILE:-default}
 
 die() { trace "die: $*"; echo "s1-secops-mcp-launch: $*" >&2; exit 2; }
@@ -72,9 +71,9 @@ while [ $# -gt 0 ]; do
     *) break ;;
   esac
 done
-[ $# -ge 1 ] || die "missing server name (s1-secops-mcp | purple-mcp | virustotal-mcp | shodan-mcp | setup | status | install | config)"
+[ $# -ge 1 ] || die "missing command (s1-secops-mcp | setup | status | install | config | versions | notices | help)"
 CMD=$1; shift
-OUTPUT_DIR=""; CLAUDE_MD=""; CONFIG_PATH=""; WITH_SHODAN=""; READ_WRITE=""; CLAUDE_CODE=""
+OUTPUT_DIR=""; CLAUDE_MD=""; CONFIG_PATH=""; READ_WRITE=""; CLAUDE_CODE=""
 # setup, status, install and config take their options after the command too
 # (`setup --profile P`); servers pass everything after the name through.
 case "$CMD" in
@@ -87,8 +86,9 @@ case "$CMD" in
     done ;;
   install|config)
     while [ $# -gt 0 ]; do
-      # The flags without a value.
-      if [ "$1" = --with-shodan ]; then WITH_SHODAN=1; shift; continue; fi
+      # The flags without a value. --with-shodan is accepted (scripts may still pass it) but
+      # has no effect from 1.6.0: Shodan is a built-in tool, on whenever SHODAN_API_KEY is stored.
+      if [ "$1" = --with-shodan ]; then echo "s1-secops-mcp-launch: --with-shodan is no longer needed: Shodan is built into s1-secops-mcp and is on when SHODAN_API_KEY is stored (setup)." >&2; shift; continue; fi
       if [ "$1" = --read-write ]; then READ_WRITE=1; shift; continue; fi
       if [ "$1" = --claude-code ]; then [ "$CMD" = install ] || die "--claude-code is for install only"; CLAUDE_CODE=1; shift; continue; fi
       [ $# -ge 2 ] || die "$1 needs a value"
@@ -315,11 +315,9 @@ tcc_blocked() {
   case "$1" in "$HOME"/Documents/*|"$HOME"/Desktop/*|"$HOME"/Downloads/*) return 0 ;; esac
   return 1
 }
-# Shodan is optional: its entry is written only when a key is stored for this
-# profile or --with-shodan was given. Without a key the server refuses to start,
-# which a client shows as a failed server.
-want_shodan() { [ -n "$WITH_SHODAN" ] || [ -n "$(kc_get SHODAN_API_KEY)" ]; }
-# The Claude Desktop entries for launcher $1. No secrets: paths and names only.
+# The Claude Desktop entry for launcher $1. No secrets: paths and names only.
+# One server from 1.6.0; the merge below removes older purple-mcp, virustotal and
+# shodan entries that ran this launcher.
 mcp_json() {
   _l=$(json_str "$1"); _i=$(json_str "$IMAGE"); _p=""; _e=""
   [ "$PROFILE" = default ] || _p=", \"--profile\", $(json_str "$PROFILE")"
@@ -330,16 +328,11 @@ mcp_json() {
   printf '{\n  "mcpServers": {\n'
   printf '    "s1-secops-mcp": {\n      "command": %s,\n      "args": ["--image", %s%s, "s1-secops-mcp"]' "$_l" "$_i" "$_p"
   [ -z "$_e" ] || printf ',\n      "env": {%s}' "$_e"
-  printf '\n    },\n'
-  printf '    "purple-mcp": {\n      "command": %s,\n      "args": ["--image", %s%s, "purple-mcp"]\n    },\n' "$_l" "$_i" "$_p"
-  printf '    "virustotal": {\n      "command": %s,\n      "args": ["--image", %s%s, "virustotal-mcp"]\n    }' "$_l" "$_i" "$_p"
-  if want_shodan; then
-    printf ',\n    "shodan": {\n      "command": %s,\n      "args": ["--image", %s%s, "shodan-mcp"]\n    }' "$_l" "$_i" "$_p"
-  fi
-  printf '\n  }\n}\n'
+  printf '\n    }\n  }\n}\n'
 }
-# Merge: keep every other server and setting, replace our entries, and drop
-# older entries that ran this launcher under another name (e.g. "virustotal-mcp").
+# Merge: keep every other server and setting, replace our entry, and drop older
+# entries that ran this launcher under another name (purple-mcp, virustotal,
+# shodan before 1.6.0; virustotal-mcp earlier still).
 MERGE_JS='function run(argv) {
   ObjC.import("Foundation");
   function rd(p) { var s = $.NSString.stringWithContentsOfFileEncodingError(p, $.NSUTF8StringEncoding, null); return s.isNil() ? null : ObjC.unwrap(s); }
@@ -415,12 +408,12 @@ case "$CMD" in
     [ "$OS" != Darwin ] || xattr -c "$DEST" 2>/dev/null || true
     echo "Launcher installed: $DEST" >&2
 
-    # Claude Code: register the servers with `claude mcp add-json` (user scope)
+    # Claude Code: register the server with `claude mcp add-json` (user scope)
     # instead of editing Claude Desktop's file. Chosen with --claude-code, or
     # automatically when install runs inside Claude Code (CLAUDECODE is set).
     if [ -z "$CONFIG_PATH" ] && [ -z "$CLAUDE_CODE" ] && [ -n "${CLAUDECODE:-}" ]; then
       CLAUDE_CODE=1
-      echo "Running inside Claude Code: registering the servers with Claude Code. The Claude Desktop config is not changed; to configure Claude Desktop too, run install again from a terminal without --claude-code." >&2
+      echo "Running inside Claude Code: registering s1-secops-mcp with Claude Code. The Claude Desktop config is not changed; to configure Claude Desktop too, run install again from a terminal without --claude-code." >&2
     fi
     if [ -n "$CLAUDE_CODE" ]; then
       TMPD=$(mktemp -d "${TMPDIR:-/tmp}/s1mcp.XXXXXX")
@@ -432,13 +425,14 @@ for k,v in json.load(open(sys.argv[1]))["mcpServers"].items():
     v["type"]="stdio"; print(k+"\t"+json.dumps(v))' "$TMPD/new.json" > "$TMPD/servers.tsv" ||
           die "could not read the generated server entries"
       else
-        die "python3 is needed to register servers with Claude Code"
+        die "python3 is needed to register the server with Claude Code"
       fi
       if command -v claude >/dev/null 2>&1; then
         # Older names are removed only when they run this launcher, so a user's
-        # own server with one of those names is left alone. Our own names are
-        # replaced, as the Claude Desktop merge does.
-        for _old in virustotal-mcp sentinelone-mcp; do
+        # own server with one of those names (e.g. an official purple-mcp they
+        # installed) is left alone. Our own name is replaced, as the Claude
+        # Desktop merge does.
+        for _old in purple-mcp virustotal shodan virustotal-mcp sentinelone-mcp; do
           if claude mcp get "$_old" 2>/dev/null | grep -q 's1-secops-mcp-launch'; then
             claude mcp remove --scope user "$_old" >/dev/null 2>&1 && echo "Claude Code: removed old entry $_old" >&2
           fi
@@ -449,7 +443,7 @@ for k,v in json.load(open(sys.argv[1]))["mcpServers"].items():
           echo "Claude Code: registered $_name (user scope)" >&2
         done < "$TMPD/servers.tsv"
       else
-        echo "The claude CLI is not on PATH. Register the servers with:" >&2
+        echo "The claude CLI is not on PATH. Register the server with:" >&2
         while IFS="$(printf '\t')" read -r _name _json; do
           printf "claude mcp add-json --scope user %s '%s'\n" "$_name" "$_json"
         done < "$TMPD/servers.tsv"
@@ -519,7 +513,7 @@ open(tmp,"w",encoding="utf-8").write(json.dumps(cfg,indent=2)+"\n"); os.replace(
         echo "s1-secops-mcp is configured read-only (the default): tools that change the tenant are refused. To allow them, run install again with --read-write." >&2
       fi
     else
-      echo "No JSON tool found (osascript or python3), so the config was not edited. Add these entries to your MCP client config:" >&2
+      echo "No JSON tool found (osascript or python3), so the config was not edited. Add this entry to your MCP client config (and remove any older purple-mcp, virustotal or shodan entries that run this launcher):" >&2
       cat "$TMPD/new.json"
     fi
     fi
@@ -555,15 +549,15 @@ open(tmp,"w",encoding="utf-8").write(json.dumps(cfg,indent=2)+"\n"); os.replace(
         echo "Secrets are never typed into a chat or passed on a command line. In your own terminal, run once:  $DEST setup" >&2
       fi
     fi
-    if want_shodan; then
-      echo "Shodan: entry added (optional server)." >&2
-    else
-      echo "Shodan: skipped (optional). To add it: $DEST setup (enter SHODAN_API_KEY), then $DEST install again." >&2
+    if [ -z "$KC_ERR" ]; then
+      if [ -n "$(kc_get VIRUSTOTAL_API_KEY)" ]; then _vt=on; else _vt="off (no VIRUSTOTAL_API_KEY)"; fi
+      if [ -n "$(kc_get SHODAN_API_KEY)" ]; then _sh=on; else _sh="off (no SHODAN_API_KEY)"; fi
+      echo "Built-in tools: Purple AI on, VirusTotal $_vt, Shodan $_sh. To add a key: $DEST setup, then restart $CLIENT." >&2
     fi
     if [ -n "$CLAUDE_CODE" ]; then
-      echo "Done. Exit Claude Code and start it again; /mcp lists the servers. Nothing needs starting in Docker Desktop." >&2
+      echo "Done. Exit Claude Code and start it again; /mcp lists s1-secops-mcp. Nothing needs starting in Docker Desktop." >&2
     else
-      echo "Done. Quit Claude Desktop completely and open it again: it starts the MCPs itself. Nothing needs starting in Docker Desktop." >&2
+      echo "Done. Quit Claude Desktop completely and open it again: it starts s1-secops-mcp itself. Nothing needs starting in Docker Desktop." >&2
     fi
     exit 0 ;;
 esac
@@ -608,10 +602,11 @@ case "$CMD" in
     done
     printf '%-34s %s\n' "S1_READ_ONLY" "set in the MCP client config, not the keychain (default: read-only)"
     exit 0 ;;
-  s1-secops-mcp|s1) NAMES="S1_CONSOLE_URL S1_CONSOLE_API_TOKEN S1_HEC_INGEST_URL S1_HEC_TOKEN S1_SCOPE" ;;
-  purple-mcp|purple) NAMES="S1_CONSOLE_URL S1_CONSOLE_API_TOKEN VIRUSTOTAL_API_KEY" ;;  # VT key -> PURPLEMCP_VT_API_KEY (threat_intel_*)
-  virustotal-mcp|virustotal|vt) NAMES="VIRUSTOTAL_API_KEY" ;;
-  shodan-mcp|shodan) NAMES="SHODAN_API_KEY" ;;
+  s1-secops-mcp|s1) NAMES="S1_CONSOLE_URL S1_CONSOLE_API_TOKEN S1_HEC_INGEST_URL S1_HEC_TOKEN S1_SCOPE VIRUSTOTAL_API_KEY SHODAN_API_KEY" ;;
+  purple-mcp|purple|virustotal-mcp|virustotal|vt|shodan-mcp|shodan)
+    # Removed in 1.6.0. A client still configured for the old entry gets one clear log line.
+    echo "s1-secops-mcp-launch: '$CMD' was removed in 1.6.0. Purple AI, VirusTotal and Shodan are now built-in tools of s1-secops-mcp. Run '$0 install' again to update your MCP client config, then restart the client." >&2
+    exit 78 ;;
   versions|help|notices) exec docker run --rm "$IMAGE" "$CMD" ;;
   *) die "unknown server '$CMD'" ;;
 esac
@@ -634,10 +629,10 @@ for n in $NAMES; do
   v=$(kc_get "$n")
   if [ -n "$v" ]; then PAYLOAD="$PAYLOAD$n=$v$NL"; else missing="$missing $n"; fi
 done
-[ -n "$KC_ERR" ] || case "$CMD" in
-  s1-secops-mcp|s1|purple-mcp|purple)
-    case "$missing" in *S1_CONSOLE_API_TOKEN\ *|*S1_CONSOLE_API_TOKEN) echo "s1-secops-mcp-launch: warning: S1_CONSOLE_API_TOKEN not in the keychain for profile $PROFILE (run: $0 setup)" >&2 ;; esac ;;
-  *) [ -z "$missing" ] || echo "s1-secops-mcp-launch: warning: not in the keychain:$missing" >&2 ;;
+# Only the console token is worth a warning: every other value is optional
+# (the VirusTotal and Shodan tools are simply not listed without their keys).
+[ -n "$KC_ERR" ] || case "$missing" in
+  *S1_CONSOLE_API_TOKEN\ *|*S1_CONSOLE_API_TOKEN) echo "s1-secops-mcp-launch: warning: S1_CONSOLE_API_TOKEN not in the keychain for profile $PROFILE (run: $0 setup)" >&2 ;;
 esac
 
 # Final argv: docker run <docker opts> IMAGE CMD <server args>. "$@" holds the

@@ -36,11 +36,11 @@ Three pieces work together in every session:
 CLAUDE.md            SOC Analyst persona, evidence rules, session protocol
        |
        v
-MCP Servers          Live API access from your machine, credentials from the OS keychain
-  s1-secops-mcp    35 tools: PowerQuery, SDL, Mgmt REST, UAM, UAM Ingest, Hyperautomation
-  purple-mcp         Alert triage, Purple AI NLQ, Deep Visibility, assets, vulns
-  threat-intel-mcp   External IOC enrichment (e.g. VirusTotal)
-  shodan (optional)  Exposure intel for external IPs and domains: ports, services, host CVEs
+MCP Server           Live API access from your machine, credentials from the OS keychain
+  s1-secops-mcp      Up to 40 tools: PowerQuery, SDL, Mgmt REST, UAM, UAM Ingest,
+                     Hyperautomation, Purple AI questions, and built-in VirusTotal and
+                     Shodan lookups (listed when their API keys are stored)
+  optional           Other MCP servers you add from their official sources
        |
        v
 Skills (SKILL.md)    Procedural knowledge: confirmed schemas, field requirements,
@@ -109,15 +109,15 @@ Continue to [Section 3: Install](#3-install-in-30-minutes) to set this up.
 
 ## 3. Install in 30 minutes
 
-The install is a Docker quick start: one image bundles all four MCPs (Shodan is optional), so the host needs Docker plus a small launcher script that reads your OS keychain. Rather than repeat it here, follow the steps in the **[README Quick start (Docker)](../README.md#1-quick-start-docker)**:
+The install is a Docker quick start: one image runs the `s1-secops-mcp` server, so the host needs Docker plus a small launcher script that reads your OS keychain. Rather than repeat it here, follow the steps in the **[README Quick start (Docker)](../README.md#1-quick-start-docker)**:
 
-1. **Run the one install command** for your OS. It installs the launcher, adds the three core MCPs to `claude_desktop_config.json` with your real path (the config holds no secrets), pulls the image, and asks for your credentials, which go into the OS keychain, never a file; the full reference is [`docs/credentials.md`](./credentials.md). The Shodan API key is optional: press Enter to skip it. If you store one, `install` also adds the `shodan` entry.
-2. **Quit and reopen Claude Desktop.** It starts the MCPs itself; there is nothing to start in Docker Desktop.
+1. **Run the one install command** for your OS. It installs the launcher, adds the `s1-secops-mcp` entry to `claude_desktop_config.json` with your real path (the config holds no secrets), pulls the image, and asks for your credentials, which go into the OS keychain, never a file; the full reference is [`docs/credentials.md`](./credentials.md). The VirusTotal and Shodan API keys are optional: press Enter to skip either. Each one you store turns on the matching built-in lookup tools.
+2. **Quit and reopen Claude Desktop.** It starts the MCP server itself; there is nothing to start in Docker Desktop.
 3. **Install the plugin** (the latest `s1-secops-skills-v*.plugin` in the `dist/` folder) via Cowork → Customize → Browse plugins.
 
 Then create a Cowork project named `PrincipalSOCAnalyst`, select a folder for it, and (optionally) drop your own [`CLAUDE.md`](https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/plugins/s1-secops-skills/CLAUDE.md) into the folder to customise the persona; the Docker image ships a default, so this is optional (to override it, set `S1_CLAUDE_MD_PATH`, see [`docs/docker.md`](./docker.md#claudemd-customization)). Never put tokens in the project folder.
 
-For the same steps at full length, with project creation and the upgrade path, see [`docs/installation.md`](./installation.md). Every credential value is documented in [`docs/credentials.md`](./credentials.md).
+For the same steps at full length, with project creation and the upgrade path, see [`docs/installation.md`](./installation.md). Every credential value is documented in [`docs/credentials.md`](./credentials.md). To add other MCP servers, such as your organisation's threat-intel provider, see [`docs/connect-optional-tools.md`](./connect-optional-tools.md).
 
 **Read-only by default.** From release 1.5.5, s1-secops-mcp refuses any tool call that would change your tenant. Hunting, investigation and reporting need nothing more. Deploying dashboards, parsers, detections or workflows, ingesting data, and changing alert status, verdicts or notes need write access: run `install` again with `--read-write` (Windows: `-ReadWrite`) and restart Claude Desktop. Until then, Claude tells you what was refused and can hand you the deliverable as a file. See [`docs/read-only.md`](./read-only.md).
 
@@ -129,7 +129,7 @@ Open the **PrincipalSOCAnalyst** project, start a new session, and run:
 smoke test s1 secops skills
 ```
 
-Claude verifies connectivity to every MCP, confirms each skill is loaded, and reports missing credentials or unreachable endpoints. To check the version, ask: `which version of s1-secops-skills is installed?`
+Claude verifies connectivity to `s1-secops-mcp` and any other MCP you added, confirms each skill is loaded, and reports missing credentials or unreachable endpoints. To check the version, ask: `which version of s1-secops-skills is installed?`
 
 If anything fails, jump to [Section 6: When things don't work](#6-when-things-dont-work).
 
@@ -182,9 +182,8 @@ Expect dashboard JSON authored, queries validated against your tenant, the dashb
 A few signals tell you which skill is running and what API surface is being used:
 
 - **Tool calls named `mcp__s1-secops-mcp__*`** are the local MCP server. Names like `powerquery_run`, `s1_api_get`, `sdl_put_file`, `uam_list_alerts`, `ha_import_workflow` map cleanly to the skill they belong to.
-- **Tool calls named `mcp__purple-mcp__*`** are the Python Purple MCP. Use these for alert triage, Purple AI NLQ, vulnerabilities, inventory.
-- **Tool calls named `mcp__virustotal__*`** (or your equivalent) are external threat intel.
-- **Tool calls named `mcp__shodan__*`** (only if installed) are exposure lookups on external IPs and domains, and CVE lookups. They complement the threat-intel verdict, never replace it.
+- **`purple_ai_query`** asks Purple AI a question. It returns a written answer, or a PowerQuery that Claude then runs with `powerquery_run`.
+- **`ti_vt_lookup` and `ti_vt_relationship`** are external threat intel from VirusTotal; **`ti_shodan_host` and `ti_shodan_dns`** are exposure and DNS lookups from Shodan. Shodan complements the threat-intel verdict, never replaces it. Tools from another provider's MCP, if you added one, appear under that server's name.
 - **Skill load indicators** appear inline: Claude will mention "loading powerquery" or similar before it starts authoring a query.
 - **Citations** appear in Claude's prose. Every fact ties back to a specific tool call, with no fabrication.
 
@@ -217,14 +216,14 @@ What you'll get: a PowerQuery using `event.type`, `src.process.cmdline`, and `ar
 
 ### Alert triage
 
-Skills: `mgmt-console-api`, plus `purple-mcp` for richer GraphQL fields.
+Skills: `mgmt-console-api` (UAM tools) and `soc-investigator`.
 
 ```text
 Triage alert ID abc123: get full details, check notes and history, enrich
-any IOCs through the threat-intel MCP, and give me a verdict.
+any IOCs through threat intelligence, and give me a verdict.
 ```
 
-What you'll get: the full alert payload, prior analyst notes, MDR verdict, asset criticality lookup, every IOC enriched through the configured threat-intel MCP (VirusTotal in the default bundle), MITRE mapping, and a calibrated verdict. If the verdict is CRITICAL or TRUE POSITIVE, you'll see the threat intel evidence inline.
+What you'll get: the full alert payload, prior analyst notes, MDR verdict, asset criticality lookup, every external IOC enriched through threat intelligence (the built-in VirusTotal tools, or your provider's MCP), MITRE mapping, and a calibrated verdict. If the verdict is CRITICAL or TRUE POSITIVE, you'll see the threat intel evidence inline.
 
 ### Behavioural baselining and anomaly detection
 
@@ -297,7 +296,7 @@ If a skill should have triggered and didn't, ask Claude `which skills are loaded
 
 ### MCP server not connecting (red dot in Cowork)
 
-Most first-run failures are Docker not running, a value missing from the keychain, or (on macOS) a launcher stored under `~/Documents`, `~/Desktop` or `~/Downloads`, which Claude Desktop is not permitted to run (`Operation not permitted` in the MCP log; run the launcher's `install` again, which moves it to `~/.local/bin/`). Work through the troubleshooting table in the [README Quick start (Docker)](../README.md#1-quick-start-docker) first (Docker running, Docker Hub reachable, values present in the keychain per `s1-secops-mcp status`, restart Claude Desktop). For the full flowchart, per-MCP log tailing, and hand-testing the container with credentials, see [`docs/docker.md`](./docker.md#troubleshooting).
+Most first-run failures are Docker not running, a value missing from the keychain, or (on macOS) a launcher stored under `~/Documents`, `~/Desktop` or `~/Downloads`, which Claude Desktop is not permitted to run (`Operation not permitted` in the MCP log; run the launcher's `install` again, which moves it to `~/.local/bin/`). Work through the troubleshooting table in the [README Quick start (Docker)](../README.md#1-quick-start-docker) first (Docker running, Docker Hub reachable, values present in the keychain per `s1-secops-mcp status`, restart Claude Desktop). A red `purple-mcp`, `virustotal` or `shodan` entry after an upgrade is left over from before 1.6.0: run the launcher's `install` again to remove it. For the full flowchart, MCP log tailing, and hand-testing the container with credentials, see [`docs/docker.md`](./docker.md#troubleshooting).
 
 ### "s1-secops-mcp is in read-only mode"
 
@@ -330,7 +329,7 @@ Ask Claude:
 smoke test s1 secops skills
 ```
 
-It runs through every MCP and skill, reports what's healthy, and gives a precise error for anything that isn't.
+It runs through the MCP server and every skill, reports what's healthy, and gives a precise error for anything that isn't.
 
 ---
 
@@ -346,6 +345,7 @@ It runs through every MCP and skill, reports what's healthy, and gives a precise
 | [`docs/skills.md`](./skills.md) | Per-skill capability reference |
 | [`docs/mcp-tools.md`](./mcp-tools.md) | Every MCP tool with usage notes |
 | [`docs/credentials.md`](./credentials.md) | Every credential value, keychain setup, migration, and the security model |
+| [`docs/connect-optional-tools.md`](./connect-optional-tools.md) | Add other MCP servers from their official sources: VirusTotal hosted MCP, SentinelOne purple-mcp, other threat-intel providers |
 | [`docs/sdl-dashboard.md`](./sdl-dashboard.md) | Every supported panel type with confirmed JSON examples |
 | [`docs/testing.md`](./testing.md) | Test coverage matrix and confirmed API field requirements |
 | [`mgmt-console-api/SKILL.md`](../skills/mgmt-console-api/SKILL.md) | Confirmed field schemas and required parameters per endpoint |

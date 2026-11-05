@@ -197,7 +197,7 @@ test('setup never accepts a secret as an argument', () => {
   assert.equal(r.code, 2);
 });
 
-test('exec maps keychain values to purple-mcp and VirusTotal variable names', () => {
+test('exec maps keychain values to the variable names a user-installed purple-mcp or VirusTotal server reads', () => {
   const fake = fakeSecretTool();
   writeFileSync(join(fake.store, 'default:S1_CONSOLE_URL'), 'https://p.sentinelone.net');
   writeFileSync(join(fake.store, 'default:S1_CONSOLE_API_TOKEN'), TOKEN);

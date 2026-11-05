@@ -8,6 +8,7 @@
  *   s1_api_delete           Generic DELETE against S1 Mgmt Console REST API
  *   s1_api_patch            Generic PATCH against S1 Mgmt Console REST API
  *   purple_ai_alert_summary Get a Purple AI natural-language summary for a specific UAM alert
+ *   purple_ai_query         Ask Purple AI a natural-language question (answer and/or PowerQuery)
  *   uam_list_alerts         List/search UAM alerts via GraphQL
  *   uam_get_alert           Get full alert details (notes, history)
  *   uam_add_note            Add analyst note to an alert
@@ -19,15 +20,14 @@
  * The three write tools send the console's exact alertTriggerActions request
  * (HAR 2026-10-07) and re-read the alert to prove the change.
  *
- * REMOVED (2026-05-03: confirmed non-functional for API tokens):
- *   purple_ai_query        : requires browser-session teamToken from /sdl/v2/graphql that
- *                             API-token service accounts never obtain. Use Purple MCP instead.
- *   purple_ai_investigate  : same root cause (SERVICE_ERROR). Use Purple MCP instead.
+ * purple_ai_query returned in 1.6.0 with the request shape that works for API tokens (see
+ * purpleLaunchQuery in lib/s1.js). purple_ai_investigate (aiInvestigation/run) still needs a
+ * browser session and is not exposed.
  */
 
 import { writeOutput, resolveOutputPath } from '../lib/output.js';
 import {
-  apiGet, apiGetBinary, apiPost, apiPut, apiDelete, apiPatch, purpleAlertSummary,
+  apiGet, apiGetBinary, apiPost, apiPut, apiDelete, apiPatch, purpleAlertSummary, purpleLaunchQuery,
   uamListAlerts, uamGetAlert, uamAddNote, uamSetStatus, uamSetVerdict, uamAssignAlert, uamAvailableActions, alertScope,
   UAM_STATUSES, UAM_ANALYST_VERDICTS,
 } from '../lib/s1.js';
@@ -286,10 +286,46 @@ export const tools = [
     },
   },
 
+  // ─── purple_ai_query ──────────────────────────────────────────────────────
+  {
+    name: 'purple_ai_query',
+    description: `Ask Purple AI a question in natural language (purpleLaunchQuery at /web/api/v2.1/graphql, synchronous, about 5 to 15 s). Uses the console API token; no extra key. Purple answers in one of two ways: resultType MESSAGE (a written answer, e.g. "What is T1059?" or "How do I hunt for Kerberoasting?") or POWER_QUERY (a hunt question such as "Show PowerShell process creation in the last 24 hours" returns a PowerQuery in powerQuery.query, with its time range). Purple does NOT run the query: pass powerQuery.query to powerquery_run, and review it first, since generated queries can AND fields from different data sources. Each call is a new conversation (no memory between calls). Read-only. Returns {resultType, message, summary, powerQuery, starRule, suggestedQuestions}.`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        question: {
+          type: 'string',
+          description: 'The question for Purple AI, in plain language (max 4000 characters).',
+        },
+        hours: {
+          type: 'number',
+          description: 'Time range Purple scopes a generated PowerQuery to, counting back from now. Default 24. Ignored when startTime is given.',
+        },
+        startTime: {
+          type: 'string',
+          description: 'Optional start of the time range: ISO 8601 (e.g. 2026-11-01T00:00:00Z) or epoch milliseconds.',
+        },
+        endTime: {
+          type: 'string',
+          description: 'Optional end of the time range (default now): ISO 8601 or epoch milliseconds.',
+        },
+      },
+      required: ['question'],
+    },
+    async handler({ question, hours, startTime, endTime }) {
+      const t = v => (v === undefined || v === null || v === '') ? undefined
+        : (/^\d{10,}$/.test(String(v)) ? Number(v) : v);
+      const h = hours === undefined || hours === null || hours === '' ? 24 : Number(hours);
+      if (!Number.isFinite(h) || h <= 0) throw new Error('purple_ai_query: hours must be a positive number.');
+      const result = await purpleLaunchQuery(question, { hours: h, startTime: t(startTime), endTime: t(endTime) });
+      return JSON.stringify(result, null, 2);
+    },
+  },
+
   // ─── uam_list_alerts ──────────────────────────────────────────────────────
   {
     name: 'uam_list_alerts',
-    description: `List UAM (Unified Alert Management) alerts via GraphQL. The PRIMARY alert API in S1, covers all alert types (EDR, STAR, cloud, identity, third-party). Uses the correct FilterInput schema: dateTimeRange { start, end } for time windows (epoch ms). USE THIS instead of Purple MCP search_alerts for time-scoped searches; the Purple MCP sends date_range (snake_case) which UAM rejects; this tool uses dateTimeRange (the actual schema field). Convenience params (status, severity, startTime, endTime) build FilterInputs automatically. SCOPE: with a global or multi-account token an unscoped listing spans every account; pass scopeIds (and scopeType SITE for sites) for the account or site the user named. Each alert carries accountId and siteId. For deeper analysis, follow up with uam_get_alert.`,
+    description: `List UAM (Unified Alert Management) alerts via GraphQL. The PRIMARY alert API in S1, covers all alert types (EDR, STAR, cloud, identity, third-party). Uses the correct FilterInput schema: dateTimeRange { start, end } for time windows (epoch ms). For time-scoped searches pass startTime/endTime: this tool sends dateTimeRange, the field the UAM schema actually accepts (date_range or dateRange is rejected).Convenience params (status, severity, startTime, endTime) build FilterInputs automatically. SCOPE: with a global or multi-account token an unscoped listing spans every account; pass scopeIds (and scopeType SITE for sites) for the account or site the user named. Each alert carries accountId and siteId. For deeper analysis, follow up with uam_get_alert.`,
     inputSchema: {
       type: 'object',
       properties: {

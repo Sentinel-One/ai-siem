@@ -813,7 +813,7 @@ Before blaming the query:
 3. Case: are you using `contains` (ci) or `in` / `=` (cs)?
 4. Field name: does the field exist on this schema? Run `dataSource.name='X' field=* | limit 1 | columns field` to confirm it's populated.
 
-Don't keep re-running slightly rephrased versions, the Purple MCP docs warn explicitly against that. If the data isn't there, no rewrite finds it.
+Don't keep re-running slightly rephrased versions. If the data isn't there, no rewrite finds it.
 
 ### One predicate silently takes the whole result to zero
 

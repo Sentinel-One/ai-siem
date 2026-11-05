@@ -22,6 +22,7 @@ export const ENV_ALIASES = {
   S1_HEC_INGEST_URL: ['S1_HEC_INGEST_URL', 'S1_UAM_ALERT_INTERFACE_URL'],
   S1_SCOPE: ['S1_SCOPE', 'SDL_S1_SCOPE'],
   VIRUSTOTAL_API_KEY: ['VIRUSTOTAL_API_KEY', 'VT_API_KEY'],
+  SHODAN_API_KEY: ['SHODAN_API_KEY'],
 };
 
 function fromEnv(name) {
@@ -74,6 +75,10 @@ export function getCreds() {
     S1_HEC_TOKEN:         e('S1_HEC_TOKEN'),
     // Default S1-Scope for SDL requests: "<accountId>" or "<accountId>:<siteId>".
     S1_SCOPE:             e('S1_SCOPE'),
+    // Optional threat-intel keys for the built-in ti_* tools (1.6.0). Each tool is listed only
+    // when its key is present.
+    VIRUSTOTAL_API_KEY:   e('VIRUSTOTAL_API_KEY'),
+    SHODAN_API_KEY:       e('SHODAN_API_KEY'),
   };
 }
 

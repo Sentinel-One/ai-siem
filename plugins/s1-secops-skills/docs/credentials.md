@@ -11,14 +11,16 @@ As of s1-secops-mcp 1.5.0 (plugin 1.3.12) there is **no credentials file**. Valu
 | Name | Required for | How to get it |
 |---|---|---|
 | `S1_CONSOLE_URL` | Everything | Your console URL, e.g. `https://usea1-acme.sentinelone.net`. No trailing slash. |
-| `S1_CONSOLE_API_TOKEN` | Mgmt Console REST, PowerQuery LRQ, UAM GraphQL, Purple AI GraphQL, SDL config operations, UAM alert ingest, IOCs | Settings → Users → Service Users → Create Service User → copy the API token. |
+| `S1_CONSOLE_API_TOKEN` | Mgmt Console REST, PowerQuery LRQ, UAM GraphQL, Purple AI GraphQL (including `purple_ai_query`), SDL config operations, UAM alert ingest, IOCs | Settings → Users → Service Users → Create Service User → copy the API token. |
 | `S1_HEC_INGEST_URL` | UAM alert ingest, raw log ingest | Region-specific ingest host, e.g. `https://ingest.us1.sentinelone.net`. Look up yours at [SentinelOne Endpoint URLs by Region](https://community.sentinelone.com/s/article/000004961). |
 | `S1_HEC_TOKEN` | Optional. Raw log ingest over the event collector (`hec_ingest`) | The SDL Log Write Key: Console → Singularity Data Lake → API Keys → Log Write Key. No API mints one. |
 | `S1_SCOPE` | Optional. Default `S1-Scope` for SDL calls when the token spans several sites or accounts | `<accountId>` or `<accountId>:<siteId>`. Most tools also take a per-call `scope`. |
-| `VIRUSTOTAL_API_KEY` | The VirusTotal MCP, and purple-mcp's threat intelligence tools (`threat_intel_by_hash` / `_url` / `_domain` / `_ip`, `threat_intel_search`) | A VirusTotal API key (free tier works) from [virustotal.com](https://virustotal.com). One stored key serves both servers. `threat_intel_search` (VT Intelligence query syntax) needs a premium key. |
-| `SHODAN_API_KEY` | Optional. The Shodan MCP (`shodan-mcp`), which refuses to start without it | A Shodan API key from [account.shodan.io](https://account.shodan.io) (Account page, API key). Shodan gates endpoints by plan. A free ("oss") key reliably covers the CVEDB tools, `shodan_count`, `search_filters` and `api_info`. Host lookups and DNS on a free key return "Requires membership or higher" for some targets. `shodan_search` needs a membership or higher, and `domain_info` is billed at 1 query credit. Use a membership or higher key for dependable results. Stored by the Docker launcher's `setup` (press Enter to skip). |
+| `VIRUSTOTAL_API_KEY` | Optional. The built-in `ti_vt_lookup` and `ti_vt_relationship` tools, which are listed only when it is stored | A VirusTotal API key from [virustotal.com/gui/my-apikey](https://www.virustotal.com/gui/my-apikey). A free key allows 4 lookups a minute and 500 a day; some relationships (`related_threat_actors`, `similar_files`) need a premium key, and a 403 says so. Stored by `setup` (press Enter to skip). |
+| `SHODAN_API_KEY` | Optional. The built-in `ti_shodan_host` and `ti_shodan_dns` tools, which are listed only when it is stored | A Shodan API key from [account.shodan.io](https://account.shodan.io) (Account page, API key). Neither tool spends query credits. A free key may get "Requires membership or higher" for some hosts; a membership or higher key gives dependable results. Stored by `setup` (press Enter to skip). |
 
-`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are the minimum, and between them they authorise every SDL query and configuration operation including parser and dashboard deployment.
+`S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` are the minimum, and between them they authorise every SDL query and configuration operation including parser and dashboard deployment, and Purple AI questions.
+
+When the server starts it logs which built-in threat-intel tools are on, for example `Threat intel: Purple AI on, VirusTotal on, Shodan off (no SHODAN_API_KEY)`.
 
 Raw log ingest is the one path the console API token does not reliably cover. `/services/collector/raw` and `/event` take the SDL Log Write Key in `S1_HEC_TOKEN` (`Splunk` or `Bearer` prefix), which returns `HTTP 200 {"text":"Success","code":0}`. The console token's behaviour there differs per console: on some it returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without an `S1-Scope` header and is accepted with one, on others it returns `HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` either way. Use the write key in both cases. A key is minted for exactly one account or site and writes only there, so the key fixes the ingest destination; no `S1-Scope` header is sent, and sending one does not change where the key's events land. UAM alert ingest and IOCs still use `S1_CONSOLE_API_TOKEN`.
 
@@ -68,10 +70,18 @@ s1-secops-mcp setup --profile prod     # a second tenant under its own profile
 s1-secops-mcp status                   # where each value comes from (env or keychain), masked
 s1-secops-mcp forget --name S1_HEC_TOKEN       # remove one value
 s1-secops-mcp forget --profile prod            # remove a whole profile
-s1-secops-mcp exec -- purple-mcp --mode stdio  # run another MCP server with the keychain values in its environment
+s1-secops-mcp exec -- <command> [args...]     # run another MCP server with the keychain values in its environment
 ```
 
-Without a terminal, `setup` reads `NAME=value` lines from stdin instead of prompting, which keeps values out of the command line and shell history. `exec` maps the values to the names the other servers read (`PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN`, `PURPLEMCP_VT_API_KEY`, `VT_API_KEY`); they are visible in that child's environment to the same OS user.
+Without a terminal, `setup` reads `NAME=value` lines from stdin instead of prompting, which keeps values out of the command line and shell history.
+
+`exec` is for an MCP server you installed yourself from its official source, such as SentinelOne's open-source purple-mcp ([connect-optional-tools.md](./connect-optional-tools.md)). It starts the command with the stored values in its environment and maps them to the names that server reads (`PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN`, `PURPLEMCP_VT_API_KEY`, `VT_API_KEY`), so the token never goes into a client config file. For example:
+
+```bash
+s1-secops-mcp exec -- uvx --from git+https://github.com/Sentinel-One/purple-mcp.git purple-mcp --mode=stdio
+```
+
+The values are visible in that child's environment to the same OS user.
 
 To run the server against a non-default profile, set `S1_PROFILE=<name>` in the environment the server starts with (the launcher and MCP configs below accept it, and it is not a secret).
 
@@ -181,14 +191,14 @@ Also delete any copies the old SessionStart hook made (for example under `~/.cla
 
 Do **not** pass secrets to `docker run` with `-e`, and do not put them in a client config `env` block for a Docker command. Values passed with `-e` are stored in the container's configuration and show in `docker inspect` to anyone who can reach the Docker daemon.
 
-Use the host launcher instead. It reads the keychain on the host and hands the values to the container over stdin (the entrypoint reads them when `S1_SECRETS_STDIN=1`), so they never appear in `docker inspect`, the process list, or the MCP client config:
+Use the host launcher instead. It reads the keychain on the host and hands the values to the container over stdin (the server reads them when `S1_SECRETS_STDIN=1`), so they never appear in `docker inspect`, the process list, or the MCP client config:
 
 | Host | Launcher |
 |---|---|
-| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.5.7] [--profile P] <server>` |
-| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.5.7] [-Profile P] <server>` |
+| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.6.0] [--profile P] s1-secops-mcp` |
+| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.6.0] [-Profile P] s1-secops-mcp` |
 
-`<server>` is `s1-secops-mcp`, `purple-mcp`, `virustotal-mcp` or `shodan-mcp`. Launcher options go before the server name; anything after it is passed to the server inside the container.
+Launcher options go before the server name; anything after it is passed to the server inside the container.
 
 Install it with the launcher's `install` command, which copies it to `~/.local/bin/` (Windows: `%USERPROFILE%\bin\`), writes the Claude Desktop config with the real path, pulls the image and runs `setup` if no token is stored. No clone needed:
 
@@ -203,21 +213,16 @@ The resulting Claude Desktop config (`~/.local/bin/s1-secops-mcp-launch.sh confi
 ```json
 {
   "mcpServers": {
-    "s1-secops-mcp":  { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.7", "s1-secops-mcp"] },
-    "purple-mcp":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.7", "purple-mcp"] },
-    "virustotal":     { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.7", "virustotal-mcp"] },
-    "shodan":         { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.7", "shodan-mcp"] }
+    "s1-secops-mcp": { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.6.0", "s1-secops-mcp"] }
   }
 }
 ```
 
-The `shodan` entry is optional: `install` writes it only when `SHODAN_API_KEY` is stored in the keychain, or when you pass `--with-shodan` (Windows: `-WithShodan`). To add it later, run the launcher's `setup` to store the key, run `install` again, and restart Claude Desktop.
+The VirusTotal and Shodan keys need no entry of their own: store them with the launcher's `setup` and restart Claude Desktop, and the built-in `ti_vt_*` and `ti_shodan_*` tools are listed.
 
 The config holds no secrets. `S1_READ_ONLY` is a setting, not a secret, and lives in the client config rather than the keychain: s1-secops-mcp is read-only unless the entry sets `"S1_READ_ONLY": "false"`, which `install --read-write` (Windows: `-ReadWrite`) writes. See [read-only.md](./read-only.md). Run `install --output-dir DIR` (Windows: `-OutputDir`) if you want `outputFile` results written somewhere you can open; it sets `S1_OUTPUT_DIR` on the `s1-secops-mcp` entry, and the macOS/Linux launcher mounts it into the container at the same path, and the Windows launcher mounts it at `/output`. Full Docker details are in [docker.md](./docker.md).
 
-All four servers read the same names. `purple-mcp` uses its own variable names internally and the image entrypoint derives them (`S1_CONSOLE_URL` → `PURPLEMCP_CONSOLE_BASE_URL`, `S1_CONSOLE_API_TOKEN` → `PURPLEMCP_CONSOLE_TOKEN`, `VIRUSTOTAL_API_KEY` → `PURPLEMCP_VT_API_KEY`).
-
-Each server receives only the values it uses: `s1-secops-mcp` gets the console, ingest and scope values; `purple-mcp` gets `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` and `VIRUSTOTAL_API_KEY`; `virustotal-mcp` gets `VIRUSTOTAL_API_KEY` only; `shodan-mcp` gets `SHODAN_API_KEY` only, and the entrypoint unsets `SHODAN_API_KEY` for every other server. Like the others, the Shodan key is stored at service `sentinelone-mcp`, account `<profile>:SHODAN_API_KEY`, and travels over the stdin secrets channel. Inside the purple-mcp container the entrypoint copies the VirusTotal key to `PURPLEMCP_VT_API_KEY` and then unsets `VIRUSTOTAL_API_KEY` and `VT_API_KEY`, so purple-mcp's threat intelligence tools work from the same keychain entry with no separate setup.
+The launcher sends the console, ingest and scope values plus `VIRUSTOTAL_API_KEY` and `SHODAN_API_KEY`, each from service `sentinelone-mcp`, account `<profile>:<NAME>`, over the stdin secrets channel. The server accepts only those names and ignores any other, with a warning that does not echo it.
 
 ---
 

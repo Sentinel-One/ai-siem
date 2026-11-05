@@ -7,8 +7,8 @@
   "engine_severity": "CRITICAL",
   "engine_severity_is": "a hypothesis, not a verdict",
   "checks_in_order": [
-    "get_alert_notes",
-    "get_alert_history",
+    "notes (uam_get_alert)",
+    "history (uam_get_alert)",
     "then, and only then, telemetry"
   ]
 }

@@ -14,8 +14,8 @@ without it.
 | Path | Use it when | Where secrets live |
 |---|---|---|
 | **Desktop Extension** (this folder) | You use Claude Desktop only and want a GUI install with no Node or Docker setup. | Claude Desktop's secure storage (see below). |
-| **Keychain CLI** (`s1-secops-mcp setup`) | You run the server with Node from Claude Code, Cowork, Claude Desktop config, or several clients that should share one set of credentials. Also the path for Purple MCP and VirusTotal via `s1-secops-mcp exec`. | OS keychain, service `sentinelone-mcp`, account `<profile>:<NAME>`. |
-| **Docker launcher** | You want the pinned, scanned container image and the bundled Purple MCP and VirusTotal servers. | OS keychain, read by the launcher and handed to the container on stdin. |
+| **Keychain CLI** (`s1-secops-mcp setup`) | You run the server with Node from Claude Code, Cowork, Claude Desktop config, or several clients that should share one set of credentials. `s1-secops-mcp exec` also starts an MCP server you installed yourself with these credentials. | OS keychain, service `sentinelone-mcp`, account `<profile>:<NAME>`. |
+| **Docker launcher** | You want the pinned, scanned, distroless container image. | OS keychain, read by the launcher and handed to the container on stdin. |
 
 The extension does not read the `sentinelone-mcp` keychain items written by
 `s1-secops-mcp setup`. The two stores are separate; enter the values in the
@@ -30,7 +30,7 @@ bash mcpb/build-mcpb.sh
 ```
 
 The script checks that `manifest.json` and `package.json` carry the same
-version and that the manifest's `tools` list matches the 35 tools the server
+version and that the manifest's `tools` list matches the 40 tools the server
 registers, stages only `index.js`, `lib/`, `tools/`, `package.json`,
 `README.md` and `CHANGELOG.md` under `server/` (plus `manifest.json`,
 `CLAUDE.md` and `LICENSE` at the root), normalises file modes, and refuses to
@@ -124,8 +124,10 @@ and "Enterprise Policy Controls".
 - The `soc_analyst` prompt serves the `CLAUDE.md` bundled with the extension
   unless you pick another file. The bundled copy is a snapshot taken at build
   time.
-- No VirusTotal or Purple MCP. Those are separate servers; run them with
-  `s1-secops-mcp exec` or the Docker launcher.
+- Purple AI questions, VirusTotal and Shodan lookups are built in. The
+  VirusTotal and Shodan tools appear once their optional API keys are set in
+  the extension settings. Other MCP servers are installed separately: see
+  [connect-optional-tools.md](../../../plugins/s1-secops-skills/docs/connect-optional-tools.md).
 - Desktop's secure storage protects the tokens at rest. Like any MCP server,
   the running process holds them in its environment, readable by the same
   OS user.

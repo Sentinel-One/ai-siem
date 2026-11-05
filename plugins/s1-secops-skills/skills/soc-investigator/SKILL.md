@@ -18,7 +18,7 @@ description: >-
 
 Autonomous investigation orchestrator with user intake, three investigation modes (SHORT/MEDIUM/LONG) focused on SentinelOne alerts, then optional iterative deep-dive into third-party data sources for correlation and anomaly detection.
 
-Compatibility: requires the `powerquery`, `mgmt-console-api`, `sdl-api`, `sdl-log-parser`, `hyperautomation`, and `sdl-dashboard` skills, plus the purple MCP (VirusTotal / threat intel). Works with Claude Cowork.
+Compatibility: requires the `powerquery`, `mgmt-console-api`, `sdl-api`, `sdl-log-parser`, `hyperautomation`, and `sdl-dashboard` skills, and the s1-secops-mcp server (threat intel: its built-in `ti_vt_*` tools when `VIRUSTOTAL_API_KEY` is stored, optional `ti_shodan_*` when `SHODAN_API_KEY` is stored, or another provider the user has connected). Works with Claude Cowork.
 
 ---
 
@@ -28,8 +28,8 @@ Inherited from the Purple SOC Analyst operating standard and the SDL threat-hunt
 
 - Reconcile to ground truth. An alert, an offence, or a rule "firing" is a lead, not a finding. A claim becomes a finding only when traceable to specific raw log lines or a tool result from this session. If raw evidence is absent, say "unconfirmed"; never upgrade a lead to a conclusion.
 - No fabrication. Every count, IOC total, affected-asset number, hostname, CVE, or actor name must come from a query or tool call run this session. If you do not have it, run the query or say so. Empty, null, zero, and tool-error results are findings; report them, do not smooth over them.
-- Enrich before you decide, when third-party enrichment is enabled. External IPs, domains, URLs, and hashes are enriched through the configured threat-intel MCP (VirusTotal by default) before any verdict, then pivoted for related infrastructure and actors. Because this sends indicators to a third-party service, it is opt-in: if the user asks for SentinelOne-only / local analysis, or no threat-intel MCP is configured, skip external enrichment, say so, and cap the verdict at SUSPICIOUS - Pending Confirmation (per the verdict gate below). Internal, RFC1918, or no-external-indicator events are enrichment-N/A; state that, never fabricate a lookup.
-- Verdict gate. No finding is CRITICAL or TRUE POSITIVE on a detection-engine severity alone. Require at least one of: a threat-intel malicious verdict; MDR or analyst confirmation (check `get_alert_notes` and `get_alert_history` first, an MDR False Positive or Benign verdict takes precedence); or the same IOC or behaviour corroborated across 2+ independent sources. Otherwise the ceiling is SUSPICIOUS - Pending Confirmation.
+- Enrich before you decide, when third-party enrichment is enabled. External IPs, domains, URLs, and hashes are enriched through threat intel (by default the built-in `ti_vt_lookup`, pivoted with `ti_vt_relationship`; any provider the user has connected also qualifies) before any verdict, then pivoted for related infrastructure and actors. Because this sends indicators to a third-party service, it is opt-in: if the user asks for SentinelOne-only / local analysis, or no threat-intel tool is listed (the `ti_vt_*` tools are absent when no VirusTotal key is stored), skip external enrichment, say so, and cap the verdict at SUSPICIOUS - Pending Confirmation (per the verdict gate below). Internal, RFC1918, or no-external-indicator events are enrichment-N/A; state that, never fabricate a lookup.
+- Verdict gate. No finding is CRITICAL or TRUE POSITIVE on a detection-engine severity alone. Require at least one of: a threat-intel malicious verdict; MDR or analyst confirmation (check the alert's notes and history first, both returned by `uam_get_alert`; an MDR False Positive or Benign verdict takes precedence); or the same IOC or behaviour corroborated across 2+ independent sources. Otherwise the ceiling is SUSPICIOUS - Pending Confirmation.
 - Mark assumptions. Prefix any inference needed to proceed with "Assumption:" and state what would falsify it.
 - Calibrated confidence. Use confirmed, consistent with, suggests, possible, or no evidence of, matched to evidence weight. "No evidence of" is a real, valuable result; record negatives explicitly.
 - Session init first. Enumerate `dataSource.name` live and discover each source's schema before querying it; never assume a field namespace. Reuse the project schema cache if present.
@@ -80,8 +80,10 @@ Required skills for full investigation capability:
   ├── sdl-dashboard       - SDL dashboard creation
   └── hyperautomation     - workflow/SOAR automation
 
-  Threat Intelligence
-  └── purple MCP (VirusTotal)         - IOC enrichment
+  Threat Intelligence (s1-secops-mcp built-ins, listed only when the key is stored)
+  ├── ti_vt_lookup / ti_vt_relationship   - IOC enrichment and pivots (VIRUSTOTAL_API_KEY)
+  └── ti_shodan_host / ti_shodan_dns      - optional exposure context (SHODAN_API_KEY)
+  Another connected threat-intel provider also counts.
 ```
 
 For each skill, mark it as **✓ available** or **✗ missing**.
@@ -100,7 +102,8 @@ Core skills:
   ✓ hyperautomation
 
 Threat intelligence:
-  ✓ purple MCP (VirusTotal)
+  ✓ ti_vt_lookup / ti_vt_relationship
+  ✗ ti_shodan_host / ti_shodan_dns   [no SHODAN_API_KEY - exposure context skipped]
 
 Impact of missing skills:
   - LONG mode SDL correlation will be skipped
@@ -193,7 +196,7 @@ Output: ./investigation_2025-06-16T10-00-00/
     → APPROVAL GATE
 
   PHASE 2 - IOC Enrichment                            [~5 min]
-    2.1  Batch IOC lookups: VirusTotal (purple MCP) + S1 IOC API
+    2.1  Batch IOC lookups: VirusTotal (ti_vt_lookup) + S1 IOC API
     2.2  Sample top 20 IOCs by frequency if >20 total
     → Output: threat_intel.json
     → APPROVAL GATE
@@ -287,7 +290,7 @@ All phases write their artifacts into a single `investigation_<timestamp>/` dire
 10. **Review**: User reviews outputs for containment/hunting/reporting
 
 **Read-only mode.** From 1.5.5, s1-secops-mcp is read-only by default (`S1_READ_ONLY` unset or `true`). The investigation itself is read-only and unaffected: PowerQuery, schema discovery, `uam_list_alerts`, `uam_get_alert`, `s1_api_get` and local output files all run. Only optional write-back steps need write: `uam_add_note`, `uam_set_verdict`, `uam_set_status`, `uam_assign_alert`. Before offering a write-back, check `mode.readOnly` in the `sentinelone://credentials-status` resource or the server's initialize instructions.
-- If a write-back returns "s1-secops-mcp is in read-only mode (S1_READ_ONLY).", stop. Do not retry, and do not route around it with another tool (`s1_api_post` to a different endpoint, a hand-built GraphQL mutation, purple-mcp).
+- If a write-back returns "s1-secops-mcp is in read-only mode (S1_READ_ONLY).", stop. Do not retry, and do not route around it with another tool (`s1_api_post` to a different endpoint, a hand-built GraphQL mutation, another MCP server).
 - Tell the user which action was refused and how to enable write: Docker launcher `s1-secops-mcp-launch.sh install --read-write` (Windows `-ReadWrite`), then restart Claude Desktop; `.mcpb` extension: turn off "Read-only mode (recommended)"; Node install: `"S1_READ_ONLY": "false"` in the server's `env` block. Detail: `docs/read-only.md` in the source repo (not shipped).
 - Save the note text, proposed verdict and status into `investigation_<timestamp>/` so the analyst can apply them in the console.
 - Never enable write on the user's behalf by editing their MCP client config.

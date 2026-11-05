@@ -7,7 +7,7 @@ Each user runs their own instance on their own machine, with their own credentia
 ## What this exposes
 
 <!-- BEGIN AUTO-GENERATED TOOLS TABLE -->
-**35 tools** across PowerQuery, Mgmt Console, SDL API, Hyperautomation, and UAM Ingest:
+**40 tools** across PowerQuery, Mgmt Console, SDL API, Hyperautomation, UAM Ingest, and Threat Intel (the Threat Intel tools are listed only when their key is stored):
 
 | Group | Tool | Skill |
 |-------|------|-------|
@@ -15,6 +15,7 @@ Each user runs their own instance on their own machine, with their own credentia
 | PowerQuery | `powerquery_run` | powerquery |
 | PowerQuery | `powerquery_schema_discover` | powerquery |
 | Mgmt Console | `purple_ai_alert_summary` | mgmt-console-api |
+| Mgmt Console | `purple_ai_query` | mgmt-console-api / powerquery / soc-investigator |
 | Mgmt Console | `s1_api_delete` | mgmt-console-api |
 | Mgmt Console | `s1_api_download` | mgmt-console-api |
 | Mgmt Console | `s1_api_get` | mgmt-console-api |
@@ -46,9 +47,15 @@ Each user runs their own instance on their own machine, with their own credentia
 | Hyperautomation | `ha_list_workflows` | hyperautomation |
 | UAM Ingest | `uam_ingest_alert` | mgmt-console-api (UAM Alert Interface) |
 | UAM Ingest | `uam_post_alert` | mgmt-console-api (UAM Alert Interface) |
+| Threat Intel | `ti_shodan_dns` | soc-investigator (SHODAN_API_KEY) |
+| Threat Intel | `ti_shodan_host` | soc-investigator (SHODAN_API_KEY) |
+| Threat Intel | `ti_vt_lookup` | soc-investigator (VIRUSTOTAL_API_KEY) |
+| Threat Intel | `ti_vt_relationship` | soc-investigator (VIRUSTOTAL_API_KEY) |
 <!-- END AUTO-GENERATED TOOLS TABLE -->
 
-**Read-only by default (1.5.5 and later).** Every call that would change the tenant is refused before any network request: the 18 write tools (`s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_post_alert`, `uam_ingest_alert`, `hec_ingest`, `sdl_put_file`, `sdl_delete_file`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `ha_import_workflow`, `ha_delete_workflow`), `s1_api_post` outside its query allowlist, and `powerquery_run` with `| savelookup`. The other 15 tools always run. Tools stay listed; while read-only, write tool descriptions start with `[Disabled: read-only mode, S1_READ_ONLY]`, and every tool carries `readOnlyHint`, `destructiveHint` and `openWorldHint` annotations. Set `S1_READ_ONLY=false` to enable write (Docker launcher: `install --read-write`; `.mcpb`: turn off **Read-only mode (recommended)**; Node: `"S1_READ_ONLY": "false"` in the entry's `env` block). The classification lives in `lib/access.js`. Full reference: **[docs/read-only.md](../../plugins/s1-secops-skills/docs/read-only.md)**; per-tool access: [docs/mcp-tools.md](../../plugins/s1-secops-skills/docs/mcp-tools.md#read-only-mode-155-and-later).
+**Read-only by default (1.5.5 and later).** Every call that would change the tenant is refused before any network request: the 18 write tools (`s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_post_alert`, `uam_ingest_alert`, `hec_ingest`, `sdl_put_file`, `sdl_delete_file`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `ha_import_workflow`, `ha_delete_workflow`), `s1_api_post` outside its query allowlist, and `powerquery_run` with `| savelookup`. The other 20 tools, including `purple_ai_query` and the four threat-intelligence tools, always run. Tools stay listed; while read-only, write tool descriptions start with `[Disabled: read-only mode, S1_READ_ONLY]`, and every tool carries `readOnlyHint`, `destructiveHint` and `openWorldHint` annotations. Set `S1_READ_ONLY=false` to enable write (Docker launcher: `install --read-write`; `.mcpb`: turn off **Read-only mode (recommended)**; Node: `"S1_READ_ONLY": "false"` in the entry's `env` block). The classification lives in `lib/access.js`. Full reference: **[docs/read-only.md](../../plugins/s1-secops-skills/docs/read-only.md)**; per-tool access: [docs/mcp-tools.md](../../plugins/s1-secops-skills/docs/mcp-tools.md#read-only-mode-155-and-later).
+
+**Built-in Purple AI and threat intelligence (1.6.0).** `purple_ai_query` asks Purple AI a natural-language question with the console token and returns its answer or a draft PowerQuery (Purple does not run it; review it, then run it with `powerquery_run`). `ti_vt_lookup` and `ti_vt_relationship` call the VirusTotal API v3 and are listed only when `VIRUSTOTAL_API_KEY` is stored; `ti_shodan_host` and `ti_shodan_dns` call the Shodan API and are listed only when `SHODAN_API_KEY` is stored. A client therefore sees 36 tools with no threat-intelligence key, 38 with VirusTotal only and 40 with both. All five are read-only and use only Node's `fetch`; no other MCP server or package is involved. The image no longer bundles purple-mcp, the VirusTotal MCP or the Shodan MCP; to add another server yourself, see [docs/connect-optional-tools.md](../../plugins/s1-secops-skills/docs/connect-optional-tools.md).
 
 Per-tool parameters and usage notes, including the 1.5.0 additions (`powerquery_run` `queryType: "LOG"`, `slices` + `merge`, `outputFile`; `s1_api_download`; `outputFile` on `s1_api_get` and `ha_export_workflow`), are in **[docs/mcp-tools.md](../../plugins/s1-secops-skills/docs/mcp-tools.md)**.
 
@@ -74,14 +81,14 @@ The server runs in a container on your machine. The host launcher reads your OS 
 mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
 ```
 
-`install` copies the launcher to `~/.local/bin/`, adds `s1-secops-mcp`, `purple-mcp` and `virustotal` to the Claude Desktop config with the real path (other entries kept, old file backed up), pulls the image and runs `setup` to store values in the OS keychain if none are stored. From a clone of this repo, `sh mcp/docker/s1-secops-mcp-launch.sh install` does the same. For another MCP client, `~/.local/bin/s1-secops-mcp-launch.sh config` prints the entries to paste; keep the ones you need. The resulting entry looks like this, with `<home>` written out as your full home path (JSON does not expand `~`):
+`install` copies the launcher to `~/.local/bin/`, adds `s1-secops-mcp` to the Claude Desktop config with the real path (other entries kept, older `purple-mcp`, `virustotal` and `shodan` entries that ran this launcher removed, old file backed up), pulls the image and runs `setup` to store values in the OS keychain if none are stored. From a clone of this repo, `sh mcp/docker/s1-secops-mcp-launch.sh install` does the same. For another MCP client, `~/.local/bin/s1-secops-mcp-launch.sh config` prints the entry to paste. The resulting entry looks like this, with `<home>` written out as your full home path (JSON does not expand `~`):
 
 ```json
 {
   "mcpServers": {
     "s1-secops-mcp": {
       "command": "<home>/.local/bin/s1-secops-mcp-launch.sh",
-      "args": ["--image", "sentinelone/secops-mcps:1.5.7", "s1-secops-mcp"]
+      "args": ["--image", "sentinelone/secops-mcps:1.6.0", "s1-secops-mcp"]
     }
   }
 }
@@ -91,7 +98,7 @@ That entry runs read-only. `install --read-write` (Windows: `-ReadWrite`) adds `
 
 On macOS the launcher must not live under `~/Documents`, `~/Desktop` or `~/Downloads`: Claude Desktop's `/bin/sh` cannot run a script stored there, and the MCP log shows `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted`. `install` takes care of it.
 
-Windows uses `mcp/docker/s1-secops-mcp-launch.ps1`, which has the same `install` and `config` commands. The same image serves `purple-mcp` and `virustotal-mcp`; the server-name argument, after any launcher options such as `--image`, selects which one runs. Full reference: [docs/docker.md](../../plugins/s1-secops-skills/docs/docker.md).
+Windows uses `mcp/docker/s1-secops-mcp-launch.ps1`, which has the same `install` and `config` commands. From 1.6.0 the image runs one server, `s1-secops-mcp`. Full reference: [docs/docker.md](../../plugins/s1-secops-skills/docs/docker.md).
 
 ### B. Node
 
@@ -135,10 +142,12 @@ There is deliberately no file fallback. Backends: macOS login keychain via `/usr
 | Name | Required for |
 |---|---|
 | `S1_CONSOLE_URL` | Every Mgmt, PowerQuery, UAM, Hyperautomation and SDL tool |
-| `S1_CONSOLE_API_TOKEN` | Every Mgmt, PowerQuery, UAM, Purple AI summary, Hyperautomation and SDL config-file tool, plus UAM alert ingest |
+| `S1_CONSOLE_API_TOKEN` | Every Mgmt, PowerQuery, UAM, Purple AI (`purple_ai_alert_summary`, `purple_ai_query`), Hyperautomation and SDL config-file tool, plus UAM alert ingest |
 | `S1_HEC_INGEST_URL` | `uam_ingest_alert`, `uam_post_alert`, `hec_ingest` |
 | `S1_HEC_TOKEN` | `hec_ingest` only: the SDL Log Write Key. The console token is not a reliable substitute at the event collector (400 `Missing S1-Scope header` without a scope header, 403 code 4 on some consoles either way); the key is minted for one account or site and fixes the destination |
 | `S1_SCOPE` | Optional default `S1-Scope` for SDL calls: `<accountId>` or `<accountId>:<siteId>` |
+| `VIRUSTOTAL_API_KEY` | Optional. `ti_vt_lookup` and `ti_vt_relationship`, which are listed only when it is stored (alias `VT_API_KEY`). A free key allows 4 lookups per minute and 500 per day |
+| `SHODAN_API_KEY` | Optional. `ti_shodan_host` and `ti_shodan_dns`, which are listed only when it is stored. Neither tool spends query credits |
 
 The scoped SDL keys (`SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`, `SDL_XDR_URL`) are retired and are no longer read.
 
@@ -167,14 +176,14 @@ s1-secops-mcp status [--profile P]         Show where each value resolves from (
 s1-secops-mcp forget [--profile P] [--name N]
                                            Remove one value, or every value in the profile
 s1-secops-mcp exec [--profile P] -- <command> [args...]
-                                           Run another MCP server (purple-mcp, the VirusTotal MCP) with
-                                           the keychain values in its environment, mapped to
+                                           Run another MCP server you installed yourself with the
+                                           keychain values in its environment, also mapped to
                                            PURPLEMCP_CONSOLE_BASE_URL, PURPLEMCP_CONSOLE_TOKEN,
                                            PURPLEMCP_VT_API_KEY and VT_API_KEY
 s1-secops-mcp --help | --version
 ```
 
-Run `setup`, `status` and `forget` in a terminal on your own machine, never inside a chat. `--name` takes one of the six names in the table above, or `VIRUSTOTAL_API_KEY`. Other environment settings: `S1_PROFILE`, `S1_KEYCHAIN=off`, `S1_KEYCHAIN_BACKEND`, `S1_KEYCHAIN_TIMEOUT_MS` (keychain call timeout, default 15000), `S1_OUTPUT_DIRS`, `S1_CLAUDE_MD_PATH`, `S1_READ_ONLY` (unset, `true`, `1`, `yes` or `on` is read-only; `false`, `0`, `no` or `off` enables write; any other value stays read-only with a warning).
+Run `setup`, `status` and `forget` in a terminal on your own machine, never inside a chat. `--name` takes one of the names in the table above. Other environment settings: `S1_PROFILE`, `S1_KEYCHAIN=off`, `S1_KEYCHAIN_BACKEND`, `S1_KEYCHAIN_TIMEOUT_MS` (keychain call timeout, default 15000), `S1_OUTPUT_DIRS`, `S1_CLAUDE_MD_PATH`, `S1_READ_ONLY` (unset, `true`, `1`, `yes` or `on` is read-only; `false`, `0`, `no` or `off` enables write; any other value stays read-only with a warning).
 
 When write is enabled, a write is refused if no console token is configured (except `hec_ingest`) or the token is a JWT whose expiry has passed, startup warns when the token expires within 7 days, and each allowed write logs one stderr line, `[s1-secops-mcp] WRITE <time> tool=<name> path=...`, with no request bodies or tokens. The startup log always prints a `Mode:` line.
 
@@ -218,12 +227,14 @@ s1-secops-mcp/
     sdl.js                    SDL config files, dashboards, V1 query
     hec.js                    Event collector ingest
     uam-ingest.js             UAM Alert Interface ingestion
+    ti.js                     VirusTotal API v3 and Shodan clients (read-only GET)
   tools/
     powerquery.js             PowerQuery enumerate / run / schema-discover
-    mgmt-console.js           S1 REST verbs, binary download, Purple AI summary, UAM
+    mgmt-console.js           S1 REST verbs, binary download, Purple AI summary and query, UAM
     sdl-api.js                SDL config file, dashboard and log ingestion tools
     hyperautomation.js        Hyperautomation list / get / import / export / delete
     uam-ingest.js             UAM Alert Interface ingestion tools
+    threat-intel.js           ti_vt_lookup / ti_vt_relationship / ti_shodan_host / ti_shodan_dns
   mcpb/                       Optional Claude Desktop Extension bundle
   scripts/
     regen-readme-tools-table.mjs   Tools-table regenerator (no drift)
@@ -237,6 +248,8 @@ s1-secops-mcp/
 | S1 Mgmt REST API | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | LRQ PowerQuery | `Authorization: Bearer <jwt>`; scope is `tenant: false` + `accountIds` in the body plus a `site.id` term for a site (the `S1-Scope` header does not narrow event rows on a multi-account token, but it still picks which scope's copy of a lookup table is read) | Same token, different prefix |
 | Purple AI GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
+| VirusTotal API v3 (`www.virustotal.com`) | `x-apikey: <key>` | `VIRUSTOTAL_API_KEY` |
+| Shodan API (`api.shodan.io`) | `key` query parameter (never echoed in errors) | `SHODAN_API_KEY` |
 | UAM GraphQL | `Authorization: ApiToken <jwt>` | `S1_CONSOLE_API_TOKEN` |
 | UAM alert ingest (`/v1/alerts`) | `Authorization: Bearer <jwt>`, `S1-Scope` required | `S1_CONSOLE_API_TOKEN` |
 | Event collector log ingest | `Authorization: Bearer <write-key>` (`Splunk <write-key>` also accepted), no `S1-Scope`; the key's mint scope decides where events land | `S1_HEC_TOKEN` (the console token is not a reliable substitute: 400 `Missing S1-Scope header` without a scope header, 403 `User token not allowed for this endpoint` on some consoles either way) |
@@ -308,7 +321,8 @@ upstream; when the host is fixed, the defaults can go back into the schemas.
 ## Removed
 
 - **1.5.0:** the Streamable HTTP transport (`--transport http`, `--host`, `--port`, `--path`), bearer-token auth (`MCP_BEARER_TOKENS`, `MCP_BEARER_TOKENS_FILE`), the audit log, the shared-VM deployment (`deploy/`: install script, systemd unit, Caddy template, stdio bridge), and every `credentials.json` location (`S1_CREDS_FILE`, `COWORK_WORKSPACE`, working-directory walk-up, `~/mnt/*`, `CLAUDE_CONFIG_DIR`, `~/.config/sentinelone`). Migrate with `s1-secops-mcp setup --import-json <file>`.
-- **2026-05-03:** `purple_ai_query` and `purple_ai_investigate`. Both required a browser-session `teamToken` from `/sdl/v2/graphql` that service-account API tokens never obtain (returns `AsimovError` / `SERVICE_ERROR`). Use `mcp__purple-mcp__purple_ai` instead, which holds the right credentials.
+- **1.6.0:** the bundled `purple-mcp`, VirusTotal MCP and Shodan MCP servers. Their core functions are built in (`purple_ai_query`, `ti_vt_*`, `ti_shodan_*`); to connect another server yourself, see [docs/connect-optional-tools.md](../../plugins/s1-secops-skills/docs/connect-optional-tools.md).
+- **2026-05-03:** `purple_ai_query` and `purple_ai_investigate`. The request shape used then failed for service-account API tokens (`AsimovError` / `SERVICE_ERROR`). `purple_ai_query` returned in 1.6.0 with a request shape that works with the console API token; `purple_ai_investigate` (`aiInvestigation/run`) still needs a browser session and is not exposed.
 
 ## Version history
 

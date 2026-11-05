@@ -85,11 +85,13 @@ Includes SHORT, plus:
 #### 2.1 Batch IOC lookups
 
 ```text
-Use: Purple MCP (VirusTotal) + mgmt-console-api (S1 IOC API)
+Use: s1-secops-mcp ti_vt_lookup (VirusTotal) + mgmt-console-api (S1 IOC API)
 
-For each IOC in entities.json:
-  - VirusTotal: GET /files/{hash}, /domains/{domain}, /ip_addresses/{ip}
-    Extract: detections, verdict, prevalence, last_analysis_date
+For each external IOC in entities.json:
+  - VirusTotal: ti_vt_lookup(<hash | domain | ip | url>)
+    Extract: lastAnalysisStats (detection ratio), detections, threatLabel,
+    reputation, lastAnalysisDate; found:false = no record (not benign)
+    Free key: 4 lookups/min, 500/day, so enrich the verdict-deciding IOCs first
   - S1 IOC API: GET /iocs (match by hash/domain/ip)
     Extract: verdict, threat_type, confidence
 ```
@@ -228,7 +230,7 @@ For each IOC in entities.json:
 
 #### 6.2 Expand IOC lookups (all IOCs, not sampled)
 
-VirusTotal: Full report for all hashes, domains, IPs + S1 IOC API: All IOCs
+VirusTotal: `ti_vt_lookup` for all external hashes, domains, IPs and URLs, plus `ti_vt_relationship` pivots on the malicious ones (one relationship per call) + S1 IOC API: All IOCs. Optional exposure context: `ti_shodan_host` for external IPs.
 
 **Store results**: `threat_intel_complete.json`
 

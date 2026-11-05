@@ -40,7 +40,7 @@ Then write the cache with the Write tool, shaped as `{"schema_cache_version": "<
 
 Persist to `s1_sdl_schema_cache.json` in the project root with: `schema_cache_version` (current UTC timestamp), `ttl_days`, the `data_source_enumeration` result, a `schemas` map (per-source field lists), and a `pending_rediscovery` list for sources not yet discovered or that returned only volume/metric samples. Keep a dated copy if you want drift diffs.
 
-**Step 3, run alert triage in parallel with source enumeration** (`list_alerts` / `search_alerts`); schema discovery then follows for every source you'll query.
+**Step 3, run alert triage in parallel with source enumeration** (`uam_list_alerts`); schema discovery then follows for every source you'll query.
 
 ---
 
@@ -50,12 +50,12 @@ Persist to `s1_sdl_schema_cache.json` in the project root with: `schema_cache_ve
 - **Think like the attacker.** For every alert or indicator ask "what would I do next if I were the threat actor?", then hunt for evidence of that next step.
 - **Prioritize by business impact.** A MEDIUM on a domain controller matters more than a HIGH on a sandbox host; always factor asset criticality.
 - **Correlate, don't isolate.** A single alert is a data point; related signals across endpoints, users, and network form the story. Connect the dots before concluding.
-- **Enrich before you decide.** Never call an alert TP or FP without external threat intelligence. Every IOC goes through the configured threat-intel MCP before a verdict. Default bundle ships VirusTotal; any equivalent provider (Recorded Future, Mandiant Advantage, OpenCTI, MISP, etc.) exposing file / IP / domain / URL lookups satisfies this rule.
+- **Enrich before you decide.** Never call an alert TP or FP without external threat intelligence. Every IOC goes through the configured threat-intel provider before a verdict. The default is the built-in VirusTotal tools in s1-secops-mcp (`ti_vt_lookup`, `ti_vt_relationship`, listed when `VIRUSTOTAL_API_KEY` is stored); any equivalent provider you have connected (Recorded Future, Mandiant Advantage, Google Threat Intelligence, OpenCTI, MISP, a connected VirusTotal MCP, etc.) exposing file / IP / domain / URL lookups satisfies this rule.
 - **Never assume data sources or schemas.** Enumeration and per-source schema come from the Session Initialization cache protocol (Step 0). `severity_id` (numeric OCSF 0-5) and `severity_` (string, after reserved-field rewrite) are real, queryable fields. Field names a human would expect from the source name (`alert.severity`, `vulnerability.kevAvailable`, `misconfiguration.severity`) frequently do NOT exist; confirm what's actually there before writing any panel/hunt/rule.
 - **Cast string-prone numeric fields with `number()` before arithmetic (failsafe pattern).** SDL/Scalyr columns are type-locked at first ingest: even when a parser declares `type: "long"`, a previously string-typed column coerces new writes back to string and `sum()` / `avg()` / `max()` / `>=` predicates return NaN or fail silently. Pattern: `... severity_id=* | let sev = number(severity_id) | filter sev >= 4 | ...`. `number(x)` returns 0 for null/missing and NaN for unparseable strings, so the cast is cheap and never breaks already-numeric data. Apply to any score, severity, byte counter, packet counter, duration, or numeric-semantics field you can't prove is numeric in the cached schema.
 - **Evidence discipline governs every claim.** Data-backed claims only, assumptions marked explicitly, calibrated confidence, inline citations. The next section is canonical; it applies to every sentence you write.
 - **Hunt anomalies, not just IOCs.** Known-bad signatures catch commodity threats; advanced actors and insiders are only visible as behavioural deviation (unusual timing, new geolocations, unexpected process chains, privilege changes). Apply the Section 8 checklist to every log query result.
-- **Never classify CRITICAL or TRUE POSITIVE without independent confirmation.** Detection engine alerts are hypotheses, not conclusions. Canonical rule, confirmation paths, and decision matrix are in Section 3. Check `get_alert_notes` and `get_alert_history` for MDR/analyst verdicts before escalating.
+- **Never classify CRITICAL or TRUE POSITIVE without independent confirmation.** Detection engine alerts are hypotheses, not conclusions. Canonical rule, confirmation paths, and decision matrix are in Section 3. Check the notes and history in `uam_get_alert` for MDR/analyst verdicts before escalating.
 
 ---
 
@@ -102,14 +102,14 @@ Say so and propose the specific data that resolves it. "I need to query `dataSou
 
 Every numeric or named claim traceable to its origin in the same response:
 
-> "Three distinct external IPs initiated outbound traffic to suspicious destinations from `<hostname>` in the 24h window, confirmed via a firewall query with the session-discovered source-IP and action fields (3 distinct destination IPs). Of those, 2 returned a malicious verdict from the threat-intel MCP (`get_ip_report` detection ratio >= 5/94)."
+> "Three distinct external IPs initiated outbound traffic to suspicious destinations from `<hostname>` in the 24h window, confirmed via a firewall query with the session-discovered source-IP and action fields (3 distinct destination IPs). Of those, 2 returned a malicious verdict from threat intel (`ti_vt_lookup` detection ratio >= 5/94)."
 
 A SOC peer should be able to paste your queries and reproduce the answer.
 
 ### Two failure modes to avoid
 
 1. **Confident-sounding hallucination.** "This pattern indicates Lazarus Group activity" without a `related_threat_actors` lookup is a hallucination; confidence-laden security prose is more dangerous because it gets acted on.
-2. **Drowning the verdict in caveats.** When the data IS strong, say so plainly: "Confirmed true positive, threat-intel MCP returned 38/72 malicious, MDR-confirmed, threat actor attributed to Scattered Spider, present on 4 endpoints" is the right register.
+2. **Drowning the verdict in caveats.** When the data IS strong, say so plainly: "Confirmed true positive, threat intel returned 38/72 malicious, MDR-confirmed, threat actor attributed to Scattered Spider, present on 4 endpoints" is the right register.
 
 ---
 
@@ -139,44 +139,46 @@ A SOC peer should be able to paste your queries and reproduce the answer.
 
 ### 1. Triage & Context Gathering
 
-- `get_alert`: read severity, classification, detection source, analyst verdict.
-- **CRITICAL CHECK: read `get_alert_notes` and `get_alert_history` BEFORE proceeding.** An MDR/analyst verdict of False Positive, Benign, or Resolved takes precedence; do NOT override it without new evidence they did not have. If FP, note it and move on, do not escalate.
-- `get_inventory_item`: OS, role, location, criticality, agent health.
+- `uam_get_alert`: read severity, classification, detection source, analyst verdict.
+- **CRITICAL CHECK: read the alert's notes and history (both returned by `uam_get_alert`) BEFORE proceeding.** An MDR/analyst verdict of False Positive, Benign, or Resolved takes precedence; do NOT override it without new evidence they did not have. If FP, note it and move on, do not escalate.
+- Affected asset: `s1_api_get` on `/web/api/v2.1/agents` (filter by `uuids` or `computerName`) or the asset inventory (`/web/api/v2.1/xdr/assets/surface/endpoint`, see the mgmt-console-api skill) for OS, role, location, criticality, agent health.
 - Establish a timeline: first seen vs detected; is there a detection gap?
 
-### 2. Deep Enrichment with the Threat-Intel MCP (Mandatory for Every IOC)
+### 2. Deep Enrichment with Threat Intelligence (Mandatory for Every IOC)
 
 Every IP, domain, URL, or file hash encountered MUST be enriched before a verdict; this separates true positives from noise.
 
-> **Provider-agnostic, VirusTotal-by-default.** The default Docker bundle ships VirusTotal; the tool names used throughout this file (`get_file_report`, `get_ip_report`, `get_domain_report`, `get_url_report`, plus the `get_*_relationship` pivots) are the literal `mcp__virustotal__*` API. If wired to a different threat-intel MCP (Recorded Future, Mandiant Advantage, OpenCTI, MISP, etc.), substitute its equivalent file / IP / domain / URL lookups and relationship pivots; the workflow shape, decision criteria, and verdict gates are identical everywhere these names appear.
+> **Provider-agnostic, VirusTotal-by-default.** The default is the built-in threat-intelligence tools in s1-secops-mcp, with no extra MCP server: `ti_vt_lookup` and `ti_vt_relationship` (listed when `VIRUSTOTAL_API_KEY` is stored). The tool names used throughout this file are those built-in tools. Any other provider you have connected (Recorded Future, Mandiant Advantage, Google Threat Intelligence, OpenCTI, MISP, a connected VirusTotal MCP, etc.) satisfies the same rule: substitute its file / IP / domain / URL lookups and relationship pivots; the workflow shape, decision criteria, and verdict gates are identical everywhere these names appear.
 
-> **Optional exposure intel: Shodan MCP (`mcp__shodan__*`).** When installed, it adds what is exposed on an external host: open ports, services, banners, TLS/JARM and host CVEs (`ip_lookup`, `dns_lookup`, `reverse_dns_lookup`, `domain_info`, `shodan_search`, `shodan_count`), plus Shodan CVEDB lookups (`cve_lookup`, `cpe_lookup`, `cves_by_product`, with CVSS, EPSS and KEV). It complements VirusTotal reputation and never replaces it: VirusTotal stays the primary IOC enrichment, and a Shodan result alone is not threat-intel confirmation of maliciousness. Use it only for external (non-RFC1918) IPs and domains. All tools are read-only and never start a scan. `shodan_search` (membership or higher) and `domain_info` spend query credits, so prefer `ip_lookup` and `shodan_count`; every plan is limited to 1 request per second. On a free key, `ip_lookup` and DNS can return "Requires membership or higher to access" for some targets: report that as a plan limit, not as "no exposure found". If the server is absent, skip it and say so.
+#### Which tool to use
 
-#### Core report tools (use FIRST for any IOC)
+- **Default:** `ti_vt_lookup` for the report, `ti_vt_relationship` for pivots (one relationship per call, paged with `cursor`). A free VirusTotal key allows 4 lookups per minute and 500 per day: enrich the indicators that decide the verdict first.
+- **Deeper features** (VT Intelligence search, sandbox behaviour summaries, collections, IOC submission) are not built in. Use them only from a provider the user has connected, such as VirusTotal's official hosted MCP (setup: `docs/connect-optional-tools.md` in the s1-secops-skills repo).
+- **Never assume a tool exists.** Check the tool list first. The `ti_vt_*` tools are absent when no VirusTotal key is stored; then use another connected provider, or state that enrichment could not be run and cap the verdict accordingly. Never fabricate a lookup.
 
-- `get_file_report(hash)`: any MD5 / SHA-1 / SHA-256 from alerts, processes, downloads. Returns detection ratio across 70+ AV engines, file properties, behavioural analysis, contacted domains/IPs, dropped files, embedded content, related threat actors.
-- `get_ip_report(ip)`: any external IP from connections, C2 callbacks, DNS resolutions. Returns geolocation, ASN, reputation, communicating files, historical SSL certs, historical WHOIS, DNS resolutions, related threat actors.
-- `get_domain_report(domain, relationships=[...])`: any domain from DNS, URLs, email headers, certificates. Returns WHOIS, DNS records (A, MX, NS, SOA, CNAME, CAA), subdomains, SSL cert history, historical WHOIS, communicating files, related threat actors.
-- `get_url_report(url)`: any full URL from browser history, download sources, phishing links. Returns security scans, redirects, contacted domains/IPs, downloaded files, communicating files, related threat actors.
+> **Optional exposure intel: built-in Shodan tools.** `ti_shodan_host` (open ports, services, banners, TLS certificate, OS, hostnames, tags such as `vpn` / `tor` / `honeypot`, and the CVE ids Shodan associates with the host) and `ti_shodan_dns` (resolve or reverse-resolve up to 25 values) are listed when `SHODAN_API_KEY` is stored. Neither spends query credits. They complement VirusTotal reputation and never replace it: a Shodan result alone is not threat-intel confirmation of maliciousness. Use them only for external (non-RFC1918) IPs and hostnames. `found: false` means Shodan has not seen the IP, not "no exposure". A plan-limit error is a plan limit, not missing data. Shodan device search and CVEDB lookups are not built in (connected Shodan MCP only). If the tools are absent, skip them and say so.
 
-#### Relationship pivot tools (EXPAND the investigation after initial reports)
+#### Core report tool (use FIRST for any IOC)
 
-**File: `get_file_relationship(hash, relationship)`, 41 pivot types.**
+`ti_vt_lookup(indicator)` takes a file hash (MD5 / SHA-1 / SHA-256), IP, domain or URL; defanged input is accepted and `type` is auto-detected. Every result carries `lastAnalysisStats` (malicious / suspicious / harmless / undetected, i.e. the detection ratio), `detections` (engines flagging it), `reputation`, `communityVotes`, `tags`, `lastAnalysisDate` and a `link`, plus:
 
-- Behavioural (`behaviours`, `dropped_files`, `contacted_domains`, `contacted_ips`, `contacted_urls`): what the file DOES when executed; C2 infrastructure, payloads dropped, network footprint.
-- Execution chain (`execution_parents`, `bundled_files`, `compressed_parents`, `email_parents`, `email_attachments`): how it arrived; archive bundle, email attachment, or parent process.
-- Embedded content (`embedded_domains`, `embedded_ips`, `embedded_urls`, `urls_for_embedded_js`): IOCs hardcoded in the binary; C2 addresses, download URLs, exfil endpoints.
-- Memory forensics (`memory_pattern_domains`, `memory_pattern_ips`, `memory_pattern_urls`): memory-analysis IOCs; decrypted C2/config invisible to static analysis.
-- PE analysis (`pe_resource_children`, `pe_resource_parents`, `overlay_children`, `overlay_parents`): resource injection, overlay data hiding, PE manipulation.
-- Carbon Black (`carbonblack_children`, `carbonblack_parents`): cross-EDR correlation if CB data exists. PCAP (`pcap_children`, `pcap_parents`): associated network capture traffic.
-- Threat intelligence (`related_threat_actors`, `related_references`, `similar_files`, `clues`, `collections`): **CRITICAL for attribution**; APT/group, public reports, similar samples.
-- Community (`comments`, `votes`, `analyses`, `submissions`, `screenshots`, `graphs`): analyst insights, sandbox screenshots, submission metadata.
+- **File** (hashes from alerts, processes, downloads): `sha256` / `sha1` / `md5`, `meaningfulName`, `names`, `typeDescription`, `size`, `threatLabel`, `threatCategories`, `threatNames`, `sandboxVerdicts`, `signature`, `yaraRules`, `sigmaStats`, `firstSubmission` / `lastSubmission`.
+- **IP** (connections, C2 callbacks, DNS resolutions): `asOwner`, `asn`, `country`, `network`, `jarm`.
+- **Domain** (DNS, URLs, email headers, certificates): `registrar`, `creationDate`, `categories`, `lastDnsRecords`.
+- **URL** (browser history, download sources, phishing links): `finalUrl`, `title`, `httpResponseCode`, `redirectionChain`.
 
-**IP: `get_ip_relationship(ip, relationship)`, 12 pivot types:** `communicating_files` (malware seen talking to this IP; high-confidence C2 indicator), `downloaded_files` (payloads downloaded FROM this IP; stage-2 identification), `referrer_files` (files referencing this IP; embedded C2 config detection), `resolutions` (DNS history; infrastructure mapping), `historical_ssl_certificates` (cert reuse across attacker infrastructure; pivoting gold), `historical_whois` (registration changes; ownership tracking over time), `related_threat_actors` (APT/group attribution), `related_references` (published reports mentioning this IP), `urls` (URLs hosted here; attack paths, phishing pages), `comments` / `related_comments` / `graphs` (community intelligence, relationship maps).
+`found: false` means VirusTotal has no record of the indicator: "no reputation data", never "clean".
 
-**Domain: via `get_domain_report(domain, relationships=[...])`, 21 pivot types:** `communicating_files` (malware communicating with the domain; confirms C2 usage), `downloaded_files` (payloads served), `referrer_files` (hardcoded-C2 detection), `resolutions` (IP resolution history; hosting infrastructure map), `subdomains` (additional attacker subdomains, e.g. `c2.evil.com`, `exfil.evil.com`), `siblings` (same-parent domains; infrastructure clustering), `historical_ssl_certificates` (certificate fingerprinting for infra correlation), `historical_whois` (ownership tracking and pivoting), `related_threat_actors` (APT attribution), `related_references` (threat reports and blogs), `cname_records` / `mx_records` / `ns_records` / `soa_records` / `caa_records` (DNS record analysis: MX phishing infra, NS DNS hijacking, CNAME CDN abuse), `urls` (URLs under the domain), `immediate_parent` / `parent` (domain hierarchy), `comments` / `related_comments` / `user_votes` (community reputation, analyst notes).
+#### Relationship pivots (EXPAND the investigation after the report)
 
-**URL: `get_url_relationship(url, relationship)`, 17 pivot types:** `communicating_files` (files communicating with the URL), `contacted_domains` / `contacted_ips` (infrastructure behind it), `downloaded_files` (payload identification), `redirecting_urls` / `redirects_to` (redirect chain analysis; phishing and exploit kits), `referrer_files` / `referrer_urls` (what links to it; attack chain reconstruction), `last_serving_ip_address` (current hosting IP), `network_location` (hosting context), `related_threat_actors` (APT attribution), `related_references` / `related_comments` / `comments` (threat intelligence references), `analyses` / `submissions` / `graphs` (analysis history, visual mapping).
+`ti_vt_relationship(indicator, relationship)`, one relationship per call (`limit` 1 to 40, default 10; page with `cursor`). `related_threat_actors` and `similar_files` need a premium key; on a free key the 403 says so, and attribution then needs another provider or stays open.
+
+- **File:** behavioural footprint `contacted_domains`, `contacted_ips`, `contacted_urls`, `dropped_files` (C2 infrastructure, payloads deployed); execution chain `execution_parents`, `bundled_files` (how it arrived: archive bundle or parent process); embedded content `embedded_domains`, `embedded_ips`, `embedded_urls` (IOCs hardcoded in the binary: C2 addresses, download URLs, exfil endpoints); distribution `itw_urls` (where it was downloaded from in the wild); attribution `related_threat_actors`, `similar_files` (**CRITICAL for attribution**); community `comments`.
+- **IP:** `communicating_files` (malware seen talking to this IP; high-confidence C2 indicator), `downloaded_files` (payloads served FROM this IP; stage-2 identification), `referrer_files` (files referencing this IP; embedded C2 config), `resolutions` (DNS history; infrastructure mapping), `historical_ssl_certificates` (certificate reuse across attacker infrastructure; pivoting gold), `urls` (URLs hosted here; attack paths, phishing pages), `related_threat_actors` (attribution), `comments`.
+- **Domain:** `communicating_files` (confirms C2 usage), `downloaded_files` (payloads served), `referrer_files` (hardcoded-C2 detection), `resolutions` (hosting infrastructure map), `subdomains` (additional attacker subdomains, e.g. `c2.evil.com`), `siblings` (same-parent domains; infrastructure clustering), `historical_ssl_certificates` (certificate fingerprinting), `urls`, `related_threat_actors`, `comments`.
+- **URL:** `contacted_domains` / `contacted_ips` (infrastructure behind it), `downloaded_files` (payload identification), `communicating_files`, `redirects_to` / `redirecting_urls` (redirect chain analysis; phishing and exploit kits), `last_serving_ip_address` (current hosting IP), `related_threat_actors`, `comments`.
+
+Not available built in (connected VirusTotal MCP or another provider only): sandbox `behaviours` / behaviour summaries, `collections`, `related_references`, `historical_whois`, memory-pattern, PE-resource and email-parent pivots, and DNS record-type relationships beyond `lastDnsRecords`.
 
 ---
 
@@ -196,30 +198,30 @@ The critical decision point: systematically determine true positive, suspicious,
 
 #### Step 2: Behavioural correlation (files)
 
-For any suspicious hash ALWAYS pivot: `behaviours` (what it does), `contacted_domains` and `contacted_ips` (where it calls home), `dropped_files` (what it deploys), `execution_parents` (what launched it).
+For any suspicious hash ALWAYS pivot with `ti_vt_relationship`: `contacted_domains` and `contacted_ips` (where it calls home), `dropped_files` (what it deploys), `execution_parents` (what launched it). Read `sandboxVerdicts`, `threatLabel` and `yaraRules` from the `ti_vt_lookup` report for what it does; a full sandbox behaviour summary needs a connected VirusTotal MCP.
 
 TP confidence boosters: contacts known malicious IPs/domains; drops additional executables/scripts; behaviour shows credential access, persistence installation, or lateral movement; execution chain traces to a phishing email or exploit.
 
 #### Step 3: Infrastructure pivoting (network IOCs)
 
-Pivot to the full attack infrastructure: `get_ip_relationship` with `communicating_files`, `resolutions`, `historical_ssl_certificates`; `get_domain_report(domain, relationships=["subdomains", "siblings", "resolutions", "communicating_files"])`.
+Pivot to the full attack infrastructure with `ti_vt_relationship`: for an IP, `communicating_files`, `resolutions`, `historical_ssl_certificates`; for a domain, `subdomains`, `siblings`, `resolutions`, `communicating_files` (one call each). `ti_vt_lookup` on the domain gives `creationDate` and `registrar` for the registration-age check; `ti_shodan_host` adds what the IP exposes.
 
 Correlation signals: multiple malicious files communicating with the same IP = confirmed C2 server; domain registered < 30 days ago with privacy-protected WHOIS = suspicious; SSL certificate shared across multiple domains = attacker infrastructure cluster; subdomain patterns `update.`, `cdn.`, `api.`, `mail.` = mimicking legitimate services.
 
 #### Step 4: Threat actor attribution
 
-For EVERY confirmed malicious IOC check `related_threat_actors` (file, IP, and URL relationship pivots; domain via `relationships=["related_threat_actors"]`). If a group is identified: research their TTPs and map to MITRE ATT&CK; hunt their OTHER known IOCs environment-wide via `purple_ai` + `powerquery`; check their typical persistence, lateral movement, and exfiltration methods; assess whether the group typically targets your industry/region.
+For EVERY confirmed malicious IOC check `ti_vt_relationship(indicator, "related_threat_actors")` (file, IP, domain and URL; premium key). If a group is identified: research their TTPs and map to MITRE ATT&CK; hunt their OTHER known IOCs environment-wide via `purple_ai_query` + `powerquery_run`; check their typical persistence, lateral movement, and exfiltration methods; assess whether the group typically targets your industry/region.
 
 #### Step 5: Cross-reference with SentinelOne telemetry
 
-Correlate findings back into the environment: hunt other endpoints contacting the same C2 (`purple_ai`); same hash on other endpoints; similar behaviour patterns (process trees, registry modifications, scheduled tasks); check the asset for exploitable vulnerabilities (`search_vulnerabilities`) aligning with the actor's known exploitation techniques.
+Correlate findings back into the environment: hunt other endpoints contacting the same C2 (`purple_ai_query`, then `powerquery_run`); same hash on other endpoints; similar behaviour patterns (process trees, registry modifications, scheduled tasks); check the asset for exploitable vulnerabilities (Section 5) aligning with the actor's known exploitation techniques.
 
 #### Verdict Decision Matrix
 
 **⚠️ MANDATORY RULE: no finding may be classified CRITICAL or TRUE POSITIVE without independent threat intelligence confirmation.** A detection engine alert, even at CRITICAL severity, is a hypothesis: the engine severity reflects potential impact of the threat class, not a confirmed verdict. You MUST have at least ONE of:
 
-1. **Threat-intel confirmation**: malicious verdict from the threat-intel MCP (high detection ratio, confirmed threat actor, malicious behavioural analysis).
-2. **MDR/Analyst confirmation**: `get_alert_notes` / `get_alert_history` verdicts. An MDR "False Positive / Benign" takes precedence over the detection engine classification.
+1. **Threat-intel confirmation**: malicious verdict from threat intel (`ti_vt_lookup` or a connected provider: high detection ratio, confirmed threat actor, malicious sandbox verdicts).
+2. **MDR/Analyst confirmation**: verdicts in the notes and history returned by `uam_get_alert`. An MDR "False Positive / Benign" takes precedence over the detection engine classification.
 3. **Multi-source corroboration**: the same IOC or behaviour independently confirmed malicious across 2+ unrelated data sources (not the same engine firing repeatedly).
 
 With none of these, the maximum classification is **SUSPICIOUS, Pending Confirmation**, regardless of engine severity.
@@ -242,8 +244,8 @@ With none of these, the maximum classification is **SUSPICIOUS, Pending Confirma
 
 ### 4. Threat Hunting with Purple AI & PowerQuery
 
-- Use `purple_ai` to generate PowerQueries from natural language; do NOT hand-write PowerQuery syntax.
-- Always use `get_timestamp_range` for time windows (default: 24 hours).
+- Use `purple_ai_query` to draft PowerQueries from natural language rather than hand-writing syntax from memory. Purple returns the query (`powerQuery.query`) but does not run it: review it (it can AND fields across schema families; split by `dataSource.name`), then run it with `powerquery_run`. Each call is a new conversation. When Purple returns no query or a wrong one, author it with the powerquery skill.
+- Set an explicit time window on every query (`hours`, or ISO 8601 `startTime` / `endTime`; default 24 hours).
 - Hunt lateral movement, persistence, privilege escalation, data staging, and exfiltration related to the initial finding; check the same IOCs/TTPs on other endpoints.
 - After threat-intel enrichment reveals C2 IPs/domains: immediately hunt those indicators across all endpoints. After threat actor attribution: hunt the actor's known tooling and TTPs environment-wide.
 - After every log query: apply the Section 8 checklist (frequency, timing, geolocation, baseline deviation, volume, new entity, privilege deviation, chain analysis).
@@ -266,8 +268,8 @@ Every item above is a query to execute against this session's telemetry, not a t
 
 ### 5. Vulnerability & Misconfiguration Correlation
 
-- `search_vulnerabilities` / `get_vulnerability` on the affected asset, especially active exploits or high EPSS. Prioritize `exploitedInTheWild: true` or `kevAvailable: true`.
-- `search_misconfigurations` / `get_misconfiguration` on the same asset for enablers of the attack.
+- Vulnerabilities on the affected asset: `powerquery_run` with `| datasource vulnerabilities` filtered to the asset, or `s1_api_get` on `/web/api/v2.1/application-management/risks/cves` (see the mgmt-console-api and powerquery skills), especially active exploits or high EPSS. Prioritize exploited-in-the-wild and KEV-listed CVEs; confirm the field names on this tenant before filtering on them. `ti_shodan_host` `vulns` adds the CVEs Shodan sees on an internet-facing IP.
+- Misconfigurations on the same asset: `powerquery_run` with `| datasource misconfigurations`, for enablers of the attack.
 - Cross-reference: if a threat actor is attributed, check for vulnerabilities that group commonly exploits.
 
 ---
@@ -282,13 +284,13 @@ By `dataSource.category` (endpoint / network / identity / cloud / email / AI / S
 
 | Classification | Criteria | Action |
 |---------------|----------|--------|
-| **OCSF-native** | Parser populates canonical OCSF fields (`src.ip.address`, `dst.ip.address`, `actor.user.name`, `event.type`, `src.process.*`, `tgt.file.*`) | Use OCSF fields directly; generate queries via `purple_ai` |
+| **OCSF-native** | Parser populates canonical OCSF fields (`src.ip.address`, `dst.ip.address`, `actor.user.name`, `event.type`, `src.process.*`, `tgt.file.*`) | Use OCSF fields directly; draft queries via `purple_ai_query` |
 | **Vendor-namespace** | Parser flattens fields under `<vendor>.<category>.*` or `unmapped.*` | Use the discovered namespace verbatim from the schema dump |
 | **Blob-only** | Most fields live inside the `message` JSON blob, not promoted top-level | Group only on confirmed-promoted fields; pull others via `parse` or `column` in PQ |
 
 ### Query each source for suspicious activity, in priority order
 
-Use `purple_ai` for OCSF sources and confirmed namespaces for non-OCSF. After each source, apply the Section 8 checklist (frequency, timing, geo, baseline, volume, new entity, privilege, chain) before moving on. Category-based priority (exact source names differ per tenant; fill from the enumeration result):
+Use `purple_ai_query` for OCSF sources and confirmed namespaces for non-OCSF. After each source, apply the Section 8 checklist (frequency, timing, geo, baseline, volume, new entity, privilege, chain) before moving on. Category-based priority (exact source names differ per tenant; fill from the enumeration result):
 
 | Priority | Source category | Known IOCs to Hunt | Anomalies to Detect |
 |----------|--------|-------------------|--------------------------------------|
@@ -325,7 +327,7 @@ Cross-source correlation signals that confirm true positives (category-level):
 | Identity auth failure + endpoint logon failure on same user within minutes | Credential stuffing or lateral movement |
 | Email-gateway phishing delivery + endpoint process execution within 1h | Confirmed phishing-to-execution chain |
 | Cloud-control-plane unusual API + DNS spike to new domain | Cloud compromise with C2 beaconing |
-| Firewall PASS to IP + threat-intel MCP malicious verdict | Successful C2 connection, critical true positive |
+| Firewall PASS to IP + threat-intel malicious verdict | Successful C2 connection, critical true positive |
 | Identity impossible travel + new device enrolment + new mail-forwarding rule | Account takeover in progress |
 
 ---
@@ -385,7 +387,7 @@ Flag these for immediate threat-intel enrichment (field names from the schema du
 | **High-frequency BLOCK retries** | Same src/dst IP pair blocked 10+ times in short window | C2 beaconing blocked at perimeter, host may be compromised |
 | **Inbound on non-standard ports** | direction == "in" AND destination_port not in [80, 443, 53, 22, 25] | Reverse shell, RAT callback, or exploit attempt |
 | **Outbound UDP on unusual ports** | direction == "out" AND protocol == "udp" AND port not in [53, 123, 67, 68] | DNS tunneling, VPN, or C2 over UDP |
-| **PASS traffic to known-bad IP** | action == "pass" + threat-intel MCP confirms malicious | **CRITICAL**, successful C2 connection, containment required |
+| **PASS traffic to known-bad IP** | action == "pass" + threat intel confirms malicious | **CRITICAL**, successful C2 connection, containment required |
 | **Inbound LLMNR/mDNS from internet** | protocol == "udp" AND destination_port == "5355" AND direction == "in" from non-RFC1918 | Scanning probe or spoofed packet |
 | **Asymmetric TCP blocks** | Internal IP blocked on return traffic from internet | Possible exfiltration attempt or misconfigured policy |
 | **New external destination IPs** | direction == "out" to IPs not seen in previous 7 days | New C2 infrastructure or beaconing to freshly registered IP |
@@ -394,7 +396,7 @@ Flag these for immediate threat-intel enrichment (field names from the schema du
 
 Do not embed confirmed third-party schemas in this file; they drift between tenants and platform versions and stale names produce silent nulls. The versioned cache is the source of truth (engagement dumps go to `outputs/sdl_schemas_<YYYY-MM-DD>.json`); longer-lived records belong in per-tenant memory, not here.
 
-**General rule:** if a `purple_ai`-generated query returns all-null results despite `dataSource.name` matching and record count > 0, the source is non-OCSF. Run schema discovery immediately rather than retrying other OCSF field names.
+**General rule:** if a `purple_ai_query`-generated query returns all-null results despite `dataSource.name` matching and record count > 0, the source is non-OCSF. Run schema discovery immediately rather than retrying other OCSF field names.
 
 ---
 
@@ -433,7 +435,7 @@ PQ pattern, auth outside business hours (any identity source):
 # Post-query: flag rows where timestamp hour (UTC) is outside 06:00 to 22:00
 ```
 
-Brute force (any OS event-log source), via purple_ai: "Show me accounts with more than 5 failed login events in the last hour, grouped by username and source IP".
+Brute force (any OS event-log source), via `purple_ai_query`: "Show me accounts with more than 5 failed login events in the last hour, grouped by username and source IP".
 
 #### Network anomalies
 
@@ -451,7 +453,7 @@ Brute force (any OS event-log source), via purple_ai: "Show me accounts with mor
 | **High-volume BLOCK retries** | Same src→dst pair blocked 10+ times in a short window | T1071 C2 beaconing attempt | High |
 | **LLMNR/NetBIOS from internet** | UDP 5355 or 137 inbound from non-RFC1918 source | T1557.001 LLMNR/NBT-NS Poisoning | High |
 
-Firewall beaconing detection: filter the firewall source to direction "out", action pass, then group by src_ip + dst_ip + dst_port and count; a high count at regular intervals is beaconing (use purple_ai to generate the groupBy). Cross-source DNS anomaly hunt via purple_ai: "Show me hosts making more than 100 unique DNS queries in the last hour that they have not queried in the previous 7 days".
+Firewall beaconing detection: filter the firewall source to direction "out", action pass, then group by src_ip + dst_ip + dst_port and count; a high count at regular intervals is beaconing (use `purple_ai_query` to draft the groupBy). Cross-source DNS anomaly hunt via `purple_ai_query`: "Show me hosts making more than 100 unique DNS queries in the last hour that they have not queried in the previous 7 days".
 
 #### Endpoint & process anomalies
 
@@ -506,8 +508,8 @@ When anomalies hit the same user, host, or IP across sources, compute a composit
 | Same user/host anomalous in 2 different sources | +3, investigate |
 | Same user/host anomalous in 3+ sources | +6, escalate immediately |
 | Anomaly matches active SentinelOne alert | +3 |
-| IOC from anomaly confirmed malicious by threat-intel MCP | +5 |
-| Threat-actor attribution returned by threat-intel MCP | +5 |
+| IOC from anomaly confirmed malicious by threat intel | +5 |
+| Threat-actor attribution returned by threat intel | +5 |
 | Asset is a domain controller, identity server, or critical infrastructure | +3 |
 | Activity outside business hours | +2 |
 
@@ -517,7 +519,7 @@ Interpretation: **1-3** Low (track); **4-6** Medium (active investigation); **7-
 
 After pulling logs from any source, before moving on check: (1) **Frequency**: any user/host/IP/domain appearing far more than expected; (2) **Timing**: off-hours logins, middle-of-night executions, weekend transfers; (3) **Geolocation**: unexpected countries or ASNs, first-ever country use; (4) **Baseline deviation**: does this entity normally do this (developer workstation doing LDAP queries to a DC is suspicious; a DC doing it is not); (5) **Volume**: byte/connection/event rate unusually high vs peers; (6) **New entity**: first appearance of this IP, domain, user, or process in the environment; (7) **Privilege deviation**: low-privilege account doing admin-only things; (8) **Chain analysis**: does the event make sense in context (PDF opened → PowerShell spawned → outbound connection is one chain, not three events).
 
-If ANY check yields "yes": enrich the relevant IOCs via the threat-intel MCP and cross-correlate across all other data sources before closing.
+If ANY check yields "yes": enrich the relevant IOCs via threat intel (`ti_vt_lookup` or a connected provider) and cross-correlate across all other data sources before closing.
 
 ---
 
@@ -533,7 +535,7 @@ After every investigation or analysis, always provide:
 
 - **Suggested next questions (3-5)**, e.g.: has this account authenticated to other systems in the last 72 hours; are other endpoints communicating with this C2 domain; do DNS/proxy logs show beaconing to this IP; are other files attributed to the same threat actor present in the environment; what other domains resolve to the same IP (threat-intel resolution history).
 - **Immediate mitigation actions, ranked by urgency:** network isolation of compromised endpoints; credential resets for affected accounts; blocking IOCs (IPs, domains, hashes) at perimeter/EDR policy including ALL infrastructure discovered via relationship pivots; disabling compromised service accounts; patching exploited vulnerabilities; certificate revocation for compromised certs found via SSL history.
-- **Automation & playbook opportunities:** auto-enrichment playbooks for all new IOCs in CRITICAL/HIGH alerts (`get_file_report` hashes, `get_ip_report` IPs, `get_domain_report` domains, `get_url_report` URLs); IOC expansion on confirmed-malicious files (`get_file_relationship` → contacted_domains, contacted_ips, dropped_files → blocklists); threat actor hunt packs when `related_threat_actors` returns a group (auto-generate Purple AI hunts for its TTPs); infrastructure clustering via `get_ip_relationship(ip, "historical_ssl_certificates")` and `get_domain_report(domain, relationships=["siblings", "subdomains"])` for proactive blocking; auto-containment (network quarantine) for confirmed malicious activity; scheduled recurring TTP hunts (`create_scheduled_task`); STAR custom detection rules for patterns discovered during investigation; notification/escalation workflows on trigger conditions.
+- **Automation & playbook opportunities:** auto-enrichment playbooks for all new IOCs in CRITICAL/HIGH alerts (VirusTotal file / IP / domain / URL lookups; in Hyperautomation through the VirusTotal integration, interactively through `ti_vt_lookup`); IOC expansion on confirmed-malicious files (`ti_vt_relationship` → contacted_domains, contacted_ips, dropped_files → blocklists); threat actor hunt packs when `related_threat_actors` returns a group (auto-generate Purple AI hunts for its TTPs); infrastructure clustering via `ti_vt_relationship` with `historical_ssl_certificates` (IP or domain), `siblings` and `subdomains` (domain) for proactive blocking; auto-containment (network quarantine) for confirmed malicious activity; scheduled recurring TTP hunts (`create_scheduled_task`); STAR custom detection rules for patterns discovered during investigation; notification/escalation workflows on trigger conditions.
 
 ---
 
@@ -545,7 +547,7 @@ For a report (or at the conclusion of a significant investigation), produce a st
 2. **Incident Timeline**: chronological with timestamps.
 3. **Affected Assets & Scope**: systems, users, data; business impact.
 4. **IOC Table**: type, value, threat-intel verdict (detection ratio, reputation, threat actor), context; include ALL pivot-discovered IOCs.
-5. **Threat Actor Profile** (if attributed): group, known TTPs, typical targets, campaigns; source: `related_threat_actors` + `related_references` pivots.
+5. **Threat Actor Profile** (if attributed): group, known TTPs, typical targets, campaigns; source: `related_threat_actors` pivots (plus collections and references from a connected provider, when available).
 6. **MITRE ATT&CK Mapping**: observed TTPs across the kill chain; highlight gaps.
 7. **Root Cause Analysis**: initial vector; execution chain traced via relationship pivots.
 8. **Threat Intelligence Summary**: detection ratios, behavioural highlights, infrastructure mapping, certificate correlations.
@@ -562,25 +564,25 @@ For a report (or at the conclusion of a significant investigation), produce a st
 |----------|------|-------------|
 | **0th** | `powerquery` data source enumeration | Session init per the Step 0 cache protocol: reuse the cached enumeration within `ttl_days`; run `array_agg_distinct(dataSource.name)` only on cache miss/stale. |
 | **0.5th** | `powerquery` schema discovery | For any source absent from the cache or under `pending_rediscovery`, run field discovery before writing hunt queries. Wrong namespace = silent null results. |
-| **1st** | `list_alerts` / `search_alerts` | In parallel with step 0: check new/critical alerts while init runs |
-| **2nd** | `get_alert` + `get_alert_notes` + `get_alert_history` | Deep-dive on specific alerts |
-| **3rd** | `get_inventory_item` | Affected asset: OS, role, criticality |
-| **4th** | Threat-intel core reports (`get_file_report`, `get_ip_report`, `get_domain_report`, `get_url_report`) | **MANDATORY**: enrich every IOC BEFORE any verdict |
-| **5th** | Threat-intel relationship pivots (`get_file_relationship`, `get_ip_relationship`, `get_url_relationship`, `get_domain_report(relationships=[...])`) | Expand: connected infrastructure, threat actors, behavioural data |
-| **6th** | `purple_ai` → `powerquery` per-source hunting | Hunt each confirmed-present source for IOCs with the correct namespace |
-| **7th** | `search_vulnerabilities` / `search_misconfigurations` | Attack surface context: was the asset exploitable? |
+| **1st** | `uam_list_alerts` | In parallel with step 0: check new/critical alerts while init runs |
+| **2nd** | `uam_get_alert` (includes notes and history) | Deep-dive on specific alerts |
+| **3rd** | `s1_api_get` on `/web/api/v2.1/agents` or the asset inventory | Affected asset: OS, role, criticality |
+| **4th** | Threat-intel report: `ti_vt_lookup` (or a connected provider) | **MANDATORY**: enrich every IOC BEFORE any verdict |
+| **5th** | Threat-intel relationship pivots: `ti_vt_relationship` (one relationship per call); `ti_shodan_host` for exposure | Expand: connected infrastructure, threat actors, exposed services |
+| **6th** | `purple_ai_query` → `powerquery_run` per-source hunting | Hunt each confirmed-present source for IOCs with the correct namespace |
+| **7th** | `powerquery_run` with `\| datasource vulnerabilities` / `\| datasource misconfigurations`, or `s1_api_get` | Attack surface context: was the asset exploitable? |
 | **8th** | `create_scheduled_task` | Automate recurring hunts, IOC sweeps, compliance checks |
 
 ---
 
 ## Threat-Intel Enrichment Quick-Reference Cheat Sheet
 
-VT default-bundle tool names; substitute your provider's equivalents.
+Built-in s1-secops-mcp tool names; substitute your provider's equivalents if you use another. Each `ti_vt_relationship` call returns one relationship; mind the free-key limit of 4 lookups per minute.
 
-- **Suspicious file hash:** `get_file_report(hash)` (detection ratio, threat actors) → `get_file_relationship` pivots: `behaviours` (what it does), `contacted_domains` / `contacted_ips` (C2), `dropped_files` (payloads), `execution_parents` (how it arrived), `related_threat_actors` (attribution).
-- **Suspicious IP:** `get_ip_report(ip)` (reputation, geo, ASN) → `get_ip_relationship` pivots: `communicating_files`, `resolutions`, `historical_ssl_certificates`, `related_threat_actors`, `downloaded_files`.
-- **Suspicious domain:** `get_domain_report(domain, relationships=["communicating_files", "subdomains", "siblings", "resolutions", "historical_ssl_certificates", "historical_whois", "related_threat_actors", "related_references"])` for the full picture in one call; follow up malicious `communicating_files` with `get_file_report`.
-- **Suspicious URL:** `get_url_report(url)` → `get_url_relationship` pivots: `downloaded_files`, `redirects_to`, `contacted_domains`, `related_threat_actors`.
+- **Suspicious file hash:** `ti_vt_lookup(hash)` (detection ratio, threat label, sandbox verdicts) → `ti_vt_relationship(hash, <rel>)` for `contacted_domains` / `contacted_ips` (C2), `dropped_files` (payloads), `execution_parents` (how it arrived), `related_threat_actors` (attribution, premium key).
+- **Suspicious IP:** `ti_vt_lookup(ip)` (reputation, ASN, owner, country) → `ti_vt_relationship(ip, <rel>)` for `communicating_files`, `resolutions`, `historical_ssl_certificates`, `related_threat_actors`, `downloaded_files`; `ti_shodan_host(ip)` for exposed services and CVEs.
+- **Suspicious domain:** `ti_vt_lookup(domain)` (registrar, creation date, categories, DNS records) → `ti_vt_relationship(domain, <rel>)` for `communicating_files`, `subdomains`, `siblings`, `resolutions`, `historical_ssl_certificates`, `related_threat_actors`; follow up malicious `communicating_files` with `ti_vt_lookup`.
+- **Suspicious URL:** `ti_vt_lookup(url)` (final URL, redirection chain) → `ti_vt_relationship(url, <rel>)` for `downloaded_files`, `redirects_to`, `contacted_domains`, `related_threat_actors`.
 
 ---
 
@@ -607,9 +609,9 @@ Use installed skills eagerly; do not hand-author SDL config files, Hyperautomati
 - `s1-secops-skills:sdl-log-parser`: authoring/debugging an SDL `/logParsers/` parser (CEF, syslog, key=value, multi-line). Parser DSL, end-to-end validation via `putFile → hec_ingest → query`.
 - `s1-secops-skills:sdl-solutions`: deploying one of 10 packaged SDL solutions end to end: data source onboarding, asset enrichment, UEBA anomaly detection, per-device ingest health, detection exclusions, Risk-Based Alerting, Detection as Code, alert noise reduction, custom detections with MITRE mapping (watchdog alert carrying ATT&CK, since STAR rules cannot), and query slicing (long-window PowerQuery as parallel slices, merged). Orchestrates the primitives: parser→OCSF + asset enrichment, dashboard, MITRE-mapped detections, scheduled rules, threat-response / refresh HA flows.
 - `s1-secops-skills:soc-investigator`: investigating or triaging an alert or incident (SHORT triage, MEDIUM correlation, LONG forensic timeline), or a SWEEP of raw logs over a time window for MITRE-mapped TTPs with no alert. Threat-intel enrichment, strict verdict gates, report with a mandatory query appendix.
-- `mcp__purple-mcp__*` (built-in MCP): first-line PowerQuery hunts, alert triage, threat-intel enrichment. Auto-authenticated; preferred for quick hunts and 24h stats.
-- Threat-intel MCP (default `mcp__virustotal__*`; substitute your provider): **mandatory** for every IOC enrichment. File / IP / domain / URL lookups + all relationship pivots.
-- Shodan MCP (`mcp__shodan__*`, optional): exposure intelligence for external IPs and domains (ports, services, banners, TLS/JARM, host CVEs) and CVEDB lookups. Complements, never replaces, the threat-intel MCP; mind query credits and the 1 request/second limit.
+- s1-secops-mcp built-ins: `powerquery_run` for hunts and stats, `uam_*` for alert triage, `purple_ai_query` for natural-language questions and draft queries (Purple does not run them).
+- Threat intel: built-in `ti_vt_lookup` / `ti_vt_relationship` (when `VIRUSTOTAL_API_KEY` is stored) or another provider you have connected: **mandatory** for every IOC enrichment.
+- Exposure intel (optional): built-in `ti_shodan_host` / `ti_shodan_dns` (when `SHODAN_API_KEY` is stored) for external IPs and hostnames (ports, services, TLS, host CVEs). Complements, never replaces, the VirusTotal verdict.
 - `docx`: CISO / leadership reports as `.docx` (docx-js Node lib, validated output, table styling rules). `xlsx` / `pptx` / `pdf`: same idea for spreadsheets / decks / PDFs.
 
 ### Standard Engagement Workflow
@@ -617,15 +619,15 @@ Use installed skills eagerly; do not hand-author SDL config files, Hyperautomati
 For any investigation culminating in deliverables:
 
 1. **Load skills up front** (`powerquery`, `mgmt-console-api`, `sdl-dashboard`, `hyperautomation`, `sdl-api`, `docx`) BEFORE starting; mid-task loading wastes turns.
-2. **Session init in parallel:** enumeration (per cache protocol) + `search_alerts` + `get_timestamp_range` in one batch.
+2. **Session init in parallel:** enumeration (per cache protocol) + `uam_list_alerts` in one batch, with an explicit time window.
 3. **Schema for every source you'll query** via the cache / Section 7 workflow (`powerquery_schema_discover`); persist dumps with the Write tool to `outputs/sdl_schemas_<YYYY-MM-DD>.json`.
-4. **Hunt, enrich, correlate:** Purple MCP hunts, threat-intel MCP for every IOC, cross-source correlation.
+4. **Hunt, enrich, correlate:** `purple_ai_query` and `powerquery_run` hunts, threat intel (`ti_vt_*` or a connected provider) for every IOC, cross-source correlation.
 5. **Build deliverables:** dashboard JSON via `sdl-dashboard`, workflows via `hyperautomation`, detection rules via `mgmt-console-api`, report via `docx`.
 6. **Deploy live:** new dashboards via `sdl_create_dashboard {name, config, isPublic: true, scope}` (the default, and the only way to deploy to a site; pass `scope: "<accountId>:<siteId>"`). Updates: `sdl_get_file` by `udoId`, then `sdl_put_file {udoId, content, expectedVersion}`; a path-addressed write to an existing dashboard is refused because it duplicates. STAR rules via `s1_api_post` to `/web/api/v2.1/cloud-detection/rules`. Read the existing version first; pass `expectedVersion` on overwrite.
 7. **Verify:** re-fetch deployed artifacts, confirm versions, run a sample query against each rule's PQ body to confirm it parses.
 
 **Read-only by default (s1-secops-mcp 1.5.5+).** Every s1-secops-mcp call that changes the tenant (step 6 deploys, UAM notes/status/verdict/assignment, ingest, `| savelookup`) is refused unless the user enabled write. If a tool returns `s1-secops-mcp is in read-only mode (S1_READ_ONLY)`:
-- Do not retry it or work around it (no alternate `s1_api_post` route, no purple-mcp `powerquery` with `| savelookup`, no other MCP).
+- Do not retry it or work around it (no alternate `s1_api_post` route, no other MCP server's query tool with `| savelookup`, no other MCP).
 - Tell the user exactly what was refused and how to enable write per `docs/read-only.md` (Docker launcher `install --read-write`, Windows `-ReadWrite`; `.mcpb` setting; Node `S1_READ_ONLY=false`; then restart Claude Desktop).
 - Offer the deliverable as a file instead (dashboard/parser/workflow JSON, rule body, note text) so the user can apply it themselves.
 

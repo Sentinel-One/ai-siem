@@ -1,87 +1,49 @@
 #!/usr/bin/env bash
 #
-# Build (and optionally push) the SentinelOne Claude Skills MCP Stack image.
+# Build (and optionally push) the SentinelOne SecOps MCP image.
 #
 # Usage:
 #   docker/build.sh                   # local single-arch build, tag secops-mcps:<version>
 #   PUSH=true docker/build.sh         # multi-arch build + push to Docker Hub
 #   TAG=dev docker/build.sh           # override tag
-#   VT_MCP_REF=<sha> docker/build.sh  # override a pin (also SHODAN_MCP_REF, NODE_IMAGE)
+#   BASE_IMAGE=<ref@digest> docker/build.sh  # override the base image pin
 #
-# All pins live in the "Pinned MCP sources" block below. Bump them there, and
-# in any release pipeline that keeps its own copy of the pins (such a pipeline
-# is maintained outside this repository), then re-run.
-# Every source is git; the image contains no npm.
+# From 1.6.0 the image carries one server, s1-secops-mcp, COPYed from this working
+# tree, on a distroless Node 24 base. Purple AI, VirusTotal and Shodan are built-in
+# tools of that server; there are no third-party MCP sources to pin. The image has
+# no shell, no package manager and no npm.
 #
 set -euo pipefail
 
-# ── Pinned MCP sources ───────────────────────────────────────────────────────
-#
-# Every MCP now comes from a pinned git source. Nothing here resolves a package
-# from the npm registry, and the image has no npm binary to do so with.
-#
 # s1-secops-mcp is COPY'd from this working tree, so its "pin" is whatever
 # commit you are building. S1_MCP_VERSION below is therefore a LABEL, not an
 # install target: keep it equal to the version in s1-secops-mcp/package.json so
 # the image label does not lie about what it carries.
-S1_MCP_VERSION="${S1_MCP_VERSION:-1.5.7}"
-
-# virustotal-mcp: our fork of w0h1v/mcp-virustotal. The fork exists
-# because upstream publishes only to npm: it has a `prepublishOnly` build and
-# no `prepare`, so a git install of upstream fetches TypeScript source with no
-# build/ and yields a binary that cannot start. The fork commits its compiled
-# build/ and its production node_modules/, which is what lets this image skip
-# npm entirely. See scripts/vendor-vt-fork.sh.
-#
-# Must be a FULL 40-character commit SHA: the Dockerfile fetches the object by
-# id, and a branch name would silently un-pin the build.
-VT_MCP_REPO="${VT_MCP_REPO:-https://github.com/pmoses-s1/mcp-virustotal.git}"
-VT_MCP_REF="${VT_MCP_REF:-9cd74931d23f2cdbfc98e364ab774ed74d0f6dbe}"
-
-# purple-mcp: our fork of Sentinel-One/purple-mcp at the v0.7.0 release commit,
-# plus one change. Upstream requires pandas, but imports it in exactly one place
-# for SDLTableResultData.to_df(), which no MCP tool calls: the SDL tools render
-# results straight from `values`. That made every install carry pandas and numpy
-# (~141 MB) for a code path the server never executes. The fork makes pandas an
-# optional `dataframe` extra, changing no behaviour. Upstream PR pending; repin
-# to Sentinel-One once it merges.
-PURPLE_MCP_REPO="${PURPLE_MCP_REPO:-https://github.com/pmoses-s1/purple-mcp.git}"
-PURPLE_MCP_REF="${PURPLE_MCP_REF:-1390b8c00a8af847605739248b0b4514713298c4}"
-
-# shodan-mcp (optional server): our fork of w0h1v/mcp-shodan, vendored exactly
-# like the VirusTotal fork (same npm-only upstream, same missing `prepare`).
-# The fork also carries four small hardening patches, listed in its
-# FORK_NOTES.md: page cap, no redirects, API-key redaction, no dotenv.
-# See scripts/vendor-node-fork.sh. Full 40-character SHA, same rule as VT.
-SHODAN_MCP_REPO="${SHODAN_MCP_REPO:-https://github.com/pmoses-s1/mcp-shodan.git}"
-SHODAN_MCP_REF="${SHODAN_MCP_REF:-845ba6e3afc1b350c604e26c9a221319e13c0264}"
+S1_MCP_VERSION="${S1_MCP_VERSION:-1.6.0}"
 
 # ── Base image ───────────────────────────────────────────────────────────────
-# Node 24 LTS, pinned by digest so a rebuild cannot silently pick up different
-# bytes. The Dockerfile asserts the major version is 24. To move to a newer
-# Node 24 patch: `docker buildx imagetools inspect node:24-trixie-slim`, copy
-# the index digest here and into any release pipeline that keeps its own copy.
-# Resolved 2026-10-26: Node v24.22.1.
-NODE_IMAGE="${NODE_IMAGE:-node:24-trixie-slim@sha256:43b9ba1142b8dcf33fa8f922ca1be85714adc444e0586c7cf7726daaeabc1bea}"
+# Distroless Node 24 (Debian 13), pinned by index digest so a rebuild cannot
+# silently pick up different bytes. Chosen in 1.6.0 for the smallest attack
+# surface. With the four base packages Node never loads removed at build time
+# (see the Dockerfile), the 1.6.0 image scanned at 12 packages, 0 critical,
+# 0 high, 0 medium and 7 low (disputed glibc entries with no fix) in Docker Scout
+# on 2026-11-05, against 397 packages and 4 high / 3 medium / 23 low for the
+# 1.5.7 image on node:24-trixie-slim. The image's setup step asserts Node 24.
+# To move to a newer build: `docker buildx imagetools inspect
+# gcr.io/distroless/nodejs24-debian13:latest`, copy the index digest here and
+# into any release pipeline that keeps its own copy.
+# Resolved 2026-11-05: Node v24.22.2.
+BASE_IMAGE="${BASE_IMAGE:-gcr.io/distroless/nodejs24-debian13@sha256:03980f6fd2a3245fa06e371c36fd33528ebbc676a1d0f84e3e21d95cd291b807}"
 
-# Fail before a 4-minute build rather than after it.
-for _pin in VT_MCP_REF SHODAN_MCP_REF; do
-  if ! echo "${!_pin}" | grep -qE '^[0-9a-f]{40}$'; then
-    echo "error: ${_pin} must be a full 40-char commit SHA, got '${!_pin}'." >&2
-    echo "Vendor the fork with scripts/vendor-node-fork.sh, push it, then set" >&2
-    echo "${_pin} here and in any release pipeline that keeps its own copy." >&2
-    exit 1
-  fi
-done
-case "${NODE_IMAGE}" in
-  node:24-*@sha256:*) ;;
-  *) echo "error: NODE_IMAGE must be a node:24 tag pinned by digest, got '${NODE_IMAGE}'." >&2; exit 1 ;;
+case "${BASE_IMAGE}" in
+  gcr.io/distroless/nodejs24-*@sha256:*) ;;
+  *) echo "error: BASE_IMAGE must be gcr.io/distroless/nodejs24-* pinned by digest, got '${BASE_IMAGE}'." >&2; exit 1 ;;
 esac
 
 # ── Image version ────────────────────────────────────────────────────────────
-# The version of THIS image. Its own counter, independent of the MCP pins above:
-# bump it when anything that changes the image bytes changes, which is the
-# Dockerfile, the dispatcher, the bundled CLAUDE.md, or any pin above.
+# The version of THIS image. Its own counter: bump it when anything that changes
+# the image bytes changes, which is the server source, the Dockerfile, the
+# dispatcher, the bundled CLAUDE.md, or the base image pin.
 #
 # TWO RULES, both enforced in CI: it must strictly increase, and a published
 # value is never reused. Rationale and the incident behind it: docker/README.md.
@@ -90,7 +52,7 @@ esac
 #   docker run --rm <image> versions
 # (That replaces the old `--entrypoint npm <image> ls -g --depth=0`. There is
 # no npm in the image any more, so that command now fails with "not found".)
-IMAGE_VERSION="${IMAGE_VERSION:-1.5.7}"
+IMAGE_VERSION="${IMAGE_VERSION:-1.6.0}"
 
 # ── Image identity ───────────────────────────────────────────────────────────
 REGISTRY="${REGISTRY:-docker.io/sentinelone}"
@@ -111,12 +73,8 @@ VCS_REF="$(git rev-parse --short HEAD)"
 echo "Image:         ${REGISTRY}/${IMAGE_NAME}:${TAG}"
 echo "Image version: ${IMAGE_VERSION}"
 echo "Platforms:     ${PLATFORMS}"
-echo "MCP sources (all git, no npm registry):"
-echo "  s1-secops-mcp:   local source @ ${VCS_REF} (labelled ${S1_MCP_VERSION})"
-echo "  virustotal-mcp:  ${VT_MCP_REPO}@${VT_MCP_REF}"
-echo "  purple-mcp:      ${PURPLE_MCP_REPO}@${PURPLE_MCP_REF}"
-echo "  shodan-mcp:      ${SHODAN_MCP_REPO}@${SHODAN_MCP_REF}"
-echo "Base image:    ${NODE_IMAGE}"
+echo "Server:        s1-secops-mcp, local source @ ${VCS_REF} (labelled ${S1_MCP_VERSION}); no npm registry"
+echo "Base image:    ${BASE_IMAGE}"
 echo "Build date: ${BUILD_DATE}"
 echo "VCS ref:    ${VCS_REF}"
 echo
@@ -127,9 +85,8 @@ echo
 # driver runs BuildKit in its own network namespace with its own resolver, and
 # on a machine behind a split-horizon or proxied DNS (a corporate VPN, for
 # instance) that resolver cannot see the names the host can. The failure is
-# well disguised: the build gets as far as `apt-get update`, then reports
-# "Temporary failure resolving 'deb.debian.org'" and "Unable to locate package
-# python3", which reads as a broken base image or a bad package list rather
+# well disguised: pulling the base image or its metadata fails with a resolver
+# error that reads as a broken image reference or registry outage rather
 # than as DNS. Sharing the host network namespace makes the builder resolve
 # exactly what the host resolves.
 #
@@ -147,13 +104,7 @@ fi
 ARGS=(
   --build-arg "IMAGE_VERSION=${IMAGE_VERSION}"
   --build-arg "S1_MCP_VERSION=${S1_MCP_VERSION}"
-  --build-arg "VT_MCP_REPO=${VT_MCP_REPO}"
-  --build-arg "VT_MCP_REF=${VT_MCP_REF}"
-  --build-arg "PURPLE_MCP_REPO=${PURPLE_MCP_REPO}"
-  --build-arg "PURPLE_MCP_REF=${PURPLE_MCP_REF}"
-  --build-arg "SHODAN_MCP_REPO=${SHODAN_MCP_REPO}"
-  --build-arg "SHODAN_MCP_REF=${SHODAN_MCP_REF}"
-  --build-arg "NODE_IMAGE=${NODE_IMAGE}"
+  --build-arg "BASE_IMAGE=${BASE_IMAGE}"
   --build-arg "BUILD_DATE=${BUILD_DATE}"
   --build-arg "VCS_REF=${VCS_REF}"
   --tag "${REGISTRY}/${IMAGE_NAME}:${TAG}"

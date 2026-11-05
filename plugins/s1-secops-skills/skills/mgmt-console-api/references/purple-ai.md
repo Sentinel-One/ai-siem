@@ -1,6 +1,6 @@
 ## Purple AI: natural-language query, alert summary, and auto-investigation
 
-> **Precedence:** if the user explicitly mentions "purple mcp" or "mcp", prefer the Purple MCP tools (`mcp__purple-mcp__purple_ai`, `mcp__purple-mcp__powerquery`, etc.); this skill is the backup path in that case. Use the wrapper below when the user has asked for the S1 console/API directly, when Purple MCP is unavailable, or when you need to script a raw GraphQL call.
+> **Primary path:** the s1-secops-mcp tools. `purple_ai_query` asks a natural-language question (synchronous `purpleLaunchQuery`, about 5 to 15 s) with the console API token and returns `{resultType, message, summary, powerQuery {query, timeRange, viewSelector}, starRule, suggestedQuestions}`. Purple does not run the query: review it, then run it with `powerquery_run`. `purple_ai_alert_summary` summarises one UAM alert. The reference below documents the raw GraphQL for debugging or scripting. From 1.6.0 the image no longer bundles purple-mcp; if the user has connected the official Purple MCP themselves and asks for it, use it.
 
 ### Hosts
 
@@ -75,7 +75,36 @@ query purpleLaunchQuery($request: PurpleLaunchQueryRequest!) {
 }
 ```
 
-Variables (`$request`):
+**Request shape that works with a console API token (s1-secops-mcp 1.6.0, measured 2026-11-05: HTTP 200 in about 6 s, `POWER_QUERY` for a hunt question, `MESSAGE` for a knowledge question).** The same `tenantDetails` block goes in twice, at `request.tenantDetails` and at `request.inputContent.tenantDetails`, with an empty `conversation.messages` list and a fresh conversation id per call. This is what `purple_ai_query` sends (`purpleLaunchQuery` in `s1-secops-mcp/lib/s1.js` in the source repo, not shipped):
+
+```graphql
+query PurpleQuery($input: String!) {
+  purpleLaunchQuery(request: {
+    isAsync: false
+    contentType: NATURAL_LANGUAGE
+    tenantDetails: {
+      userDetails: { sessionId: null emailAddress: null userAgent: "s1-secops-mcp" buildDate: null buildHash: null }
+      consoleDetails: { consoleId: null tenantId: null accountId: null siteId: null baseUrl: "https://<region>.sentinelone.net" version: null }
+    }
+    conversation: { id: "<unique id>", messages: [], entitlements: null }
+    inputContent: {
+      userInput: $input
+      displayedTimeRange: { start: <epochMs>, end: <epochMs> }
+      viewSelector: EDR
+      contentType: NATURAL_LANGUAGE
+      tenantDetails: { <same block as above> }
+    }
+  }) {
+    result { message summary powerQuery { query timeRange { start end } viewSelector } starRule suggestedQuestions { question powerQuery } }
+    resultType
+    status { state error { errorDetail errorType origin } }
+  }
+}
+```
+
+The browser sends the larger shape below (observed in a console session). It failed for API tokens in the 2026-05-03 tests; use the shape above.
+
+Variables (`$request`), browser shape:
 
 ```jsonc
 {
@@ -161,7 +190,7 @@ createNotebook → purpleLaunchQuery (NATURAL_LANGUAGE) → addPurpleInputOutput
 
 Note: starter prompts that return a documentation-style answer skip the `launchQuery`/`pingQuery` stage entirely.
 
-**API-token users: use the Purple MCP.** The `purple_ai_query` MCP tool has been removed, `purpleLaunchQuery NATURAL_LANGUAGE` is confirmed non-functional for service-account API tokens (requires browser-session teamToken; returns AsimovError from LaunchQueryManager). Use `mcp__purple-mcp__purple_ai` for NL queries and `mcp__purple-mcp__powerquery` to execute the returned PQ.
+**API-token users: use `purple_ai_query`.** It sends the working request shape above and returns the answer or the generated PQ; run that PQ with `powerquery_run` after reviewing it. Purple can AND fields from different schema families (for example `event.type` with `winEventLog.id`), which returns nothing; split such a query by `dataSource.name`. Each call is a new conversation, so restate context in every question. The notebook steps (2 to 8 above) are browser-only and not needed.
 
 #### purpleAlertSummary: per-alert natural-language summary
 
@@ -189,36 +218,30 @@ Two-step flow, both via the UAM GraphQL endpoint (`/web/api/v2.1/unifiedalerts/g
 
 Verdict enum: `UNKNOWN`, `TRUE_POSITIVE`, `FALSE_POSITIVE`.
 
-**API-token users: use the Purple MCP.** The `purple_ai_investigate` MCP tool has been removed, `aiInvestigation/run` via `alertTriggerActions` is confirmed non-functional for service-account API tokens (returns SERVICE_ERROR; same teamToken dependency as `purpleLaunchQuery`). Use `mcp__purple-mcp__purple_ai` for AI investigations.
+**Not available with an API token.** `aiInvestigation/run` via `alertTriggerActions` returned `SERVICE_ERROR` for service-account API tokens (2026-05-03) and still needs a browser session; s1-secops-mcp does not expose it. Run auto-investigation from the console. For an API-token workflow, combine `purple_ai_alert_summary` with your own investigation (`uam_get_alert`, `purple_ai_query`, `powerquery_run`).
 
 ### Python CLI
 
-> **`purple_query()` and `scripts/call_purple.py` are non-functional for API tokens.** Both call `purpleLaunchQuery NATURAL_LANGUAGE`, which requires a browser-session teamToken that service accounts never have (confirmed SERVICE_ERROR 2026-05-03). Use the Purple MCP instead:
->
-> ```text
-> mcp__purple-mcp__purple_ai   # natural-language query → PQ → result
-> mcp__purple-mcp__powerquery  # run a PQ string directly
-> ```
->
-> `scripts/purple_ai.py` and `scripts/call_purple.py` are kept in the skill for reference but will fail with AsimovError on any service-account token.
+> **`purple_query()` and `scripts/call_purple.py` send the older request shape**, which failed with `AsimovError` / `SERVICE_ERROR` for service-account tokens (2026-05-03). They are kept for reference. Use the `purple_ai_query` MCP tool, then `powerquery_run` to run the returned PQ.
 
 ### Domain boundary
 
-Purple AI answers questions about **SDL telemetry** (process/network/file events, indicators, ingested logs). It does **not** answer questions about **console entities** (alerts, threats, agents, sites, policies). Those are REST resources. Out-of-domain questions return `resultType: "MESSAGE"` with a guardrail refusal, switch to the REST path.
+Purple AI answers questions about **SDL telemetry** (process/network/file events, indicators, ingested logs) with a PowerQuery (`resultType: "POWER_QUERY"`), and general security questions (for example "What is T1059?") with a written answer (`resultType: "MESSAGE"`). It does **not** answer questions about **console entities** (alerts, threats, agents, sites, policies). Those are REST and UAM resources. Out-of-domain questions return `resultType: "MESSAGE"` with a guardrail refusal: switch to the REST or UAM path.
 
-### Caveats and confirmed API-token limitations (live-tested 2026-05-03)
+### Caveats and API-token results
 
 | Operation | API-token result | Notes |
 |---|---|---|
-| `purpleAlertSummary` (ALERT_ENTRY) | **PASS**: returns real LLM summary | Works with `userDetails: null`; no SDL dependency |
-| `purpleLaunchQuery` (NATURAL_LANGUAGE) | **FAIL**: `AsimovError` from `LaunchQueryManager` | LLM layer rejects service-account requests; see below |
-| `aiInvestigation/run` via `alertTriggerActions` | **FAIL**: `SERVICE_ERROR` | Same LLM-layer dependency |
+| `purpleAlertSummary` (ALERT_ENTRY) | **PASS**: returns real LLM summary | Works with `userDetails: null`; no SDL dependency. MCP tool `purple_ai_alert_summary` |
+| `purpleLaunchQuery` (NATURAL_LANGUAGE), 1.6.0 request shape | **PASS** (2026-11-05) | `tenantDetails` at `request` and at `request.inputContent`, empty `messages`. MCP tool `purple_ai_query` |
+| `purpleLaunchQuery` (NATURAL_LANGUAGE), browser request shape | **FAIL** (2026-05-03): `AsimovError` from `LaunchQueryManager` | The older shape the Python helpers still send |
+| `aiInvestigation/run` via `alertTriggerActions` | **FAIL** (2026-05-03): `SERVICE_ERROR` | Needs a browser session; not exposed |
 | `/sdl/v2/graphql` queries (`purpleConversations`, etc.) | **FAIL**: `unauthenticated` | SDL queries require browser session cookie |
 | `/sdl/v2/graphql` mutations (`createNotebook`, etc.) | **PARTIAL**: schema validation reached | Auth passes for mutations; mutation names differ from browser UI (introspection blocked) |
 
-**Root cause of NATURAL_LANGUAGE failures:** `purpleLaunchQuery` internally routes to the same LLM workspace layer as the browser UI. That layer uses `teamToken` (obtained by browser users via `createNotebook` on `/sdl/v2/graphql`) to identify the user's Purple AI notebook. Service accounts (API tokens) never initialize a browser session, so `teamToken` is always empty and the `LaunchQueryManager` (`AsimovError`) rejects the request. This is not a schema issue, the request passes GraphQL validation (HTTP 200) and fails at the LLM dispatch layer.
+**History of the NATURAL_LANGUAGE failure:** the 2026-05-03 tests sent the browser request shape, which passed GraphQL validation (HTTP 200) and then failed at the LLM dispatch layer (`LaunchQueryManager`, `AsimovError`). At the time this was attributed to the missing browser-session `teamToken`. The 1.6.0 shape, which carries `tenantDetails` in both places, succeeds with the same kind of token, which points to the request shape rather than the token type.
 
-`purpleAlertSummary` bypasses this because it is a self-contained summarisation operation: the full alert context is supplied inline in `inputAlert`, no SDL session or teamToken lookup is needed.
+`purpleAlertSummary` is a self-contained summarisation operation: the full alert context is supplied inline in `inputAlert`, no SDL session lookup is needed.
 
 **SDL auth nuance (confirmed via live testing):** SDL query operations return `unauthenticated` for API tokens. SDL mutations reach schema validation (meaning auth succeeds), but the specific mutation names used by the browser UI (`createNotebook`, etc.) are not exposed under those names for API tokens. Introspection is blocked on the SDL endpoint.
 
@@ -227,4 +250,4 @@ Purple AI answers questions about **SDL telemetry** (process/network/file events
 - Each GraphQL request should carry a unique `requestId` UUID as a query param for tracing (`?opname=<op>&requestId=<uuid>`). The server ignores it but it aids debugging.
 - Permission failures for `purpleLaunchQuery` surface as `status.state = FAILED` with `error.origin = LaunchQueryManager` (HTTP 200, not 400 or 403): not the usual "invalid query" 400 you get for schema errors.
 - Do **not** auto-execute generated PQ without showing it to the user first, Purple can hallucinate fields.
-- `inputContent` must appear at **both** the top level of `request` AND inside `conversation.messages[0].inputMessage.inputContent`: the server requires both (confirmed via live validation).
+- In the browser shape, `inputContent` must appear at **both** the top level of `request` AND inside `conversation.messages[0].inputMessage.inputContent` (confirmed via live validation). The 1.6.0 shape sends `inputContent` once, with `messages: []`, and repeats `tenantDetails` instead.

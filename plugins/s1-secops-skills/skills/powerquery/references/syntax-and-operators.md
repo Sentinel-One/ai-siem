@@ -236,7 +236,7 @@ When specifying a time range in Event Search (and implicitly for PowerQuery time
 - Time-span shortcut: `From=3d To=+16h` means "16-hour window starting 3 days ago".
 - Start is inclusive; End is exclusive. Leave End empty to mean "now".
 
-When calling the Purple MCP `powerquery` tool, pass ISO-8601 with an explicit offset: `2026-04-19T06:00:00Z` or `2026-04-19T06:00:00-04:00`. Use the `get_timestamp_range` helper to build a range relative to now.
+When calling `powerquery_run` with `startTime` / `endTime`, pass ISO-8601 with an explicit offset: `2026-04-19T06:00:00Z` or `2026-04-19T06:00:00-04:00`. For a range relative to now, pass `hours` instead.
 
 ---
 

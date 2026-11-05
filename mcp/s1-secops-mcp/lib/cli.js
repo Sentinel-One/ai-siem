@@ -212,7 +212,7 @@ function cmdForget(flags) {
 }
 
 /**
- * Run another MCP server (purple-mcp, the VirusTotal MCP, anything) with the
+ * Run another MCP server the user installed (e.g. the official purple-mcp) with the
  * keychain values in its environment, mapped to the names those servers read.
  * The values are visible in that child's environment to the same OS user
  * (ps eww, /proc/<pid>/environ); they are never on the command line.

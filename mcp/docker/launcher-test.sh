@@ -40,22 +40,20 @@ for SHELL_BIN in /bin/sh /usr/bin/dash /bin/dash /bin/bash; do
   # developer's keychain cannot change which entries are written.
   run() { (cd "$T" && HOME="$H" XDG_CONFIG_HOME= S1_PROFILE=s1lt-nokey PATH="$ROOT/fakebin:$PATH" "$SHELL_BIN" "$@" </dev/null); }
 
-  # config prints valid JSON whose command is the launcher's absolute path.
-  # Shodan is optional: no key stored for the profile, so no shodan entry.
+  # config prints valid JSON with one entry (1.6.0) whose command is the launcher's absolute path.
   run "$SRC" config > "$T/c.json" 2> "$T/c.err"
-  if py "$T/c.json" "sorted(j['mcpServers'])==['purple-mcp','s1-secops-mcp','virustotal'] and {v['command'] for v in j['mcpServers'].values()}=={'$SRC'} and j['mcpServers']['virustotal']['args'][-1]=='virustotal-mcp'"; then
-    ok "config: three entries without a Shodan key, absolute path"; else bad "config" "$T/c.err"; fi
+  if py "$T/c.json" "sorted(j['mcpServers'])==['s1-secops-mcp'] and j['mcpServers']['s1-secops-mcp']['command']=='$SRC' and j['mcpServers']['s1-secops-mcp']['args'][-1]=='s1-secops-mcp'"; then
+    ok "config: one s1-secops-mcp entry, absolute path"; else bad "config" "$T/c.err"; fi
 
-  # --with-shodan adds the optional fourth entry, same launcher and image
+  # --with-shodan is accepted for old scripts but has no effect (Shodan is built in).
   run "$SRC" config --with-shodan > "$T/c4.json" 2> "$T/c4.err"
-  if py "$T/c4.json" "sorted(j['mcpServers'])==['purple-mcp','s1-secops-mcp','shodan','virustotal'] and j['mcpServers']['shodan']['command']=='$SRC' and j['mcpServers']['shodan']['args'][-1]=='shodan-mcp' and j['mcpServers']['shodan']['args'][:2]==j['mcpServers']['virustotal']['args'][:2]"; then
-    ok "config: --with-shodan adds the shodan entry"; else bad "config --with-shodan" "$T/c4.err"; fi
+  if py "$T/c4.json" "sorted(j['mcpServers'])==['s1-secops-mcp']" && grep -q "no longer needed" "$T/c4.err"; then
+    ok "config: --with-shodan accepted, no extra entry, says why"; else bad "config --with-shodan" "$T/c4.err"; fi
 
-  # Read-only is the default (no S1_READ_ONLY written); --read-write writes the
-  # opt-out on the s1-secops-mcp entry only.
+  # Read-only is the default (no S1_READ_ONLY written); --read-write writes the opt-out.
   run "$SRC" config --read-write > "$T/rw.json" 2> "$T/rw.err"
-  if py "$T/c.json" "'env' not in j['mcpServers']['s1-secops-mcp']" && py "$T/rw.json" "j['mcpServers']['s1-secops-mcp']['env']=={'S1_READ_ONLY':'false'} and 'env' not in j['mcpServers']['purple-mcp'] and 'env' not in j['mcpServers']['virustotal']"; then
-    ok "config: read-only by default, --read-write sets S1_READ_ONLY=false on s1-secops-mcp only"; else bad "config --read-write" "$T/rw.err"; fi
+  if py "$T/c.json" "'env' not in j['mcpServers']['s1-secops-mcp']" && py "$T/rw.json" "j['mcpServers']['s1-secops-mcp']['env']=={'S1_READ_ONLY':'false'}"; then
+    ok "config: read-only by default, --read-write sets S1_READ_ONLY=false"; else bad "config --read-write" "$T/rw.err"; fi
 
   # Runtime: S1_READ_ONLY from the client env is forwarded to docker run; unset
   # forwards nothing (the container default, read-only, applies).
@@ -68,14 +66,21 @@ for SHELL_BIN in /bin/sh /usr/bin/dash /bin/dash /bin/bash; do
   if [ "$fwd_rw" = 1 ] && [ "$fwd_def" = 0 ]; then
     ok "runtime: S1_READ_ONLY forwarded only when the client sets it"; else bad "runtime S1_READ_ONLY forwarding (set=$fwd_rw unset=$fwd_def)"; fi
 
+  # Removed servers (1.6.0): a client still configured for one gets exit 78 and one clear line,
+  # and docker is never started.
+  rm -f "$T/argv"
+  (cd "$T" && HOME="$H" S1_PROFILE=s1lt-nokey S1_KEYCHAIN_TIMEOUT=3 PATH="$T/recbin:$PATH" "$SHELL_BIN" "$SRC" virustotal-mcp </dev/null) > /dev/null 2> "$T/leg.err"; rc=$?
+  if [ "$rc" = 78 ] && grep -q "removed in 1.6.0" "$T/leg.err" && [ ! -e "$T/argv" ]; then
+    ok "runtime: a removed server name exits 78 with the update instruction"; else bad "runtime removed server (rc=$rc)" "$T/leg.err"; fi
+
   # a relative invocation still resolves to an absolute path
   (cd "$T/clone" && HOME="$H" "$SHELL_BIN" ./s1-secops-mcp-launch.sh config </dev/null) > "$T/c0.json" 2>/dev/null
-  if py "$T/c0.json" "j['mcpServers']['purple-mcp']['command']=='$SRC'"; then ok "config: relative call gives absolute path"; else bad "config relative"; fi
+  if py "$T/c0.json" "j['mcpServers']['s1-secops-mcp']['command']=='$SRC'"; then ok "config: relative call gives absolute path"; else bad "config relative"; fi
 
   # config options: profile, output dir (created, absolute), CLAUDE.md, image
   mkdir -p "$T/md dir"; echo "# x" > "$T/md dir/CLAUDE.md"
   run "$SRC" config --profile prod --output-dir "out dir" --claude-md "md dir/CLAUDE.md" --image sentinelone/secops-mcps:9.9.9 > "$T/o.json" 2> "$T/o.err"
-  if py "$T/o.json" "j['mcpServers']['s1-secops-mcp']['env']=={'S1_OUTPUT_DIR':'$T/out dir','S1_CLAUDE_MD_PATH':'$T/md dir/CLAUDE.md'} and j['mcpServers']['purple-mcp']['args']==['--image','sentinelone/secops-mcps:9.9.9','--profile','prod','purple-mcp'] and 'env' not in j['mcpServers']['virustotal']" && [ -d "$T/out dir" ]; then
+  if py "$T/o.json" "j['mcpServers']['s1-secops-mcp']['env']=={'S1_OUTPUT_DIR':'$T/out dir','S1_CLAUDE_MD_PATH':'$T/md dir/CLAUDE.md'} and j['mcpServers']['s1-secops-mcp']['args']==['--image','sentinelone/secops-mcps:9.9.9','--profile','prod','s1-secops-mcp']" && [ -d "$T/out dir" ]; then
     ok "config: --profile --output-dir --claude-md --image"; else bad "config options" "$T/o.err"; fi
 
   # option errors
@@ -86,26 +91,31 @@ for SHELL_BIN in /bin/sh /usr/bin/dash /bin/dash /bin/bash; do
   run "$SRC" install > "$T/i1.out" 2> "$T/i1.err"; rc=$?
   if [ "$rc" = 0 ] && [ -x "$DEST" ] && cmp -s "$SRC" "$DEST" && py "$CFG" "{v['command'] for v in j['mcpServers'].values()}=={'$DEST'}" && ! ls "$CFG".bak-* >/dev/null 2>&1; then
     ok "install: fresh config"; else bad "install fresh (rc=$rc)" "$T/i1.err"; fi
-  if grep -q "Docker is not running" "$T/i1.err" && grep -q "Quit Claude Desktop completely" "$T/i1.err" && grep -q "configured read-only (the default)" "$T/i1.err"; then
-    ok "install: Docker warning, read-only notice and restart instruction"; else bad "install messages" "$T/i1.err"; fi
+  if grep -q "Docker is not running" "$T/i1.err" && grep -q "Quit Claude Desktop completely" "$T/i1.err" && grep -q "configured read-only (the default)" "$T/i1.err" && grep -q "Built-in tools: Purple AI on, VirusTotal off" "$T/i1.err"; then
+    ok "install: Docker warning, read-only notice, built-in tools line, restart instruction"; else bad "install messages" "$T/i1.err"; fi
 
-  # install merges: keeps other servers and settings, replaces ours, drops an
-  # old launcher entry under another name, keeps a backup
+  # install merges: keeps other servers and settings, replaces ours, drops the
+  # pre-1.6.0 purple-mcp/virustotal/shodan entries and an older-named entry that ran
+  # this launcher, keeps a user's own purple-mcp-like server that does not, keeps a backup.
   cat > "$CFG" <<'J'
 {"globalShortcut": "Alt+Space",
  "mcpServers": {
    "other": {"command": "node", "args": ["x.js"]},
+   "my-purple": {"command": "uvx", "args": ["--from", "git+https://github.com/Sentinel-One/purple-mcp.git", "purple-mcp"]},
    "virustotal-mcp": {"command": "/Users/old/Documents/s1-secops-skills/docker/s1-secops-mcp-launch.sh", "args": ["virustotal-mcp"]},
+   "purple-mcp": {"command": "/Users/x/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.7", "purple-mcp"]},
+   "virustotal": {"command": "/Users/x/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.7", "virustotal-mcp"]},
+   "shodan": {"command": "/Users/x/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.5.7", "shodan-mcp"]},
    "s1-secops-mcp": {"command": "docker", "args": ["run", "-i", "--rm", "sentinelone/secops-mcps:1.4.0"]}},
  "preferences": {"a": 1}}
 J
   cp "$CFG" "$T/orig.json"
   run "$SRC" install > /dev/null 2> "$T/i2.err"
-  if py "$CFG" "j['globalShortcut']=='Alt+Space' and j['preferences']=={'a':1} and j['mcpServers']['other']=={'command':'node','args':['x.js']} and 'virustotal-mcp' not in j['mcpServers'] and sorted(j['mcpServers'])==['other','purple-mcp','s1-secops-mcp','virustotal'] and j['mcpServers']['s1-secops-mcp']['command']=='$DEST'"; then
-    ok "install: merge keeps others, replaces ours, drops old entry"; else bad "install merge" "$T/i2.err"; fi
+  if py "$CFG" "j['globalShortcut']=='Alt+Space' and j['preferences']=={'a':1} and j['mcpServers']['other']=={'command':'node','args':['x.js']} and sorted(j['mcpServers'])==['my-purple','other','s1-secops-mcp'] and j['mcpServers']['s1-secops-mcp']['command']=='$DEST'"; then
+    ok "install: merge keeps others, replaces ours, drops pre-1.6.0 entries"; else bad "install merge" "$T/i2.err"; fi
   BAK=$(ls "$CFG".bak-* 2>/dev/null | head -n 1)
-  if [ -n "$BAK" ] && cmp -s "$BAK" "$T/orig.json" && grep -q "removed old entry virustotal-mcp" "$T/i2.err"; then
-    ok "install: backup identical to previous config"; else bad "install backup" "$T/i2.err"; fi
+  if [ -n "$BAK" ] && cmp -s "$BAK" "$T/orig.json" && grep -q "removed old entry virustotal-mcp" "$T/i2.err" && grep -q "removed old entry purple-mcp" "$T/i2.err" && grep -q "removed old entry shodan" "$T/i2.err"; then
+    ok "install: backup identical to previous config, removals reported"; else bad "install backup" "$T/i2.err"; fi
   rm -f "$CFG".bak-*
 
   # re-running from the installed copy changes nothing
@@ -122,7 +132,7 @@ J
 
   # --config-path writes elsewhere
   run "$SRC" install --config-path "$T/alt/c.json" > /dev/null 2>&1
-  if py "$T/alt/c.json" "len(j['mcpServers'])==3"; then ok "install: --config-path"; else bad "install --config-path"; fi
+  if py "$T/alt/c.json" "sorted(j['mcpServers'])==['s1-secops-mcp']"; then ok "install: --config-path"; else bad "install --config-path"; fi
 
   # --read-write: writes the opt-out and prints the write NOTICE
   run "$SRC" install --read-write --config-path "$T/rwi/c.json" > /dev/null 2> "$T/i6.err"
@@ -151,20 +161,23 @@ STUB
   run_cc() { (cd "$T" && HOME="$H" XDG_CONFIG_HOME= S1_PROFILE=s1lt-nokey STUB_LOG="$T/cc.log" STUB_OURS="$STUB_OURS" PATH="$CCB:$ROOT/fakebin:$PATH" "$SHELL_BIN" "$@" </dev/null); }
   rm -f "$CFG" "$T/cc.log"; rm -rf "$H/.claude"; mkdir -p "$H/.claude"
   printf '{"model":"opus","env":{"FOO":"1"}}\n' > "$H/.claude/settings.json"
-  STUB_OURS="virustotal-mcp"
+  # The pre-1.6.0 entries run this launcher; "shodan" is the user's own server here.
+  STUB_OURS="purple-mcp virustotal virustotal-mcp"
   run_cc "$SRC" install --claude-code --read-write > /dev/null 2> "$T/cc1.err"
   STUB_OURS=""
   grep '^mcp add-json --scope user ' "$T/cc.log" | sed 's/^mcp add-json --scope user //' > "$T/cc.adds"
-  if [ "$(wc -l < "$T/cc.adds" | tr -d ' ')" = 3 ] && python3 -I -c 'import json,sys
+  if [ "$(wc -l < "$T/cc.adds" | tr -d ' ')" = 1 ] && python3 -I -c 'import json,sys
 d={}
 for l in open(sys.argv[1]):
     n,j=l.rstrip("\n").split(" ",1); d[n]=json.loads(j)
-assert sorted(d)==["purple-mcp","s1-secops-mcp","virustotal"]
-assert all(v["type"]=="stdio" and v["command"].endswith("/.local/bin/s1-secops-mcp-launch.sh") for v in d.values())
-assert d["s1-secops-mcp"]["env"]=={"S1_READ_ONLY":"false"} and "env" not in d["purple-mcp"] and "env" not in d["virustotal"]' "$T/cc.adds" 2>/dev/null; then
-    ok "install --claude-code: three user-scope entries, write opt-out on s1-secops-mcp only"; else bad "install --claude-code entries" "$T/cc1.err"; fi
-  if grep -qx 'mcp remove --scope user virustotal-mcp' "$T/cc.log" && ! grep -qx 'mcp remove --scope user sentinelone-mcp' "$T/cc.log"; then
-    ok "install --claude-code: removes an old entry only when it runs this launcher"; else bad "install --claude-code old-entry removal" "$T/cc.log"; fi
+assert sorted(d)==["s1-secops-mcp"]
+v=d["s1-secops-mcp"]
+assert v["type"]=="stdio" and v["command"].endswith("/.local/bin/s1-secops-mcp-launch.sh")
+assert v["env"]=={"S1_READ_ONLY":"false"}' "$T/cc.adds" 2>/dev/null; then
+    ok "install --claude-code: one user-scope entry with the write opt-out"; else bad "install --claude-code entries" "$T/cc1.err"; fi
+  if grep -qx 'mcp remove --scope user purple-mcp' "$T/cc.log" && grep -qx 'mcp remove --scope user virustotal' "$T/cc.log" && grep -qx 'mcp remove --scope user virustotal-mcp' "$T/cc.log" \
+     && ! grep -qx 'mcp remove --scope user shodan' "$T/cc.log" && ! grep -qx 'mcp remove --scope user sentinelone-mcp' "$T/cc.log"; then
+    ok "install --claude-code: removes old entries only when they run this launcher"; else bad "install --claude-code old-entry removal" "$T/cc.log"; fi
   if [ ! -e "$CFG" ] && py "$H/.claude/settings.json" "j['env']=={'FOO':'1','MCP_TIMEOUT':'120000'} and j['model']=='opus'"; then
     ok "install --claude-code: Claude Desktop config untouched, MCP_TIMEOUT 120 s merged into settings"; else bad "install --claude-code settings" "$T/cc1.err"; fi
   # A larger timeout is kept, and a symlinked settings file stays a symlink.
@@ -176,7 +189,7 @@ assert d["s1-secops-mcp"]["env"]=={"S1_READ_ONLY":"false"} and "env" not in d["p
   # Inside Claude Code (CLAUDECODE set) the mode is chosen automatically and says so.
   rm -f "$T/cc.log"
   (cd "$T" && HOME="$H" XDG_CONFIG_HOME= S1_PROFILE=s1lt-nokey STUB_LOG="$T/cc.log" CLAUDECODE=1 PATH="$CCB:$ROOT/fakebin:$PATH" "$SHELL_BIN" "$SRC" install </dev/null) > /dev/null 2> "$T/cc2.err"
-  if [ "$(grep -c '^mcp add-json' "$T/cc.log")" = 3 ] && grep -q "The Claude Desktop config is not changed" "$T/cc2.err" && [ ! -e "$CFG" ]; then
+  if [ "$(grep -c '^mcp add-json' "$T/cc.log")" = 1 ] && grep -q "The Claude Desktop config is not changed" "$T/cc2.err" && [ ! -e "$CFG" ]; then
     ok "install inside Claude Code: registers with Claude Code and reports the Desktop config was skipped"; else bad "install inside Claude Code" "$T/cc2.err"; fi
 
   # Linux without python3: print the entries, do not write
@@ -188,7 +201,7 @@ assert d["s1-secops-mcp"]["env"]=={"S1_READ_ONLY":"false"} and "env" not in d["p
     cp "$ROOT/fakebin/docker" "$T/nopy/docker"
     rm -f "$CFG"
     (cd "$T" && HOME="$H" PATH="$T/nopy" "$SHELL_BIN" "$SRC" install </dev/null) > "$T/i5.out" 2> "$T/i5.err"; rc=$?
-    if [ "$rc" = 0 ] && [ ! -e "$CFG" ] && py "$T/i5.out" "len(j['mcpServers'])==3" && grep -q "No JSON tool found" "$T/i5.err"; then
+    if [ "$rc" = 0 ] && [ ! -e "$CFG" ] && py "$T/i5.out" "sorted(j['mcpServers'])==['s1-secops-mcp']" && grep -q "No JSON tool found" "$T/i5.err"; then
       ok "install: no JSON tool prints the entries instead"; else bad "install without python3 (rc=$rc)" "$T/i5.err"; fi
   fi
 done
@@ -239,7 +252,7 @@ fi
 # Live stdio check (Docker running and the image present): an MCP client keeps
 # stdin open, so the initialize reply must arrive before stdin closes. Piping
 # one line and closing stdin would hide a relay that buffers input.
-IMAGE=${S1_MCP_IMAGE:-sentinelone/secops-mcps:1.5.7}
+IMAGE=${S1_MCP_IMAGE:-sentinelone/secops-mcps:1.6.0}
 if command -v docker >/dev/null 2>&1 && docker image inspect "$IMAGE" >/dev/null 2>&1; then
   echo "== live stdio"
   L="$ROOT/live"; mkdir -p "$L"; mkfifo "$L/in"

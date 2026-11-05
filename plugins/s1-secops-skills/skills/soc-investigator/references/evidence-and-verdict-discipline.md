@@ -43,9 +43,10 @@ truth and may act on it, only use it when you have ground truth.
 No finding is classified CRITICAL or TRUE POSITIVE on a detection-engine severity alone. A
 detection, even at CRITICAL, is a hypothesis. Before escalating you MUST have at least one of:
 
-1. Threat-intel confirmation, a malicious verdict from the threat-intel MCP (high detection
-   ratio, confirmed actor, malicious behavioural analysis).
-2. MDR / analyst confirmation, check `get_alert_notes` and `get_alert_history` FIRST. If MDR
+1. Threat-intel confirmation, a malicious verdict from threat intel (`ti_vt_lookup` or a
+   connected provider: high detection ratio, confirmed actor, malicious sandbox verdicts).
+2. MDR / analyst confirmation, check the alert's notes and history (`uam_get_alert` returns both)
+   FIRST. If MDR
    marked the alert False Positive or Benign, that verdict takes precedence over the engine
    severity. Do not override it without new evidence they did not have.
 3. Multi-source corroboration, the same IOC or behaviour independently confirmed as malicious
@@ -62,9 +63,11 @@ not override without new evidence.
 
 ## IOC enrichment is mandatory and external-only
 
-Every external IP, domain, URL, or file hash is enriched through the threat-intel MCP (VirusTotal
-by default) before a verdict, then pivoted (contacted domains/IPs, dropped files, related threat
-actors) to expand the picture. RFC1918 / internal / no-external-indicator events are
+Every external IP, domain, URL, or file hash is enriched through threat intel (by default the
+built-in `ti_vt_lookup` in s1-secops-mcp, or any provider the user has connected) before a
+verdict, then pivoted with `ti_vt_relationship` (contacted domains/IPs, dropped files, related
+threat actors) to expand the picture. `found: false` is "no reputation data", never "clean". If
+no threat-intel tool is listed, say enrichment could not be run and cap the verdict. RFC1918 / internal / no-external-indicator events are
 enrichment-N/A; state that explicitly and never fabricate a lookup.
 
 ## Session init before any query

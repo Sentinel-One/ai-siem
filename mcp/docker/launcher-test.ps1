@@ -45,27 +45,25 @@ function Invoke-Launcher([string]$Script, [string[]]$LauncherArgs) {
 function ErrText { (Get-Content -Raw (Join-Path $root 'err.txt') -ErrorAction SilentlyContinue) -replace '\s+', '' }
 
 try {
-  # config: three entries, absolute path, powershell.exe -File <launcher>.
-  # A profile nobody has, so a real SHODAN_API_KEY in Credential Manager cannot
-  # add the optional shodan entry.
+  # config: one entry (1.6.0), absolute path, powershell.exe -File <launcher>.
   $j = Invoke-Launcher $launcher @('config', '-Profile', 's1lt-nokey') | ConvertFrom-Json
   $names = @($j.mcpServers.PSObject.Properties.Name)
   $a = $j.mcpServers.'s1-secops-mcp'.args
-  if (($names -join ',') -eq 's1-secops-mcp,purple-mcp,virustotal' -and $j.mcpServers.virustotal.command -eq 'powershell.exe' -and $a[4] -eq $launcher -and $a[-1] -eq 's1-secops-mcp' -and $j.mcpServers.virustotal.args[-1] -eq 'virustotal-mcp') {
-    Ok 'config: three entries without a Shodan key, absolute path' } else { Bad 'config' (ErrText) }
+  if (($names -join ',') -eq 's1-secops-mcp' -and $j.mcpServers.'s1-secops-mcp'.command -eq 'powershell.exe' -and $a[4] -eq $launcher -and $a[-1] -eq 's1-secops-mcp') {
+    Ok 'config: one s1-secops-mcp entry, absolute path' } else { Bad 'config' (ErrText) }
 
-  # -WithShodan adds the optional fourth entry
+  # -WithShodan is accepted for old scripts but adds nothing (Shodan is built in)
   $j = Invoke-Launcher $launcher @('config', '-Profile', 's1lt-nokey', '-WithShodan') | ConvertFrom-Json
   $names = @($j.mcpServers.PSObject.Properties.Name)
-  if (($names -join ',') -eq 's1-secops-mcp,purple-mcp,virustotal,shodan' -and $j.mcpServers.shodan.args[-1] -eq 'shodan-mcp' -and $j.mcpServers.shodan.args[4] -eq $launcher) {
-    Ok 'config: -WithShodan adds the shodan entry' } else { Bad 'config -WithShodan' (ErrText) }
+  if (($names -join ',') -eq 's1-secops-mcp' -and (ErrText) -match 'nolongerneeded') {
+    Ok 'config: -WithShodan accepted, no extra entry, says why' } else { Bad 'config -WithShodan' (ErrText) }
 
-  # Read-only is the default (no env written); -ReadWrite writes the opt-out on s1-secops-mcp only
+  # Read-only is the default (no env written); -ReadWrite writes the opt-out
   $j0 = Invoke-Launcher $launcher @('config', '-Profile', 's1lt-nokey') | ConvertFrom-Json
   $j = Invoke-Launcher $launcher @('config', '-Profile', 's1lt-nokey', '-ReadWrite') | ConvertFrom-Json
   if (-not $j0.mcpServers.'s1-secops-mcp'.env -and $j.mcpServers.'s1-secops-mcp'.env.S1_READ_ONLY -eq 'false' -and
-      @($j.mcpServers.'s1-secops-mcp'.env.PSObject.Properties).Count -eq 1 -and -not $j.mcpServers.'purple-mcp'.env -and -not $j.mcpServers.virustotal.env) {
-    Ok 'config: read-only by default, -ReadWrite sets S1_READ_ONLY=false on s1-secops-mcp only' } else { Bad 'config -ReadWrite' (ErrText) }
+      @($j.mcpServers.'s1-secops-mcp'.env.PSObject.Properties).Count -eq 1) {
+    Ok 'config: read-only by default, -ReadWrite sets S1_READ_ONLY=false' } else { Bad 'config -ReadWrite' (ErrText) }
 
   # config options
   $md = Join-Path $root 'CLAUDE.md'; Set-Content -Path $md -Value '# x'
@@ -73,7 +71,7 @@ try {
   $j = Invoke-Launcher $launcher @('config', '-Profile', 'prod', '-OutputDir', $out, '-ClaudeMd', $md, '-Image', 'sentinelone/secops-mcps:9.9.9') | ConvertFrom-Json
   $e = $j.mcpServers.'s1-secops-mcp'.env
   if ((Test-Path $out) -and $e.S1_OUTPUT_DIR -eq (Resolve-Path $out).ProviderPath -and $e.S1_CLAUDE_MD_PATH -eq (Resolve-Path $md).ProviderPath -and
-      ($j.mcpServers.'purple-mcp'.args -join ' ') -match '-Image sentinelone/secops-mcps:9\.9\.9 -Profile prod purple-mcp$' -and -not $j.mcpServers.virustotal.env) {
+      ($j.mcpServers.'s1-secops-mcp'.args -join ' ') -match '-Image sentinelone/secops-mcps:9\.9\.9 -Profile prod s1-secops-mcp$') {
     Ok 'config: -Profile -OutputDir -ClaudeMd -Image' } else { Bad 'config options' (ErrText) }
 
   # install, fresh
@@ -82,7 +80,7 @@ try {
   $cmds = @($j.mcpServers.PSObject.Properties | ForEach-Object { $_.Value.args[4] } | Select-Object -Unique)
   if ($rc -eq 0 -and (Test-Path $dest) -and ($cmds -join '') -eq $dest -and -not (Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue)) {
     Ok 'install: fresh config under APPDATA, launcher copied to HOME\bin' } else { Bad "install fresh (rc=$rc)" (ErrText) }
-  if ((ErrText) -match 'QuitClaudeDesktopcompletely' -and (ErrText) -match 'configuredread-only\(thedefault\)') { Ok 'install: read-only notice and restart instruction' } else { Bad 'install messages' (ErrText) }
+  if ((ErrText) -match 'QuitClaudeDesktopcompletely' -and (ErrText) -match 'configuredread-only\(thedefault\)' -and (ErrText) -match 'Built-intools:PurpleAIon') { Ok 'install: read-only notice, built-in tools line and restart instruction' } else { Bad 'install messages' (ErrText) }
   if ((ErrText) -notmatch 'Startingsetup') { Ok 'install: no credential prompt when input is redirected' } else { Bad 'install prompted for credentials' (ErrText) }
 
   # install merge
@@ -90,7 +88,10 @@ try {
 {"globalShortcut": "Alt+Space",
  "mcpServers": {
    "other": {"command": "node", "args": ["x.js"]},
+   "my-purple": {"command": "uvx", "args": ["--from", "git+https://github.com/Sentinel-One/purple-mcp.git", "purple-mcp"]},
    "virustotal-mcp": {"command": "powershell.exe", "args": ["-File", "C:\\old\\s1-secops-mcp-launch.ps1", "virustotal-mcp"]},
+   "purple-mcp": {"command": "powershell.exe", "args": ["-File", "C:\\Users\\x\\bin\\s1-secops-mcp-launch.ps1", "-Image", "sentinelone/secops-mcps:1.5.7", "purple-mcp"]},
+   "shodan": {"command": "powershell.exe", "args": ["-File", "C:\\Users\\x\\bin\\s1-secops-mcp-launch.ps1", "-Image", "sentinelone/secops-mcps:1.5.7", "shodan-mcp"]},
    "s1-secops-mcp": {"command": "docker", "args": ["run", "sentinelone/secops-mcps:1.4.0"]}},
  "preferences": {"a": 1}}
 '@
@@ -99,10 +100,10 @@ try {
   $j = Get-Content -Raw $cfg | ConvertFrom-Json
   $names = @($j.mcpServers.PSObject.Properties.Name | Sort-Object)
   if ($j.globalShortcut -eq 'Alt+Space' -and $j.preferences.a -eq 1 -and $j.mcpServers.other.command -eq 'node' -and
-      ($names -join ',') -eq 'other,purple-mcp,s1-secops-mcp,virustotal' -and $j.mcpServers.'s1-secops-mcp'.args[4] -eq $dest) {
-    Ok 'install: merge keeps others, replaces ours, drops old entry' } else { Bad 'install merge' (ErrText) }
+      ($names -join ',') -eq 'my-purple,other,s1-secops-mcp' -and $j.mcpServers.'s1-secops-mcp'.args[4] -eq $dest) {
+    Ok 'install: merge keeps others, replaces ours, drops pre-1.6.0 entries' } else { Bad 'install merge' (ErrText) }
   $bak = @(Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue)
-  if ($bak.Count -eq 1 -and [IO.File]::ReadAllText($bak[0].FullName) -eq $orig -and (ErrText) -match 'removedoldentryvirustotal-mcp') {
+  if ($bak.Count -eq 1 -and [IO.File]::ReadAllText($bak[0].FullName) -eq $orig -and (ErrText) -match 'removedoldentryvirustotal-mcp' -and (ErrText) -match 'removedoldentrypurple-mcp' -and (ErrText) -match 'removedoldentryshodan') {
     Ok 'install: backup identical to previous config' } else { Bad 'install backup' (ErrText) }
   $bak | Remove-Item
 
@@ -125,7 +126,7 @@ try {
   # -ConfigPath
   $alt = Join-Path $root 'alt\c.json'
   [void](Invoke-Launcher $launcher @('install', '-ConfigPath', $alt))
-  if (@((Get-Content -Raw $alt | ConvertFrom-Json).mcpServers.PSObject.Properties).Count -eq 3) { Ok 'install: -ConfigPath' } else { Bad 'install -ConfigPath' (ErrText) }
+  if (@((Get-Content -Raw $alt | ConvertFrom-Json).mcpServers.PSObject.Properties).Count -eq 1) { Ok 'install: -ConfigPath' } else { Bad 'install -ConfigPath' (ErrText) }
 
   # -ReadWrite: writes the opt-out and prints the write NOTICE
   $rwc = Join-Path $root 'rwi\c.json'
@@ -142,7 +143,7 @@ try {
   [void](Invoke-Launcher $launcher @('install'))
   $m = Get-Content -Raw $msixCfg | ConvertFrom-Json
   $a2 = Get-Content -Raw $cfg | ConvertFrom-Json
-  if ($rc -eq 0 -and $m.preferences.sidebarMode -eq 'chat' -and $m.mcpServers.'s1-secops-mcp'.args[4] -eq $dest -and $a2.mcpServers.'purple-mcp'.args[4] -eq $dest -and (ErrText) -match 'MSIXpackagecopy') {
+  if ($rc -eq 0 -and $m.preferences.sidebarMode -eq 'chat' -and $m.mcpServers.'s1-secops-mcp'.args[4] -eq $dest -and $a2.mcpServers.'s1-secops-mcp'.args[4] -eq $dest -and (ErrText) -match 'MSIXpackagecopy') {
     Ok 'install: MSIX install gets the virtualized config too, preferences kept' } else { Bad 'install MSIX' (ErrText) }
   Remove-Item -Recurse -Force (Join-Path $localAppData 'Packages')
   Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue | Remove-Item
@@ -155,7 +156,7 @@ try {
   [void](Invoke-Launcher $launcher @('install'))
   $c = Get-Content -Raw $cdCfg | ConvertFrom-Json
   if ($rc -eq 0 -and $c.userDataOutsidePackageAnswer -eq $true -and $c.mcpServers.'s1-secops-mcp'.args[4] -eq $dest -and (ErrText) -match 'Claude-Dataper-accountfolder' -and (ErrText) -notmatch 'noexistingClaudeDesktopconfig') {
-    Ok 'install: Claude-Data config gets the servers too, settings kept' } else { Bad 'install Claude-Data' (ErrText) }
+    Ok 'install: Claude-Data config gets the server too, settings kept' } else { Bad 'install Claude-Data' (ErrText) }
   Remove-Item -Recurse -Force (Join-Path $localAppData 'Claude-Data')
   Get-ChildItem "$cfg.bak-*" -ErrorAction SilentlyContinue | Remove-Item
 
@@ -171,7 +172,7 @@ try {
   # Live stdio check (Windows with Docker running and the image present): an MCP
   # client keeps stdin open, so the initialize reply must arrive before stdin
   # closes. Piping one line and closing stdin hides a relay that buffers input.
-  $image = if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.5.7' }
+  $image = if ($env:S1_MCP_IMAGE) { $env:S1_MCP_IMAGE } else { 'sentinelone/secops-mcps:1.6.0' }
   $dockerOk = $false
   if ($env:OS -eq 'Windows_NT' -and (Get-Command docker -ErrorAction SilentlyContinue)) {
     $ErrorActionPreference = 'Continue'

@@ -2,9 +2,9 @@
   "manifest_version": "0.3",
   "name": "s1-secops-mcp",
   "display_name": "SentinelOne SecOps MCP",
-  "version": "1.5.7",
-  "description": "PowerQuery, Management Console API, Unified Alert Management, Singularity Data Lake and Hyperautomation tools for a SentinelOne tenant.",
-  "long_description": "Runs the s1-secops-mcp server (stdio) inside Claude Desktop. Enter the console URL and API token in the extension settings; Claude Desktop stores fields marked sensitive in the OS secure store (Keychain on macOS, Credential Manager on Windows) and passes them to the server as environment variables at launch. The server is started with S1_KEYCHAIN=off, so the values in these settings are the only credentials it uses.\n\nRead-only by default: tools that change the tenant are refused until you turn off Read-only mode in the extension settings.\n\n35 tools: PowerQuery (LRQ) hunts and schema discovery, generic Mgmt Console REST calls, UAM alert triage (status, analyst verdict, assignee, notes), SDL configuration files and dashboards, HEC log ingest, UAM test-alert ingest, and Hyperautomation workflow import and export. Also serves the soc_analyst and session_init prompts.",
+  "version": "1.6.0",
+  "description": "PowerQuery, Management Console API, Unified Alert Management, Purple AI, Singularity Data Lake and Hyperautomation tools for a SentinelOne tenant, with built-in VirusTotal and Shodan lookups.",
+  "long_description": "Runs the s1-secops-mcp server (stdio) inside Claude Desktop. Enter the console URL and API token in the extension settings; Claude Desktop stores fields marked sensitive in the OS secure store (Keychain on macOS, Credential Manager on Windows) and passes them to the server as environment variables at launch. The server is started with S1_KEYCHAIN=off, so the values in these settings are the only credentials it uses.\n\nRead-only by default: tools that change the tenant are refused until you turn off Read-only mode in the extension settings.\n\n40 tools: PowerQuery (LRQ) hunts and schema discovery, generic Mgmt Console REST calls, UAM alert triage (status, analyst verdict, assignee, notes), Purple AI questions and alert summaries, SDL configuration files and dashboards, HEC log ingest, UAM test-alert ingest, Hyperautomation workflow import and export, and threat-intelligence lookups: VirusTotal (listed when a VirusTotal API key is set) and Shodan (listed when a Shodan API key is set). Also serves the soc_analyst and session_init prompts.",
   "author": {
     "name": "Prithvi Moses",
     "email": "prithvi.moses@sentinelone.com"
@@ -31,6 +31,8 @@
         "S1_OUTPUT_DIRS": "${user_config.output_dir}",
         "S1_CLAUDE_MD_PATH": "${user_config.claude_md_path}",
         "S1_READ_ONLY": "${user_config.read_only}",
+        "VIRUSTOTAL_API_KEY": "${user_config.virustotal_api_key}",
+        "SHODAN_API_KEY": "${user_config.shodan_api_key}",
         "S1_KEYCHAIN": "off"
       }
     }
@@ -46,6 +48,7 @@
     { "name": "s1_api_patch", "description": "Generic PATCH request to the SentinelOne Management Console REST API (v2.1)" },
     { "name": "s1_api_download", "description": "Download a binary response from the Management Console REST API (v2.1) and save it to a file" },
     { "name": "purple_ai_alert_summary", "description": "Get a Purple AI natural-language summary for a specific UAM alert" },
+    { "name": "purple_ai_query", "description": "Ask Purple AI a natural-language question; returns an answer or a PowerQuery to run" },
     { "name": "uam_list_alerts", "description": "List UAM (Unified Alert Management) alerts via GraphQL" },
     { "name": "uam_get_alert", "description": "Get full details for a specific UAM alert including analyst notes" },
     { "name": "uam_add_note", "description": "Add an analyst note to a UAM alert" },
@@ -70,7 +73,11 @@
     { "name": "ha_import_workflow", "description": "Import a Hyperautomation workflow JSON into the SentinelOne console" },
     { "name": "ha_export_workflow", "description": "Export Hyperautomation workflows as a ZIP archive" },
     { "name": "uam_ingest_alert", "description": "Create a synthetic test alert in Unified Alert Management (UAM) via the SentinelOne ingest API" },
-    { "name": "uam_post_alert", "description": "POST a single raw OCSF SecurityAlert to /v1/alerts on the SentinelOne HEC ingest host" }
+    { "name": "uam_post_alert", "description": "POST a single raw OCSF SecurityAlert to /v1/alerts on the SentinelOne HEC ingest host" },
+    { "name": "ti_vt_lookup", "description": "VirusTotal report for a file hash, IP, domain or URL (needs a VirusTotal API key)" },
+    { "name": "ti_vt_relationship", "description": "One page of a VirusTotal relationship for an indicator, for pivoting (needs a VirusTotal API key)" },
+    { "name": "ti_shodan_host", "description": "Shodan host information for an IP: ports, services, CVEs, owner (needs a Shodan API key)" },
+    { "name": "ti_shodan_dns", "description": "Shodan DNS resolve or reverse lookup (needs a Shodan API key)" }
   ],
   "tools_generated": false,
   "prompts_generated": true,
@@ -128,6 +135,22 @@
       "type": "string",
       "title": "SDL Log Write Key (optional)",
       "description": "SDL Log Write Key, used only by hec_ingest. Console > Singularity Data Lake > API Keys > Log Write Key.",
+      "sensitive": true,
+      "required": false,
+      "default": ""
+    },
+    "virustotal_api_key": {
+      "type": "string",
+      "title": "VirusTotal API key (optional)",
+      "description": "Enables the built-in ti_vt_lookup and ti_vt_relationship tools. Lookups go directly to VirusTotal under your own key and its terms; a free key allows 4 lookups per minute.",
+      "sensitive": true,
+      "required": false,
+      "default": ""
+    },
+    "shodan_api_key": {
+      "type": "string",
+      "title": "Shodan API key (optional)",
+      "description": "Enables the built-in ti_shodan_host and ti_shodan_dns tools. Lookups go directly to Shodan under your own key and its terms.",
       "sensitive": true,
       "required": false,
       "default": ""

@@ -180,26 +180,40 @@ Claude reads powerquery SKILL.md → writes hunt query
 
 ## Directory layout
 
+The SecOps skills and their MCP server live in two folders of the ai-siem repo:
+
 ```text
-s1-secops-skills/
-  CLAUDE.md                     SOC Analyst persona and operating instructions
-  README.md                     High-level overview (this project)
-  docs/                         Detailed documentation (this folder)
-    architecture.md             How all layers fit together (this file)
-    skills.md                   Per-skill capability reference
-    mcp-tools.md                All MCP tool schemas and usage notes
-    credentials.md              Credential values, env + keychain resolution, setup, security model
-    testing.md                  Test coverage: what was validated, gotchas per surface
-  mgmt-console-api/ Skill: Management Console REST + SDL + UAM + Purple AI
-  powerquery/       Skill: PowerQuery authoring and execution
-  sdl-api/          Skill: SDL log ingest and config file operations
-  sdl-dashboard/    Skill: SDL dashboard authoring and deployment
-  sdl-log-parser/   Skill: SDL log parser authoring and validation
-  hyperautomation/  Skill: Hyperautomation workflow authoring and import
-  sdl-solutions/    Skill: repeatable SDL solution deployment (onboarding, enrichment)
-  soc-investigator/             Skill: autonomous DFIR alert investigation and correlation
-  s1-secops-mcp/              MCP server (Node.js): 40 tools, stdio
-  docker/                       Image build (one server, distroless), dispatcher, and the host keychain launchers
-  s1-secops-skills-plugin/    Distributable plugin bundle (all 8 skills)
-  assets/                       Screenshots and images for documentation
+ai-siem/
+  .claude-plugin/marketplace.json   Plugin marketplace entry
+  plugins/s1-secops-skills/
+    CLAUDE.md                       SOC Analyst persona and operating instructions
+    README.md                       Overview, install and upgrade
+    THIRD_PARTY_NOTICES.md          Third-party components, licenses and service terms
+    docs/                           Detailed documentation (this folder)
+      architecture.md               How all layers fit together (this file)
+      installation.md               Install with Docker or Node
+      docker.md                     The image and the host launchers
+      credentials.md                Credential values, env + keychain resolution, setup, security model
+      mcp-tools.md                  All MCP tool schemas and usage notes
+      connect-optional-tools.md     Adding other MCP servers from their official sources
+      read-only.md                  Read-only default and turning write on
+      skills.md                     Per-skill capability reference
+      testing.md                    Test coverage: what was validated, gotchas per surface
+      upgrading.md                  Version-to-version upgrade steps
+      solutions/                    SDL solution guides
+      release-notes/                Release notes per version
+    skills/
+      mgmt-console-api/             Management Console REST + SDL + UAM + Purple AI
+      powerquery/                   PowerQuery authoring and execution
+      sdl-api/                      SDL log ingest and config file operations
+      sdl-dashboard/                SDL dashboard authoring and deployment
+      sdl-log-parser/               SDL log parser authoring and validation
+      hyperautomation/              Hyperautomation workflow authoring and import
+      sdl-solutions/                Repeatable SDL solution deployment (onboarding, enrichment)
+      soc-investigator/             Autonomous DFIR alert investigation and correlation
+    scripts/build.sh                Builds the plugin and the per-skill .skill files
+    dist/                           The .plugin bundle and the eight .skill files
+  mcp/
+    s1-secops-mcp/                  MCP server (Node.js): 40 tools, stdio
+    docker/                         Image build (one server, distroless), dispatcher, host keychain launchers and their tests
 ```

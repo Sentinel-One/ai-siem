@@ -553,6 +553,8 @@ open(tmp,"w",encoding="utf-8").write(json.dumps(cfg,indent=2)+"\n"); os.replace(
       if [ -n "$(kc_get VIRUSTOTAL_API_KEY)" ]; then _vt=on; else _vt="off (no VIRUSTOTAL_API_KEY)"; fi
       if [ -n "$(kc_get SHODAN_API_KEY)" ]; then _sh=on; else _sh="off (no SHODAN_API_KEY)"; fi
       echo "Built-in tools: Purple AI on, VirusTotal $_vt, Shodan $_sh. To add a key: $DEST setup, then restart $CLIENT." >&2
+    else
+      echo "Built-in tools: Purple AI on, VirusTotal off, Shodan off until their keys can be stored (needs the keyring above, then $DEST setup)." >&2
     fi
     if [ -n "$CLAUDE_CODE" ]; then
       echo "Done. Exit Claude Code and start it again; /mcp lists s1-secops-mcp. Nothing needs starting in Docker Desktop." >&2

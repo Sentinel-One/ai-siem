@@ -30,7 +30,7 @@ bash mcpb/build-mcpb.sh
 ```
 
 The script checks that `manifest.json` and `package.json` carry the same
-version and that the manifest's `tools` list matches the 40 tools the server
+version and that the manifest's `tools` list matches the 47 tools the server
 registers, stages only `index.js`, `lib/`, `tools/`, `package.json`,
 `README.md` and `CHANGELOG.md` under `server/` (plus `manifest.json`,
 `CLAUDE.md` and `LICENSE` at the root), normalises file modes, and refuses to

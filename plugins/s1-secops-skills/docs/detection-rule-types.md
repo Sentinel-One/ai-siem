@@ -41,7 +41,7 @@ matrix in [detection-asset-binding.md](./detection-asset-binding.md).
 | Type | `queryType` | Body lives in | Body language | Fires | Asset binding | Mitigation | Best for |
 |---|---|---|---|---|---|---|---|
 | STAR single-event | `events` | `data.s1ql` | boolean S1QL, no pipes | per matching event, streaming at ingest | automatic from the matched event | inline Active Response (`treatAsThreat`/`networkQuarantine`) or HA flow | deterministic single-event signatures |
-| STAR multi-event (correlation) | `correlation` | `data.correlationParams` | boolean S1QL per sub-query, no pipes | when sub-query thresholds are met in a time window, grouped by an entity | automatic; `entityMappings` optional | inline Active Response (`treatAsThreat`) or HA flow | thresholds (N of X) and A-then-B sequences |
+| STAR multi-event (correlation) | `correlation` | `data.correlationParams` | boolean S1QL per sub-query, no pipes | when sub-query thresholds are met in a time window, grouped by an entity | automatic; `entityMappings` optional | inline Active Response (`treatAsThreat`/`networkQuarantine`, needs a process entity) or HA flow | thresholds (N of X) and A-then-B sequences |
 | Scheduled (PowerQuery) | `scheduled` | `data.scheduledParams.query` | PowerQuery, pipes allowed | on a schedule over a lookback window | set `entityMappings` on projected columns | via HA flow off the alert (`treatAsThreat` = `UNDEFINED`, no inline Active Response) | aggregation, baselines, lookup/anti-join exclusions |
 | HA watchdog | not a rule | a Hyperautomation workflow | full PowerQuery via the LRQ API, no evaluator restrictions | on the workflow's own `scheduled_trigger` | you compose the alert, so any field can carry the asset | any HTTP call the flow can make | a query the scheduled evaluator rejects, or an alert body built from the result |
 
@@ -93,10 +93,32 @@ hardcode an inline negative list: `AND NOT (src.process.user in:anycase ('domain
 
 `s1ql` stays empty; the logic lives in `data.correlationParams`:
 
-- `entity`: the field events are correlated/grouped by (`user` is tenant-confirmed; device/endpoint/IP-style entities also exist).
+- `entity`: the key events are correlated by. Built-in API values `user`, `ip`, `process`, `storyline` and `none` are tenant-confirmed; `custom` keys on field paths you choose (below).
 - `matchInOrder`: `false` = sub-queries can match in any order; `true` = ordered sequence (sub-query 1, then 2, and so on).
-- `timeWindow.windowMinutes`: the correlation window.
-- `subQueries[]`: each `{ "matchesRequired": N, "subQuery": "<boolean S1QL, no pipes>" }`. One sub-query with `matchesRequired: N` is a threshold detection (N of the same event by entity within the window). Multiple sub-queries form a multi-stage or sequence detection.
+- `timeWindow.windowMinutes`: the correlation window, one of `10`, `30`, `60`, `240`, `480`, `720`. Use 60 unless the threat's tempo says otherwise, and always send it (a rule created without it stored 480).
+- `subQueries[]`: 1 to 10 entries, each `{ "matchesRequired": N, "subQuery": "<boolean S1QL, no pipes>" }`, at most 8,192 characters per sub-query. One sub-query with `matchesRequired: N` (N of 2 or more) is a threshold detection (N of the same event by entity within the window). Multiple sub-queries form a multi-stage or sequence detection.
+
+**Custom correlation entities** (`entity: "custom"`, enabled per tenant until on by default) take
+`entitiesAndFields`, a list of groups: fields inside a group are OR'd (aliases for one identity),
+groups are AND'd (a compound key). Example: `[["agent.uuid"], ["src.process.uid"]]` is a process on
+an endpoint; `[["src.process.parent.storyline.id", "tgt.process.storyline.id"]]` is one storyline
+under either name. In a Detection as Code rule file the same block is
+`correlationParams: { entity: Custom, entitiesAndFields: [[...]] }`. The rules that bite:
+
+- Field names must match `^[a-zA-Z][a-zA-Z0-9_]*(\[[0-9]+\])?(\.[a-zA-Z][a-zA-Z0-9_]*(\[[0-9]+\])?)*$`;
+  `account.id`, `account.name`, `accountid`, `filterpurpose`, `ruleid`, `rule.id`, `filterid` (and
+  `oempurpose`) are reserved. Per-event ids, timestamps, free text, counters and high-entropy values
+  make useless keys.
+- A multi-valued field or an OR alias holding different values fans one event out into several
+  entities and several alerts; cool-off does not merge them. A rule tracking more than 2,000,000
+  entities is deactivated.
+- Inline Active Response needs `agent.uuid` alone in its own group (Network Quarantine), plus
+  `src.process.storyline.id` or `src.process.uid` alone in another (Treat as Threat), and the RBAC
+  permissions `Endpoints: Disconnect from network` / `Endpoint Threats: Mark suspicious` /
+  `Mark threat` (HTTP 403 on save without them).
+
+Built-in entity field sets, the full rejection table and troubleshooting:
+[`powerquery/references/detection-rules.md`](../skills/powerquery/references/detection-rules.md), "Custom correlation key".
 
 ```json
 {

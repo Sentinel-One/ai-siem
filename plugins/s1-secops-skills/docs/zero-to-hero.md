@@ -37,9 +37,10 @@ CLAUDE.md            SOC Analyst persona, evidence rules, session protocol
        |
        v
 MCP Server           Live API access from your machine, credentials from the OS keychain
-  s1-secops-mcp      Up to 40 tools: PowerQuery, SDL, Mgmt REST, UAM, UAM Ingest,
-                     Hyperautomation, Purple AI questions, and built-in VirusTotal and
-                     Shodan lookups (listed when their API keys are stored)
+  s1-secops-mcp      Up to 47 tools: PowerQuery, SDL, Mgmt REST, UAM, UAM Ingest,
+                     Hyperautomation, Purple AI questions, Detection as Code, Asset
+                     Inventory, and built-in VirusTotal and Shodan lookups (listed
+                     when their API keys are stored)
   optional           Other MCP servers you add from their official sources
        |
        v
@@ -65,7 +66,7 @@ You can also be explicit. "Use the SDL log parser skill to..." or "switch to Pow
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default. |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import. |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions from one short prompt. Ten solutions: data source onboarding (raw stream to OCSF, enrichment, dashboard, MITRE detections, threat-response flow), asset enrichment, UEBA anomaly detection, per-device ingest health, detection exclusions, Risk-Based Alerting, Detection as Code, alert noise reduction, custom detections with MITRE mapping, and query slicing. Orchestrates the primitive skills above. |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions from one short prompt. Eleven solutions: data source onboarding (raw stream to OCSF, enrichment, dashboard, MITRE detections, threat-response flow), asset enrichment, UEBA anomaly detection, per-device ingest health, detection exclusions, Risk-Based Alerting, Detection as Code, alert noise reduction, custom detections with MITRE mapping, query slicing, and an unprotected endpoints report. Orchestrates the primitive skills above. |
 | soc-investigator | Autonomous DFIR investigation of SentinelOne alerts (SHORT, MEDIUM, LONG) and alert-agnostic SWEEP hunts for MITRE-mapped TTPs, with IOC enrichment, strict verdict gates and a report with a query appendix. |
 
 Plus `CLAUDE.md` at the repo root, which transforms Claude into a **Principal SOC Analyst**: a structured investigator that runs the same enrichment, correlation, and reasoning process a senior analyst would, on every alert, every time.

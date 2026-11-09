@@ -61,7 +61,7 @@ A local Node.js process (or the Docker image, started by the host launcher) that
 
 Bulk results do not have to pass through the model's context: `powerquery_run`, `s1_api_get`, `s1_api_download` and `ha_export_workflow` take an `outputFile` (an absolute path inside `S1_OUTPUT_DIRS`, default home and temp; files are created mode 0600 and never overwritten unless `overwrite` is true) and return a summary instead.
 
-It registers 40 MCP tools across six groups. The four VirusTotal and Shodan tools are listed only when their API key is stored, so a client sees 36 tools with no threat-intel keys, 38 with VirusTotal only, and 40 with both:
+It registers 47 MCP tools across eight groups. The four VirusTotal and Shodan tools are listed only when their API key is stored, so a client sees 43 tools with no threat-intel keys, 45 with VirusTotal only, and 47 with both:
 
 | Group | Tools | API surface |
 |---|---|---|
@@ -71,10 +71,12 @@ It registers 40 MCP tools across six groups. The four VirusTotal and Shodan tool
 | SDL | `sdl_list_files`, `sdl_get_file`, `sdl_put_file`, `sdl_delete_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `hec_ingest` | SDL config + dashboards + event collector |
 | Hyperautomation | `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, `ha_export_workflow`, `ha_delete_workflow` | HA public + v1 API |
 | UAM Ingest | `uam_ingest_alert`, `uam_post_alert` | UAM Alert Interface (`/v1/alerts`) |
+| Detection as Code | `dac_export`, `dac_diff`, `dac_apply` | Custom detection rules `export-vcs` and `parse-vcs` (REST v2.1) |
+| Asset Inventory | `asset_inventory_counts`, `asset_inventory_search`, `asset_inventory_get`, `asset_inventory_filter_values` | Asset Inventory GraphQL (`/web/api/v2.1/graphql`) |
 
 Two credentials split the ingest surface. `hec_ingest` posts raw logs to the event collector and authenticates with an SDL Log Write Key (`S1_HEC_TOKEN`), which returns `HTTP 200 {"text":"Success","code":0}` with no `S1-Scope` header. The console API token is not a reliable substitute there: on some consoles it returns `HTTP 400 {"text":"Missing S1-Scope header","code":5}` without an `S1-Scope` header and is accepted with one, on others it returns `HTTP 403 {"text":"User token not allowed for this endpoint","code":4}` either way. Use the write key in both cases. The UAM Ingest tools post alerts to `/v1/alerts` and keep using the console API token (`S1_CONSOLE_API_TOKEN`). Indicators have no separate ingest path: they ride inside the alert, in `finding_info.related_events[]`.
 
-**Read-only by default (1.5.5).** One gate in the server (`lib/access.js`) classifies every tool as Read (20), Write (18) or Conditional (2: `s1_api_post`, `powerquery_run`). Unless `S1_READ_ONLY=false` is set, any call that would change the tenant is refused before a network request is made; read and query calls always run. When write is enabled, a write is still refused if no console token is configured (except `hec_ingest`) or the token is a JWT that has expired, and each allowed write logs one stderr audit line with no bodies or tokens. The console role of the token's user remains the authoritative control. Details: [read-only.md](./read-only.md); per-tool access: [mcp-tools.md](./mcp-tools.md).
+**Read-only by default (1.5.5).** One gate in the server (`lib/access.js`) classifies every tool as Read (26), Write (19) or Conditional (2: `s1_api_post`, `powerquery_run`). Unless `S1_READ_ONLY=false` is set, any call that would change the tenant is refused before a network request is made; read and query calls always run. When write is enabled, a write is still refused if no console token is configured (except `hec_ingest`) or the token is a JWT that has expired, and each allowed write logs one stderr audit line with no bodies or tokens. The console role of the token's user remains the authoritative control. Details: [read-only.md](./read-only.md); per-tool access: [mcp-tools.md](./mcp-tools.md).
 
 Full tool reference: [mcp-tools.md](./mcp-tools.md)
 
@@ -214,6 +216,6 @@ ai-siem/
     scripts/build.sh                Builds the plugin and the per-skill .skill files
     dist/                           The .plugin bundle and the eight .skill files
   mcp/
-    s1-secops-mcp/                  MCP server (Node.js): 40 tools, stdio
+    s1-secops-mcp/                  MCP server (Node.js): 47 tools, stdio
     docker/                         Image build (one server, distroless), dispatcher, host keychain launchers and their tests
 ```

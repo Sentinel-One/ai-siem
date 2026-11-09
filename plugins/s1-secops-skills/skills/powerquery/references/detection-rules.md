@@ -61,10 +61,11 @@ There is no `lookup` in a single-event body (no pipes). To exclude known-good ac
 
 `s1ql` stays empty; the logic lives in `data.correlationParams`:
 
-- `entity`: the correlation key. `user` and `ip` are tenant-confirmed built-ins; device/endpoint-style entities also exist. Set `custom` to key on an arbitrary field path, see "Custom correlation key" below. The field is required: omitting it, `""` and `null` are all HTTP 400. `entity: "none"` correlates across the whole rule scope with no key, so N matching events from unrelated hosts or users still fire (live-verified 2026-10: two events with different hosts fired one alert).
+- `entity`: the correlation key. Built-in API values `user`, `ip`, `process` and `storyline` are tenant-confirmed (the field sets behind each preset are in "Custom correlation key" below); `device` is not an accepted API value (HTTP 400 `"device" is not a valid choice`), so read the Device preset's value from a rule created in the console before writing it. Set `custom` to key on field paths of your choosing. The field is required: omitting it, `""` and `null` are all HTTP 400. `entity: "none"` correlates across the whole rule scope with no key, so N matching events from unrelated hosts or users still fire (live-verified 2026-10: two events with different hosts fired one alert).
 - `matchInOrder`: `false` = sub-queries may match in any order; `true` = ordered sequence (sub-query 1, then 2, and so on). The order is the order events **reach the engine**, not their event timestamps: a stage-1 event that arrives after its stage-2 event does not complete the sequence even when its event time is earlier (live-verified 2026-10: 0 alerts for late-arriving stage 1, 1 alert for the in-order control). Back-filled or lagging sources break ordered rules silently; use `matchInOrder: false` for them.
-- `timeWindow.windowMinutes`: the correlation window.
-- `subQueries[]`: each `{ "matchesRequired": N, "subQuery": "<boolean S1QL, no pipes>" }`. A rule needs at least two sub-queries, or one with `matchesRequired` above 1: a single sub-query with `matchesRequired: 1` is HTTP 400 `must have at least 2 subqueries or 1 subquery with matches required > 1`, for any `entity` (use an events rule for a single-event match). `matchesRequired` must be 1 to 1000; 1001 is HTTP 400 `The number of matches must be between 1 and 1000`. For larger thresholds use a scheduled rule (`| group n=count() by <key> | filter n > N`). One sub-query with `matchesRequired: N` is a threshold detection (N of the same event by entity in the window). Multiple sub-queries form a multi-stage / sequence detection.
+- `timeWindow.windowMinutes`: the correlation window, one of `10`, `30`, `60`, `240`, `480`, `720` (10 minutes to 12 hours). Any other value is HTTP 400 `The window minutes size must be one of: 10, 30, 60, 240, 480, 720.` The console default is 60. Always send it: a rule created through the API without `timeWindow` stored 480.
+- `subQueries[]`: each `{ "matchesRequired": N, "subQuery": "<boolean S1QL, no pipes>" }`. A rule needs at least two sub-queries, or one with `matchesRequired` above 1: a single sub-query with `matchesRequired: 1` is HTTP 400 `must have at least 2 subqueries or 1 subquery with matches required > 1`, for any `entity` (use an events rule for a single-event match). At most 10 sub-queries: 11 is HTTP 400 `You must provide between 1 and 10 queries.` Each sub-query is at most 8,192 characters (HTTP 400 `sub_query exceeds maximum length of 8192 characters`; the cap is per sub-query, not on their sum). `matchesRequired` must be 1 to 1000; 1001 is HTTP 400 `The number of matches must be between 1 and 1000`. For larger thresholds use a scheduled rule (`| group n=count() by <key> | filter n > N`). One sub-query with `matchesRequired: N` is a threshold detection (N of the same event by entity in the window). Multiple sub-queries form a multi-stage / sequence detection.
+- Do not start a sub-query with `!`: open with a positive predicate and put the negation after it. The API accepts a leading `!`, so nothing catches the mistake at save time. Avoid `os = "windows"` in a sub-query.
 
 ```json
 {
@@ -92,16 +93,16 @@ Tenant-validated 2026-06-24: a single-subQuery correlation (`entity:"user"`, `ma
 
 The window must comfortably exceed end-to-end ingestion lag, not just the
 attacker's tempo. Agents and integrations buffer, networks lag, and ingestion
-falls behind during bursts, so with a window of 10 minutes or less a
-late-arriving event lands outside the window even though the behaviours really
-did happen together, and the rule **silently fails to fire**. Nothing surfaces
-this: it looks identical to "no such activity".
+falls behind during bursts, so with a window of 10 minutes a late-arriving event
+lands outside the window even though the behaviours really did happen together,
+and the rule **silently fails to fire**. Nothing surfaces this: it looks
+identical to "no such activity".
 
-**Use 60 minutes as the default.** Reserve sub-hour windows for sources you know
-ingest in near real time. Otherwise match the window to the threat's real tempo:
-brute force unfolds in minutes, lateral movement in hours, slow exfiltration
-over days. Too long is its own failure, unrelated activity drifting into one
-alert.
+**Use 60 minutes as the default.** Reserve the 10 and 30 minute windows for
+sources you know ingest in near real time. Otherwise match the window to the
+threat's real tempo: brute force unfolds in minutes, lateral movement in hours,
+slow exfiltration up to the 12 hour maximum (beyond that, use a scheduled rule).
+Too long is its own failure, unrelated activity drifting into one alert.
 
 This is the first thing to check when a correlation rule does not fire, ahead of
 the query itself.
@@ -112,82 +113,29 @@ A window also does not deduplicate. Measured 2026-10-09 on the platform rule
 apart, raised two alerts. Space repeated test seeds more than one window apart, or
 expect one alert per seed.
 
-#### The cartesian-product trap: one event, many entities, many alerts
-
-A single event can carry several values for a field the entity keys on: several
-user contexts, several destination IPs, an array-valued field. The rule then
-expands that event into **one entity per combination of values**, each
-accumulating state independently and each able to fire its own alert.
-
-With entity `(user, host)` and an event carrying `user: alice` and
-`host: web-01, web-02, web-03`, the rule tracks three entities, not one, and can
-raise three alerts for what was logically a single incident. Two multi-valued
-fields holding 3 and 4 values produce 12 entities from one event.
-
-The same thing happens through OR aliases: fields grouped as alternative
-spellings of one identity, which in reality hold *different* values on the same
-event, each become an entity. `real_user` and `effective_user` are related, not
-aliases.
-
-There is an internal cap on how many entities one event may map to. Above it the
-system **skips entity-state updates for that event entirely**, so an over-broad
-entity silently drops the events it was meant to track.
-
-Avoid it by preferring single-valued fields for the key, keeping composites
-shallow (each dimension multiplies the blast radius), and auditing OR groups so
-they only contain genuine renames of the same value.
-
-A cool-off period does **not** fix duplicate alerts of this kind: cool-off
-suppresses repeats for the *same* entity, and these duplicates arrive under
-different entities. The fix belongs in the entity definition.
-
-#### Field names the validator refuses as a correlation key
-
-Beyond syntax (a dotted identifier path, optional `[N]` index, no leading digit
-or underscore, no colons, hyphens or spaces), whole categories are rejected
-because they cannot work as an identity:
-
-| Category | Why it can never fire |
-|---|---|
-| Per-event identifiers (event/request/correlation/transaction/span IDs, per-event UUIDs) | every event is its own entity, so nothing ever accumulates |
-| Timestamps (occurred, received, created, updated) | change on every event, identify nothing |
-| Free text (message, description, command line, URL, stack trace, raw payload) | enormous entity cardinality, very noisy |
-| Measurements and counters (count, duration, size, ratio, score) | describe the event, do not identify its subject |
-| High-entropy non-identity values (digests, signatures, tokens, nonces) | unique but name nothing stable |
-| Platform-reserved (`account.id`, `account.name`, `rule.id`, `filterid`, `filterpurposeruleid`, `accountidoempurpose`, and `__` / `:` / `sca:` / `synthetic:` / `_k8s_` prefixes) | clash with platform internals |
-
-Good keys are stable identifiers: user id or name, agent UUID, host name, source
-IP, or a composite such as agent + process id. Standard identity fields pass even
-when they superficially resemble a restricted category. The validator's error
-message names the field and the reason, and is authoritative over this table.
-
-#### Mitigation on a correlation rule needs its fields pinned in singleton groups
-
-Inline Active Response runs **on the endpoint**, so the rule can only carry it
-out when every matched event is guaranteed to carry the identifiers the agent
-needs. With a custom entity that guarantee comes from the group layout: each
-required field must sit in a group of its own. Because every event joining the
-entity must supply a value for every group, a singleton group forces that field
-to be present on every match, including the event that triggers the action.
-
-| Action | Required singleton groups |
-|---|---|
-| Network Quarantine | `agent.uuid` alone in its own group |
-| Treat as Threat | `agent.uuid` **and** a process id (`src.process.storyline.id` or `src.process.uid`), each alone |
-
-The moment `agent.uuid` shares a group with anything else (say
-`[agent.uuid, host.name]`), an event supplying only `host.name` could match with
-no agent UUID, the guarantee is lost, and **both** actions become unavailable. A
-pure cross-source identity such as user + host with no agent field supports
-neither: those are the XDR-style rules where mitigation cannot run
-deterministically, and the response belongs in a Hyperautomation flow instead.
-The built-in Storyline and Process presets support both actions unconditionally.
-
 #### Custom correlation key (`entity: "custom"`)
 
-When no built-in entity fits, correlate on a field path of your choosing.
-`entitiesAndFields` is a **list of entity groups**, not one list per sub-query
-(platform S-26.2.6 "custom entity type"):
+When no built-in entity fits, correlate on field paths of your choosing.
+
+**Availability.** Custom entities are enabled per tenant until they are on by
+default. If the API refuses `entity: "custom"` as unavailable (rather than with
+one of the shape errors below), the tenant needs the feature enabled; there is
+nothing to fix in the rule body.
+
+**Built-in entities and the fields behind them.** Prefer a preset when one fits;
+reach for `custom` only when none does.
+
+| Entity | Fields |
+|---|---|
+| Process | `src.process.uid` AND `agent.uuid` |
+| Device | `agent.uuid` OR `device.uid` |
+| IP | `src_endpoint.ip` OR `dst_endpoint.ip` OR `device.ip` OR `dst.ip.address` OR `src.ip.address` |
+| Storyline | `src.process.storyline.id` AND `agent.uuid` |
+| User | `actor.user.name` OR `src.process.user` OR `tgt.process.user` OR `event.login.userName` |
+| None | no key: the whole rule scope is one entity |
+
+**The group model.** `entitiesAndFields` is a **list of entity groups**, not one
+list per sub-query (platform S-26.2.6 "custom entity type"):
 
 - **Fields inside one group are OR'd.** Use a group when the same identity value
   appears under different field names, across sources or across sub-queries.
@@ -196,6 +144,8 @@ When no built-in entity fits, correlate on a field path of your choosing.
   group.
 - **The number of groups is independent of the number of sub-queries.** One group
   with two sub-queries and two groups with one sub-query are both accepted.
+- **A field path may appear in only one group**, because a path in two groups
+  would be AND'd with itself.
 
 Join two sub-queries that name the same identity differently (one group, two
 alternative fields):
@@ -205,7 +155,7 @@ alternative fields):
   "entity": "custom",
   "entitiesAndFields": [ ["src.process.parent.storyline.id", "tgt.process.storyline.id"] ],
   "matchInOrder": false,
-  "timeWindow": {"windowMinutes": 10},
+  "timeWindow": {"windowMinutes": 60},
   "subQueries": [
     {"matchesRequired": 1, "subQuery": "event.type='Process Creation'"},
     {"matchesRequired": 1, "subQuery": "event.type='IP Connect'"}
@@ -230,10 +180,49 @@ events over HEC and reading the resulting alerts and their raw indicators:
 | `[["actor"],["target"]]`, two sub-queries | stage a has only `actor=K`, stage b has only `target=K` | **no alert** |
 | same rule | both stages carry `actor=K2` and `target=T2` | fired |
 
-The fourth row is the shape this file previously documented as "one inner list
-per sub-query, matched positionally". It is accepted by the API and never fires
-for split identities. To join `actor` in one sub-query to `target` in another,
-put both fields in one group (the first example above).
+**Do not give each sub-query its own group.** `[["actor"],["target"]]` across two
+sub-queries is accepted by the API and never fires when each stage carries only
+one of the fields, because every event must carry both. To join `actor` in one
+sub-query to `target` in another, put both fields in one group (the first
+example above).
+
+**In a Detection as Code rule file** the same block is written in YAML:
+`correlationParams: { entity: Custom, entitiesAndFields: [[...]] }`. The API
+normalises `Custom` to `custom` (validated through the DaC diff and through
+`POST /cloud-detection/rules`), so either spelling reads back as `custom`.
+
+**Field names.** Every entry must match
+`^[a-zA-Z][a-zA-Z0-9_]*(\[[0-9]+\])?(\.[a-zA-Z][a-zA-Z0-9_]*(\[[0-9]+\])?)*$`:
+a dotted identifier path with an optional `[N]` index per segment, no leading
+digit or underscore, no colons, hyphens or spaces. A miss is HTTP 400
+`entityFields entry '<field>' contains invalid characters; must match <regex>`.
+The regex already excludes the reserved prefixes `__`, `:`, `sca:`, `synthetic:`
+and `_k8s_`.
+
+**Reserved names.** `account.id`, `account.name`, `accountid`, `filterpurpose`,
+`ruleid`, `rule.id` and `filterid` are rejected, case-insensitively, with HTTP 400
+`entitiesAndFields[0][0] "<field>" rejected by denylist rule exact_aliases='<field>'`.
+`oempurpose` is also reserved; the validator accepted it in testing, so leave it
+out of every key rather than rely on a rejection.
+
+**Restricted categories.** Beyond syntax, whole categories cannot work as an
+identity:
+
+| Category | Why it can never fire usefully |
+|---|---|
+| Per-event identifiers (event/request/correlation/transaction/span IDs, per-event UUIDs) | every event is its own entity, so nothing ever accumulates |
+| Timestamps (occurred, received, created, updated) | change on every event, identify nothing |
+| Free text (message, description, command line, URL, stack trace, raw payload) | enormous entity cardinality, very noisy |
+| Measurements and counters (count, duration, size, ratio, score) | describe the event, do not identify its subject |
+| High-entropy non-identity values (digests, signatures, tokens, nonces) | unique but name nothing stable |
+
+Good keys are stable identifiers: user id or name, agent UUID, host name, source
+IP, or a composite such as agent + process id. Standard identity fields pass even
+when they superficially resemble a restricted category. The validator's error
+message names the field and the reason, and is authoritative over this table.
+
+**Entity limit.** A rule that tracks more than 2,000,000 entities is deactivated.
+High-cardinality keys (and the fan-out below) are what get there.
 
 Rejections, each quoted from the API response that produced it:
 
@@ -244,13 +233,110 @@ Rejections, each quoted from the API response that produced it:
 | a flat list of strings | `entitiesAndFields: Not a valid list` |
 | an object instead of a list, per element | `entitiesAndFields: 0: Not a valid list` |
 | the same path in two inner lists | `entityFields contains duplicate alias(es): '<path>'` |
-
-The duplicate-alias rule follows from the group model: a field path may appear in
-only one group, because a path in two groups would be AND'd with itself.
+| a reserved name, such as `account.id` | `entitiesAndFields[0][0] "account.id" rejected by denylist rule exact_aliases='account.id'` |
+| a field name outside the regex, such as `1abc` | `entityFields entry '1abc' contains invalid characters; must match ...` |
+| 11 sub-queries | `subQueries: You must provide between 1 and 10 queries.` |
+| `windowMinutes` not in the allowed set | `The window minutes size must be one of: 10, 30, 60, 240, 480, 720.` |
+| `networkQuarantine: true` with `agent.uuid` sharing a group | `network_quarantine requires entity key with singleton group [agent.uuid]` |
+| `treatAsThreat` with no process group | `treat_as_threat requires entity key with singleton groups [agent.uuid] and ([src.process.storyline.id] or [src.process.uid])` |
+| `networkQuarantine: true` with `entity: "user"` | ``can`t network quarantine a non-process entity`` |
 
 Scope note: an account-scoped token creating with `filter.tenant` returns
 `User <id>:account can not create rule with higher scope None:tenant`. Pass
 `filter.accountIds` instead.
+
+#### Multi-valued fields: one event, many entities, many alerts
+
+A single event can carry several values for a field the entity keys on: several
+user contexts, several destination IPs, an array-valued field. The rule then
+expands that event into **one entity per combination of values** (a cartesian
+product), each accumulating state independently and each able to fire its own
+alert.
+
+With entity `(user, host)` and an event carrying `user: alice` and
+`host: web-01, web-02, web-03`, the rule tracks three entities, not one, and can
+raise three alerts for what was logically a single incident. Two multi-valued
+fields holding 3 and 4 values produce 12 entities from one event.
+
+The same thing happens through OR aliases: fields grouped as alternative
+spellings of one identity, which in reality hold *different* values on the same
+event, each become an entity. `real_user` and `effective_user` are related, not
+aliases. Never alias an IP field with a host-name field: they are different
+identities that happen to describe the same machine.
+
+There is a per-event cap on how many entities one event may expand into. Above
+it the system **skips entity-state updates for that event entirely**, so an
+over-broad entity silently drops the events it was meant to track.
+
+Avoid it by preferring single-valued fields for the key, keeping composites
+shallow (each dimension multiplies the blast radius), and auditing OR groups so
+they only contain genuine renames of the same value.
+
+A cool-off period does **not** fix duplicate alerts of this kind: cool-off
+suppresses repeats for the *same* entity, and these duplicates arrive under
+different entities. The fix belongs in the entity definition.
+
+#### Choosing the key across sources
+
+| Situation | Key |
+|---|---|
+| One source, and a built-in entity covers it | the preset |
+| Several sources, the same identity under different field names | `custom` with one group holding every alias |
+| A specific composite (agent and process, user and host) | `custom` with one group per dimension (AND) |
+| Every source carries an enriched canonical field (for example from asset enrichment) | `custom` with one group holding that field |
+| The sources disagree on the value itself (an ARN in one, an email address in another) | enrich upstream to a common value; aliasing them never matches |
+
+#### Active Response on a correlation rule needs its fields pinned in singleton groups
+
+Inline Active Response runs **on the endpoint**, so the rule can only carry it
+out when every matched event is guaranteed to carry the identifiers the agent
+needs. With a custom entity that guarantee comes from the group layout: each
+required field must sit in a group of its own. Because every event joining the
+entity must supply a value for every group, a singleton group forces that field
+to be present on every match, including the event that triggers the action.
+
+| Action | Required singleton groups |
+|---|---|
+| Network Quarantine | `agent.uuid` alone in its own group |
+| Treat as Threat | `agent.uuid` **and** a process id (`src.process.storyline.id` or `src.process.uid`), each alone |
+
+The moment `agent.uuid` shares a group with anything else (say
+`[agent.uuid, device.uid]`), an event supplying only `device.uid` could match with
+no agent UUID, the guarantee is lost, and the API rejects both actions (errors in
+the rejection table above). A pure cross-source identity such as user + host with
+no agent field supports neither: those are the XDR-style rules where mitigation
+cannot run deterministically, and the response belongs in a Hyperautomation flow
+instead. Accepted with both `treatAsThreat` and `networkQuarantine` set:
+`[["agent.uuid"], ["src.process.storyline.id"]]` and
+`[["agent.uuid"], ["src.process.uid"]]`. The built-in Storyline and Process
+presets support both actions (Storyline with both enabled was accepted live); the
+User preset is refused for Network Quarantine. The same rejections come back from
+the API whether the rule is posted directly or submitted as a Detection as Code
+rule file.
+
+- **RBAC.** Saving a rule with Active Response needs `Endpoints: Disconnect from
+  network` for Network Quarantine and `Endpoint Threats: Mark suspicious` /
+  `Endpoint Threats: Mark threat` for Treat as Threat. Without them the save is
+  HTTP 403.
+- **Cool-off.** An alert suppressed by the rule's cool-off period gets no
+  mitigation; only the alert that is raised is acted on.
+
+#### Troubleshooting a correlation rule
+
+- **Not firing.** Check, in order: the window against ingestion lag (above); the
+  rule is `Active`, not Draft; every event carries a value for every AND group
+  (an event missing one group's field never joins the entity); `matchInOrder:
+  true` with late-arriving events; the per-event expansion cap dropping events;
+  the rule was deactivated for tracking more than 2,000,000 entities.
+- **Duplicate alerts.** Multi-valued fields or OR aliases that hold different
+  values (the fan-out above); repeated seeds inside one window; cool-off does not
+  merge alerts raised under different entities.
+- **Auto-disabled.** More than 2,000,000 tracked entities. Narrow the key (fewer
+  or lower-cardinality fields, no free text or per-event ids) and the sub-query
+  filters, then re-enable.
+- **Active Response greyed out or refused.** `agent.uuid` (and, for Treat as
+  Threat, a process id) is not alone in its own group, the entity is not a process
+  entity, or the user lacks the RBAC permissions above (HTTP 403 on save).
 
 ### Scheduled (`queryType: "scheduled"`)
 
@@ -425,7 +511,9 @@ Working recipe for a scheduled rule with a mapped asset, two parts that must agr
 1. Project the entity column(s) in the query body, e.g. `| columns endpoint.name = device.hostname, src_ip = src_endpoint.ip, ...`.
 2. Set `data.entityMappings` to those exact output column names: `[{ "columnName": "endpoint.name" }, { "columnName": "src_ip" }]`.
 
-Confirmed on a live tenant: the same rule that showed "Unknown Device" with no `entityMappings` mapped the asset once `entityMappings` was configured on its `endpoint.name` / `src_ip` columns. (The earlier A/B tests showed Unknown Device only because they never set `entityMappings`.)
+Confirmed on a live tenant: the same rule shows "Unknown Device" without `entityMappings` and maps the asset once `entityMappings` names its `endpoint.name` / `src_ip` columns.
+
+An `entityMappings` entry can also name what kind of identifier the column holds with `identifierType`, one of `agent.uuid`, `cloud_resource_id`, `distinguished_name`, `hostname`, `mac_addresses`, `object_guid`, `object_sid`, `serial_number`, `user_principal_name`.
 
 Other paths that bind the entity:
 

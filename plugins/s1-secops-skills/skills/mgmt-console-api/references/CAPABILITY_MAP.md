@@ -163,6 +163,7 @@ Symbols: L=list (GET collection), G=get-one (GET /{id}), C=count (GET /count or 
 | list custom detection rules | Custom Detection Rule / Platform Detection Rules |
 | see Hyperautomation workflows | Hyperautomation: `GET /web/api/v2.1/hyperautomation/workflows` |
 | list installed agent packages | Updates: `GET /web/api/v2.1/update/agent/packages` |
+| count assets, coverage gaps, unprotected endpoints, one asset's criticality and alert counts | Asset Inventory GraphQL: `POST /web/api/v2.1/graphql` (a read; `asset_inventory_*` tools). See `references/ASSET_INVENTORY_GRAPHQL.md`. REST `xdr/assets/surface/<surface>` (Inventory tags) for actions and export |
 
 ## Paths that do not exist
 

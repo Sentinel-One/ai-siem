@@ -355,6 +355,190 @@
           "pattern": "/publish"
         }
       ]
+    },
+    {
+      "id": 5,
+      "name": "dac-native-repo-and-delete-flow",
+      "prompt": "We want the custom rules for site 1234567890123456789 managed from Git with SentinelOne's native Detection as Code, reviewed on pull request and deployed on merge. Write the console manifest to `dac/consoles/prod.yaml` (deploy everything under `correlation/` to that site) and one correlation rule to `dac/detections/correlation/encoded-ps-then-connect.yaml` that fires when the same process on the same endpoint runs an encoded PowerShell command and then opens an outbound connection within an hour. Leave it in Draft. Then tell me how to check a branch before merging, and how we delete that rule from the console later.",
+      "expected_output": "Native DaC only: YAML rule files plus a per-console manifest bundled as deployments.yaml, diffed and applied by the console's parse-vcs engine, no local sync script and no TOML. The manifest has a target with scopeLevel site and the scopeId as a quoted string, and a deploy glob relative to the rules root. The rule has a repo-unique id, a tenant-unique name, queryType correlation, queryLang \"2.0\", status Draft, and correlationParams with entity Custom, entitiesAndFields [[\"agent.uuid\"], [\"src.process.uid\"]] (groups are AND'ed, fields inside a group OR'ed) and a 60-minute window with two sub-queries. A branch is checked with dac_diff (read-only, writes nothing) using the same vcsRepoId as CI, or by the reference workflow's PR diff; the merge to main applies in CI. Removing the file alone retains the rule as a normal console rule (deletePolicy Retain is the default); deleting it takes two merges: first set deletePolicy: Delete, then remove the file.",
+      "assertions": [
+        {
+          "type": "file_matches",
+          "glob": "dac/consoles/*.yaml",
+          "pattern": "scopeLevel:\\s*site"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/consoles/*.yaml",
+          "pattern": "scopeId:\\s*[\"']1234567890123456789[\"']"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/consoles/*.yaml",
+          "pattern": "correlation/\\*"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/correlation/*.yaml",
+          "pattern": "queryType:\\s*correlation"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/correlation/*.yaml",
+          "pattern": "queryLang:\\s*[\"']2\\.0[\"']"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/correlation/*.yaml",
+          "pattern": "entity:\\s*[\"']?[Cc]ustom"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/correlation/*.yaml",
+          "pattern": "entitiesAndFields"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/correlation/*.yaml",
+          "pattern": "agent\\.uuid"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/correlation/*.yaml",
+          "pattern": "src\\.process\\.uid"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/correlation/*.yaml",
+          "pattern": "windowMinutes:\\s*60\\b"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/correlation/*.yaml",
+          "pattern": "^id:\\s*\\S"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/correlation/*.yaml",
+          "pattern": "status:\\s*Draft"
+        },
+        {
+          "type": "file_absent",
+          "glob": "dac/**/*.toml"
+        },
+        {
+          "type": "output_matches",
+          "pattern": "dac_diff|detection-as-code\\.py diff"
+        },
+        {
+          "type": "output_matches",
+          "pattern": "deletePolicy:?\\s*[\"']?Delete"
+        },
+        {
+          "type": "output_matches",
+          "pattern": "(?i)two merges|second merge|then remove the file"
+        },
+        {
+          "type": "output_absent",
+          "pattern": "dac_sync|rule\\.schema\\.json"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "dac-native-import-without-drift",
+      "prompt": "I exported our existing rules with dac_export. One of them came back as:\n\n```yaml\nid: exported-rule-1111111111111111111\nimportCustomRuleId: 1111111111111111111\nname: Repeated failed logons by one user\ndescription: Many failed logons for one user in an hour\nseverity: Medium\nstatus: Active\nexpirationMode: Permanent\nhideLogic: false\nnetworkQuarantine: false\ntreatAsThreat: UNDEFINED\nqueryType: scheduled\nqueryLang: '2.0'\nscheduledParams:\n  query: event.type = 'Login' AND event.login.loginIsSuccessful = false | group failures = count() by event.login.userName | filter failures > 20\n  runIntervalMinutes: 15\n  lookbackWindowMinutes: 60\n  threshold:\n    operator: Greater\n    value: 0\n```\n\nIn the same pull request that brings it under Git, rename the id to `failed-logons-per-user` and raise the severity to High. Write the file I should commit to `dac/detections/imported/failed-logons.yaml` and the query body alone to `dac/queries/failed-logons.pq`, and tell me what the diff will show.",
+      "expected_output": "Do not combine the import with edits. The import is checked against the live rule: any changed field fails the diff with 'imported YAML does not match the live rule (drifted fields: ...)'. Commit the exported file unchanged, keeping id exported-rule-1111111111111111111 and importCustomRuleId 1111111111111111111 and severity Medium; the diff then lists it under imports (totalImports 1), not creates, so no duplicate rule is made. Raise the severity in a later pull request once the import has been applied; changing the id after that creates a new rule, so keep the exported id. The query body is unchanged PowerQuery.",
+      "assertions": [
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/imported/*.yaml",
+          "pattern": "^id:\\s*[\"']?exported-rule-1111111111111111111"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/imported/*.yaml",
+          "pattern": "importCustomRuleId:\\s*[\"']?1111111111111111111"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/imported/*.yaml",
+          "pattern": "severity:\\s*Medium"
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/imported/*.yaml",
+          "pattern": "severity:\\s*High",
+          "count": 0
+        },
+        {
+          "type": "file_matches",
+          "glob": "dac/detections/imported/*.yaml",
+          "pattern": "failed-logons-per-user",
+          "count": 0
+        },
+        {
+          "type": "pq_valid",
+          "glob": "dac/queries/failed-logons.pq"
+        },
+        {
+          "type": "output_matches",
+          "pattern": "(?i)drift|does not match the live rule"
+        },
+        {
+          "type": "output_matches",
+          "pattern": "(?i)imports?\\b"
+        },
+        {
+          "type": "output_matches",
+          "pattern": "(?i)later (pull request|PR)|follow-up (pull request|PR)|separate (pull request|PR)|after the import"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "unprotected-endpoints-report",
+      "prompt": "Find our unprotected endpoints. Save the exact Asset Inventory calls you would make (tool name plus arguments) to `ue/calls.json`, the PowerQuery that reproduces the headline count to `ue/headline.pq`, and tell me how many of the unprotected devices we can deploy the agent to.",
+      "expected_output": "Headline = Network Discovery console view: surface NETWORK_DISCOVERY (Active only) plus missingCoverage stringIn [\"EPP\"]; the total comes from asset_inventory_search totalCount, never asset_inventory_counts. Deploy-ready = eppUnsupportedUnknown Supported; Unknown is its own group; Unsupported devices are never counted as deployment targets. The PowerQuery equivalent filters assetStatus = 'Active' with | filter, not where. No tenant writes; reconciliation line and method appendix.",
+      "assertions": [
+        {
+          "type": "json_parses",
+          "glob": "ue/calls.json"
+        },
+        {
+          "type": "file_matches",
+          "glob": "ue/calls.json",
+          "pattern": "NETWORK_DISCOVERY"
+        },
+        {
+          "type": "file_matches",
+          "glob": "ue/calls.json",
+          "pattern": "missingCoverage"
+        },
+        {
+          "type": "file_matches",
+          "glob": "ue/calls.json",
+          "pattern": "\"EPP\""
+        },
+        {
+          "type": "pq_valid",
+          "glob": "ue/headline.pq"
+        },
+        {
+          "type": "file_matches",
+          "glob": "ue/headline.pq",
+          "pattern": "surface/networkDiscovery"
+        },
+        {
+          "type": "file_matches",
+          "glob": "ue/headline.pq",
+          "pattern": "\\|\\s*filter\\s+assetStatus\\s*=\\s*'Active'"
+        },
+        {
+          "type": "output_matches",
+          "pattern": "(?i)sentinel deploy"
+        }
+      ]
     }
   ]
 }

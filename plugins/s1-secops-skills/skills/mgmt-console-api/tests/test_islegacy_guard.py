@@ -11,9 +11,10 @@ returns an empty list even though scheduled rules exist and are visible in
 the console UI.
 
 To prevent the same mistake recurring, s1_client.S1Client.request() auto-
-injects isLegacy=false on every GET to /cloud-detection/rules (including
-the single-rule /{id} variant and trailing-slash forms). This test pins
-that behavior so regressions surface immediately.
+injects isLegacy=false on GET to /cloud-detection/rules (including the
+single-rule /{id} variant and trailing-slash forms), and on no other
+sub-path (export-vcs rejects the parameter). This test pins that behavior
+so regressions surface immediately.
 
 The corresponding JS guard lives in
   s1-secops-mcp/tools/mgmt-console.js  (normalizeS1ApiGetParams)
@@ -22,6 +23,7 @@ Keep the two in sync.
 Run
 ---
     python3 tests/test_islegacy_guard.py
+    python3 -m pytest tests/test_islegacy_guard.py
 
 No network, no credentials required.
 """
@@ -72,6 +74,13 @@ def main() -> None:
     # requires `/`, `?`, or end-of-string immediately after "rules".
     out = _maybe_inject_islegacy("GET", "/web/api/v2.1/cloud-detection/rules-export", None)
     _assert(out == {}, "GET /cloud-detection/rules-export → no injection")
+
+    # Sub-paths other than /{id} must NOT inject: export-vcs rejects isLegacy
+    # with HTTP 400 `isLegacy: Unknown field`; parse-vcs, enable and disable
+    # are action endpoints that do not take it.
+    for sub in ("export-vcs", "export-vcs?cursor=abc", "parse-vcs", "parse-vcs?mode=diff", "enable", "disable"):
+        out = _maybe_inject_islegacy("GET", f"/web/api/v2.1/cloud-detection/rules/{sub}", None)
+        _assert(out == {}, f"GET /cloud-detection/rules/{sub} → no injection")
 
     # Existing params are preserved, not clobbered.
     out = _maybe_inject_islegacy(
@@ -127,6 +136,11 @@ def main() -> None:
     _assert(out == {"isLegacy": "false"}, "lowercase 'get' method handled")
 
     print("\nOK: all isLegacy guard cases passed")
+
+
+def test_islegacy_guard() -> None:
+    """pytest entry point: runs every case in main()."""
+    main()
 
 
 if __name__ == "__main__":

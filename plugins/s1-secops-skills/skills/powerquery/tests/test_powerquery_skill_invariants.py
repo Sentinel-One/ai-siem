@@ -195,6 +195,155 @@ class LiveFindings20261009(unittest.TestCase):
         self.assertRegex(self.rules, r"two seeds of 10 matching events.*\n?.*raised two alerts|raised two alerts")
 
 
+class MeteringRewriteAtTopLevelPipe(unittest.TestCase):
+    """s1-secops-mcp 1.6.1: the metering and site terms go in at the first
+    top-level pipe, outside any subquery in the initial filter."""
+
+    def setUp(self):
+        self.skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.rule21 = self.skill.split("21. **Exclude SDL ingest-metering rows")[1].split("\n22. ")[0]
+
+    def test_rule21_states_current_behaviour(self):
+        self.assertIn("s1-secops-mcp 1.6.1 inserts the automatic predicate at the first top-level `|`",
+                      self.rule21)
+        self.assertIn("parenthesis depth 0", self.rule21)
+        self.assertRegex(self.rule21, r"`site\.id` term[^\n]*same point")
+        self.assertIn("On s1-secops-mcp 1.6.0, upgrade to 1.6.1.", self.rule21)
+
+    def test_no_known_issue_narrative(self):
+        self.assertNotIn("Known issue", self.skill)
+        row = next(line for line in self.skill.splitlines()
+                   if line.startswith("| `includeMetering`"))
+        self.assertIn("first top-level", row)
+        self.assertNotIn("1.6.0", row)
+
+    def test_live_cases_cover_both_subquery_forms(self):
+        cases = {c["id"]: c for c in json.loads(
+            (SKILL_DIR / "tests" / "live" / "pq_live_cases.json").read_text())["cases"]}
+        bare = cases["subquery-in-initial-filter"]["query"]
+        self.assertNotIn("logVolume", bare)
+        self.assertRegex(bare, r"\bin \(.*\|.*\) \|")
+        self.assertIn("tag != 'logVolume'", cases["subquery-in-initial-filter-with-metering"]["query"])
+        for c in cases.values():
+            self.assertNotRegex(c.get("doc", ""), r"(?i)reproduce .*bug")
+
+    def test_mcp_rewrite_mode_imports_the_tool(self):
+        # The runner must execute the MCP's own modules, never a private copy of the split.
+        tool = ROOT / "tools" / "pq_live_regression.py"
+        if not tool.is_file():
+            self.skipTest("tools/pq_live_regression.py not present in this layout")
+        src = tool.read_text(encoding="utf-8")
+        self.assertIn('"metering.js"', src)
+        self.assertIn('"lrq-scope.js"', src)
+        self.assertIn("addSiteFilter(", src)
+        self.assertIn("excludeMetering(", src)
+        self.assertIn('"--site"', src)
+        self.assertNotIn("def _first_top_level_pipe", src)
+
+
+class CustomCorrelationEntities(unittest.TestCase):
+    """Custom correlation entity facts (live-validated on the rule-create API)."""
+
+    def setUp(self):
+        self.rules = (SKILL_DIR / "references" / "detection-rules.md").read_text(encoding="utf-8")
+        a = self.rules.index('### Correlation (`queryType: "correlation"`)')
+        b = self.rules.index('### Scheduled (`queryType: "scheduled"`)')
+        self.section = self.rules[a:b]
+
+    def test_group_model_and_live_table_kept(self):
+        self.assertIn("**Fields inside one group are OR'd.**", self.section)
+        self.assertIn("**Groups are AND'd.**", self.section)
+        self.assertIn("`[[\"actor\"],[\"target\"]]`, two sub-queries", self.section)
+        self.assertIn("entityFields contains duplicate alias(es)", self.section)
+
+    def test_no_history_narrative(self):
+        for phrase in ("previously", "used to", "earlier versions", "lesson"):
+            self.assertNotIn(phrase, self.section.lower())
+        self.assertNotIn("\u2014", self.section)
+        self.assertNotIn("\u2013", self.section)
+
+    def test_availability_and_builtin_field_sets(self):
+        self.assertRegex(self.section, r"(?i)enabled per tenant until they are on by\s+default")
+        for row in ("| Process | `src.process.uid` AND `agent.uuid` |",
+                    "| Device | `agent.uuid` OR `device.uid` |",
+                    "| Storyline | `src.process.storyline.id` AND `agent.uuid` |"):
+            self.assertIn(row, self.section)
+        self.assertIn("`event.login.userName`", self.section)
+        self.assertIn("`dst.ip.address` OR `src.ip.address`", self.section)
+
+    def test_limits(self):
+        self.assertIn("`10`, `30`, `60`, `240`, `480`, `720`", self.section)
+        self.assertIn("You must provide between 1 and 10 queries.", self.section)
+        self.assertIn("sub_query exceeds maximum length of 8192 characters", self.section)
+        self.assertIn("2,000,000", self.section)
+        self.assertRegex(self.section, r"Do not start a sub-query with `!`")
+        self.assertIn('`os = "windows"`', self.section)
+
+    def test_field_name_regex_and_reserved_names(self):
+        self.assertIn(r"`^[a-zA-Z][a-zA-Z0-9_]*(\[[0-9]+\])?(\.[a-zA-Z][a-zA-Z0-9_]*(\[[0-9]+\])?)*$`",
+                      self.section)
+        for name in ("account.id", "account.name", "accountid", "filterpurpose",
+                     "ruleid", "rule.id", "filterid", "oempurpose"):
+            self.assertIn(f"`{name}`", self.section)
+        self.assertIn("rejected by denylist rule exact_aliases=", self.section)
+        # The concatenated forms were never real names.
+        self.assertNotIn("filterpurposeruleid", self.section)
+        self.assertNotIn("accountidoempurpose", self.section)
+
+    def test_fanout_and_aliasing(self):
+        self.assertIn("cartesian", self.section)
+        self.assertRegex(self.section, r"(?i)cool-off period does \*\*not\*\* fix")
+        self.assertRegex(self.section, r"(?i)never alias an IP field with a host-name field")
+        self.assertIn("`real_user` and `effective_user` are related, not\naliases", self.section)
+
+    def test_active_response_singleton_groups_and_rbac(self):
+        self.assertIn("network_quarantine requires entity key with singleton group [agent.uuid]",
+                      self.section)
+        self.assertIn("treat_as_threat requires entity key with singleton groups", self.section)
+        for perm in ("Endpoints: Disconnect from\n  network", "Endpoint Threats: Mark suspicious",
+                     "Endpoint Threats: Mark threat"):
+            self.assertIn(perm, self.section)
+        self.assertIn("HTTP 403", self.section)
+        self.assertRegex(self.section, r"(?i)suppressed by the rule's cool-off period gets no\s+mitigation")
+
+    def test_decision_table_troubleshooting_and_dac(self):
+        self.assertIn("#### Choosing the key across sources", self.section)
+        self.assertRegex(self.section, r"enrich upstream")
+        self.assertIn("#### Troubleshooting a correlation rule", self.section)
+        for item in ("**Not firing.**", "**Duplicate alerts.**", "**Auto-disabled.**",
+                     "**Active Response greyed out or refused.**"):
+            self.assertIn(item, self.section)
+        self.assertIn("`correlationParams: { entity: Custom, entitiesAndFields: [[...]] }`", self.section)
+
+    def test_accepted_mitigation_layouts_and_identifier_types(self):
+        self.assertIn('`[["agent.uuid"], ["src.process.uid"]]`', self.section)
+        self.assertIn('`[["agent.uuid"], ["src.process.storyline.id"]]`', self.section)
+        enum = ("`agent.uuid`, `cloud_resource_id`, `distinguished_name`, `hostname`, "
+                "`mac_addresses`, `object_guid`, `object_sid`, `serial_number`, "
+                "`user_principal_name`")
+        self.assertIn(enum, self.rules)
+
+    def test_new_custom_example_uses_a_60_minute_window(self):
+        block = self.section.split("#### Custom correlation key")[1]
+        first = re.search(r'"windowMinutes":\s*(\d+)', block)
+        self.assertEqual(first.group(1), "60")
+
+    def test_skill_points_at_the_reference(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.assertRegex(skill, r"Custom entities \([^\n]*\): `references/detection-rules\.md`, "
+                                r"\"Custom correlation key\"")
+
+    def test_public_doc_consistent(self):
+        doc = ROOT / "docs" / "detection-rule-types.md"
+        if not doc.is_file():
+            self.skipTest("docs/detection-rule-types.md not present in this layout")
+        text = doc.read_text(encoding="utf-8")
+        self.assertIn("`10`, `30`, `60`, `240`, `480`, `720`", text)
+        self.assertIn("1 to 10 entries", text)
+        self.assertIn("`agent.uuid` alone in its own group", text)
+        self.assertIn("entity: Custom", text)
+
+
 class OutputFileUnderDocker(unittest.TestCase):
     """1.5.4: the outputFile row tells Claude what to say when no folder is shared."""
 

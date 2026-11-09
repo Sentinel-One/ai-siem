@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - s1-secops-skills plugin 1.4.3, s1-secops-mcp 1.6.2
+
+- New Detection as Code tools: `dac_export`, `dac_diff`, `dac_apply`. `dac_apply` requires the reviewed bundle's `expectedZipSha256` and `expectedSummary`, and reports when an apply may have been committed.
+- New Asset Inventory tools: `asset_inventory_counts`, `asset_inventory_search`, `asset_inventory_get`, `asset_inventory_filter_values`.
+- `powerquery_run` handles a subquery in the initial filter with metering exclusion and with a site scope.
+- `s1_api_get` adds `isLegacy=false` only to the rule listing and single-rule paths.
+- sdl-solutions: Detection as Code uses the native engine only; Unprotected endpoints report with an optional dashboard template and a user guide.
+- mgmt-console-api: Asset Inventory GraphQL reference; Detection as Code endpoints; verify-and-repeat rule delete.
+- powerquery and mgmt-console-api: custom correlation entity rules and limits.
+- sdl-dashboard: use `| filter`, not `where (...)`, on the `assets` datasource.
+- soc-investigator: asset context in triage from `asset_inventory_get`.
+
 ### Changed - s1-secops-skills plugin 1.4.1 (image and MCP unchanged at 1.6.0)
 
 - PowerQuery skill:

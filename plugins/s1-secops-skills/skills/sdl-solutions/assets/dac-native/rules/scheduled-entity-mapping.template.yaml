@@ -1,0 +1,33 @@
+# Scheduled rule: a PowerQuery detection that runs every runIntervalMinutes over the last
+# lookbackWindowMinutes and alerts when the result passes the threshold.
+# Copy to detections/scheduled/<rule-id>.yaml.
+#
+# Scheduled rules cannot act inline: keep treatAsThreat UNDEFINED and networkQuarantine false.
+# entityMappings binds result columns to the alert's entities (at most 3 entries).
+
+id: "<rule-id>"
+name: "<Rule name>"
+description: "<What the aggregate means and the expected triage step>"
+severity: Medium              # Low | Medium | High | Critical
+status: Draft                 # Draft | Active | Disabled
+expirationMode: Permanent
+queryType: scheduled
+queryLang: "2.0"
+scheduledParams:
+  query: 'event.type = "Login" AND event.login.loginIsSuccessful = false | group endpointId = any(agent.uuid), failures = count() by event.login.userName | filter failures > <threshold>'
+  runIntervalMinutes: 15
+  lookbackWindowMinutes: 60
+  threshold:
+    value: 0
+    operator: Greater
+  alertPerRow: true
+  disableStreaksLogic: false
+entityMappings:
+  - columnName: endpointId
+    # identifierType: <identifierType>   # set per the identifierType values documented in the playbook
+treatAsThreat: UNDEFINED
+networkQuarantine: false
+coolOffSettings:
+  renotifyMinutes: 60
+hideLogic: false
+deletePolicy: Retain

@@ -133,6 +133,12 @@ to `_ALERT_CORE_FIELDS` (cheap). Pass
 `fields=ua._ALERT_DETAIL_FIELDS` when you actually need the asset join
 on every edge.
 
+For the inventory record behind an alert's asset (criticality, tags,
+infection status, alert counts per severity, agent state), pass
+`assets[].agentUuid` to `asset_inventory_get`; see
+[ASSET_INVENTORY_GRAPHQL.md](ASSET_INVENTORY_GRAPHQL.md). Ingested alerts
+have no `agentUuid`, so that lookup applies to agent-backed assets only.
+
 ---
 
 ## Detection-rule alert assets vs UAM-ingested alert assets

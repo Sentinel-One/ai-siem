@@ -219,6 +219,14 @@ The `metering` datasource exposes Usage Metering reports for cost, usage, and (f
 ## Gotchas (quick list)
 
 - Single-quote any dataset name containing a slash: `from 'surface/identity'`.
+- On `| datasource assets`, put predicates after the pipe with `| filter`. `where (<predicate>)` returns
+  at most 20 rows whatever the predicate, with no error (measured: Active 20 vs 249 with `| filter`;
+  Missing EPP 5 vs 20).
+- `from 'surface/networkDiscovery'` includes Inactive devices. Add `| filter assetStatus = 'Active'` to
+  match the console Network Discovery page and the GraphQL `surface: NETWORK_DISCOVERY` view.
+- At very large inventories, filters on `missingCoverage` are slow (about 3 minutes per query at
+  about 95,000 Network Discovery assets, against about 2 s for an `assetStatus` count). Use the
+  `asset_inventory_*` tools for counts there.
 - `from identity` / `from device` are sparse; use `from 'surface/identity'` / `from 'surface/endpoint'` for full attributes.
 - Only `assets` and `metering` accept `from`; other datasources reject it.
 - `riskFactors` empty is the string `"[]"`, not null. Suppress with `(field == '[]' ? null : field)`.

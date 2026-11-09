@@ -1,61 +1,45 @@
 # Solution: Detection as Code (DaC)
 
-Stand up a Detection-as-Code pipeline for a SentinelOne tenant. Detection engineers author rules
-as text files in Git, a pull request triggers automated validation and four-eyes review, and a
-merge to the main branch syncs the changed rules to the SentinelOne Custom Detection Rule API.
-Every change is version-controlled, auditable, and reversible, and rules are easy to read, diff,
-and reuse across environments.
+Manage SentinelOne Custom Detection rules from Git with the console's native Detection as Code
+API. Each rule is a YAML file, one manifest per console says which scopes receive which files, a
+pull request shows exactly what the console will change, and a merge applies it. Every change is
+reviewed, versioned and traceable to a commit.
 
-Unlike the other solutions in this skill, which deploy SDL artifacts (parsers, lookups,
-dashboards, workflows) into the tenant, DaC sets up a Git + CI workflow that lives outside the
-tenant and pushes detection rules in.
-
-This is part of the `sdl-solutions` skill. It orchestrates the primitive skills
-(`mgmt-console-api` for the Custom Detection Rule API and site resolution,
-`powerquery` for scheduled-rule bodies, `sdl-dashboard` for the optional
-effectiveness view); it does not reimplement them.
-
-## Why TOML
-
-Rules are authored in TOML because it is readable and diff-friendly, which makes review under a
-four-eyes process fast. The SentinelOne API consumes JSON, so the sync engine converts each TOML
-rule to the exact API envelope at lint and sync time. You get readable source and a correct
-payload without maintaining two formats. JSON and YAML rule files are also accepted.
+This is part of the `sdl-solutions` skill. CI runs the official SentinelOne `detection-as-code`
+reference repository (GitHub Actions); Claude uses the s1-secops-mcp tools `dac_export`,
+`dac_diff` and `dac_apply` (1.6.1 or later) to bootstrap the repository and review changes.
 
 ## Features
 
-- **Three rule types, one format.** Single-event STAR rules (`events`), multi-event correlation
-  rules (`correlation`), and scheduled PowerQuery detections (`scheduled`), all authored as TOML
-  and converted to the Custom Detection API JSON.
-- **Validation before production.** A lint step parses every rule and applies the confirmed API
-  constraints locally (enums, required fields, the run-interval/lookback relationship, and the
-  common "pipe syntax in an events rule" mistake), so a bad rule fails the pull request, not the
-  console.
-- **Idempotent sync on merge.** Only the rules changed in the merged PR are pushed; the engine
-  creates a new rule or updates an existing one by name, so re-running never duplicates.
-- **CI for three platforms.** Ready-to-use lint-on-PR and sync-on-merge automation for GitHub
-  Actions, GitLab CI, and Azure Pipelines. The logic lives once in `dac_sync.py`; CI just calls it.
-- **Safe by default.** Rules are authored and synced as `Draft`; activation is a deliberate,
-  separate step, so a merge never silently arms a live, mitigating rule. Scheduled rules cannot
-  mitigate (the converter enforces it).
-- **Audit and rollback.** Each sync writes a `deployed_rules.json` manifest; `--rollback` deletes
-  exactly the rules it deployed.
-- **Zero dependencies.** The engine reads TOML via the stdlib on Python 3.11+ and ships a built-in
-  fallback otherwise; HTTP uses the standard library. No `pip install` required on a runner.
+- **Native engine.** The console computes and applies the change set
+  (`/cloud-detection/rules/parse-vcs`); nothing is converted or synced by a local script.
+- **Start from what you run.** `dac_export` downloads every rule the token can see as YAML;
+  committed unchanged, those files import the live rules instead of duplicating them.
+- **Reviewed diffs.** `dac_diff` (read-only) and the reference workflow's PR comment list every
+  create, update, import, retain and delete before anything changes.
+- **Apply on merge.** The reference GitHub Actions workflow applies on push to `main`; GitLab CI
+  and Azure Pipelines run the same script in CLI mode. `dac_apply` serves repositories without
+  CI and only applies a change set whose summary matches the one reviewed.
+- **All three rule types.** Events, correlation (including custom entities) and scheduled
+  PowerQuery rules, with Active Response, cool-off, hidden logic and entity mappings.
+- **Controlled removal.** Removing a file retains the rule as a normal console rule by default;
+  deleting it takes `deletePolicy: Delete` and a second merge.
+
+## Requirements
+
+DaC enabled on the tenant; Endpoint Security Complete or Core; a service user whose scope covers
+every target, with Custom Rules manage (plus Perform Advanced Actions for hidden logic). Only
+`queryLang: "2.0"` rules can be managed as code. DaC-managed rules are edited only in Git.
 
 ## Run it with one prompt
 
-- *"Set up detection as code for the Acme site"*
-- *"Scaffold a DaC repo and sync the example rules"*
-- *"Automate our detections as code with GitHub Actions"*
-- *"Build the detection-as-code pipeline for GitLab and sync to `<site>`"*
+- *"Set up detection as code for the `<site>` site"*
+- *"Put our existing custom rules under Git and deploy them on merge"*
+- *"Show me what this rules branch would change in the console"*
 
-## What it deploys
+## What it produces
 
-A starter Git repository: per-target-system rule folders with working TOML examples of all three
-rule types, the `dac_sync.py` validate/convert/sync engine plus a local lint wrapper, a
-`rule.schema.json` for editor validation, a CODEOWNERS file, and CI for GitHub, GitLab, and Azure.
-Then, on the tenant: the converted rules created via the Custom Detection Rule API (as Draft),
-verified with an `isLegacy=false` listing. The full scaffold contents, the manual repo-control
-checklist (branch protection, RBAC, CODEOWNERS), the rule format reference, and the confirmed API
-gotchas are in the Claude-facing playbook `references/detection-as-code.md`.
+A rules repository in the reference layout (`consoles/<console>.yaml`, `detections/...`),
+seeded from the console export or from the templates in `assets/dac-native/`, a reviewed
+`dac_diff`, and CI wired to apply on merge. The prerequisites, manifest rules, delete flow and
+troubleshooting table are in the Claude-facing playbook `references/detection-as-code.md`.

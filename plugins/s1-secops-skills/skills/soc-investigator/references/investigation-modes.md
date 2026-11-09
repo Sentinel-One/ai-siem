@@ -35,6 +35,23 @@ Output: alerts.jsonl
 }
 ```
 
+#### 1.2a Asset context per endpoint
+
+```text
+Use: s1-secops-mcp asset_inventory_get (Asset Inventory GraphQL, read-only)
+For each endpoint with an agent UUID (uam_get_alert assets[].agentUuid):
+  asset_inventory_get(agentUuid: "<agentUuid>")
+  Record: assetCriticality (critical | high | medium | low | "" = unassigned),
+    tags (key/value, e.g. S1_Asset_criticality), infectionStatus,
+    riskFactors, alertsCount per severity, agent.operationalState
+Not found / errors in an HTTP 200 body = a finding: record it, do not guess criticality
+No agentUuid (alert ingested via the UAM Alert Interface): no inventory lookup by UUID;
+  mark criticality unknown and say why
+```
+
+Store it per endpoint in `entities.json`. Criticality raises priority for further collection; it is
+never a verdict gate. Field and error detail: `mgmt-console-api/references/ASSET_INVENTORY_GRAPHQL.md`.
+
 #### 1.3 Draft timeline (alert order, not forensic)
 
 ```text

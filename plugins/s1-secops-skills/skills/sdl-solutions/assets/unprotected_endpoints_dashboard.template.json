@@ -1,0 +1,91 @@
+{
+  "duration": "24h",
+  "description": "**SET THE DATA SELECTOR TO 'All Data'** (top left). Unprotected endpoints from Network Discovery: Active devices seen on the network that have no SentinelOne agent (Missing Protection: EPP). Counts match the Network Discovery page in Asset Inventory. The asset inventory is a current snapshot, so the time picker does not change these numbers.",
+  "options": { "layout": { "fixed": 1 } },
+  "graphs": [
+    {
+      "title": "About this dashboard",
+      "graphStyle": "markdown",
+      "markdown": "**Set the data selector to All Data**, or every panel errors with `Invalid column 'dataSource.category'`.\n\nScope: Network Discovery devices with **Asset Status = Active** (the Network Discovery page view). **Missing EPP** = no SentinelOne agent on the device. **EPP-supported type** = Network Discovery classifies the device type as able to run the agent (`eppUnsupportedUnknown = Supported`): these are the deploy candidates for Sentinel Deploy. Devices of Unknown or Unsupported type (IoT, network gear, TVs) are listed but are not agent deploy targets.\n\nA zero in the Missing EPP panels is the desired posture.",
+      "layout": { "x": 0, "y": 0, "w": 60, "h": 9 }
+    },
+    {
+      "title": "Active Network Discovery devices",
+      "graphStyle": "number",
+      "query": "| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active' | group devices = count() | limit 1",
+      "options": { "format": "auto", "precision": "0" },
+      "layout": { "x": 0, "y": 9, "w": 20, "h": 8 }
+    },
+    {
+      "title": "Active devices missing EPP (no agent)",
+      "graphStyle": "number",
+      "query": "| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active' | filter missingCoverage contains 'EPP' | group devices = count() | limit 1",
+      "options": { "format": "auto", "precision": "0" },
+      "layout": { "x": 20, "y": 9, "w": 20, "h": 8 }
+    },
+    {
+      "title": "Missing EPP on an EPP-supported device type (deploy candidates)",
+      "graphStyle": "number",
+      "query": "| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active' | filter missingCoverage contains 'EPP' | filter eppUnsupportedUnknown = 'Supported' | group devices = count() | limit 1",
+      "options": { "format": "auto", "precision": "0" },
+      "layout": { "x": 40, "y": 9, "w": 20, "h": 8 }
+    },
+    {
+      "title": "Missing EPP by device type",
+      "graphStyle": "donut",
+      "maxPieSlices": 10,
+      "dataLabelType": "VALUE",
+      "query": "| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active' | filter missingCoverage contains 'EPP' | group devices = count() by device_type = resourceType | sort -devices | limit 10",
+      "layout": { "x": 0, "y": 17, "w": 30, "h": 14 }
+    },
+    {
+      "title": "Missing EPP by agent support (EPP-supported, Unknown, Unsupported)",
+      "graphStyle": "donut",
+      "maxPieSlices": 5,
+      "dataLabelType": "VALUE",
+      "query": "| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active' | filter missingCoverage contains 'EPP' | let agent_support = (eppUnsupportedUnknown != null ? eppUnsupportedUnknown : 'Not reported') | group devices = count() by agent_support | sort -devices | limit 5",
+      "layout": { "x": 30, "y": 17, "w": 30, "h": 14 }
+    },
+    {
+      "title": "Missing EPP by site",
+      "graphStyle": "table",
+      "showBarsColumn": "true",
+      "query": "| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active' | filter missingCoverage contains 'EPP' | group devices = count() by site = s1SiteName | sort -devices | limit 50",
+      "layout": { "x": 0, "y": 31, "w": 20, "h": 14 }
+    },
+    {
+      "title": "Missing EPP by OS family",
+      "graphStyle": "table",
+      "showBarsColumn": "true",
+      "query": "| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active' | filter missingCoverage contains 'EPP' | let os_family = (osFamily != null ? osFamily : 'Not reported') | group devices = count() by os_family | sort -devices | limit 20",
+      "layout": { "x": 20, "y": 31, "w": 20, "h": 14 }
+    },
+    {
+      "title": "Missing EPP by device review status",
+      "graphStyle": "table",
+      "showBarsColumn": "true",
+      "query": "| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active' | filter missingCoverage contains 'EPP' | group devices = count() by review_status = deviceReview | sort -devices | limit 10",
+      "layout": { "x": 40, "y": 31, "w": 20, "h": 14 }
+    },
+    {
+      "title": "All Active Network Discovery devices by managed state",
+      "graphStyle": "table",
+      "showBarsColumn": "true",
+      "query": "| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active' | let managed_state = (managedState != null ? managedState : 'Not reported') | group devices = count() by managed_state | sort -devices | limit 10",
+      "layout": { "x": 0, "y": 45, "w": 30, "h": 12 }
+    },
+    {
+      "title": "All Active Network Discovery devices by discovery method",
+      "graphStyle": "table",
+      "showBarsColumn": "true",
+      "query": "| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active' | group devices = count() by discovery_method = discoveryMethods | sort -devices | limit 15",
+      "layout": { "x": 30, "y": 45, "w": 30, "h": 12 }
+    },
+    {
+      "title": "Unprotected devices (Active, missing EPP), most recently active first",
+      "graphStyle": "table",
+      "query": "| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active' | filter missingCoverage contains 'EPP' | columns device = name, ip = ipAddress, device_type = resourceType, os_family = osFamily, agent_support = eppUnsupportedUnknown, managed_state = managedState, review_status = deviceReview, site = s1SiteName, last_active = lastActiveDt | sort -last_active | limit 1000",
+      "layout": { "x": 0, "y": 57, "w": 60, "h": 24 }
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+# Correlation rule with a custom entity: fires when every sub-query reaches its match count
+# for the same entity inside the time window. Copy to detections/correlation/<rule-id>.yaml.
+#
+# entitiesAndFields is a list of groups: the fields inside one group are OR'ed, and the groups
+# are AND'ed. The layout below keys the entity on the endpoint AND the process, so both
+# sub-queries must match on the same agent.uuid and the same src.process.uid.
+#
+# Active Response: networkQuarantine needs agent.uuid as its own group, and treatAsThreat
+# also needs src.process.storyline.id or src.process.uid as its own group. Both are present
+# here, so either can be switched on (with the matching RBAC permissions).
+
+id: "<rule-id>"
+name: "<Rule name>"
+description: "<What the sequence means and the expected triage step>"
+severity: High                # Low | Medium | High | Critical
+status: Draft                 # Draft | Active | Disabled
+expirationMode: Permanent
+queryType: correlation
+queryLang: "2.0"
+correlationParams:
+  entity: Custom
+  entitiesAndFields:
+    - ["agent.uuid"]
+    - ["src.process.uid"]
+  matchInOrder: false         # true requires the sub-queries to match in the listed order
+  timeWindow:
+    windowMinutes: 60         # 10 to 720 minutes
+  subQueries:                 # 2 to 10 sub-queries (or 1 with matchesRequired >= 2)
+    - subQuery: 'event.type = "Process Creation" AND src.process.name = "<first-process.exe>"'
+      matchesRequired: 1
+    - subQuery: 'event.type = "IP Connect" AND dst.port.number = <port>'
+      matchesRequired: 1
+treatAsThreat: UNDEFINED
+networkQuarantine: false
+coolOffSettings:
+  renotifyMinutes: 60
+hideLogic: false
+deletePolicy: Retain

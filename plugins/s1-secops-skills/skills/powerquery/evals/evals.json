@@ -242,6 +242,136 @@
           "pattern": "(?i)\\bdesc\\b"
         }
       ]
+    },
+    {
+      "id": 6,
+      "name": "correlation-reserved-entity-field",
+      "prompt": "Write a correlation rule that fires when the same user (`src.process.user`) in the same SentinelOne account (`account.id`) runs encoded PowerShell 5 or more times within an hour. Use a custom entity keyed on both fields so two accounts with the same user name never merge. Save just the `correlationParams` block to `correlation_params.json` and tell me anything the API will refuse.",
+      "expected_output": "`account.id` is a reserved name for a correlation entity field: the API rejects it with HTTP 400 `rejected by denylist rule exact_aliases='account.id'` (with `account.name`, `accountid`, `filterpurpose`, `ruleid`, `rule.id`, `filterid`, and `oempurpose` also reserved). A rule is already scoped to its account by `filter.accountIds`, so the key needs only the user: `entity: \"user\"` or `entity: \"custom\"` with `entitiesAndFields: [[\"src.process.user\"]]`. One sub-query with `matchesRequired: 5` and `timeWindow.windowMinutes: 60`. `account.id` appears nowhere in the block.",
+      "assertions": [
+        {
+          "type": "json_parses",
+          "glob": "correlation_params.json"
+        },
+        {
+          "type": "file_matches",
+          "glob": "correlation_params.json",
+          "pattern": "account\\.id",
+          "count": 0
+        },
+        {
+          "type": "file_json_path",
+          "glob": "correlation_params.json",
+          "path": "entity",
+          "matches": "^(custom|user)$"
+        },
+        {
+          "type": "file_json_path",
+          "glob": "correlation_params.json",
+          "path": "timeWindow.windowMinutes",
+          "equals": 60
+        },
+        {
+          "type": "file_json_path",
+          "glob": "correlation_params.json",
+          "path": "subQueries.0.matchesRequired",
+          "equals": 5
+        },
+        {
+          "type": "output_matches",
+          "pattern": "(?i)reserved|denylist"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "correlation-mitigation-singleton-groups",
+      "prompt": "Build a real-time correlation rule: on the same endpoint and the same storyline, `rundll32.exe` starts and then makes an outbound IP Connect, within 30 minutes. Our SentinelOne events carry the endpoint as `agent.uuid`, and a second EDR feed we ingest carries it as `device.uid`, so treat those as the same endpoint. When it fires, network-quarantine the endpoint and mark the threat malicious automatically. Write the full creation payload to `correlation_rule.json`.",
+      "expected_output": "A `correlation` rule with `entity: \"custom\"`, `networkQuarantine: true` and `treatAsThreat: \"Malicious\"`. Inline Active Response requires `agent.uuid` alone in its own group, plus a process id (`src.process.storyline.id` or `src.process.uid`) alone in another, e.g. `[[\"agent.uuid\"], [\"src.process.storyline.id\"]]`. Putting `device.uid` in the same group as `agent.uuid` makes the API refuse quarantine (`network_quarantine requires entity key with singleton group [agent.uuid]`), so the answer explains that the alias and inline mitigation cannot coexist: drop the `device.uid` alias here, or cover the second feed with a separate rule whose response runs in a Hyperautomation flow. It also mentions the RBAC permissions the saving user needs. `timeWindow.windowMinutes` is 30.",
+      "assertions": [
+        {
+          "type": "json_parses",
+          "glob": "correlation_rule.json"
+        },
+        {
+          "type": "file_json_path",
+          "glob": "correlation_rule.json",
+          "path": "data.queryType",
+          "equals": "correlation"
+        },
+        {
+          "type": "file_json_path",
+          "glob": "correlation_rule.json",
+          "path": "data.networkQuarantine",
+          "equals": true
+        },
+        {
+          "type": "file_matches",
+          "glob": "correlation_rule.json",
+          "pattern": "\\[\\s*\"agent\\.uuid\"\\s*\\]"
+        },
+        {
+          "type": "file_matches",
+          "glob": "correlation_rule.json",
+          "pattern": "\\[\\s*\"src\\.process\\.(?:storyline\\.id|uid)\"\\s*\\]"
+        },
+        {
+          "type": "file_matches",
+          "glob": "correlation_rule.json",
+          "pattern": "\"agent\\.uuid\"\\s*,|,\\s*\"agent\\.uuid\"",
+          "count": 0
+        },
+        {
+          "type": "file_json_path",
+          "glob": "correlation_rule.json",
+          "path": "data.correlationParams.timeWindow.windowMinutes",
+          "equals": 30
+        },
+        {
+          "type": "output_matches",
+          "pattern": "(?i)singleton|own group|alone"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "correlation-eleven-subqueries",
+      "prompt": "Keep this a real-time correlation rule, not a scheduled one. I want an alert when one storyline runs all of these discovery commands within an hour, in any order, one sub-query per command: whoami, hostname, systeminfo, ipconfig, net user, net group, nltest, quser, tasklist, netstat, arp. Write the full creation payload to `correlation_rule.json`.",
+      "expected_output": "A correlation rule takes at most 10 sub-queries; 11 is HTTP 400 `You must provide between 1 and 10 queries.` So all 11 cannot each be a required stage in one rule. The payload stays a `correlation` rule with 10 or fewer `subQueries` (for example the two `net` commands folded into one sub-query, or the least indicative command dropped), `entity: \"storyline\"` (or a custom key on `src.process.storyline.id` and `agent.uuid`), `timeWindow.windowMinutes: 60`, and the answer states the 10 sub-query cap and the trade-off made.",
+      "assertions": [
+        {
+          "type": "json_parses",
+          "glob": "correlation_rule.json"
+        },
+        {
+          "type": "file_json_path",
+          "glob": "correlation_rule.json",
+          "path": "data.queryType",
+          "equals": "correlation"
+        },
+        {
+          "type": "file_json_path",
+          "glob": "correlation_rule.json",
+          "path": "data.correlationParams.subQueries.0.subQuery",
+          "exists": true
+        },
+        {
+          "type": "file_matches",
+          "glob": "correlation_rule.json",
+          "pattern": "(?s)(?:\"subQuery\".*?){11}",
+          "count": 0
+        },
+        {
+          "type": "file_json_path",
+          "glob": "correlation_rule.json",
+          "path": "data.correlationParams.timeWindow.windowMinutes",
+          "equals": 60
+        },
+        {
+          "type": "output_matches",
+          "pattern": "(?i)\\b10\\b[^\\n]*sub-?quer|sub-?quer[^\\n]*\\b10\\b"
+        }
+      ]
     }
   ]
 }

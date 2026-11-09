@@ -37,6 +37,12 @@ from `where` and handle it after the pipe.
 | `createdAt != null` | **rejected** | `detectedAt != null` works |
 | `mitreTactics != null` | **rejected** | not tested |
 
+**`assets`: do not use `where (...)`.** Any `where` clause on the `assets` adapter, with or without a
+subset selector, returns at most 20 rows. `assetStatus = 'Active'`, `assetStatus = 'Inactive'`,
+`==` with double quotes and `in ('Active')` all returned 20, both listed and counted. The same predicates
+after a pipe (`| filter assetStatus = 'Active'`) returned the full 249. No error is raised. Put every
+`assets` predicate after the pipe.
+
 ## Hidden-by-default rows (measured 2026-10-05, S-26.3.4)
 
 Two adapters return a subset unless you filter for the rest explicitly. Panels that look complete

@@ -38,7 +38,7 @@ The Python tests are host-only: run them from a terminal or Claude Code on your 
 
 ## MCP tools validated (s1-secops-mcp)
 
-The s1-secops-mcp tools were exercised against the live demo tenant. The 1.5.x live A/B regression covered the 35 tools of that release, both natively and in the Docker image. The five tools added in 1.6.0 (`purple_ai_query`, `ti_vt_lookup`, `ti_vt_relationship`, `ti_shodan_host`, `ti_shodan_dns`) were verified live with real keys on 2026-11-05, bringing the total to 40. From 1.5.5 the server is read-only by default, so re-running the write rows below needs `S1_READ_ONLY=false` ([read-only.md](./read-only.md)):
+The s1-secops-mcp tools were exercised against the live demo tenant. The 1.5.x live A/B regression covered the 35 tools of that release, both natively and in the Docker image. The five tools added in 1.6.0 (`purple_ai_query`, `ti_vt_lookup`, `ti_vt_relationship`, `ti_shodan_host`, `ti_shodan_dns`) were verified live with real keys on 2026-11-05. The seven Detection as Code and Asset Inventory tools were verified live on 2026-11-09, for 47 in total. From 1.5.5 the server is read-only by default, so re-running the write rows below needs `S1_READ_ONLY=false` ([read-only.md](./read-only.md)):
 
 | Tool | Tested operation | Result |
 |---|---|---|
@@ -64,6 +64,13 @@ The s1-secops-mcp tools were exercised against the live demo tenant. The 1.5.x l
 | `ti_vt_relationship` | Relationship pages for a file, IP and domain; a premium-only relationship returns a 403 that says so | PASSED |
 | `ti_shodan_host` | Host lookup for a public IP | PASSED |
 | `ti_shodan_dns` | Forward and reverse lookups | PASSED |
+| `dac_export` | Export every custom rule as YAML, listing and extracted to a folder; counts by scope and query type match a `/cloud-detection/rules` listing | PASSED |
+| `dac_diff` | Diff an untouched export with a `deployments.yaml`: imports only, nothing created, updated or deleted; a missing manifest, a `..` path and a folder outside the shared one fail cleanly | PASSED |
+| `dac_apply` | Apply Draft rules after a matching diff; refused in read-only mode. The bundle-hash and summary refusals are covered by unit tests (`dac-1.6.1`, `dac-1.6.2`) | PASSED |
+| `asset_inventory_counts` | Totals per category and surface | PASSED |
+| `asset_inventory_search` | Endpoint and Network Discovery views, with and without a `missingCoverage` `stringIn` filter; totals equal the PowerQuery `assets` datasource with `assetStatus = 'Active'` | PASSED |
+| `asset_inventory_get` | One Network Discovery asset and one endpoint (agent and alert counts); an unknown id returns `NOT_FOUND` | PASSED |
+| `asset_inventory_filter_values` | `missingCoverage` and `eppUnsupportedUnknown` values with counts | PASSED |
 | `uam_ingest_alert` | POST one OCSF alert carrying its indicator inline | PASSED |
 | `uam_post_alert` | POST OCSF alert envelope | PASSED |
 | `sdl_list_files` | List `/logParsers/` and `/dashboards/` | PASSED |
@@ -212,9 +219,9 @@ They cover: printed JSON is valid, carries the launcher's absolute path and hold
 ### Read-only mode and image checks
 
 - **Unit tests:** `mcp/s1-secops-mcp/tests/readonly-1.5.5.test.mjs` (part of `npm test`) covers the read-only gate in `lib/access.js`. No tenant needed.
-- **Image smoke tests:** `mcp/docker/smoke-test.sh <image> --expect-version 1.6.0` runs 32 checks against the distroless image. It has no shell, so in-image checks run with `--entrypoint /nodejs/bin/node`. Among them:
+- **Image smoke tests:** `mcp/docker/smoke-test.sh <image> --expect-version 1.6.2` runs 32 checks against the distroless image. It has no shell, so in-image checks run with `--entrypoint /nodejs/bin/node`. Among them:
   - T04 to T06: no shell, no npm, no package manager, Python or git in the image;
-  - T12 and T13: `tools/list` returns 36 tools with no threat-intel keys and 40 with both keys;
+  - T12 and T13: `tools/list` returns 43 tools with no threat-intel keys and 47 with both keys;
   - T22: the server names removed in 1.6.0 exit 78 with the update instruction;
   - T32: a write tool is refused in the default read-only mode, run with `--network none`, and the refusal says how to enable write;
   - T33: with `S1_READ_ONLY=false` the same call reaches its handler;

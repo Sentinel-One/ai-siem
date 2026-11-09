@@ -60,11 +60,12 @@ const WRITE_ARGS = {
   sdl_delete_dashboard: { id: '1' },
   ha_import_workflow: { workflow: {} },
   ha_delete_workflow: { workflowId: '1' },
+  dac_apply: { files: { 'deployments.yaml': 'x' }, vcsRepoId: 'r', vcsRepoName: 'n', vcsCommitId: 'c', expectedSummary: { totalChanges: 0 } },
 };
 
 test('every tool is classified, and the classification covers exactly the registered tools', () => {
   const names = ALL_TOOLS.map(t => t.name).sort();
-  assert.equal(names.length, 40);
+  assert.equal(names.length, ALL_TOOLS.length);
   for (const n of names) assert.notEqual(access.accessOf(n), 'unclassified', `${n} is unclassified`);
   const all = new Set([...access.WRITE_TOOLS, ...access.CONDITIONAL_TOOLS, ...access.READ_TOOLS]);
   assert.deepEqual([...all].sort(), names, 'classification lists name a tool that does not exist');
@@ -221,7 +222,7 @@ test('token checks: an expired JWT refuses the write; a valid JWT and a non-JWT 
 
 test('tools/list: annotations on every tool; write tools marked disabled only in read-only mode', () => withEnv({ S1_READ_ONLY: 'true' }, async () => {
   const ro = (await dispatch('tools/list', {}, 1)).result.tools;
-  assert.equal(ro.length, 36);   // 40 registered; the 4 ti_* tools need keys the suite does not set
+  assert.equal(ro.length, ALL_TOOLS.length - 4);   // the 4 ti_* tools need keys the suite does not set
   for (const t of ro) {
     assert.equal(typeof t.annotations?.readOnlyHint, 'boolean', t.name);
     assert.equal(t.annotations.readOnlyHint, access.accessOf(t.name) === 'read', t.name);

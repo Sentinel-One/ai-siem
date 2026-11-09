@@ -24,6 +24,10 @@ loss has a concrete, expensive consequence:
    streams are listed BY NAME because a vendor filter keeps null-vendor rows.
 6. Every documented PowerQuery still passes the repo linter.
 7. The eval suite is structurally gradable and every case grades something.
+8. Detection as Code is native only: the playbook drives the console's DaC
+   API through `dac_export` / `dac_diff` / `dac_apply` and the official
+   reference workflow, the `assets/dac-native/` templates stay legal rule
+   YAML, and nothing points back at a local sync engine or TOML rules.
 
 The PowerQuery linter is imported from `tools/run_evals.py`, never copied.
 
@@ -72,6 +76,14 @@ ONBOARDING = (REFS / "data-source-onboarding.md").read_text(encoding="utf-8")
 RBA = (REFS / "risk-based-alerting.md").read_text(encoding="utf-8")
 INGEST = (REFS / "ingest-health-monitoring.md").read_text(encoding="utf-8")
 EXCLUSIONS = (REFS / "custom-detection-exclusions.md").read_text(encoding="utf-8")
+DAC_PLAYBOOK = REFS / "detection-as-code.md"
+DAC_ASSETS = ASSETS / "dac-native"
+
+try:
+    import yaml  # PyYAML; optional, only the template-parsing tests need it
+except ImportError:  # pragma: no cover
+    yaml = None
+NEEDS_YAML = unittest.skipIf(yaml is None, "PyYAML is not installed")
 
 FENCE = re.compile(r"^```(\w*)\n(.*?)^```", re.M | re.S)
 PQ_LANGS = {"text", "powerquery", "pq"}
@@ -381,6 +393,181 @@ class ExclusionRuleTypeGate(unittest.TestCase):
     def test_the_anti_join_and_its_inverse_are_documented(self):
         self.assertIn("| filter excl = null", EXCLUSIONS)
         self.assertIn("| filter excl = *", EXCLUSIONS)
+
+
+@unittest.skipUnless(DAC_PLAYBOOK.is_file(),
+                     "this repository does not ship the Detection as Code solution")
+class DetectionAsCodeIsNative(unittest.TestCase):
+    """The DaC solution drives the console's own engine, never a local sync."""
+
+    TEMPLATES = ("deployments.template.yaml",
+                 "rules/events.template.yaml",
+                 "rules/correlation-custom-entity.template.yaml",
+                 "rules/scheduled-entity-mapping.template.yaml",
+                 "README.md")
+
+    def setUp(self):
+        self.text = DAC_PLAYBOOK.read_text(encoding="utf-8")
+
+    def _rule(self, name):
+        return yaml.safe_load(
+            (DAC_ASSETS / "rules" / name).read_text(encoding="utf-8"))
+
+    def test_the_three_mcp_tools_are_named(self):
+        for tool in ("dac_export", "dac_diff", "dac_apply"):
+            self.assertIn(tool, self.text)
+
+    def test_apply_is_gated_on_the_reviewed_summary(self):
+        self.assertIn("expectedSummary", self.text,
+                      "dac_apply must be tied to the summary of a reviewed diff")
+        self.assertIn("expectedZipSha256", self.text,
+                      "dac_apply must be tied to the exact bundle of a reviewed diff")
+        self.assertRegex(self.text, r"(?i)a diff writes nothing")
+
+    def test_bootstrap_imports_instead_of_duplicating(self):
+        self.assertIn("importCustomRuleId", self.text)
+        self.assertRegex(self.text, r"(?i)exactly as exported")
+
+    def test_identifier_type_enum_is_listed(self):
+        for value in ("agent.uuid", "cloud_resource_id", "distinguished_name",
+                      "hostname", "mac_addresses", "object_guid", "object_sid",
+                      "serial_number", "user_principal_name"):
+            self.assertIn(f"`{value}`", self.text)
+        self.assertNotIn("LEAD:", self.text)
+
+    def test_ownership_is_keyed_on_the_repository_id(self):
+        self.assertIn("already claimed by another repository", self.text)
+
+    def test_only_query_lang_2_0_is_manageable(self):
+        self.assertIn("Only SYQL (queryLang 2.0) rules are supported", self.text)
+
+    def test_the_two_merge_delete_flow_is_documented(self):
+        self.assertIn("deletePolicy: Delete", self.text)
+        self.assertRegex(self.text, r"(?i)two merges")
+        self.assertRegex(self.text, r"(?i)retain.{0,40}default|default.{0,40}retain")
+
+    def test_ci_points_at_the_official_reference_repository(self):
+        readme = (DAC_ASSETS / "README.md").read_text(encoding="utf-8")
+        self.assertIn("detection-as-code.py", readme)
+        for var in ("API_TOKEN", "GITHUB_REPOSITORY", "GITHUB_REPOSITORY_ID",
+                    "HEAD_SHA", "MGMT_URI"):
+            self.assertIn(var, readme, f"CLI mode needs {var}")
+        for cmd in ("validate", "diff --deployments-file",
+                    "apply --deployments-file"):
+            self.assertIn(cmd, readme)
+
+    def test_no_local_sync_engine_remains(self):
+        self.assertFalse((ASSETS / "detection-as-code-starter").exists())
+        text = SKILL + "".join(p.read_text(encoding="utf-8")
+                               for p in sorted(REFS.glob("*.md")))
+        for stale in ("detection-as-code-starter", "dac_sync", "dac_lint",
+                      "rule.schema.json"):
+            self.assertNotIn(stale, self.text)
+        self.assertNotRegex(self.text, r"\bTOML\b")
+        self.assertNotIn("detection-as-code-starter", text)
+
+    def test_every_template_ships(self):
+        for rel in self.TEMPLATES:
+            self.assertTrue((DAC_ASSETS / rel).is_file(), rel)
+
+    @NEEDS_YAML
+    def test_templates_parse_as_yaml(self):
+        for p in sorted(DAC_ASSETS.rglob("*.yaml")):
+            self.assertIsInstance(
+                yaml.safe_load(p.read_text(encoding="utf-8")), dict, p.name)
+
+    @NEEDS_YAML
+    def test_manifest_deploys_only_to_defined_targets(self):
+        m = yaml.safe_load((DAC_ASSETS / "deployments.template.yaml").read_text(
+            encoding="utf-8"))
+        self.assertTrue(m["targets"] and m["deploy"])
+        for name, target in m["targets"].items():
+            self.assertIn(target["scopeLevel"], ("global", "account", "site"))
+            if target["scopeLevel"] != "global":
+                self.assertIsInstance(target["scopeId"], str,
+                                      f"{name}: scopeId must be a quoted string")
+        self.assertEqual([], sorted(set(m["deploy"]) - set(m["targets"])))
+
+    @NEEDS_YAML
+    def test_every_rule_template_is_query_lang_2_0(self):
+        for p in sorted((DAC_ASSETS / "rules").glob("*.yaml")):
+            rule = yaml.safe_load(p.read_text(encoding="utf-8"))
+            self.assertEqual("2.0", rule["queryLang"], p.name)
+            for key in ("id", "name", "severity", "status", "expirationMode",
+                        "queryType", "deletePolicy"):
+                self.assertIn(key, rule, f"{p.name}: missing {key}")
+
+    @NEEDS_YAML
+    def test_correlation_template_uses_the_custom_entity(self):
+        cp = self._rule("correlation-custom-entity.template.yaml")["correlationParams"]
+        self.assertEqual("custom", str(cp["entity"]).lower())
+        self.assertEqual([["agent.uuid"], ["src.process.uid"]],
+                         cp["entitiesAndFields"])
+        self.assertEqual(60, cp["timeWindow"]["windowMinutes"])
+        self.assertTrue(2 <= len(cp["subQueries"]) <= 10)
+
+    @NEEDS_YAML
+    def test_scheduled_template_cannot_mitigate_and_maps_entities(self):
+        rule = self._rule("scheduled-entity-mapping.template.yaml")
+        self.assertEqual("scheduled", rule["queryType"])
+        self.assertEqual("UNDEFINED", rule["treatAsThreat"])
+        self.assertIs(False, rule["networkQuarantine"])
+        self.assertTrue(1 <= len(rule["entityMappings"]) <= 3)
+
+
+class UnprotectedEndpointsPlaybook(unittest.TestCase):
+    """The report's numbers must equal the console Network Discovery view."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = (REFS / "unprotected-endpoints.md").read_text(encoding="utf-8")
+
+    def test_headline_is_the_console_view_with_missing_epp(self):
+        self.assertIn("surface: NETWORK_DISCOVERY", self.text)
+        self.assertRegex(self.text, r'missingCoverage", stringIn: \{values: \["EPP"\]\}')
+
+    def test_asset_counts_is_never_the_nd_denominator(self):
+        self.assertRegex(self.text, re.compile(r"asset_inventory_counts.{0,400}not the console", re.S))
+
+    def test_pq_fallback_carries_the_active_filter(self):
+        self.assertIn("filter assetStatus = 'Active'", self.text)
+
+    def test_deploy_ready_uses_the_filterable_field(self):
+        self.assertIn('eppUnsupportedUnknown", stringIn: {values: ["Supported"]}', self.text)
+
+    def test_devices_that_cannot_take_an_agent_are_not_gaps(self):
+        self.assertIn("never counted as deployment gaps", self.text)
+
+    def test_the_report_writes_nothing(self):
+        self.assertIn("read-only", self.text)
+        for w in ("sdl_put_file", "ha_import_workflow", "savelookup"):
+            self.assertNotIn(w, self.text)
+
+    def test_dashboard_is_optional_and_size_checked(self):
+        self.assertIn("unprotected_endpoints_dashboard.template.json", self.text)
+        self.assertIn("184 to 208 s", self.text)
+
+    def test_no_unresolved_placeholders(self):
+        self.assertNotIn("<!-- LEAD:", self.text)
+
+
+class UnprotectedEndpointsDashboardTemplate(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dash = json.loads((ASSETS / "unprotected_endpoints_dashboard.template.json").read_text(encoding="utf-8"))
+        cls.queries = [g["query"] for g in cls.dash["graphs"] if "query" in g]
+
+    def test_every_panel_reads_the_active_nd_view_with_filter(self):
+        self.assertEqual(11, len(self.queries))
+        for q in self.queries:
+            self.assertIn("| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active'", q)
+
+    def test_no_where_clause_on_the_assets_adapter(self):
+        for q in self.queries:
+            self.assertNotRegex(q, r"datasource assets[^|]*\bwhere\b")
+
+    def test_all_data_instruction_leads_the_description(self):
+        self.assertTrue(self.dash["description"].startswith("**SET THE DATA SELECTOR TO 'All Data'**"))
 
 
 class DocumentedQueriesLintClean(unittest.TestCase):

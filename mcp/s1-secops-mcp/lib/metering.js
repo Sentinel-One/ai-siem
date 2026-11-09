@@ -24,21 +24,44 @@ export const METERING_PREDICATE = "tag != 'logVolume'";
 // predicate would be wrong or rejected. They are passed through unchanged.
 export const PASSTHROUGH_COMMANDS = new Set(['datasource', 'dataset', 'join', 'union', 'inputlookup', 'lookup', 'savelookup']);
 
-/** Index of the first `|` that is outside single or double quotes, or -1. */
-export function firstTopLevelPipe(q) {
+/**
+ * Index of the first `|` that is outside single or double quotes AND at
+ * parenthesis depth 0, or -1. This is the split point between the initial
+ * filter and the rest of the pipeline. Depth matters: a subquery in the
+ * initial filter (`f in (a | group 1 by f) | group n=count()`) has its own
+ * `|`, and splitting there sends unbalanced parentheses (HTTP 400
+ * `Expected ")"`). Mirrors `_first_top_level_pipe` in
+ * mgmt-console-api/scripts/pq.py.
+ *
+ * With `{ ignoreParens: true }` the depth check is off and the first unquoted
+ * `|` is returned wherever it sits, including inside parentheses. Use that to
+ * ask "does this query contain a pipe at all?" (see hasUnquotedPipe).
+ */
+export function firstTopLevelPipe(q, { ignoreParens = false } = {}) {
+  const s = String(q ?? '');
   let quote = null;
-  for (let i = 0; i < q.length; i++) {
-    const c = q[i];
+  let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
     if (quote) {
       if (c === '\\') { i++; continue; }
       if (c === quote) quote = null;
     } else if (c === "'" || c === '"') {
       quote = c;
-    } else if (c === '|') {
+    } else if (c === '(') {
+      depth++;
+    } else if (c === ')') {
+      depth = Math.max(0, depth - 1);
+    } else if (c === '|' && (ignoreParens || depth === 0)) {
       return i;
     }
   }
   return -1;
+}
+
+/** True when the query has any `|` outside quotes, at any parenthesis depth. */
+export function hasUnquotedPipe(q) {
+  return firstTopLevelPipe(q, { ignoreParens: true }) !== -1;
 }
 
 /**

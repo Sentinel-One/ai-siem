@@ -6,8 +6,8 @@
  * No required runtime dependencies (optional: @napi-rs/keyring, used for the
  * Windows Credential Manager).
  *
- * Exposes 40 tools across PowerQuery, Mgmt Console REST, UAM, Purple AI, SDL API,
- * Hyperautomation, UAM Ingest and built-in threat intelligence (VirusTotal and Shodan
+ * Exposes 47 tools across PowerQuery, Mgmt Console REST, UAM, Purple AI, SDL API,
+ * Hyperautomation, UAM Ingest, Detection as Code, Asset Inventory and built-in threat intelligence (VirusTotal and Shodan
  * tools are listed only when their keys are set); plus 2 resources and 2 prompts.
  *
  * Credentials come from environment variables, then the OS keychain. There is

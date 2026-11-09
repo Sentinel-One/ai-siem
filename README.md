@@ -194,21 +194,22 @@ Eight Claude skills for SentinelOne SecOps, bundled in `plugins/s1-secops-skills
 - **sdl-api**: read data and manage SDL configuration files (parsers, dashboards, lookups) via the SDL API.
 - **sdl-dashboard**: create, edit, and deploy SDL dashboard JSON.
 - **sdl-log-parser**: author and validate SDL log parsers.
-- **sdl-solutions**: deploy packaged SDL solutions from one prompt. Ten solutions, each with a guide in [`docs/solutions/`](plugins/s1-secops-skills/docs/solutions/):
+- **sdl-solutions**: deploy packaged SDL solutions from one prompt. Eleven solutions, each with a guide in [`docs/solutions/`](plugins/s1-secops-skills/docs/solutions/):
   - [Data source onboarding](plugins/s1-secops-skills/docs/solutions/data-source-onboarding.md): raw stream to OCSF, enrichment, dashboard, MITRE detections, threat response.
   - [Asset enrichment](plugins/s1-secops-skills/docs/solutions/asset-enrichment.md): device and user context from the Asset Inventory.
   - [UEBA anomaly detection](plugins/s1-secops-skills/docs/solutions/ueba-anomaly-detection.md): behavioural baselines with SPIKE, DROP, SILENT and NEW-BEHAVIOR detections.
   - [Ingest health monitoring](plugins/s1-secops-skills/docs/solutions/ingest-health-monitoring.md): per-device volume, lag, loss and parser drift.
   - [Custom detection exclusions](plugins/s1-secops-skills/docs/solutions/custom-detection-exclusions.md): suppress known-good noise in all three STAR rule types.
   - [Risk-Based Alerting](plugins/s1-secops-skills/docs/solutions/risk-based-alerting.md): accumulate risk per user or host and alert on thresholds.
-  - [Detection as Code](plugins/s1-secops-skills/docs/solutions/detection-as-code.md): rules as TOML in Git, synced to the Custom Detection API by CI.
+  - [Detection as Code](plugins/s1-secops-skills/docs/solutions/detection-as-code.md): Custom Detection rules as YAML in Git, previewed and applied by the console's native Detection as Code engine.
   - [Alert noise reduction](plugins/s1-secops-skills/docs/solutions/alert-noise-reduction.md): find noisy sources, filter ingestion, auto-resolve actioned noise.
   - [Custom detections with MITRE mapping](plugins/s1-secops-skills/docs/solutions/custom-detection-mitre-mapping.md): STAR rules cannot carry ATT&CK, so an HA watchdog raises the alert with tactics and techniques attached.
   - [Query slicing](plugins/s1-secops-skills/docs/solutions/query-slicing.md): run a long-window PowerQuery as parallel time slices (a 30-day aggregate in about 5 s instead of 21 to 40 s).
+  - [Unprotected endpoints report](plugins/s1-secops-skills/docs/solutions/unprotected-endpoints.md): Network Discovery devices with no SentinelOne agent, split into deploy-ready, agent support unknown and cannot take an agent, with an optional dashboard.
 - **hyperautomation**: build and export Hyperautomation (SOAR) workflow JSON.
 - **soc-investigator**: autonomous DFIR investigation over S1 alerts and third-party sources.
 
-**Current release:** plugin **1.4.1** (skill fixes; [what changed](plugins/s1-secops-skills/docs/upgrading.md#plugin-140-to-141)), Docker image **`sentinelone/secops-mcps:1.6.0`** (runs `s1-secops-mcp` 1.6.0, with Purple AI, VirusTotal and Shodan tools built in). Credentials live in the OS keychain; coming from 1.5.x, re-run `install` and follow the [1.5.7 to 1.6.0 upgrade guide](plugins/s1-secops-skills/docs/upgrading.md#157-to-160). What changed: [release notes 1.6.0](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.6.0.md). Install and upgrade: [plugin README](plugins/s1-secops-skills/README.md), [docs/installation.md](plugins/s1-secops-skills/docs/installation.md), [docs/upgrading.md](plugins/s1-secops-skills/docs/upgrading.md).
+**Current release:** plugin **1.4.2** (Detection as Code, custom correlation entities and an unprotected endpoints report; [what changed](plugins/s1-secops-skills/docs/upgrading.md#161-to-162-plugin-142)), Docker image **`sentinelone/secops-mcps:1.6.2`** (runs `s1-secops-mcp` 1.6.2, adding Detection as Code and Asset Inventory tools to the built-in Purple AI, VirusTotal and Shodan tools). Credentials live in the OS keychain; coming from 1.5.x, re-run `install` and follow the [1.5.7 to 1.6.0 upgrade guide](plugins/s1-secops-skills/docs/upgrading.md#157-to-160). What changed: [release notes 1.6.2](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.6.2.md). Install and upgrade: [plugin README](plugins/s1-secops-skills/README.md), [docs/installation.md](plugins/s1-secops-skills/docs/installation.md), [docs/upgrading.md](plugins/s1-secops-skills/docs/upgrading.md).
 
 See [`plugins/s1-secops-skills/docs/skills.md`](plugins/s1-secops-skills/docs/skills.md) for details.
 

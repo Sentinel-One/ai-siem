@@ -152,4 +152,49 @@ Responses: 404 Custom Detection rule not found, 200 Success, 400 Invalid user in
 > updates the query body in place and returns `status: "Activating"` (becomes Active within ~1h). No
 > need to delete + recreate to change a rule's PowerQuery. Pair with the scope envelope
 > `filter: {accountIds:[...]}` (or `siteIds`). To remove a rule, `DELETE /cloud-detection/rules` with
-> body `{"filter": {"ids": ["<rule_id>"]}}` (returns `{data:{affected:N}}`).
+> body `{"filter": {"ids": ["<rule_id>"]}}` (returns `{data:{affected:N}}`). `affected` also counts
+> rules that were still activating and were only disabled: re-list and repeat the DELETE for the ids
+> that remain (see `../detection-rules.md`). A rule managed by Detection as Code refuses this PUT;
+> change it in its Git repository.
+
+---
+
+## Addendum (hand-written, not generated from swagger): Detection as Code endpoints
+
+The two endpoints below are live on the console but absent from the bundled swagger, so the
+generated sections above and `search_endpoints.py` do not list them. Prefer the s1-secops-mcp
+tools `dac_export`, `dac_diff` and `dac_apply` (1.6.1 or later). Full contract, response shapes and
+error strings: `../detection-rules.md`, section "Detection as Code endpoints".
+
+## `POST /web/api/v2.1/cloud-detection/rules/parse-vcs`
+
+**Diff or apply a Detection as Code bundle**
+
+Query: `mode` = `diff` (writes nothing) or `apply`.
+
+Body (`multipart/form-data`):
+
+- `file` **required**: ZIP with `deployments.yaml` (`targets`, `deploy`) and the rule YAML files.
+- `vcsRepoId` **required**: stable id of the repository that owns the rules.
+- `vcsRepoName` **required**: repository name, e.g. `<owner>/<repo>`.
+- `vcsCommitId` **required**: commit SHA being diffed or applied.
+
+Required permissions: Custom Rules manage (plus Perform Advanced Actions for `hideLogic: true`).
+
+Responses: 200 `{data: {creates, updates, deletes, imports, retains, summary, vcsRepoId}}`;
+400 either `errors[]` with code 4000010 (parse or schema problem) or
+`{data: {validationErrors: {global, rules}}}` (semantic problem); 429 (nginx HTML, no
+`Retry-After`) on back-to-back calls.
+
+## `GET /web/api/v2.1/cloud-detection/rules/export-vcs`
+
+**Export rules as Detection as Code YAML**
+
+Parameters:
+
+- `cursor` [query, string]: the previous page's `nextCursor`.
+- Do not pass `isLegacy`: HTTP 400 `isLegacy: Unknown field`.
+
+Responses: 200 ZIP (`export-summary.json` with `exported`, `limit` 500, `nextCursor`,
+`totalItems`; `rules/<scopeLevel>-<scopeId>/exported-rule-<ruleId>.yaml`). Read it with
+`dac_export` or `s1_api_download`, not a JSON GET.

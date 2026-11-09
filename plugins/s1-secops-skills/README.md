@@ -412,7 +412,7 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 - *"Tune our alert ingestion and auto-close the already-blocked firewall alerts"*
 - *"Run an alert optimization for the Acme site"*
 
-**Unprotected endpoints report** (find Network Discovery devices with no SentinelOne agent, split into deploy-ready, agent support unknown and cannot-take-an-agent, with breakdowns and Sentinel Deploy remediation; read-only, with an optional dashboard template). Full guide: [docs/solutions/unprotected-endpoints.md](./docs/solutions/unprotected-endpoints.md).
+**Unprotected endpoints report** (find Network Discovery devices with no SentinelOne agent, split into deploy-ready, agent support unknown and cannot-take-an-agent, with a false-positive check of every device against the agent list, breakdowns and Sentinel Deploy remediation; read-only, with an optional dashboard template). Full guide: [docs/solutions/unprotected-endpoints.md](./docs/solutions/unprotected-endpoints.md).
 
 - *"Find our unprotected endpoints"*
 - *"Which devices on the network have no SentinelOne agent?"*
@@ -466,7 +466,7 @@ Already cloned this repo? Run `sh mcp/docker/s1-secops-mcp-launch.sh install` fr
 
 - copies the launcher to `~/.local/bin/` (Windows: `%USERPROFILE%\bin\`), outside `~/Documents`, `~/Desktop` and `~/Downloads`, where macOS stops Claude Desktop from running scripts;
 - adds the `s1-secops-mcp` entry to your Claude Desktop config with your real home path filled in, keeps every other server and setting, and saves a backup of the old file next to it. It removes older `purple-mcp`, `virustotal` and `shodan` entries that ran this launcher; servers you added yourself with other commands are kept;
-- pulls `sentinelone/secops-mcps:1.6.2`;
+- pulls `sentinelone/secops-mcps:1.6.3`;
 - asks for your credentials if none are stored yet, and stores them in the macOS login keychain, the Linux Secret Service or Windows Credential Manager (service `sentinelone-mcp`). Nothing is typed into a file;
 - ends with a line such as `Built-in tools: Purple AI on, VirusTotal on, Shodan off (no SHODAN_API_KEY)`, so you can see which threat-intel tools will be listed.
 
@@ -544,7 +544,7 @@ smoke test s1 secops skills
 Claude checks each installed MCP, confirms each skill is loaded, and reports any missing credential or unreachable endpoint. You can also test the image straight from a terminal, no Claude Desktop required:
 
 ```bash
-docker run -i --rm sentinelone/secops-mcps:1.6.2 help    # usage: the s1-secops-mcp server and the other commands
+docker run -i --rm sentinelone/secops-mcps:1.6.3 help    # usage: the s1-secops-mcp server and the other commands
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
   | ~/.local/bin/s1-secops-mcp-launch.sh s1-secops-mcp
 ```
@@ -561,7 +561,7 @@ The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-
 | `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` in the MCP log (macOS) | The config points at a launcher under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Run the Step 2 command again: `install` copies the launcher to `~/.local/bin/` and rewrites the config. |
 | `ENOENT`, `No such file or directory` or `spawn ... s1-secops-mcp-launch` in the MCP log | The `command` path in the config does not exist, usually a hand-typed `/Users/you/...`. Run the Step 2 command again: `install` writes your real path. |
 | Windows: Settings → Developer shows "No servers added" after the config was edited | Claude Desktop from the claude.ai installer is an MSIX package that reads `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\`, not the `%APPDATA%\Claude\` file that **Edit config** opens. Some builds keep user data in `%LOCALAPPDATA%\Claude-Data\<package id>\` instead. Run the Step 2 command again: `install` writes all three locations. If the servers still do not appear, open **Edit config**, note the path of the file it opens, and run `install -ConfigPath "<that path>"`. Or uninstall that build and install with the classic `Claude Setup.exe`, which reads `%APPDATA%\Claude\` like the rest of these docs describe (tested on Windows 11). |
-| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.6.2`. |
+| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.6.3`. |
 | A tool returns `s1-secops-mcp is in read-only mode (S1_READ_ONLY)` | Expected default from 1.5.5. To allow tools that change the tenant, run `~/.local/bin/s1-secops-mcp-launch.sh install --read-write` (Windows: `-ReadWrite`) and restart Claude Desktop. See [docs/read-only.md](./docs/read-only.md). |
 | `purple-mcp`, `virustotal` or `shodan` shows red or failed after upgrading, or its log says `removed in 1.6.0` | The entry is from before 1.6.0. Run the Step 2 `install` command again: it removes the old entries and writes the `s1-secops-mcp` entry. Then restart Claude Desktop. |
 | No `ti_vt_*` or `ti_shodan_*` tools are listed | The key is not stored, or the launcher could not read it. The server log shows `Threat intel: ... VirusTotal off (no VIRUSTOTAL_API_KEY)`. Run `~/.local/bin/s1-secops-mcp-launch.sh setup`, store the key, and restart Claude Desktop; on Linux confirm the Secret Service is unlocked. |
@@ -573,7 +573,7 @@ Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log` on macOS, and 
 
 Full troubleshooting flowchart, hand-testing, and rollback: **[docs/docker.md](./docs/docker.md)**.
 
-**Third-party notices:** bundled components, their licenses and the terms of the VirusTotal and Shodan services are listed in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md). The image prints them with `docker run --rm sentinelone/secops-mcps:1.6.2 notices`.
+**Third-party notices:** bundled components, their licenses and the terms of the VirusTotal and Shodan services are listed in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md). The image prints them with `docker run --rm sentinelone/secops-mcps:1.6.3 notices`.
 
 ---
 

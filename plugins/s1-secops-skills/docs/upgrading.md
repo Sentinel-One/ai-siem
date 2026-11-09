@@ -5,10 +5,11 @@ your **MCP client config**. Do them in that order.
 
 `install` copies the launcher file you run and writes that launcher's default image, so an upgrade
 starts from the new launcher (downloaded) or passes the image explicitly (`--image`, Windows
-`-Image`). The current release is image `1.6.2`. If you are several releases behind, read the
-sections in between for what changed, then follow [1.6.1 to 1.6.2](#161-to-162-plugin-142).
+`-Image`). The current release is image `1.6.3`. If you are several releases behind, read the
+sections in between for what changed, then follow [1.6.2 to 1.6.3](#162-to-163-plugin-143).
 
-- [1.6.1 to 1.6.2 (plugin 1.4.2)](#161-to-162-plugin-142) (current release: image `1.6.2`, s1-secops-mcp `1.6.2`, plugin `1.4.2`)
+- [1.6.2 to 1.6.3 (plugin 1.4.3)](#162-to-163-plugin-143) (current release: image `1.6.3`, s1-secops-mcp `1.6.3`, plugin `1.4.3`)
+- [1.6.1 to 1.6.2 (plugin 1.4.2)](#161-to-162-plugin-142)
 - [1.6.0 to 1.6.1 (plugin 1.4.2)](#160-to-161-plugin-142)
 - [Plugin 1.4.0 to 1.4.1](#plugin-140-to-141)
 - [1.5.7 to 1.6.0](#157-to-160)
@@ -22,6 +23,63 @@ sections in between for what changed, then follow [1.6.1 to 1.6.2](#161-to-162-p
 - [1.4.x to 1.5.0](#14x-to-150)
 - [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
 - [Rolling back](#rolling-back)
+
+---
+
+## 1.6.2 to 1.6.3 (plugin 1.4.3)
+
+**Alerts carry their scope and history, and the unprotected endpoints report checks for false
+positives.**
+Credentials, profiles, output folders, read-only mode and the CLAUDE.md override carry over.
+
+**Changed:**
+
+- `uam_get_alert` and `uam_list_alerts` return the alert's `accountId`, `accountName`, `siteId` and
+  `siteName` as flat fields. `uam_get_alert` adds `detectionScope` when the alert was detected under
+  a different account or site.
+- `uam_get_alert` returns the alert's history: `history` (`createdAt`, `eventType`, `eventText`),
+  `historyTotalCount`, and `historyTruncated` when there are more than 500 entries.
+
+**Skills (plugin 1.4.3):**
+
+- **Unprotected endpoints report:**
+  - It checks every Network Discovery device with Missing EPP against every agent: live and
+    decommissioned, in every site.
+  - Matching is by MAC, by IP on the same gateway, and by hostname. The report shows likely false
+    positives and review items in their own section, with the console count next to the count after
+    the check.
+  - It adds AD, Entra and cloud gap lists, a Network Discovery settings check, and the options that
+    close what no source can see.
+  - The matcher is `sdl-solutions/scripts/nd_agent_crosscheck.py`.
+- **Dashboard template:** two new panels run the check in PowerQuery
+  (`sdl-solutions/assets/nd_agent_crosscheck.pq`), and a third shows Missing EPP devices by identity
+  strength.
+- **Alert triage:** follow-up queries and actions on an alert use the alert's account and site as
+  their scope.
+
+**Upgrade:**
+
+1. **Install the 1.6.3 launcher**, with your usual options (`--read-write`, `--output-dir`; Claude
+   Code users add `--claude-code`). macOS or Linux:
+
+   ```bash
+   mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
+   ```
+
+   Windows (PowerShell, options as `-ReadWrite`, `-OutputDir`):
+
+   ```powershell
+   $f = "$env:TEMP\s1-secops-mcp-launch.ps1"; Invoke-WebRequest https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f install
+   ```
+
+   To keep the launcher you have, pass the image instead:
+   `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.6.3` (Windows:
+   `... s1-secops-mcp-launch.ps1 install -Image sentinelone/secops-mcps:1.6.3`).
+2. **Install plugin `1.4.3`** (Cowork → Customize → Browse plugins → upload → **Replace**).
+3. **Restart the client** (quit Claude Desktop completely and open it again, or restart Claude Code).
+
+**Check:** `docker run --rm sentinelone/secops-mcps:1.6.3 versions` shows `image_version` `1.6.3`,
+and the MCP entry in your client config names `sentinelone/secops-mcps:1.6.3`.
 
 ---
 
@@ -558,7 +616,7 @@ done
 |---|---|---|
 | Server key | `"sentinelone-mcp"` | `"s1-secops-mcp"` |
 | Dispatcher argument | `sentinelone-mcp` | `s1-secops-mcp` |
-| Image | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.6.2` via the launcher |
+| Image | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.6.3` via the launcher |
 | purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` in the keychain. purple-mcp is no longer in the image; Purple AI questions are the built-in `purple_ai_query` tool |
 
 Delete outright: `SDL_XDR_URL`, `SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`. Nothing replaces them. The console API token authorises every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as `<console>/sdl`.
@@ -596,10 +654,12 @@ cd ~/Library/Application\ Support/Claude
 cp claude_desktop_config.json.bak claude_desktop_config.json
 ```
 
+**Back to 1.6.2.** Run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.6.2` (add your usual options), reinstall plugin 1.4.2, and restart the client. `uam_get_alert` and `uam_list_alerts` then return no account or site fields, and `uam_get_alert` no history.
+
 **Back to 1.6.1.** Run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.6.1` (add your usual options), reinstall plugin 1.4.2, and restart the client. `dac_apply` then takes `expectedSummary` only.
 
 **Back to 1.6.0.** Run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.6.0` (add your usual options), reinstall plugin 1.4.1, and restart the client. `dac_*` and `asset_inventory_*` are not in 1.6.0.
 
 **Back to 1.5.7.** Restore the `.bak-` config copy that `install` saved before the 1.6.0 upgrade (it still has the `purple-mcp`, `virustotal` and `shodan` entries), or run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.5.7` for the `s1-secops-mcp` entry alone. Then restart the client. The 1.6.0 launcher refuses the removed server names, so restoring those three entries also needs the 1.5.7 launcher.
 
-**Rollback target: `1.4.10`.** `sentinelone/secops-mcps` carries `1.6.1`, `1.6.0`, `1.5.7`, `1.5.6`, `1.5.5`, `1.5.4`, `1.5.3`, `1.5.2`, `1.5.1`, `1.5.0` and `1.4.10`; tags are immutable, so `:1.4.10` is the exact earlier build. Any image before `1.5.5` has no read-only mode: every tool can write, whatever `S1_READ_ONLY` says. Note that 1.4.10 reads tokens from the config `env` block or a `credentials.json`, so rolling back puts plaintext tokens back on disk. Once you return to 1.5.x, delete the backup and run `s1-secops-mcp forget` only if you also want the keychain entries gone.
+**Rollback target: `1.4.10`.** `sentinelone/secops-mcps` carries `1.6.3`, `1.6.2`, `1.6.1`, `1.6.0`, `1.5.7`, `1.5.6`, `1.5.5`, `1.5.4`, `1.5.3`, `1.5.2`, `1.5.1`, `1.5.0` and `1.4.10`; tags are immutable, so `:1.4.10` is the exact earlier build. Any image before `1.5.5` has no read-only mode: every tool can write, whatever `S1_READ_ONLY` says. Note that 1.4.10 reads tokens from the config `env` block or a `credentials.json`, so rolling back puts plaintext tokens back on disk. Once you return to 1.5.x, delete the backup and run `s1-secops-mcp forget` only if you also want the keychain entries gone.

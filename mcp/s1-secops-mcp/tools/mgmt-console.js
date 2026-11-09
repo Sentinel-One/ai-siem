@@ -334,7 +334,7 @@ export const tools = [
   // ─── uam_list_alerts ──────────────────────────────────────────────────────
   {
     name: 'uam_list_alerts',
-    description: `List UAM (Unified Alert Management) alerts via GraphQL. The PRIMARY alert API in S1, covers all alert types (EDR, STAR, cloud, identity, third-party). Uses the correct FilterInput schema: dateTimeRange { start, end } for time windows (epoch ms). For time-scoped searches pass startTime/endTime: this tool sends dateTimeRange, the field the UAM schema actually accepts (date_range or dateRange is rejected).Convenience params (status, severity, startTime, endTime) build FilterInputs automatically. SCOPE: with a global or multi-account token an unscoped listing spans every account; pass scopeIds (and scopeType SITE for sites) for the account or site the user named. Each alert carries accountId and siteId. For deeper analysis, follow up with uam_get_alert.`,
+    description: `List UAM (Unified Alert Management) alerts via GraphQL. The PRIMARY alert API in S1, covers all alert types (EDR, STAR, cloud, identity, third-party). Uses the correct FilterInput schema: dateTimeRange { start, end } for time windows (epoch ms). For time-scoped searches pass startTime/endTime: this tool sends dateTimeRange, the field the UAM schema actually accepts (date_range or dateRange is rejected).Convenience params (status, severity, startTime, endTime) build FilterInputs automatically. SCOPE: with a global or multi-account token an unscoped listing spans every account; pass scopeIds (and scopeType SITE for sites) for the account or site the user named. Each alert carries accountId, accountName, siteId and siteName (where the alert is now). For deeper analysis, follow up with uam_get_alert.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -380,7 +380,7 @@ export const tools = [
         scopeIds: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Optional. Account (or site) ids to list alerts for. A global or multi-account token lists alerts from EVERY account it can reach when this is omitted; pass the account the user named. Each alert in the response carries accountId and siteId.',
+          description: 'Optional. Account (or site) ids to list alerts for. A global or multi-account token lists alerts from EVERY account it can reach when this is omitted; pass the account the user named. Each alert in the response carries accountId, accountName, siteId and siteName.',
         },
         scopeType: {
           type: 'string',
@@ -414,7 +414,7 @@ export const tools = [
   // ─── uam_get_alert ────────────────────────────────────────────────────────
   {
     name: 'uam_get_alert',
-    description: `Get full details for a specific UAM alert including analyst notes. ALWAYS call this before making a verdict; notes may contain MDR verdicts (False Positive / Benign / Resolved) that take precedence over detection engine severity. Returns alert fields plus a notes array from alertNotes query.`,
+    description: `Get full details for a specific UAM alert including analyst notes and history. ALWAYS call this before making a verdict; notes may contain MDR verdicts (False Positive / Benign / Resolved) that take precedence over detection engine severity. Returns alert fields, the alert's accountId, accountName, siteId and siteName (where it is now; use them as the scope for follow-up queries and actions), detectionScope when the alert was detected under a different account or site, plus a notes array from the alertNotes query and a history array from alertHistory (createdAt, eventType such as STATUS, ANALYST_VERDICT or USER_ASSIGNMENT, eventText; up to 500 entries, historyTotalCount gives the full count and historyTruncated is true when more exist).`,
     inputSchema: {
       type: 'object',
       properties: {

@@ -701,6 +701,31 @@ export async function uamGraphql(query, variables = {}, operationName, { readOnl
 }
 
 /**
+ * Flatten an alert's scope: accountId / accountName / siteId / siteName from realTime.scope
+ * (where the alert is now). With detectionTime, adds detectionScope only when the scope at
+ * detection differs (the alert was moved), so the common case stays flat.
+ */
+export function flattenAlertScope(realTime, detectionTime) {
+  const s = realTime?.scope || {};
+  const out = {
+    accountId: s.account?.id ?? null,
+    accountName: s.account?.name ?? null,
+    siteId: s.site?.id ?? null,
+    siteName: s.site?.name ?? null,
+  };
+  const d = detectionTime?.scope;
+  if (d && ((d.accountId ?? null) !== out.accountId || (d.siteId ?? null) !== out.siteId)) {
+    out.detectionScope = {
+      accountId: d.accountId ?? null,
+      accountName: d.accountName ?? null,
+      siteId: d.siteId ?? null,
+      siteName: d.siteName ?? null,
+    };
+  }
+  return out;
+}
+
+/**
  * List UAM alerts using the correct `filters: [FilterInput!]` schema.
  *
  * IMPORTANT: The `alerts` query takes `filters: [FilterInput!]` (flat AND-joined list).
@@ -794,7 +819,7 @@ export async function uamListAlerts({
             confidenceLevel
             primaryIndicatorType
             assignee { fullName email }
-            realTime { scope { account { id } site { id } } }
+            realTime { scope { account { id name } site { id name } } }
           }
         }
       }
@@ -803,11 +828,11 @@ export async function uamListAlerts({
   const data = await uamGraphql(query, variables, undefined, { readOnly: true });
   const edges = data?.alerts?.edges || [];
   return {
-    // Flatten realTime.scope to accountId/siteId so a global-token listing says
-    // which account each alert belongs to.
+    // Flatten realTime.scope so a global-token listing says which account and site
+    // each alert belongs to.
     alerts: edges.map(({ node }) => {
       const { realTime, ...rest } = node || {};
-      return { ...rest, accountId: realTime?.scope?.account?.id ?? null, siteId: realTime?.scope?.site?.id ?? null };
+      return { ...rest, ...flattenAlertScope(realTime) };
     }),
     totalCount: data?.alerts?.totalCount ?? null,
     pageInfo: data?.alerts?.pageInfo || {},
@@ -815,13 +840,47 @@ export async function uamListAlerts({
   };
 }
 
+export const ALERT_HISTORY_PAGE = 100;
+export const ALERT_HISTORY_MAX_PAGES = 5;
+
 /**
- * Get a single UAM alert with notes.
- * Fetches alert detail and notes in parallel (history is a separate paginated connection).
- * Confirmed field list via __type introspection on UnifiedAlertDetail and AlertNote.
+ * Read an alert's history (the alertHistory connection: createdAt, eventType, eventText; items
+ * have no id). Follows endCursor up to ALERT_HISTORY_MAX_PAGES pages.
+ */
+async function uamAlertHistory(alertId) {
+  const items = [];
+  let after = null;
+  let totalCount = null;
+  let hasNextPage = false;
+  for (let page = 0; page < ALERT_HISTORY_MAX_PAGES; page++) {
+    const data = await uamGraphql(`
+      query GetAlertHistory($id: ID!, $first: Int, $after: String) {
+        alertHistory(alertId: $id, first: $first, after: $after) {
+          edges { node { createdAt eventType eventText } }
+          pageInfo { hasNextPage endCursor }
+          totalCount
+        }
+      }
+    `, { id: alertId, first: ALERT_HISTORY_PAGE, after }, undefined, { readOnly: true });
+    const h = data?.alertHistory;
+    if (!h) break;
+    for (const e of h.edges || []) if (e?.node) items.push(e.node);
+    totalCount = h.totalCount ?? totalCount;
+    hasNextPage = Boolean(h.pageInfo?.hasNextPage);
+    after = h.pageInfo?.endCursor || null;
+    if (!hasNextPage || !after) break;
+  }
+  return { history: items, historyTotalCount: totalCount ?? items.length, historyTruncated: hasNextPage };
+}
+
+/**
+ * Get a single UAM alert with its notes and history.
+ * Fetches alert detail, notes and history in parallel.
+ * Confirmed field list via __type introspection on UnifiedAlertDetail and AlertNote; the
+ * realTime.scope, detectionTime.scope and alertHistory selections were run against a live console.
  */
 export async function uamGetAlert(alertId) {
-  const [alertData, notesData] = await Promise.all([
+  const [alertData, notesData, historyData] = await Promise.all([
     uamGraphql(`
       query GetAlert($id: ID!) {
         alert(id: $id) {
@@ -830,6 +889,8 @@ export async function uamGetAlert(alertId) {
           confidenceLevel primaryIndicatorType analystVerdict result ticketId
           assignee { userId fullName email }
           detectionSource { product vendor }
+          realTime { scope { account { id name } site { id name } } }
+          detectionTime { scope { accountId accountName siteId siteName } }
         }
       }
     `, { id: alertId }, undefined, { readOnly: true }),
@@ -840,12 +901,12 @@ export async function uamGetAlert(alertId) {
         }
       }
     `, { id: alertId }, undefined, { readOnly: true }),
+    uamAlertHistory(alertId),
   ]);
-  const alert = alertData?.alert || null;
-  if (alert) {
-    alert.notes = notesData?.alertNotes?.data || [];
-  }
-  return alert;
+  const raw = alertData?.alert || null;
+  if (!raw) return null;
+  const { realTime, detectionTime, ...rest } = raw;
+  return { ...rest, ...flattenAlertScope(realTime, detectionTime), notes: notesData?.alertNotes?.data || [], ...historyData };
 }
 
 /**

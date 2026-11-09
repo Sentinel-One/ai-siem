@@ -550,17 +550,44 @@ class UnprotectedEndpointsPlaybook(unittest.TestCase):
     def test_no_unresolved_placeholders(self):
         self.assertNotIn("<!-- LEAD:", self.text)
 
+    def test_agent_cross_check_always_runs_and_fetches_every_agent(self):
+        self.assertIn("## Step 2b: agent cross-check (always run)", self.text)
+        self.assertIn('isDecommissioned: "true"', self.text)
+        self.assertIn("scripts/nd_agent_crosscheck.py", self.text)
+        self.assertIn("Do not look agents up with lists of values", self.text)
+
+    def test_review_items_stay_in_the_gap(self):
+        self.assertIn("Never subtract review items from the", self.text)
+        self.assertRegex(self.text, r"\*\*False-positive check\*\* \(its own section, always present")
+
+    def test_other_inventories_and_coverage_limits(self):
+        self.assertIn("## Step 2c: other inventories", self.text)
+        self.assertIn("## Closing the remaining gaps", self.text)
+
 
 class UnprotectedEndpointsDashboardTemplate(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dash = json.loads((ASSETS / "unprotected_endpoints_dashboard.template.json").read_text(encoding="utf-8"))
         cls.queries = [g["query"] for g in cls.dash["graphs"] if "query" in g]
+        cls.crosscheck = (ASSETS / "nd_agent_crosscheck.pq").read_text(encoding="utf-8")
 
     def test_every_panel_reads_the_active_nd_view_with_filter(self):
-        self.assertEqual(11, len(self.queries))
+        self.assertEqual(14, len(self.queries))
         for q in self.queries:
             self.assertIn("| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active'", q)
+
+    def test_cross_check_panels_run_the_shipped_query(self):
+        core = self.crosscheck.split("\n| columns device = n")[0]
+        users = [q for q in self.queries if q.startswith("| union")]
+        self.assertEqual(2, len(users))
+        for q in users:
+            self.assertTrue(q.startswith(core), "a cross-check panel drifted from assets/nd_agent_crosscheck.pq")
+
+    def test_cross_check_only_counts_live_recent_agents(self):
+        self.assertIn("let live = assetStatus = 'Active' && activeCoverage contains 'EPP'", self.crosscheck)
+        self.assertIn("ageDays <= 30", self.crosscheck)
+        self.assertIn("let shared = key matches '^mac:' && ndc > 1", self.crosscheck)
 
     def test_no_where_clause_on_the_assets_adapter(self):
         for q in self.queries:

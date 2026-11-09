@@ -139,7 +139,7 @@ A SOC peer should be able to paste your queries and reproduce the answer.
 
 ### 1. Triage & Context Gathering
 
-- `uam_get_alert`: read severity, classification, detection source, analyst verdict.
+- `uam_get_alert`: read severity, classification, detection source, analyst verdict, and the alert's account and site (`accountId`, `accountName`, `siteId`, `siteName`). Use them as the scope of every follow-up query and action on the alert.
 - **CRITICAL CHECK: read the alert's notes and history (both returned by `uam_get_alert`) BEFORE proceeding.** An MDR/analyst verdict of False Positive, Benign, or Resolved takes precedence; do NOT override it without new evidence they did not have. If FP, note it and move on, do not escalate.
 - Affected asset: `s1_api_get` on `/web/api/v2.1/agents` (filter by `uuids` or `computerName`) or the asset inventory (`/web/api/v2.1/xdr/assets/surface/endpoint`, see the mgmt-console-api skill) for OS, role, location, criticality, agent health.
 - Establish a timeline: first seen vs detected; is there a detection gap?

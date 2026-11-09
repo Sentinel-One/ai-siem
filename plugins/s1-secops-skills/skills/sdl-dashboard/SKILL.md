@@ -60,7 +60,7 @@ already requested.
 
 | Always | Never wait to be told |
 |---|---|
-| Put the initial predicate of a `\| datasource` query inside `where (...)` | Do not write `\| datasource alerts \| filter status = 'NEW'` |
+| Put the initial predicate of a `\| datasource alerts` query inside `where (...)`; on `\| datasource assets` use `\| filter` | Do not write `\| datasource alerts \| filter status = 'NEW'`, and do not write `\| datasource assets ... where (...)` (it caps at 20 rows) |
 | Run source enumeration and schema discovery before authoring, and use only fields you confirmed | Do not assume a field exists because it exists on another tenant |
 | Search the account for a deployed dashboard already doing this, and copy its working pattern | Do not theorise about why something cannot work before looking |
 | Lead the dashboard `description` with a bold instruction to set the data selector to **All Data** | Do not ship a `\| datasource` or alert-stream dashboard without it |
@@ -136,10 +136,16 @@ A second query surface, alongside the event stream. `| datasource <adapter>` rea
 | columns <projection>
 ```
 
-**The initial predicate must live inside `where (...)`.** It is an adapter parameter, not a
+**On `alerts`, the initial predicate must live inside `where (...)`.** It is an adapter parameter, not a
 PowerQuery command, and `| datasource alerts | filter status = 'NEW'` is the single most common
 failure. Once past the adapter, normal PowerQuery applies, including `| filter` on a *derived*
 field.
+
+**On `assets`, the opposite holds: use `| filter`, never `where (...)`.** `| datasource assets from
+'surface/networkDiscovery' where (assetStatus = 'Active')` returns at most 20 rows whatever the
+predicate, and so does the same `where` grouped or counted (measured: 20 against 249 with `| filter`;
+Missing EPP 5 against 20). It raises no error, so the panel looks plausible and under-reports.
+`| datasource assets from '<subset>' | filter <predicate>` returns the full result.
 
 Adapters, per-adapter `where (...)` operator support, pushdown limits, the null idioms, ActivityFeed
 type codes and the multi-hop sankey shape are tabulated in

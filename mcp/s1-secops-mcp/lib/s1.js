@@ -286,7 +286,7 @@ export async function lrqRun(query, { startTime, endTime, hours = 24, maxRows = 
   const tok = jwt();
   if (!['PQ', 'LOG'].includes(queryType)) throw new Error(`queryType must be "PQ" or "LOG" (got ${queryType})`);
   const isLog = queryType === 'LOG';
-  if (isLog && firstTopLevelPipe(String(query)) !== -1) {
+  if (isLog && firstTopLevelPipe(String(query), { ignoreParens: true }) !== -1) {
     throw new Error('queryType "LOG" takes a filter expression only (no pipes or commands), e.g. dataSource.name=\'X\' * contains \'evil.com\'. Use queryType "PQ" for pipelines.');
   }
 

@@ -806,7 +806,7 @@ Ad-hoc calls also seen against this integration (no `public_action_id`):
 
 ### Opsgenie / Opsgenie
 
-`product_key: opsgenie` | `integration_id` on this tenant: `b6370881-4103-463d-8775-74ad6234834e` | 1 packaged actions
+`product_key: opsgenie` | `integration_id` on this tenant: `b6370881-4103-463d-8775-74ad6234834e` | 1 packaged actions <!-- trufflehog:ignore (integration instance id, not a credential) -->
 
 | n | Action | Method | Path | `public_action_id` |
 |--:|---|---|---|---|

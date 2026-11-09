@@ -1,0 +1,48 @@
+# Detection as Code manifest for one console.
+#
+# Copy to consoles/<console>.yaml in the rules repository. The DaC API receives it inside the
+# bundle as deployments.yaml. `targets` names the scopes rules deploy to; `deploy` maps each
+# target to globs of rule files, relative to the rules root (detections/ in the reference
+# layout). In a glob, `*` also matches subfolders.
+#
+# mgmtUri and tokenSecret are read by the reference detection-as-code.py script and its
+# GitHub Actions workflow (which console, which CI secret holds its API token). The dac_diff
+# and dac_apply MCP tools read only `targets` and `deploy`.
+#
+# Placeholders: <console>, <siteId>, <accountId>. Every scopeId is a quoted string.
+
+mgmtUri: https://<console>.sentinelone.net
+tokenSecret: DAC_API_TOKEN
+
+# Single scope: every rule in the repository deploys to one site.
+targets:
+  site-rules:
+    scopeId: "<siteId>"
+    scopeLevel: site          # global | account | site
+
+deploy:
+  site-rules:
+    - "events/*.yaml"
+    - "correlation/*.yaml"
+    - "scheduled/*.yaml"
+
+# Multi-scope: replace the two blocks above with the blocks below. Rules deployed to the
+# account apply to every site under it (child scopes inherit parent-scope rules), so a rule
+# file must be matched by one target only. A global target takes no scopeId and needs a
+# token whose scope is global.
+#
+# targets:
+#   account-rules:
+#     scopeId: "<accountId>"
+#     scopeLevel: account
+#   site-rules:
+#     scopeId: "<siteId>"
+#     scopeLevel: site
+#
+# deploy:
+#   account-rules:
+#     - "shared/*.yaml"
+#   site-rules:
+#     - "events/*.yaml"
+#     - "correlation/*.yaml"
+#     - "scheduled/*.yaml"

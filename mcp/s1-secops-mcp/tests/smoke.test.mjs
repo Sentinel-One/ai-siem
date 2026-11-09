@@ -64,6 +64,15 @@ const EXPECTED_TOOLS = [
   'ti_vt_relationship',
   'ti_shodan_host',
   'ti_shodan_dns',
+  // Detection as Code (3)
+  'dac_export',
+  'dac_diff',
+  'dac_apply',
+  // Asset Inventory GraphQL (4)
+  'asset_inventory_counts',
+  'asset_inventory_search',
+  'asset_inventory_get',
+  'asset_inventory_filter_values',
 ];
 const KEY_GATED = new Set(['ti_vt_lookup', 'ti_vt_relationship', 'ti_shodan_host', 'ti_shodan_dns']);
 
@@ -71,8 +80,8 @@ test('server version matches package.json', () => {
   assert.equal(SERVER_INFO.version, PKG_VERSION);
 });
 
-test('ALL_TOOLS registers exactly 40 tools', () => {
-  assert.equal(ALL_TOOLS.length, 40, `expected 40, got ${ALL_TOOLS.length}`);
+test('ALL_TOOLS registers exactly 47 tools', () => {
+  assert.equal(ALL_TOOLS.length, 47, `expected 47, got ${ALL_TOOLS.length}`);
 });
 
 test('every expected tool is registered, no extras', () => {

@@ -174,7 +174,7 @@ These are where queries go wrong. Internalize them before writing.
 
 21. **Exclude SDL ingest-metering rows: `tag != 'logVolume'` in the initial filter.** Every ingest writes receive-time accounting rows (`tag='logVolume'`, fields `metric` / `value` / `path1`, plus `sca:bytesToCharge` and `sca:ingestTime`) under the source's own `dataSource.name`. Any query anchored only on `dataSource.name`, `dataSource.vendor`, `site.id` or `sca:*` counts them, and a silent source looks live (measured 2026-10-03: 7,390 of 383,044 rows in 12h, all carrying `sca:bytesToCharge`). Queries anchored on an event field (`class_uid`, `event.type`, a principal `=*`) are already immune. `powerquery_run` and `pq.run_pq()` add the predicate automatically (opt out with `includeMetering` / `include_metering=True`). For persisted queries (dashboard panels, STAR / scheduled rule bodies) write it yourself, in the initial filter where it is cheapest: `dataSource.name='X' tag != 'logVolume' | ...`. `!=` keeps rows that have no `tag`, so `OR !(tag = *)` is not needed in PowerQuery. Omit it only when the question is ingest volume or data usage. The console's XDR view already hides these rows; All Data does not.
 
-    **Known issue (s1-secops-mcp 1.6.0):** the automatic predicate is added by wrapping the text before the first `|` in parentheses (`tag != 'logVolume' and (<initial filter>) | ...`). If the initial filter contains a subquery (`f in (... | group 1 by f)`), that first `|` is inside the subquery, and the rewrite breaks the query with HTTP 400 `Expected ")"`. Write `tag != 'logVolume'` yourself in the outer initial filter; the tool then leaves the query alone (regression case `subquery-in-initial-filter-with-metering`). Alternatively pass `includeMetering: true`. The tool fix, inserting the predicate at the first `|` at parenthesis depth 0, is tracked for s1-secops-mcp.
+    s1-secops-mcp 1.6.1 inserts the automatic predicate at the first top-level `|` (outside quotes, at parenthesis depth 0), so an initial filter holding a subquery (`f in (... | group 1 by f)`) keeps its parentheses: `tag != 'logVolume' and (<initial filter>) | ...`. The `site.id` term added for a `scope` of `"<accountId>:<siteId>"` is inserted at the same point. A query that already names `logVolume` gets no metering predicate added (regression cases `subquery-in-initial-filter` and `subquery-in-initial-filter-with-metering`). On s1-secops-mcp 1.6.0, upgrade to 1.6.1.
 
 22. **No `round()`.** It is an unknown function: HTTP 400 "Unknown function 'round'". Round to one decimal with `floor(x * 10 + 0.5) / 10`; `floor` works (live-verified 2026-10-14).
 
@@ -214,7 +214,7 @@ The primary execution path is the Long Running Query API, through the `powerquer
 | `edrStrict` | Sends top-level `scheme: "edr"` so an unknown or wrongly cased EDR field returns HTTP 400 instead of silent 0 rows. |
 | `outputFile` (+ `overwrite`) | Absolute path on the user's machine; `.csv`, `.jsonl` or JSON. The full result is written there (mode 0600, must be inside `S1_OUTPUT_DIRS`, default home and temp; under the Docker launcher, inside the mounted `S1_OUTPUT_DIR`) and only a summary plus a 5-row preview returns. If the server refuses the path because no folder is shared with the container, tell the user to run `~/.local/bin/s1-secops-mcp-launch.sh install --output-dir <folder>` (Windows: `-OutputDir`) and restart Claude Desktop; do not ask them to set `S1_OUTPUT_DIRS`, which never reaches the container. |
 | `scope` | `"<accountId>"` or `"<accountId>:<siteId>"`; log reads are scope-filtered. |
-| `includeMetering` | Keep SDL `tag='logVolume'` ingest-metering rows (excluded by default). Known issue in 1.6.0: with a subquery in the initial filter, the automatic exclusion breaks the query (`Expected ")"`); write `tag != 'logVolume'` into the outer initial filter yourself, or pass `includeMetering: true`. See rule 21. |
+| `includeMetering` | Keep SDL `tag='logVolume'` ingest-metering rows (excluded by default). The predicate goes in at the first top-level `\|`, outside any subquery in the initial filter, and so does the site term for a site `scope`. See rule 21. |
 
 The wire protocol below is what the tool does for you; it matters when you debug a result or write a host-only runner.
 
@@ -402,6 +402,8 @@ Three things the API rejects, each confirmed by the error it returns:
 - it is a list of lists; a flat list of strings fails with `Not a valid list` on element 0
 - **a field path may appear in only one group.** Repeating it gives
   `entityFields contains duplicate alias(es)`.
+
+Custom entities (availability, built-in entity field sets, window values, the 10 sub-query cap, reserved field names, the Active Response singleton-group rule, the DaC YAML form): `references/detection-rules.md`, "Custom correlation key".
 
 Creating a rule at a scope above your token's returns
 `can not create rule with higher scope`; pass `filter.accountIds` rather than

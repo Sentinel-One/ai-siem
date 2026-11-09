@@ -4,6 +4,8 @@
 
 Read the reference file for the tag(s) relevant to the user's task. Each file lists every endpoint in that group with params, descriptions, and required permissions.
 
+Asset Inventory GraphQL (`POST /web/api/v2.1/graphql`: counts, coverage, facets, per-asset overview) is not a REST tag; see `references/ASSET_INVENTORY_GRAPHQL.md`. The REST `Inventory *` tags below cover asset listing, actions and export.
+
 | Tag | Ops | File |
 |---|---:|---|
 | Accounts | 12 | `references/tags/Accounts.md` |

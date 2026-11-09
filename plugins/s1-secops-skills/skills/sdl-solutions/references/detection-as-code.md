@@ -1,265 +1,284 @@
-# Playbook: Detection as Code (DaC)
+# Playbook: Detection as Code (native)
 
-Stand up a Detection-as-Code pipeline for a SentinelOne tenant: detection engineers author
-rules as text files in Git, a pull request triggers automated validation and review, and a
-merge to the main branch syncs the changed rules to the SentinelOne Custom Detection Rule API.
-The whole thing runs from one short prompt, for example `set up detection as code for the
-<site> site` or `scaffold a DaC repo and sync the example rules`.
+Manage SentinelOne Custom Detection rules from Git with the console's native Detection as Code
+(DaC) API. Detection engineers keep each rule as a YAML file, one manifest per console says which
+scopes receive which files, a pull request shows the exact diff the console will apply, and a
+merge to the main branch applies it. The console tracks every DaC-managed rule by its repository
+id, so a merge creates, updates, imports, retains or deletes rules as one reviewed change set.
 
-This is an orchestration playbook. It does not reimplement the Custom Detection API, PowerQuery,
-or S1QL mechanics; it scaffolds a starter repository from `assets/detection-as-code-starter/`,
-renders it for the customer, and drives the sync engine and the Mgmt Console API to validate and
-deploy. Unlike the other solutions in this skill (which deploy SDL artifacts INTO the tenant),
-DaC sets up a Git + CI workflow that lives OUTSIDE the tenant and pushes detection rules in.
+This is an orchestration playbook. The DaC engine runs in the console
+(`POST /web/api/v2.1/cloud-detection/rules/parse-vcs`); CI runs it through the official
+SentinelOne `detection-as-code` reference repository (GitHub Actions, MIT licence); and the
+s1-secops-mcp tools `dac_export`, `dac_diff` and `dac_apply` drive the same API from Claude for
+bootstrap, review and repositories without CI. The endpoint contract (multipart bundle, diff
+response, export ZIP) is in the `mgmt-console-api` skill's `references/detection-rules.md`,
+section "Detection as Code endpoints".
 
-## What DaC gives you (from the source blog, mapped to this playbook)
+## Invocation prompt (natural language)
 
-A Detection Engineer creates a detection rule, pushes it to a branch, opens a pull request that
-triggers automated validation and review, and on merge an automation pushes the rule to the SIEM.
-Alerts are then monitored and rules refined, a continuous improvement loop. The benefits: version
-history and audit on every change, easy backup and restore, a four-eyes review gate, and
-text-based rules that are easy to read, diff, and reuse across environments.
+Any of these is enough to start; discover the rest and ask only the questions under Parameters:
 
-The blog's steps map directly onto this playbook:
-
-| Blog step | This playbook |
-|---|---|
-| Step 1: prepare a standardized template | The TOML rule templates in `assets/detection-as-code-starter/detections/` plus `rule.schema.json` |
-| Step 2: prepare the repository (structure, branch protection, CODEOWNERS, RBAC) | Step 3 below + the scaffolded `.github/CODEOWNERS` and the branch-protection checklist |
-| Step 3: prepare automation (linting + SIEM synchronization) | The `dac_sync.py` engine + CI workflows for GitHub, GitLab, and Azure |
-| Afterword: monitor and refine | Step 7 below |
-
-The blog uses a single JSON file as its example but notes that engineers prefer TOML for
-readability and extensibility. This playbook standardizes on TOML authoring and converts to the
-API's JSON at sync time, so you get both.
-
-## The one-line prompt
-
-The user asks to set up DaC and that is enough to start. Examples that should run this playbook:
-`set up detection as code`, `scaffold a DaC repo for <site>`, `automate our detections as code`,
-`build the detection-as-code pipeline and sync the examples to <site>`. Discover the rest; ask
-only the few questions in Step 1.
+> "Set up detection as code for the `<site>` site."
+>
+> "Put our existing custom rules under Git and deploy them on merge."
+>
+> "Show me what this rules branch would change in the console before we merge."
 
 ## Parameters (ask once, with defaults pre-filled)
 
 | Parameter | How to get it | Default |
 |---|---|---|
-| `SITE` / `SCOPE` | the tenant site (or account) rules deploy to | ask; resolve name to siteId |
-| `CI_PLATFORM` | GitHub Actions, GitLab CI, or Azure Pipelines | GitHub Actions |
-| `REPO_TARGET` | where the scaffold is written (a new folder, or push to a Git remote) | a local folder the user names |
-| `RULE_TYPES` | which of events / scheduled / correlation to seed examples for | all three |
-| `ACTIVATE` | whether synced rules go live or stay Draft | Draft (never auto-activate) |
+| `CONSOLE` | the console URL the rules deploy to | the console the MCP server is configured for |
+| `TARGETS` | the scopes rules deploy to: global, account `<accountId>`, or site `<siteId>` | one site; resolve the name with `GET /web/api/v2.1/sites?name=<name>` |
+| `BOOTSTRAP` | start from the rules already in the console, or from the templates | export the existing rules |
+| `CI_PLATFORM` | GitHub Actions, GitLab CI or Azure Pipelines | GitHub Actions (the reference workflow) |
+| `VCS_REPO` | the repository id and name CI will send | the CI platform's numeric repository id and `<owner>/<repo>` |
 
-Keep it to one compact question set. Never deploy before parameters are confirmed.
+Confirm the console and every target scope before any `dac_diff`. Nothing in this playbook writes
+to the tenant until a reviewed change set is applied.
 
-## Step 0: confirm prerequisites
+## Step 0: prerequisites
 
-The source blog lists three prerequisites; confirm them before scaffolding:
+1. **DaC is enabled on the tenant.** Enablement is per tenant. A `dac_diff` that returns HTTP 200
+   confirms it. If `parse-vcs` is refused as unavailable, report the response verbatim and ask
+   the user to have DaC enabled.
+2. **Licence:** Endpoint Security Complete or Endpoint Security Core.
+3. **A service user for CI** (Policies and settings, User management, Service users), with:
+   - a scope that covers every target in every manifest (a global target needs a global token);
+   - a role with **Custom Rules** manage;
+   - **Perform Advanced Actions**, when any rule sets `hideLogic: true`;
+   - **Endpoints: Disconnect from network** and **Endpoint Threats: Mark suspicious / Mark threat**,
+     when any rule sets `networkQuarantine: true` or `treatAsThreat: Suspicious|Malicious`.
 
-1. **A Git repository** on any platform (GitHub, GitLab, Azure Repos). Basic Git knowledge is
-   assumed. The scaffold is platform-neutral; only the CI file differs.
-2. **An automation engine.** This playbook ships ready-to-use CI for GitHub Actions, GitLab CI,
-   and Azure Pipelines. Any of them, or a SOAR/cron runner calling `dac_sync.py`, works.
-3. **A SentinelOne API token** with Custom Detection Rule create/update permission, stored as a
-   CI secret (`S1_CONSOLE_API_TOKEN`), never committed. Generate it from Settings, Users,
-   Service Users. The console URL goes in `S1_CONSOLE_URL`.
+   The token is stored as a CI secret, never committed.
+4. **s1-secops-mcp 1.6.1 or later** for `dac_export`, `dac_diff` and `dac_apply`.
 
-Confirm the tenant has the **Scheduled Detections** capability if scheduled rules are in scope
-(check the site licenses for Singularity Data Lake + Scheduled Detections). If
-not, scheduled-rule syncs return a feature-not-enabled error: surface that to the user rather
-than downgrading the rule.
+## Step 1: bootstrap from the console (`dac_export`)
 
-## Step 1: collect parameters and resolve the site
+Start from what the console already runs, so the first merge adopts those rules instead of
+duplicating them.
 
-Ask the compact parameter set. Resolve the site name to a siteId with the Mgmt Console API
-(`GET /web/api/v2.1/sites?name=<name>`); console site names can contain spaces, so prefer an
-exact-name match and fall back to the closest. Capture the `accountId` too, some deployments
-scope at account level. Confirm the console/tenant before writing anything.
+1. Run `dac_export` with `outputDir` (extracts the files) or `outputFile` (keeps the ZIP).
+   It follows `nextCursor` (500 rules per page) up to `maxPages`, and exports every scope the
+   token can see. Output layout:
+   - `export-summary.json`: `exported`, `limit`, `nextCursor` (percent-encoded; `dac_export`
+     decodes it), and `totalItems` (on the first page only);
+   - `rules/<scopeLevel>-<scopeId>/exported-rule-<ruleId>.yaml`, one file per rule.
+2. Each exported file carries `id: exported-rule-<ruleId>` and `importCustomRuleId: <ruleId>`.
+   **Keep both unchanged.** On the first diff the rule is listed under `imports`, and the apply
+   brings the live rule under DaC management instead of creating a second one.
+3. Commit each file **exactly as exported**. The import is checked against the live rule: a
+   changed field fails the diff with `importCustomRuleId '<ruleId>': imported YAML does not match
+   the live rule (drifted fields: <field>)`. Make edits in a later pull request, after the
+   import has been applied.
+4. Export immediately before the import pull request. A file whose rule has since been deleted
+   fails with `importCustomRuleId '<ruleId>' does not reference an active rule`.
+5. Only `queryLang: "2.0"` rules can be managed as code. A 1.0 rule fails the diff with
+   `Only SYQL (queryLang 2.0) rules are supported`; rewrite it in 2.0 operators first (see the
+   `powerquery` skill's `references/detection-rules.md`).
+6. Each `rules/<scopeLevel>-<scopeId>/` folder becomes one target in the manifest (Step 2).
 
-## Step 2: scaffold the repository from the starter
+`s1_api_download` on `/web/api/v2.1/cloud-detection/rules/export-vcs` (with `cursor` for later
+pages) returns the same ZIP when the `dac_*` tools are not available.
 
-Copy `assets/detection-as-code-starter/` to the user's `REPO_TARGET` and render it:
+## Step 2: repository layout and manifest
+
+Use the reference repository's layout so its workflow and script run unchanged:
 
 ```text
-detection-as-code/
-├── detections/{endpoint,identity,cloud}/   # one rule per .toml, grouped by target system
-├── scripts/dac_sync.py                      # validate + convert + idempotent sync (CI calls this)
-├── scripts/dac_lint.py                      # local-only validation / pre-commit hook
-├── rule.schema.json                         # editor validation for the TOML model
-├── .github/workflows/{lint,sync}.yml        # GitHub Actions (primary)
-├── .github/CODEOWNERS                        # review accountability
-├── ci/gitlab/.gitlab-ci.yml                  # GitLab equivalent
-└── ci/azure/azure-pipelines.yml              # Azure DevOps equivalent
+<rules-repo>/
+├── consoles/<console>.yaml          # one manifest per console (bundled as deployments.yaml)
+├── detections/                      # rules root: deploy globs are relative to this folder
+│   ├── events/<rule-id>.yaml
+│   ├── correlation/<rule-id>.yaml
+│   ├── scheduled/<rule-id>.yaml
+│   └── shared/<rule-id>.yaml        # e.g. rules deployed at account scope
+├── detection-as-code.py             # from the reference repository
+├── requirements.txt                 # from the reference repository
+└── .github/workflows/detection-as-code.yaml
 ```
 
-Render tokens:
+Templates: `assets/dac-native/deployments.template.yaml` (single-scope and multi-scope),
+`assets/dac-native/rules/events.template.yaml`,
+`assets/dac-native/rules/correlation-custom-entity.template.yaml` and
+`assets/dac-native/rules/scheduled-entity-mapping.template.yaml`. All three rule templates pass
+`dac_diff` once their placeholders are filled. `assets/dac-native/README.md` covers CI.
 
-- In every example rule's `[scope]`, set `site = "<SITE>"` (or `site_ids` / `account_ids`).
-- In `.github/CODEOWNERS`, replace `@your-org/...` with the customer's real teams.
-- Keep only the CI file for `CI_PLATFORM` at the repo root (move the others, or leave them under
-  `ci/` as references). For GitHub, the workflows already sit at `.github/workflows/`.
-- Trim the seeded example rules to the `RULE_TYPES` requested.
+**Manifest rules** (`consoles/<console>.yaml`):
 
-The folder names under `detections/` are organisational only; the sync engine walks the whole
-tree. A per-target-system layout (endpoint / identity / cloud) matches the blog's recommendation.
+- `targets.<name>.scopeLevel` is `global`, `account` or `site`. `account` and `site` take a
+  `scopeId` written as a quoted string; `global` takes none.
+- `deploy.<name>` is a list of globs, relative to the rules root, naming the files that target
+  receives. In a glob, `*` also matches subfolders.
+- Child scopes inherit parent-scope rules: a rule deployed to an account applies to every site
+  under it. Match each rule file from one target only.
+- One manifest per console. Two manifests pointing at the same console would each delete the
+  other's rules (the reference script refuses that layout).
+- `mgmtUri` and `tokenSecret` are read by the reference script and workflow; the `dac_*` tools
+  read only `targets` and `deploy`. The API accepts the manifest with or without them.
 
-## Step 3: set up the repository controls (the manual, one-time part)
+**Rule file fields:**
 
-These are the blog's Step 2 controls. They need repo-admin access and are configured in the Git
-platform UI, not by the sync engine:
+| Field | Notes |
+|---|---|
+| `id` | The key that ties the file to its console rule. Unique in the repository (a duplicate fails the diff: `Duplicate external_id '<id>' found in 2 files`). Changing it creates a new rule. |
+| `name` | Must be unique in the tenant. `dac_diff` does not check names against rules outside DaC, so search before merging: `s1_api_get /web/api/v2.1/cloud-detection/rules` with `isLegacy=false` and `name__contains`. |
+| `description`, `severity`, `status` | `severity`: Low, Medium, High, Critical. `status`: Draft, Active, Disabled. |
+| `expirationMode`, `expiration` | `Permanent`, or `Temporary` with an ISO 8601 `expiration`. |
+| `queryType`, `queryLang` | `events`, `correlation` or `scheduled`; `queryLang` is always `"2.0"`. |
+| `s1ql` / `correlationParams` / `scheduledParams` | One, matching `queryType`. |
+| `treatAsThreat`, `networkQuarantine` | Inline Active Response for `events` and `correlation` rules only. Scheduled rules keep `UNDEFINED` and `false`. |
+| `coolOffSettings.renotifyMinutes` | Alert cool-off. |
+| `hideLogic` | Hides the query from console users without Perform Advanced Actions. |
+| `entityMappings` | `[{columnName, identifierType}]`, at most 3. |
+| `deletePolicy` | `Retain` (default) or `Delete`; see Step 5. |
+| `importCustomRuleId` | Adopts an existing console rule; see Step 1. |
 
-1. **Branch protection on `main`:** require a pull request before merging, require approvals
-   (this is the four-eyes gate), and require the `lint` check to pass. On GitHub this needs the
-   repo to be in a Team or Enterprise org.
-2. **Role-based access (RBAC):** assign collaborators the least-privilege role they need (read /
-   triage / write / maintain / admin on GitHub; equivalents elsewhere). Roles are
-   org-specific, do not prescribe a one-size-fits-all mapping.
-3. **CODEOWNERS:** the scaffolded `.github/CODEOWNERS` auto-requests review from the right team
-   on every PR. Protect the file itself by listing `/.github/CODEOWNERS` and `/.github/` under
-   owners so it cannot be changed unreviewed.
+**Correlation rules with a custom entity:** `entity: Custom` with `entitiesAndFields` as a list
+of groups (OR inside a group, AND across groups), `timeWindow.windowMinutes` set to one of 10, 30,
+60, 240, 480 or 720 (always set it; 60 for new rules), and 2 to 10 sub-queries. Network Quarantine needs `agent.uuid` as its own group; Treat as Threat also
+needs `src.process.storyline.id` or `src.process.uid` as its own group. The full rule set
+(built-in entity field sets, field-name pattern, reserved names, the 2,000,000-entity limit) is in
+the `powerquery` skill's `references/detection-rules.md`.
 
-Walk the user through these in their platform; they cannot be set via the detection API. Provide
-the exact click-path for their platform if asked (GitHub: Settings, Branches / Rules; Settings,
-Collaborators and teams).
+**`entityMappings.identifierType`** is one of `agent.uuid`, `cloud_resource_id`,
+`distinguished_name`, `hostname`, `mac_addresses`, `object_guid`, `object_sid`,
+`serial_number`, `user_principal_name`. Any other value fails the diff (HTTP 400, code 4000010,
+`... ValidationError - {'entityMappings': {0: {'identifierType': ['Must be one of: ...']}}}`).
+An entry may also carry `columnName` alone.
 
-## Step 4: wire the automation
+**What the diff enforces for custom-entity correlation rules:**
 
-The scaffold ships two automations, matching the blog (linting + SIEM synchronization), for all
-three CI platforms. The logic lives once in `scripts/dac_sync.py`; CI just calls it.
+- Reserved entity fields are rejected: `[["account.id"]]` fails with code 4000010,
+  `entitiesAndFields[0][0] "account.id" rejected by denylist ...`.
+- Active Response needs singleton groups: `networkQuarantine: true` without an `["agent.uuid"]`
+  group fails with `network_quarantine requires entity key with singleton group [agent.uuid]`;
+  `treatAsThreat` other than `UNDEFINED` fails with `treat_as_threat requires entity key with
+  singleton groups [agent.uuid] and ([src.process.storyline.id] or [src.process.uid])`.
 
-1. **Lint on pull request.** Runs `dac_sync.py --lint` on changed rule files. It parses the
-   TOML/JSON/YAML, converts each rule to the API envelope, and enforces every API constraint
-   locally (enums, required fields, the run-interval/lookback relationship, the pipe-in-events
-   guard). Bad rules fail the PR check, never production. Require this check in branch protection.
-2. **Sync on merge.** Runs `dac_sync.py --sync --changed-only` on push to `main`. It computes
-   the rules changed in the merged range (`BASE_SHA..HEAD_SHA`), converts them, and performs an
-   idempotent create-or-update against the Custom Detection API. It writes `deployed_rules.json`
-   as an audit/rollback manifest, uploaded as a CI artifact.
+## Step 3: `dac_diff` is the pull-request gate
 
-Set the CI secrets: `S1_CONSOLE_API_TOKEN` (secret) and `S1_CONSOLE_URL` (secret or variable).
-If the console is not reachable from cloud-hosted runners, point the workflow at a self-hosted
-runner that can reach `*.sentinelone.net` (the blog uses a self-hosted runner for exactly this).
+Run `dac_diff` on every branch before review, and show the user the summary and the lists.
 
-## Step 5: the rule format (author in TOML, deploy as JSON)
+- **Input:** either `files` (a map of bundle path to file text: `deployments.yaml` plus every rule
+  path the deploy globs match) or `repoDir` (the rules root) with `deploymentsFile` (the console
+  manifest, bundled as `deployments.yaml`). `vcsRepoId`, `vcsRepoName` and `vcsCommitId` are
+  required. `maxItems` trims the change lists in the reply and `outputFile` saves the full
+  response.
+- **Repository identity:** pass the same `vcsRepoId` and `vcsRepoName` that CI sends for this
+  repository (on GitHub, `GITHUB_REPOSITORY_ID` and `<owner>/<repo>`), and the branch head SHA as
+  `vcsCommitId`. Ownership of managed rules is keyed on `vcsRepoId`:
+  - same `vcsRepoId`, same files: `totalChanges` 0;
+  - the same files under a different `vcsRepoId`: HTTP 400 with a global
+    `External ID '<id>' is already claimed by another repository for scope site (id: ...)` and,
+    per rule, `There is already a rule with same name in the scope`;
+  - an empty bundle under a different `vcsRepoId`: all totals 0, and the owning repository's
+    rules are untouched.
 
-Rules are authored in TOML and converted to the Custom Detection API JSON at sync time. Three
-rule types are supported; the converter applies the confirmed API rules so a mistake fails in
-lint, not in the console.
+  Never improvise a repository id: a wrong one cannot take over or remove another repository's
+  rules, and with that repository's files it fails the diff.
+- **Output:** `summary` (`totalChanges`, `totalCreates`, `totalUpdates`, `totalDeletes`,
+  `totalImports`, `totalRetains`) and the lists `creates`, `updates`, `deletes`, `imports`,
+  `retains`. Each item carries `externalId` (the rule `id`), `scopeLevel`, `scopeId` and
+  `ruleData` (the normalised rule, for example `entity: Custom` comes back as `custom`).
+- **A diff writes nothing.** Rule counts before and after a diff are identical.
+- **A failed diff is HTTP 400 in one of two shapes.** Parse and schema problems (bad enum value,
+  denylisted entity field) come back as `errors[]` with `code` 4000010 and a detail starting
+  `Failed to parse rule files: <path>: ...`. Semantic problems come back as
+  `data.validationErrors`: `global` (repository-level, such as duplicate ids or ownership) and
+  `rules`, each with `externalId`, `filePath`, `scopeLevel`, `scopeId` and `errors[]`. Report
+  every message; do not fix and resubmit silently.
+- `scopeId` arrives as a JSON number larger than 2^53. Compare scopes against the manifest, not
+  against a value a standard JSON parser has rounded.
 
-| Type | `query_type` | Body field | Fires | Mitigation | API specifics the converter enforces |
-|---|---|---|---|---|---|
-| Single event (STAR) | `events` | `s1ql` (boolean S1QL) | per event, real time | yes | rejects a pipe `\|` (that is PowerQuery); converter sets `queryLang`2.0, so bodies must use 2.0 operators (`contains:anycase`,`in:anycase`), not 1.0 forms (`ContainsCIS`,`In`), which are accepted at create but never fire |
-| Correlation | `correlation` | `[correlation]` + `[[correlation.subqueries]]` | when subqueries match in window | yes | requires `entity`, `match_in_order`, 1 to 10 subqueries; `window_minutes` in {1,5,10,30,60,240,480,720}; converter sets `queryLang` 2.0 (the API requires it) |
-| Scheduled | `scheduled` | `[scheduled].query` (PowerQuery) | on interval over lookback | no | forces `queryLang` 2.0, `treatAsThreat` UNDEFINED, `networkQuarantine` false; checks run-interval vs lookback |
+A diff is read-only, so `dac_diff` runs in read-only mode.
 
-Every example seeds with `status = "Draft"` so it never fires until reviewed. Mitigation fields
-(`treat_as_threat = "Malicious"`, `network_quarantine = true`) are only valid on `events` and
-`correlation` rules; the converter rejects them on scheduled rules.
+## Step 4: apply on merge, in CI
 
-The full field reference is `rule.schema.json` (editors with TOML schema support validate as you
-type). The three seed files under `detections/` are working examples of each type.
+CI owns the apply. Point the repository at the official reference workflow:
 
-**Tagging, MITRE, and custom attributes.** The Custom Detection API has NO field for MITRE, tags,
-attack surfaces, or arbitrary custom attributes on a user-authored rule (all rejected as "Unknown
-field"; confirmed live, and `templateRuleId` is accepted but ignored). Those are first-class only
-on SentinelOne's managed Platform rules (`/detection-library/platform-rules`, enable/disable
-content). The only writable free-text on a custom rule is `name` and `description`. So the converter
-folds a rule's `[metadata]` (`mitre`, `mitre_tactics`, `tags`, `owner`) into a compact, idempotent
-`[DaC]` footer appended to the `description`, which surfaces MITRE/tags/owner in the console and on
-the alert (alerts inherit the rule description). The raw `[metadata]` stays in the repo as the
-governance source of truth; `references` and other keys stay repo-only. Rendered footer example:
-`[DaC] MITRE: T1059.001, T1204.002 | Tactics: TA0002, TA0005 | Tags: powershell, execution | Owner: detection-engineering`
+- **GitHub Actions:** copy `detection-as-code.py`, `requirements.txt` and
+  `.github/workflows/detection-as-code.yaml` from the reference repository (not shipped in this
+  skill). On a pull request it
+  validates the repository, runs `diff` per console and posts the summary as a PR comment and a
+  check run. On a push to `main` it runs `apply` per console. Add one Actions secret per console,
+  named as that manifest's `tokenSecret`.
+- **GitLab CI and Azure Pipelines:** run the same script in CLI mode. Snippets with the required
+  environment variables are in `assets/dac-native/README.md`.
+- **Protect the main branch:** pull request required, at least one approval, the diff check
+  required, no direct or force pushes, forking disabled, and secret management limited to the
+  owners. A merge to main changes the console.
 
-## Step 6: validate and deploy (dry run first)
+The apply summary must equal the reviewed diff summary: same counts, same ids in each list.
 
-Always preview before deploying:
+**`dac_apply`** is for repositories without CI only. It re-runs the diff and refuses unless the
+fresh summary equals `expectedSummary` (the summary from the reviewed `dac_diff`), then applies.
+It is refused in read-only mode. Confirm with the user before calling it, then verify with a rule
+search (`isLegacy=false`). Scheduled rules sit in `Activating` for up to an hour before their
+first run.
 
-1. **Lint** locally or in CI: `python3 scripts/dac_sync.py --lint detections`.
-2. **Dry run** to see the exact JSON that will be sent, with no API call:
-   `python3 scripts/dac_sync.py --dry-run detections`. Show the user the rendered envelopes.
-3. **Deploy.** In production this is the on-merge CI job. For the initial bootstrap (or a wiring
-   test), run it directly from the user's host (not the Cowork sandbox, which cannot reach the
-   console), with `S1_CONSOLE_URL` and `S1_CONSOLE_API_TOKEN` exported from the OS keychain or a
-   secret manager rather than typed on the command line:
-   `python3 scripts/dac_sync.py --sync --site "<SITE>"`.
-   New rules are created in `Draft`; activation is deliberate and separate.
-4. **Verify** with `s1_api_get` (or the Mgmt Console API from the host), always passing
-   `isLegacy=false` so scheduled rules are not silently omitted:
-   `GET /web/api/v2.1/cloud-detection/rules?isLegacy=false&name__contains=<name>`.
-5. **Re-run** the sync to prove idempotency: the second run updates in place (PUT), it does not
-   create duplicates.
-6. **Validate end to end (optional, on a test / AI-SIEM site).** Enable the rule, simulate matching
-   events via HEC, and confirm the alert. Ingest with `/event?isParsed=true` using **flat dotted
-   keys** (nested OCSF drops reserved namespaces, e.g. `event.category` reads back null; the flat
-   key `{"event.category":"firewall"}` lands). Flat keys populate any OCSF field and even EDR-style
-   columns (`EventType`, `TgtProcName`, `LogonResult`). Verify the data by running the rule's exact
-   query, then find the alert: events/correlation alerts appear in `GET /cloud-detection/alerts`,
-   but **scheduled-rule alerts surface only in UAM** (`uam_list_alerts`). The alert's
-   `ruleInfo.description` (REST) / `description` (UAM) carries the `[DaC]` footer. Confirmed live:
-   all three rule types fire from HEC-ingested data on an AI-SIEM tenant. Note scheduled rules sit
-   in `Activating` (up to ~1h) before the first run and every PUT resets activation, so enable once
-   and avoid re-sync churn while waiting.
+## Step 5: change, retain and delete
 
-To roll back, `python3 scripts/dac_sync.py --rollback deployed_rules.json` deletes exactly the
-rules in the manifest.
+| Intent | Change in Git | Result in the console |
+|---|---|---|
+| Create | Add a rule file matched by a deploy glob | Rule created and DaC-managed |
+| Update | Edit the file | Rule updated |
+| Import | Add the exported file with `importCustomRuleId` (Step 1) | Existing rule becomes DaC-managed |
+| Retain | Remove the file (or its glob) with the default `deletePolicy: Retain` | Rule stays and becomes a normal console rule again |
+| Delete | Merge `deletePolicy: Delete` in the file, **then** remove the file in a second merge | Rule deleted |
 
-## Step 7: monitor and refine (the continuous loop)
+A delete always takes two merges: the console must have recorded `deletePolicy: Delete` before
+the file disappears, otherwise the removal is a Retain. In diff terms: the merge that sets
+`deletePolicy: Delete` reports an update (`totalUpdates`); the merge that removes the file
+reports the delete (`totalDeletes`), and a Draft rule is gone as soon as it applies. Removing a
+file that still has `Retain` reports `totalRetains`.
 
-The blog leaves monitoring and tuning as environment-dependent. Close the loop with the rest of
-this skill and the Mgmt Console API:
+DaC-managed rules list with `"source": "DAC"` and `"editable": false`. They cannot be edited on
+the Detections page, and `PUT /web/api/v2.1/cloud-detection/rules/{id}` returns HTTP 400
+`Detection-as-Code managed rules cannot be edited.` Change them in Git. A retained rule loses
+`source` and is `editable: true` again, back under normal console management.
 
-- Triage the alerts the rules generate (UAM: `uam_list_alerts`, or `GET /cloud-detection/alerts`).
-- For noisy rules, open a PR that adds an exclusion (see the `custom-detection-exclusions`
-  playbook) or tightens the query, review, merge, and the sync updates the live rule.
-- Track effectiveness over time with an SDL dashboard (the `sdl-dashboard` skill).
-- Optionally schedule a recurring drift check that lists live rules (`isLegacy=false`) and diffs
-  them against the repo, so a console-side manual edit is caught and reconciled back into Git.
+Deleting rules through the rule API instead (for example after a Retain) uses
+`DELETE /web/api/v2.1/cloud-detection/rules` with `{"filter": {"ids": [...]}}`. Its `affected`
+count includes rules that were only disabled because they were still activating: re-list with
+`isLegacy=false` and repeat the delete for the ids that remain until none do (see the
+`mgmt-console-api` skill's `references/detection-rules.md`).
 
-## Deploy / sync gotchas (confirmed against the live API)
+## Troubleshooting
 
-- **Listing always needs `isLegacy=false`.** Without it the API silently omits scheduled
-  PowerQuery rules, so the create-or-update lookup would wrongly think a rule is new and create a
-  duplicate. The sync engine always passes it.
-- **Events rules reject pipe syntax.** A PowerQuery body in an `events` rule returns HTTP 400.
-  Piped PowerQuery belongs in a `scheduled` rule (`queryLang` 2.0). The linter catches this.
-- **Scheduled rules cannot mitigate.** `treatAsThreat` must be `UNDEFINED` and
-  `networkQuarantine` false; the verdict surfaces via severity. The converter enforces this.
-- **Correlation rules require `queryLang` 2.0.** Confirmed live: omitting it returns HTTP 400
-  "query lang must be 2.0", even though the subquery bodies can be boolean S1QL. Only single-event
-  `events` rules use 1.0. The converter sets 2.0 for both scheduled and correlation rules.
-- **`run_interval_minutes` depends on `lookback_window_minutes`:** min 1 for lookback < 60, 5 up
-  to 360, 15 up to 10080, 60 up to 43200. The linter checks the relationship.
-- **New rules are created in `Draft`** regardless of the requested status; activation is a
-  separate step. Keep it that way so a merge never silently arms a live, mitigating rule.
-- **`queryLang` 2.1 is not valid** (only 1.0 and 2.0). Do not copy older bundles that use 2.1.
-- The blog's curl example keys idempotency off the error string "There is already a rule with
-  same name in the scope". The engine instead looks the rule up by name (`isLegacy=false`) and
-  PUTs, which is more robust than string-matching an error message.
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Only SYQL (queryLang 2.0) rules are supported` (often with `Cool Off is not supported for S1QL 1.0 rules`) | A `queryLang: "1.0"` rule | Rewrite with 2.0 operators and set `queryLang: "2.0"` |
+| `Duplicate external_id '<id>' found in 2 files` | Two files share an `id` | Give each file a unique `id` |
+| `imported YAML does not match the live rule (drifted fields: ...)` | The import file was edited before the import | Commit the exported file unchanged; edit after the import is applied |
+| `importCustomRuleId '<ruleId>' does not reference an active rule` | The rule was deleted since the export | Re-export, or drop the file |
+| Diff passes, but the name already exists in the tenant | The diff does not check names against non-DaC rules | Rename, or import the existing rule instead of creating a new one |
+| Code 4000010 `identifierType: ['Must be one of: ...']` | `entityMappings` value outside the enum | Use a value from the `identifierType` list in Step 2 |
+| Code 4000010 `... rejected by denylist` | A reserved field (such as `account.id`) in `entitiesAndFields` | Key the entity on a stable, non-reserved field |
+| `network_quarantine requires entity key with singleton group [agent.uuid]` (or the `treat_as_threat` form) | Active Response without its singleton entity groups | Add `["agent.uuid"]` (and `["src.process.uid"]` or `["src.process.storyline.id"]`) as their own groups, or turn the response off |
+| `External ID '<id>' is already claimed by another repository` | The diff ran under a different `vcsRepoId` than the owning repository | Use the owning repository's `vcsRepoId` (the one CI sends) |
+| `Detection-as-Code managed rules cannot be edited.` on `PUT`, or a read-only rule on the Detections page | The rule is DaC-managed (`source: DAC`, `editable: false`) | Change it in Git |
+| A rule removed from Git is still in the console | `deletePolicy` was `Retain` | Merge `deletePolicy: Delete` first, then remove the file |
+| HTTP 401 or 403 from the diff | The token's scope does not cover a target, or the role lacks Custom Rules manage | Fix the service user's scope or role |
+| HTTP 429 with an nginx HTML body and no `Retry-After` | `parse-vcs` calls back to back | The `dac_*` tools retry with backoff from 2 s; in CI or scripts, back off and run one diff at a time |
+| `s1_api_get` on `export-vcs` returns `isLegacy: Unknown field` | s1-secops-mcp older than 1.6.1 injects `isLegacy` | Use `dac_export`, or `s1_api_download` for the ZIP |
 
 ## Dependencies (load as needed)
 
-- `mgmt-console-api` (or the `s1-secops-mcp` `s1_api_*` tools) for site resolution,
-  the Custom Detection Rule API, and verification listing. The Custom Detection Rule schema and
-  every gotcha above are confirmed there.
-- `powerquery` to author or validate the PowerQuery body of a scheduled rule, and
-  S1QL for events/correlation rules.
-- `sdl-dashboard` for the optional effectiveness dashboard in Step 7.
+- `mgmt-console-api`: the DaC endpoint contract, rule listing (`isLegacy=false`), site resolution,
+  and the rule delete loop (`references/detection-rules.md`).
+- `powerquery`: rule bodies, and the correlation and custom-entity rules
+  (`references/detection-rules.md`).
 
 ## Assets
 
-`assets/detection-as-code-starter/` is the whole scaffold rendered into the user's repo:
+`assets/dac-native/`:
 
-- `scripts/dac_sync.py` - the validate + convert + idempotent-sync engine (zero dependencies on
-  Python 3.11+; ships a built-in TOML fallback for older interpreters). The one place the logic
-  lives, so a laptop run and a CI run behave identically.
-- `scripts/dac_lint.py` - local-only validation wrapper, suitable as a pre-commit hook.
-- `rule.schema.json` - JSON Schema of the TOML rule model for editor validation.
-- `detections/endpoint/example_encoded_powershell.toml` - single-event (events) example.
-- `detections/identity/example_correlation_brute_then_success.toml` - correlation example.
-- `detections/cloud/example_scheduled_firewall_c2.toml` - scheduled PowerQuery example.
-- `.github/workflows/lint.yml` and `sync.yml` - GitHub Actions (lint on PR, sync on merge).
-- `.github/CODEOWNERS` - review accountability template.
-- `ci/gitlab/.gitlab-ci.yml`, `ci/azure/azure-pipelines.yml` - the same two automations on the
-  other platforms.
-- `.gitignore` - keeps tokens and run manifests out of version control.
-- `README.md` - the starter repo's own readme for the detection-engineering team.
+- `deployments.template.yaml`: the console manifest, single-scope with a multi-scope alternative.
+- `rules/events.template.yaml`: a streaming events rule.
+- `rules/correlation-custom-entity.template.yaml`: a correlation rule keyed on a custom entity
+  (`agent.uuid` AND `src.process.uid`, 60-minute window).
+- `rules/scheduled-entity-mapping.template.yaml`: a scheduled PowerQuery rule with
+  `entityMappings`.
+- `README.md`: how the templates map into the reference repository, and CLI-mode CI for GitLab
+  and Azure Pipelines.

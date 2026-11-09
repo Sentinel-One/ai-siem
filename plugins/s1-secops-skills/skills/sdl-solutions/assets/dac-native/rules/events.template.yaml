@@ -1,0 +1,21 @@
+# Events rule: a streaming (STAR) detection that evaluates each event as it arrives.
+# The body is one boolean S1QL filter with no pipes. Copy to detections/events/<rule-id>.yaml.
+#
+# id is the repository-unique key that ties this file to its rule; changing it creates a new
+# rule. name must be unique in the tenant. Only queryLang "2.0" rules can be managed as code.
+
+id: "<rule-id>"
+name: "<Rule name>"
+description: "<What the rule detects, why it matters, and the expected triage step>"
+severity: High                # Low | Medium | High | Critical
+status: Draft                 # Draft | Active | Disabled
+expirationMode: Permanent     # or Temporary, with expiration: "<YYYY-MM-DDTHH:MM:SSZ>"
+queryType: events
+queryLang: "2.0"
+s1ql: 'event.type = "Process Creation" AND src.process.name = "<process.exe>" AND src.process.cmdline contains "<argument>"'
+treatAsThreat: UNDEFINED      # Suspicious | Malicious need the Mark suspicious / Mark threat permissions
+networkQuarantine: false      # true needs the Disconnect from network permission
+coolOffSettings:
+  renotifyMinutes: 60
+hideLogic: false              # true hides the query from console users without Perform Advanced Actions
+deletePolicy: Retain          # Retain (default) or Delete; see the delete flow in the playbook

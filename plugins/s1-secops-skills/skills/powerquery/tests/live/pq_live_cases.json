@@ -812,8 +812,17 @@
     },
     {
       "id": "subquery-in-initial-filter-with-metering",
-      "doc": "SKILL.md rule 21; remove the tag predicate to reproduce the s1-secops-mcp 1.6.0 rewrite bug",
+      "doc": "SKILL.md rule 21: an explicit tag != 'logVolume' in the outer initial filter next to an in (...) subquery; the tool leaves a query that names logVolume unchanged, so every mode sends this text as written",
       "query": "event.type='Process Creation' tag != 'logVolume' src.process.name in (event.type='Process Creation' src.process.name='svchost.exe' | group 1 by src.process.name) | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "event.type='Process Creation' src.process.name='svchost.exe' | group n=count()"
+      }
+    },
+    {
+      "id": "subquery-in-initial-filter",
+      "doc": "SKILL.md rule 21: no tag predicate; with --mcp-rewrite the tool inserts it at the first top-level pipe, outside the subquery, and with --site the site term goes there too. A split inside the subquery fails this case with HTTP 400 Expected \")\"",
+      "query": "event.type='Process Creation' src.process.name in (event.type='Process Creation' src.process.name='svchost.exe' | group 1 by src.process.name) | group n=count()",
       "expect": {
         "compare": "count_eq",
         "with": "event.type='Process Creation' src.process.name='svchost.exe' | group n=count()"

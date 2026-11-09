@@ -212,9 +212,9 @@ They cover: printed JSON is valid, carries the launcher's absolute path and hold
 ### Read-only mode and image checks
 
 - **Unit tests:** `mcp/s1-secops-mcp/tests/readonly-1.5.5.test.mjs` (part of `npm test`) covers the read-only gate in `lib/access.js`. No tenant needed.
-- **Image smoke tests:** `mcp/docker/smoke-test.sh <image> --expect-version 1.6.0` runs 32 checks against the distroless image. It has no shell, so in-image checks run with `--entrypoint /nodejs/bin/node`. Among them:
+- **Image smoke tests:** `mcp/docker/smoke-test.sh <image> --expect-version 1.6.1` runs 32 checks against the distroless image. It has no shell, so in-image checks run with `--entrypoint /nodejs/bin/node`. Among them:
   - T04 to T06: no shell, no npm, no package manager, Python or git in the image;
-  - T12 and T13: `tools/list` returns 36 tools with no threat-intel keys and 40 with both keys;
+  - T12 and T13: `tools/list` returns 43 tools with no threat-intel keys and 47 with both keys;
   - T22: the server names removed in 1.6.0 exit 78 with the update instruction;
   - T32: a write tool is refused in the default read-only mode, run with `--network none`, and the refusal says how to enable write;
   - T33: with `S1_READ_ONLY=false` the same call reaches its handler;

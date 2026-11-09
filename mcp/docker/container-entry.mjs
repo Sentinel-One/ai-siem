@@ -1,4 +1,4 @@
-// Dispatcher for the SentinelOne SecOps MCP image (1.6.0).
+// Dispatcher for the SentinelOne SecOps MCP image (1.6.1).
 //
 // The image is distroless: no shell, no package manager, no init. This script replaces the
 // former sh entrypoint and is run by the image's node (ENTRYPOINT /nodejs/bin/node).

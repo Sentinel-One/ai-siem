@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.6.1 (image `sentinelone/secops-mcps:1.6.1`, plugin 1.4.2), 2026-11-09
+
+### Fixed
+
+- `powerquery_run` inserts the metering predicate (`tag != 'logVolume'`) and the site filter (`site.id='<siteId>'`) at the first `|` at parenthesis depth 0, outside quotes. A subquery in the initial filter (`f in (... | group 1 by f)`) works with metering exclusion and with a site scope; it no longer fails with HTTP 400 `Expected ")"`. `queryType: "LOG"` still rejects any pipe and does not accept subqueries.
+- `s1_api_get` adds `isLegacy=false` only to `/cloud-detection/rules` and `/cloud-detection/rules/<id>`. Other sub-paths pass through unchanged: `/cloud-detection/rules/export-vcs` rejects `isLegacy` with HTTP 400 and returns a ZIP (use `s1_api_download` or `dac_export`). The same rule applies in `mgmt-console-api/scripts/s1_client.py`.
+
+### New: Detection as Code tools
+
+- `dac_export` (read): exports every custom detection rule the token can see as Detection as Code YAML (`export-vcs`, a ZIP per page of up to 500 rules), follows `nextCursor`, and returns counts by scope folder and `queryType`. Writes the raw ZIP (`outputFile`) or extracts it (`outputDir`, unsafe entry names refused, files mode 0600).
+- `dac_diff` (read, runs in read-only mode): bundles rule YAML plus `deployments.yaml`, from inline `files` or a `repoDir`, and posts it to `parse-vcs?mode=diff`. Returns creates, updates, deletes, imports, retains and the summary totals; console validation errors come back verbatim. Nothing on the tenant changes. `vcsRepoId`, `vcsRepoName` and `vcsCommitId` are required.
+- `dac_apply` (write, destructive): runs a fresh diff of the same bundle and sends `parse-vcs?mode=apply` only when every summary total equals the `expectedSummary` from the reviewed diff; otherwise it refuses and shows both.
+- `lib/zip.js`: a ZIP writer and reader on `node:zlib`. No new dependency.
+
+### New: Asset Inventory tools
+
+- `asset_inventory_counts`, `asset_inventory_search`, `asset_inventory_get` and `asset_inventory_filter_values` (all read): GraphQL `query` documents on `/web/api/v2.1/graphql` (`assetInventoryAssetCounts`, `assetInventoryAssets`, `assetInventoryAssetOverview`, `assetInventoryFiltersCount`). The `surface` argument is the console view (`NETWORK_DISCOVERY` = Active assets only; `ENDPOINT` = agent-backed); the `surfaces` filter is the raw tag. Filters are sent as GraphQL variables, requested fields are allowlisted, and a GraphQL `errors` array on HTTP 200 is a tool error. `asset_inventory_search` pages with `maxPages` and writes `.json`, `.jsonl` or `.csv` with `outputFile`.
+- 47 tools are registered; 43 are listed with no threat-intel keys.
+
+### Skills and docs (plugin 1.4.2)
+
+- sdl-solutions, Detection as Code: native engine only. Rules are YAML plus a `deployments.yaml` manifest per console; existing rules are adopted with `dac_export`, every pull request is reviewed with a console-computed diff, and a merge applies it through the official SentinelOne `detection-as-code` reference workflow (GitHub Actions; CLI mode for GitLab and Azure). Templates are in `sdl-solutions/assets/dac-native/`. The TOML starter (`detection-as-code-starter/`, `dac_lint.py`, `dac_sync.py`) is removed.
+- sdl-solutions, new Unprotected endpoints report (`references/unprotected-endpoints.md`): Active Network Discovery devices missing EPP, split into deploy-ready, agent support unknown and cannot-take-an-agent, with breakdowns and Sentinel Deploy remediation. Read-only; optional PowerQuery telemetry check and an optional dashboard template (`assets/unprotected_endpoints_dashboard.template.json`). Eleven solutions in all.
+- mgmt-console-api: new `references/ASSET_INVENTORY_GRAPHQL.md` (operations, filters, paging, scope, view semantics, coverage labels, recipes). `references/detection-rules.md` covers `export-vcs` and `parse-vcs`, and bulk rule delete as verify-and-repeat: a rule still activating is disabled rather than deleted, so re-list and repeat the delete for the remaining ids until none remain.
+- powerquery and mgmt-console-api: custom correlation entities (the group model, reserved names, restricted categories, the 2,000,000-entity limit, at most 10 sub-queries, allowed `windowMinutes`, mitigation group requirements) with the API rejection for each mistake. Rule 21 matches the 1.6.1 metering placement.
+- sdl-dashboard: on the `assets` adapter use `| filter`; `where (...)` returns at most 20 rows.
+- soc-investigator: triage reads asset context (criticality, tags, infection status, alert counts) with `asset_inventory_get`.
+- Plugin description lists the eleven solutions.
+
+### Tests
+
+- New `tests/regressions-1.6.1.test.mjs` (metering and site placement with subqueries, LOG pipe guard, `isLegacy` path table), `tests/dac-1.6.1.test.mjs` (ZIP round trip, unsafe entry names, size cap, `dac_apply` summary check and read-only refusal) and `tests/asset-inventory-1.6.1.test.mjs` (field allowlist, variables, GraphQL `errors` handling). `smoke.test.mjs` expects 47 tools.
+- `docker/smoke-test.sh` expects 43 tools with no threat-intel keys and 47 with both.
+- `tools/pq_live_regression.py` gains `--site <siteId>` (applies the tool's site filter and then the metering rewrite, in the server's order) and a live case `subquery-in-initial-filter`. Live run: 81 of 81 pass with the query unchanged, with `--mcp-rewrite`, and with `--mcp-rewrite --site` on a site holding EDR data.
+- New evals: powerquery (reserved entity name, quarantine group, 11 sub-queries), sdl-solutions (native DaC repo and delete flow, import without drift, unprotected endpoints report). New invariants for the Unprotected Endpoints playbook and dashboard template and for the Asset Inventory GraphQL reference.
+
 ## Plugin 1.4.1 (skills only; image and s1-secops-mcp unchanged at 1.6.0), 2026-11-05
 
 ### powerquery

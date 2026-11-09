@@ -56,12 +56,21 @@ const UAM_WRITE_RESULT_NOTE = 'Sends the same alertTriggerActions request as the
  * just lies by omission. Promoting "empty response" to "tenant has zero
  * scheduled detections" without isLegacy=false is the failure mode this
  * guard exists to prevent. Exported for unit testing.
+ *
+ * Applies only to the rule listing (`/cloud-detection/rules`) and the
+ * single-rule form (`/cloud-detection/rules/<id>`). Other sub-paths
+ * (`/rules/export-vcs`, `/rules/parse-vcs`, `/rules/enable`, `/rules/disable`)
+ * are left alone: export-vcs rejects the parameter with HTTP 400
+ * `isLegacy: Unknown field`, and the others are action endpoints that do not
+ * take it. Same regex as _CLOUD_DETECTION_RULES_RE in
+ * mgmt-console-api/scripts/s1_client.py.
  */
+export const CLOUD_DETECTION_RULES_RE = /\/cloud-detection\/rules(?:\/\d+)?\/?(?:\?|$)/;
 export function normalizeS1ApiGetParams(path, params) {
   const p = { ...(params || {}) };
   if (
     typeof path === 'string' &&
-    /\/cloud-detection\/rules(\/|\?|$)/.test(path) &&
+    CLOUD_DETECTION_RULES_RE.test(path) &&
     // Respect an explicit inline override in the path query string, e.g.
     // /cloud-detection/rules?isLegacy=true; do not append a conflicting
     // isLegacy=false. Mirrors _maybe_inject_islegacy in
@@ -81,7 +90,7 @@ export const tools = [
     name: 's1_api_get',
     description: `Generic GET request to the SentinelOne Management Console REST API (v2.1). Use for ALL read operations: listing, counting, and exporting. The S1 API uses GET for every read: listing, counting, and exporting are always GET, never POST. The path should start with /web/api/v2.1/. Returns raw JSON response. For paginated endpoints, use the cursor or skip/limit params. Count examples: path="/web/api/v2.1/agents/count" returns {"data":{"total":N}}; path="/web/api/v2.1/threats" params={"countOnly":true} returns pagination.totalItems. Export example: path="/web/api/v2.1/threats/export" (no extra params). Get agents by IDs: path="/web/api/v2.1/agents" params={"ids":"<id1>,<id2>"} (comma-separated query param).
 
-⚠️ CLOUD-DETECTION RULES, MANDATORY isLegacy=false: For ANY GET on /cloud-detection/rules (listing, name search, queryType filter, scope filter) you MUST pass params.isLegacy=false. Without it the API silently omits queryType="scheduled" PowerQuery rules and returns only events-type rules; there is no error, no warning, the response just lies by omission. This handler auto-injects isLegacy=false when it sees a /cloud-detection/rules path and the caller forgot it, but always pass it explicitly so it shows up in audit logs. Promoting "empty response" to "tenant has zero scheduled detections" without isLegacy=false is the failure mode this guard exists to prevent.`,
+⚠️ CLOUD-DETECTION RULES, MANDATORY isLegacy=false: For any GET listing on /cloud-detection/rules (name search, queryType filter, scope filter) or a single rule at /cloud-detection/rules/<id> you MUST pass params.isLegacy=false. Without it the API silently omits queryType="scheduled" PowerQuery rules and returns only events-type rules; there is no error, no warning, the response just lies by omission. This handler auto-injects isLegacy=false on those two path forms when the caller forgot it (other sub-paths such as /rules/export-vcs reject the parameter and are left alone), but always pass it explicitly so it shows up in audit logs. Promoting "empty response" to "tenant has zero scheduled detections" without isLegacy=false is the failure mode this guard exists to prevent. /cloud-detection/rules/export-vcs returns a ZIP: use s1_api_download for it.`,
     inputSchema: {
       type: 'object',
       properties: {

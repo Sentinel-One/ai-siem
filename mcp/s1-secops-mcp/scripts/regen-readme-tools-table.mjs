@@ -66,6 +66,15 @@ const TOOL_SKILL = {
   // UAM Ingest
   uam_ingest_alert:              'mgmt-console-api (UAM Alert Interface)',
   uam_post_alert:                'mgmt-console-api (UAM Alert Interface)',
+  // Detection as Code (1.6.1)
+  dac_export:                    'sdl-solutions (Detection as Code)',
+  dac_diff:                      'sdl-solutions (Detection as Code)',
+  dac_apply:                     'sdl-solutions (Detection as Code)',
+  // Asset Inventory (1.6.1)
+  asset_inventory_counts:        'mgmt-console-api / sdl-solutions',
+  asset_inventory_search:        'mgmt-console-api / sdl-solutions',
+  asset_inventory_get:           'mgmt-console-api / soc-investigator',
+  asset_inventory_filter_values: 'mgmt-console-api / sdl-solutions',
   // Threat intelligence (1.6.0; listed only when the key is stored)
   ti_vt_lookup:                  'soc-investigator (VIRUSTOTAL_API_KEY)',
   ti_vt_relationship:            'soc-investigator (VIRUSTOTAL_API_KEY)',
@@ -79,6 +88,8 @@ const GROUPS = [
   { label: 'SDL API',          test: n => n.startsWith('sdl_') || n === 'hec_ingest' },
   { label: 'Hyperautomation',  prefix: 'ha_' },
   { label: 'UAM Ingest',       test: n => /^(uam_ingest_|uam_post_)/.test(n) },
+  { label: 'Detection as Code', prefix: 'dac_' },
+  { label: 'Asset Inventory',  prefix: 'asset_inventory_' },
   { label: 'Threat Intel',     prefix: 'ti_' },
 ];
 
@@ -103,7 +114,7 @@ function buildTable() {
     });
 
   const lines = [];
-  lines.push(`**${ALL_TOOLS.length} tools** across PowerQuery, Mgmt Console, SDL API, Hyperautomation, UAM Ingest, and Threat Intel (the Threat Intel tools are listed only when their key is stored):`);
+  lines.push(`**${ALL_TOOLS.length} tools** across PowerQuery, Mgmt Console, SDL API, Hyperautomation, UAM Ingest, Detection as Code, Asset Inventory and Threat Intel (the Threat Intel tools are listed only when their key is stored):`);
   lines.push('');
   lines.push('| Group | Tool | Skill |');
   lines.push('|-------|------|-------|');

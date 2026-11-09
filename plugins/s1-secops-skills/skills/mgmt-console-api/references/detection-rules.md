@@ -191,4 +191,120 @@ client.delete("/web/api/v2.1/cloud-detection/rules",
     {"filter": {"ids": [rule_id], "accountIds": [acct_id]}})
 ```
 
-**Verify deletion with GET (expect 0 hits), not a second DELETE.** A second DELETE returns HTTP 400 "Could not find rule with id: ..." rather than `affected: 0`.
+**Verify deletion with GET (expect 0 hits), then repeat the DELETE for what remains.** The bulk DELETE reports every id in `filter.ids` as `affected`, but a rule that is still activating ("will become Active within an hour") is only **disabled**, not deleted. Delete is therefore a loop:
+
+1. `DELETE /web/api/v2.1/cloud-detection/rules` with `{"filter": {"ids": [...]}}`.
+2. Re-list those ids with `GET /cloud-detection/rules?isLegacy=false&ids=<id1>,<id2>,...`.
+3. Repeat the DELETE for the ids still listed, until none remain. A few passes can be needed.
+
+Send each repeat with only the ids that are still listed: a DELETE naming an id that no longer exists returns HTTP 400 "Could not find rule with id: ..." rather than `affected: 0`. Do not report a cleanup as done from the `affected` count alone.
+
+### Detection as Code endpoints
+
+The console's native Detection as Code (DaC) API. Neither endpoint is in the bundled swagger, so
+`search_endpoints.py` does not find them. Prefer the s1-secops-mcp tools (1.6.1 or later):
+`dac_export` (export), `dac_diff` (diff, read-only) and `dac_apply` (apply, write; it re-runs the
+diff and requires the reviewed `expectedSummary`). The workflow (bootstrap, manifest, PR gate,
+delete flow) is the sdl-solutions playbook `sdl-solutions/references/detection-as-code.md`.
+
+**`POST /web/api/v2.1/cloud-detection/rules/parse-vcs?mode=diff|apply`**
+
+- Auth: `ApiToken <token>` (the reference CI script sends `Bearer <token>`).
+- Body: `multipart/form-data` with
+  - `file`: a ZIP holding `deployments.yaml` (the console manifest: `targets` and `deploy`) plus
+    the rule YAML files at the paths the deploy globs match;
+  - `vcsRepoId`, `vcsRepoName`, `vcsCommitId`: the owning repository's stable id, its name, and
+    the commit SHA.
+- `mode=diff` writes nothing. `mode=apply` creates, updates, imports, retains and deletes rules.
+- Success (HTTP 200):
+
+  ```json
+  {"data": {
+    "creates": [{"externalId": "<rule-id>", "scopeLevel": "site", "scopeId": 1234567890123456789, "ruleData": {}}],
+    "updates": [], "deletes": [], "imports": [], "retains": [],
+    "summary": {"totalChanges": 1, "totalCreates": 1, "totalUpdates": 0,
+                "totalDeletes": 0, "totalImports": 0, "totalRetains": 0},
+    "vcsRepoId": "<vcsRepoId>"}}
+  ```
+
+  `ruleData` is the normalised rule (for example `entity: Custom` comes back `custom`).
+  `scopeId` is a JSON number above 2^53: parse it with a 64-bit-safe parser or compare scopes
+  against the manifest.
+- Failure (HTTP 400) comes in two shapes:
+  - parse and schema problems: `errors[]` with `code` 4000010 and a detail starting
+    `Failed to parse rule files: <path>: ...` (for example an `entityMappings.identifierType`
+    outside `agent.uuid`, `cloud_resource_id`, `distinguished_name`, `hostname`,
+    `mac_addresses`, `object_guid`, `object_sid`, `serial_number`, `user_principal_name`, or a
+    denylisted entity field such as `account.id`);
+  - semantic problems: `{"data": {"validationErrors": {"global": ["..."], "rules":
+    [{"externalId", "filePath", "scopeLevel", "scopeId", "errors": ["..."]}]}}}`. Messages seen:
+    `Only SYQL (queryLang 2.0) rules are supported`, `Duplicate external_id '<id>' found in 2
+    files: ...`, `importCustomRuleId '<ruleId>': imported YAML does not match the live rule
+    (drifted fields: <field>)`, `importCustomRuleId '<ruleId>' does not reference an active
+    rule`, `network_quarantine requires entity key with singleton group [agent.uuid]`,
+    `External ID '<id>' is already claimed by another repository for scope site (id: ...)`.
+- Ownership is keyed on `vcsRepoId`: the same files under a different `vcsRepoId` fail with the
+  "already claimed" error above; an empty bundle under a different `vcsRepoId` returns all-zero
+  totals and leaves the owning repository's rules alone.
+- Back-to-back calls get HTTP 429 with an nginx HTML body and no `Retry-After` header; retry with
+  backoff (the `dac_*` tools start at 2 s).
+
+**`GET /web/api/v2.1/cloud-detection/rules/export-vcs`**
+
+- Returns a ZIP, not JSON: `export-summary.json` (`exported`, `limit` 500, `nextCursor`, and
+  `totalItems` on the first page only) plus
+  `rules/<scopeLevel>-<scopeId>/exported-rule-<ruleId>.yaml`. Pass `cursor` (the previous page's
+  `nextCursor`, which is percent-encoded: decode it first) for the next page. It exports every scope the token can see,
+  `queryLang: "2.0"` rules only.
+- Each file carries `id: exported-rule-<ruleId>` and `importCustomRuleId: <ruleId>`: committed
+  unchanged, it imports the live rule on the next apply.
+- Do not send `isLegacy`: the endpoint rejects it with HTTP 400 `isLegacy: Unknown field`.
+  `s1_api_get` on 1.6.1 or later leaves this path alone; on any version use `dac_export` or
+  `s1_api_download` (binary to `outputFile`).
+
+**DaC-managed rules** list with `"source": "DAC"` and `"editable": false`. They cannot be edited
+on the Detections page, and `PUT /cloud-detection/rules/{id}` returns HTTP 400
+`Detection-as-Code managed rules cannot be edited.`; change them in Git. A rule removed from the
+repository with the default `deletePolicy: Retain` returns to normal management (no `source`,
+`editable: true`). Deleting one takes two applies: `deletePolicy: Delete` (an update), then the
+file removed (a delete).
+
+### Correlation rules with a custom entity (limits)
+
+Summary only; the full treatment (examples, error strings, multi-valued fan-out) is in the
+`powerquery` skill's `references/detection-rules.md`.
+
+- `correlationParams.entity: custom` with `entitiesAndFields: [[...], [...]]`: fields inside a
+  group are OR'ed, groups are AND'ed.
+- Built-in entity field sets, for comparison:
+
+  | Entity | Fields |
+  |---|---|
+  | Process | `src.process.uid` AND `agent.uuid` |
+  | Device | `agent.uuid` OR `device.uid` |
+  | IP | `src_endpoint.ip` OR `dst_endpoint.ip` OR `device.ip` OR `dst.ip.address` OR `src.ip.address` |
+  | Storyline | `src.process.storyline.id` AND `agent.uuid` |
+  | User | `actor.user.name` OR `src.process.user` OR `tgt.process.user` OR `event.login.userName` |
+  | None | no entity |
+
+  API `entity` values accepted: `user`, `ip`, `process`, `storyline`, `custom` (`Custom` is
+  normalised to `custom`). `device` is rejected as "not a valid choice"; take the Device preset's
+  API value from a rule created in the console.
+
+- `timeWindow.windowMinutes` must be one of `10`, `30`, `60`, `240`, `480`, `720`. Always send it:
+  a rule created without it stores 480. Use 60 for new rules.
+- At least 2 sub-queries (or 1 with `matchesRequired` of 2 or more); at most 10.
+- More than 2,000,000 tracked entities deactivates the rule.
+- At most 8,192 characters per sub-query. Avoid starting a sub-query with `!` and avoid
+  `os = "windows"` (the API accepts a leading `!`; both are product guidance for performance).
+- Field names must match `^[a-zA-Z][a-zA-Z0-9_]*(\[[0-9]+\])?(\.[a-zA-Z][a-zA-Z0-9_]*(\[[0-9]+\])?)*$`.
+  Reserved names (rejected, case-insensitive): `account.id`, `account.name`, `accountid`,
+  `filterpurpose`, `ruleid`, `rule.id`, `filterid`. `oempurpose` is also reserved; the validator
+  accepts it, so never rely on a rejection. Avoid per-event ids, timestamps, free text, counters and
+  high-entropy values as entity fields.
+- `networkQuarantine` on a non-process preset is refused (`entity: "user"`: "can`t network
+  quarantine a non-process entity").
+- Active Response: Network Quarantine needs `agent.uuid` as its own (singleton) group; Treat as
+  Threat also needs `src.process.storyline.id` or `src.process.uid` as its own group. The caller
+  needs **Endpoints: Disconnect from network** and **Endpoint Threats: Mark suspicious / Mark
+  threat**, else HTTP 403. Mitigation is not applied to alerts suppressed by cool-off.

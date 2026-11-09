@@ -73,7 +73,8 @@ Rules:
 Required skills for full investigation capability:
 
   Core (SentinelOne telemetry & console)
-  ├── mgmt-console-api   - alert fetch, IOC lookup, agent/threat queries
+  ├── mgmt-console-api   - alert fetch, IOC lookup, agent/threat queries,
+  │                        asset context (asset_inventory_get: criticality, tags, alert counts)
   ├── powerquery          - Deep Visibility / SDL PowerQuery execution
   ├── sdl-api             - SDL file and log management
   │   └── sdl-log-parser  - log parser authoring/validation

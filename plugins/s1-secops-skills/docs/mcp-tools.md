@@ -8,7 +8,7 @@ From 1.6.0 the image no longer bundles `purple-mcp`, the VirusTotal MCP or the S
 
 ## s1-secops-mcp
 
-Runs on the user's machine over stdio, as a Node.js process or from the Docker image via the host launcher. Source: `mcp/s1-secops-mcp/index.js`. 40 tools are registered. The four threat-intelligence tools are listed only when their key is stored, so a client sees 36 tools with no threat-intelligence key, 38 with `VIRUSTOTAL_API_KEY` only and 40 with both `VIRUSTOTAL_API_KEY` and `SHODAN_API_KEY`. Credentials resolve per value from environment variables, then the OS keychain; there is no credentials file and no HTTP transport. Setup: [credentials.md](./credentials.md).
+Runs on the user's machine over stdio, as a Node.js process or from the Docker image via the host launcher. Source: `mcp/s1-secops-mcp/index.js`. 47 tools are registered. The four threat-intelligence tools are listed only when their key is stored, so a client sees 43 tools with no threat-intelligence key, 45 with `VIRUSTOTAL_API_KEY` only and 47 with both `VIRUSTOTAL_API_KEY` and `SHODAN_API_KEY`. Credentials resolve per value from environment variables, then the OS keychain; there is no credentials file and no HTTP transport. Setup: [credentials.md](./credentials.md).
 
 ### Read-only mode (1.5.5 and later)
 
@@ -16,11 +16,11 @@ s1-secops-mcp is **read-only by default**. Every call that would change the tena
 
 | Access | Meaning | Tools |
 |---|---|---|
-| Read | Always runs | `s1_api_get`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_available_actions`, `purple_ai_alert_summary`, `purple_ai_query`, `ti_vt_lookup`, `ti_vt_relationship`, `ti_shodan_host`, `ti_shodan_dns`, `powerquery_enumerate_sources`, `powerquery_schema_discover`, `sdl_list_files`, `sdl_get_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `ha_list_workflows`, `ha_get_workflow`, `ha_export_workflow` (20) |
+| Read | Always runs | `s1_api_get`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_available_actions`, `purple_ai_alert_summary`, `purple_ai_query`, `ti_vt_lookup`, `ti_vt_relationship`, `ti_shodan_host`, `ti_shodan_dns`, `powerquery_enumerate_sources`, `powerquery_schema_discover`, `sdl_list_files`, `sdl_get_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `ha_list_workflows`, `ha_get_workflow`, `ha_export_workflow`, `dac_export`, `dac_diff`, `asset_inventory_counts`, `asset_inventory_search`, `asset_inventory_get`, `asset_inventory_filter_values` (26) |
 | Conditional | Read forms run; write forms are refused while read-only | `s1_api_post`: allowed for GraphQL documents with only `query` operations, `/dv/init-query`, `/cloud-funnel/validate-query`, graph explorer queries, `available-actions` and `/xdr/assets/tags/count`; every other POST is treated as a write. `powerquery_run`: refused when the query contains `\| savelookup` (2) |
-| Write | Refused while read-only | `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_post_alert`, `uam_ingest_alert`, `hec_ingest`, `sdl_put_file`, `sdl_delete_file`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `ha_import_workflow`, `ha_delete_workflow` (18) |
+| Write | Refused while read-only | `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_post_alert`, `uam_ingest_alert`, `hec_ingest`, `sdl_put_file`, `sdl_delete_file`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `ha_import_workflow`, `ha_delete_workflow`, `dac_apply` (19) |
 
-Local file output (`outputFile`, `s1_api_download`) writes only to your machine and is allowed in read-only mode. Each tool heading below carries its access in brackets.
+Local file output (`outputFile`, `outputDir`, `s1_api_download`) writes only to your machine and is allowed in read-only mode. `dac_diff` sends a POST (`parse-vcs?mode=diff`) that changes nothing on the tenant, so it is classed Read and runs in read-only mode. Each tool heading below carries its access in brackets.
 
 **Behaviour common to every tool:**
 
@@ -185,6 +185,37 @@ Export all workflows as a ZIP archive. Pass `outputFile` (absolute path ending i
 **`ha_delete_workflow`** [Write]
 Delete one or more workflows via `DELETE /workflows/{id}` (soft, recoverable). Scope with `accountIds` or `siteIds` to match where the workflow lives. An active workflow cannot be deleted (HTTP 400): the tool deactivates it, retries once and reports `deactivatedFirst: true`. Requires Hyper Automate.write permission.
 
+### Detection as Code tools (1.6.1)
+
+These drive the console's native Detection as Code engine (`/web/api/v2.1/cloud-detection/rules/export-vcs` and `parse-vcs`). Rules are YAML files plus a `deployments.yaml` manifest that maps targets (`scopeId`, `scopeLevel: global|account|site`) to rule globs. In a repository with a CI pipeline, the official SentinelOne `detection-as-code` reference workflow applies on merge; these tools adopt existing rules, preview a change and apply where no pipeline exists. Playbook: `sdl-solutions/references/detection-as-code.md`.
+
+**`dac_export`** [Read]
+Export every custom detection rule the token can see as Detection as Code YAML. The console returns a ZIP per page of up to 500 rules (`export-summary.json` plus `rules/<scopeLevel>-<scopeId>/exported-rule-<id>.yaml`); the tool follows `nextCursor`. Each exported rule carries `importCustomRuleId`, the id of the existing console rule. Returns counts by scope folder and by `queryType`. Parameters: `outputFile` (raw ZIP; page 2 onward as `<name>-page<N>.zip`), `outputDir` (extract the archive there; unsafe entry names are refused, files mode 0600), `overwrite`, `maxPages` (default and max 100), `listLimit` (rule paths listed when no output path is given, default 50, max 500). Writes only to the local machine.
+
+**`dac_diff`** [Read]
+Preview a deployment: bundles the rule YAML and posts it to `parse-vcs?mode=diff`. The console validates every rule and returns what an apply would do (`creates`, `updates`, `deletes`, `imports`, `retains`, `summary.total*`) without changing anything; validation errors come back verbatim. Input is `files` (relative path to YAML text, including `deployments.yaml`) or `repoDir` (absolute path to the detections root inside the allowed output folders, with optional `deploymentsFile`; symlinks and hidden entries such as `.git` are skipped). Required: `vcsRepoId` (the id the CI pipeline uses for this repository; the console keys rule ownership on it), `vcsRepoName`, `vcsCommitId`. Optional `maxItems` (default 25, max 1000), `outputFile`, `overwrite`. Runs in read-only mode.
+
+**`dac_apply`** [Write, destructive]
+Apply a reviewed deployment (`parse-vcs?mode=apply`), for repositories without a CI pipeline or to bootstrap one. It first runs a fresh diff of the same bundle and refuses, showing both, unless every summary total equals `expectedSummary` (the `summary` from the `dac_diff` the user reviewed). Apply creates and updates rules and deletes rules whose files were removed with `deletePolicy: Delete`. Same inputs as `dac_diff`, plus the required `expectedSummary`.
+
+Rules managed this way are listed with source `DAC` and `editable: false`: change them in the repository, not on the console Detections page or through the custom-rule API. Only `queryLang` `"2.0"` rules can be managed. A rule removed from the repository follows its `deletePolicy`: `Retain` (the default) releases it as a normal console rule; `Delete` removes it, which takes two applies. A bundle under a different `vcsRepoId` cannot take over rules another repository owns.
+
+### Asset Inventory tools (1.6.1)
+
+GraphQL `query` documents on `POST /web/api/v2.1/graphql`, all read-only. The `surface` argument is the curated console view (`NETWORK_DISCOVERY` returns Active assets only, as on the console Network Discovery page; `ENDPOINT` returns agent-backed assets). The `surfaces` filter is the raw surface tag and also returns Inactive and agentless records. Every tool takes an optional `scope` (`{scopeType: "ACCOUNT"|"SITE"|"GROUP", scopeIds: ["<id>"]}` or `{scopeType: "TENANT", scopeIds: []}`). Reference: `mgmt-console-api/references/ASSET_INVENTORY_GRAPHQL.md`.
+
+**`asset_inventory_counts`** [Read]
+Totals per category (with subcategories) and per surface (`assetInventoryAssetCounts`), for a quick overview. Do not mix these totals with filtered or surface totals from `asset_inventory_search`: they are different views. For Network Discovery and Device numbers use `asset_inventory_search` with `countOnly`.
+
+**`asset_inventory_search`** [Read]
+List, filter, sort and page assets on any surface (`assetInventoryAssets`). Parameters: `surface`, `category` and `subCategory` (enums such as `SERVER`, `LAPTOP`), `filters` (AND-combined `{fieldId, <operator>}` items; filter values are display labels, `stringEqual` and `stringIn` are exact and case-sensitive, `match` is a case-insensitive contains), `sort`, `fields`, `first` (1 to 1000, default 50), `after`, `maxPages` (1 to 50), `countOnly`, `outputFile` (`.json`, `.jsonl` or `.csv`) and `overwrite`. Inline results are limited to 1000 rows.
+
+**`asset_inventory_get`** [Read]
+One asset's overview (`assetInventoryAssetOverview`) by `resourceId` (the `id` from `asset_inventory_search`) or, for Endpoint assets, by `agentUuid`: criticality, tags (including `S1_Asset_criticality`), infection status, risk factors, active and missing coverage, alert counts per severity, scope ids and agent. Optional `fields` overrides the default set. A missing asset returns `Asset with identifier ... not found`.
+
+**`asset_inventory_filter_values`** [Read]
+The values that exist for one or more fields, with the number of assets for each (`assetInventoryFiltersCount`). Required `fieldIds` (for example `["missingCoverage", "managedState"]`); optional `surface`, `filters` and `scope`. Use it to get exact filter labels before filtering, and as a fast group-by for coverage questions.
+
 ---
 
 <a id="shodan-mcp-optional"></a><a id="threat-intelligence-which-server-to-use"></a>
@@ -239,9 +270,12 @@ Resolve up to 25 `hostnames` to IP addresses, or reverse-resolve up to 25 `ips` 
 | Field schema of a source | `powerquery_schema_discover` |
 | Natural-language question or a draft hunt query | `purple_ai_query`, then review the query and run it with `powerquery_run` |
 | List, triage or annotate alerts (notes and history included) | `uam_list_alerts`, `uam_get_alert`; writes with `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert` |
+| Asset criticality, tags and coverage for one asset | `asset_inventory_get` |
+| Asset counts, coverage gaps, unprotected devices | `asset_inventory_search` (`countOnly`), `asset_inventory_filter_values`; `asset_inventory_counts` for an overview |
 | Agent inventory, vulnerabilities, misconfigurations | `s1_api_get` / `s1_api_post` (read) on the endpoints in the mgmt-console-api skill |
 | Agents, threats, sites, groups, policies (REST) | `s1_api_get` / `s1_api_post` |
 | Create/update/delete detection rules or exclusions | `s1_api_post` / `s1_api_put` / `s1_api_delete` |
+| Put custom rules under Git (Detection as Code) | `dac_export` to adopt, `dac_diff` to preview, `dac_apply` where no CI pipeline applies |
 | Create or delete IOCs | `s1_api_post` / `s1_api_delete` from an MCP entry whose token is minted at a single account or site (`S1_PROFILE`) |
 | Download a fetched file, RemoteOps output, or export | `s1_api_download` |
 | Deploy parser or dashboard to SDL | `sdl_put_file` |

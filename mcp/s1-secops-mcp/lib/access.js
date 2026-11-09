@@ -30,6 +30,7 @@ export const WRITE_TOOLS = new Set([
   'sdl_put_file', 'sdl_delete_file',
   'sdl_create_dashboard', 'sdl_share_dashboard', 'sdl_save_dashboard_layout', 'sdl_delete_dashboard',
   'ha_import_workflow', 'ha_delete_workflow',
+  'dac_apply',
 ]);
 
 // Tools that read or write depending on arguments.
@@ -44,12 +45,15 @@ export const READ_TOOLS = new Set([
   'powerquery_enumerate_sources', 'powerquery_schema_discover',
   'sdl_list_files', 'sdl_get_file', 'sdl_list_dashboards', 'sdl_get_dashboard',
   'ha_list_workflows', 'ha_get_workflow', 'ha_export_workflow',
+  'dac_export', 'dac_diff',
+  'asset_inventory_counts', 'asset_inventory_search', 'asset_inventory_get', 'asset_inventory_filter_values',
 ]);
 
 // Edits that can overwrite or remove existing state: MCP destructiveHint.
 const DESTRUCTIVE = new Set([
   's1_api_put', 's1_api_patch', 's1_api_delete', 'sdl_put_file', 'sdl_delete_file',
   'sdl_delete_dashboard', 'sdl_save_dashboard_layout', 'ha_delete_workflow',
+  'dac_apply',
 ]);
 
 let warnedValue = null;

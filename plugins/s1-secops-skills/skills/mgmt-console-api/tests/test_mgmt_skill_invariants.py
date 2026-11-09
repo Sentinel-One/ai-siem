@@ -318,5 +318,30 @@ class Licences(unittest.TestCase):
         self.assertIn("references/licences.md", (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8"))
 
 
+class AssetInventoryGraphqlReference(unittest.TestCase):
+    """The GraphQL reference must carry the view semantics that make counts match the console."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.g = (SKILL_DIR / "references" / "ASSET_INVENTORY_GRAPHQL.md").read_text(encoding="utf-8")
+
+    def test_operation_shapes(self):
+        for s in ("AssetInventoryFilterInput", "Maximum page size is 1000", "assetInventoryFiltersCount",
+                  "assetInventoryAssetOverview", "assetInventoryAssetCounts"):
+            self.assertIn(s, self.g)
+
+    def test_view_semantics_and_pq_equivalent(self):
+        self.assertIn("curated console", self.g)
+        self.assertIn("| filter assetStatus = 'Active'", self.g)
+        self.assertIn("at most\n  20 rows", self.g)
+
+    def test_coverage_labels(self):
+        for label in ("EPP", "CWS", "ISPM", "Ranger Insights", "CDS", "CNS KSPM", "CNS IaC Scan", "CNS VM Scan",
+                      "Data Classification", "CNS Image Scan", "CNS Secret Scan", "AI Security Agent",
+                      "CNS Remediate", "CNS Secret Scanning (Daily)", "CNS Secret Scanning (Real-Time)",
+                      "Admission Control", "CNS Detect"):
+            self.assertIn(label, self.g)
+
+
 if __name__ == "__main__":
     unittest.main()

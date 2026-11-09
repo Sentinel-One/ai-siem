@@ -113,14 +113,15 @@ _keystore = _import_keystore()
 # Mirrors normalizeS1ApiGetParams in s1-secops-mcp/tools/mgmt-console.js;
 # keep the two in sync. Regression test: tests/test_islegacy_guard.py.
 #
-# Match `/cloud-detection/rules` when it's immediately followed by `/`, `?`,
-# or end-of-string. This covers the listing endpoint, the trailing-slash form,
-# the single-rule /{id} variant, AND callers that inline query params in the
-# path (e.g. ".../rules?limit=200"). The previous end-anchored pattern silently
-# skipped the query-suffix form and let scheduled rules drop out. Requiring one
-# of `/ ? <end>` after `rules` keeps adjacent names like `/rules-export` or
-# `/ruleset` from matching.
-_CLOUD_DETECTION_RULES_RE = re.compile(r"/cloud-detection/rules(?:[/?]|$)")
+# Match only the rule listing and the single-rule form: `/cloud-detection/rules`
+# or `/cloud-detection/rules/<numeric id>`, optionally with a trailing slash,
+# then a `?` query suffix or end-of-string. This covers callers that inline
+# query params in the path (e.g. ".../rules?limit=200"). Other sub-paths are
+# left alone: `/rules/export-vcs` rejects isLegacy with HTTP 400
+# `isLegacy: Unknown field`, and `/rules/parse-vcs`, `/rules/enable` and
+# `/rules/disable` are action endpoints that do not take it. Adjacent names
+# like `/rules-export` or `/ruleset` do not match either.
+_CLOUD_DETECTION_RULES_RE = re.compile(r"/cloud-detection/rules(?:/\d+)?/?(?:\?|$)")
 
 
 def _maybe_inject_islegacy(
@@ -132,7 +133,8 @@ def _maybe_inject_islegacy(
 
     Triggers on GET to /cloud-detection/rules, /cloud-detection/rules/,
     /cloud-detection/rules/{id}, and any of these with an inline query
-    suffix (e.g. /cloud-detection/rules?limit=200). Always returns a fresh
+    suffix (e.g. /cloud-detection/rules?limit=200). Other sub-paths such as
+    /cloud-detection/rules/export-vcs are left alone. Always returns a fresh
     dict so the caller's input is not mutated.
     """
     out = dict(params or {})

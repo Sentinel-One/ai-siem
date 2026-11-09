@@ -40,7 +40,7 @@ CLAUDE.md                       Main instruction layer: SOC Analyst persona, ses
                                 Decides what to do and invokes skills as needed.
        │  invokes skills
        ▼
-sdl-solutions                   Umbrella orchestrator for 10 packaged solutions. On a "deploy /
+sdl-solutions                   Umbrella orchestrator for 11 packaged solutions. On a "deploy /
                                 onboard / monitor a whole solution" request it runs first, collects
                                 parameters, previews, then drives the primitive skills below in
                                 dependency order.
@@ -83,7 +83,7 @@ The plugin bundles every skill; installing it is sufficient. No individual skill
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. See [docs/sdl-dashboard.md](./docs/sdl-dashboard.md) for all supported panel types |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import. Includes interaction forms: pause a run to collect structured input from a person, then branch on their answers |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications), detection exclusions, Risk-Based Alerting, Detection as Code (author rules as TOML in Git and sync them to the Custom Detection API via CI), alert noise reduction (find and quiet the sources flooding the alert queue: an ingestion-filter recommendation, an auto-resolve flow, and a noise-vs-signal dashboard), custom detections with MITRE mapping (a watchdog flow that posts the alert with ATT&CK attached, since STAR rules cannot carry it), and query slicing (long-window PowerQuery as parallel time slices, merged). Ten solutions in all. Orchestrates the skills above |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications), detection exclusions, Risk-Based Alerting, Detection as Code (manage Custom Detection rules from Git with the console's native Detection as Code engine: YAML rules, a console-computed diff on pull request, apply on merge), alert noise reduction (find and quiet the sources flooding the alert queue: an ingestion-filter recommendation, an auto-resolve flow, and a noise-vs-signal dashboard), custom detections with MITRE mapping (a watchdog flow that posts the alert with ATT&CK attached, since STAR rules cannot carry it), query slicing (long-window PowerQuery as parallel time slices, merged), and an unprotected endpoints report (Network Discovery devices with no SentinelOne agent, read-only). Eleven solutions in all. Orchestrates the skills above |
 | soc-investigator | Autonomous, staged DFIR investigation of SentinelOne alerts (SHORT / MEDIUM / LONG modes), plus SWEEP, an alert-agnostic hunt of a time window for MITRE-mapped TTPs, with tool discovery, interactive intake, a previewed plan, IOC enrichment, per-endpoint PowerQuery forensics, and optional third-party correlation and anomaly detection. Carries the evidence-discipline and verdict gates from the SOC Analyst standard and the SDL hunt-and-correlation method. Authored by Joel Mora |
 
 ---
@@ -396,11 +396,11 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 - *"Set up RBA: score encoded PowerShell, recon, LOLBins, and log clearing, and alert when a user accumulates enough risk across tactics"*
 - *"Roll out RBA with asset-criticality risk factors and a risk leaderboard dashboard"*
 
-**Detection as Code (DaC)** (scaffold a Git + CI pipeline where detection engineers author rules as TOML, a pull request triggers validation and four-eyes review, and a merge syncs the changed rules to the Custom Detection Rule API; covers single-event, correlation, and scheduled rule types, with a zero-dependency TOML-to-API sync engine and CI for GitHub, GitLab, and Azure). Full guide: [docs/solutions/detection-as-code.md](./docs/solutions/detection-as-code.md).
+**Detection as Code (DaC)** (Manage Custom Detection rules from Git with the console's native Detection as Code engine: YAML rules plus a manifest per console, adopt existing rules with `dac_export`, review with `dac_diff` on pull request, apply on merge through the official SentinelOne `detection-as-code` reference workflow (GitHub Actions; CLI mode for GitLab and Azure)). Full guide: [docs/solutions/detection-as-code.md](./docs/solutions/detection-as-code.md).
 
-- *"Set up detection as code for the Acme site"*
-- *"Scaffold a DaC repo with GitHub Actions and sync the example rules"*
-- *"Automate our detections as code: author in TOML, validate on PR, deploy on merge"*
+- *"Set up detection as code for the `<site>` site"*
+- *"Put our existing custom rules under Git and deploy them on merge"*
+- *"Show me what this rules branch would change in the console"*
 
 **Custom detections with MITRE mapping** (solution for custom detections to carry MITRE mapping: STAR rules have no MITRE field, so the detection runs as a scheduled Hyperautomation watchdog that posts the UAM alert with ATT&CK tactics and techniques attached; render from a small JSON rule spec or convert an existing scheduled rule). Full guide: [docs/solutions/custom-detection-mitre-mapping.md](./docs/solutions/custom-detection-mitre-mapping.md).
 
@@ -411,6 +411,11 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 - *"My alert queue is flooded, reduce the noise"*
 - *"Tune our alert ingestion and auto-close the already-blocked firewall alerts"*
 - *"Run an alert optimization for the Acme site"*
+
+**Unprotected endpoints report** (find Network Discovery devices with no SentinelOne agent, split into deploy-ready, agent support unknown and cannot-take-an-agent, with breakdowns and Sentinel Deploy remediation; read-only, with an optional dashboard template). Full guide: [sdl-solutions/references/unprotected-endpoints.md](./skills/sdl-solutions/references/unprotected-endpoints.md).
+
+- *"Find our unprotected endpoints"*
+- *"Which devices on the network have no SentinelOne agent?"*
 
 For the full per-solution breakdown, outcomes, and more example prompts, see the solution skill's own README: [sdl-solutions/README.md](./skills/sdl-solutions/README.md).
 
@@ -431,7 +436,7 @@ Credentials are identical across both paths and live in the OS keychain, never i
 
 ### 1. Quick start (Docker)
 
-One image (`sentinelone/secops-mcps`) runs one MCP server, `s1-secops-mcp`: PowerQuery, SDL, Mgmt Console, UAM and Hyperautomation tools, plus Purple AI questions (`purple_ai_query`) and built-in VirusTotal (`ti_vt_*`) and Shodan (`ti_shodan_*`) lookups that appear when their API keys are stored. On the host you need Docker and the launcher script, which reads your OS keychain and hands the secrets to the container over stdin. It works the same on macOS, Windows, and Linux, including machines where IT policy blocks host-level package installs.
+One image (`sentinelone/secops-mcps`) runs one MCP server, `s1-secops-mcp`: PowerQuery, SDL, Mgmt Console, UAM, Hyperautomation, Detection as Code and Asset Inventory tools, plus Purple AI questions (`purple_ai_query`) and built-in VirusTotal (`ti_vt_*`) and Shodan (`ti_shodan_*`) lookups that appear when their API keys are stored. On the host you need Docker and the launcher script, which reads your OS keychain and hands the secrets to the container over stdin. It works the same on macOS, Windows, and Linux, including machines where IT policy blocks host-level package installs.
 
 **Step 1: Install Docker**
 
@@ -461,7 +466,7 @@ Already cloned this repo? Run `sh mcp/docker/s1-secops-mcp-launch.sh install` fr
 
 - copies the launcher to `~/.local/bin/` (Windows: `%USERPROFILE%\bin\`), outside `~/Documents`, `~/Desktop` and `~/Downloads`, where macOS stops Claude Desktop from running scripts;
 - adds the `s1-secops-mcp` entry to your Claude Desktop config with your real home path filled in, keeps every other server and setting, and saves a backup of the old file next to it. It removes older `purple-mcp`, `virustotal` and `shodan` entries that ran this launcher; servers you added yourself with other commands are kept;
-- pulls `sentinelone/secops-mcps:1.6.0`;
+- pulls `sentinelone/secops-mcps:1.6.1`;
 - asks for your credentials if none are stored yet, and stores them in the macOS login keychain, the Linux Secret Service or Windows Credential Manager (service `sentinelone-mcp`). Nothing is typed into a file;
 - ends with a line such as `Built-in tools: Purple AI on, VirusTotal on, Shodan off (no SHODAN_API_KEY)`, so you can see which threat-intel tools will be listed.
 
@@ -539,12 +544,12 @@ smoke test s1 secops skills
 Claude checks each installed MCP, confirms each skill is loaded, and reports any missing credential or unreachable endpoint. You can also test the image straight from a terminal, no Claude Desktop required:
 
 ```bash
-docker run -i --rm sentinelone/secops-mcps:1.6.0 help    # usage: the s1-secops-mcp server and the other commands
+docker run -i --rm sentinelone/secops-mcps:1.6.1 help    # usage: the s1-secops-mcp server and the other commands
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0.1"}}}' \
   | ~/.local/bin/s1-secops-mcp-launch.sh s1-secops-mcp
 ```
 
-The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.6.0"`. Stderr shows a `Threat intel:` line (for example `Purple AI on, VirusTotal on, Shodan off (no SHODAN_API_KEY)`), a `Tools:` line with the listed and registered counts (40 registered; 36 listed with no threat-intel keys, 38 with VirusTotal only, 40 with both), a `Mode:` line (`READ-ONLY` unless you installed with `--read-write`), plus `configured` for each surface whose values are in the keychain.
+The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-server"` and `version = "1.6.1"`. Stderr shows a `Threat intel:` line (for example `Purple AI on, VirusTotal on, Shodan off (no SHODAN_API_KEY)`), a `Tools:` line with the listed and registered counts (47 registered; 43 listed with no threat-intel keys, 45 with VirusTotal only, 47 with both), a `Mode:` line (`READ-ONLY` unless you installed with `--read-write`), plus `configured` for each surface whose values are in the keychain.
 
 **Troubleshooting**
 
@@ -556,7 +561,7 @@ The second command returns one JSON line with `serverInfo.name = "s1-secops-mcp-
 | `/bin/sh: .../s1-secops-mcp-launch.sh: Operation not permitted` in the MCP log (macOS) | The config points at a launcher under `~/Documents`, `~/Desktop` or `~/Downloads`, where macOS blocks Claude Desktop's shell from running it. Run the Step 2 command again: `install` copies the launcher to `~/.local/bin/` and rewrites the config. |
 | `ENOENT`, `No such file or directory` or `spawn ... s1-secops-mcp-launch` in the MCP log | The `command` path in the config does not exist, usually a hand-typed `/Users/you/...`. Run the Step 2 command again: `install` writes your real path. |
 | Windows: Settings → Developer shows "No servers added" after the config was edited | Claude Desktop from the claude.ai installer is an MSIX package that reads `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\`, not the `%APPDATA%\Claude\` file that **Edit config** opens. Some builds keep user data in `%LOCALAPPDATA%\Claude-Data\<package id>\` instead. Run the Step 2 command again: `install` writes all three locations. If the servers still do not appear, open **Edit config**, note the path of the file it opens, and run `install -ConfigPath "<that path>"`. Or uninstall that build and install with the classic `Claude Setup.exe`, which reads `%APPDATA%\Claude\` like the rest of these docs describe (tested on Windows 11). |
-| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.6.0`. |
+| `denied` or `manifest unknown` from docker.io | Normally a typo in the image name or tag, or a proxy intercepting Docker Hub. The reference must be exactly `sentinelone/secops-mcps:1.6.1`. |
 | A tool returns `s1-secops-mcp is in read-only mode (S1_READ_ONLY)` | Expected default from 1.5.5. To allow tools that change the tenant, run `~/.local/bin/s1-secops-mcp-launch.sh install --read-write` (Windows: `-ReadWrite`) and restart Claude Desktop. See [docs/read-only.md](./docs/read-only.md). |
 | `purple-mcp`, `virustotal` or `shodan` shows red or failed after upgrading, or its log says `removed in 1.6.0` | The entry is from before 1.6.0. Run the Step 2 `install` command again: it removes the old entries and writes the `s1-secops-mcp` entry. Then restart Claude Desktop. |
 | No `ti_vt_*` or `ti_shodan_*` tools are listed | The key is not stored, or the launcher could not read it. The server log shows `Threat intel: ... VirusTotal off (no VIRUSTOTAL_API_KEY)`. Run `~/.local/bin/s1-secops-mcp-launch.sh setup`, store the key, and restart Claude Desktop; on Linux confirm the Secret Service is unlocked. |
@@ -568,7 +573,7 @@ Per-MCP logs are at `~/Library/Logs/Claude/mcp-server-<name>.log` on macOS, and 
 
 Full troubleshooting flowchart, hand-testing, and rollback: **[docs/docker.md](./docs/docker.md)**.
 
-**Third-party notices:** bundled components, their licenses and the terms of the VirusTotal and Shodan services are listed in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md). The image prints them with `docker run --rm sentinelone/secops-mcps:1.6.0 notices`.
+**Third-party notices:** bundled components, their licenses and the terms of the VirusTotal and Shodan services are listed in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md). The image prints them with `docker run --rm sentinelone/secops-mcps:1.6.1 notices`.
 
 ---
 
@@ -611,7 +616,7 @@ This repo includes Windsurf workflow files in `.windsurf/workflows/`. Each workf
 | [docs/zero-to-hero.md](./docs/zero-to-hero.md) | Onboarding guide for customers and partners new to Claude Skills: concepts, install, first session, common workflows, troubleshooting |
 | [docs/docker.md](./docs/docker.md) | Full Docker reference: the keychain launcher, troubleshooting flowchart, hand-testing, CLAUDE.md override, upgrades, and build-from-source. The Docker quick start lives in [Installation](#installation) |
 | [docs/installation.md](./docs/installation.md) | Canonical install: keychain setup, launcher config, plugin, project creation, verification, and upgrade paths |
-| [docs/upgrading.md](./docs/upgrading.md) | Version-to-version upgrade steps, including 1.5.7 to 1.6.0 (one server, built-in threat intel, tool name changes), the 1.4.x to 1.5.0 breaking changes and the 1.5.5 read-only default |
+| [docs/upgrading.md](./docs/upgrading.md) | Version-to-version upgrade steps, including 1.6.0 to 1.6.1 (Detection as Code and Asset Inventory tools), 1.5.7 to 1.6.0 (one server, built-in threat intel, tool name changes), the 1.4.x to 1.5.0 breaking changes and the 1.5.5 read-only default |
 | [docs/connect-optional-tools.md](./docs/connect-optional-tools.md) | Add other MCP servers from their official sources (VirusTotal hosted MCP, SentinelOne purple-mcp, other threat-intel providers) in Claude Desktop, Claude Code and Cowork |
 | [docs/read-only.md](./docs/read-only.md) | Read-only mode (the default from 1.5.5): what is refused, how to enable write per install method, and the controls when write is on |
 | [docs/architecture.md](./docs/architecture.md) | How the three layers fit together, data flow, auth patterns, sandbox proxy explanation |
@@ -626,7 +631,7 @@ This repo includes Windsurf workflow files in `.windsurf/workflows/`. Each workf
 | [docs/solutions/ingest-health-monitoring.md](./docs/solutions/ingest-health-monitoring.md) | SDL Solutions: per-device ingest health (per firewall/endpoint/server) on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, parser drift, with a dashboard and email notifications |
 | [docs/solutions/custom-detection-exclusions.md](./docs/solutions/custom-detection-exclusions.md) | SDL Solutions: suppress known-good noise in a STAR Custom Detection rule, built as a single-event or correlation rule (inline hardcoded exclusion) or a scheduled rule (CSV lookup anti-join + effectiveness dashboard); asks the rule type first |
 | [docs/solutions/risk-based-alerting.md](./docs/solutions/risk-based-alerting.md) | SDL Solutions: Risk-Based Alerting in SDL, publish noisy observations as risk events into a `risk` index, accumulate risk per user/host object amplified by asset risk factors, and fire one high-fidelity alert on a 24h cumulative-score or 7d multi-MITRE-tactic threshold; deploys contributors, factor table, collector flow, four incident rules, and a dashboard |
-| [docs/solutions/detection-as-code.md](./docs/solutions/detection-as-code.md) | SDL Solutions: Detection as Code, scaffold a Git + CI pipeline where detection rules are authored as TOML, validated on pull request, and synced to the Custom Detection Rule API on merge; covers single-event, correlation, and scheduled rule types, with a zero-dependency TOML-to-API sync engine and CI for GitHub, GitLab, and Azure |
+| [docs/solutions/detection-as-code.md](./docs/solutions/detection-as-code.md) | SDL Solutions: Detection as Code. Manage Custom Detection rules from Git with the console's native Detection as Code engine: YAML rules plus a manifest per console, adopt existing rules with `dac_export`, review with `dac_diff` on pull request, apply on merge through the official SentinelOne `detection-as-code` reference workflow (GitHub Actions; CLI mode for GitLab and Azure) |
 | [docs/solutions/alert-noise-reduction.md](./docs/solutions/alert-noise-reduction.md) | SDL Solutions: reduce alert-queue noise, find the sources and signatures flooding the queue, separate ingested and already-actioned noise from real detections, recommend an ingestion-severity filter, auto-resolve already-mitigated alerts with a note, and ship a noise-vs-signal dashboard; all product/source/signature/action values discovered live |
 | [docs/detection-rule-types.md](./docs/detection-rule-types.md) | The three STAR / Custom Detection rule types (single-event, multi-event correlation, scheduled PowerQuery): API shapes, when to use each, S1QL backslash escaping, and why asset enrichment is the prerequisite for asset-mapped alerts |
 | [docs/detection-asset-binding.md](./docs/detection-asset-binding.md) | Which event attributes make STAR detection alerts auto-populate the Target Asset (device, identity, cloud), the tested per-type binding matrix, and how the asset enrichment solution supplies them |

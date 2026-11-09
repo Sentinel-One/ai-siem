@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "s1-secops-mcp",
   "display_name": "SentinelOne SecOps MCP",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "PowerQuery, Management Console API, Unified Alert Management, Purple AI, Singularity Data Lake and Hyperautomation tools for a SentinelOne tenant, with built-in VirusTotal and Shodan lookups.",
   "long_description": "Runs the s1-secops-mcp server (stdio) inside Claude Desktop. Enter the console URL and API token in the extension settings; Claude Desktop stores fields marked sensitive in the OS secure store (Keychain on macOS, Credential Manager on Windows) and passes them to the server as environment variables at launch. The server is started with S1_KEYCHAIN=off, so the values in these settings are the only credentials it uses.\n\nRead-only by default: tools that change the tenant are refused until you turn off Read-only mode in the extension settings.\n\n40 tools: PowerQuery (LRQ) hunts and schema discovery, generic Mgmt Console REST calls, UAM alert triage (status, analyst verdict, assignee, notes), Purple AI questions and alert summaries, SDL configuration files and dashboards, HEC log ingest, UAM test-alert ingest, Hyperautomation workflow import and export, and threat-intelligence lookups: VirusTotal (listed when a VirusTotal API key is set) and Shodan (listed when a Shodan API key is set). Also serves the soc_analyst and session_init prompts.",
   "author": {
@@ -77,7 +77,14 @@
     { "name": "ti_vt_lookup", "description": "VirusTotal report for a file hash, IP, domain or URL (needs a VirusTotal API key)" },
     { "name": "ti_vt_relationship", "description": "One page of a VirusTotal relationship for an indicator, for pivoting (needs a VirusTotal API key)" },
     { "name": "ti_shodan_host", "description": "Shodan host information for an IP: ports, services, CVEs, owner (needs a Shodan API key)" },
-    { "name": "ti_shodan_dns", "description": "Shodan DNS resolve or reverse lookup (needs a Shodan API key)" }
+    { "name": "ti_shodan_dns", "description": "Shodan DNS resolve or reverse lookup (needs a Shodan API key)" },
+    { "name": "dac_export", "description": "Export custom detection rules as Detection as Code YAML (export-vcs ZIP), following pagination" },
+    { "name": "dac_diff", "description": "Preview a Detection as Code bundle against the tenant (parse-vcs diff); writes nothing" },
+    { "name": "dac_apply", "description": "Apply a reviewed Detection as Code bundle (parse-vcs apply) after a fresh diff matches the reviewed summary" },
+    { "name": "asset_inventory_counts", "description": "Asset Inventory counts per category and surface (GraphQL)" },
+    { "name": "asset_inventory_search", "description": "List, filter, sort and page Asset Inventory assets on any surface (GraphQL)" },
+    { "name": "asset_inventory_get", "description": "One asset's overview by asset id or agent UUID: criticality, tags, alert counts, agent (GraphQL)" },
+    { "name": "asset_inventory_filter_values", "description": "Discover the values and counts of Asset Inventory filter fields (GraphQL)" }
   ],
   "tools_generated": false,
   "prompts_generated": true,

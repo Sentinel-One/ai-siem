@@ -211,8 +211,11 @@ CI owns the apply. Point the repository at the official reference workflow:
 
 The apply summary must equal the reviewed diff summary: same counts, same ids in each list.
 
-**`dac_apply`** is for repositories without CI only. It re-runs the diff and refuses unless the
-fresh summary equals `expectedSummary` (the summary from the reviewed `dac_diff`), then applies.
+**`dac_apply`** is for repositories without CI only. Pass it two values from the reviewed
+`dac_diff`: `expectedZipSha256` (`bundle.zipSha256`) and `expectedSummary` (`summary`). It refuses
+before sending anything if the rebuilt bundle hashes differently, then re-runs the diff and refuses
+unless the fresh summary equals `expectedSummary`, then applies. If an apply times out or fails
+without an answer, it may have been committed: run `dac_diff` before calling `dac_apply` again.
 It is refused in read-only mode. Confirm with the user before calling it, then verify with a rule
 search (`isLegacy=false`). Scheduled rules sit in `Activating` for up to an hour before their
 first run.

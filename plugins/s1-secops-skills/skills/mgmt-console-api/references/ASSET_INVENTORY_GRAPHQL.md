@@ -153,7 +153,7 @@ Variable type: `[AssetInventoryFilterInput!]`. Each entry is `{fieldId, <operato
 
 | Operator | Shape | Behaviour |
 |---|---|---|
-| `match` | `{value: "win"}` | contains, case-insensitive (`osFamily` match `win` finds `Windows`) |
+| `match` | `{values: ["win"]}` | contains, case-insensitive (`osFamily` match `win` finds `Windows`); text fields only, see below |
 | `stringEqual` | `{value: "Windows"}` | exact, case-sensitive (`windows` matches nothing) |
 | `stringIn` | `{values: ["EPP"]}` | any of, exact, case-sensitive (`epp` matches nothing) |
 | `dateTimeRange` | `{start: <epoch ms>, end: <epoch ms>}` | `end` optional; values are Long epoch ms, not ISO strings |
@@ -162,7 +162,7 @@ Not every field takes every operator:
 
 | Field | Filterable with | Notes |
 |---|---|---|
-| `missingCoverage`, `activeCoverage`, `surfaces`, `assetStatus`, `category`, `resourceType`, `osFamily`, `deviceReview`, `discoveryMethods`, `eppUnsupportedUnknown` | `stringIn`, `stringEqual` | display values from the facet call |
+| `missingCoverage`, `activeCoverage`, `surfaces`, `assetStatus`, `category`, `resourceType`, `osFamily`, `deviceReview`, `discoveryMethods`, `eppUnsupportedUnknown` | `stringIn`, `stringEqual` | display values from the facet call. On the list fields (`missingCoverage`, `activeCoverage`, `surfaces`, `discoveryMethods`) `match` returns `Invalid filter type FULLTEXT` |
 | `name`, `osFamily` | `match` | |
 | `firstSeenDt`, `lastActiveDt` | `dateTimeRange` | |
 | `managedState` | none (facet and node field only) | `stringIn`, `stringEqual` and `match` all return `Invalid filter type` |

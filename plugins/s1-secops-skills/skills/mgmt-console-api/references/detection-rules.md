@@ -203,8 +203,8 @@ Send each repeat with only the ids that are still listed: a DELETE naming an id 
 
 The console's native Detection as Code (DaC) API. Neither endpoint is in the bundled swagger, so
 `search_endpoints.py` does not find them. Prefer the s1-secops-mcp tools (1.6.1 or later):
-`dac_export` (export), `dac_diff` (diff, read-only) and `dac_apply` (apply, write; it re-runs the
-diff and requires the reviewed `expectedSummary`). The workflow (bootstrap, manifest, PR gate,
+`dac_export` (export), `dac_diff` (diff, read-only) and `dac_apply` (apply, write; it requires the
+reviewed bundle's `expectedZipSha256` and `expectedSummary`, and re-runs the diff). The workflow (bootstrap, manifest, PR gate,
 delete flow) is the sdl-solutions playbook `sdl-solutions/references/detection-as-code.md`.
 
 **`POST /web/api/v2.1/cloud-detection/rules/parse-vcs?mode=diff|apply`**

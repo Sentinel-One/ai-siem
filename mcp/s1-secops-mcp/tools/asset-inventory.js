@@ -427,7 +427,7 @@ const VIEW_RULES = 'View rules: the surface argument is the curated console view
   + 'The "surfaces" filter ({fieldId: "surfaces", stringIn: {values: ["Endpoint"]}}) is the raw surface tag and also returns Inactive and agentless records, so its totals are higher. '
   + 'For Network Discovery and Endpoint questions use the surface argument. ';
 const ENUM_RULES = 'category and subCategory ARGUMENTS take enums (SERVER, WORKSTATION, VIRTUAL_MACHINE, LAPTOP); FILTER values take display labels (Workstation, Endpoint, Network Discovery, EPP). '
-  + 'Discover the exact filter values with asset_inventory_filter_values first: stringEqual and stringIn are exact and case-sensitive (match is a case-insensitive contains). '
+  + 'Discover the exact filter values with asset_inventory_filter_values first: stringEqual and stringIn are exact and case-sensitive (match is a case-insensitive contains, for text fields such as name; list fields such as missingCoverage need stringIn). '
   + 'managedState and s1SiteId can be returned but not filtered; use scope SITE for one site. ';
 const MIX_RULE = 'Do not mix asset_inventory_counts totals with filtered or surface totals from this tool: they are different views. ';
 
@@ -447,7 +447,7 @@ const SURFACE_SCHEMA = {
 };
 const FILTERS_SCHEMA = {
   type: 'array',
-  description: 'Filters, combined with AND. Each item is {fieldId, <one operator>}: match {values: [..]} (contains, case-insensitive), stringEqual {value} (exact, case-sensitive), stringIn {values: [..]} (any of, exact, case-sensitive), dateTimeRange {start, end?, startInclusive?, endInclusive?} (epoch ms or ISO-8601; end optional). Values are display labels (Workstation, EPP, Active, Supported). Sent as GraphQL variables. Example, unprotected endpoints: surface NETWORK_DISCOVERY with [{fieldId: "missingCoverage", stringIn: {values: ["EPP"]}}]. managedState and s1SiteId can be returned but not filtered (every operator is refused; use scope SITE for one site, and asset_inventory_filter_values to count managedState). Filterable: eppUnsupportedUnknown (Supported, Unsupported, Unknown), deviceReview, discoveryMethods, resourceType, osFamily, surfaces, assetStatus, category, activeCoverage, missingCoverage, name, lastActiveDt.',
+  description: 'Filters, combined with AND. Each item is {fieldId, <one operator>}: match {values: [..]} (contains, case-insensitive; text fields such as name only: list fields such as missingCoverage, activeCoverage, surfaces and discoveryMethods refuse it with "Invalid filter type FULLTEXT", so use stringIn there), stringEqual {value} (exact, case-sensitive), stringIn {values: [..]} (any of, exact, case-sensitive), dateTimeRange {start, end?, startInclusive?, endInclusive?} (epoch ms or ISO-8601; end optional). Values are display labels (Workstation, EPP, Active, Supported). Sent as GraphQL variables. Example, unprotected endpoints: surface NETWORK_DISCOVERY with [{fieldId: "missingCoverage", stringIn: {values: ["EPP"]}}]. managedState and s1SiteId can be returned but not filtered (every operator is refused; use scope SITE for one site, and asset_inventory_filter_values to count managedState). Filterable: eppUnsupportedUnknown (Supported, Unsupported, Unknown), deviceReview, discoveryMethods, resourceType, osFamily, surfaces, assetStatus, category, activeCoverage, missingCoverage, name, lastActiveDt.',
   items: {
     type: 'object',
     properties: {

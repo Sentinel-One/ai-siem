@@ -42,10 +42,10 @@ read-only mode. `dac_apply` changes the tenant and is refused until write is ena
 ### Upgrade
 
 ```bash
-~/.local/bin/s1-secops-mcp-launch.sh install              # add --read-write if you use write access
+~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.6.1   # add --read-write if you use write access
 ```
 
-Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\bin\s1-secops-mcp-launch.ps1" install`
+Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\bin\s1-secops-mcp-launch.ps1" install -Image sentinelone/secops-mcps:1.6.1`
 (add `-ReadWrite` if you use write access). Install plugin 1.4.2, then quit and reopen Claude
 Desktop. Credentials, profiles, output folders and read-only mode carry over. Details:
 [upgrading.md](../upgrading.md#160-to-161-plugin-142).

@@ -148,6 +148,9 @@ export function collectBundle({ files, repoDir, deploymentsFile } = {}) {
   const root = resolveInputPath(repoDir, 'dir', 'repoDir');
   let depPath;
   if (deploymentsFile) {
+    if (typeof deploymentsFile !== 'string' || !RULE_EXT.has(extname(deploymentsFile).toLowerCase())) {
+      throw new Error('deploymentsFile must be a .yaml or .yml file (the deployments manifest).');
+    }
     const candidate = isAbsolute(deploymentsFile) ? deploymentsFile : join(root, deploymentsFile);
     depPath = resolveInputPath(candidate, 'file', 'deploymentsFile');
   } else {
@@ -193,6 +196,9 @@ export function vcsFields({ vcsRepoId, vcsRepoName, vcsCommitId } = {}) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// An apply that ends without a 2xx or 4xx answer may still have been committed by the console.
+const APPLY_UNKNOWN = 'The apply may have been committed on the console. Do not call dac_apply again: run dac_diff with the same bundle first. If it shows no pending creates, updates or deletes, the apply went through.';
+
 /**
  * POST the bundle to parse-vcs as multipart/form-data. mode is "diff" or "apply".
  * Diff is retried on 429/5xx (it writes nothing); apply is sent once.
@@ -203,9 +209,10 @@ export async function postParseVcs(mode, zip, fields) {
   const origin = new URL(base()).origin;
   const u = new URL(PARSE_PATH, origin);
   u.searchParams.set('mode', mode);
-  // The endpoint rate-limits bursts with HTTP 429 (no Retry-After observed). A 429 is a refusal
-  // before processing, so it is retried for both modes; a 5xx or network error is retried for diff
-  // only, because an apply may have been committed.
+  // The endpoint rate-limits bursts with HTTP 429 (no Retry-After observed). A 429 is treated as a
+  // refusal before processing, so it is retried for both modes. That is an assumption about the
+  // console, not a documented contract; it is stated in the dac_apply description. A 5xx, timeout
+  // or network error is retried for diff only, because an apply may have been committed.
   const retries = 4;
   let delay = retryTiming.baseMs;
   for (let attempt = 0; ; attempt++) {
@@ -223,8 +230,12 @@ export async function postParseVcs(mode, zip, fields) {
         signal: AbortSignal.timeout(PARSE_TIMEOUT_MS),
       });
     } catch (e) {
+      if (mode === 'apply') {
+        const why = e?.name === 'TimeoutError' ? `timed out after ${PARSE_TIMEOUT_MS / 1000} s` : `failed before a response arrived (${e?.message || e})`;
+        throw new Error(`parse-vcs mode=apply ${why}. ${APPLY_UNKNOWN}`);
+      }
       if (e?.name === 'TimeoutError') throw new Error(`parse-vcs mode=${mode} timed out after ${PARSE_TIMEOUT_MS / 1000} s`);
-      if (mode !== 'diff' || attempt >= retries) throw e;
+      if (attempt >= retries) throw e;
       await sleep(delay); delay *= 2; continue;
     }
     if (attempt < retries && (res.status === 429 || (mode === 'diff' && res.status >= 500))) {
@@ -239,7 +250,8 @@ export async function postParseVcs(mode, zip, fields) {
     try { body = parseJsonExact(text); } catch { body = null; }
     if (!res.ok) {
       const shown = text.length > ERROR_BODY_MAX ? `${text.slice(0, ERROR_BODY_MAX)}... [${text.length - ERROR_BODY_MAX} more characters]` : text;
-      throw new Error(`parse-vcs mode=${mode} → HTTP ${res.status}: ${shown}`);
+      const hint = mode === 'apply' && res.status >= 500 ? ` ${APPLY_UNKNOWN}` : '';
+      throw new Error(`parse-vcs mode=${mode} → HTTP ${res.status}: ${shown}${hint}`);
     }
     if (!body || typeof body !== 'object') throw new Error(`parse-vcs mode=${mode} returned a non-JSON body: ${text.slice(0, 2000)}`);
     if (Array.isArray(body.errors) && body.errors.length && !body.data) {
@@ -293,12 +305,16 @@ export function summaryMismatches(expected, fresh) {
   return diffs;
 }
 
-async function runDiff(args) {
+function buildBundle(args) {
   const fields = vcsFields(args);
   const { entries, ruleFiles, notes } = collectBundle(args);
   const zip = writeZip(entries);
-  const data = await postParseVcs('diff', zip, fields);
-  return { fields, zip, ruleFiles, notes, data };
+  return { fields, zip, ruleFiles, notes, zipSha256: createHash('sha256').update(zip).digest('hex') };
+}
+
+async function runDiff(args, built = buildBundle(args)) {
+  const data = await postParseVcs('diff', built.zip, built.fields);
+  return { ...built, data };
 }
 
 function maxItemsOf(v) {
@@ -463,7 +479,7 @@ export const tools = [
   },
   {
     name: 'dac_diff',
-    description: `Preview a Detection as Code deployment: bundle the rule YAML and POST it to /web/api/v2.1/cloud-detection/rules/parse-vcs?mode=diff. The console validates every rule and returns what an apply would do (creates, updates, deletes, imports, retains, summary.total*) without changing anything. Validation errors from the console are returned verbatim. Use the returned summary as expectedSummary for dac_apply. ${BUNDLE_NOTE} ${OWNERSHIP_NOTE} ${MANAGED_NOTE} Read-only.`,
+    description: `Preview a Detection as Code deployment: bundle the rule YAML and POST it to /web/api/v2.1/cloud-detection/rules/parse-vcs?mode=diff. The console validates every rule and returns what an apply would do (creates, updates, deletes, imports, retains, summary.total*) without changing anything. Validation errors from the console are returned verbatim. Pass the returned summary as expectedSummary and bundle.zipSha256 as expectedZipSha256 to dac_apply. ${BUNDLE_NOTE} ${OWNERSHIP_NOTE} ${MANAGED_NOTE} Read-only.`,
     inputSchema: {
       type: 'object',
       properties: BUNDLE_PROPS,
@@ -483,7 +499,7 @@ export const tools = [
   },
   {
     name: 'dac_apply',
-    description: `Apply a Detection as Code deployment (POST parse-vcs?mode=apply). Intended for repositories without a CI pipeline, or to bootstrap one; when CI owns the repository, let CI apply. It first runs a fresh diff of the same bundle and refuses, showing both, unless every summary total equals expectedSummary (the summary from a diff the user reviewed); only then does it send mode=apply. Apply creates, updates and, for rules with deletePolicy: Delete whose files were removed, deletes rules. ${BUNDLE_NOTE} ${OWNERSHIP_NOTE} ${MANAGED_NOTE} Changes the tenant.`,
+    description: `Apply a Detection as Code deployment (POST parse-vcs?mode=apply). Intended for repositories without a CI pipeline, or to bootstrap one; when CI owns the repository, let CI apply. It refuses before any request unless the bundle it builds hashes to expectedZipSha256 (bundle.zipSha256 from the dac_diff the user reviewed), so the rule content is exactly what was reviewed. It then runs a fresh diff and refuses, showing both, unless every summary total equals expectedSummary; only then does it send mode=apply. An HTTP 429 on apply is retried, on the assumption that the console refuses before processing; a timeout, network error or 5xx is not retried and the error says the apply may have been committed (check with dac_diff before trying again). Apply creates, updates and, for rules with deletePolicy: Delete whose files were removed, deletes rules. ${BUNDLE_NOTE} ${OWNERSHIP_NOTE} ${MANAGED_NOTE} Changes the tenant.`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -492,17 +508,29 @@ export const tools = [
           type: 'object',
           description: `Required. The summary object from the reviewed dac_diff (${TOTAL_KEYS_HINT.join(', ')}).`,
         },
+        expectedZipSha256: {
+          type: 'string',
+          description: 'Required. bundle.zipSha256 from the reviewed dac_diff. The bundle is rebuilt from the same input and must hash to this value, so a changed rule file is refused even when the change counts are the same.',
+        },
       },
-      required: ['vcsRepoId', 'vcsRepoName', 'vcsCommitId', 'expectedSummary'],
+      required: ['vcsRepoId', 'vcsRepoName', 'vcsCommitId', 'expectedSummary', 'expectedZipSha256'],
     },
     async handler(args = {}) {
       const exp = args.expectedSummary;
       if (!exp || typeof exp !== 'object' || Array.isArray(exp) || !Object.keys(exp).some(k => /^total/i.test(k))) {
         throw new Error(`expectedSummary is required: pass the summary object from a reviewed dac_diff (fields ${TOTAL_KEYS_HINT.join(', ')}).`);
       }
+      const expHash = typeof args.expectedZipSha256 === 'string' ? args.expectedZipSha256.trim().toLowerCase() : '';
+      if (!/^[0-9a-f]{64}$/.test(expHash)) {
+        throw new Error('expectedZipSha256 is required: pass bundle.zipSha256 from the reviewed dac_diff (64 hex characters).');
+      }
       const ow = args.overwrite === true;
       if (args.outputFile) resolveOutputPath(args.outputFile, { overwrite: ow });
-      const { fields, zip, ruleFiles, notes, data: diff } = await runDiff(args);
+      const built = buildBundle(args);
+      if (built.zipSha256 !== expHash) {
+        throw new Error(`dac_apply refused: the bundle differs from the one that was reviewed (zipSha256 ${built.zipSha256}, expected ${expHash}). A rule file or the manifest changed since the dac_diff. Nothing was sent. Run dac_diff again, review it, and pass its summary and bundle.zipSha256.`);
+      }
+      const { fields, zip, ruleFiles, notes, data: diff } = await runDiff(args, built);
       const mismatches = summaryMismatches(exp, diff?.summary);
       if (mismatches.length) {
         throw new Error(`dac_apply refused: the fresh diff does not match expectedSummary, so the tenant or the bundle changed since the review. Nothing was applied. Review the new diff and call again with its summary.\n${out({ expectedSummary: exp, freshSummary: diff?.summary ?? null, mismatches })}`);

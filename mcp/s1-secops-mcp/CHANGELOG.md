@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.2 (image `sentinelone/secops-mcps:1.6.2`, plugin 1.4.2), 2026-11-09
+
+### Changed
+
+- `dac_apply` requires `expectedZipSha256` (`bundle.zipSha256` from the reviewed `dac_diff`). It rebuilds the bundle and refuses before any request when the SHA-256 differs, so changed rule content with unchanged summary totals is refused. The fresh-diff summary check still runs after it.
+- `dac_apply`: a timeout, network error or HTTP 5xx on `mode=apply` is not retried and the error says the apply may have been committed and to run `dac_diff` first. HTTP 429 is retried; the assumption that the console refuses a 429 before processing is stated in the tool description.
+- `dac_diff` / `dac_apply`: `deploymentsFile` must have a `.yaml` or `.yml` extension.
+- `asset_inventory_search` / `asset_inventory_filter_values` descriptions: `match` applies to text fields such as `name`; list fields (`missingCoverage`, `activeCoverage`, `surfaces`, `discoveryMethods`) refuse it with `Invalid filter type FULLTEXT` and take `stringIn`.
+
+### Tests
+
+- `tests/dac-1.6.2.test.mjs`: hash requirement and validation, refusal of edited content with equal totals before any request, upper-case hash accepted, apply timeout / network error / 5xx not retried and flagged, 4xx not flagged, 429 retried, `deploymentsFile` extension.
+
 ## 1.6.1 (image `sentinelone/secops-mcps:1.6.1`, plugin 1.4.2), 2026-11-09
 
 ### Fixed

@@ -420,6 +420,8 @@ class DetectionAsCodeIsNative(unittest.TestCase):
     def test_apply_is_gated_on_the_reviewed_summary(self):
         self.assertIn("expectedSummary", self.text,
                       "dac_apply must be tied to the summary of a reviewed diff")
+        self.assertIn("expectedZipSha256", self.text,
+                      "dac_apply must be tied to the exact bundle of a reviewed diff")
         self.assertRegex(self.text, r"(?i)a diff writes nothing")
 
     def test_bootstrap_imports_instead_of_duplicating(self):

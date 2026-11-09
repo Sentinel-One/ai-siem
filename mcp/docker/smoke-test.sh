@@ -6,8 +6,8 @@
 #   docker/smoke-test.sh <image-ref> [--expect-version X.Y.Z] [--platform P]
 #
 # Examples:
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.6.1 --expect-version 1.6.1
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.6.1 --platform linux/amd64
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.6.2 --expect-version 1.6.2
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.6.2 --platform linux/amd64
 #
 # Exit code is the number of failed tests, so `if docker/smoke-test.sh IMG` works
 # as a gate in CI or a release checklist.

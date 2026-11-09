@@ -3,11 +3,13 @@
 Three things move independently: the **MCP image** (or npm install), the **skills plugin**, and
 your **MCP client config**. Do them in that order.
 
-Every install command on this page downloads or runs the current launcher, which installs the
-current release (image `1.6.1`). If you are several releases behind, read the sections in between
-for what changed, then follow [1.6.0 to 1.6.1](#160-to-161-plugin-142).
+`install` copies the launcher file you run and writes that launcher's default image, so an upgrade
+starts from the new launcher (downloaded) or passes the image explicitly (`--image`, Windows
+`-Image`). The current release is image `1.6.2`. If you are several releases behind, read the
+sections in between for what changed, then follow [1.6.1 to 1.6.2](#161-to-162-plugin-142).
 
-- [1.6.0 to 1.6.1 (plugin 1.4.2)](#160-to-161-plugin-142) (current release: image `1.6.1`, s1-secops-mcp `1.6.1`, plugin `1.4.2`)
+- [1.6.1 to 1.6.2 (plugin 1.4.2)](#161-to-162-plugin-142) (current release: image `1.6.2`, s1-secops-mcp `1.6.2`, plugin `1.4.2`)
+- [1.6.0 to 1.6.1 (plugin 1.4.2)](#160-to-161-plugin-142)
 - [Plugin 1.4.0 to 1.4.1](#plugin-140-to-141)
 - [1.5.7 to 1.6.0](#157-to-160)
 - [Launcher update for Claude Code, Linux and WSL](#launcher-update-for-claude-code-linux-and-wsl)
@@ -20,6 +22,54 @@ for what changed, then follow [1.6.0 to 1.6.1](#160-to-161-plugin-142).
 - [1.4.x to 1.5.0](#14x-to-150)
 - [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
 - [Rolling back](#rolling-back)
+
+---
+
+## 1.6.1 to 1.6.2 (plugin 1.4.2)
+
+**`dac_apply` is tied to the reviewed bundle.** Credentials, profiles, output folders, read-only
+mode and the CLAUDE.md override carry over.
+
+**Changed:**
+
+- `dac_apply` requires `expectedZipSha256`: pass `bundle.zipSha256` from the `dac_diff` you
+  reviewed, together with `expectedSummary`. It rebuilds the bundle from the same input and refuses
+  before sending anything when the hash differs, so a changed rule file is refused even when the
+  change counts are the same. A call without it is refused with a message naming the field.
+- When `dac_apply` times out, fails on the network or gets an HTTP 5xx, the error says the apply may
+  have been committed and to run `dac_diff` before trying again. HTTP 429 is retried.
+- `deploymentsFile` must be a `.yaml` or `.yml` file.
+- `asset_inventory_search` and `asset_inventory_filter_values`: `match` works on text fields such
+  as `name`; list fields such as `missingCoverage`, `activeCoverage`, `surfaces` and
+  `discoveryMethods` take `stringIn`.
+
+**Skills (plugin 1.4.2 bundle):** the Detection as Code playbook passes `expectedZipSha256` to
+`dac_apply`; the PowerQuery skill shows where to add `tag != 'logVolume'` inside a subquery; the
+Asset Inventory reference gives the `match` shape (`{values: [..]}`) and the fields that refuse it.
+
+**Upgrade:**
+
+1. **Install the 1.6.2 launcher**, with your usual options (`--read-write`, `--output-dir`; Claude
+   Code users add `--claude-code`). macOS or Linux:
+
+   ```bash
+   mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
+   ```
+
+   Windows (PowerShell, options as `-ReadWrite`, `-OutputDir`):
+
+   ```powershell
+   $f = "$env:TEMP\s1-secops-mcp-launch.ps1"; Invoke-WebRequest https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f install
+   ```
+
+   To keep the launcher you have, pass the image instead:
+   `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.6.2` (Windows:
+   `... s1-secops-mcp-launch.ps1 install -Image sentinelone/secops-mcps:1.6.2`).
+2. **Reinstall plugin `1.4.2` from the current bundle** (Cowork → Customize → Browse plugins → upload → **Replace**). It carries the skill changes above.
+3. **Restart the client** (quit Claude Desktop completely and open it again, or restart Claude Code).
+
+**Check:** `docker run --rm sentinelone/secops-mcps:1.6.2 versions` shows `image_version` `1.6.2`,
+and the MCP entry in your client config names `sentinelone/secops-mcps:1.6.2`.
 
 ---
 
@@ -63,10 +113,10 @@ The client now lists 47 tools with both threat-intel keys stored, 43 with none.
 
 **Upgrade:**
 
-1. **Re-run `install`** with your usual options (add `--read-write` again if you use write access).
-   It installs the current launcher, writes the `s1-secops-mcp` entry with `1.6.1` and pulls the
-   image. macOS or Linux: `~/.local/bin/s1-secops-mcp-launch.sh install`. Windows:
-   `powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 install`.
+1. **Re-run `install` with the 1.6.1 image** and your usual options (add `--read-write` again if
+   you use write access). macOS or Linux:
+   `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.6.1`. Windows:
+   `powershell -NoProfile -ExecutionPolicy Bypass -File $HOME\bin\s1-secops-mcp-launch.ps1 install -Image sentinelone/secops-mcps:1.6.1`.
    Claude Code users: add `--claude-code`.
 2. **Install plugin `1.4.2`** (Cowork → Customize → Browse plugins → upload → **Replace**).
 3. **Restart the client** (quit Claude Desktop completely and open it again, or restart Claude Code).
@@ -215,10 +265,10 @@ A launcher fix for Claude Code on Linux and WSL, released after 1.5.7. The curre
 
 A dependency and base-image update. No configuration changes: credentials, profiles, output folders and the plugin (1.3.17) carry over.
 
-1. Re-run your usual `install` command to pull `:1.5.7`, with the same options as before. `install` writes the mode you ask for, so add `--read-write` again if you use write access:
+1. Re-run `install` with the `1.5.7` image and the same options as before. `install` writes the mode you ask for, so add `--read-write` again if you use write access:
 
    ```bash
-   ~/.local/bin/s1-secops-mcp-launch.sh install
+   ~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.5.7
    ```
 
 2. Quit and reopen Claude Desktop.
@@ -231,10 +281,10 @@ Check with `docker run --rm sentinelone/secops-mcps:1.5.7 versions` (Node `v24.2
 
 A security update to read-only mode in `s1-secops-mcp`. Nothing to migrate: credentials, profiles, output folders and the plugin (1.3.16) carry over.
 
-1. Re-run your usual `install` command to pull `:1.5.6`, with the same options as before. `install` writes the mode you ask for, so add `--read-write` again if you use write access:
+1. Re-run `install` with the `1.5.6` image and the same options as before. `install` writes the mode you ask for, so add `--read-write` again if you use write access:
 
    ```bash
-   ~/.local/bin/s1-secops-mcp-launch.sh install
+   ~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.5.6
    ```
 
 2. Quit and reopen Claude Desktop.
@@ -508,7 +558,7 @@ done
 |---|---|---|
 | Server key | `"sentinelone-mcp"` | `"s1-secops-mcp"` |
 | Dispatcher argument | `sentinelone-mcp` | `s1-secops-mcp` |
-| Image | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.6.1` via the launcher |
+| Image | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.6.2` via the launcher |
 | purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` in the keychain. purple-mcp is no longer in the image; Purple AI questions are the built-in `purple_ai_query` tool |
 
 Delete outright: `SDL_XDR_URL`, `SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`. Nothing replaces them. The console API token authorises every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as `<console>/sdl`.
@@ -545,6 +595,8 @@ Restore the config backup and reinstall the previous plugin:
 cd ~/Library/Application\ Support/Claude
 cp claude_desktop_config.json.bak claude_desktop_config.json
 ```
+
+**Back to 1.6.1.** Run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.6.1` (add your usual options), reinstall plugin 1.4.2, and restart the client. `dac_apply` then takes `expectedSummary` only.
 
 **Back to 1.6.0.** Run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.6.0` (add your usual options), reinstall plugin 1.4.1, and restart the client. `dac_*` and `asset_inventory_*` are not in 1.6.0.
 

@@ -195,8 +195,8 @@ Use the host launcher instead. It reads the keychain on the host and hands the v
 
 | Host | Launcher |
 |---|---|
-| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.6.1] [--profile P] s1-secops-mcp` |
-| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.6.1] [-Profile P] s1-secops-mcp` |
+| macOS, Linux | `mcp/docker/s1-secops-mcp-launch.sh [--image sentinelone/secops-mcps:1.6.2] [--profile P] s1-secops-mcp` |
+| Windows | `mcp/docker/s1-secops-mcp-launch.ps1 [-Image sentinelone/secops-mcps:1.6.2] [-Profile P] s1-secops-mcp` |
 
 Launcher options go before the server name; anything after it is passed to the server inside the container.
 
@@ -213,7 +213,7 @@ The resulting Claude Desktop config (`~/.local/bin/s1-secops-mcp-launch.sh confi
 ```json
 {
   "mcpServers": {
-    "s1-secops-mcp": { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.6.1", "s1-secops-mcp"] }
+    "s1-secops-mcp": { "command": "<home>/.local/bin/s1-secops-mcp-launch.sh", "args": ["--image", "sentinelone/secops-mcps:1.6.2", "s1-secops-mcp"] }
   }
 }
 ```

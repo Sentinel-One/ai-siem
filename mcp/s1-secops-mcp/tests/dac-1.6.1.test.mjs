@@ -56,6 +56,7 @@ const diffBody = (summary = SUMMARY, n = 1) => ({
 const VCS = { vcsRepoId: 'r1', vcsRepoName: 'org/repo', vcsCommitId: 'abc123' };
 const DEP = 'targets:\n  t:\n    scopeId: "1"\n    scopeLevel: site\ndeploy:\n  t:\n    - "rules/*.yaml"\n';
 const FILES = { 'deployments.yaml': DEP, 'rules/a.yaml': 'id: a\nqueryType: events\n' };
+const HASH = (await import('node:crypto')).createHash('sha256').update(zip.writeZip(dac.collectBundle({ files: FILES }).entries)).digest('hex');
 
 /** Rename the single entry of a one-entry zip (same length), bypassing the writer's name checks. */
 function zipWithName(name) {
@@ -312,7 +313,7 @@ test('vcsRepoId, vcsRepoName and vcsCommitId are required, with no defaults', as
 test('dac_apply refuses when the fresh diff summary differs, and never sends mode=apply', async () => {
   const s = stubFetch([json(diffBody({ ...SUMMARY, totalDeletes: 3, totalChanges: 5 }))]);
   try {
-    await assert.rejects(tool('dac_apply').handler({ ...VCS, files: FILES, expectedSummary: SUMMARY }), (e) => {
+    await assert.rejects(tool('dac_apply').handler({ ...VCS, files: FILES, expectedSummary: SUMMARY, expectedZipSha256: HASH }), (e) => {
       assert.match(e.message, /dac_apply refused/);
       assert.match(e.message, /"expectedSummary"/);
       assert.match(e.message, /"freshSummary"/);
@@ -338,7 +339,7 @@ test('dac_apply sends mode=apply with the same bundle only after a matching diff
   const applied = { data: { summary: SUMMARY, vcsRepoId: 'r1', creates: [{ externalId: 'c0' }], updates: [], deletes: [], imports: [], retains: [] } };
   const s = stubFetch([json(diffBody()), json(applied)]);
   try {
-    const r = JSON.parse(await tool('dac_apply').handler({ ...VCS, files: FILES, expectedSummary: { ...SUMMARY } }));
+    const r = JSON.parse(await tool('dac_apply').handler({ ...VCS, files: FILES, expectedSummary: { ...SUMMARY }, expectedZipSha256: HASH }));
     assert.equal(r.mode, 'apply');
     assert.deepEqual(r.diffSummary, SUMMARY);
     assert.deepEqual(s.calls.map(c => c.url.searchParams.get('mode')), ['diff', 'apply']);

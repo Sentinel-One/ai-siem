@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed - s1-secops-skills plugin 1.4.3, s1-secops-mcp 1.6.2
+### Changed - s1-secops-skills plugin 1.4.3, s1-secops-mcp 1.6.3
+
+- `uam_get_alert` and `uam_list_alerts` return the alert's account and site; `uam_get_alert` adds `detectionScope` when the alert was detected elsewhere, and returns the alert's history.
+- sdl-solutions, Unprotected endpoints report: every Network Discovery device with Missing EPP is checked against every agent (live and decommissioned, every site) by MAC, by IP on the same gateway MAC and by hostname, and classed as a likely false positive, a review item or unprotected. The report adds AD, Entra and cloud gap lists, a Network Discovery settings check and the options that close what no single source sees. The dashboard template runs the same check in PowerQuery.
+- Alert triage uses the alert's account and site as the scope of follow-up queries and actions.
+- Release notes: [s1-secops-skills 1.6.3](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.6.3.md).
+
+### Changed - s1-secops-skills plugin 1.4.2, s1-secops-mcp 1.6.2
 
 - New Detection as Code tools: `dac_export`, `dac_diff`, `dac_apply`. `dac_apply` requires the reviewed bundle's `expectedZipSha256` and `expectedSummary`, and reports when an apply may have been committed.
 - New Asset Inventory tools: `asset_inventory_counts`, `asset_inventory_search`, `asset_inventory_get`, `asset_inventory_filter_values`.

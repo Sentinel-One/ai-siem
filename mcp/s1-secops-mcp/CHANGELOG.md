@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.6.3 (image `sentinelone/secops-mcps:1.6.3`, plugin 1.4.3), 2026-11-09
+
+### Changed
+
+- `uam_get_alert` and `uam_list_alerts` return the alert's `accountId`, `accountName`, `siteId` and `siteName` as flat fields, from `realTime.scope`. `uam_get_alert` adds `detectionScope` when `detectionTime.scope` names a different account or site.
+- `uam_get_alert` returns the alert's history from the `alertHistory` connection: `history` (`createdAt`, `eventType`, `eventText`), `historyTotalCount` and `historyTruncated`. It reads up to 5 pages of 100 entries.
+
+### Skills and docs (plugin 1.4.3)
+
+- Unprotected endpoints report:
+  - Every Network Discovery device with Missing EPP is checked against every agent, live and decommissioned, in every site, by MAC, by IP on the same gateway MAC, and by hostname.
+  - Each device gets one verdict: likely false positive, review, or unprotected.
+  - Guards: no randomised, shared, VPN or all-zero MACs; no shared gateways; no junk hostnames; IP plus hostname must point at the same agent.
+  - New in the report: a False-positive check section, AD, Entra and cloud gap lists, a Network Discovery settings check, and a table of the options that close what no source can see.
+  - Matcher: `sdl-solutions/scripts/nd_agent_crosscheck.py`.
+- Unprotected endpoints dashboard template:
+  - Two panels run the check in PowerQuery (`sdl-solutions/assets/nd_agent_crosscheck.pq`): devices per verdict, and the likely false positives and review items with the matched agent. A third shows Missing EPP devices by identity strength with the matcher's MAC and hostname rules.
+  - The device-type, site and review-status panels map missing values to `Not reported`.
+  - The device list is labelled as the 1,000 most recently active.
+- CLAUDE.md alert triage reads the alert's account and site and uses them as the scope of follow-up queries and actions.
+
+### Tests
+
+- `tests/uam-scope-1.6.3.test.mjs`: scope fields on list and get, `detectionScope` only when it differs, a missing alert.
+- `tests/uam-history-1.6.3.test.mjs`: history entries, paging by `endCursor`, the page cap with `historyTruncated`, an empty history, a missing alert.
+- `sdl-solutions/tests/test_nd_agent_crosscheck.py`: every verdict and every guard of the matcher, the other-inventory rules and the command line.
+
 ## 1.6.2 (image `sentinelone/secops-mcps:1.6.2`, plugin 1.4.2), 2026-11-09
 
 ### Changed

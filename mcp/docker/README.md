@@ -58,9 +58,9 @@ The image is published to `sentinelone/secops-mcps`. Tags are semver only. There
 
 ## Verify before you run
 
-- **Pull by digest, not just by tag.** Tags are immutable, but a digest is the strongest pin: `docker pull sentinelone/secops-mcps@sha256:<digest>`. Find the digest with `docker buildx imagetools inspect sentinelone/secops-mcps:1.6.2`.
-- **Check where it came from.** The image labels record the source repository and commit: `docker inspect --format '{{json .Config.Labels}}' sentinelone/secops-mcps:1.6.2` (see `org.opencontainers.image.source` and `org.opencontainers.image.revision`).
-- **Inspect the provenance and SBOM** attached to the index: `docker buildx imagetools inspect sentinelone/secops-mcps:1.6.2 --format '{{ json .Provenance }}'` and `--format '{{ json .SBOM }}'`. Images published before this was enabled do not carry them.
+- **Pull by digest, not just by tag.** Tags are immutable, but a digest is the strongest pin: `docker pull sentinelone/secops-mcps@sha256:<digest>`. Find the digest with `docker buildx imagetools inspect sentinelone/secops-mcps:1.6.3`.
+- **Check where it came from.** The image labels record the source repository and commit: `docker inspect --format '{{json .Config.Labels}}' sentinelone/secops-mcps:1.6.3` (see `org.opencontainers.image.source` and `org.opencontainers.image.revision`).
+- **Inspect the provenance and SBOM** attached to the index: `docker buildx imagetools inspect sentinelone/secops-mcps:1.6.3 --format '{{ json .Provenance }}'` and `--format '{{ json .SBOM }}'`. Images published before this was enabled do not carry them.
 - **Report a problem privately.** See [SECURITY.md](../../SECURITY.md); do not open a public issue for a vulnerability.
 
 ## Pins
@@ -69,7 +69,7 @@ Two values are pinned: the image version and the base image digest. Both live in
 
 | What | Source | Current pin |
 |---|---|---|
-| Image version (`IMAGE_VERSION`) | this repo | `1.6.2` |
+| Image version (`IMAGE_VERSION`) | this repo | `1.6.3` |
 | Base image (`BASE_IMAGE`) | `gcr.io/distroless/nodejs24-debian13` | pinned by index digest; `build.sh` rejects anything that is not `gcr.io/distroless/nodejs24-*@sha256:...`, and the setup step asserts Node major 24 |
 | `s1-secops-mcp` | local `COPY` from this repo | whatever commit you build |
 
@@ -85,7 +85,7 @@ The package directory can also contain a git-ignored `data/` tree that holds onl
 Because the number does not encode what is inside, verify rather than infer:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.6.2 versions
+docker run --rm sentinelone/secops-mcps:1.6.3 versions
 ```
 
 `versions.json` records `image_version`, `node`, `base`, the one entry under `servers`, the `builtin_tools`, the `removed_base_packages`, and `shell: false`, `npm: false`.
@@ -99,21 +99,21 @@ docker/build.sh
 # Full smoke suite, exit code is the failure count. T17 checks the registry
 # manifest: it skips on a local reference (no slash) and fails on a Docker Hub
 # reference that is not pushed yet. Before the push, test a local tag:
-#   docker tag sentinelone/secops-mcps:1.6.2 secops-mcps:1.6.2-local
-docker/smoke-test.sh secops-mcps:1.6.2-local --expect-version 1.6.2   # T17 skipped
+#   docker tag sentinelone/secops-mcps:1.6.3 secops-mcps:1.6.3-local
+docker/smoke-test.sh secops-mcps:1.6.3-local --expect-version 1.6.3   # T17 skipped
 # After the push, the registry reference runs T17 too:
-docker/smoke-test.sh sentinelone/secops-mcps:1.6.2 --expect-version 1.6.2
+docker/smoke-test.sh sentinelone/secops-mcps:1.6.3 --expect-version 1.6.3
 
 # Or spot-check by hand:
-docker run -i --rm sentinelone/secops-mcps:1.6.2 help      # the server and its built-in tools
-docker run -i --rm sentinelone/secops-mcps:1.6.2 versions
-docker run --rm sentinelone/secops-mcps:1.6.2 notices      # third-party notices and licenses
+docker run -i --rm sentinelone/secops-mcps:1.6.3 help      # the server and its built-in tools
+docker run -i --rm sentinelone/secops-mcps:1.6.3 versions
+docker run --rm sentinelone/secops-mcps:1.6.3 notices      # third-party notices and licenses
 ```
 
 There is no shell to debug with. Run Node instead:
 
 ```bash
-docker run --rm --entrypoint /nodejs/bin/node sentinelone/secops-mcps:1.6.2 \
+docker run --rm --entrypoint /nodejs/bin/node sentinelone/secops-mcps:1.6.3 \
   -e 'console.log(process.version, require("fs").readdirSync("/opt/s1-secops-mcp"))'
 ```
 
@@ -135,8 +135,8 @@ What the smoke suite asserts, by group:
 - `docker/build.sh` and the CI workflow build with `--provenance=mode=max --sbom=true`, so a pushed image carries SLSA provenance and an SPDX SBOM attestation on its index. Docker Hub lists the attestation manifests as an extra `unknown/unknown` platform; pulls ignore it. Build arguments appear in the provenance, which is public, so never pass a secret as a `--build-arg`.
 
 ```bash
-docker buildx imagetools inspect sentinelone/secops-mcps:1.6.2 --format '{{ json .SBOM }}'
-docker buildx imagetools inspect sentinelone/secops-mcps:1.6.2 --format '{{ json .Provenance }}'
+docker buildx imagetools inspect sentinelone/secops-mcps:1.6.3 --format '{{ json .SBOM }}'
+docker buildx imagetools inspect sentinelone/secops-mcps:1.6.3 --format '{{ json .Provenance }}'
 ```
 
 ## Push manually

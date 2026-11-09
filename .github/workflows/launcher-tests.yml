@@ -32,7 +32,7 @@ jobs:
       # image; without it they are skipped and the hermetic cases still run.
       # The runner has pwsh, so the WSL credential path is covered too.
       - name: Pull the image
-        run: docker pull sentinelone/secops-mcps:1.6.2
+        run: docker pull sentinelone/secops-mcps:1.6.3
 
       - name: Run launcher-test.sh
         run: sh mcp/docker/launcher-test.sh

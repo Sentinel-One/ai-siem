@@ -79,10 +79,12 @@ Reference: `mgmt-console-api/SKILL.md` for confirmed body schemas and required f
 ### UAM tools
 
 **`uam_list_alerts`** [Read]
-List UAM alerts via GraphQL. Filter with individual convenience params, not a single filter string: `status` (valid values `NEW`, `IN_PROGRESS`, `RESOLVED` only; there is no `OPEN`, which silently returns 0 results), `severity` (e.g. `CRITICAL`), `detectionProduct` (e.g. `EDR`), `searchText` (matches the alert name only; the API rejects an all-fields search), plus `startTime`/`endTime` for a time window, `first`/`after` for pagination, and `viewType` (`ALL` default, `ENDPOINT`, `IDENTITY`, `STAR`, `CUSTOM_ALERTS`, `CLOUD`, `THIRD_PARTY`, `DLP`). `scopeIds` with `scopeType` (`ACCOUNT` default, or `SITE`) lists one account or site; without it a global or multi-account token lists every account's alerts. Returns UUID-based alert objects with full context, each with `accountId` and `siteId`.
+List UAM alerts via GraphQL. Filter with individual convenience params, not a single filter string: `status` (valid values `NEW`, `IN_PROGRESS`, `RESOLVED` only; there is no `OPEN`, which silently returns 0 results), `severity` (e.g. `CRITICAL`), `detectionProduct` (e.g. `EDR`), `searchText` (matches the alert name only; the API rejects an all-fields search), plus `startTime`/`endTime` for a time window, `first`/`after` for pagination, and `viewType` (`ALL` default, `ENDPOINT`, `IDENTITY`, `STAR`, `CUSTOM_ALERTS`, `CLOUD`, `THIRD_PARTY`, `DLP`). `scopeIds` with `scopeType` (`ACCOUNT` default, or `SITE`) lists one account or site; without it a global or multi-account token lists every account's alerts. Returns UUID-based alert objects with full context, each with `accountId`, `accountName`, `siteId` and `siteName`.
 
 **`uam_get_alert`** [Read]
-Fetch a single UAM alert by UUID. Returns full alert detail including raw indicators, assets, threat info, analyst notes, and history.
+Fetch a single UAM alert by UUID. Returns severity, status, analyst verdict, detection source, assignee, timestamps, external and storyline ids, the analyst notes, the alert's history (`history`: status, verdict and
+assignment changes with their text and time, up to 500 entries; `historyTotalCount` and
+`historyTruncated` say whether there are more), and the alert's scope as `accountId`, `accountName`, `siteId` and `siteName` (where the alert is now). When the alert was detected under a different account or site, `detectionScope` holds that scope. Use the account and site as the scope of every follow-up query and action on the alert.
 
 **`uam_add_note`** [Write]
 Add a text note to an alert. Appears in the alert's notes history.

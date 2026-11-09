@@ -194,7 +194,7 @@ Eight Claude skills for SentinelOne SecOps, bundled in `plugins/s1-secops-skills
 - **sdl-api**: read data and manage SDL configuration files (parsers, dashboards, lookups) via the SDL API.
 - **sdl-dashboard**: create, edit, and deploy SDL dashboard JSON.
 - **sdl-log-parser**: author and validate SDL log parsers.
-- **sdl-solutions**: deploy packaged SDL solutions from one prompt. Eleven solutions, each with a guide (most in [`docs/solutions/`](plugins/s1-secops-skills/docs/solutions/)):
+- **sdl-solutions**: deploy packaged SDL solutions from one prompt. Eleven solutions, each with a guide in [`docs/solutions/`](plugins/s1-secops-skills/docs/solutions/):
   - [Data source onboarding](plugins/s1-secops-skills/docs/solutions/data-source-onboarding.md): raw stream to OCSF, enrichment, dashboard, MITRE detections, threat response.
   - [Asset enrichment](plugins/s1-secops-skills/docs/solutions/asset-enrichment.md): device and user context from the Asset Inventory.
   - [UEBA anomaly detection](plugins/s1-secops-skills/docs/solutions/ueba-anomaly-detection.md): behavioural baselines with SPIKE, DROP, SILENT and NEW-BEHAVIOR detections.
@@ -205,7 +205,7 @@ Eight Claude skills for SentinelOne SecOps, bundled in `plugins/s1-secops-skills
   - [Alert noise reduction](plugins/s1-secops-skills/docs/solutions/alert-noise-reduction.md): find noisy sources, filter ingestion, auto-resolve actioned noise.
   - [Custom detections with MITRE mapping](plugins/s1-secops-skills/docs/solutions/custom-detection-mitre-mapping.md): STAR rules cannot carry ATT&CK, so an HA watchdog raises the alert with tactics and techniques attached.
   - [Query slicing](plugins/s1-secops-skills/docs/solutions/query-slicing.md): run a long-window PowerQuery as parallel time slices (a 30-day aggregate in about 5 s instead of 21 to 40 s).
-  - [Unprotected endpoints report](plugins/s1-secops-skills/skills/sdl-solutions/references/unprotected-endpoints.md): Network Discovery devices with no SentinelOne agent, split into deploy-ready, agent support unknown and cannot take an agent, with an optional dashboard.
+  - [Unprotected endpoints report](plugins/s1-secops-skills/docs/solutions/unprotected-endpoints.md): Network Discovery devices with no SentinelOne agent, split into deploy-ready, agent support unknown and cannot take an agent, with an optional dashboard.
 - **hyperautomation**: build and export Hyperautomation (SOAR) workflow JSON.
 - **soc-investigator**: autonomous DFIR investigation over S1 alerts and third-party sources.
 

@@ -8,7 +8,8 @@ starts from the new launcher (downloaded) or passes the image explicitly (`--ima
 `-Image`). The current release is image `1.6.3`. If you are several releases behind, read the
 sections in between for what changed, then follow [1.6.2 to 1.6.3](#162-to-163-plugin-143).
 
-- [1.6.2 to 1.6.3 (plugin 1.4.3)](#162-to-163-plugin-143) (current release: image `1.6.3`, s1-secops-mcp `1.6.3`, plugin `1.4.3`)
+- [Plugin 1.4.3 to 1.4.4](#plugin-143-to-144) (current release: image `1.6.3`, s1-secops-mcp `1.6.3`, plugin `1.4.4`)
+- [1.6.2 to 1.6.3 (plugin 1.4.3)](#162-to-163-plugin-143)
 - [1.6.1 to 1.6.2 (plugin 1.4.2)](#161-to-162-plugin-142)
 - [1.6.0 to 1.6.1 (plugin 1.4.2)](#160-to-161-plugin-142)
 - [Plugin 1.4.0 to 1.4.1](#plugin-140-to-141)
@@ -23,6 +24,25 @@ sections in between for what changed, then follow [1.6.2 to 1.6.3](#162-to-163-p
 - [1.4.x to 1.5.0](#14x-to-150)
 - [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
 - [Rolling back](#rolling-back)
+
+---
+
+## Plugin 1.4.3 to 1.4.4
+
+Skills only: the image and `s1-secops-mcp` stay at `1.6.3`, so there is nothing to reinstall.
+Download the new `.plugin` and replace the old one (Cowork → Customize → Browse plugins → upload →
+**Replace**). What changed:
+
+- **Unprotected endpoints dashboard 1.0.1:**
+  - a new Missing EPP by subnet panel, with active devices, missing EPP, deploy candidates and the
+    percentage missing for each account, site and subnet;
+  - the device list shows each device's own IP and subnet, with the site's public IP in its own
+    column, and returns every unprotected device, up to 10,000;
+  - sites are shown with their account, so sites that share a name stay separate.
+
+  Redeploy the dashboard from the template, or import version 1.0.1 from the Dashboard Library.
+- **Unprotected endpoints report:** device lists use the device's own IP and add public IP and
+  account; the subnet breakdown adds deploy-ready and the percentage missing.
 
 ---
 

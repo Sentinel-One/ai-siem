@@ -29,7 +29,7 @@
 | let srcList = rank == 2 ? nmAs : nmOs
 | let picked = pickId != '' ? srcList.split(',').filter(func(x) -> substr(x, 0, len(pickId) + 1) == pickId + '=').get(0) : replace(agentList, ',.*$', '')
 | let agent = replace(picked, '^[a-z0-9-]+=', '')
-| let verdict = rank == 1 ? 'Likely false positive: agent MAC matches' : (rank == 2 ? 'Likely false positive: agent IP and hostname match' : (rank == 3 ? 'Review: hostname matches an agent' : (rank == 4 ? 'Review: IP matches an agent' : (rank == 5 ? 'Review: matched agent has been offline' : (rank == 6 ? 'Unprotected: matched agent is not active' : 'Unprotected: no agent match')))))
+| let verdict = rank == 1 ? 'Likely false positive: Agent MAC matches' : (rank == 2 ? 'Likely false positive: Agent IP and hostname match' : (rank == 3 ? 'Review: hostname matches an Agent' : (rank == 4 ? 'Review: IP matches an Agent' : (rank == 5 ? 'Review: matched Agent has been offline' : (rank == 6 ? 'Unprotected: matched Agent is not active' : 'Unprotected: no Agent match')))))
 | columns device = n, verdict, agent, rank
 | sort rank
 | limit 20000

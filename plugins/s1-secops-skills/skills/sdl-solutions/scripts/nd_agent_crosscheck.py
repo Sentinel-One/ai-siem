@@ -41,13 +41,13 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 VERDICTS = {
-    1: "Likely false positive: agent MAC matches",
-    2: "Likely false positive: agent IP and hostname match",
-    3: "Review: hostname matches an agent",
-    4: "Review: IP matches an agent",
-    5: "Review: matched agent has been offline",
-    6: "Unprotected: matched agent is decommissioned or uninstalled",
-    7: "Unprotected: no agent match",
+    1: "Likely false positive: Agent MAC matches",
+    2: "Likely false positive: Agent IP and hostname match",
+    3: "Review: hostname matches an Agent",
+    4: "Review: IP matches an Agent",
+    5: "Review: matched Agent has been offline",
+    6: "Unprotected: matched Agent is decommissioned or uninstalled",
+    7: "Unprotected: no Agent match",
 }
 
 GOOD_MAC = re.compile(r"^[0-9a-f][048c][0-9a-f]{10}$")
@@ -223,9 +223,9 @@ def check(nd_rows, agents, now, stale_days, ghost_threshold=50):
 
 
 OTHER_VERDICTS = {
-    1: "Likely false positive: agent MAC and IP match",
-    3: "Review: hostname matches an agent",
-    7: "Unprotected: no agent match",
+    1: "Likely false positive: Agent MAC and IP match",
+    3: "Review: hostname matches an Agent",
+    7: "Unprotected: no Agent match",
 }
 
 

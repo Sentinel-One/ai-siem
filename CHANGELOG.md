@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - s1-secops-skills plugin 1.4.4 (s1-secops-mcp unchanged at 1.6.3)
+
+- sdl-solutions, Unprotected endpoints dashboard template 1.0.1: a Missing EPP by subnet panel (active devices, missing EPP, deploy candidates and percentage missing per account, site and subnet); the device list shows each device's own IP and subnet with the site's public IP in its own column, returns every device up to 10,000, and labels sites with their account. Queries checked against the Asset Inventory GraphQL API on nine consoles.
+- Unprotected endpoints report: device lists use the device's own IP and add public IP and account; the subnet breakdown adds deploy-ready and percentage missing.
+- Upgrade: [plugin 1.4.3 to 1.4.4](plugins/s1-secops-skills/docs/upgrading.md#plugin-143-to-144).
+
 ### Changed - s1-secops-skills plugin 1.4.3, s1-secops-mcp 1.6.3
 
 - `uam_get_alert` and `uam_list_alerts` return the alert's account and site; `uam_get_alert` adds `detectionScope` when the alert was detected elsewhere, and returns the alert's history.

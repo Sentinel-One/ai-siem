@@ -222,6 +222,16 @@ The `metering` datasource exposes Usage Metering reports for cost, usage, and (f
 - On `| datasource assets`, put predicates after the pipe with `| filter`. `where (<predicate>)` returns
   at most 20 rows whatever the predicate, with no error (measured: Active 20 vs 249 with `| filter`;
   Missing EPP 5 vs 20).
+- A list query (one row per asset, no `group`) must start with `| sort id | let …` before `columns`.
+  With no `let` before `columns`, the adapter runs `columns`, `sort` and `limit` itself and returns
+  one page: 55 of 610 devices on one console, a different size on each run. Without a unique sort
+  first, its paging skips assets that share a name: 665 of 675 on another console. With both, the
+  list matched Asset Inventory GraphQL asset by asset on nine consoles. Grouped queries aggregate on
+  the server and are not affected.
+- On Network Discovery assets, `internalIps` is the device's own address (a JSON array as a string,
+  such as `["192.168.1.25"]`), and `subnets` is the networks it was found on. `ipAddress` is the public
+  address the site's traffic leaves from, usually the same for every device behind one gateway.
+  Never show `ipAddress` as the device's IP.
 - `from 'surface/networkDiscovery'` includes Inactive devices. Add `| filter assetStatus = 'Active'` to
   match the console Network Discovery page and the GraphQL `surface: NETWORK_DISCOVERY` view.
 - At very large inventories, filters on `missingCoverage` are slow (about 3 minutes per query at

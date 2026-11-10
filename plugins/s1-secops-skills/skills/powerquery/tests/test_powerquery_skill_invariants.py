@@ -159,6 +159,10 @@ class LiveFindings20261009(unittest.TestCase):
         self.ds = (ref / "datasource-command.md").read_text(encoding="utf-8")
         self.lrq = (ref / "lrq-api.md").read_text(encoding="utf-8")
 
+    def test_assets_list_queries_sort_on_id_then_let(self):
+        self.assertIn("must start with `| sort id | let …` before `columns`", self.ds)
+        self.assertIn("Never show `ipAddress` as the device's IP", self.ds)
+
     def test_scheduled_rules_toggle_error_is_a_console_setting(self):
         self.assertIn("4000010", self.rules)
         self.assertIn("scheduled rules toggle not enabled for scope site", self.rules)

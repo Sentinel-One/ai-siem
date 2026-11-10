@@ -325,6 +325,10 @@ class AssetInventoryGraphqlReference(unittest.TestCase):
     def setUpClass(cls):
         cls.g = (SKILL_DIR / "references" / "ASSET_INVENTORY_GRAPHQL.md").read_text(encoding="utf-8")
 
+    def test_pq_list_returns_every_asset_and_uses_the_device_ip(self):
+        self.assertIn("| sort id\n| let ip = internalIps\n| columns id, name, ip, subnets, ipAddress", self.g)
+        self.assertIn("never report it as the device's IP", self.g)
+
     def test_operation_shapes(self):
         for s in ("AssetInventoryFilterInput", "Maximum page size is 1000", "assetInventoryFiltersCount",
                   "assetInventoryAssetOverview", "assetInventoryAssetCounts"):

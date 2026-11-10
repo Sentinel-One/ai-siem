@@ -97,6 +97,11 @@ query q($f: [AssetInventoryFilterInput!], $after: String) {
 
 Variables: `{"f": [{"fieldId": "missingCoverage", "stringIn": {"values": ["EPP"]}}], "after": null}`.
 
+`internalIps` is the device's own address and `subnets` the networks it was found on. `ipAddress` is
+the public address the site's traffic leaves from, usually the same for every device behind one
+gateway: never report it as the device's IP. Checked on a lab network, where every Agent reported
+the same external IP that Network Discovery shows as `ipAddress` for all devices there.
+
 - Arguments: `first` (1 to 1000), `after` (cursor), `surface` (enum), `category` (enum, for example
   `WORKSTATION`, `SERVER`, `DEVICE`), `subCategory` (enum), `scope`, `filters`, `sort` (`{by, order}`,
   order `ASC` or `DESC`). `filters` is required by the document shape; pass `[]` for none.
@@ -230,11 +235,20 @@ Each row was run back to back and returned the same count. The PQ form for the u
 ```text
 | datasource assets from 'surface/networkDiscovery'
 | filter assetStatus = 'Active' missingCoverage contains 'EPP'
-| columns id, name, ipAddress, resourceType, osFamily, managedState, eppUnsupportedUnknown, deviceReview, firstSeenDt, lastActiveDt
-| limit 5000
+| sort id
+| let ip = internalIps
+| columns id, name, ip, subnets, ipAddress, resourceType, osFamily, managedState, eppUnsupportedUnknown, deviceReview, firstSeenDt, lastActiveDt
+| limit 10000
 ```
 
-Two PowerQuery rules for the `assets` datasource:
+PowerQuery rules for the `assets` datasource:
+
+- A list query (one row per asset, no `group`) must start with `| sort id | let …` before `columns`.
+  With no `let` before `columns`, the adapter runs `columns`, `sort` and `limit` itself and returns
+  one page: 55 of 610 devices on one console, a different size on each run. Without a unique sort
+  first, its paging skips assets that share a name: 665 of 675 on another console. With both, the
+  list matched Asset Inventory GraphQL asset by asset on nine consoles. Grouped queries aggregate on
+  the server and are not affected.
 
 - Put predicates after the pipe with `| filter`. `| datasource assets ... where (<predicate>)` returns at most
   20 rows whatever the predicate, with no error.

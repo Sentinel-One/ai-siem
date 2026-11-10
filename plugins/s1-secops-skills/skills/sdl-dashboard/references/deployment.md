@@ -97,6 +97,11 @@ Deploy with the `sdl_*` MCP tools. Dashboard config files live at paths like `/d
 ```
 
 The `expectedVersion` argument is a CAS guard against concurrent writes from the SDL UI or another script.
+Saving in the dashboard UI, including resizing or moving a panel, creates a new version. When a write
+is refused (the refusal can arrive as a generic GraphQL error rather than a version conflict), read
+the dashboard again, diff the live content against your last read, and ask whether someone is
+editing it. Fold in their change or confirm it can be replaced, then write with the new version.
+Never retry with the old version, and deploy while nobody has the dashboard open for editing.
 
 ### 2. Verify deployment by re-fetching (and check a canary)
 

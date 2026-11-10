@@ -1,5 +1,32 @@
 # Changelog
 
+## Plugin 1.4.4 (skills only; image and s1-secops-mcp unchanged at 1.6.3), 2026-11-10
+
+### Unprotected endpoints dashboard template (1.0.1)
+
+- New panel: Missing EPP by subnet. One row per account, site and subnet with active devices, missing EPP, deploy candidates and the percentage missing; the 500 subnets with the most unprotected devices.
+- The device list shows each device's own IP (`internalIps`) and its subnet, with the site's public IP (`ipAddress`) as its own column, and returns up to 10,000 devices.
+- The device list returns every unprotected device: it sorts on the asset id before a `let`, so the assets adapter neither returns a partial page nor skips devices that share a name. Matched against the Asset Inventory GraphQL API device by device on nine consoles.
+- Sites are labelled with their account in the site, subnet and device list panels, so same-named sites in different accounts stay separate.
+- The About panel shows the dashboard version and defines IP, public IP and subnet. Taller site, OS, review and subnet tables.
+- Verdict labels say "Agent", in the template, `nd_agent_crosscheck.pq` and `nd_agent_crosscheck.py`.
+
+### Unprotected endpoints report
+
+- Device lists show IP from `internalIps`, with public IP as its own column, and the account, site and subnet breakdown carries active devices, deploy-ready and the percentage missing.
+- The PowerQuery fallback list sorts on `id` and uses a `let` before `columns`, for the same reason as the dashboard.
+
+### powerquery, mgmt-console-api, sdl-dashboard
+
+- `| datasource assets` list queries start with `| sort id | let …` before `columns`, so the adapter neither returns a partial page nor skips assets that share a name (`powerquery/references/datasource-command.md`, `sdl-dashboard/references/uql-datasource.md`). The PowerQuery list example in `mgmt-console-api/references/ASSET_INVENTORY_GRAPHQL.md` follows the rule.
+- Network Discovery fields: `internalIps` is the device's own address, `subnets` the networks it was found on, and `ipAddress` the public address the site's traffic leaves from.
+- `sdl-dashboard/references/deployment.md`: when a write is refused (it can arrive as a generic GraphQL error), read the dashboard again and diff it before writing; a save in the dashboard UI, including a panel resize, creates a new version.
+
+### Tests
+
+- powerquery and mgmt-console-api invariants: the assets list rule and the documented list query; the Network Discovery IP fields.
+- Dashboard invariants: the device list sorts on `id`, then a `let`, before `columns`; IP never reads `ipAddress`; the subnet panel groups by account, site and subnet; sites are grouped with their account; the About panel shows the template version; the report and dashboard verdict labels match.
+
 ## 1.6.3 (image `sentinelone/secops-mcps:1.6.3`, plugin 1.4.3), 2026-11-09
 
 ### Changed

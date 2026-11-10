@@ -85,6 +85,14 @@ that cannot be pushed. Adapters must minimally support:
 One tenant's `alerts` adapter exceeded this comfortably: 5 group keys, plus `percent_of_total` and
 `max_by`. Treat the list as a floor and test the specific thing you need.
 
+### List queries on the assets adapter
+
+A query that returns one row per asset (no `group`) must start with `| sort id | let …` before
+`columns`. With no `let`, `columns`, `sort` and `limit` are pushed down and the adapter returns one
+page (55 of 610 devices on one console). Without a unique sort first, its paging skips assets that
+share a name (665 of 675). With both, a 10,000-row device list matched Asset Inventory GraphQL asset
+by asset on nine consoles. Grouped panels aggregate on the server and match exactly without it.
+
 ## Aggregations that work
 
 - `count(<predicate>)`, a conditional count: `count(severity == 'CRITICAL')`,

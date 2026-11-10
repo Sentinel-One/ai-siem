@@ -532,6 +532,9 @@ class UnprotectedEndpointsPlaybook(unittest.TestCase):
     def test_pq_fallback_carries_the_active_filter(self):
         self.assertIn("filter assetStatus = 'Active'", self.text)
 
+    def test_pq_fallback_list_returns_every_device(self):
+        self.assertIn("| sort id\n| let ip = internalIps\n| columns id, name, ip, subnets, ipAddress", self.text)
+
     def test_deploy_ready_uses_the_filterable_field(self):
         self.assertIn('eppUnsupportedUnknown", stringIn: {values: ["Supported"]}', self.text)
 
@@ -572,8 +575,39 @@ class UnprotectedEndpointsDashboardTemplate(unittest.TestCase):
         cls.queries = [g["query"] for g in cls.dash["graphs"] if "query" in g]
         cls.crosscheck = (ASSETS / "nd_agent_crosscheck.pq").read_text(encoding="utf-8")
 
+    def _panel(self, prefix):
+        found = [g for g in self.dash["graphs"] if g["title"].startswith(prefix)]
+        self.assertEqual(1, len(found), prefix)
+        return found[0]
+
+    def test_device_list_returns_every_device_with_its_own_ip(self):
+        q = self._panel("Unprotected devices")["query"]
+        # sort on the unique id, then a let, before columns: otherwise the adapter returns a partial result
+        self.assertRegex(q, r"\| sort id \| let ip = .*\| columns ")
+        self.assertLess(q.index("| sort id"), q.index("| let "))
+        self.assertLess(q.index("| let "), q.index("| columns "))
+        self.assertNotRegex(q, r"(?<![\w])ip = ipAddress", "ipAddress is the site's public address, not the device's")
+        self.assertIn("internalIps", q)
+        self.assertIn("public_ip = ipAddress", q)
+        self.assertIn("subnet", q)
+        self.assertTrue(q.endswith("| limit 10000"))
+
+    def test_subnet_view_counts_per_account_site_and_subnet(self):
+        q = self._panel("Missing EPP by subnet")["query"]
+        self.assertIn("array_from_json(subnets", q)
+        self.assertIn("by account, site, subnet", q)
+        for col in ("active_devices", "missing_epp", "deploy_candidates", "pct_missing"):
+            self.assertIn(col, q)
+
+    def test_sites_are_labelled_with_their_account(self):
+        self.assertIn("by account, site", self._panel("Missing EPP by site")["query"])
+
+    def test_version_is_shown_on_the_dashboard(self):
+        about = self._panel("About this dashboard")["markdown"]
+        self.assertTrue(about.startswith(f"**Dashboard version {self.dash['version']}**"))
+
     def test_every_panel_reads_the_active_nd_view_with_filter(self):
-        self.assertEqual(14, len(self.queries))
+        self.assertEqual(15, len(self.queries))
         for q in self.queries:
             self.assertIn("| datasource assets from 'surface/networkDiscovery' | filter assetStatus = 'Active'", q)
 
@@ -583,6 +617,15 @@ class UnprotectedEndpointsDashboardTemplate(unittest.TestCase):
         self.assertEqual(2, len(users))
         for q in users:
             self.assertTrue(q.startswith(core), "a cross-check panel drifted from assets/nd_agent_crosscheck.pq")
+
+    def test_dashboard_and_report_use_the_same_verdict_labels(self):
+        spec = importlib.util.spec_from_file_location("nd_agent_crosscheck", SKILL_DIR / "scripts" / "nd_agent_crosscheck.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        # rank 6 differs by design: the endpoint inventory cannot see decommissioned Agents
+        for rank in (1, 2, 3, 4, 5, 7):
+            self.assertIn(f"'{mod.VERDICTS[rank]}'", self.crosscheck, f"rank {rank} label drifted")
+        self.assertIn("'Unprotected: matched Agent is not active'", self.crosscheck)
 
     def test_cross_check_only_counts_live_recent_agents(self):
         self.assertIn("let live = assetStatus = 'Active' && activeCoverage contains 'EPP'", self.crosscheck)

@@ -28,6 +28,9 @@ number in it comes from a call listed in its method appendix.
 | Deploy-ready | Unprotected, and the device type can run the agent (`eppUnsupportedUnknown = Supported`). These are the Sentinel Deploy candidates. |
 | Agent support unknown | Unprotected, and the device type is not yet classified (`eppUnsupportedUnknown = Unknown`). Identify these before calling them a gap. |
 | Cannot take an agent | `eppUnsupportedUnknown = Unsupported`: network gear, printers, TVs, cameras and other IoT. Reported separately and never counted as a deployment gap. |
+| IP | The device's own address on your network (`internalIps`). |
+| Public IP | The address the site's traffic leaves from (`ipAddress`), usually the same for every device behind one gateway. Shown for context, never as the device's IP. |
+| Subnet | The network Network Discovery found the device on (`subnets`). |
 
 ## False positives and the checks the report runs
 
@@ -124,11 +127,13 @@ see, HTML output, a 7-day window for newly seen devices, telemetry check off.
    and cannot take an agent, with a one-line reconciliation of the exact calls behind each number.
 2. **False-positive check:** the checks above with their results, likely false positives, review
    items and Network Discovery settings.
-3. **Deploy-ready list:** name, IP, type, OS, site, subnet, first seen, last active and review status,
-   most recently active first.
+3. **Deploy-ready list:** name, IP, subnet, type, OS, account, site, public IP, first seen, last
+   active and review status, most recently active first.
 4. **Agent support unknown:** the same columns, flagged for identification.
 5. **Cannot take an agent:** counts by device type, review status and site.
-6. **Breakdowns** of the unprotected set by site, subnet, OS family, device type and discovery method.
+6. **Breakdowns** of the unprotected set by account and site, subnet, OS family, device type and
+   discovery method. The subnet table shows, for each account, site and subnet, the active devices,
+   how many are missing EPP, how many are deploy-ready and the percentage missing.
 7. **Newly seen** unprotected devices in the last 7 days.
 8. **Review status,** with any unprotected device marked Not Trusted called out.
 9. **Remediation:** Sentinel Deploy for deploy-ready devices, grouped by site; device review for
@@ -142,10 +147,19 @@ you can see which of these devices are active on the network you log.
 ## Optional dashboard
 
 For ongoing visibility, the skill ships an SDL dashboard template
-(`sdl-solutions/assets/unprotected_endpoints_dashboard.template.json`). It shows the same headline
-and breakdowns, plus a list of the 1,000 most recently active unprotected devices. Every panel reads
-the Active Network Discovery view, so its counts match the console. Set the data selector to
-**All Data**.
+(`sdl-solutions/assets/unprotected_endpoints_dashboard.template.json`, version 1.0.1, also in the
+SentinelOne Dashboard Library). It shows:
+
+- the same headline and breakdowns, with sites labelled by account;
+- unprotected devices per subnet: active devices, missing EPP, deploy candidates and percentage
+  missing for each account, site and subnet;
+- a list of up to 10,000 unprotected devices with each device's IP, subnet and public IP;
+- a false-positive check: every unprotected device matched against the agents by MAC, IP on the same
+  gateway, and hostname.
+
+Every panel reads the Active Network Discovery view, so its counts match the console. Its queries were
+checked against the Asset Inventory GraphQL API on nine consoles, and the device list matched device
+by device. Set the data selector to **All Data**.
 
 The dashboard suits consoles with up to a few thousand Network Discovery devices: about 240 Active
 devices loaded in under 5 seconds. On a console with about 95,000 Network Discovery assets, each

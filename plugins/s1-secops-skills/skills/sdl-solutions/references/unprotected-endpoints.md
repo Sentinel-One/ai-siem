@@ -176,13 +176,13 @@ match to an offline agent outranks a hostname-only or IP-only match:
 
 | Verdict | Meaning | In the deployment gap? |
 |---|---|---|
-| Likely false positive: agent MAC matches | A live agent reports the MAC the scanner saw | No |
-| Likely false positive: agent IP and hostname match | One live agent has the IP (same gateway) and the hostname | No |
-| Review: matched agent has been offline | MAC or IP plus hostname match, but the agent has not been active for 30 days | Yes, flagged |
-| Review: hostname matches an agent | Name only; can be a stale DNS name or a renamed device | Yes, flagged |
-| Review: IP matches an agent | IP only; the address may have moved to another device | Yes, flagged |
-| Unprotected: matched agent is decommissioned or uninstalled | The device had an agent and no longer does | Yes |
-| Unprotected: no agent match | No live or dead agent matches | Yes |
+| Likely false positive: Agent MAC matches | A live agent reports the MAC the scanner saw | No |
+| Likely false positive: Agent IP and hostname match | One live agent has the IP (same gateway) and the hostname | No |
+| Review: matched Agent has been offline | MAC or IP plus hostname match, but the agent has not been active for 30 days | Yes, flagged |
+| Review: hostname matches an Agent | Name only; can be a stale DNS name or a renamed device | Yes, flagged |
+| Review: IP matches an Agent | IP only; the address may have moved to another device | Yes, flagged |
+| Unprotected: matched Agent is decommissioned or uninstalled | The device had an agent and no longer does | Yes |
+| Unprotected: no Agent match | No live or dead agent matches | Yes |
 
 Flag likely false positives whose agent is in another site: that points at per-site consolidation.
 
@@ -316,13 +316,17 @@ the device is idle. Never fabricate a source that the cache does not list.
 
      List the options in "Closing the remaining gaps" that apply to this tenant.
 3. **Deploy-ready list.** From the devices still in the gap (verdict Unprotected or Review), filtered to
-   the deploy-ready definition: name, IP, type, OS, site, subnet, first seen, last active, review
-   status and verdict. Sort by last active.
+   the deploy-ready definition: name, IP, type, OS, account, site, subnet, public IP, first seen, last
+   active, review status and verdict. Sort by last active. IP is the device's own address
+   (`internalIps`); public IP (`ipAddress`) is the address the site's traffic leaves from, usually the
+   same for every device behind one gateway, so never show it as the device's IP.
 4. **Unknown capability.** Same columns; needs identification before deployment.
 5. **Devices that cannot take an agent.** Counts by `resourceType`, review status and site from call D.
    State plainly that they are excluded from the deployment gap.
-6. **Breakdowns.** By site, subnet, OS family, resource type and discovery method (Step 1 call C), each as
-   a small table with counts.
+6. **Breakdowns.** By account and site, subnet, OS family, resource type and discovery method (Step 1
+   call C), each as a small table with counts. Label sites with their account: site names can repeat
+   across accounts. The subnet table has one row per account, site and subnet, with active devices,
+   missing EPP, deploy-ready and the percentage missing; a device on several subnets counts in each.
 7. **Newly seen in the last 7 days.** Unprotected devices whose `firstSeenDt` falls in the window.
 8. **Review status.** `deviceReview` counts (`Not Reviewed`, `Under Analysis`, `Allowed`, `Not Trusted`)
    for the unprotected set; flag unprotected devices marked `Not Trusted`.
@@ -366,13 +370,18 @@ An optional SDL dashboard ships as `assets/unprotected_endpoints_dashboard.templ
 after the report, as an add-on for ongoing visibility, never instead of the report.
 
 - **What it shows:** Active Network Discovery devices; missing EPP; missing EPP on an EPP-supported
-  device type; missing EPP by device type, agent support, site, OS family and review status; all Active
-  devices by managed state and discovery method; the unprotected device list; and a false-positive
+  device type; missing EPP by device type, agent support, account and site, OS family and review
+  status; missing EPP by subnet (active devices, missing EPP, deploy candidates and percentage missing
+  per account, site and subnet); all Active devices by managed state and discovery method; the
+  unprotected device list (up to 10,000, with internal IP, subnet and public IP); and a false-positive
   check: Missing EPP devices by cross-check verdict, by identity strength, and the likely false
   positives and review items with the matched agent.
 - **How its queries are built:** every panel reads `| datasource assets from 'surface/networkDiscovery'
   | filter assetStatus = 'Active'`, so it equals the console Network Discovery view. Use `| filter`, never
   `where (...)`, on the assets adapter: `where (...)` returns at most 20 rows whatever the predicate.
+  Grouped panels aggregate on the server and match Asset Inventory GraphQL exactly. The device list
+  starts with `sort id` and a `let` (see the PowerQuery fallback below), and sites are labelled with
+  their account, because site names can repeat across accounts.
 - **The false-positive panels** run `assets/nd_agent_crosscheck.pq`, the PowerQuery form of the Step 2b
   rules, against `surface/endpoint`. Measured on five consoles (1,394 unprotected devices), they never
   cleared a device that the report kept in the gap. Two differences are by design:
@@ -427,11 +436,20 @@ after the report, as an add-on for ongoing visibility, never instead of the repo
 ```text
 | datasource assets from 'surface/networkDiscovery'
 | filter assetStatus = 'Active' missingCoverage contains 'EPP'
-| columns id, name, ipAddress, resourceType, osFamily, managedState, eppUnsupportedUnknown, deviceReview, s1SiteId, firstSeenDt, lastActiveDt
-| limit 5000
+| sort id
+| let ip = internalIps
+| columns id, name, ip, subnets, ipAddress, resourceType, osFamily, managedState, eppUnsupportedUnknown, deviceReview, s1AccountName, s1SiteId, firstSeenDt, lastActiveDt
+| limit 10000
 ```
 
-  Run with `powerquery_run` (`maxRows` 5000, `outputFile` for the list). Coverage filters on this
+  Keep `sort id` and the `let` in that order. A list query on the assets adapter returns a partial
+  result in two cases. With no `let` before `columns`, the adapter runs `columns` and `limit` itself
+  and returns one page (55 of 610 devices on one console). Without a unique sort first, its paging
+  skips devices that share a name (665 of 675). With both, the list matched Asset Inventory GraphQL
+  device by device. `internalIps` is the device's own address; `ipAddress` is the address the site's
+  traffic leaves from, usually the same for every device behind one gateway.
+
+  Run with `powerquery_run` (`maxRows` 10000, `outputFile` for the list). Coverage filters on this
   dataset are slow at large scale (minutes at tens of thousands of Network Discovery assets); say so
   before running. Without `assetStatus = 'Active'` the dataset includes Inactive records and will not
   match the console.

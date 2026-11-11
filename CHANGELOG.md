@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - hyperautomation skill
+
+- Condition rules: non-empty tests use a sentinel, numeric/boolean-looking literals are coerced, `exists` and empty values are rejected by the UI, `simple` is no longer listed as valid; `not_contains` verified.
+- Added agent group/site move endpoints; documented the body-marker pitfall and empty variable values.
+
 ### Changed - s1-secops-skills plugin 1.4.4 (s1-secops-mcp unchanged at 1.6.3)
 
 - sdl-solutions, Unprotected endpoints dashboard template 1.0.1: a Missing EPP by subnet panel (active devices, missing EPP, deploy candidates and percentage missing per account, site and subnet); the device list shows each device's own IP and subnet with the site's public IP in its own column, returns every device up to 10,000, and labels sites with their account. Queries checked against the Asset Inventory GraphQL API on nine consoles.

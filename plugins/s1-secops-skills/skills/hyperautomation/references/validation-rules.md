@@ -49,9 +49,9 @@ Run this checklist before outputting any workflow JSON.
 
 ## Condition rules
 
-- [ ] Condition uses either `"condition_type": "simple"` (with nested `condition` object) or `"condition_type": "multi"` (with flat `conditions` array): not both
-- [ ] For `"simple"`: `"condition"` is non-null, `"conditions"` is `null`
-- [ ] For `"multi"`: `"conditions"` is a non-empty array, `"condition"` is `null`
+- [ ] `"condition_type"` is `"multi"` with a non-empty flat `conditions` array and `"condition": null`. Never emit `"simple"` (unused in the active corpus)
+- [ ] **The compared value must not look like a number or boolean.** The console coerces literals such as `"1"`, `"true"` and plain digit IDs to numbers/booleans, so a string variable never equals them (`deviceCount equals 1` and `singleDevice equals true` both returned false). Have `Function.JQ` emit `yes`/`no` instead, and for ID membership wrap both sides: `,{{local_var.ids}},` `contains` `,{{local_var.id}},`
+- [ ] **The compared value must not be empty, and avoid `exists`.** The console UI marks an empty "value b" invalid and rejects `exists`, even though both import. Test non-empty with `not_equals "NONE"`, fed by `(.[0][N] // "") | if . == "" then "NONE" else . end`
 - [ ] Condition branches use `"custom_handle": "true"` and `"custom_handle": "false"`
 - [ ] A condition with only one branch (e.g., only `"true"`) is valid: the other is simply absent from `connected_to`
 - [ ] **Approval / human-in-the-loop gates FAIL CLOSED.** A condition that guards a destructive action
@@ -120,6 +120,7 @@ Full detail in `interaction-forms.md`.
 
 - [ ] Each variable in `variables` array has `"name"`, `"value"`, `"is_secret"`
 - [ ] Empty array initialization: value is `"[]"` (two brackets, no spaces)
+- [ ] Do not emit a scalar variable with an empty `value`: the console flags it as required. Use a `REPLACE_WITH_...` placeholder, or set it in a later action
 - [ ] `variables_scope` is `"local"` or `"global"`
 - [ ] Dynamic references use `{{...}}` double curly braces
 - [ ] **HARD RULE**: if a variable's value contains `{{local_var.*}}`, that variable must be in

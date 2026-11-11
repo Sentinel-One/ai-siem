@@ -497,8 +497,8 @@ Must have `"parent_action": <loop_export_id>`. `"connected_to": []`.
 ```
 
 Mail delivery is per console. Measured 2026-10-09: on one console the action sent the mail
-(run `Completed`); on a mail-sandboxed console it failed with SES `MessageRejected` ("Email address
-is not verified ... no-reply@sentinelone.net, <recipient>"), which errors the whole run. With
+(run `Completed`); on a mail-sandboxed console it failed with SES `MessageRejected`
+(`Email address is not verified ... no-reply@sentinelone.net, <recipient>`), which errors the whole run. With
 `continue_on_fail: true` the same run finished `CompletedWithErrors` and continued past the step.
 
 `mime_type`: `"text/plain"` or `"text/html"`. HTML is more common in active flows (analyst-

@@ -1,5 +1,18 @@
 # Changelog
 
+## Plugin 1.4.5 (skills only; image and s1-secops-mcp unchanged at 1.6.3), 2026-11-12
+
+### hyperautomation
+
+- Condition rules: when the input is a string, a compared value that looks like a number or boolean is coerced and never matches, so emit `yes`/`no` from `Function.JQ` and wrap ID lists in commas for `contains`. Numeric inputs such as `status_code` still compare against `"200"`.
+- Non-empty tests use a sentinel (`not_equals "NONE"`): the console UI rejects an empty compared value and `exists`, though both import. `not_contains` is verified; `simple` conditions are documented for reading only.
+- Scalar variables never carry an empty `value` (the UI flags it as required), and a body variable is referenced as `{{local_var.x}}`, never wrapped in `<<...>>`.
+- Agent moves: `PUT /groups/{id}/move-agents` returns 200 with `data.agentsMoved`; `POST /agents/actions/move-to-site` takes `data.targetSiteId`; there is no `agents/actions/move-to-group`.
+
+### mgmt-console-api
+
+- `CAPABILITY_MAP.md`: moving an agent to a group uses `PUT /groups/{group_id}/move-agents`, and moving it to another site uses `POST /agents/actions/move-to-site`.
+
 ## Plugin 1.4.4 (skills only; image and s1-secops-mcp unchanged at 1.6.3), 2026-11-10
 
 ### Unprotected endpoints dashboard template (1.0.1)

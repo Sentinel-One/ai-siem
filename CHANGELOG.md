@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - s1-secops-skills plugin 1.4.5 (s1-secops-mcp unchanged at 1.6.3)
+
+- hyperautomation: the number- and boolean-literal rule applies to string inputs; numeric inputs such as `status_code` still compare against `"200"`. The non-empty sentinel is set by the `Function.JQ` that fills the variable. `simple` conditions are documented for reading older flows only. Group moves need `Groups.moveToGroup` and move only agents in the group's site.
+- mgmt-console-api: `CAPABILITY_MAP.md` points group moves at `PUT /groups/{group_id}/move-agents` and adds moving an agent to another site.
+- Plugin bundle rebuilt at 1.4.5.
+
 ### Changed - hyperautomation skill
 
 - Condition rules: non-empty tests use a sentinel, numeric/boolean-looking literals are coerced, `exists` and empty values are rejected by the UI, `simple` is no longer listed as valid; `not_contains` verified.

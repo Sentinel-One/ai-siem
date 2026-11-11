@@ -92,3 +92,5 @@ Moved out of `SKILL.md` to keep it under the 500-line authoring limit. The conte
   ✅ `parent_action: null` on every node that is not inside a loop; wire flow order strictly via `connected_to.target` (see `references/validation-rules.md` → Import / `parent_action` rules).
 - ❌ Writing back to an alert (note / analyst verdict / status) via the old `/web/api/v2.0/threats` REST endpoints: they are decommissioned and return HTTP 405.
   ✅ Use the Unified Alerts GraphQL API (`POST /web/api/v2.1/unifiedalerts/graphql`) for every write-back, not just notes (see `references/api-integration.md` → SentinelOne alert write-backs).
+- ❌ Wrapping a body variable in template markers, e.g. `"query": "<<{{local_var.pq}}>>"`. The console then shows "Please configure {{local_var.pq}}" (Requires Configuration) and the action cannot run.
+  ✅ Reference it plainly: `"query": "{{local_var.pq}}"`. `<<name>>` marks catalog input tokens and `<@/path@>` marks the URL path only.

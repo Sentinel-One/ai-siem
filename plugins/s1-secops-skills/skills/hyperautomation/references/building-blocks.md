@@ -382,7 +382,7 @@ See workflow-schema.md for simple vs. multi style details.
 Operators (with usage counts in active corpus):
 `"equals"` (1,105), `"not_equals"` (271), `"greater_than_or_equals"` (194), `"greater_than"`
 (168), `"contains"` (34), `"in"` (1), `"less_than_or_equals"` (1), `"less_than"` (1).
-`"not_contains"` is unverified. NOT accepted: `"is_empty"` and `"is_not_empty"` (import fails with HTTP 422, verified live 2026-10-08); test for empty with `"equals"` against `""` and for non-empty with `"not_equals"` against `""`.
+`"not_contains"` imports and runs (verified live). Import also accepts `"exists"`, `"not_exists"`, `"updated"` and `"contains_one_of"`, but the console UI rejects `exists` (see `validation-rules.md` → Condition rules). NOT accepted: `"is_empty"` and `"is_not_empty"` (import fails with HTTP 422, verified live 2026-10-08). The console UI also requires a non-empty compared value, so `"not_equals"` against `""` shows as invalid. Test for non-empty against a sentinel instead (see `validation-rules.md`).
 
 > **`condition_type` is universally `"multi"`** in active flows (1,697 of 1,697). Always emit
 > multi, even for a single comparison.

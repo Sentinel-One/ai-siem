@@ -181,6 +181,9 @@ For `"in"` operator, `compared_value` is a JSON array string: `"[\"HIGH\",\"CRIT
 
 ### Simple condition (nested `condition` object, `condition_type: "simple"`)
 
+Reference only, for reading older exported flows. Never emit it: the active corpus uses `multi` for
+every condition (see `validation-rules.md` → Condition rules).
+
 ```json
 "condition_type": "simple",
 "condition": {

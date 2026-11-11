@@ -8,7 +8,8 @@ starts from the new launcher (downloaded) or passes the image explicitly (`--ima
 `-Image`). The current release is image `1.6.3`. If you are several releases behind, read the
 sections in between for what changed, then follow [1.6.2 to 1.6.3](#162-to-163-plugin-143).
 
-- [Plugin 1.4.3 to 1.4.4](#plugin-143-to-144) (current release: image `1.6.3`, s1-secops-mcp `1.6.3`, plugin `1.4.4`)
+- [Plugin 1.4.4 to 1.4.5](#plugin-144-to-145) (current release: image `1.6.3`, s1-secops-mcp `1.6.3`, plugin `1.4.5`)
+- [Plugin 1.4.3 to 1.4.4](#plugin-143-to-144)
 - [1.6.2 to 1.6.3 (plugin 1.4.3)](#162-to-163-plugin-143)
 - [1.6.1 to 1.6.2 (plugin 1.4.2)](#161-to-162-plugin-142)
 - [1.6.0 to 1.6.1 (plugin 1.4.2)](#160-to-161-plugin-142)
@@ -24,6 +25,27 @@ sections in between for what changed, then follow [1.6.2 to 1.6.3](#162-to-163-p
 - [1.4.x to 1.5.0](#14x-to-150)
 - [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
 - [Rolling back](#rolling-back)
+
+---
+
+## Plugin 1.4.4 to 1.4.5
+
+Skills only: the image and `s1-secops-mcp` stay at `1.6.3`, so there is nothing to reinstall.
+Download the new `.plugin` and replace the old one (Cowork → Customize → Browse plugins → upload →
+**Replace**). What changed:
+
+- **Hyperautomation conditions:** a compared value that looks like a number or boolean never matches
+  a string input, so Claude emits `yes`/`no` from `Function.JQ` instead; numeric inputs such as
+  `status_code` still compare against `"200"`. Non-empty tests use a sentinel, because the console
+  UI rejects an empty compared value and `exists`.
+- **Hyperautomation variables:** no scalar variable with an empty value, and no `<<...>>` around a
+  body variable.
+- **Agent moves:** workflows move agents with `PUT /groups/{id}/move-agents` (HTTP 200 with
+  `data.agentsMoved`) and `POST /agents/actions/move-to-site`; the Mgmt Console API skill no longer
+  points at a `move-to-group` action that does not exist.
+
+Workflows you already built keep working. Re-check any condition that compares a local variable or
+`Function.JQ` output with a number-like or boolean literal.
 
 ---
 

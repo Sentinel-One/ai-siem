@@ -652,9 +652,9 @@ connection (`id`, `scope_level`, `site_name`) for this body:
 
 ### Moving agents between groups and sites
 
-- Group: `PUT /web/api/v2.1/groups/{groupId}/move-agents`, body `{"filter":{"ids":["<agentId>"]}}`. Success is HTTP **200** with `{"data":{"agentsMoved":1}}` (not 204). Check `status_code equals 200` AND `body.data.agentsMoved equals 1`.
+- Group: `PUT /web/api/v2.1/groups/{groupId}/move-agents`, body `{"filter":{"ids":["<agentId>"]}}`. Needs the `Groups.moveToGroup` permission and moves only agents already in the group's site. Success is HTTP **200** with `{"data":{"agentsMoved":1}}` (the API spec says 204). Check `status_code equals 200` AND `body.data.agentsMoved equals 1`; both inputs are numbers, so the literals compare normally.
 - `POST /agents/actions/move-to-group` does not exist (404, HTML error page).
-- Site: `POST /web/api/v2.1/agents/actions/move-to-site`, body `{"filter":{"ids":["<agentId>"]},"data":{"targetSiteId":"<siteId>"}}`. Needs Account or Global scope and the `Endpoints.moveToAnotherSite` permission. Wait briefly before a following group move, and make sure the target group belongs to the target site. (Response shape not yet observed.)
+- Site: `POST /web/api/v2.1/agents/actions/move-to-site`, body `{"filter":{"ids":["<agentId>"]},"data":{"targetSiteId":"<siteId>"}}`. Needs Account or Global scope and the `Endpoints.moveToAnotherSite` permission. Wait briefly before a following group move, and make sure the target group belongs to the target site. The API spec documents HTTP 200; the response body has not been observed yet, so check the status code only.
 - A `401 Authentication Failed` on a move is a connection credential problem (token or auth type), not a flow problem.
 
 ---

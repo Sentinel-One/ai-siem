@@ -31,7 +31,7 @@
 # Base image pinned by digest (docker/build.sh owns the value and passes it in;
 # this default only matters for a bare `docker build`). The root-user variant is
 # used so the build steps can set file modes; the image runs as `nonroot` (USER below).
-ARG BASE_IMAGE=gcr.io/distroless/nodejs24-debian13@sha256:03980f6fd2a3245fa06e371c36fd33528ebbc676a1d0f84e3e21d95cd291b807
+ARG BASE_IMAGE=gcr.io/distroless/nodejs24-debian13@sha256:ba59ac9916b424cdfaaa8299695530251535843623a6d8f93d40b0a2ef69e390
 
 FROM ${BASE_IMAGE}
 

@@ -21,6 +21,10 @@ Query: GET /threats (filtered by user input)
 Output: alerts.jsonl
 ```
 
+For each alert, `case_for_alert`. When alerts share a case, fetch it once with `case_get`
+(`includeAlerts: true`), add its other alerts to the set, and record the case id, status, verdict,
+notes and tasks in `case.json`. Investigate the case as one incident.
+
 #### 1.2 Single-pass entity extraction
 
 ```json

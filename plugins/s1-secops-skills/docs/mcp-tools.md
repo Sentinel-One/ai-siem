@@ -8,7 +8,7 @@ From 1.6.0 the image no longer bundles `purple-mcp`, the VirusTotal MCP or the S
 
 ## s1-secops-mcp
 
-Runs on the user's machine over stdio, as a Node.js process or from the Docker image via the host launcher. Source: `mcp/s1-secops-mcp/index.js`. 47 tools are registered. The four threat-intelligence tools are listed only when their key is stored, so a client sees 43 tools with no threat-intelligence key, 45 with `VIRUSTOTAL_API_KEY` only and 47 with both `VIRUSTOTAL_API_KEY` and `SHODAN_API_KEY`. Credentials resolve per value from environment variables, then the OS keychain; there is no credentials file and no HTTP transport. Setup: [credentials.md](./credentials.md).
+Runs on the user's machine over stdio, as a Node.js process or from the Docker image via the host launcher. Source: `mcp/s1-secops-mcp/index.js`. 62 tools are registered. The four threat-intelligence tools are listed only when their key is stored, so a client sees 58 tools with no threat-intelligence key, 60 with `VIRUSTOTAL_API_KEY` only and 62 with both `VIRUSTOTAL_API_KEY` and `SHODAN_API_KEY`. Credentials resolve per value from environment variables, then the OS keychain; there is no credentials file and no HTTP transport. Setup: [credentials.md](./credentials.md).
 
 ### Read-only mode (1.5.5 and later)
 
@@ -16,9 +16,9 @@ s1-secops-mcp is **read-only by default**. Every call that would change the tena
 
 | Access | Meaning | Tools |
 |---|---|---|
-| Read | Always runs | `s1_api_get`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_available_actions`, `purple_ai_alert_summary`, `purple_ai_query`, `ti_vt_lookup`, `ti_vt_relationship`, `ti_shodan_host`, `ti_shodan_dns`, `powerquery_enumerate_sources`, `powerquery_schema_discover`, `sdl_list_files`, `sdl_get_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `ha_list_workflows`, `ha_get_workflow`, `ha_export_workflow`, `dac_export`, `dac_diff`, `asset_inventory_counts`, `asset_inventory_search`, `asset_inventory_get`, `asset_inventory_filter_values` (26) |
+| Read | Always runs | `s1_api_get`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_available_actions`, `purple_ai_alert_summary`, `purple_ai_query`, `ti_vt_lookup`, `ti_vt_relationship`, `ti_shodan_host`, `ti_shodan_dns`, `powerquery_enumerate_sources`, `powerquery_schema_discover`, `sdl_list_files`, `sdl_get_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `ha_list_workflows`, `ha_get_workflow`, `ha_export_workflow`, `dac_export`, `dac_diff`, `asset_inventory_counts`, `asset_inventory_search`, `asset_inventory_get`, `asset_inventory_filter_values`, `case_list`, `case_get`, `case_for_alert`, `case_metadata`, `case_rules` (31) |
 | Conditional | Read forms run; write forms are refused while read-only | `s1_api_post`: allowed for GraphQL documents with only `query` operations, `/dv/init-query`, `/cloud-funnel/validate-query`, graph explorer queries, `available-actions` and `/xdr/assets/tags/count`; every other POST is treated as a write. `powerquery_run`: refused when the query contains `\| savelookup` (2) |
-| Write | Refused while read-only | `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_post_alert`, `uam_ingest_alert`, `hec_ingest`, `sdl_put_file`, `sdl_delete_file`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `ha_import_workflow`, `ha_delete_workflow`, `dac_apply` (19) |
+| Write | Refused while read-only | `s1_api_put`, `s1_api_patch`, `s1_api_delete`, `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert`, `uam_post_alert`, `uam_ingest_alert`, `hec_ingest`, `sdl_put_file`, `sdl_delete_file`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard`, `ha_import_workflow`, `ha_delete_workflow`, `dac_apply`, `case_create`, `case_update`, `case_triage`, `case_add_note`, `case_task`, `case_iocs`, `case_post_message`, `case_alerts`, `case_rule_apply`, `case_rules_scope` (29) |
 
 Local file output (`outputFile`, `outputDir`, `s1_api_download`) writes only to your machine and is allowed in read-only mode. `dac_diff` sends a POST (`parse-vcs?mode=diff`) that changes nothing on the tenant, so it is classed Read and runs in read-only mode. Each tool heading below carries its access in brackets.
 
@@ -220,6 +220,57 @@ The values that exist for one or more fields, with the number of assets for each
 
 ---
 
+### Case Management tools (1.6.4)
+
+`POST /web/api/v2.1/cases/graphql`. Arguments are written as escaped GraphQL literals; every write re-reads what it changed and fails unless the re-read shows it. Case state and alert state are independent: no case tool changes an alert unless `case_triage` gets `alsoAlerts: true`. Reference: `mgmt-console-api/references/CASE_MANAGEMENT.md`.
+
+**`case_list`** [Read]
+Cases with filters (status, severity, analyst verdict, assignee or `unassigned`, case types, creation rule, words in the name, created range, raw `filters`), sort and cursor paging. Without a status filter the API leaves CLOSED cases out; `includeClosed: true` includes them. Default scope: every account the token can see.
+
+**`case_get`** [Read]
+One case with its detail fields (alert ids, assets, products, MITRE ATT&CK, watchers, counts, SLO fields), notes, tasks, linked IOCs and latest messages. `includeAlerts: true` reads the member alerts from UAM.
+
+**`case_for_alert`** [Read]
+The case an alert belongs to, or `null`.
+
+**`case_metadata`** [Read]
+Case fields with enum values and filter types, case type options, file upload limits.
+
+**`case_rules`** [Read]
+Creation rules of a scope in rank order, or one rule with its expression, grouping and default tasks; whether the scope inherits its rules (`linked`); with `includeMetadata`, the alert properties a rule can match and the grouping limits.
+
+**`case_create`** [Write]
+A case from UAM alert ids (1 to 500), waiting until it is ready. Alerts that are already in another case stay there and are listed under `notAdded`. Default scope: the first alert's site.
+
+**`case_update`** [Write]
+Name, status (not CLOSED), severity, analyst verdict, assignee or case types of one case. Reads first and sends every field, so omitted fields keep their value.
+
+**`case_triage`** [Write]
+Status, severity, verdict or assignee of 1 to 100 cases; CLOSED requires `closingReason`. `alsoAlerts: true` applies status (CLOSED as RESOLVED), verdict and assignee to every member alert, up to 200.
+
+**`case_add_note`** [Write]
+A note; plain text is sent as escaped HTML. Verified on the stored HTML.
+
+**`case_task`** [Write]
+Create, update (read-then-write) or delete a task. Status `TO_DO` or `DONE`.
+
+**`case_iocs`** [Write]
+Link Threat Intelligence IOCs (`ioCId`, `type`, `value`), creating missing ones at the case's account with `createMissing: true`; or unlink them.
+
+**`case_post_message`** [Write]
+A message or reply in the case's collaboration space.
+
+**`case_alerts`** [Write]
+Add alerts to a case (listing any that stayed in another case) or remove them.
+
+**`case_rule_apply`** [Write, destructive]
+Create, update (read-then-write), enable, disable, rank or delete a creation rule. Takes `{match, conditions}` or the API tree, generates six-character node ids and validates the expression first. Refused while the scope inherits its rules.
+
+**`case_rules_scope`** [Write, destructive]
+Link a scope to inherited creation rules or unlink it (the inherited rules are copied in). Requires `confirm: true`; returns the state and rule count before and after.
+
+---
+
 <a id="shodan-mcp-optional"></a><a id="threat-intelligence-which-server-to-use"></a>
 
 ### Threat-intelligence tools (1.6.0)
@@ -272,6 +323,8 @@ Resolve up to 25 `hostnames` to IP addresses, or reverse-resolve up to 25 `ips` 
 | Field schema of a source | `powerquery_schema_discover` |
 | Natural-language question or a draft hunt query | `purple_ai_query`, then review the query and run it with `powerquery_run` |
 | List, triage or annotate alerts (notes and history included) | `uam_list_alerts`, `uam_get_alert`; writes with `uam_add_note`, `uam_set_status`, `uam_set_verdict`, `uam_assign_alert` |
+| Which case an alert is in; read, triage or close a case | `case_for_alert`, `case_get`; writes with `case_update`, `case_triage`, `case_add_note`, `case_iocs`, `case_task`, `case_post_message` |
+| Open a case from alerts, or automate case creation | `case_create`, `case_alerts`; rules with `case_rules`, `case_rule_apply` |
 | Asset criticality, tags and coverage for one asset | `asset_inventory_get` |
 | Asset counts, coverage gaps, unprotected devices | `asset_inventory_search` (`countOnly`), `asset_inventory_filter_values`; `asset_inventory_counts` for an overview |
 | Agent inventory, vulnerabilities, misconfigurations | `s1_api_get` / `s1_api_post` (read) on the endpoints in the mgmt-console-api skill |

@@ -164,6 +164,8 @@ an alert ingested via `/v1/alerts`; a console user session performs the
 identical mutation on either. So `not_offered` means "this identity lacks what
 this alert needs", never "impossible".
 
+The alert's case is on the alert itself: `alert(id) { case { id } }`. Read the case with `case_get` (see `CASE_MANAGEMENT.md`); case state and alert state are independent.
+
 Availability is also scope-sensitive: `S1/incident/*` reports
 `INCIDENT_ACTIONS_ONLY_AVAILABLE_FROM_SITE_VIEW` under `ACCOUNT` scope and is
 enabled under `SITE`. Re-check per scope.
@@ -331,6 +333,8 @@ From live `alertAvailableActions` on a Singularity Platform tenant with EDR, Ide
 | `S1/alert/assignUser` | ALERT | Assign to user, payload `{assignUser:{value:"<user id>"}}`; `value: null` unassigns |
 | `S1/alert/setTicketId` | ALERT | Attach external ticket id |
 | `S1/alert/addNote` | ALERT | Add a free-text note |
+| `S1/incident/create` | CASE | Open a case from the alert(s), payload `{createIncident:{name, severity, description}}` (`name` required; an empty payload fails with `SERVICE_ERROR`). SITE scope. The case tools (`case_create`) are the simpler route |
+| `S1/incident/addToExisting` | CASE | Add the alert(s) to a case, payload `{addToIncident:{id:"<caseId>"}}`. SITE scope. Same as `case_alerts` add |
 | `S1/alert/eventSearch` | REFERENCE | Pivot to Event Search |
 | `S1/kill` | MITIGATION | Kill matched process |
 | `S1/quarantine` | MITIGATION | Quarantine |

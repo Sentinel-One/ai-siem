@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - s1-secops-mcp 1.6.4 and s1-secops-skills plugin 1.4.5: Case Management
+
+- s1-secops-mcp 1.6.4 (image `sentinelone/secops-mcps:1.6.4`): 15 Case Management tools. The reads are `case_list`, `case_get`, `case_for_alert`, `case_metadata` and `case_rules`. The writes are `case_create`, `case_update`, `case_triage`, `case_add_note`, `case_task`, `case_iocs`, `case_post_message`, `case_alerts`, `case_rule_apply` and `case_rules_scope`, and each one is verified by re-reading what it changed. Case and alert state stay separate unless `case_triage` is asked to update the alerts too.
+- soc-investigator: triage starts from the alert's case, investigates every alert in it as one incident, and writes the findings back to the case when the analyst agrees.
+- mgmt-console-api: a Case Management reference (`references/CASE_MANAGEMENT.md`) and the payloads for opening a case from an alert.
+- hyperautomation: case write-backs from workflows (note, message, IOCs, status, opening a case) with typed GraphQL variables. Also: condition rules for string inputs and non-empty tests, scalar variables, and the agent move endpoints.
+- sdl-solutions: Case Management onboarding, with six starter creation rules mapped to MITRE ATT&CK tactics and an end-to-end test.
+- Docs: release notes 1.6.4, an upgrade section from 1.6.3 to 1.6.4, a Case Management onboarding guide, and tool references for 62 tools.
+
 ### Changed - hyperautomation skill
 
 - Condition rules: non-empty tests use a sentinel, numeric/boolean-looking literals are coerced, `exists` and empty values are rejected by the UI, `simple` is no longer listed as valid; `not_contains` verified.

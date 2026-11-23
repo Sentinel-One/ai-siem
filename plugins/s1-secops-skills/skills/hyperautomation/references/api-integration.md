@@ -652,9 +652,9 @@ connection (`id`, `scope_level`, `site_name`) for this body:
 
 ### Moving agents between groups and sites
 
-- Group: `PUT /web/api/v2.1/groups/{groupId}/move-agents`, body `{"filter":{"ids":["<agentId>"]}}`. Success is HTTP **200** with `{"data":{"agentsMoved":1}}` (not 204). Check `status_code equals 200` AND `body.data.agentsMoved equals 1`.
+- Group: `PUT /web/api/v2.1/groups/{groupId}/move-agents`, body `{"filter":{"ids":["<agentId>"]}}`. Needs the `Groups.moveToGroup` permission and moves only agents already in the group's site. Success is HTTP **200** with `{"data":{"agentsMoved":1}}` (the API spec says 204). Check `status_code equals 200` AND `body.data.agentsMoved equals 1`; both inputs are numbers, so the literals compare normally.
 - `POST /agents/actions/move-to-group` does not exist (404, HTML error page).
-- Site: `POST /web/api/v2.1/agents/actions/move-to-site`, body `{"filter":{"ids":["<agentId>"]},"data":{"targetSiteId":"<siteId>"}}`. Needs Account or Global scope and the `Endpoints.moveToAnotherSite` permission. Wait briefly before a following group move, and make sure the target group belongs to the target site. (Response shape not yet observed.)
+- Site: `POST /web/api/v2.1/agents/actions/move-to-site`, body `{"filter":{"ids":["<agentId>"]},"data":{"targetSiteId":"<siteId>"}}`. Needs Account or Global scope and the `Endpoints.moveToAnotherSite` permission. Wait briefly before a following group move, and make sure the target group belongs to the target site. The API spec documents HTTP 200; the response body has not been observed yet, so check the status code only.
 - A `401 Authentication Failed` on a move is a connection credential problem (token or auth type), not a flow problem.
 
 ---
@@ -781,6 +781,45 @@ the rest of the write-back actions, pass a different `id` in `actions[]`:
   So before building a flow that writes back to third-party alerts, confirm the workflow's identity
   has the UAM permission for that alert type, and check `integration-catalog.md` for the native
   write-back actions.
+
+---
+
+## Case write-backs: the Case Management GraphQL API
+
+When the triggering alert belongs to a case (or the workflow should open one), write the playbook's
+results to the case: a note, a collaboration-space message, linked IOCs, a status. Full reference:
+`mgmt-console-api/references/CASE_MANAGEMENT.md`.
+
+**Endpoint**: `POST {console}/web/api/v2.1/cases/graphql`, through the same SentinelOne GraphQL
+connection as the alert write-backs (`Bearer` and `ApiToken` both work). Payload:
+`{"query": "<operation>", "variables": { ... }}`.
+
+**Variable types** (verified live): every id is `ID!` (case, alert, scope, IOC, task, message ids),
+text is `String!`. A `String!` variable in an `ID!` position fails with `VariableTypeMismatch`.
+Variables work inside object literals, so pass workflow values as variables rather than splicing
+them into the query text:
+
+| Step | Query | Variables |
+|---|---|---|
+| Find the alert's case | `query q($a: ID!) { caseForAlert(alertId: $a) { id publicId status } }` | `{"a": "{{singularity-response-trigger.data.id}}"}`; `caseForAlert` is `null` when the alert is in no case |
+| Open a case from the alert | `mutation c($site: ID!, $name: String!, $alert: String!) { createCase(scope: { scopeIds: [$site], scopeType: SITE }, name: $name, severity: HIGH, alertFilterSelection: { alertFilters: { or: [{ and: [{ fieldId: "id", stringEqual: { value: $alert } }] }] } }) { id publicId } }` | `site` is the alert's site id; `alert` is a `String!` because it sits in a filter value |
+| Add a note | `mutation n($c: ID!, $t: String!, $h: String!) { createNote(caseId: $c, contentPlainText: $t, contentHtml: $h) }` | `contentHtml` is required; wrap plain text as `<p>…</p>` and keep `<`, `>`, `&` out of it or escape them |
+| Post a status message | `mutation m($c: ID!, $t: String!) { createSimpleCollaborationSpaceMessage(caseId: $c, content: $t) { message { id } errors { message } } }` | |
+| Link an IOC | `mutation k($c: ID!, $i: ID!, $v: String!, $t: String!) { linkIoCsToCase(caseId: $c, ioCs: [{ ioCId: $i, value: $v, type: $t }]) { linkedIoCIds } }` | `ioCId` is the Threat Intelligence IOC `uuid` (create it first with `POST /web/api/v2.1/threat-intelligence/iocs`) |
+| Close the case | `mutation s($c: String!, $acct: ID!, $r: String!) { updateCaseStatus(filter: { or: [{ and: [{ fieldId: "id", stringEqual: { value: $c } }] }] }, scope: { scopeIds: [$acct], scopeType: ACCOUNT }, status: CLOSED, closingInfo: { reason: $r }) { updatedCaseIds } }` | `closingInfo` is required for CLOSED; enums (`CLOSED`, `HIGH`, `SITE`) are unquoted literals |
+
+**Gotchas:**
+
+- **Case state and alert state are independent.** Closing the case does not resolve its alerts;
+  add the alert write-backs (above) when both should change.
+- **An alert is in at most one case.** Check `caseForAlert` before `createCase`: an alert already
+  in a case stays there and the new case is created without it.
+- **Mutation payload errors are data, not HTTP errors.** `createSimpleCollaborationSpaceMessage`,
+  `addAlertsToCase` and the rule mutations return HTTP 200 with an `errors` list; branch on it.
+- Cases are opened asynchronously (`processingState` `CREATING_FROM_ALERTS` then `READY`, a few
+  seconds); a note posted immediately after `createCase` can race it, so wait a few seconds first.
+- Creation rules open cases automatically from incoming alerts. Prefer a rule to a workflow when
+  the only goal is "one case per matching alert"; use the workflow to enrich and write back.
 
 ---
 

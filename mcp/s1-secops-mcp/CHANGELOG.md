@@ -1,5 +1,59 @@
 # Changelog
 
+## 1.6.4 (image 1.6.4, plugin 1.4.5), 2026-11-23
+
+### s1-secops-mcp
+
+- Case Management tools (15), over `POST /web/api/v2.1/cases/graphql`:
+  - reads: `case_list`, `case_get`, `case_for_alert`, `case_metadata`, `case_rules`;
+  - writes: `case_create`, `case_update`, `case_triage`, `case_add_note`, `case_task`, `case_iocs`, `case_post_message`, `case_alerts`, `case_rule_apply`, `case_rules_scope`.
+- Arguments are written as GraphQL literals by a strict builder: strings JSON-escaped, enum values and field names checked against a pattern, ids checked.
+- Every write re-reads what it changed and returns `verified`, or fails with the last read.
+- `case_update` and `case_task` update read the current values and send every field, because the API replaces the whole case or task.
+- `case_create` and `case_alerts` report alerts that stayed in another case (`notAdded`, with that case).
+- `case_triage` closes with a required `closingReason`; `alsoAlerts: true` applies status, verdict and assignee to the member alerts. No other case tool changes an alert.
+- `case_rule_apply` generates six-character expression node ids, validates the expression before sending, reads before update so grouping and tasks are kept, and is refused while the scope inherits its rules.
+- `case_rules_scope` requires `confirm: true`.
+- `case_list` takes `includeClosed`: without a status filter the API leaves CLOSED cases out.
+- Read-only mode: the five reads run, the ten writes are refused. `case_rule_apply` and `case_rules_scope` carry `destructiveHint`. The audit line records `caseId`, `ruleId`, `action` and the number of `caseIds`.
+- Tests: `tests/cases-1.6.4.test.mjs` (literal builder, expression ids, read-then-write, refusals).
+- Read-only classification of GraphQL documents ignores string literals: a `#` or the word `mutation` inside a string no longer changes how a document is classified, and an unterminated string is treated as a write.
+- `scopeIds` must be a non-empty array, and `scopeType` without `scopeIds` is refused, so a scoped write cannot fall back to the default account.
+- `case_task` update also checks the assignee and due date. Linking a newly created IOC matches the returned value case-insensitively. Alert lookups after a create or add are bounded. Creation rules are read eight levels deep, matching what `case_rule_apply` accepts.
+
+### Image
+
+- Base image re-pinned: Node 24.22.3 and the current Debian 13 glibc. Docker Scout reports no critical or high vulnerabilities, and no fixable ones at any severity.
+
+### mgmt-console-api
+
+- `references/CASE_MANAGEMENT.md`: the case tools, behaviour to know before acting, request shapes, filters, variable types and creation rules (inheritance, expression ids).
+- `UNIFIED_ALERTS.md`: `S1/incident/create` (`{createIncident:{name, severity, description}}`) and `S1/incident/addToExisting` (`{addToIncident:{id}}`) payloads; the alert's `case { id }`.
+- `CAPABILITY_MAP.md` and `SKILL.md` route case work to the case tools.
+- `CAPABILITY_MAP.md`: moving an agent to a group uses `PUT /groups/{group_id}/move-agents`, and moving it to another site uses `POST /agents/actions/move-to-site`.
+
+### soc-investigator
+
+- Triage calls `case_for_alert` and investigates the case as one incident; the case's notes and verdict are read before the verdict.
+- Findings are written back to the case (note, IOCs, tasks, message, verdict and status) only on the user's yes; `alsoAlerts` only when the user wants the alerts to follow.
+- `case.json` in the investigation output.
+
+### sdl-solutions
+
+- Case Management onboarding (`references/case-management-onboarding.md`, `assets/case_creation_rules.json`): inheritance check, six starter creation rules with grouping and default tasks, and an end-to-end test with a test alert.
+
+### CLAUDE.md
+
+- Triage reads the alert's case before the verdict; case writes need the user's agreement and leave alert state unchanged.
+
+### hyperautomation
+
+- Case write-backs from a workflow through `/cases/graphql` with typed variables (`ID!` for ids, `String!` for text): find the alert's case, open one, add a note, post a message, link an IOC, close it.
+- Condition rules: when the input is a string, a compared value that looks like a number or boolean is coerced and never matches, so emit `yes`/`no` from `Function.JQ` and wrap ID lists in commas for `contains`. Numeric inputs such as `status_code` still compare against `"200"`.
+- Non-empty tests use a sentinel (`not_equals "NONE"`): the console UI rejects an empty compared value and `exists`, though both import. `not_contains` is verified; `simple` conditions are documented for reading only.
+- Scalar variables never carry an empty `value` (the UI flags it as required), and a body variable is referenced as `{{local_var.x}}`, never wrapped in `<<...>>`.
+- Agent moves: `PUT /groups/{id}/move-agents` returns 200 with `data.agentsMoved`; `POST /agents/actions/move-to-site` takes `data.targetSiteId`; there is no `agents/actions/move-to-group`.
+
 ## Plugin 1.4.4 (skills only; image and s1-secops-mcp unchanged at 1.6.3), 2026-11-10
 
 ### Unprotected endpoints dashboard template (1.0.1)

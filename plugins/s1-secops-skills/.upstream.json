@@ -1,6 +1,6 @@
 {
   "source": "s1-secops-skills",
-  "commit": "6d06465187654b1007ca3cee70fafa224752363e",
-  "mcp_version": "1.6.3",
-  "plugin_version": "1.4.4"
+  "commit": "fd0044c2fe36fbbecd3a40257e445359fd3b0327",
+  "mcp_version": "1.6.4",
+  "plugin_version": "1.4.5"
 }

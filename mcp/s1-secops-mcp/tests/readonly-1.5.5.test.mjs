@@ -61,6 +61,16 @@ const WRITE_ARGS = {
   ha_import_workflow: { workflow: {} },
   ha_delete_workflow: { workflowId: '1' },
   dac_apply: { files: { 'deployments.yaml': 'x' }, vcsRepoId: 'r', vcsRepoName: 'n', vcsCommitId: 'c', expectedSummary: { totalChanges: 0 } },
+  case_create: { name: 'c', alertIds: ['a1'], severity: 'LOW' },
+  case_update: { caseId: 'c1', name: 'n' },
+  case_triage: { caseIds: ['c1'], status: 'IN_PROGRESS' },
+  case_add_note: { caseId: 'c1', note: 'n' },
+  case_task: { action: 'create', caseId: 'c1', name: 't' },
+  case_iocs: { action: 'unlink', caseId: 'c1', ioCIds: ['i1'] },
+  case_post_message: { caseId: 'c1', message: 'm' },
+  case_alerts: { action: 'add', caseId: 'c1', alertIds: ['a1'] },
+  case_rule_apply: { action: 'delete', ruleId: 'r1', scopeIds: ['1'] },
+  case_rules_scope: { linked: false, confirm: true, scopeIds: ['1'] },
 };
 
 test('every tool is classified, and the classification covers exactly the registered tools', () => {

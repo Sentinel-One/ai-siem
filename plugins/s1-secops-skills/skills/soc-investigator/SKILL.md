@@ -44,6 +44,33 @@ Inherited from the Purple SOC Analyst operating standard and the SDL threat-hunt
 
 ---
 
+## Cases: investigate the incident, write back to it
+
+A case groups related alerts into one incident (`case_*` tools; reference:
+`mgmt-console-api/references/CASE_MANAGEMENT.md`).
+
+- **Check for a case first.** After `uam_get_alert`, call `case_for_alert`. When the alert is in a
+  case, `case_get` (with `includeAlerts: true`) and treat every alert in `alertIds` as one
+  incident: extract entities, build the timeline and reach the verdict across all of them.
+- **Read the case before the verdict.** Its notes, tasks, linked IOCs and collaboration messages
+  come back from `case_get`. An analyst verdict or closing note there takes precedence like an MDR
+  verdict on the alert; treat earlier AI-written notes as claims to verify, not as evidence.
+- **No case yet.** When the investigation links several alerts (same host, user, storyline or
+  IOC), offer to open one with `case_create` instead of writing a note on each alert. An alert can
+  be in only one case: the result lists any that stayed in another case.
+- **Write back only on the user's yes.** Offer, then do what they accept: the summary as a note
+  (`case_add_note`, cite the evidence, no secrets), the enriched IOCs (`case_iocs`), follow-up
+  actions as tasks (`case_task`), a one-line status in the collaboration space
+  (`case_post_message`), and the verdict and status (`case_triage`; CLOSED needs a closing
+  reason). The case is shared with other analysts and cannot be deleted.
+- **Case and alert state are independent.** Setting the case verdict or closing the case does not
+  touch its alerts. Ask whether the alerts should follow; if yes, pass `alsoAlerts: true` to
+  `case_triage`.
+- **Verdict values.** Case and alert verdicts use the same values (`TRUE_POSITIVE_*`,
+  `FALSE_POSITIVE_*`, `UNDEFINED`): map the investigation verdict to the closest one, for example
+  benign activity that fired a real detection to `TRUE_POSITIVE_BENIGN`, and a detection that was
+  wrong to a `FALSE_POSITIVE_*` value.
+
 ## Query appendix (mandatory in every report)
 
 Every report this skill produces (summary.md, report.md, full_report.md, sweep_report.md, third_party_report.md, and any exported .docx / .pdf) MUST end with an appendix that documents all PowerQueries used, with evidence. This is non-negotiable and applies to all modes (SHORT / MEDIUM / LONG / SWEEP) and to the third-party phase.
@@ -290,7 +317,7 @@ All phases write their artifacts into a single `investigation_<timestamp>/` dire
 9. **Output**: All files saved to `investigation_<timestamp>/`
 10. **Review**: User reviews outputs for containment/hunting/reporting
 
-**Read-only mode.** From 1.5.5, s1-secops-mcp is read-only by default (`S1_READ_ONLY` unset or `true`). The investigation itself is read-only and unaffected: PowerQuery, schema discovery, `uam_list_alerts`, `uam_get_alert`, `s1_api_get` and local output files all run. Only optional write-back steps need write: `uam_add_note`, `uam_set_verdict`, `uam_set_status`, `uam_assign_alert`. Before offering a write-back, check `mode.readOnly` in the `sentinelone://credentials-status` resource or the server's initialize instructions.
+**Read-only mode.** From 1.5.5, s1-secops-mcp is read-only by default (`S1_READ_ONLY` unset or `true`). The investigation itself is read-only and unaffected: PowerQuery, schema discovery, `uam_list_alerts`, `uam_get_alert`, `s1_api_get` and local output files all run. Only optional write-back steps need write: `uam_add_note`, `uam_set_verdict`, `uam_set_status`, `uam_assign_alert` and the case writes (`case_create`, `case_add_note`, `case_iocs`, `case_task`, `case_post_message`, `case_triage`). Before offering a write-back, check `mode.readOnly` in the `sentinelone://credentials-status` resource or the server's initialize instructions.
 - If a write-back returns "s1-secops-mcp is in read-only mode (S1_READ_ONLY).", stop. Do not retry, and do not route around it with another tool (`s1_api_post` to a different endpoint, a hand-built GraphQL mutation, another MCP server).
 - Tell the user which action was refused and how to enable write: Docker launcher `s1-secops-mcp-launch.sh install --read-write` (Windows `-ReadWrite`), then restart Claude Desktop; `.mcpb` extension: turn off "Read-only mode (recommended)"; Node install: `"S1_READ_ONLY": "false"` in the server's `env` block. Detail: `docs/read-only.md` in the source repo (not shipped).
 - Save the note text, proposed verdict and status into `investigation_<timestamp>/` so the analyst can apply them in the console.

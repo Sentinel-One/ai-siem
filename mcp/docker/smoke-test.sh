@@ -6,8 +6,8 @@
 #   docker/smoke-test.sh <image-ref> [--expect-version X.Y.Z] [--platform P]
 #
 # Examples:
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.6.3 --expect-version 1.6.3
-#   docker/smoke-test.sh sentinelone/secops-mcps:1.6.3 --platform linux/amd64
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.6.4 --expect-version 1.6.4
+#   docker/smoke-test.sh sentinelone/secops-mcps:1.6.4 --platform linux/amd64
 #
 # Exit code is the number of failed tests, so `if docker/smoke-test.sh IMG` works
 # as a gate in CI or a release checklist.
@@ -24,7 +24,7 @@
 #            one server only, shell:false, npm:false, Node 24.
 #   T09      s1-secops-mcp/data/ (local exports) and removed servers never ship.
 #   T10-T11  Runs unprivileged; every shipped file is readable by that user.
-#   T12-T13  tools/list: 43 tools with no threat-intel keys, 47 with both keys.
+#   T12-T13  tools/list: 58 tools with no threat-intel keys, 62 with both keys.
 #   T14      Nothing phones home at runtime (--network none).
 #   T15-T16  CLAUDE.md ships and is served as an MCP resource.
 #   T18-T19  The stdin secrets preamble configures the server, never appears in
@@ -68,8 +68,8 @@ fi
 PLAT_ARGS=()
 [ -n "$PLATFORM" ] && PLAT_ARGS=(--platform "$PLATFORM")
 
-EXPECT_TOOLS_NOKEYS=43
-EXPECT_TOOLS_KEYS=47
+EXPECT_TOOLS_NOKEYS=58
+EXPECT_TOOLS_KEYS=62
 
 PASS=0; FAIL=0; SKIP=0
 if [ -t 1 ]; then G=$'\033[32m'; R=$'\033[31m'; Y=$'\033[33m'; Z=$'\033[0m'

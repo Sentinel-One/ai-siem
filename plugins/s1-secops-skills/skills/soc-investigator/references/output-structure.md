@@ -7,6 +7,7 @@ Reference file tree for the investigation output directory produced across the S
 ```text
 investigation_<timestamp>/
 ├── INTAKE.txt                      # User intake responses
+├── case.json                       # The case the alerts belong to, when there is one
 ├── entities.json                   # Extracted entities
 ├── timeline_draft.csv              # Alert timeline (SHORT+)
 ├── mitre_draft.json                # Draft MITRE (SHORT+)

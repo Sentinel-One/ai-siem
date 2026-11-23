@@ -23,6 +23,7 @@ import { tools as uamIngestTools }  from '../tools/uam-ingest.js';
 import { tools as tiTools }         from '../tools/threat-intel.js';
 import { tools as dacTools }        from '../tools/dac.js';
 import { tools as assetTools }      from '../tools/asset-inventory.js';
+import { tools as caseTools }       from '../tools/cases.js';
 import { getCreds, hasS1Creds, hasSdlCreds, loadCredentials } from './credentials.js';
 import { hasHecCreds } from './uam-ingest.js';
 import { redact } from './redact.js';
@@ -52,7 +53,7 @@ const SOC_CONTEXT = loadSocContext();
 
 // ─── Tool registry ────────────────────────────────────────────────────────────
 
-export const ALL_TOOLS = [...pqTools, ...mgmtTools, ...sdlTools, ...haTools, ...uamIngestTools, ...tiTools, ...dacTools, ...assetTools];
+export const ALL_TOOLS = [...pqTools, ...mgmtTools, ...sdlTools, ...haTools, ...uamIngestTools, ...tiTools, ...dacTools, ...assetTools, ...caseTools];
 
 /** A tool with an `available()` check (the threat-intel tools) is listed only when it returns true. */
 export function isListed(t) {
@@ -117,7 +118,7 @@ const PROMPTS = [
 
 export const SERVER_INFO = {
   name: 's1-secops-mcp-server',
-  version: '1.6.3',
+  version: '1.6.4',
 };
 
 export const PROTOCOL_VERSION = '2024-11-05';

@@ -497,8 +497,8 @@ Must have `"parent_action": <loop_export_id>`. `"connected_to": []`.
 ```
 
 Mail delivery is per console. Measured 2026-10-09: on one console the action sent the mail
-(run `Completed`); on a mail-sandboxed console it failed with SES `MessageRejected` ("Email address
-is not verified ... no-reply@sentinelone.net, <recipient>"), which errors the whole run. With
+(run `Completed`); on a mail-sandboxed console it failed with SES `MessageRejected`
+(`Email address is not verified ... no-reply@sentinelone.net, <recipient>`), which errors the whole run. With
 `continue_on_fail: true` the same run finished `CompletedWithErrors` and continued past the step.
 
 `mime_type`: `"text/plain"` or `"text/html"`. HTML is more common in active flows (analyst-
@@ -843,6 +843,33 @@ Action → Condition (Is Success, checks status_code) →
   "payload": "{\n  \"query\": \"mutation AddNoteToAlert($note:String!, $id:String!) { alertTriggerActions(actions:[{ id:\\\"S1/alert/addNote\\\", payload:{ note:{ value:$note }}}], filter:{ or:[{ and:[{ fieldId:\\\"id\\\", stringEqual:{ value:$id } }]}]}) { ... on ActionsTriggered { actions { actionId } } } }\",\n  \"variables\": {\n    \"id\": \"{{singularity-response-trigger.data.id}}\",\n    \"note\": \"{{local_var.note_markdown}}\"\n  }\n}"
 }
 ```
+
+### Add Note to the alert's Case (Case Management GraphQL)
+
+Two `http_request` actions: find the case, then write to it (skip the second when `caseForAlert` is null).
+
+```json
+{
+  "name": "Find Alert Case",
+  "action_type": "http_request",
+  "method": "post",
+  "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/cases/graphql",
+  "payload": "{\n  \"query\": \"query q($a: ID!) { caseForAlert(alertId: $a) { id publicId } }\",\n  \"variables\": { \"a\": \"{{singularity-response-trigger.data.id}}\" }\n}"
+}
+```
+
+```json
+{
+  "name": "Add Note to Case",
+  "action_type": "http_request",
+  "method": "post",
+  "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/cases/graphql",
+  "payload": "{\n  \"query\": \"mutation n($c: ID!, $t: String!, $h: String!) { createNote(caseId: $c, contentPlainText: $t, contentHtml: $h) }\",\n  \"variables\": {\n    \"c\": \"{{find-alert-case.body.data.caseForAlert.id}}\",\n    \"t\": \"{{local_var.note_text}}\",\n    \"h\": \"<p>{{local_var.note_text}}</p>\"\n  }\n}"
+}
+```
+
+Variable types: ids are `ID!`, text is `String!`. More case write-backs (message, IOC link, close) are
+in `api-integration.md`, "Case write-backs".
 
 ### SDL Query (AI SIEM Singularity Data Lake)
 

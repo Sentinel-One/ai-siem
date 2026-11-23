@@ -151,7 +151,8 @@ Symbols: L=list (GET collection), G=get-one (GET /{id}), C=count (GET /count or 
 | isolate an endpoint | Agent Actions: `POST /web/api/v2.1/agents/actions/disconnect` |
 | reconnect an endpoint | Agent Actions: `POST /web/api/v2.1/agents/actions/connect` |
 | uninstall an agent | Agent Actions: `POST /web/api/v2.1/agents/actions/uninstall` |
-| move agent to group | Agent Actions: `POST /web/api/v2.1/agents/actions/move-to-group` |
+| move agent to group | Groups: `PUT /web/api/v2.1/groups/{group_id}/move-agents` with `{"filter":{"ids":[...]}}`. There is no `agents/actions/move-to-group` (404) |
+| move agent to another site | Agent Actions: `POST /web/api/v2.1/agents/actions/move-to-site` with `{"filter":{...},"data":{"targetSiteId":"..."}}` (Account or Global scope) |
 | run a RemoteOps script | RemoteOps Scripts: `POST /web/api/v2.1/remote-scripts/execute` |
 | hunt across Deep Visibility | Long Running Query: `POST /sdl/v2/api/queries` (queryType="LOG" for S1QL or "PQ" for PowerQuery), then `GET /sdl/v2/api/queries/{id}` to poll. The legacy /dv/init-query + /dv/query-status + /dv/events flow is deprecated (sunset 2027-02-15). |
 | run a PowerQuery | Long Running Query: `POST /sdl/v2/api/queries` (queryType="PQ"), then `GET /sdl/v2/api/queries/{id}` to poll. The legacy /dv/events/pq + /dv/events/pq-ping flow is deprecated (sunset 2027-02-15). |
@@ -163,6 +164,10 @@ Symbols: L=list (GET collection), G=get-one (GET /{id}), C=count (GET /count or 
 | list custom detection rules | Custom Detection Rule / Platform Detection Rules |
 | see Hyperautomation workflows | Hyperautomation: `GET /web/api/v2.1/hyperautomation/workflows` |
 | list installed agent packages | Updates: `GET /web/api/v2.1/update/agent/packages` |
+| list, read or triage cases; which case holds an alert | Case Management GraphQL: `POST /web/api/v2.1/cases/graphql` (`case_list`, `case_get`, `case_for_alert`, `case_update`, `case_triage` tools). See `references/CASE_MANAGEMENT.md` |
+| open a case from alerts, add or remove alerts | `case_create`, `case_alerts` (an alert is in at most one case) |
+| add a note, task, IOC or message to a case | `case_add_note`, `case_task`, `case_iocs`, `case_post_message` |
+| automate case creation (creation rules) | `case_rules`, `case_rule_apply`; rules of an inheriting scope are changed only after `case_rules_scope` unlinks it |
 | count assets, coverage gaps, unprotected endpoints, one asset's criticality and alert counts | Asset Inventory GraphQL: `POST /web/api/v2.1/graphql` (a read; `asset_inventory_*` tools). See `references/ASSET_INVENTORY_GRAPHQL.md`. REST `xdr/assets/surface/<surface>` (Inventory tags) for actions and export |
 
 ## Paths that do not exist

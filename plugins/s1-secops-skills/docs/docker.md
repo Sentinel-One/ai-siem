@@ -278,7 +278,7 @@ The image is built and published by the maintainers; end users never need to bui
 To confirm what a published image contains, ask the image itself. It reports the repository and commit the server was built from, the Node version and the base packages removed at build time:
 
 ```bash
-docker run --rm sentinelone/secops-mcps:1.6.3 versions
+docker run --rm sentinelone/secops-mcps:1.6.4 versions
 ```
 
 The image version and the base image digest are pinned in [`mcp/docker/build.sh`](../../../mcp/docker/build.sh). The release pipeline that publishes the image is maintained outside this repository and keeps its own copy of both pins. The server itself is copied from the working tree, so there is no source pin for it.

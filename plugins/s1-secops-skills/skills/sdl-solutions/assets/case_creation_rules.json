@@ -1,0 +1,65 @@
+{
+  "description": "Case creation rule library for the Case Management onboarding solution. Each entry is the input of case_rule_apply (action create); {{PREFIX}} is replaced with the deployment prefix. Expressions use the short form; ids are generated. Every expression was validated with validateRuleExpression on a live console.",
+  "rules": [
+    {
+      "key": "critical",
+      "name": "{{PREFIX}} Critical alerts",
+      "description": "One case per affected asset for every critical alert.",
+      "severity": "CRITICAL",
+      "expression": { "match": "all", "conditions": [ { "property": "ALERT_SEVERITY", "operation": "EQUALS", "value": "CRITICAL" } ] },
+      "grouping": { "properties": ["ASSET"], "windowMinutes": 1440 },
+      "defaultTasks": ["Confirm the detection with threat intelligence", "Contain the affected asset if confirmed", "Identify the initial access vector"]
+    },
+    {
+      "key": "ransomware",
+      "name": "{{PREFIX}} Ransomware",
+      "description": "Alerts classified as ransomware, grouped per asset.",
+      "severity": "CRITICAL",
+      "expression": { "match": "all", "conditions": [ { "property": "CLASSIFICATION", "operation": "EQUALS", "value": "SECURITY_ALERT_S1_CLASSIFICATION_ID_RANSOMWARE" } ] },
+      "grouping": { "properties": ["ASSET"], "windowMinutes": 1440 },
+      "defaultTasks": ["Isolate the affected asset", "Check mapped and network drives for encryption", "Hunt for the same hash and storyline on other assets"]
+    },
+    {
+      "key": "credential-access",
+      "name": "{{PREFIX}} Credential access",
+      "description": "Credential access (TA0006) at medium severity or above, grouped per user and asset.",
+      "severity": "HIGH",
+      "expression": { "match": "all", "conditions": [
+        { "property": "MITRE_TACTICS", "operation": "HAS", "value": "CREDENTIAL_ACCESS" },
+        { "property": "ALERT_SEVERITY", "operation": "GREATER_THAN_OR_EQUAL", "value": "MEDIUM" }
+      ] },
+      "grouping": { "properties": ["ACTOR_USER", "ASSET"], "windowMinutes": 1440 },
+      "defaultTasks": ["Reset the affected account credentials if confirmed", "Review the account's recent authentications"]
+    },
+    {
+      "key": "lateral-movement",
+      "name": "{{PREFIX}} Lateral movement",
+      "description": "Lateral movement (TA0008), grouped per user.",
+      "severity": "HIGH",
+      "expression": { "match": "all", "conditions": [ { "property": "MITRE_TACTICS", "operation": "HAS", "value": "LATERAL_MOVEMENT" } ] },
+      "grouping": { "properties": ["ACTOR_USER"], "windowMinutes": 1440 },
+      "defaultTasks": ["Map every host the account reached", "Check for credential theft on the source host"]
+    },
+    {
+      "key": "command-and-control",
+      "name": "{{PREFIX}} Command and control",
+      "description": "Command and control (TA0011), grouped per asset and remote IP.",
+      "severity": "HIGH",
+      "expression": { "match": "all", "conditions": [ { "property": "MITRE_TACTICS", "operation": "HAS", "value": "COMMAND_AND_CONTROL" } ] },
+      "grouping": { "properties": ["ASSET", "IP_ADDRESS"], "windowMinutes": 1440 },
+      "defaultTasks": ["Enrich the remote IPs and domains", "Block confirmed infrastructure at the perimeter"]
+    },
+    {
+      "key": "exfiltration-impact",
+      "name": "{{PREFIX}} Exfiltration or impact",
+      "description": "Exfiltration (TA0010) or impact (TA0040), grouped per asset.",
+      "severity": "CRITICAL",
+      "expression": { "match": "any", "conditions": [
+        { "property": "MITRE_TACTICS", "operation": "HAS", "value": "EXFILTRATION" },
+        { "property": "MITRE_TACTICS", "operation": "HAS", "value": "IMPACT" }
+      ] },
+      "grouping": { "properties": ["ASSET"], "windowMinutes": 1440 },
+      "defaultTasks": ["Scope the data or systems affected", "Engage incident response"]
+    }
+  ]
+}

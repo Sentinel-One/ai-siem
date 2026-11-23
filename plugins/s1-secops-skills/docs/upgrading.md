@@ -5,10 +5,10 @@ your **MCP client config**. Do them in that order.
 
 `install` copies the launcher file you run and writes that launcher's default image, so an upgrade
 starts from the new launcher (downloaded) or passes the image explicitly (`--image`, Windows
-`-Image`). The current release is image `1.6.3`. If you are several releases behind, read the
-sections in between for what changed, then follow [1.6.2 to 1.6.3](#162-to-163-plugin-143).
+`-Image`). The current release is image `1.6.4`. If you are several releases behind, read the
+sections in between for what changed, then follow [1.6.3 to 1.6.4](#163-to-164-plugin-145).
 
-- [Plugin 1.4.4 to 1.4.5](#plugin-144-to-145) (current release: image `1.6.3`, s1-secops-mcp `1.6.3`, plugin `1.4.5`)
+- [1.6.3 to 1.6.4 (plugin 1.4.5)](#163-to-164-plugin-145) (current release: image `1.6.4`, s1-secops-mcp `1.6.4`, plugin `1.4.5`)
 - [Plugin 1.4.3 to 1.4.4](#plugin-143-to-144)
 - [1.6.2 to 1.6.3 (plugin 1.4.3)](#162-to-163-plugin-143)
 - [1.6.1 to 1.6.2 (plugin 1.4.2)](#161-to-162-plugin-142)
@@ -28,24 +28,67 @@ sections in between for what changed, then follow [1.6.2 to 1.6.3](#162-to-163-p
 
 ---
 
-## Plugin 1.4.4 to 1.4.5
+## 1.6.3 to 1.6.4 (plugin 1.4.5)
 
-Skills only: the image and `s1-secops-mcp` stay at `1.6.3`, so there is nothing to reinstall.
-Download the new `.plugin` and replace the old one (Cowork → Customize → Browse plugins → upload →
-**Replace**). What changed:
+**Case Management tools, and skills that work with cases.** Credentials, profiles, output folders,
+read-only mode and the CLAUDE.md override carry over.
 
-- **Hyperautomation conditions:** a compared value that looks like a number or boolean never matches
-  a string input, so Claude emits `yes`/`no` from `Function.JQ` instead; numeric inputs such as
-  `status_code` still compare against `"200"`. Non-empty tests use a sentinel, because the console
-  UI rejects an empty compared value and `exists`.
-- **Hyperautomation variables:** no scalar variable with an empty value, and no `<<...>>` around a
-  body variable.
-- **Agent moves:** workflows move agents with `PUT /groups/{id}/move-agents` (HTTP 200 with
-  `data.agentsMoved`) and `POST /agents/actions/move-to-site`; the Mgmt Console API skill no longer
-  points at a `move-to-group` action that does not exist.
+**New tools (15):**
 
-Workflows you already built keep working. Re-check any condition that compares a local variable or
-`Function.JQ` output with a number-like or boolean literal.
+- Reads: `case_list`, `case_get`, `case_for_alert`, `case_metadata`, `case_rules`. Allowed in
+  read-only mode.
+- Writes: `case_create`, `case_update`, `case_triage`, `case_add_note`, `case_task`, `case_iocs`,
+  `case_post_message`, `case_alerts`, `case_rule_apply`, `case_rules_scope`. Refused in read-only
+  mode. Each write re-reads what it changed and reports `verified`.
+- `case_update` reads the case first and sends every field, so a field you leave out keeps its
+  value. `case_rules_scope` needs `confirm: true`.
+- Case and alert state are independent: no case tool changes an alert unless `case_triage` gets
+  `alsoAlerts: true`.
+
+**Skills (plugin 1.4.5):**
+
+- **Mgmt Console API:** a Case Management reference (`references/CASE_MANAGEMENT.md`): the tools,
+  the behaviour to know before acting, request shapes, filters, variable types, and creation rules.
+  `UNIFIED_ALERTS.md` adds the `S1/incident/create` and `S1/incident/addToExisting` payloads.
+- **SOC Investigator:** triage checks `case_for_alert`, investigates the case as one incident, and
+  offers to write the findings back to the case (note, IOCs, tasks, message, verdict) on your yes.
+- **Hyperautomation:** case write-backs from a workflow (find the alert's case, open one, add a
+  note, post a message, link an IOC, close it), passing values as typed variables. Also:
+  - a compared value that looks like a number or boolean never matches a string input, so Claude
+    emits `yes`/`no` from `Function.JQ` instead; numeric inputs such as `status_code` still compare
+    against `"200"`. Non-empty tests use a sentinel, because the console UI rejects an empty
+    compared value and `exists`;
+  - no scalar variable with an empty value, and no `<<...>>` around a body variable;
+  - workflows move agents with `PUT /groups/{id}/move-agents` (HTTP 200 with `data.agentsMoved`)
+    and `POST /agents/actions/move-to-site`.
+- **SDL Solutions:** Case Management onboarding: inheritance check, six starter creation rules
+  (critical, ransomware, credential access, lateral movement, command and control, exfiltration or
+  impact) with grouping and default tasks, and an end-to-end test with a test alert.
+- **CLAUDE.md:** triage reads the alert's case before the verdict.
+
+**Upgrade:**
+
+1. **Install the 1.6.4 launcher**, with your usual options (`--read-write`, `--output-dir`; Claude
+   Code users add `--claude-code`). macOS or Linux:
+
+   ```bash
+   mkdir -p ~/.local/bin && curl -fsSL https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.sh -o ~/.local/bin/s1-secops-mcp-launch.sh && sh ~/.local/bin/s1-secops-mcp-launch.sh install
+   ```
+
+   Windows (PowerShell, options as `-ReadWrite`, `-OutputDir`):
+
+   ```powershell
+   $f = "$env:TEMP\s1-secops-mcp-launch.ps1"; Invoke-WebRequest https://raw.githubusercontent.com/Sentinel-One/ai-siem/main/mcp/docker/s1-secops-mcp-launch.ps1 -OutFile $f -UseBasicParsing; powershell -NoProfile -ExecutionPolicy Bypass -File $f install
+   ```
+
+   To keep the launcher you have, pass the image instead:
+   `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.6.4` (Windows:
+   `... s1-secops-mcp-launch.ps1 install -Image sentinelone/secops-mcps:1.6.4`).
+2. **Install plugin `1.4.5`** (Cowork → Customize → Browse plugins → upload → **Replace**).
+3. **Restart the client** (quit Claude Desktop completely and open it again, or restart Claude Code).
+
+**Check:** `docker run --rm sentinelone/secops-mcps:1.6.4 versions` shows `image_version` `1.6.4`,
+and the MCP entry in your client config names `sentinelone/secops-mcps:1.6.4`.
 
 ---
 
@@ -599,7 +642,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
   | ~/.local/bin/s1-secops-mcp-launch.sh s1-secops-mcp
 ```
 
-Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.6.1"`, a `Tools:` line on stderr (47 registered; 43 to 47 listed depending on the threat-intel keys you stored), and `configured` for each surface whose values you stored. Confirm no token remains in your client config:
+Expect `serverInfo.name = "s1-secops-mcp-server"`, `version = "1.6.4"`, a `Tools:` line on stderr (62 registered; 58 to 62 listed depending on the threat-intel keys you stored), and `configured` for each surface whose values you stored. Confirm no token remains in your client config:
 
 ```bash
 grep -E 'eyJ|S1_CONSOLE_API_TOKEN|S1_HEC_TOKEN|VIRUSTOTAL_API_KEY' ~/Library/Application\ Support/Claude/claude_desktop_config.json || echo "clean"
@@ -658,7 +701,7 @@ done
 |---|---|---|
 | Server key | `"sentinelone-mcp"` | `"s1-secops-mcp"` |
 | Dispatcher argument | `sentinelone-mcp` | `s1-secops-mcp` |
-| Image | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.6.3` via the launcher |
+| Image | `s1-mcps:1.2.x` | `sentinelone/secops-mcps:1.6.4` via the launcher |
 | purple-mcp variables | `PURPLEMCP_CONSOLE_BASE_URL`, `PURPLEMCP_CONSOLE_TOKEN` | `S1_CONSOLE_URL`, `S1_CONSOLE_API_TOKEN` in the keychain. purple-mcp is no longer in the image; Purple AI questions are the built-in `purple_ai_query` tool |
 
 Delete outright: `SDL_XDR_URL`, `SDL_CONFIG_READ_KEY`, `SDL_CONFIG_WRITE_KEY`, `SDL_LOG_READ_KEY`, `SDL_LOG_WRITE_KEY`. Nothing replaces them. The console API token authorises every SDL operation, and the SDL base is derived from `S1_CONSOLE_URL` as `<console>/sdl`.
@@ -704,4 +747,4 @@ cp claude_desktop_config.json.bak claude_desktop_config.json
 
 **Back to 1.5.7.** Restore the `.bak-` config copy that `install` saved before the 1.6.0 upgrade (it still has the `purple-mcp`, `virustotal` and `shodan` entries), or run `~/.local/bin/s1-secops-mcp-launch.sh install --image sentinelone/secops-mcps:1.5.7` for the `s1-secops-mcp` entry alone. Then restart the client. The 1.6.0 launcher refuses the removed server names, so restoring those three entries also needs the 1.5.7 launcher.
 
-**Rollback target: `1.4.10`.** `sentinelone/secops-mcps` carries `1.6.3`, `1.6.2`, `1.6.1`, `1.6.0`, `1.5.7`, `1.5.6`, `1.5.5`, `1.5.4`, `1.5.3`, `1.5.2`, `1.5.1`, `1.5.0` and `1.4.10`; tags are immutable, so `:1.4.10` is the exact earlier build. Any image before `1.5.5` has no read-only mode: every tool can write, whatever `S1_READ_ONLY` says. Note that 1.4.10 reads tokens from the config `env` block or a `credentials.json`, so rolling back puts plaintext tokens back on disk. Once you return to 1.5.x, delete the backup and run `s1-secops-mcp forget` only if you also want the keychain entries gone.
+**Rollback target: `1.4.10`.** `sentinelone/secops-mcps` carries `1.6.4`, `1.6.3`, `1.6.2`, `1.6.1`, `1.6.0`, `1.5.7`, `1.5.6`, `1.5.5`, `1.5.4`, `1.5.3`, `1.5.2`, `1.5.1`, `1.5.0` and `1.4.10`; tags are immutable, so `:1.4.10` is the exact earlier build. Any image before `1.5.5` has no read-only mode: every tool can write, whatever `S1_READ_ONLY` says. Note that 1.4.10 reads tokens from the config `env` block or a `credentials.json`, so rolling back puts plaintext tokens back on disk. Once you return to 1.5.x, delete the backup and run `s1-secops-mcp forget` only if you also want the keychain entries gone.

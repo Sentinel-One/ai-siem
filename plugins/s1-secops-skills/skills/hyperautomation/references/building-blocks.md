@@ -844,6 +844,33 @@ Action → Condition (Is Success, checks status_code) →
 }
 ```
 
+### Add Note to the alert's Case (Case Management GraphQL)
+
+Two `http_request` actions: find the case, then write to it (skip the second when `caseForAlert` is null).
+
+```json
+{
+  "name": "Find Alert Case",
+  "action_type": "http_request",
+  "method": "post",
+  "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/cases/graphql",
+  "payload": "{\n  \"query\": \"query q($a: ID!) { caseForAlert(alertId: $a) { id publicId } }\",\n  \"variables\": { \"a\": \"{{singularity-response-trigger.data.id}}\" }\n}"
+}
+```
+
+```json
+{
+  "name": "Add Note to Case",
+  "action_type": "http_request",
+  "method": "post",
+  "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/cases/graphql",
+  "payload": "{\n  \"query\": \"mutation n($c: ID!, $t: String!, $h: String!) { createNote(caseId: $c, contentPlainText: $t, contentHtml: $h) }\",\n  \"variables\": {\n    \"c\": \"{{find-alert-case.body.data.caseForAlert.id}}\",\n    \"t\": \"{{local_var.note_text}}\",\n    \"h\": \"<p>{{local_var.note_text}}</p>\"\n  }\n}"
+}
+```
+
+Variable types: ids are `ID!`, text is `String!`. More case write-backs (message, IOC link, close) are
+in `api-integration.md`, "Case write-backs".
+
 ### SDL Query (AI SIEM Singularity Data Lake)
 
 ```json

@@ -164,6 +164,10 @@ Symbols: L=list (GET collection), G=get-one (GET /{id}), C=count (GET /count or 
 | list custom detection rules | Custom Detection Rule / Platform Detection Rules |
 | see Hyperautomation workflows | Hyperautomation: `GET /web/api/v2.1/hyperautomation/workflows` |
 | list installed agent packages | Updates: `GET /web/api/v2.1/update/agent/packages` |
+| list, read or triage cases; which case holds an alert | Case Management GraphQL: `POST /web/api/v2.1/cases/graphql` (`case_list`, `case_get`, `case_for_alert`, `case_update`, `case_triage` tools). See `references/CASE_MANAGEMENT.md` |
+| open a case from alerts, add or remove alerts | `case_create`, `case_alerts` (an alert is in at most one case) |
+| add a note, task, IOC or message to a case | `case_add_note`, `case_task`, `case_iocs`, `case_post_message` |
+| automate case creation (creation rules) | `case_rules`, `case_rule_apply`; rules of an inheriting scope are changed only after `case_rules_scope` unlinks it |
 | count assets, coverage gaps, unprotected endpoints, one asset's criticality and alert counts | Asset Inventory GraphQL: `POST /web/api/v2.1/graphql` (a read; `asset_inventory_*` tools). See `references/ASSET_INVENTORY_GRAPHQL.md`. REST `xdr/assets/surface/<surface>` (Inventory tags) for actions and export |
 
 ## Paths that do not exist

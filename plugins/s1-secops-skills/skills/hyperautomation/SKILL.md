@@ -412,6 +412,7 @@ Use this when the workflow contains integration-backed actions:
   ✅ `parent_action: null` on every node that is not inside a loop; wire flow order strictly via `connected_to.target` (see `references/validation-rules.md` → Import / `parent_action` rules).
 - ❌ Writing back to an alert (note / analyst verdict / status) via the old `/web/api/v2.0/threats` REST endpoints: they are decommissioned and return HTTP 405.
   ✅ Use the Unified Alerts GraphQL API (`POST /web/api/v2.1/unifiedalerts/graphql`) for every write-back, not just notes (see `references/api-integration.md` → SentinelOne alert write-backs).
+- ❌ Writing playbook results only to the alert when it belongs to a case, or splicing workflow values into a Case Management query. ✅ Look up the case with `caseForAlert` and write the note, message, IOCs or status to it through `POST /web/api/v2.1/cases/graphql`, passing values as variables (`ID!` for ids, `String!` for text). Case and alert state are independent (see `references/api-integration.md` → Case write-backs).
 
 ## Running an SDL LRQ from an HA flow (async launch + poll): tenant-validated 2026-06-22
 

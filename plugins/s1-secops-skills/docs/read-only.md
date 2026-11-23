@@ -1,6 +1,6 @@
 # Read-Only Mode and Write Access
 
-**Applies to:** s1-secops-mcp 1.5.5 and later, image `sentinelone/secops-mcps:1.5.5` and later (current: `1.6.3`), plugin 1.3.16 and later
+**Applies to:** s1-secops-mcp 1.5.5 and later, image `sentinelone/secops-mcps:1.5.5` and later (current: `1.6.4`), plugin 1.3.16 and later
 
 > **WARNING: WRITE ACCESS CHANGES YOUR SENTINELONE TENANT**
 >
@@ -46,7 +46,7 @@ To check the active mode, look for the `Mode:` line in the server log at startup
 
 ## 3. What read-only mode refuses
 
-### 3.1 Tools that always change the tenant (19)
+### 3.1 Tools that always change the tenant (29)
 
 | Area | Tools |
 |---|---|
@@ -55,6 +55,7 @@ To check the active mode, look for the `Mode:` line in the server log at startup
 | Singularity Data Lake | `hec_ingest`, `sdl_put_file`, `sdl_delete_file`, `sdl_create_dashboard`, `sdl_share_dashboard`, `sdl_save_dashboard_layout`, `sdl_delete_dashboard` |
 | Hyperautomation | `ha_import_workflow`, `ha_delete_workflow` |
 | Detection as Code | `dac_apply` (creates, updates and deletes custom detection rules; marked destructive) |
+| Case Management | `case_create`, `case_update`, `case_triage`, `case_add_note`, `case_task`, `case_iocs`, `case_post_message`, `case_alerts`, `case_rule_apply` and `case_rules_scope` (both marked destructive) |
 
 ### 3.2 Tools that depend on their arguments (2)
 
@@ -63,9 +64,9 @@ To check the active mode, look for the `Mode:` line in the server log at startup
 | `s1_api_post` | GraphQL documents that contain only `query` operations; Deep Visibility query launch (`/dv/init-query`); query validation (`/cloud-funnel/validate-query`); graph explorer queries; `available-actions`; tag counts | Every other POST, including GraphQL `mutation` and any endpoint not on the allowlist. An endpoint missing from the allowlist is treated as a write. The check uses the path the request is actually sent to: a path containing a `#` fragment, `;` parameters, a backslash, whitespace, percent-encoded separators or dots, or `.` / `..` segments is treated as a write. |
 | `powerquery_run` | Every query that does not write | Queries containing `\| savelookup`, which creates or overwrites a lookup table |
 
-### 3.3 Tools that never change the tenant (26)
+### 3.3 Tools that never change the tenant (31)
 
-`s1_api_get`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_available_actions`, `purple_ai_alert_summary`, `purple_ai_query`, `powerquery_enumerate_sources`, `powerquery_schema_discover`, `sdl_list_files`, `sdl_get_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `ha_list_workflows`, `ha_get_workflow`, `ha_export_workflow`, the Detection as Code tools `dac_export` and `dac_diff`, the Asset Inventory tools `asset_inventory_counts`, `asset_inventory_search`, `asset_inventory_get` and `asset_inventory_filter_values` (GraphQL `query` documents), and the built-in threat-intel tools `ti_vt_lookup`, `ti_vt_relationship`, `ti_shodan_host` and `ti_shodan_dns` (these call VirusTotal and Shodan, not your tenant).
+`s1_api_get`, `s1_api_download`, `uam_list_alerts`, `uam_get_alert`, `uam_available_actions`, `purple_ai_alert_summary`, `purple_ai_query`, `powerquery_enumerate_sources`, `powerquery_schema_discover`, `sdl_list_files`, `sdl_get_file`, `sdl_list_dashboards`, `sdl_get_dashboard`, `ha_list_workflows`, `ha_get_workflow`, `ha_export_workflow`, the Detection as Code tools `dac_export` and `dac_diff`, the Asset Inventory tools `asset_inventory_counts`, `asset_inventory_search`, `asset_inventory_get` and `asset_inventory_filter_values` (GraphQL `query` documents), the Case Management reads `case_list`, `case_get`, `case_for_alert`, `case_metadata` and `case_rules` (GraphQL `query` documents), and the built-in threat-intel tools `ti_vt_lookup`, `ti_vt_relationship`, `ti_shodan_host` and `ti_shodan_dns` (these call VirusTotal and Shodan, not your tenant).
 
 `dac_diff` sends a POST (`/cloud-detection/rules/parse-vcs?mode=diff`), but the console only validates the bundle and reports what an apply would do, so it runs in read-only mode. `dac_export` and `dac_diff` write only to the local machine (`outputFile`, `outputDir`).
 

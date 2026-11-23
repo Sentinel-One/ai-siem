@@ -31,6 +31,8 @@ export const WRITE_TOOLS = new Set([
   'sdl_create_dashboard', 'sdl_share_dashboard', 'sdl_save_dashboard_layout', 'sdl_delete_dashboard',
   'ha_import_workflow', 'ha_delete_workflow',
   'dac_apply',
+  'case_create', 'case_update', 'case_triage', 'case_add_note', 'case_task', 'case_iocs',
+  'case_post_message', 'case_alerts', 'case_rule_apply', 'case_rules_scope',
 ]);
 
 // Tools that read or write depending on arguments.
@@ -47,13 +49,14 @@ export const READ_TOOLS = new Set([
   'ha_list_workflows', 'ha_get_workflow', 'ha_export_workflow',
   'dac_export', 'dac_diff',
   'asset_inventory_counts', 'asset_inventory_search', 'asset_inventory_get', 'asset_inventory_filter_values',
+  'case_list', 'case_get', 'case_for_alert', 'case_metadata', 'case_rules',
 ]);
 
 // Edits that can overwrite or remove existing state: MCP destructiveHint.
 const DESTRUCTIVE = new Set([
   's1_api_put', 's1_api_patch', 's1_api_delete', 'sdl_put_file', 'sdl_delete_file',
   'sdl_delete_dashboard', 'sdl_save_dashboard_layout', 'ha_delete_workflow',
-  'dac_apply',
+  'dac_apply', 'case_rule_apply', 'case_rules_scope',
 ]);
 
 let warnedValue = null;
@@ -92,14 +95,55 @@ const READ_POST_PATHS = [
 ];
 
 /**
- * Operation type of a GraphQL document, ignoring comments. Fails closed: a document that
+ * The document with string literals ("..." and """...""") and comments (# to end of line) removed,
+ * scanned in one pass so that a `#` inside a string is not taken for a comment and a keyword inside
+ * a string is not taken for an operation. Returns null for an unterminated string.
+ */
+export function stripGraphqlStringsAndComments(doc) {
+  let out = '';
+  let i = 0;
+  const n = doc.length;
+  while (i < n) {
+    if (doc.startsWith('"""', i)) {
+      let j = i + 3;
+      for (;;) {
+        if (j >= n) return null;
+        if (doc.startsWith('\\"""', j)) { j += 4; continue; }
+        if (doc.startsWith('"""', j)) { j += 3; break; }
+        j++;
+      }
+      out += ' '; i = j; continue;
+    }
+    const c = doc[i];
+    if (c === '"') {
+      let j = i + 1;
+      for (;;) {
+        if (j >= n || doc[j] === '\n') return null;
+        if (doc[j] === '\\') { j += 2; continue; }
+        if (doc[j] === '"') { j++; break; }
+        j++;
+      }
+      out += ' '; i = j; continue;
+    }
+    if (c === '#') {
+      while (i < n && doc[i] !== '\n') i++;
+      out += ' '; continue;
+    }
+    out += c; i++;
+  }
+  return out.trim();
+}
+
+/**
+ * Operation type of a GraphQL document, ignoring string literals and comments. Fails closed: a document that
  * contains the word `mutation` or `subscription` anywhere is classed as such, because one
  * document can hold several operations (`query a {..} mutation b {..}` with operationName "b"
  * runs the mutation). A read that merely mentions the word is refused, which is the safe error.
  */
 export function graphqlOperation(query) {
   if (typeof query !== 'string') return null;
-  const s = query.replace(/#[^\n]*/g, ' ').trim();
+  const s = stripGraphqlStringsAndComments(query);
+  if (s === null) return null;                         // unterminated string: fail closed
   const kw = /\b(mutation|subscription)\b/.exec(s);
   if (kw) return kw[1];
   if (s.startsWith('{') || /^query\b/.test(s)) return 'query';
@@ -197,10 +241,11 @@ export function gate(name, args = {}) {
 /** One stderr line per allowed write: what and where, never bodies, tokens or headers. */
 export function audit(name, args = {}) {
   const fields = { tool: name };
-  for (const k of ['path', 'udoId', 'id', 'alertId', 'workflowId', 'name', 'scope', 'accountIds', 'siteIds']) {
+  for (const k of ['path', 'udoId', 'id', 'alertId', 'caseId', 'ruleId', 'action', 'workflowId', 'name', 'scope', 'accountIds', 'siteIds']) {
     if (args[k] !== undefined && args[k] !== null && typeof args[k] !== 'object') fields[k] = String(args[k]).slice(0, 200);
   }
   if (Array.isArray(args.alertIds)) fields.alertIds = args.alertIds.length + ' alert(s)';
+  if (Array.isArray(args.caseIds)) fields.caseIds = args.caseIds.length + ' case(s)';
   const line = Object.entries(fields).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ');
   process.stderr.write(redact(`[s1-secops-mcp] WRITE ${new Date().toISOString()} ${line}`) + '\n');
 }

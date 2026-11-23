@@ -33,6 +33,7 @@ The Python tests are host-only: run them from a terminal or Claude Code on your 
 | STAR rules (events-type detection) | CREATE (Draft) → LIST → UPDATE → DELETE → VERIFY | `tests/test_star_rule_lifecycle.py` | Yes (Draft status, never activates) | PASSED |
 | Parser lint rules (sdl-log-parser `scripts/parser_rules.py`) | per rule: deploy a bad and a good parser → HEC ingest a sample → query fields → delete (2026-10-13, 11 rules with an observable engine effect) | via MCP tools (`sdl_put_file`, `hec_ingest`, `powerquery_run`, `sdl_delete_file`) | Yes | PASSED; corrected three prior claims (v0 `constants` key, v0 same-name rename, anchored lazy prefix) |
 | PowerQuery Scheduled Detection lifecycle | CREATE → GET → ENABLE → verify activating → DISABLE → GET → DELETE → verify gone | via MCP tools directly | Yes | PASSED |
+| Case Management (s1-secops-mcp 1.6.4) | ingest test alerts → CREATE case → LIST / GET / case for alert → add an alert held by another case (reported) → UPDATE (read-then-write) → TRIAGE → note, tasks, IOCs, messages → creation rule CREATE → automatic case from a test alert → rule UPDATE / DISABLE / DELETE → CLOSE with and without `alsoAlerts` → read-only refusal | `s1-secops-mcp/tests/case_lifecycle.py --account <id> --site <id> --user <id>` | Partly: rules and IOCs are deleted; test alerts and closed cases remain (cases cannot be deleted). Needs a scope with its own creation rules | PASSED (47/47) |
 
 ---
 
@@ -89,6 +90,8 @@ The s1-secops-mcp tools were exercised against the live demo tenant. The 1.5.x l
 | `ha_import_workflow` | Import minimal manual-trigger workflow | PASSED |
 | `ha_export_workflow` | Export all workflows as ZIP | PASSED |
 | `ha_delete_workflow` | Delete workflow (REST DELETE) | PASSED (`DELETE /workflows/{id}?accountIds=`, 204) |
+
+The unit suite `mcp/s1-secops-mcp/tests/cases-1.6.4.test.mjs` (part of `npm test`) covers the Case Management tools offline: the literal builder (escaping, enum and field-name checks), expression ids, read-then-write updates, the alert retry, and the refusals (closing without a reason, an inheriting scope, a missing confirm). No tenant needed.
 
 The unit suite `mcp/s1-secops-mcp/tests/ti-1.6.0.test.mjs` (part of `npm test`) covers the threat-intel tools offline: listing by key, input validation and defanging, and error mapping. No tenant or key needed.
 
@@ -219,9 +222,9 @@ They cover: printed JSON is valid, carries the launcher's absolute path and hold
 ### Read-only mode and image checks
 
 - **Unit tests:** `mcp/s1-secops-mcp/tests/readonly-1.5.5.test.mjs` (part of `npm test`) covers the read-only gate in `lib/access.js`. No tenant needed.
-- **Image smoke tests:** `mcp/docker/smoke-test.sh <image> --expect-version 1.6.3` runs 32 checks against the distroless image. It has no shell, so in-image checks run with `--entrypoint /nodejs/bin/node`. Among them:
+- **Image smoke tests:** `mcp/docker/smoke-test.sh <image> --expect-version 1.6.4` runs 32 checks against the distroless image. It has no shell, so in-image checks run with `--entrypoint /nodejs/bin/node`. Among them:
   - T04 to T06: no shell, no npm, no package manager, Python or git in the image;
-  - T12 and T13: `tools/list` returns 43 tools with no threat-intel keys and 47 with both keys;
+  - T12 and T13: `tools/list` returns 58 tools with no threat-intel keys and 62 with both keys;
   - T22: the server names removed in 1.6.0 exit 78 with the update instruction;
   - T32: a write tool is refused in the default read-only mode, run with `--network none`, and the refusal says how to enable write;
   - T33: with `S1_READ_ONLY=false` the same call reaches its handler;

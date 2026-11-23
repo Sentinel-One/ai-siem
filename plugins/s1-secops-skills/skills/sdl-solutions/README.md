@@ -25,6 +25,7 @@ primitive skill directly.
 | Query slicing | Run long-window PowerQueries as parallel time slices through the LRQ API and merge the results client-side: about 5 s instead of 21 to 40 s for a 30-day aggregate, with identical totals. Ships a zero-dependency runner that scripts and deployers vendor | [`references/query-slicing.md`](references/query-slicing.md) |
 | Alert noise reduction | Find the (source, signature) pairs flooding the alert queue, separate ingested and already-actioned noise (block/drop/sinkhole/reset) from real S1 detections, recommend an ingestion-severity filter, auto-resolve already-mitigated alerts with a note, optionally preserve signal-worthy categories as one correlation rule, and ship a noise-vs-signal dashboard. Product/source/signature/action values are discovered live; nothing is hardcoded | [`references/alert-noise-reduction.md`](references/alert-noise-reduction.md) |
 | Unprotected endpoints report | Find Network Discovery devices with no SentinelOne agent, split into deploy-ready, agent support unknown and cannot-take-an-agent, with breakdowns and Sentinel Deploy remediation, as a read-only report (optional dashboard template) | [`references/unprotected-endpoints.md`](references/unprotected-endpoints.md) |
+| Case Management onboarding | Turn on automatic case creation for an account or site: check whether the scope inherits its creation rules (unlink only on your yes), deploy six starter rules mapped to MITRE ATT&CK tactics with grouping and default tasks, and prove them with a test alert that must open a case | [`references/case-management-onboarding.md`](references/case-management-onboarding.md) |
 
 ## Outcomes
 
@@ -44,6 +45,7 @@ What the solutions deliver, framed as the result rather than the mechanism:
 | Month-long questions answered in seconds | Query slicing turns a 30-day aggregate from a 20 to 40 second wait (or a timeout) into about 5 seconds, so long-range hunts, reports and baselines stay interactive. |
 | Quiet an alert queue drowning in third-party noise | Alert noise reduction measures how much of the queue one ingested source accounts for, proves the source already blocked or sinkholed each event, and deploys the fixes: an ingestion-severity filter recommendation with the exact volumes attached, an auto-resolve flow that closes already-mitigated alerts with a note, and a noise-vs-signal dashboard, so analysts triage real detections instead of already-handled logs. |
 | Know which devices on the network have no protection | The Unprotected endpoints report lists Active Network Discovery devices with no SentinelOne agent, separates the ones that can take an agent from the ones that cannot, and gives Sentinel Deploy remediation for each group, without changing the tenant. |
+| Every alert that matters lands in a case | Case Management onboarding deploys creation rules that open one case per affected asset or user for critical, ransomware, credential access, lateral movement, command and control and exfiltration or impact alerts, with default tasks, and proves it with a test alert. |
 
 ## Run it with one prompt
 
@@ -61,6 +63,7 @@ What the solutions deliver, framed as the result rather than the mechanism:
 - *"Our custom detection alerts have no MITRE, map the encoded PowerShell rule to T1059.001 and T1027"*
 - *"Count FortiGate events per source IP over the last 30 days, it keeps timing out"*
 - *"Find our unprotected endpoints"*
+- *"Set up case creation rules for the Acme account and test them"*
 
 Adding an enrichment is a single multi-select question (Device, User/AD, Vulnerabilities,
 Misconfigurations, Open alerts, Cloud). Everything else is auto-derived and shown in the preview.

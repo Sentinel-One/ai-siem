@@ -73,6 +73,22 @@ const EXPECTED_TOOLS = [
   'asset_inventory_search',
   'asset_inventory_get',
   'asset_inventory_filter_values',
+  // Case Management GraphQL (15)
+  'case_list',
+  'case_get',
+  'case_for_alert',
+  'case_metadata',
+  'case_rules',
+  'case_create',
+  'case_update',
+  'case_triage',
+  'case_add_note',
+  'case_task',
+  'case_iocs',
+  'case_post_message',
+  'case_alerts',
+  'case_rule_apply',
+  'case_rules_scope',
 ];
 const KEY_GATED = new Set(['ti_vt_lookup', 'ti_vt_relationship', 'ti_shodan_host', 'ti_shodan_dns']);
 
@@ -80,8 +96,8 @@ test('server version matches package.json', () => {
   assert.equal(SERVER_INFO.version, PKG_VERSION);
 });
 
-test('ALL_TOOLS registers exactly 47 tools', () => {
-  assert.equal(ALL_TOOLS.length, 47, `expected 47, got ${ALL_TOOLS.length}`);
+test('ALL_TOOLS registers exactly 62 tools', () => {
+  assert.equal(ALL_TOOLS.length, 62, `expected 62, got ${ALL_TOOLS.length}`);
 });
 
 test('every expected tool is registered, no extras', () => {

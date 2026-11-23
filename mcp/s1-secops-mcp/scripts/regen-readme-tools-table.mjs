@@ -75,6 +75,22 @@ const TOOL_SKILL = {
   asset_inventory_search:        'mgmt-console-api / sdl-solutions',
   asset_inventory_get:           'mgmt-console-api / soc-investigator',
   asset_inventory_filter_values: 'mgmt-console-api / sdl-solutions',
+  // Case Management (1.6.4)
+  case_list:                     'mgmt-console-api / soc-investigator',
+  case_get:                      'mgmt-console-api / soc-investigator',
+  case_for_alert:                'mgmt-console-api / soc-investigator',
+  case_metadata:                 'mgmt-console-api',
+  case_rules:                    'mgmt-console-api / sdl-solutions',
+  case_create:                   'mgmt-console-api / soc-investigator',
+  case_update:                   'mgmt-console-api',
+  case_triage:                   'mgmt-console-api / soc-investigator',
+  case_add_note:                 'mgmt-console-api / soc-investigator',
+  case_task:                     'mgmt-console-api / soc-investigator',
+  case_iocs:                     'mgmt-console-api / soc-investigator',
+  case_post_message:             'mgmt-console-api / soc-investigator',
+  case_alerts:                   'mgmt-console-api',
+  case_rule_apply:               'mgmt-console-api / sdl-solutions',
+  case_rules_scope:              'mgmt-console-api / sdl-solutions',
   // Threat intelligence (1.6.0; listed only when the key is stored)
   ti_vt_lookup:                  'soc-investigator (VIRUSTOTAL_API_KEY)',
   ti_vt_relationship:            'soc-investigator (VIRUSTOTAL_API_KEY)',
@@ -90,6 +106,7 @@ const GROUPS = [
   { label: 'UAM Ingest',       test: n => /^(uam_ingest_|uam_post_)/.test(n) },
   { label: 'Detection as Code', prefix: 'dac_' },
   { label: 'Asset Inventory',  prefix: 'asset_inventory_' },
+  { label: 'Case Management',  prefix: 'case_' },
   { label: 'Threat Intel',     prefix: 'ti_' },
 ];
 
@@ -114,7 +131,7 @@ function buildTable() {
     });
 
   const lines = [];
-  lines.push(`**${ALL_TOOLS.length} tools** across PowerQuery, Mgmt Console, SDL API, Hyperautomation, UAM Ingest, Detection as Code, Asset Inventory and Threat Intel (the Threat Intel tools are listed only when their key is stored):`);
+  lines.push(`**${ALL_TOOLS.length} tools** across PowerQuery, Mgmt Console, SDL API, Hyperautomation, UAM Ingest, Detection as Code, Asset Inventory, Case Management and Threat Intel (the Threat Intel tools are listed only when their key is stored):`);
   lines.push('');
   lines.push('| Group | Tool | Skill |');
   lines.push('|-------|------|-------|');

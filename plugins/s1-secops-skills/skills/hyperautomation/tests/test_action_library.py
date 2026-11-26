@@ -174,6 +174,15 @@ class CatalogCarriesNoIdsOrNames(unittest.TestCase):
         self.assertNotRegex(text, r"(?m)^\|.*`" + UUID + r"`\s*\|\s*$")
         self.assertNotIn("on this tenant", text)
 
+    def test_paths_carry_no_tenant_hostnames(self):
+        # Usage rows come from real workflows. A path that names one organisation's host
+        # (a SharePoint tenant, an Okta org) is replaced with a <placeholder>.
+        text = (SKILL_DIR / "references/integration-catalog.md").read_text(encoding="utf-8")
+        host = re.compile(r"[A-Za-z0-9-]+\.(?:sharepoint\.com|okta\.com|oktapreview\.com|atlassian\.net|"
+                          r"service-now\.com|my\.salesforce\.com|zendesk\.com|freshservice\.com)")
+        for path in re.findall(r"`(/[^`]*)`", text):
+            self.assertIsNone(host.search(path), f"tenant hostname in catalog path {path!r}")
+
     def test_custom_integrations_are_summarised_not_listed(self):
         text = (SKILL_DIR / "references/integration-catalog.md").read_text(encoding="utf-8")
         section = text.split("## Custom integrations", 1)[1]

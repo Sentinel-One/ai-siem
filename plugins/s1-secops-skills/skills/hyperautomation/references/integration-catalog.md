@@ -438,7 +438,7 @@ Ad-hoc calls also seen against this integration (no `public_action_id`):
 |--:|---|---|---|
 | 10 | Revoke Session | PATCH | `graph.microsoft.com/v1.0/users/` |
 | 3 | Get Mail Forwarding Rule | GET | `/v1.0/users//mailFolders/inbox/messageRules` |
-| 3 | Get Sharepoint Site Info | GET | `/v1.0/sites/testorion.sharepoint.com:/sites/BadSharpoint` |
+| 3 | Get Sharepoint Site Info | GET | `/v1.0/sites/<tenant>.sharepoint.com:/sites/<site>` |
 | 2 | List Users | GET | `/v1.0/users/<!!>` |
 | 2 | Get User | GET | `/v1.0/users/` |
 | 1 | Delete a User | DELETE | `/v1.0/users/<<user-id>>` |

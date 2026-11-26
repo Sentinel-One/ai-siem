@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - s1-secops-skills plugin 1.4.6 (s1-secops-mcp unchanged at 1.6.4): Detection testing
+
+- sdl-solutions: Detection testing. Platform coverage, real-data validation, synthetic query proof, alert proof, real-telemetry proof on test endpoints, native versus custom, A/B, and evidence labelled simulated, real telemetry or real data. Onboarding field checks for common third-party sources, a regression check before deploying a suppression, and evidence reporting in solution summaries.
+- powerquery: EDR DNS, registry and process field facts, operator facts (`matches`, `!` on a variable, case-sensitive `=`), a Sigma and KQL conversion reference, and detection rule guidance (enable after create, test timing per rule type, scheduled-rule restrictions, lookup limits, `queryLang`).
+- mgmt-console-api: detection rule activation and `queryLang` guidance, and the RemoteOps script recipe.
+- soc-investigator: corroboration counts telemetry only; TTP sweeps report events with no `agent.uuid` as test data.
+- sdl-log-parser: OCSF mapping checklist for the fields detections read.
+- Plugin bundle rebuilt at 1.4.6.
+
 ### Added - s1-secops-mcp 1.6.4 and s1-secops-skills plugin 1.4.5: Case Management
 
 - s1-secops-mcp 1.6.4 (image `sentinelone/secops-mcps:1.6.4`): 15 Case Management tools. The reads are `case_list`, `case_get`, `case_for_alert`, `case_metadata` and `case_rules`. The writes are `case_create`, `case_update`, `case_triage`, `case_add_note`, `case_task`, `case_iocs`, `case_post_message`, `case_alerts`, `case_rule_apply` and `case_rules_scope`, and each one is verified by re-reading what it changed. Case and alert state stay separate unless `case_triage` is asked to update the alerts too.

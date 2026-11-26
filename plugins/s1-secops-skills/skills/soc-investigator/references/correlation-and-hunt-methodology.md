@@ -85,7 +85,9 @@ time.
    logs before calling it a compromise, and never downgrade a genuine attempt to "nothing" just
    because execution is not proven.
 6. **Correlate by entity and time.** Pivot leads onto shared keys to see whether independent
-   signals converge on the same asset. Then order events to test for an attack chain (recon ->
+   signals converge on the same asset. SentinelOne's `alert`, `indicator` and `ActivityFeed`
+   records quote the values they describe, so a hit there is not an independent signal: count
+   sources only from telemetry. Then order events to test for an attack chain (recon ->
    access -> execution -> persistence -> lateral).
 7. **Enrich indicators with threat intelligence.** For notable external IPs / domains / hashes,
    pull reputation and relationships to promote or demote confidence; add confirmed-bad indicators

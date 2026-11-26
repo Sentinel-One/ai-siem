@@ -158,7 +158,7 @@ An entry may also carry `columnName` alone.
 
 ## Step 3: `dac_diff` is the pull-request gate
 
-Run `dac_diff` on every branch before review, and show the user the summary and the lists.
+Run `dac_diff` on every branch before review, and show the user the summary and the lists. A pull request that changes a rule body also carries the A/B result for the old and new body (`references/detection-testing.md`, step 7).
 
 - **Input:** either `files` (a map of bundle path to file text: `deployments.yaml` plus every rule
   path the deploy globs match) or `repoDir` (the rules root) with `deploymentsFile` (the console

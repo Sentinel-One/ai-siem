@@ -52,3 +52,10 @@ rule wrapped with the anti-join, an exclusion-effectiveness dashboard, and (for 
 matches) a Hyperautomation detection flow that posts the alert to UAM. An optional refresh workflow
 rebuilds a source-of-truth list nightly. The full artifact table, the config questions, and the
 operator/deploy caveats are in the Claude-facing playbook `references/custom-detection-exclusions.md`.
+
+## Before it ships
+
+Every exclusion runs a regression check: the entities it removes are checked against past analyst
+verdicts for the rule, and the tuned body must still match every tagged positive test event. An
+entity with a true-positive verdict blocks the change. The method is step 7 of
+[Detection testing](./detection-testing.md).

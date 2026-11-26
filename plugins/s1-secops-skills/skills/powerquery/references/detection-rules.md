@@ -351,8 +351,7 @@ The detection engine matches against a SINGLE backslash. In the raw query text y
 - **1,000 rows maximum** on any intermediate table (including inside `group` and `join`).
 - **1 MB RAM** total.
 - `nolimit` is not allowed.
-- Subqueries are not supported (the Summary service evaluates at ingest time and can't compute inner queries).
-- `compare` isn't useful here (alerts don't do timeshift).
+- For `scheduled` rules the restrictions apply to the part before the first `| group`; see "Scheduled-rule limits" below for the measured accepted and rejected forms.
 - Depending on platform version, `transpose` may not be supported: prefer `group` + explicit columns.
 - The rule should return **one row per finding** with stable, well-named columns (the detection engine maps these to alert fields).
 
@@ -448,7 +447,7 @@ When a rule would otherwise fire too broadly, exclude known-good via a config-ma
 | limit 100
 ```
 
-This uses `lookup` with a config data table (`/datatables/allowlist_hosts`). Keep the table ≤ 400 KB; prefer an opt-in allowlist, not an opt-out denylist, because the former is bounded.
+This uses `lookup` with a config data table (`/datatables/allowlist_hosts`). Tables can be up to 150 MB; an exact `lookup` before the first `group` accepts a table of up to 10,000 rows (a larger table works after the first `group`). Prefer an opt-in allowlist, not an opt-out denylist, because the former is bounded.
 
 ### 5. Join-based correlation
 
@@ -478,7 +477,7 @@ This uses `lookup` with a config data table (`/datatables/allowlist_hosts`). Kee
 ## Checklist before saving a rule
 
 - [ ] Initial filter is specific enough that you'd expect far fewer than 1,000 intermediate rows in any realistic window.
-- [ ] No `nolimit`, no `compare`, no subqueries.
+- [ ] No `nolimit`, and the part before the first `| group` stays within "Scheduled-rule limits".
 - [ ] The alert will bind a Target Asset (not "Unknown Device"): a scheduled rule projects the device identity and sets `entityMappings` on it (e.g. `device_host` / `device_agentid` / `device_agentuuid`); an events rule on a custom source carries `device.uid` (the numeric console agent id) + an endpoint `class_uid`. Projecting `agent.uuid` alone does NOT bind. See "Target Asset / entity binding" below.
 - [ ] `group` includes `oldest(timestamp)` and `newest(timestamp)` (or a `last_seen = …` single value), so the alert has a time.
 - [ ] Final `| sort -count | limit N` caps alert volume.
@@ -759,7 +758,7 @@ Notes on the shape:
   Turn dedup off for "alert every time this condition holds" (heartbeat, threshold-still-exceeded) rules, and keep it on when one alert per distinct finding is the goal.
 - **Hard cap: `lookbackWindowMinutes / runIntervalMinutes` must be <= 96.** Above that the create returns `HTTP 400 "Validation Error"` naming NEITHER field, so it reads as a malformed body. Probed at the boundary (2026-08-09): lookback 1440 accepts cadence 15 (ratio 96.0) and rejects 14 (102.9), 12, 10 and 5; lookback 60 accepts 5 and 10. A daily-baseline rule therefore cannot evaluate more often than every 15 minutes. If a UI or config offers a faster cadence (a 5-minute "demo" option is a common trap), clamp it: raise the requested interval to `ceil(lookback / 96)` rather than letting the whole deploy fail.
 - **The cadence is also the floor on any end-to-end test.** There is no run-now for a scheduled rule, so validating that one fires costs at least one interval (15 min on a daily lookback). No amount of parallelism removes it; budget for it.
-- **`status`:** the requested status is honoured. `status: "Active"` returns `Activating` at once (the `statusReason` says it "will become Active within an hour") and the rule reaches `Active` on its own with no separate enable call. Observed times ranged from about 1 to 14 minutes, with ungrouped bodies the slowest (live-verified 2026-10 across 20 rules). Poll `status` before ingesting test events; `status: "Disabled"` lands as `Draft` (live-verified 2026-10). To enable a Draft later, `PUT /web/api/v2.1/cloud-detection/rules/enable` (body `{"filter": {"ids": [...], "accountIds": [...]}}`).
+- **`status`:** follow every create with an enable call and poll until `Active` (see "Activation and test timing" below). A `status: "Disabled"` create lands as `Draft`.
 - **No `disableAgentMitigation` field:** that property is not part of the scheduled-rule schema. Including it returns HTTP 400 `Unknown field`. Cloud-source PQ rules do not need it.
 - **No `treatAsThreat: "Malicious"`:** scheduled rules accept `treatAsThreat: "UNDEFINED"` (or omit) and `networkQuarantine: false`. Inline (on-rule) mitigation is not supported on scheduled rules; drive mitigation from a Hyperautomation flow triggered by the alert instead.
 
@@ -781,18 +780,19 @@ PUT /web/api/v2.1/cloud-detection/rules/disable     # same shape
 
 `isLegacy` is a GET-listing query parameter ONLY. Do NOT put it in the `enable` / `disable` PUT body: `{"filter": {"ids": [...], "isLegacy": false}}` returns `400 filter: isLegacy: Unknown field`. The enable/disable filter accepts `ids` plus an optional scope (`accountIds` / `siteIds`); `ids` alone is sufficient because rule IDs are globally unique. Tenant-validated 2026-06-16: `PUT /cloud-detection/rules/enable` with `{"filter": {"ids": [...]}}` returned `{"affected": N}`.
 
-### Validate the rule is Active before ingesting test data (mandatory)
+### Activation and test timing (mandatory)
 
-Enabling a rule does NOT make it evaluate immediately. After `PUT .../enable` the rule reports `statusReason: "...will become Active within an hour"` and stays inactive until the platform propagates it (up to ~60 minutes). Events rules evaluate streaming at ingest, so any test event that arrives BEFORE the rule is Active is never evaluated, and you will wrongly conclude the rule or the event attributes are broken.
+- **Enable after create.** A new rule can be stored as `Draft` whatever `status` the POST sent. Always follow the create with `PUT /web/api/v2.1/cloud-detection/rules/enable` (`{"filter": {"ids": [...]}}`); it is harmless on a rule that is already activating. Then poll `status` (and `statusReason`) until `Active`, which can take up to an hour.
+- **When test events must arrive.** An `events` or `correlation` rule evaluates only events that arrive after it is `Active`. A `scheduled` rule reads its lookback window on each run, so events sent earlier count if they are still inside the lookback at the first run after activation; keep the lookback long enough, or send the events again while the rule activates.
 
-Always poll the rule status until it is Active before ingesting any validation data:
+Poll the rule status before judging a test:
 
 ```text
 GET /web/api/v2.1/cloud-detection/rules?ids=<id>&accountIds=<acct>&isLegacy=false
 # proceed only when data[0].status == "Active"
 ```
 
-Do not ingest, do not judge a rule "not firing", and do not strip attributes to debug binding until `status == "Active"`. This check was the root cause of a false "events rules are EDR-only / the attributes are wrong" conclusion: the rule simply had not activated yet. Scheduled rules have the same activation lag, and additionally evaluate only on their `runIntervalMinutes` cadence, so allow at least one full interval after activation before judging them.
+Do not judge a rule "not firing", and do not strip attributes to debug binding, until `status == "Active"`. Scheduled rules also evaluate only on their `runIntervalMinutes` cadence, so allow at least one full interval after activation before judging them. The full proof method is in `sdl-solutions/references/detection-testing.md` (step 4, alert proof).
 
 ---
 

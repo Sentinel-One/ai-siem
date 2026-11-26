@@ -827,6 +827,68 @@
         "compare": "count_eq",
         "with": "event.type='Process Creation' src.process.name='svchost.exe' | group n=count()"
       }
+    },
+    {
+      "id": "edr-dns-request-field",
+      "doc": "fields-and-schema.md Network fields: the DNS query is event.dns.request",
+      "query": "dataSource.name='SentinelOne' event.category='dns' dns.request=* | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "dataSource.name='SentinelOne' event.category='dns' event.dns.request=* | group n=count()"
+      }
+    },
+    {
+      "id": "edr-no-network-category",
+      "doc": "fields-and-schema.md Core event fields: EDR uses ip, dns and url, not network",
+      "query": "dataSource.name='SentinelOne' event.category='network' | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "dataSource.name='SentinelOne' event.category in ('ip','dns') | group n=count()"
+      }
+    },
+    {
+      "id": "edr-registry-value-name",
+      "doc": "fields-and-schema.md Registry: the value name is the last segment of registry.keyPath",
+      "query": "dataSource.name='SentinelOne' event.category='registry' registry.valueName=* | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "dataSource.name='SentinelOne' event.category='registry' registry.keyPath=* | group n=count()"
+      }
+    },
+    {
+      "id": "edr-original-file-name",
+      "doc": "fields-and-schema.md Process names: match tgt.process.name",
+      "query": "dataSource.name='SentinelOne' event.type='Process Creation' tgt.process.image.originalFileName=* | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "dataSource.name='SentinelOne' event.type='Process Creation' tgt.process.name=* | group n=count()"
+      }
+    },
+    {
+      "id": "event-type-case-sensitive",
+      "doc": "syntax-and-operators.md: = is exact and case-sensitive",
+      "query": "dataSource.name='SentinelOne' event.type='process creation' | group n=count()",
+      "expect": {
+        "compare": "count_lt",
+        "with": "dataSource.name='SentinelOne' event.type='Process Creation' | group n=count()"
+      }
+    },
+    {
+      "id": "bang-let-variable-keeps-rows",
+      "doc": "syntax-and-operators.md: ! before a bare let variable is a text search, not a negation",
+      "query": "dataSource.name='SentinelOne' event.type='IP Connect' dst.ip.address=* | let priv = net_rfc1918(dst.ip.address) | filter !priv | group n=count()",
+      "expect": {
+        "compare": "count_eq",
+        "with": "dataSource.name='SentinelOne' event.type='IP Connect' dst.ip.address=* | group n=count()"
+      }
+    },
+    {
+      "id": "count-absent-predicate-rejected",
+      "doc": "pitfalls.md: count(!(f = *)) is rejected like count(f = *)",
+      "query": "dataSource.name='SentinelOne' event.type='Process Creation' | group n=count(!(agent.uuid = *))",
+      "expect": {
+        "error_contains": "Don't understand"
+      }
     }
   ]
 }

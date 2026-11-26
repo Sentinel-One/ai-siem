@@ -59,3 +59,9 @@ inactive for review and connection binding before activation), and optionally a 
 exclusion lookup or a single correlation rule that preserves signal-worthy categories. The full
 Claude-facing playbook, discovery queries, and templates are in
 `references/alert-noise-reduction.md` and `assets/alertnoise_*.template.json`.
+
+## Before it ships
+
+A suppression or ingestion filter runs the same regression check as a detection exclusion: nothing
+it removes may carry a true-positive analyst verdict. See step 7 of
+[Detection testing](./detection-testing.md).

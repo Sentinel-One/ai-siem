@@ -5,7 +5,7 @@ technique that shows up on the alert in Unified Alert Management (UAM), in `| da
 (`mitreTactics`, `mitreTechniques`) and in every downstream consumer that reads them (dashboards,
 RBA multi-tactic scoring, reports). Triggers: "map my custom detection to MITRE", "custom detection
 MITRE tactic", "STAR rule MITRE", "my custom alerts have no MITRE", "add ATT&CK to a custom detection".
-Orchestration only; drives powerquery, hyperautomation, mgmt-console-api and sdl-api.
+Orchestration only; drives powerquery, hyperautomation, mgmt-console-api and sdl-api. Prove the detection's query first with the detection testing playbook (`references/detection-testing.md`).
 
 A Custom Detection (STAR) rule has no MITRE field, so the solution runs the custom detection's query
 from a Hyperautomation watchdog and has the watchdog raise the alert itself, with the MITRE mapping

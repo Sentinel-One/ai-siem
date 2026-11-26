@@ -176,28 +176,39 @@ panel or detection preset:
    returns hundreds of principals a day is a noise problem to fix before shipping, not a success.
 3. On a customer tenant print counts and value shapes only; never print or commit customer values.
 
-Observed on one customer tenant (2026-10-14), where five of six presets were wrong until checked
-this way. Treat these as starting hypotheses and re-measure on each tenant, because parsers differ:
+Field placement varies by parser and connector version. Treat these as starting checks and
+measure each one with step 1 on the tenant before a rule or panel reads it:
 
-- Entra ID sign-ins name the user in `user.name` (`actor.user.name` on under 1%). Token refreshes
-  are logged as single-factor sign-ins (25,884 a day against 5,473 interactive), so MFA detections
-  must filter `unmapped.isInteractive = true`. Factor changes are audit events with the user in
-  `actor.user.name` and the change in `unmapped.activityDisplayName`; self-service enrolment ran
-  about 650 a day, so alert on deletions, admin changes and resets.
-- Netskope: URL in `web_resource.url_string`; site, action and category in `unmapped.site`,
-  `unmapped.action`, `unmapped.category`; no `http_request.*`.
-- Microsoft 365: result in `unmapped.ResultStatus` (Succeeded, PartiallySucceeded, Failed);
-  `status` is never set.
-- Proofpoint: click logs (`clicksPermitted`) carry `unmapped.url` and `unmapped.classification` but
-  no `email.from`; message logs carry the sender.
-- FortiGate: config changes are event logs with `unmapped.cfgpath` / `unmapped.logdesc`, not
-  `cfgpath` in `message`.
-
-Also measured on a demo tenant (2026-10-14): Palo Alto events whose verdict is only in
-`unmapped.action` (12 of 1,156, `action` empty); Zscaler `src_endpoint.hostname` on 259 of 1,023
-events; Mimecast URL Protect clicks with no `email.from` (0 of 37).
+- **Entra ID:** sign-ins can name the user in `user.name` rather than `actor.user.name`. Token
+  refreshes are logged as single-factor sign-ins, so MFA detections filter
+  `unmapped.isInteractive = true`. Factor changes are audit events with the user in
+  `actor.user.name` and the change in `unmapped.activityDisplayName`; alert on deletions, admin
+  changes and resets rather than on every self-service enrolment. `status_code` is numeric on one
+  connector and text on another: compare with `string(status_code)` or check the type first. Some
+  connectors keep values only inside `message`.
+- **Netskope:** the URL can be in `web_resource.url_string` or only in `unmapped.*`, with site,
+  action and category in `unmapped.site`, `unmapped.action` and `unmapped.category`. User agent and
+  domain can also be only in `unmapped.*`.
+- **Microsoft 365:** the result can be in `unmapped.ResultStatus` (Succeeded, PartiallySucceeded,
+  Failed) with `status` unset.
+- **Proofpoint:** click logs (`clicksPermitted`) carry `unmapped.url` and
+  `unmapped.classification` without `email.from`; message logs carry the sender.
+- **FortiGate:** config changes are event logs with `unmapped.cfgpath` / `unmapped.logdesc`.
+- **Palo Alto:** the verdict can be only in `unmapped.action`.
+- **CloudTrail:** a parser can write class 4002 rather than 6003 (API Activity). The caller ARN can
+  be only in `unmapped.userIdentity.arn`; the event name in `activity_name` or `unmapped.eventName`.
+- **AWS WAF:** path in `web_resources.url.path`, query in `http_request.args`, and the user agent
+  only inside `http_request.http_headers`.
+- **Zeek DNS:** values can be only inside `message`, so rules match only once the parser maps them.
+- **Sign-in, Office 365 and API activity records** also carry `http_request.user_agent`: a
+  user-agent rule meant for web traffic must also require a URL field and exclude
+  `class_uid in (3001, 3002, 3003, 3004, 3005, 3006, 6003)`.
+- **SentinelOne `alert`, `indicator` and `ActivityFeed` records** quote IOC strings: exclude them
+  from third-party rules with `!(dataSource.name in ('alert', 'indicator', 'ActivityFeed'))`.
 
 ### Detections (load `mgmt-console-api` + `powerquery`)
+
+Prove every detection with the detection testing playbook (`references/detection-testing.md`) before enabling it.
 
 Identify the top detections that matter for this source class and author them as STAR scheduled
 rules from `assets/onboarding_detection.template.json`. Map every rule to MITRE ATT&CK in the

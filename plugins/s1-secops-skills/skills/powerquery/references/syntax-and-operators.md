@@ -30,7 +30,7 @@ Parentheses work as expected: `a AND (b OR c)`.
 
 **Negation binds tighter than the comparison, so a negated predicate needs parentheses.** `NOT src.process.name contains 'svchost.exe'` and `!src.process.name contains 'svchost.exe'` do not mean "name does not contain": the negation applies to the bare field first, and the query silently returns 0 rows with no error. `!(src.process.name contains 'svchost.exe')` is the correct form. The same applies to `=` and `in` (regression cases `not-without-parens-is-silent-zero`, `bang-without-parens-is-silent-zero`).
 
-**A bare field or variable is not a truthiness test in `filter`.** `| filter x` is read as a text search for the value, not "x is truthy", and returned 0 rows where `| filter bool(x)` returned every row (regression case `bare-variable-filter-is-message-contains`). Use `bool(x)`, `x = *`, or an explicit comparison.
+**A bare field or variable is not a truthiness test in `filter`.** `| filter x` is read as a text search for the value, not "x is truthy", and returned 0 rows where `| filter bool(x)` returned every row (regression case `bare-variable-filter-is-message-contains`). Use `bool(x)`, `x = *`, or an explicit comparison. The same holds for `!` before a bare field or `let` variable: `| let priv = net_rfc1918(dst.ip.address) | filter !priv` is a text search and keeps every row (regression case `bang-let-variable-keeps-rows`). Write `| filter priv = false`, `| filter !(priv = true)` or `| filter !(bool(priv))`. `!` before a function call (`| filter !net_rfc1918(dst.ip.address)`) and `!` in `let`, `group` and `columns` negate as expected.
 
 ---
 
@@ -46,7 +46,7 @@ src.process.cmdline contains:matchcase 'PowerShell'            // case-sensitive
 
 Case-insensitive by default. Cannot be used on numeric values. The OR form is much faster than chaining `contains … OR contains …`.
 
-> **queryLang 2.0 vs 1.0 operators in Custom Detection rule bodies.** These are the `queryLang 2.0` operators. The S1QL-1.0 forms are different tokens: `contains:anycase` is the 2.0 spelling of 1.0 `ContainsCIS`, and `in:anycase` replaces 1.0 `In`. Custom Detection rules (events / correlation / scheduled) all run at `queryLang 2.0`, so their bodies must use the 2.0 operators. Confirmed live (2026-07): an events rule authored with the 1.0 operator `ContainsCIS` was accepted at create time but never fired; rewritten with `contains:anycase` it fired immediately. The API does not warn, it stores the 1.0 operator and the rule silently matches nothing. Lint rule bodies for 1.0 operators (`ContainsCIS`, `In`, etc.) before deploy.
+> **queryLang 2.0 vs 1.0 operators in Custom Detection rule bodies.** These are the `queryLang 2.0` operators. The S1QL-1.0 forms are different tokens: `contains:anycase` is the 2.0 spelling of 1.0 `ContainsCIS`, and `in:anycase` replaces 1.0 `In`. Scheduled and correlation rules always run at `queryLang 2.0`; an events rule runs at the `queryLang` it was created with. Set `queryLang: "2.0"` on `events` rules whose filter uses 2.0 operators (`in:anycase`, `contains:anycase`, `starts_with`, `ends_with`, `matches:matchcase`); an omitted `queryLang` is stored as `1.0` and a 2.0 operator then matches nothing. A 1.0 operator such as `ContainsCIS` in a 2.0 body is accepted at create and matches nothing, so write bodies with the 2.0 operators. Lint rule bodies for 1.0 operators (`ContainsCIS`, `In`, etc.) before deploy.
 
 ### `matches`: regex
 
@@ -56,7 +56,7 @@ src.process.cmdline matches ('regex1', 'regex2')               // OR of multiple
 src.process.cmdline matches:matchcase 'CaseSensitive'
 ```
 
-Case-insensitive by default. Regex has a 1,000-byte ceiling. Double-escape special characters (`\\d`, `\\s`, `\\\\` for a literal backslash). See §5 for escaping levels.
+Case-insensitive by default, and an unanchored search: `matches 'owershel'` finds `powershell.exe`, exactly like `contains`. Anchor with `^` and `$` for a whole-value match. Regex has a 1,000-byte ceiling. Double-escape special characters (`\\d`, `\\s`, `\\\\` for a literal backslash). See §5 for escaping levels.
 
 ### `starts_with` / `ends_with`: prefix and suffix
 
@@ -86,6 +86,7 @@ The list can also come from a query: `field in (inner query)`. That is a subquer
 
 ```text
 endpoint.name = 'DC-1'                   // exact equal (case-sensitive for strings)
+event.type = 'Process Creation'          // enum-like fields too: 'process creation' returns nothing
 indicator.name != 'RawVolumeAccess'
 indicator.name !=*                       // never valid; use !(x=*) for is-null
 ```
@@ -113,7 +114,7 @@ Key facts about `*`:
 
 - `*` by itself is NOT a valid filter. `*` alone returns HTTP 500 ("Don't understand [*]"). Never use `*` as the only initial token.
 - **`field = *`** (attribute wildcard) checks whether a specific field is present/non-null. Use `dataSource.name=*` as a query-opener for aggregations over all events that have that field. Confirmed working on live tenant.
-- **`* contains` / `* matches`** (all-column search) searches across ALL indexed fields. Cheapest in the **initial filter** (before the first `|`). It also works in `| filter …` on raw events, but there it runs after the scan (live-verified 2026-11-05: `event.type='Process Creation' | filter * contains 'svchost'` returned the same count as the initial-filter form; regression case `allfield-search-after-pipe`). Not valid in Alerts; use after `| group` / `| columns` and in dashboards was not tested. Much faster than `message contains` on JSON-blob sources.
+- **`* contains` / `* matches`** (all-column search) searches across ALL indexed fields. Cheapest in the **initial filter** (before the first `|`). It also works in `| filter …` on raw events, but there it runs after the scan (live-verified 2026-11-05: `event.type='Process Creation' | filter * contains 'svchost'` returned the same count as the initial-filter form; regression case `allfield-search-after-pipe`). Not valid in Alerts; use after `| group` / `| columns` and in dashboards was not tested. Much faster than `message contains` on JSON-blob sources. It also matches SentinelOne's own `alert`, `indicator` and `ActivityFeed` records, which quote the same values: add `!(dataSource.name in ('alert', 'indicator', 'ActivityFeed'))` for telemetry hunts, or group by `dataSource.name` (see `references/pitfalls.md`).
 - These two idioms are NOT interchangeable: `dataSource.name=*` checks a specific field for null; `* contains 'value'` searches all fields for a substring.
 
 ### Phrasebook: natural-language asks to canonical operator

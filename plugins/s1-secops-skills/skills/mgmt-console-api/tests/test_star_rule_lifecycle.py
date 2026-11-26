@@ -28,7 +28,8 @@ Endpoint notes (confirmed via swagger + live API, 2026-05)
 - PUT /{rule_id} requires all 5 fields: name, queryType, severity,
   expirationMode, status. s1ql must also be re-supplied.
 - "activeResponse" in CREATE body returns HTTP 400 "Unknown field", omit it.
-- queryLang defaults to "1.0" for events rules; do not set it explicitly.
+- An omitted queryLang is stored as "1.0" on events rules; set "2.0" when the
+  filter uses 2.0 operators (this test's filter uses none).
 - treatAsThreat="UNDEFINED" is accepted but stored as null in the response.
 - GET nameSubstring + queryType together returns HTTP 500, use only one filter
   at a time, or use ids for point-lookup.
@@ -91,7 +92,8 @@ def create_star_rule(client: S1Client, site_id: str) -> Dict[str, Any]:
     Confirmed gotchas (live API, 2026-05):
     - "activeResponse" is rejected as an unknown field, do not include it.
     - "treatAsThreat": "UNDEFINED" is accepted but stored as null in the response.
-    - queryLang defaults to "1.0" for events rules; do not set it explicitly.
+    - An omitted queryLang is stored as "1.0" on events rules; set "2.0" when the
+  filter uses 2.0 operators (this test's filter uses none).
     """
     body = {
         "data": {

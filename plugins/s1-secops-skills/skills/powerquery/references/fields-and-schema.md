@@ -16,8 +16,8 @@ and look at what comes back. Typos in field names don't raise errors, missing fi
 
 | Field | Meaning |
 |---|---|
-| `event.type` | High-level event category: `Process Creation`, `File Creation`, `File Deletion`, `File Modification`, `File Rename`, `Registry Value Modified`, `IP Connect`, `DNS Resolved`, `Module Load`, `Windows Event Log Creation`, `Login`, etc. |
-| `event.category` | OCSF-aligned category (`process`, `file`, `network`, `logins`, …) |
+| `event.type` | Event type, matched exactly and case-sensitively (`'Process Creation'`, not `'process creation'`). Process: `Process Creation`, `Process Termination`, `Open Remote Process Handle`, `Duplicate Process Handle`. File: `File Creation`, `File Modification`, `File Rename`, `File Deletion`. Registry: `Registry Value Create`, `Registry Value Modified`, `Registry Value Delete`, `Registry Key Create`, `Registry Key Delete`. Network: `IP Connect`, `IP Listen`, `DNS Resolved`, `DNS Unresolved`, and the HTTP method (`GET`, `POST`, ...) for `url` events. Also `Module Load`, `Named Pipe Creation`, `Named Pipe Connection`, `Task Register`, `Task Update`, `Task Start`, `Task Delete`, `Task Trigger`, `Driver Load`, `Command Script`, `Behavioral Indicators`, `Windows Event Log Creation`, `Login`. |
+| `event.category` | Event category: `process`, `file`, `registry`, `ip`, `dns`, `url`, `module`, `named_pipe`, `scheduled_task`, `cross_process`, `indicators`, `logins`, `driver`, `command_script`. There is no `network` category on EDR telemetry: use `ip`, `dns` or `url`. |
 | `event.id` | Unique event ID |
 | `event.time` | Human-readable event time |
 | `timestamp` | Nanoseconds since epoch; renders as datetime in results |
@@ -77,7 +77,9 @@ Use `#hash = '…'` to find a hash anywhere (MD5, SHA1, or SHA256).
 
 ## Network fields
 
-`event.type = 'IP Connect'` / `event.category = 'network'`.
+Third-party sources place fields differently by parser and connector version: check coverage on the tenant first (`sdl-solutions/references/data-source-onboarding.md`, "Prove a field mapping").
+
+`event.category = 'ip'` (`IP Connect`, `IP Listen`), `event.category = 'dns'` (`DNS Resolved`, `DNS Unresolved`), `event.category = 'url'` (`event.type` is the HTTP method).
 
 | Field | Meaning |
 |---|---|
@@ -87,7 +89,7 @@ Use `#hash = '…'` to find a hash anywhere (MD5, SHA1, or SHA256).
 | `event.network.direction` | `INCOMING` / `OUTGOING` |
 | `event.network.protocolName` | `tcp`, `udp`, `http`, `tls`, etc. |
 | `url.address` | URL (HTTP / TLS / similar) |
-| `dns.request` / `dns.response` | DNS query / response (use `#dns` to search all DNS fields) |
+| `event.dns.request` / `event.dns.response` | DNS query / answer. `event.dns.response` is empty on `DNS Unresolved`. Names can end in a trailing dot: anchor suffix matches with `\\.?$`. |
 
 Detect internal vs external: `net_rfc1918(dst.ip.address)` (IPv4 private), `net_private(dst.ip.address)` (IPv4 or IPv6 private), or explicit `net_ipsubnet(dst.ip.address, '10.0.0.0/8')`.
 
@@ -147,9 +149,11 @@ SentinelOne's built-in behavioural indicators.
 
 ## Registry, DNS, and module load
 
-Registry: `event.type = 'Registry Value Modified'` and friends. Field paths: `registry.keyPath`, `registry.valueName`, `registry.value`.
+Registry: `event.category = 'registry'`. Value events are `Registry Value Create`, `Registry Value Modified` and `Registry Value Delete`; key events are `Registry Key Create` and `Registry Key Delete`. A new value (for example a new Run entry) is `Registry Value Create`, so persistence detections read Create and Modified: `event.type in ('Registry Value Create', 'Registry Value Modified')`. `registry.keyPath` holds the key and the value name, with a `MACHINE\` or `USER\<SID>\` root (not `HKLM\` or `HKU\`): match the key segment unanchored, or the full key and value name with `ends_with`. Read the value data from `registry.value`; the value name is the last segment of `registry.keyPath`.
 
-DNS: `#dns`, or `dns.request = 'example.com'`.
+DNS: `event.category = 'dns'`, with `event.dns.request = 'example.com'`.
+
+Process names: `tgt.process.name` is the image file name (a renamed binary matches by its new name) and `tgt.process.displayName` is the file description. Match on those rather than `tgt.process.image.originalFileName`.
 
 Module load: `event.type = 'Module Load'`, with `module.path`, `module.sha256`, `module.signedStatus`.
 
@@ -239,5 +243,5 @@ Source: used throughout the `sdl-solutions` ingest-health-monitoring templates (
 If you don't know the field name, either:
 
 1. **Use Purple AI first.** `purple_ai_query(question="show me processes that accessed lsass.exe")`; it knows the schema and returns a draft PQ in `powerQuery.query`. Purple does not run it: review it, then run it with `powerquery_run`.
-2. **Explore a single event.** `event.type = 'Registry Value Modified' | limit 1`, the Event Search UI will show every parsed field; in the MCP call, follow up with `| columns registry.keyPath, registry.valueName, registry.value, timestamp` to confirm your guesses.
+2. **Explore a single event.** `event.type = 'Registry Value Create' | limit 1`, the Event Search UI will show every parsed field; in the MCP call, follow up with `| columns registry.keyPath, registry.value, timestamp` to confirm your guesses.
 3. **Use `* contains 'value'` as an initial filter** to find which fields mention a known value, then pivot.

@@ -2,7 +2,7 @@
 name: powerquery
 author: Prithvi Moses <prithvi.moses@sentinelone.com>
 description: >-
-  Use any time the user wants to author, debug, optimize, explain, or run a SentinelOne PowerQuery (PQ): Deep Visibility / Event Search queries, XDR/EDR threat hunting, investigations, STAR / Custom Detection rule bodies, PowerQuery Alerts, or Singularity Data Lake dashboard panels. Trigger on PowerQuery, PQ, pq, query, Event Search, Deep Visibility, S1QL, SDL, STAR rule, Custom Detection rule, PowerQuery Alert; on queries using fields like `event.type`, `src.process.*`, `tgt.file.*`, `indicator.*`, `agent.uuid`; on pipes like `| group`, `| filter`, `| let`, `| join`, `| parse`, `| columns`, `| compare`, `| top`, `| union`, `| lookup`, `| savelookup`, `| dataset`. Also trigger when asked to hunt a TTP, IOC, behaviour, or alert pattern on a SentinelOne tenant, even casually ("find powershell reaching out to the internet", "write a detection for lsass access"). Explicitly NOT Microsoft Power Query / M / Excel and NOT Splunk SPL; this is SentinelOne's pipeline query language for security telemetry.
+  Use any time the user wants to author, debug, optimize, explain, or run a SentinelOne PowerQuery (PQ): Deep Visibility / Event Search queries, XDR/EDR threat hunting, investigations, STAR / Custom Detection rule bodies (including converted Sigma rules), PowerQuery Alerts, or Singularity Data Lake dashboard panels. Trigger on PowerQuery, PQ, pq, query, Event Search, Deep Visibility, S1QL, SDL, STAR rule, Custom Detection rule, PowerQuery Alert; on queries using fields like `event.type`, `src.process.*`, `tgt.file.*`, `indicator.*`, `agent.uuid`; on pipes like `| group`, `| filter`, `| let`, `| join`, `| parse`, `| columns`, `| compare`, `| top`, `| union`, `| lookup`, `| savelookup`, `| dataset`. Also trigger when asked to hunt a TTP, IOC, behaviour, or alert pattern on a SentinelOne tenant, even casually ("find powershell reaching out to the internet", "write a detection for lsass access"). Explicitly NOT Microsoft Power Query / M / Excel and NOT Splunk SPL; this is SentinelOne's pipeline query language.
 ---
 # SentinelOne PowerQuery
 
@@ -98,6 +98,7 @@ These function names and forms do not exist in PowerQuery. A missing function pr
 | `lowercase(x)` / `uppercase(x)` | `lower(x)` / `upper(x)` |
 | `replace_all(...)` | `replace(x, regex, repl)` |
 | `contains_any(...)` (`Expected ")"`) | `f contains ('a', 'b')` |
+| `net_incidr(ip, cidr)` (`Expected ")"`) | `net_ipsubnet(ip, cidr)` |
 | `f[0]` (`Unable to parse the entire query`) | `array_get(f, 0)` |
 | `\| columns *` (`Don't understand [*]`) | `queryType: "LOG"` in `powerquery_run`, which returns every parsed field per event |
 | `formattime(...)` | `strftime(ts)` / `strftime(ts, pattern)` |
@@ -275,6 +276,7 @@ DELETE https://<console>.sentinelone.net/sdl/v2/api/queries/{id}     -> cancel w
 Don't read these upfront. Read the one you need.
 
 - `references/lrq-api.md` - the Long Running Query API that `powerquery_run` wraps: auth, body schema, forward-tag routing, measured rate limits, 30-second query expiration, slicing/parallelism patterns, LOG queries. Read when a query silently returns `matchCount=0`, or before writing a host-only runner.
+- `references/sigma-conversion.md`: converting Sigma rules and KQL or SPL hunts to PowerQuery: value-matching map, scheduled-body patterns for `event_count` / `value_count`, log source anchors, and what to check in automated converter output. Read when the user says Sigma, converts a rule, or ports a KQL hunt.
 - `references/syntax-and-operators.md`: full operator reference, identifier rules, shortcut fields, regex dialect, date/time formats, short-circuit `||`.
 - `references/commands-reference.md`: deep dive on every command (join variants, subqueries, lookup / dataset / savelookup, transpose, compare, top, nolimit). Read before writing anything non-trivial with join, transpose, or compare.
 - `references/functions-reference.md`: all built-in functions: string, numeric, JSON, network, URL, aggregate, array (method chaining), geolocation, timestamp, time, string-formatting. Read when you need a function and can't remember the name.
@@ -411,10 +413,14 @@ Creating a rule at a scope above your token's returns
 
 ### Before you deploy
 
-1. Run the body as a hunt first. A scheduled body that errors is a rule that never fires.
-2. For `scheduled`, confirm the entity column exists in the output **and** is named in `entityMappings`.
-3. Confirm the rule is `Active` before ingesting test data; a Draft rule silently matches nothing.
-4. Validate by triggering a real alert, not by reading the rule back. Creation succeeding says nothing about whether it fires.
+1. **Check platform coverage first:** an Active platform rule or existing custom rule may already cover the behaviour.
+2. **Validate on real data:** run the body as a hunt over the real source and check field coverage (`count(<field> != null)`) for every field it reads.
+3. **Prove the logic and the alert:** tagged synthetic positives and near misses, then a temporary rule that raises a UAM alert. Enable after create and confirm `Active` before judging it.
+4. For `scheduled`, confirm the entity column exists in the output **and** is named in `entityMappings`.
+5. **Prove it on real telemetry** where an endpoint can run a harmless lookalike.
+6. **Deploy disabled, record the evidence** (simulated, real telemetry, real data), and **A/B before replacing** a rule.
+
+The full method: `sdl-solutions/references/detection-testing.md`.
 
 API shapes, limits, patterns, and the deployment recipe: `references/detection-rules.md`.
 
@@ -432,9 +438,10 @@ A PowerQuery scheduled-rule body is more constrained than a hunt query:
 
 - Intermediate and output tables must stay under 1,000 rows and 1 MB of RAM.
 - No `nolimit`.
-- No `compare`, usually no `transpose` (depends on version).
+- The evaluator rejects `dataset` and `datasource` as the source and `savelookup` anywhere. Before the first `| group` it also rejects `now()`, `querystart` / `queryend` / `queryspan`, CIDR and wildcard lookups, and exact lookups over 10,000 rows; all of these work after the first `group`. `timebucket` must be at least 30 seconds, and the body must include a `group`. Keep `topK` and time-shifted `timebucket` out of scheduled bodies too. The measured accepted and rejected forms are in `references/detection-rules.md` ("Scheduled-rule limits").
+- Prefer `group` with explicit columns to `transpose`.
 - The rule should produce one row per finding, with stable columns the detection engine can map to alert fields (e.g., `agent.uuid`, `endpoint.name`, `src.process.storyline.id`, `timestamp`).
-- Keep the initial filter as specific as possible: this is what's evaluated in the summary service and is what gates cost.
+- Keep the initial filter as specific as possible: it gates what the rule reads and what it costs.
 
 For all three rule types (API shapes, the correlation `correlationParams` block, the events/correlation S1QL escaping rule), detection patterns, and a checklist, see `references/detection-rules.md` and `examples/detection-library.md`.
 
@@ -477,22 +484,9 @@ never ask for a token in the chat.
 
 ## Scheduled (Custom Detection / STAR) rules run on a pre-aggregated data layer (learnings)
 
-A PowerQuery **scheduled** rule runs on top of a pre-aggregated data layer, not the raw event stream, so
-several traditional PowerQuery functions are not relevant as part of scheduled-rule detection logic and
-must not be used in a scheduled-rule body:
+A PowerQuery **scheduled** rule runs on top of a pre-aggregated data layer, not the raw event stream. The evaluator rejects `dataset` and `datasource` as the source and `savelookup` anywhere. Before the first `| group` it also rejects `now()`, `querystart` / `queryend` / `queryspan`, CIDR and wildcard lookups, and exact lookups over 10,000 rows; all of these work after the first `group`. `timebucket` must be at least 30 seconds, and the body must include a `group`. Keep `topK` and time-shifted `timebucket` out of scheduled bodies too. The measured accepted and rejected forms are in `references/detection-rules.md` ("Scheduled-rule limits").
 
-- `dataset`
-- `datasource`
-- `now`
-- `querystart`, `queryend`, `queryspan`
-- `topK`
-- `savelookup`
-- `lookup` by CIDR or wildcard (`=:cidr`, `=:wildcard`)
-- `lookup` against a table with more than 10,000 rows
-- time-shifted queries using `timebucket`
-- `timebucket` with a bucket size smaller than 30 seconds
-
-These all work in interactive PowerQuery (Event Search / Deep Visibility / dashboards / savelookup
+The rejected forms all work in interactive PowerQuery (Event Search / Deep Visibility / dashboards / savelookup
 builders), which runs on raw events. **The alternate for a use case whose detection logic needs any of
 them is a Hyperautomation watchdog** (a scheduled or manual/run-now flow that runs the full PowerQuery as
 an LRQ, then posts an OCSF alert to UAM); see the `hyperautomation` skill. This is why the

@@ -471,7 +471,12 @@ at a time.
 Workflow import, export, and listing use the `s1-secops-mcp` MCP server, which runs on the
 user's machine and reaches `*.sentinelone.net` where the Cowork sandbox cannot. Use
 `ha_list_workflows`, `ha_get_workflow`, `ha_import_workflow`, `ha_export_workflow` (with
-`outputFile` to save the ZIP) and `ha_delete_workflow` directly; the `mgmt-console-api` skill
+`outputFile` to save the ZIP) and `ha_delete_workflow` directly. `ha_get_workflow` returns a
+workflow's metadata and action stubs (`id`, `integration_id`, `type`) without each action's
+`data`; to read or diff one workflow's full definition, call `s1_api_get` on
+`/web/api/v2.1/hyper-automate/api/public/workflow-import-export/export/{workflow_id}/{version_id}` (`version_id` is the
+`revisionId` from `ha_list_workflows`), which returns importable JSON (`name`, `description`,
+`actions`, `notes`); the `mgmt-console-api` skill
 scripts are host-only. On a global or multi-account token, pass the account the user named as
 `accountIds` (or `siteIds`) on list, export, import and delete: unscoped list and export cover
 every account the token can reach, and `siteIds` alone misses account-level workflows.

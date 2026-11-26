@@ -636,7 +636,8 @@ Auth: same `Authorization: ApiToken <token>` header as all other S1 REST calls.
 | Operation | Method | Path |
 |---|---|---|
 | List workflows | `GET` | `/workflows?limit=&skip=&siteIds=&sortBy=&sortOrder=` |
-| Get single workflow | `GET` | `/workflows/single/{workflowId}/{revisionId}` |
+| Get single workflow (metadata and action stubs) | `GET` | `/workflows/single/{workflowId}/{revisionId}` |
+| Export one workflow (full definition, JSON) | `GET` | `/workflow-import-export/export/{workflowId}/{revisionId}` *(on /public path)* |
 | Workflow filter counts | `GET` | `/workflows/filters-count?siteIds=` |
 | Delete workflow | `DELETE` | `/workflows/{id}?accountIds=<acct>` |
 | Export all workflows (ZIP) | `GET` | `/workflow-import-export/export` *(confirmed on /public path)* |
@@ -707,7 +708,7 @@ Action types observed: `singularity_response_trigger`, `manual_trigger`, `http_t
 ### MCP tools
 
 `ha_list_workflows`, list with scope (`accountIds` or `siteIds`; neither lists every account on a multi-account token)/sort/pagination. Returns `revisionId` alongside each workflow.
-`ha_get_workflow`, fetch a single workflow by `workflowId` + optional `revisionId` (auto-resolves from list if omitted).
+`ha_get_workflow`, fetch a single workflow by `workflowId` + optional `revisionId` (auto-resolves from list if omitted). Returns metadata and action stubs; for the full definition use `s1_api_get` on the single-workflow export path in the table above.
 `ha_delete_workflow`, soft-delete one or more workflows via `DELETE /workflows/{id}` (scope with accountIds/siteIds). Confirm with user before calling.
 `ha_import_workflow`, create workflow from JSON. Requires Hyper Automate.write permission.
 `ha_export_workflow`, export all workflows as ZIP.

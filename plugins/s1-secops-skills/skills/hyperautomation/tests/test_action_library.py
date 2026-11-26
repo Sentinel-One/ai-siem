@@ -168,6 +168,19 @@ class ScannerNotesStayNarrow(unittest.TestCase):
         self.assertLess(total, 50, "too many scanner markers; look at the generator output")
 
 
+class WorkflowReadPathIsDocumented(unittest.TestCase):
+    def test_skill_says_where_the_full_definition_comes_from(self):
+        # ha_get_workflow returns action stubs only; the skill must point to the single-workflow
+        # export, or an agent edits a workflow it has only half read.
+        export = "workflow-import-export/export/{workflow_id}/{version_id}"
+        for rel in ("SKILL.md",):
+            text = " ".join((SKILL_DIR / rel).read_text(encoding="utf-8").split())
+            self.assertIn(export, text, rel)
+            self.assertIn("action stubs", text, rel)
+        api = " ".join((SKILL_DIR / "references/api-integration.md").read_text(encoding="utf-8").split())
+        self.assertIn("workflow-import-export/export/{id}/{version_id}", api)
+
+
 class CatalogCarriesNoIdsOrNames(unittest.TestCase):
     def test_no_per_action_id_column(self):
         text = (SKILL_DIR / "references/integration-catalog.md").read_text(encoding="utf-8")

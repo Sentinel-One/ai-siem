@@ -8,7 +8,8 @@ starts from the new launcher (downloaded) or passes the image explicitly (`--ima
 `-Image`). The current release is image `1.6.4`. If you are several releases behind, read the
 sections in between for what changed, then follow [1.6.3 to 1.6.4](#163-to-164-plugin-145).
 
-- [Plugin 1.4.5 to 1.4.6](#plugin-145-to-146) (current release: image `1.6.4`, s1-secops-mcp `1.6.4`, plugin `1.4.6`)
+- [Plugin 1.4.6 to 1.4.7](#plugin-146-to-147) (current release: image `1.6.4`, s1-secops-mcp `1.6.4`, plugin `1.4.7`)
+- [Plugin 1.4.5 to 1.4.6](#plugin-145-to-146)
 - [1.6.3 to 1.6.4 (plugin 1.4.5)](#163-to-164-plugin-145)
 - [Plugin 1.4.3 to 1.4.4](#plugin-143-to-144)
 - [1.6.2 to 1.6.3 (plugin 1.4.3)](#162-to-163-plugin-143)
@@ -26,6 +27,23 @@ sections in between for what changed, then follow [1.6.3 to 1.6.4](#163-to-164-p
 - [1.4.x to 1.5.0](#14x-to-150)
 - [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
 - [Rolling back](#rolling-back)
+
+---
+
+## Plugin 1.4.6 to 1.4.7
+
+Skills only: the image and `s1-secops-mcp` stay at `1.6.4`, so there is nothing to reinstall.
+Download the new `.plugin` and replace the old one (Cowork → Customize → Browse plugins → upload →
+**Replace**). What changed:
+
+- **Hyperautomation action library:** the skill ships all 3,690 packaged actions across 226
+  integrations and searches them locally (`scripts/find_action.py`), so every packaged action in a
+  generated workflow carries a current `public_action_id`, with the pack's `url` and `payload`
+  templates.
+- **Marketplace templates:** the 156 ready-made workflows are indexed, and the skill points to a
+  matching template before building a workflow from scratch.
+- **Dashboard linter:** `panel_safety_check.py` reads a `|` or a character range inside a quoted
+  regex as part of the string, not as a pipe or as hyphenated arithmetic.
 
 ---
 

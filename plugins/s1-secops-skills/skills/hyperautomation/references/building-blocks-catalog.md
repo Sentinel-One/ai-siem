@@ -4,8 +4,9 @@ This catalog is mined from **1,205 production workflows** (17,899 action steps) 
 SentinelOne tenant, re-mined 2026-08-06. Every building block here was observed in real flows,
 with usage counts so you know what's load-bearing and what's a one-off.
 
-For **which integrations exist and what actions each offers**, see `integration-catalog.md`:
-all 266 packaged actions (`public_action_id`, method, path) across 45 integrations, plus the
+For **which integrations exist and what actions each offers**, search the action library with
+`scripts/find_action.py` (3,690 packaged actions across 226 integrations, index in
+`action-library-index.md`); `integration-catalog.md` shows which of them workflows use most, plus the
 ad-hoc calls and the 52 custom integrations.
 
 Read this when you need to:
@@ -565,7 +566,7 @@ you want to inline-template the URL with `{{...}}`.
 **Purpose**: same shape, but the URL, base, and authentication come from a connection
 pre-configured in `Hyperautomation → Integrations`. 90% of HTTP requests in active flows.
 
-**Real shape, SentinelOne integration (Create Device Control Rule)**:
+**Real shape, SentinelOne integration (Create Firewall Rule)**:
 
 ```json
 {
@@ -576,11 +577,11 @@ pre-configured in `Hyperautomation → Integrations`. 90% of HTTP requests in ac
   "use_connection_name": false,
   "integration_id": null,
   "data": {
-    "name": "Create Device Control Rule",
+    "name": "Create Firewall Rule",
     "action_type": "http_request",
-    "public_action_id": "fecff713-56be-4f9b-8e64-0af3d46ad8aa",
+    "public_action_id": "20f22230-09df-4708-8b7d-0c1be1901bf5",
     "method": "post",
-    "url": "{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/device-control",
+    "url": "{{Connection.protocol}}{{Connection.url}}<@/web/api/v2.1/firewall-control@>",
     "url_path": "/web/api/v2.1/firewall-control",
     "url_prefix": null,
     "payload": "{ \"data\": { ... }, \"filter\": { \"siteIds\": [ \"{{http-trigger.query_params.site}}\" ] } }",
@@ -598,10 +599,11 @@ pre-configured in `Hyperautomation → Integrations`. 90% of HTTP requests in ac
 **Hard rule for generation**: when emitting integration actions for import, set
 `connection_id: null`, `connection_name: ""`, `use_connection_name: false`,
 `integration_id: null`. The console resolves them post-import from the user's connections.
-**Keep `public_action_id`**, it identifies which action in the integration's catalog this is.
-Look the right one up in `integration-catalog.md`: it lists all 266 packaged actions with their
-`public_action_id`, method and path, grouped by integration. 71% of production `http_request`
-steps use a packaged action, so reach for one before hand-rolling a URL.
+**Keep `public_action_id`**, it identifies which packaged action this is. Look the right one up
+in the action library with `python3 scripts/find_action.py <terms>`: it returns the
+`public_action_id`, method, path, `url` and `payload` of every packaged action (3,690 across 226
+integrations; see `action-library-index.md`). 71% of `http_request` steps in the usage corpus use
+a packaged action, so reach for one before hand-rolling a URL.
 
 **Reach for it when**: hitting any of S1, M365, Slack, Okta, Jira, ServiceNow, etc. via their
 official integrations.
@@ -1112,7 +1114,7 @@ shorter for human-readable channel names (Slack channel-name length cap).
 ### B14. Trigger an Agentic Investigation and act on the verdict
 
 Purple AI Agentic Investigations are driven through the **SentinelOne GraphQL** integration's
-packaged actions (`integration-catalog.md` → SentinelOne GraphQL): **Trigger Agentic
+packaged actions (`scripts/find_action.py agentic investigation`): **Trigger Agentic
 Investigation** and **Get Agentic Investigation Summary** (status, verdict and report). Both POST
 to `{{Connection.protocol}}{{Connection.url}}/web/api/v2.1/unifiedalerts/graphql`.
 

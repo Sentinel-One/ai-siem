@@ -612,7 +612,7 @@ Same as above but:
 - `"connection_id": null` (set to null for import; user configures)
 - `"connection_name": ""`
 - `"integration_id": null` (set to null for import)
-- `"public_action_id": "<uuid>"` (from the integration's action catalog)
+- `"public_action_id": "<uuid>"` (from the action library: `scripts/find_action.py`)
 - URL uses `{{Connection.protocol}}{{Connection.url}}/path/to/api`
 
 When generating workflows for import, always set `connection_id`, `connection_name`,

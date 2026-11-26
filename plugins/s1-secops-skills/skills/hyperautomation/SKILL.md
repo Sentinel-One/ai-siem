@@ -168,16 +168,30 @@ Break Loop, Snippet, Wait for Slack, Create Interaction, LLM) have `"tag": "core
 
 **Packaged vs ad-hoc integration actions.** Every built-in integration ships an action pack. A
 packaged action carries `data.public_action_id` (a pack UUID) and a pre-filled `data.url_path`;
-an ad-hoc action has `public_action_id: null` and a URL you write yourself. In production, 71%
-of `http_request` steps (3,822 of 5,418) use a packaged action. **Prefer a packaged action when
-one exists** and keep `url`, `url_path` and `public_action_id` consistent.
+an ad-hoc action has `public_action_id: null` and a URL you write yourself. In the usage corpus,
+71% of `http_request` steps (3,822 of 5,418) use a packaged action. **Prefer a packaged action
+when one exists** and keep `url`, `url_path` and `public_action_id` consistent.
 
-The action packs are not queryable: `GET /integrations/{id}` returns connection and auth metadata
-only, `/integrations/{id}/actions` is 404, and there is no `GET /integrations` list endpoint (405).
-So use `references/integration-catalog.md`, which records all 266 packaged actions across 45
-integrations plus the ad-hoc calls, mined from a live tenant. To see what a specific console has,
-enumerate with `GET /hyper-automate/api/v1/connections/scope` and resolve each distinct
-`integration_id` via `GET /hyper-automate/api/v1/integrations/{id}`.
+**Take every `public_action_id` from the action library, never from memory.** The skill ships all
+3,690 packaged actions across 226 integrations. Search them locally:
+
+```bash
+python3 scripts/find_action.py slack post message          # every term must match
+python3 scripts/find_action.py --integration jira create issue
+python3 scripts/find_action.py --id <public_action_id>     # also resolves an older id
+```
+
+Each hit gives the `public_action_id`, `integration_id`, method, `url_path`, and the `url` and
+`payload` templates. `references/action-library-index.md` lists the integrations, and
+`references/integration-catalog.md` shows which actions workflows use most and documents the
+live API (`GET /web/api/v2.1/hyper-automate/api/v1/public-actions`). To see which integrations a
+console has set up, enumerate `GET /hyper-automate/api/v1/connections/scope` and resolve each
+distinct `integration_id` via `GET /hyper-automate/api/v1/integrations/{id}`.
+
+**Check the marketplace templates before building from scratch.** The console ships 156
+ready-made workflows (`references/marketplace-templates.md`; search with
+`python3 scripts/find_action.py --templates <terms>`). When one already does the job, tell the
+user its name so they can start from it in Hyperautomation > Templates.
 
 ### Step 3: Generate the JSON
 
@@ -235,7 +249,9 @@ A workflow imported or created via the API is a **Private Draft owned by the tok
 | `references/workflow-schema.md` | Always when generating JSON: defines the envelope and action structure |
 | `references/building-blocks.md` | Need the exact shape of a specific action type (trigger, loop, condition, etc.) |
 | `references/building-blocks-catalog.md` | **Picking what to use** for a given step / composing multi-action idioms / bootstrapping a SOAR recipe. Mined from 1,205 production workflows (17,899 action steps). Read FIRST when designing a new workflow. |
-| `references/integration-catalog.md` | **Which integrations exist and what actions each one offers.** 62 built-in + 52 custom integrations resolved live, with all 266 packaged actions (`public_action_id`, method, path) plus observed ad-hoc calls. Read when the user names a third-party product ("open a Jira ticket", "block on the Palo Alto", "post to Teams") and you need the real action or endpoint shape. Also documents the integration-enumeration API. |
+| `references/action-library-index.md` | **Every integration with a packaged action pack** (226), with its `integration_id` and action count. Search the actions themselves with `scripts/find_action.py`; the data is `assets/action-library.json` (too large to read whole) |
+| `references/marketplace-templates.md` | **The 156 marketplace templates**: name, integrations used and what each does. Read before designing a workflow from scratch; full steps via `scripts/find_action.py --templates` |
+| `references/integration-catalog.md` | **Which integrations and actions workflows use most** (usage corpus of 1,205 workflows), packaged vs ad-hoc actions, and the action library API. Read when the user names a third-party product ("open a Jira ticket", "block on the Palo Alto", "post to Teams") and you want the action people actually use. Take ids from `scripts/find_action.py`, not from this file. Also documents the integration-enumeration API. |
 | `references/functions-reference.md` | Using `{{Function.X()}}` syntax or PowerQuery patterns |
 | `references/validation-rules.md` | Before outputting any workflow: run the checklist |
 | `references/api-integration.md` | User wants to import/export/submit to a live console |

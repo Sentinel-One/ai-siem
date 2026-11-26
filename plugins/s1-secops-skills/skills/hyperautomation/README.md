@@ -6,8 +6,9 @@ A Claude skill for designing and generating SentinelOne Hyperautomation workflow
 
 - Generates valid Hyperautomation workflow JSON from a plain-language description
 - Covers all workflow trigger types: alert, schedule, webhook, manual, email
-- Supports core actions (conditions, loops, variables, HTTP requests, delays, approvals, and the native LLM action) and integration-backed actions across 62 built-in integrations (SentinelOne, M365, Slack, VirusTotal, Okta, Jira, ServiceNow, AWS, and more)
-- Picks the right pre-built integration action from a catalog of 266 packaged actions, instead of hand-rolling API calls
+- Supports core actions (conditions, loops, variables, HTTP requests, delays, approvals, and the native LLM action) and integration-backed actions across 226 integrations with packaged actions (SentinelOne, M365, Slack, VirusTotal, Okta, Jira, ServiceNow, AWS, and more)
+- Picks the right pre-built integration action from the action library of 3,690 packaged actions, searched locally with `scripts/find_action.py`, instead of hand-rolling API calls
+- Points to a matching marketplace template (156 ready-made workflows) before building one from scratch
 - Validates the generated JSON against schema rules before presenting it
 - Optionally imports, activates, and triggers workflows on a live console via the Hyperautomation API
 - Warns about integrations that require pre-configuration in the console before import
@@ -63,7 +64,11 @@ Full pattern and the reusable-snippet library: [`references/autonomous-soc-templ
 - `references/workflow-schema.md`: envelope and action structure
 - `references/building-blocks.md`: exact shape of every action type
 - `references/building-blocks-catalog.md`: which block to use for a given step, composite idioms, end-to-end recipes, and anti-patterns, mined from 1,205 production workflows
-- `references/integration-catalog.md`: all 62 built-in and 52 custom integrations, with the 266 packaged actions (`public_action_id`, method, path) available on each
+- `references/action-library-index.md`: every integration with a packaged action pack, with its `integration_id` and action count
+- `references/marketplace-templates.md`: the 156 marketplace templates, with the integrations each one uses
+- `references/integration-catalog.md`: which integrations and actions workflows use most, packaged vs ad-hoc actions, and the action library API
+- `assets/action-library.json`, `assets/marketplace-templates.json`: the action library and templates, searched with `scripts/find_action.py`
+- `scripts/find_action.py`: local search over the action library and templates (standard library only)
 - `references/functions-reference.md`: `{{Function.X()}}` syntax and PowerQuery patterns
 - `references/validation-rules.md`: pre-output checklist
 - `references/api-integration.md`: Hyperautomation API reference (import, activate, trigger, list)
@@ -73,16 +78,18 @@ Full pattern and the reusable-snippet library: [`references/autonomous-soc-templ
 
 ## Coverage and known gaps
 
-The action-type and integration catalogs are **mined from live tenants**, not from a product
-manifest; SentinelOne exposes no API that lists action types, integration action packs, or their
-schemas. Current basis: 1,205 workflows / 17,899 action steps on a production tenant, plus 39
-workflows across 6 further tenants as a cross-check.
+The action library and the marketplace templates come from the Hyperautomation API
+(`/public-actions`, `/integrations/all`, `/templates`) and are the same on every console. They
+are rebuilt with `tools/ha_action_library.py` in the s1-secops-skills source repo. The usage
+statistics and the action-type catalog come from 1,205 workflows / 17,899 action steps, plus 39
+workflows across 6 further consoles as a cross-check.
 
 Known gap: the S-26.2 docs describe an **SQL action** (PostgreSQL, MySQL, MSSQL) that appears in
 no sampled workflow, so its JSON shape is unverified and the skill will not generate one. Every
-other action documented in S-26.2 is covered. To refresh the catalogs on your own tenant, export
-your workflows via `GET /hyper-automate/api/public/workflow-import-export/export/{id}/{version_id}`
-and group the `http_request` steps by `integration_id` and `public_action_id`.
+other action documented in S-26.2 is covered. To see how workflows on your own console use
+actions, export them via
+`GET /hyper-automate/api/public/workflow-import-export/export/{id}/{version_id}` and group the
+`http_request` steps by `integration_id` and `public_action_id`.
 
 ## Credit
 

@@ -144,8 +144,8 @@ connection signs `ApiToken` and will not work here.
 
 | Action | `public_action_id` | Path |
 |---|---|---|
-| Trigger Agentic Investigation | `99dd0d16-8eb5-4db9-8701-223e4e281f53` | `/web/api/v2.1/unifiedalerts/graphql` |
-| Get Agentic Investigation Summary | `288d7810-3e36-4aa0-a5a7-1c201c08020a` | `/web/api/v2.1/unifiedalerts/graphql` |
+| Trigger Agentic Investigation | `240eb504-afec-46b5-ab68-673c847f62ce` | `/web/api/v2.1/unifiedalerts/graphql` |
+| Get Agentic Investigation Summary | `39173197-17ec-4f57-b9e1-57ca284ecdca` | `/web/api/v2.1/unifiedalerts/graphql` |
 
 Set `body_type: "graphql"` and `Content-Type: application/json` on both.
 

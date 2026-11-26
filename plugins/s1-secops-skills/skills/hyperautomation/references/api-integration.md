@@ -829,13 +829,15 @@ An action is a **native integration action** when it carries `tag: "integration"
 `public_action_id` (the catalog identity of a specific action inside an installed integration) and, to
 render as native on the canvas, the vendor's `integration_id`.
 
-- **Live-fetch the action catalog** rather than guessing ids or field names, then **copy the catalog
-  action's `data` verbatim**, substituting only the input placeholders (catalog tokens like `<<ip>>`)
-  with workflow expressions; reconstructing `data` by hand tends to drop required shape (e.g. params
-  must be `{parameter_name, parameter_value}`, not `{key, value}`). NOTE: the exact catalog path is
-  unconfirmed on S-26.x. `GET {base}/public-actions` returns 404 (as do `/actions` and
-  `/integration-actions`); capture the current path from a browser DevTools network trace of the
-  Hyperautomation > Integrations page before relying on it. (Path 404 verified live 2026-07-24.)
+- **Take the action from the action library** rather than guessing ids or field names, then **copy
+  the library action's `data` verbatim**, substituting only the input placeholders (tokens like
+  `<<ip>>`) with workflow expressions; reconstructing `data` by hand tends to drop required shape
+  (e.g. params must be `{parameter_name, parameter_value}`, not `{key, value}`). The shipped
+  library (`scripts/find_action.py`) gives each action's id, method, path, `url` and `payload`. For
+  the complete `data` block (headers, parameters, timeouts), read the action from
+  `GET /web/api/v2.1/hyper-automate/api/v1/public-actions` (every packaged action in one response,
+  several MB, so save it with `outputFile`); the full API is in `integration-catalog.md`, section
+  "The action library API".
 - **`url` / `url_path` / `payload` overrides on an integration action ARE honored**: the action then
   executes as a generic HTTP request through the bound connection. To make a node *unambiguously* a
   generic request, set `public_action_id: null`.

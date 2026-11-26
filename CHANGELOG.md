@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - s1-secops-skills plugin 1.4.7 (s1-secops-mcp unchanged at 1.6.4): Hyperautomation action library
+
+- hyperautomation: the action library ships with the skill, 3,690 packaged actions across 226 integrations, searched locally with `scripts/find_action.py`. Each result gives the `public_action_id`, `integration_id`, method, path, and `url` and `payload` templates. The integration catalog documents the action library API and shows which actions workflows use most.
+- hyperautomation: the 156 marketplace templates are indexed, and the skill points to a matching template before building a workflow from scratch.
+- hyperautomation: the autonomous SOC template and the building-blocks catalog carry library action ids, checked by a test.
+- sdl-dashboard: `panel_safety_check.py` treats a `|` or a character range inside a quoted regex as part of the string (rules P01 and P02).
+- Plugin bundle rebuilt at 1.4.7.
+
 ### Added - s1-secops-skills plugin 1.4.6 (s1-secops-mcp unchanged at 1.6.4): Detection testing
 
 - sdl-solutions: Detection testing. Platform coverage, real-data validation, synthetic query proof, alert proof, real-telemetry proof on test endpoints, native versus custom, A/B, and evidence labelled simulated, real telemetry or real data. Onboarding field checks for common third-party sources, a regression check before deploying a suppression, and evidence reporting in solution summaries.

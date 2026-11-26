@@ -1,5 +1,50 @@
 # Changelog
 
+## Plugin 1.4.6 (skills only; image and s1-secops-mcp unchanged at 1.6.4), 2026-11-26
+
+### sdl-solutions
+
+- New solution: Detection testing (`references/detection-testing.md`, `docs/solutions/detection-testing.md`). Platform coverage, real-data validation, synthetic query proof, alert proof, real-telemetry proof on Windows and Linux test endpoints, native versus custom, A/B and shadow mode, evidence labelling, safe bulk deployment, and reference sections on Sigma conversion, EDR and third-party field facts and PowerQuery facts.
+- Data source onboarding: field checks for Entra ID, Netskope, Microsoft 365, Proofpoint, FortiGate, Palo Alto, CloudTrail, AWS WAF and Zeek DNS, written as checks to measure on each tenant; detections are proven with the playbook before they are enabled.
+- Detection exclusions and alert noise reduction: a regression check before deploying a suppression.
+- Risk-Based Alerting: the SYSTEM and service-account exclusion is written `!( ... in:anycase (...))`.
+- Detection as Code and MITRE mapping: pointers to the playbook; a rule-body change carries its A/B result.
+- The solution summary reports simulated, real-telemetry and real-data evidence separately for every detection.
+- Solution guides: onboarding, exclusions, noise reduction, Detection as Code, MITRE mapping and Risk-Based Alerting point to Detection testing for proof, the regression check and A/B results.
+
+### powerquery
+
+- EDR fields: `event.dns.request` / `event.dns.response`, the full `event.category` and `event.type` lists, registry Create and Modified value events, `MACHINE\` and `USER\<SID>\` key roots, process name fields. DNS, Run-key and UAC-bypass examples updated.
+- Operators: `matches` is an unanchored search, `!` before a bare `let` variable is a text search, `=` is case-sensitive on enum-like fields, `count(!(f = *))` is rejected, `net_incidr` is banned (use `net_ipsubnet`).
+- New `references/sigma-conversion.md` (Sigma, KQL and SPL to PowerQuery).
+- Detection rules: enable after create; when test events count for `events`, `correlation` and `scheduled` rules; scheduled-rule restrictions in one table; lookup limits; `queryLang` for `events` rules.
+- Value-anywhere searches leave out `alert`, `indicator` and `ActivityFeed` records.
+- `SKILL.md` "Before you deploy" follows the detection testing lifecycle.
+- Seven live regression cases for the field and operator facts.
+
+### mgmt-console-api
+
+- Detection rules: enable after create, test timing per rule type, `queryLang` for `events` rules, scheduled-rule restrictions by reference.
+- Platform Detection Rules: rules that return no query are compared by metadata.
+- RemoteOps recipe: upload, `guardrails/check`, `execute`, `status` with `parentTaskId`, delete.
+
+### soc-investigator
+
+- Corroboration counts only telemetry, not SentinelOne's own alert, indicator and activity records.
+- TTP sweep: events with no `agent.uuid` are reported as test data.
+
+### sdl-log-parser
+
+- OCSF mapping: the fields detections read when onboarding web, proxy, DNS, cloud audit and identity sources.
+
+### CLAUDE.md
+
+- Cross-source IOC template and corroboration rule leave out SentinelOne's own records.
+
+### Tests
+
+- `tools/run_evals.py`: lint rules for unparenthesised `NOT`, `dns.request`, `registry.valueName`, `tgt.process.image.originalFileName`, `event.category = 'network'`, S1QL 1.0 operators and `net_incidr`. The documented-query lint now covers the sdl-solutions, mgmt-console-api, soc-investigator and sdl-dashboard references (364 blocks).
+
 ## 1.6.4 (image 1.6.4, plugin 1.4.5), 2026-11-23
 
 ### s1-secops-mcp

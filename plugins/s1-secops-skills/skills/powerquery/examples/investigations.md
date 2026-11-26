@@ -295,7 +295,7 @@ src.process.cmdline matches '(?i)(schtasks\\s+/create|new-scheduledtask|register
 **Use it when** persistence hunt with registry data.
 
 ```text
-event.type = 'Registry Value Modified'
+event.type in ('Registry Value Create', 'Registry Value Modified')
 registry.keyPath matches '(?i)(\\\\Run\\\\|\\\\RunOnce\\\\|\\\\RunServices\\\\)'
 | group
     last_seen = newest(timestamp),
@@ -318,14 +318,14 @@ registry.keyPath matches '(?i)(\\\\Run\\\\|\\\\RunOnce\\\\|\\\\RunServices\\\\)'
 **Use it when** sweeping for low-reputation DGA-style domains.
 
 ```text
-event.category = 'network'
+event.category = 'dns'
 event.type = 'DNS Resolved'
-dns.request matches '(?i)\\.(top|xyz|tk|ml|cf|gq|ga|cn)$'
+event.dns.request matches '(?i)\\.(top|xyz|tk|ml|cf|gq|ga|cn)\\.?$'
 | group
     queries   = count(),
     last_seen = newest(timestamp),
     process   = any(src.process.name)
-  by endpoint.name, dns.request
+  by endpoint.name, event.dns.request
 | sort -queries
 | limit 100
 ```

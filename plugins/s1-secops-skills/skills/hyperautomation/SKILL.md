@@ -427,10 +427,10 @@ Moved to a reference to keep SKILL.md under the 500-line limit. See [`references
 ## Detection watchdog pattern (the alternate to a scheduled rule)
 
 Some detection logic cannot run as a PowerQuery **scheduled** Custom Detection rule, because scheduled
-rules run on a pre-aggregated data layer where functions like `dataset`, `datasource`, `now`,
-`querystart` / `queryend` / `queryspan`, `topK`, `savelookup`, CIDR/wildcard `lookup`, `lookup` over a
->10,000-row table, time-shifted `timebucket`, and `timebucket` < 30s are unavailable (full list in the
-`powerquery` skill). The classic case is enumerating **absent** rows, a pair present in a
+rules run on a pre-aggregated data layer: `dataset` and `datasource` as the source and `savelookup`
+are rejected, and before the first `| group` so are `now`, `querystart` / `queryend` / `queryspan`,
+CIDR/wildcard `lookup` and `lookup` over a >10,000-row table (measured table in the `powerquery`
+skill). The classic case is enumerating **absent** rows, a pair present in a
 baseline but with zero events in the live window, which needs a `left join` + `dataset` anti-join.
 
 The **alternate is an HA watchdog**: a scheduled (or manual / run-now) workflow that

@@ -144,6 +144,17 @@ of the technique.
 
 ## Phase 5: Simulation and authorised-scanner suppression (5 min)
 
+**Synthetic endpoint events.** Events sent through the HTTP Event Collector can carry
+`dataSource.name='SentinelOne'` and EDR field names. Real agent telemetry always has `agent.uuid`.
+Before reporting an endpoint technique, check:
+
+```text
+dataSource.name='SentinelOne' <technique filter>
+| group n = count(), agents = count(agent.uuid != null)
+```
+
+Rows with no `agent.uuid` are test or replayed data: report them as such, never as host activity.
+
 **This phase is what separates a useful sweep from an alarming one.** Breach-and-attack-simulation
 platforms and cloud posture scanners produce real attack telemetry by design. Without this pass a
 sweep reports a fleet-wide intrusion that does not exist.

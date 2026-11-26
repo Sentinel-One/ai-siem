@@ -2,6 +2,8 @@
 
 ### Custom Detection Rules and STAR Rules: POST /cloud-detection/rules
 
+Before deploying or replacing a rule, prove it with the detection testing playbook (`sdl-solutions/references/detection-testing.md`): platform coverage, real-data validation, alert proof and A/B.
+
 **STAR rules** ("streaming threat assessment rules") are the product name for real-time
 detection rules that evaluate every matching event as it arrives. There is no separate
 `/star-rules` API path; that path returns 404. STAR rules are `cloud-detection/rules`
@@ -35,13 +37,13 @@ The list endpoint hides `queryType: "scheduled"` rules by default. **Without `is
 | Rule body language | Correct `queryType` | Correct `queryLang` | Field carrying the query |
 |---|---|---|---|
 | **PowerQuery (pipe syntax `\|`)** | **`scheduled`** | **`"2.0"`** | `data.scheduledParams.query` |
-| S1QL log-search / event search | `events` | `"1.0"` (default, omit) | `data.s1ql` |
+| S1QL log-search / event search | `events` | `"1.0"` if omitted; set `"2.0"` when the filter uses 2.0 operators | `data.s1ql` |
 | EUEBA first-seen | `uebafirstseen` | n/a | per swagger schema |
 | Correlation | `correlation` | **`"2.0"`** | `data.correlationParams` (`entity`, `matchInOrder`, `subQueries[]`) |
 
 **Any time the rule body has the pipe character `\|` (i.e. PowerQuery), the only working path is `queryType: "scheduled"` + `queryLang: "2.0"`.** `queryType: "events"` rejects pipe syntax (HTTP 400 `Don't understand [|]`), and `queryLang: "2.1"` is not in the enum (HTTP 400 `queryLang: "2.1" is not a valid choice`). Confirmed against the live API, 2026-05.
 
-**Correlation rules also require `queryLang: "2.0"`.** Confirmed against the live API, 2026-06: a `queryType: "correlation"` POST without `queryLang` (or with `"1.0"`) returns HTTP 400 `query lang must be 2.0`, even though the subquery bodies themselves can be boolean S1QL (e.g. `EventType = "Logon" AND LogonResult = "Fail"`). So only single-event `events` rules use 1.0; both `scheduled` and `correlation` require 2.0. `correlationParams` requires `entity` (`user`/`process`/`ip`/`endpoint`/`storyline`/`custom`/`none`) and `matchInOrder`, with 1 to 10 `subQueries[]` (each `{subQuery, matchesRequired}`); `timeWindow.windowMinutes` is one of {1,5,10,30,60,240,480,720}.
+**Correlation rules also require `queryLang: "2.0"`.** Confirmed against the live API, 2026-06: a `queryType: "correlation"` POST without `queryLang` (or with `"1.0"`) returns HTTP 400 `query lang must be 2.0`, even though the subquery bodies themselves can be boolean S1QL (e.g. `EventType = "Logon" AND LogonResult = "Fail"`). So only single-event `events` rules can run at 1.0 (set 2.0 when the filter uses 2.0 operators); both `scheduled` and `correlation` require 2.0. `correlationParams` requires `entity` (`user`/`process`/`ip`/`endpoint`/`storyline`/`custom`/`none`) and `matchInOrder`, with 1 to 10 `subQueries[]` (each `{subQuery, matchesRequired}`); `timeWindow.windowMinutes` is one of {1,5,10,30,60,240,480,720}.
 
 **Operational learnings, validated live (2026-07, custom detection rules + alerts):**
 
@@ -76,7 +78,7 @@ See the **PowerQuery Scheduled Detections** subsection below for the full schedu
 Events rule gotchas confirmed against live API:
 
 - `"activeResponse"` in the body returns HTTP 400 "Unknown field": omit it.
-- `queryLang` defaults to `"1.0"` for events rules; do not set it explicitly (unlike scheduled rules which require `"2.0"`).
+- Set `queryLang: "2.0"` on `events` rules whose filter uses 2.0 operators (`in:anycase`, `contains:anycase`, `starts_with`, `ends_with`, `matches:matchcase`); an omitted `queryLang` is stored as `1.0` and a 2.0 operator then matches nothing. Scheduled and correlation rules always use `"2.0"`.
 - `treatAsThreat="UNDEFINED"` is accepted on input but stored as `null` in the response.
 - `status="Draft"` creates a rule that never fires even if live telemetry matches.
 - GET `nameSubstring` + `queryType` combined returns HTTP 500: use one filter at a time.
@@ -141,8 +143,9 @@ All five `data` fields are required. `queryLang: "2.0"` is mandatory; omitting i
 
 - `disableAgentMitigation` is **not** part of the scheduled schema. Including it returns HTTP 400 `Unknown field`. Cloud-source PQ rules do not need it; mitigation actions are not supported on scheduled rules anyway.
 - `treatAsThreat: "Malicious"` is for events rules with EDR telemetry. Scheduled rules accept `treatAsThreat: "UNDEFINED"` (or omit) and `networkQuarantine: false`. The verdict surfaces via the rule's `severity`, not via mitigation.
-- New rules are created in `Draft` status regardless of the requested `status` in the POST. To enable, call `PUT /web/api/v2.1/cloud-detection/rules/enable` with `{"filter": {"ids": [...], "accountIds": [...]}}` after creation. The response transitions to `Activating` and then `Active` within the hour.
-- The PowerQuery in `scheduledParams.query` must NOT use `nolimit`, `compare`, or subqueries. The 1,000-row intermediate cap documented in the `powerquery` skill at `references/detection-rules.md` applies.
+- **Enable after create.** A new rule can be stored as `Draft` whatever `status` the POST sent. Always follow the create with `PUT /web/api/v2.1/cloud-detection/rules/enable` (`{"filter": {"ids": [...]}}`); it is harmless on a rule that is already activating. Then poll `status` (and `statusReason`) until `Active`, which can take up to an hour.
+- **When test events must arrive.** An `events` or `correlation` rule evaluates only events that arrive after it is `Active`. A `scheduled` rule reads its lookback window on each run, so events sent earlier count if they are still inside the lookback at the first run after activation; keep the lookback long enough, or send the events again while the rule activates.
+- The PowerQuery in `scheduledParams.query` must not use `nolimit`, and the restrictions on the part before the first `| group` apply (the measured table is in the `powerquery` skill, `references/detection-rules.md`, "Scheduled-rule limits"), as does the 1,000-row intermediate cap.
 
 **GET requires `isLegacy=false`**, without this query parameter, the list endpoint returns 0 results for scheduled rules even though they exist and are visible in the console UI. Always include it. **When listing all rules regardless of type (e.g. searching by name), always pass `isLegacy=false`, without it you will only see events-type rules and silently miss all scheduled rules:**
 

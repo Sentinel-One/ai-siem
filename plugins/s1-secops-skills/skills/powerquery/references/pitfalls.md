@@ -45,6 +45,13 @@ Use when you want all events with no initial predicate.
 | group ct=count() by event.type
 ```
 
+### A value-anywhere search also finds the platform's own records of it
+
+`* contains`, `#ip` and `#hash` searches match SentinelOne's `alert`, `indicator` and `ActivityFeed`
+records, which quote command lines, domains and hashes. For telemetry hunts and third-party rule
+bodies add `!(dataSource.name in ('alert', 'indicator', 'ActivityFeed'))`, or group by `dataSource.name` and report those rows separately. A hit in
+these streams is not independent corroboration of the telemetry it describes.
+
 ### SQL-style `sort` direction keywords cause parse error (HTTP 500)
 
 PowerQuery uses `-`/`+` prefix for sort direction. `desc` and `asc` are not valid keywords and cause the LRQ API to return HTTP 500 "Unable to parse the entire query".
@@ -703,7 +710,7 @@ Run with `hours=1` so the scan window covers at least one complete 10-minute buc
 Two annotations on this failsafe (live-verified 2026-07-29 via LRQ v2):
 
 - The unaliased `timebucket(timestamp, "10m")` group key is accepted by LRQ v2; the output column is named literally (`timebucket(timestamp, "10m")`). An alias (`by bucket=timebucket(timestamp, "10m")`) is still recommended for readability and for other runners.
-- `count(some.field)` counts TRUTHY values: rows where the field is 0, `false`, or the empty string are dropped along with nulls. `count(<predicate>)` counts matching rows and is valid, e.g. `count(some.field != null)` for an exact non-null count (`field != null` matches exactly the rows `field=*` matches). `count(field=*)` errors ("Don't understand [*]").
+- `count(some.field)` counts TRUTHY values: rows where the field is 0, `false`, or the empty string are dropped along with nulls. `count(<predicate>)` counts matching rows and is valid, e.g. `count(some.field != null)` for an exact non-null count (`field != null` matches exactly the rows `field=*` matches). `count(field=*)` errors ("Don't understand [*]"), and `count(!(field = *))` is rejected the same way; count absent rows as `count() - count(field != null)`.
 
 ### `count_distinct(x)` returns HTTP 500 "Unknown function"
 
@@ -854,7 +861,7 @@ Common cause: grouping dropped a field you assumed was still present, or duplica
 ## Ingest-health validated pitfalls
 
 - `replace_all(...)` returns "Unknown function" on this engine; use `replace(...)`.
-- `count(field=*)` returns "Don't understand [*]"; count non-null rows with a flag: `| let f = (field ? 1 : 0) | group n = sum(f)`. Note the flag idiom is a TRUTHY count: 0, `false`, and the empty string are dropped along with null. For an exact non-null count use a predicate: `count(field != null)` (live-verified 2026-07-29; `field != null` matches exactly the rows `field=*` matches).
+- `count(field=*)` and `count(!(field = *))` return "Don't understand [*]"; count non-null rows with a flag: `| let f = (field ? 1 : 0) | group n = sum(f)`. Note the flag idiom is a TRUTHY count: 0, `false`, and the empty string are dropped along with null. For an exact non-null count use a predicate: `count(field != null)` (live-verified 2026-07-29; `field != null` matches exactly the rows `field=*` matches).
 - A second `group` cannot reference a field renamed in the first group: after `group ... by source = dataSource.name`, key the next group on `by source`, not `by source = dataSource.name` ("undefined field 'dataSource.name'").
 - Do not transpose on `dataSource.name` or a device key (values contain spaces); use honeycomb, single-series time charts, or `grouped_data`.
 - `avg()`, `stddev()`, `pct(N, x)` and `p10/p90/p999` all work in `group` (do not treat them as missing).

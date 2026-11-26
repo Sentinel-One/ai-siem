@@ -105,6 +105,12 @@ attributes: {
 
 There is no TLS class in the bundled catalog; TLS attributes ride on `tls.*` / `connection_info` under 4001/4002. For any class not listed here, check `references/ocsf-schema-documentation.md` rather than guessing a UID.
 
+**Fields detections read.** When onboarding a web, proxy, DNS, cloud audit or identity source, map at
+least `http_request.user_agent`, `http_request.url.*` (path, query, hostname), `query.hostname`,
+`api.operation` / `activity_name`, `actor.user.uid` and a consistently typed `status_code`, and use
+API Activity (6003) for cloud control-plane audit. Values left only in `unmapped.*` or `message`
+cannot be matched by rules written against OCSF fields.
+
 `class_uid = category_uid * 1000 + N`. The integer UIDs go on `attributes` so STAR rules can filter cheaply (`class_uid = 4001` is much faster than `class_name = 'Network Activity'`).
 
 ## Network Activity (4001): the canonical mapping

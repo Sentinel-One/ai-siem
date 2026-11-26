@@ -69,10 +69,21 @@ SENTINEL = "event.time=*\n"
 MIN_BLOCKS = 120
 
 
+# Other skills whose references carry PowerQuery bodies that agents copy into
+# hunts and rules. Present only in the source repository layout; each is
+# skipped when absent, so a vendored copy of this skill still runs.
+OTHER_SKILLS = ("sdl-solutions", "mgmt-console-api", "soc-investigator", "sdl-dashboard")
+
+
 def _pq_blocks():
     files = [SKILL_DIR / "SKILL.md"]
     files += sorted((SKILL_DIR / "examples").glob("*.md"))
     files += sorted((SKILL_DIR / "references").glob("*.md"))
+    for other in OTHER_SKILLS:
+        d = ROOT / other
+        if d.is_dir():
+            files += [d / "SKILL.md"] if (d / "SKILL.md").is_file() else []
+            files += sorted((d / "references").glob("*.md"))
     for f in files:
         for lang, body in FENCE.findall(f.read_text(encoding="utf-8")):
             if lang not in PQ_LANGS:

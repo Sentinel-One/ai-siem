@@ -40,7 +40,7 @@ CLAUDE.md                       Main instruction layer: SOC Analyst persona, ses
                                 Decides what to do and invokes skills as needed.
        │  invokes skills
        ▼
-sdl-solutions                   Umbrella orchestrator for 12 packaged solutions. On a "deploy /
+sdl-solutions                   Umbrella orchestrator for 13 packaged solutions. On a "deploy /
                                 onboard / monitor a whole solution" request it runs first, collects
                                 parameters, previews, then drives the primitive skills below in
                                 dependency order.
@@ -83,7 +83,7 @@ The plugin bundles every skill; installing it is sufficient. No individual skill
 | sdl-dashboard | Design, author, and deploy SDL dashboards: panels, tabs, parameters, and full dashboard JSON. See [docs/sdl-dashboard.md](./docs/sdl-dashboard.md) for all supported panel types |
 | sdl-log-parser | Author and validate SDL log parsers for any log format, with OCSF field mapping by default |
 | hyperautomation | Design and generate Hyperautomation workflow JSON, with optional live console import. Includes interaction forms: pause a run to collect structured input from a person, then branch on their answers |
-| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications), detection exclusions, Risk-Based Alerting, Detection as Code (manage Custom Detection rules from Git with the console's native Detection as Code engine: YAML rules, a console-computed diff on pull request, apply on merge), alert noise reduction (find and quiet the sources flooding the alert queue: an ingestion-filter recommendation, an auto-resolve flow, and a noise-vs-signal dashboard), custom detections with MITRE mapping (a watchdog flow that posts the alert with ATT&CK attached, since STAR rules cannot carry it), query slicing (long-window PowerQuery as parallel time slices, merged), and an unprotected endpoints report (Network Discovery devices with no SentinelOne agent, read-only), Case Management onboarding (starter case creation rules, tested end to end). Twelve solutions in all. Orchestrates the skills above |
+| sdl-solutions | Deploy packaged, repeatable SDL solutions into a customer site from one short prompt: data source onboarding (raw stream to OCSF + enrichment + dashboard + MITRE detections + threat-response flow) , asset enrichment of raw logs (device/user context from the Asset Inventory), UEBA behavioural anomaly detection (z-score baselining of any signal), per-device ingest health monitoring (anomaly detection on a 7-day hour-of-day baseline: volume spike/drop, ingest lag, ingest loss, and parser drift, with a dashboard and email notifications), detection exclusions, Risk-Based Alerting, Detection as Code (manage Custom Detection rules from Git with the console's native Detection as Code engine: YAML rules, a console-computed diff on pull request, apply on merge), alert noise reduction (find and quiet the sources flooding the alert queue: an ingestion-filter recommendation, an auto-resolve flow, and a noise-vs-signal dashboard), custom detections with MITRE mapping (a watchdog flow that posts the alert with ATT&CK attached, since STAR rules cannot carry it), query slicing (long-window PowerQuery as parallel time slices, merged), and an unprotected endpoints report (Network Discovery devices with no SentinelOne agent, read-only), Case Management onboarding (starter case creation rules, tested end to end), and detection testing (prove a detection before go-live: platform coverage, real-data validation, synthetic and real-telemetry proof, alert proof, A/B). Thirteen solutions in all. Orchestrates the skills above |
 | soc-investigator | Autonomous, staged DFIR investigation of SentinelOne alerts (SHORT / MEDIUM / LONG modes), plus SWEEP, an alert-agnostic hunt of a time window for MITRE-mapped TTPs, with tool discovery, interactive intake, a previewed plan, IOC enrichment, per-endpoint PowerQuery forensics, and optional third-party correlation and anomaly detection. Carries the evidence-discipline and verdict gates from the SOC Analyst standard and the SDL hunt-and-correlation method. Authored by Joel Mora |
 
 ---
@@ -421,6 +421,12 @@ User/AD, Vulnerabilities, Misconfigurations, Open alerts, or Cloud context. Exam
 
 - *"Set up case creation rules for the Acme account"*
 - *"Onboard our site to Case Management and test it"*
+
+**Detection testing** (prove a detection before it goes live: check platform coverage, validate the body on real data with field coverage, prove the logic with tagged synthetic events and the alert with a temporary rule, prove it on real endpoint telemetry with harmless lookalikes, A/B against the current rule, and record simulated and real evidence separately). Full guide: [docs/solutions/detection-testing.md](./docs/solutions/detection-testing.md).
+
+- *"Test these three detections before we enable them"*
+- *"A/B my tuned PowerShell rule against the current one"*
+- *"Convert these Sigma rules and prove they work"*
 
 For the full per-solution breakdown, outcomes, and more example prompts, see the solution skill's own README: [sdl-solutions/README.md](./skills/sdl-solutions/README.md).
 

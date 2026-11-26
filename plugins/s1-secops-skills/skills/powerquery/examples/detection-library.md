@@ -3,7 +3,7 @@
 Ready-to-deploy PowerQuery bodies for STAR / Custom Detection / PowerQuery Alerts. Each rule:
 
 - Is sized for the 1,000-row / 1 MB alert budget.
-- Uses no `nolimit`, no `compare`, no subqueries.
+- Uses no `nolimit`, and stays within the scheduled-rule restrictions before its first `| group` (`references/detection-rules.md`, "Scheduled-rule limits").
 - Emits `agent.uuid` + `src.process.storyline.id` (or an equivalent asset key) so the detection engine maps the finding to the right asset.
 - Carries `oldest(timestamp)` / `newest(timestamp)` as first / last seen.
 - Ends with `| sort -count | limit N` to cap alert volume.
@@ -115,7 +115,7 @@ src.process.cmdline matches '(?i)javascript:'
 ### Run-key / RunOnce registry write (T1547.001)
 
 ```text
-event.type = 'Registry Value Modified'
+event.type in ('Registry Value Create', 'Registry Value Modified')
 registry.keyPath matches '(?i)(\\\\Run\\\\|\\\\RunOnce\\\\|\\\\RunServices\\\\)'
 | group
     count      = count(),
@@ -171,7 +171,7 @@ src.process.cmdline matches '(?i)(__EventFilter|CommandLineEventConsumer|FilterT
 ### UAC bypass via fodhelper / computerdefaults (T1548.002)
 
 ```text
-event.type = 'Registry Value Modified'
+event.type in ('Registry Value Create', 'Registry Value Modified')
 registry.keyPath matches '(?i)\\\\Classes\\\\ms-settings\\\\Shell\\\\Open\\\\command'
 | group
     count      = count(),
@@ -417,16 +417,16 @@ Normalizing by `queryspan` keeps the threshold meaningful whatever lookback the 
 ### DNS to low-reputation TLD
 
 ```text
-event.category = 'network'
+event.category = 'dns'
 event.type = 'DNS Resolved'
-dns.request matches '(?i)\\.(top|xyz|tk|ml|cf|gq|ga)$'
+event.dns.request matches '(?i)\\.(top|xyz|tk|ml|cf|gq|ga)\\.?$'
 | group
     queries    = count(),
     first_seen = oldest(timestamp),
     last_seen  = newest(timestamp),
     host       = any(endpoint.name),
     process    = any(src.process.name)
-  by agent.uuid, dns.request
+  by agent.uuid, event.dns.request
 | filter queries >= 5
 | sort -queries
 | limit 100

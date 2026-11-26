@@ -54,9 +54,10 @@ Decision guide:
 - Anything needing `group`, `estimate_distinct`, `sum`, a `lookup`/anti-join, or any pipe, use **scheduled**.
 - The scheduled evaluator rejects the query, or the alert title and description must be built from the result, use an **HA watchdog**.
 
-The scheduled evaluator runs on a pre-aggregated layer and does not support `datasource`, `dataset`,
-`savelookup`, `now()`, `querystart` / `queryend` / `queryspan`, `topK`, CIDR or wildcard `lookup`,
-`lookup` over a table above 10,000 rows, time-shifted `timebucket`, or `timebucket` under 30s. It
+The scheduled evaluator runs on a pre-aggregated layer. It rejects `datasource` and `dataset` as the
+source and `savelookup` anywhere, and before the first `| group` it also rejects `now()`,
+`querystart` / `queryend` / `queryspan`, CIDR or wildcard `lookup` and `lookup` over a table above
+10,000 rows. `timebucket` must be at least 30 seconds. It
 also caps intermediate results near 1,000 rows. A watchdog runs the same query as an ordinary LRQ and
 has none of those limits. Template: `sdl-solutions/assets/ha_watchdog.workflow.template.json`.
 Full comparison: [`powerquery/references/detection-rules.md`](../skills/powerquery/references/detection-rules.md).

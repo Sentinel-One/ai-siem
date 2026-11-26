@@ -186,6 +186,8 @@ Deploy in this order through the primitive skills. Every artifact is prefixed wi
 
 ## Step 5: validate and hand off
 
+**Regression check before deploying a suppression.** List the entities it removes over the same window and check each against analyst verdicts on past alerts for the rule (`uam_list_alerts`, any `TRUE_POSITIVE_*` verdict except `TRUE_POSITIVE_BENIGN`). If the rule has tagged positive test events, run the tuned body over them: it must still match every one. A removed entity with a true-positive verdict blocks the change (`references/detection-testing.md`, step 7).
+
 - Re-run the dashboard panels and confirm they render (screenshots) and match the Step 1/2 numbers.
 - Confirm the HA flow imported, published to Shared Draft, and is inactive.
 - Report projected impact from the numbers: current volume, volume removed by the ingestion filter,

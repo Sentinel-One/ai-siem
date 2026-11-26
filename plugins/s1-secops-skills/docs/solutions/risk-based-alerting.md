@@ -13,7 +13,7 @@ risk index and the factor table, `hyperautomation` for the collector flow,
 `mgmt-console-api` for the incident rules, `sdl-dashboard` for the
 dashboard); it does not reimplement them.
 
-Every mechanic here is tenant-validated end to end (2026-06-25), including a real fired alert.
+Every mechanic here is validated end to end on a tenant, including a real fired alert.
 
 ## How it maps to SentinelOne
 
@@ -55,7 +55,7 @@ as a risk event. The incident rules read the risk index and fire one alert per o
 The Splunk RBA pattern of "importing customer assets via AD objects" maps directly onto SentinelOne. If
 the customer has **ISPM (Identity Security Posture Management / Ranger AD)**, Active Directory objects
 are synced into the Asset Inventory **identity surface**, so the risk-factor table is built straight from
-AD instead of a hand-maintained CSV. Confirmed live (2026-06-25): identity assets carry
+AD instead of a hand-maintained CSV. Identity assets carry
 `activeCoverage: ["ISPM"]`, `assetEnvironment: "Active Directory"`, and per-object AD attributes
 `privileged`, `adminCount`, `serviceAccount`, `memberOf`, `distinguishedName` (OU), `objectSid`,
 `principalName` / `samAccountName`, and `riskFactors` (for example `["Unresolved Alerts"]`). A privileged
@@ -103,12 +103,12 @@ on demand to test.
 
 `NT AUTHORITY\SYSTEM` and software-update tooling generate the most observations and will dominate the
 leaderboard with benign noise. Factor those accounts down (multiplier < 1) or drop them from
-contributors. RBA is a system you cultivate: adjust base scores, factors, and thresholds so genuinely
+contributors with `!(src.process.user in:anycase ('NT AUTHORITY\\SYSTEM', ...))` (keep the parentheses). RBA is a system you cultivate: adjust base scores, factors, and thresholds so genuinely
 high-risk objects rise and benign noise stays below the line.
 
 ## Validated
 
-Validated on `Okta`-style EDR telemetry (2026-06-25): risk index stood up via the ingest endpoint; a real contributor
+Validated on `Okta`-style EDR telemetry: risk index stood up via the ingest endpoint; a real contributor
 produced well-formed risk events; a privileged user's risk factor amplified base 15 to 30; the
 collector flow ran end to end (6/6 actions, ~2.9s) and published clean risk events; and the user
 24h-cumulative incident rule fired a real HIGH UAM alert on an object at score 60 against a threshold

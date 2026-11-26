@@ -152,18 +152,24 @@ Key points:
 ```python
 # discover scripts
 scripts = c.get("/web/api/v2.1/remote-scripts", params={"limit": 50})
-# guardrails check first (read-only, safe)
+# upload a script (multipart form): scriptName, scriptType=action, osTypes,
+# inputRequired=false, scopeLevel=account|site, scopeId, scriptRuntimeTimeoutSeconds, file
+#   POST /web/api/v2.1/remote-scripts
+# guardrails check first (read-only, safe): data.agentIds and data.scriptId
 check = c.post("/web/api/v2.1/remote-scripts/guardrails/check",
-               json_body={"data": {"scriptId": SCRIPT_ID, "filter": {"ids": [AGENT_ID]}}})
-# execute after user consents
-c.post("/web/api/v2.1/remote-scripts/execute",
-       json_body={"data": {"scriptId": SCRIPT_ID,
-                           "taskDescription": "ad-hoc",
-                           "filter": {"ids": [AGENT_ID]},
-                           "outputDestination": "SentinelCloud"}})
-# poll status
-c.get(f"/web/api/v2.1/remote-scripts/tasks",
-      params={"ids": TASK_ID})
+               json_body={"data": {"scriptId": SCRIPT_ID, "agentIds": [AGENT_ID]}})
+# execute after user consents: filter sits at the top level, not inside data
+run = c.post("/web/api/v2.1/remote-scripts/execute",
+             json_body={"data": {"scriptId": SCRIPT_ID,
+                                 "taskDescription": "ad-hoc",
+                                 "outputDestination": "SentinelCloud"},
+                        "filter": {"ids": [AGENT_ID], "accountIds": [ACCOUNT_ID]}})
+# poll status by the parent task id that execute returned
+c.get("/web/api/v2.1/remote-scripts/status",
+      params={"parentTaskId": PARENT_TASK_ID})
+# remove an uploaded script when the test is done
+c.delete("/web/api/v2.1/remote-scripts",
+         json_body={"filter": {"ids": [SCRIPT_ID], "accountIds": [ACCOUNT_ID]}})
 ```
 
 ---
@@ -279,7 +285,8 @@ Key points:
 - The query string lives in `data.scheduledParams.query`. The `data.s1ql` field is for `queryType: "events"` (S1QL log-search) rules.
 - Do NOT include `disableAgentMitigation`, `treatAsThreat: "Malicious"`, or `activeResponse` on scheduled rules. `disableAgentMitigation` returns HTTP 400 `Unknown field`. Mitigation actions are not supported on scheduled rules; the verdict surfaces via severity.
 - **Asset/entity binding:** a scheduled-rule alert shows "Unknown Device" unless you set `data.entityMappings: [{"columnName": "<output column>"}]` (the UI's "Entity column mapping") referencing column(s) the query projects, e.g. `| columns endpoint.name = device.hostname, src_ip = src_endpoint.ip`. Projecting the columns alone is not enough; the `entityMappings` declaration is what binds the asset. Confirmed live. Other full-rule options (UI ↔ API field) are catalogued in `powerquery/references/detection-rules.md`.
-- New rules land in `Draft` status regardless of the requested `status` on POST. Call `PUT /cloud-detection/rules/enable` after creation; the rule transitions to `Activating` then `Active` within the hour.
+- **Enable after create.** A new rule can be stored as `Draft` whatever `status` the POST sent. Always follow the create with `PUT /web/api/v2.1/cloud-detection/rules/enable` (`{"filter": {"ids": [...]}}`); it is harmless on a rule that is already activating. Then poll `status` (and `statusReason`) until `Active`, which can take up to an hour.
+- **When test events must arrive.** An `events` or `correlation` rule evaluates only events that arrive after it is `Active`. A `scheduled` rule reads its lookback window on each run, so events sent earlier count if they are still inside the lookback at the first run after activation; keep the lookback long enough, or send the events again while the rule activates.
 - **If the POST returns a feature-not-enabled / unlicensed response, stop and tell the user to enable Scheduled Detections on the tenant.** Do not silently downgrade to S1QL or retry as `queryType: "events"`.
 - To list scheduled rules: `GET /web/api/v2.1/cloud-detection/rules?accountIds=...&isLegacy=false`. The `isLegacy=false` is required or the list call returns zero results for scheduled rules.
 - To delete rules: `DELETE /web/api/v2.1/cloud-detection/rules` with body `{"filter": {"ids": [...], "accountIds": [...]}}`.

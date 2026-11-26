@@ -50,7 +50,8 @@ detection, even at CRITICAL, is a hypothesis. Before escalating you MUST have at
    marked the alert False Positive or Benign, that verdict takes precedence over the engine
    severity. Do not override it without new evidence they did not have.
 3. Multi-source corroboration, the same IOC or behaviour independently confirmed as malicious
-   across 2+ unrelated sources (not the same engine firing repeatedly).
+   across 2+ unrelated sources (not the same engine firing repeatedly, and not SentinelOne's
+   `alert`, `indicator` or `ActivityFeed` records quoting the same detection).
 
 If none exist, the maximum classification is **SUSPICIOUS - Pending Confirmation**.
 

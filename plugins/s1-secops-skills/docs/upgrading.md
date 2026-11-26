@@ -8,7 +8,8 @@ starts from the new launcher (downloaded) or passes the image explicitly (`--ima
 `-Image`). The current release is image `1.6.4`. If you are several releases behind, read the
 sections in between for what changed, then follow [1.6.3 to 1.6.4](#163-to-164-plugin-145).
 
-- [1.6.3 to 1.6.4 (plugin 1.4.5)](#163-to-164-plugin-145) (current release: image `1.6.4`, s1-secops-mcp `1.6.4`, plugin `1.4.5`)
+- [Plugin 1.4.5 to 1.4.6](#plugin-145-to-146) (current release: image `1.6.4`, s1-secops-mcp `1.6.4`, plugin `1.4.6`)
+- [1.6.3 to 1.6.4 (plugin 1.4.5)](#163-to-164-plugin-145)
 - [Plugin 1.4.3 to 1.4.4](#plugin-143-to-144)
 - [1.6.2 to 1.6.3 (plugin 1.4.3)](#162-to-163-plugin-143)
 - [1.6.1 to 1.6.2 (plugin 1.4.2)](#161-to-162-plugin-142)
@@ -25,6 +26,42 @@ sections in between for what changed, then follow [1.6.3 to 1.6.4](#163-to-164-p
 - [1.4.x to 1.5.0](#14x-to-150)
 - [Older: 1.2.x / 1.3.x to 1.4.x](#older-12x--13x-to-14x)
 - [Rolling back](#rolling-back)
+
+---
+
+## Plugin 1.4.5 to 1.4.6
+
+Skills only: the image and `s1-secops-mcp` stay at `1.6.4`, so there is nothing to reinstall.
+Download the new `.plugin` and replace the old one (Cowork → Customize → Browse plugins → upload →
+**Replace**). What changed:
+
+- **Detection testing (new SDL solution):** prove a detection before it goes live. Platform
+  coverage first, real-data validation with field coverage, query proof with tagged synthetic
+  events, alert proof with a temporary rule, real-telemetry proof with harmless lookalikes on
+  Windows and Linux test endpoints, native versus custom, A/B against the current rule, and
+  evidence labelled simulated, real telemetry or real data. Guide:
+  [solutions/detection-testing.md](solutions/detection-testing.md).
+- **PowerQuery EDR fields:** DNS uses `event.dns.request` and `event.category = 'dns'`; registry
+  persistence reads `Registry Value Create` and `Registry Value Modified`; `registry.keyPath` uses
+  `MACHINE\` and `USER\<SID>\` roots; the `event.type` and `event.category` lists are complete.
+  The DNS, Run-key and UAC-bypass examples follow these rules.
+- **PowerQuery operators:** `matches` searches anywhere in the value, `!` before a bare `let`
+  variable is not a negation, `=` and `in` are case-sensitive on enum-like fields, and
+  `net_ipsubnet` is the CIDR function. A new Sigma and KQL conversion reference.
+- **Custom detection rules:** enable every rule after creating it, and when test events count for
+  each rule type; one table for scheduled-rule restrictions (the part before the first `| group`);
+  lookup limits of 150 MB per table and 10,000 rows before the first `group`; `queryLang: "2.0"`
+  on events rules that use 2.0 operators.
+- **Hunts and investigations:** value-anywhere IOC searches leave out SentinelOne's own `alert`,
+  `indicator` and `ActivityFeed` records, which are not independent corroboration; TTP sweeps
+  report events with no `agent.uuid` as test data.
+- **Solutions:** onboarding field checks for common third-party sources, an OCSF mapping checklist
+  for the fields detections read, a regression check before deploying a suppression, the Risk-Based
+  Alerting exclusion written `!( ... in:anycase (...))`, and evidence reporting in every solution summary.
+- **RemoteOps:** the script recipe matches the API (upload, `guardrails/check` with `agentIds`,
+  `execute` with a top-level `filter`, status by `parentTaskId`, delete).
+- **CLAUDE.md:** the cross-source IOC template leaves out SentinelOne's own records. The image
+  carries the 1.6.4 copy of `CLAUDE.md` until its next release; the plugin carries the new text.
 
 ---
 

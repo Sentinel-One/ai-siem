@@ -11,7 +11,7 @@ Runner: the `powerquery_run` MCP tool with `slices` (2-15) and `merge`, which wo
 A host-only Python runner, `sdl-solutions/scripts/lrq_sliced.py` (standard library only), does the
 same from a terminal.
 
-## Measured (platform S-26.3.4, 2026-10-05, one token)
+## Measured (platform S-26.3.4, one token)
 
 | 30 days, 14.1M events | Wall clock |
 |---|---|

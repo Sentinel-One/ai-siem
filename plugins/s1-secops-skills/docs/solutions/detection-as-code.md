@@ -43,3 +43,9 @@ A rules repository in the reference layout (`consoles/<console>.yaml`, `detectio
 seeded from the console export or from the templates in `assets/dac-native/`, a reviewed
 `dac_diff`, and CI wired to apply on merge. The prerequisites, manifest rules, delete flow and
 troubleshooting table are in the Claude-facing playbook `references/detection-as-code.md`.
+
+## Proving rule changes
+
+A pull request that changes a rule body carries the A/B result for the old and new body, run with
+[Detection testing](./detection-testing.md), so reviewers see what the change adds and removes
+before it merges.

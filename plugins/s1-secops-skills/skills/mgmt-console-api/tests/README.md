@@ -595,7 +595,7 @@ VERIFY  GET    ids=<id> → data=[]
 
 - No `/star-rules` path: use `cloud-detection/rules` with `queryType=events`.
 - `"activeResponse"` in the CREATE body returns HTTP 400 "Unknown field": omit it.
-- `queryLang` defaults to `"1.0"` for events rules; do not set it explicitly.
+- Set `queryLang: "2.0"` on `events` rules whose filter uses 2.0 operators (`in:anycase`, `contains:anycase`, `starts_with`, `ends_with`, `matches:matchcase`); an omitted `queryLang` is stored as `1.0` and a 2.0 operator then matches nothing.
 - `treatAsThreat="UNDEFINED"` is accepted on input but stored as `null` in the response.
 - GET `nameSubstring` + `queryType` together returns HTTP 500: use only one filter per
   request, or use `ids` for precise lookup after creation.

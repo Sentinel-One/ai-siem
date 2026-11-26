@@ -66,6 +66,8 @@ draft unless you ask to enable them), and a SOC threat-response Hyperautomation 
 ## Notes and gotchas
 
 - A source with no `dataSource.name` is not empty, it is un-normalised; find it by `parser=`.
+- Field placement varies by parser and connector version: the playbook lists the field checks to run for common third-party sources before a detection or panel reads them.
+- Prove each detection with [Detection testing](./detection-testing.md) before it is enabled.
 - Parsers are account-level; they deploy at account scope even when the source ingests at a site.
 - JSON-per-line bodies flatten with the dotted-prefix capture `$unmapped.=json{parse=dottedJson}$`,
   not a bare `$json{parse=json}$` (which emits no subfields).
@@ -81,9 +83,9 @@ draft unless you ask to enable them), and a SOC threat-response Hyperautomation 
   Shared Draft. Delete a workflow with `DELETE /hyper-automate/api/v1/workflows/{id}?accountIds=<acct>`
   (`204`, soft/recoverable); scope it to where the workflow lives.
 
-## Validated reference
+## Worked example
 
-First live onboarding (2026-06-13): **Cisco Meraki** via `onboard cisco_meraki logs`.
+**Cisco Meraki** via `onboard cisco_meraki logs`.
 The source was located by `parser='cisco_meraki-latest'` with no parser file and no
 `dataSource.name` (the un-normalised gap); the parser was created and corrected to OCSF Network
 Activity with a dotted-prefix JSON flatten, and device enrichment was added via an IP-keyed

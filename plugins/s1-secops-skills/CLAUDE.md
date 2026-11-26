@@ -223,7 +223,7 @@ Correlate findings back into the environment: hunt other endpoints contacting th
 
 1. **Threat-intel confirmation**: malicious verdict from threat intel (`ti_vt_lookup` or a connected provider: high detection ratio, confirmed threat actor, malicious sandbox verdicts).
 2. **MDR/Analyst confirmation**: verdicts in the notes and history returned by `uam_get_alert`. An MDR "False Positive / Benign" takes precedence over the detection engine classification.
-3. **Multi-source corroboration**: the same IOC or behaviour independently confirmed malicious across 2+ unrelated data sources (not the same engine firing repeatedly).
+3. **Multi-source corroboration**: the same IOC or behaviour independently confirmed malicious across 2+ unrelated data sources (not the same engine firing repeatedly, and not SentinelOne's `alert`, `indicator` or `ActivityFeed` records quoting the same detection).
 
 With none of these, the maximum classification is **SUSPICIOUS, Pending Confirmation**, regardless of engine severity.
 
@@ -310,6 +310,7 @@ Use `purple_ai_query` for OCSF sources and confirmed namespaces for non-OCSF. Af
 When a suspicious IOC (IP, domain, hash, user, hostname) appears in any one source, immediately hunt it across ALL other sources with an `OR` clause over every confirmed-populated IP / hostname / username field:
 
 ```text
+!(dataSource.name in ('alert', 'indicator', 'ActivityFeed'))
 | filter( <source_a_dst_ip_field> == "SUSPICIOUS_IP"
        OR <source_b_dst_ip_field> == "SUSPICIOUS_IP"
        OR src.ip.address == "SUSPICIOUS_IP"
@@ -319,6 +320,8 @@ When a suspicious IOC (IP, domain, hash, user, hostname) appears in any one sour
 | sort -timestamp
 | limit 1000
 ```
+
+The first line keeps SentinelOne's own alert, indicator and activity records out: they quote the IOC and are not independent corroboration. Query them separately when you want the alert history.
 
 Cross-source correlation signals that confirm true positives (category-level):
 
@@ -608,7 +611,7 @@ Use installed skills eagerly; do not hand-author SDL config files, Hyperautomati
 - `s1-secops-skills:sdl-dashboard`: building or editing any SDL dashboard JSON. Panel-type cheatsheet, community examples, query performance rules, parameters & filters.
 - `s1-secops-skills:hyperautomation`: authoring SOAR / playbook / alert-response workflow JSON. Workflow envelope, building blocks, action types, integration warnings, examples.
 - `s1-secops-skills:sdl-log-parser`: authoring/debugging an SDL `/logParsers/` parser (CEF, syslog, key=value, multi-line). Parser DSL, end-to-end validation via `putFile → hec_ingest → query`.
-- `s1-secops-skills:sdl-solutions`: deploying one of 12 packaged SDL solutions end to end: data source onboarding, asset enrichment, UEBA anomaly detection, per-device ingest health, detection exclusions, Risk-Based Alerting, Detection as Code, alert noise reduction, custom detections with MITRE mapping (watchdog alert carrying ATT&CK, since STAR rules cannot), query slicing (long-window PowerQuery as parallel slices, merged), and an unprotected endpoints report (read-only, from the Asset Inventory), and Case Management onboarding (starter case creation rules, tested end to end). Orchestrates the primitives: parser→OCSF + asset enrichment, dashboard, MITRE-mapped detections, scheduled rules, threat-response / refresh HA flows.
+- `s1-secops-skills:sdl-solutions`: deploying one of 13 packaged SDL solutions end to end: data source onboarding, asset enrichment, UEBA anomaly detection, per-device ingest health, detection exclusions, Risk-Based Alerting, Detection as Code, alert noise reduction, custom detections with MITRE mapping (watchdog alert carrying ATT&CK, since STAR rules cannot), query slicing (long-window PowerQuery as parallel slices, merged), and an unprotected endpoints report (read-only, from the Asset Inventory), Case Management onboarding (starter case creation rules, tested end to end), and detection testing (prove a detection on synthetic, real-telemetry and real data before go-live). Orchestrates the primitives: parser→OCSF + asset enrichment, dashboard, MITRE-mapped detections, scheduled rules, threat-response / refresh HA flows.
 - `s1-secops-skills:soc-investigator`: investigating or triaging an alert or incident (SHORT triage, MEDIUM correlation, LONG forensic timeline), or a SWEEP of raw logs over a time window for MITRE-mapped TTPs with no alert. Threat-intel enrichment, strict verdict gates, report with a mandatory query appendix.
 - s1-secops-mcp built-ins: `powerquery_run` for hunts and stats, `uam_*` for alert triage, `purple_ai_query` for natural-language questions and draft queries (Purple does not run them), `asset_inventory_*` (counts, search, get, filter_values) for asset context and coverage, `case_*` for Case Management (list, read, triage, notes, tasks, IOCs, creation rules), `dac_export` / `dac_diff` / `dac_apply` for Detection as Code.
 - Threat intel: built-in `ti_vt_lookup` / `ti_vt_relationship` (when `VIRUSTOTAL_API_KEY` is stored) or another provider you have connected: **mandatory** for every IOC enrichment.

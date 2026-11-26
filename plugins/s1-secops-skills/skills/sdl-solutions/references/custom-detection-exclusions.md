@@ -194,7 +194,7 @@ on a host-style field (`edge`: list entry `EDGE-NYC` matched `edge-nyc`, proving
 `app.example.net` 2,933), and exact `=` (`www.example.com`, 3,007).
 
 **STAR scheduled-rule operator support (tenant-confirmed).** The rule trigger validator accepts
-`=`, `=:anycase`, and `left join`, but REJECTS `=:cidr` ("lookupType 'CIDR' is not supported") and
+`=`, `=:anycase`, and `left join`, but before the first `| group` (where an exclusion anti-join sits) it REJECTS `=:cidr` ("lookupType 'CIDR' is not supported") and
 `=:wildcard` ("lookupType 'WILDCARD' is not supported"). So a `=:cidr` or `=:wildcard` exclusion
 cannot live in a STAR scheduled rule. Options for those two: (a) run the detection from a
 Hyperautomation flow that POSTs the PowerQuery to the SDL query endpoint (CIDR and wildcard both run
@@ -304,14 +304,16 @@ Two ways, pick per the prompt:
 Confirm the load with a readback before wiring the rule:
 `<source filter> | lookup excl = reason from {{EXCL_TABLE}} by {{KEY_COL}} {{OP}} {{EVENT_FIELD}} | filter excl = * | group hits = count() by excl | sort -hits | limit 25`
 
-Limits: a CSV lookup table is up to 400 KB; a `savelookup` target up to 100,000 rows / 1.5 MB.
+Limits: a lookup table can be up to 150 MB, and an exact lookup before the first `| group` of a scheduled rule accepts up to 10,000 rows; a `savelookup` target up to 100,000 rows / 1.5 MB.
 Keep the list an opt-in allowlist (bounded), not an open-ended denylist.
 
 ## Step 2: render and preview the detection
 
+**Regression check before deploying a suppression.** List the entities it removes over the same window and check each against analyst verdicts on past alerts for the rule (`uam_list_alerts`, any `TRUE_POSITIVE_*` verdict except `TRUE_POSITIVE_BENIGN`). If the rule has tagged positive test events, run the tuned body over them: it must still match every one. A removed entity with a true-positive verdict blocks the change (`references/detection-testing.md`, step 7).
+
 Render `assets/exclusion_detection.template.json`. The body is the base detection wrapped with the
-anti-join. Because the STAR scheduled-rule validator accepts only `=` and `=:anycase` and REJECTS
-`=:cidr` / `=:wildcard` (see "STAR scheduled-rule operator support" above), the rule-body example
+anti-join. Because the STAR scheduled-rule validator accepts only `=` and `=:anycase` before the first `| group`, and REJECTS
+`=:cidr` / `=:wildcard` there (see "STAR scheduled-rule operator support" above), the rule-body example
 below uses the hostname `=:anycase` asset variant. Demo body (Akamai DNS, asset list AND domain
 list chained):
 
@@ -396,6 +398,8 @@ its title (title "Excluded (suppressed)" + value "17,478 suppressed" is redundan
 `total-excluded`.
 
 ## Step 6: validate and summarise
+
+Run the regression check from Step 2 on the deployed body before calling the change done.
 
 Run the rule body over the live window and confirm the kept rows match the dashboard's "net"
 panel. Read back the lookup table. Confirm the rule exists (GET with `isLegacy=false`) and the

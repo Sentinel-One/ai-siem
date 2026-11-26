@@ -67,6 +67,8 @@ Put the entity (host or user) in the first column: it names the alert's resource
 
 ## Things to know
 
+- **Prove the query first.** Run the detection's query through [Detection testing](./detection-testing.md)
+  before wrapping it in the watchdog.
 - **One alert per run.** The flow summarises every matching row in one alert. Group the query so a
   run returns one row per entity if you need one alert per entity.
 - **No built-in suppression.** A condition that stays true alerts every interval. Set the lookback

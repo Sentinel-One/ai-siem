@@ -106,4 +106,4 @@ Be sure to make a note of the **Connection Name** you use when configuring the i
 
 ## Next Steps
 
-- [Return to Main Page](../README.md)
+- [Return to Main Page](../../README.md)

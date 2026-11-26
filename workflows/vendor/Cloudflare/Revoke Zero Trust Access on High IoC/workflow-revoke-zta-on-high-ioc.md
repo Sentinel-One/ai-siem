@@ -30,7 +30,7 @@ When SentinelOne detects a high-severity Indicator of Compromise (IOC) or Ransom
 
 - Usernames should be consistent across end user workstations where SentinelOne alerts may be generated, any IdPs being used to resolve usernames to email addresses and any email addresses mapped to users defined in Cloudflare Access. (see details below in [How It Works](#how-it-works) and [Configuring the Workflow](#configuring-the-workflow))
 
-- Be sure you have [configured SentinelOne Hyperautomation integrations](./setting-up-hyperautomation-integrations.md). You’ll need the names of the connectors as noted in the documentation.
+- Be sure you have [configured SentinelOne Hyperautomation integrations](../../../docs-guides/setting-up-hyperautomation-integrations.md). You’ll need the names of the connectors as noted in the documentation.
 
 - You must have active Cloudflare Access policies protecting internal/SaaS applications. Be sure to [add your applications](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/) and [assign a corresponding access policy](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/policy-management/#create-a-policy).
 
@@ -142,7 +142,7 @@ If you wish to manually test the workflow:
    
    <img src="./images/workflow-zta-ioc-13.png" width="80%" />
 
-2. In the **Manual Test Output** window, replace the contents of the text area (1) with the contents of [this sample file](https://github.com/Sentinel-One/ai-siem/tree/main/workflows/community/Cloudflare/examples/high-ioc-alert.json) and click the **Use as Output** button (2).
+2. In the **Manual Test Output** window, replace the contents of the text area (1) with the contents of [this sample file](../examples/high-ioc-alert.json) and click the **Use as Output** button (2).
    
    <img src="./images/workflow-zta-ioc-14.png" width="80%" />
 

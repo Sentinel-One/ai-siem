@@ -97,9 +97,9 @@ The next action the workflow performs is to “normalize” the username as foll
    | Variable | Type | Description |
    |-|-|-|
    | `oktaTenantURL` | `string` | The base URL for your Okta tenant |
-   | `jwtIssuer` | `string` | The issuer that is used to generate JWTs - this should be the base URL where your "well-known" SSF configuration is stored and should match the `issuer` field in the file (see [Create an SSF Compliant Provider](./configure-okta-ssf#create-an-ssf-compliant-provider)). |
-   | `jwtPublicKeyID` | `string` | The value of the `kid` field of the public key defined in the `jwks.json` file hosted by your SSF provider (see [Generate a JSON Web Key Set (JWKS)](./configure-okta-ssf#generate-json-web-key-set-jwks)). |
-   | `jwtEncodedPrivateKey` | `string` | The contents of the private key (see [Generate a JSON Web Key Set (JWKS)](./configure-okta-ssf#generate-json-web-key-set-jwks)) encoded using Base64 |
+   | `jwtIssuer` | `string` | The issuer that is used to generate JWTs - this should be the base URL where your "well-known" SSF configuration is stored and should match the `issuer` field in the file (see [Create an SSF Compliant Provider](./configure-okta-ssf.md#create-an-ssf-compliant-provider)). |
+   | `jwtPublicKeyID` | `string` | The value of the `kid` field of the public key defined in the `jwks.json` file hosted by your SSF provider (see [Generate a JSON Web Key Set (JWKS)](./configure-okta-ssf.md#generate-json-web-key-set-jwks)). |
+   | `jwtEncodedPrivateKey` | `string` | The contents of the private key (see [Generate a JSON Web Key Set (JWKS)](./configure-okta-ssf.md#generate-json-web-key-set-jwks)) encoded using Base64 |
    | `oktaConnectionName` | `string` | The name of the connection you created for the Okta integration. |
    | `sdlWriteConnectionName` | `string` | The name of the connection you created for the SentinelOne SDL integration. |
 

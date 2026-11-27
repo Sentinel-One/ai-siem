@@ -132,6 +132,47 @@ class RenderingPitfallsAreStillDetected(unittest.TestCase):
         d = dash({"graphStyle": "table", "title": "t", "query": q, "layout": LAYOUT})
         self.assertNotIn("P02", ids(psc.check(d, [])))
 
+    def test_P02_does_not_flag_a_pipe_inside_a_quoted_regex(self):
+        # A `|` alternation inside a quoted regex is not a pipeline stage. Splitting on it
+        # leaves the character class `A-Z` outside a string, where it reads as arithmetic.
+        q = ("event.category = 'dns' | let kind = event.dns.request matches "
+             "\".*([A-Fa-f0-9]{32,}|[A-Za-z2-7]{40,})\\\\..*\" ? \"Encoded-Like Label\" : \"Other\" "
+             "| group c=count() by kind | limit 25")
+        d = dash({"graphStyle": "table", "title": "t", "query": q, "layout": LAYOUT})
+        self.assertNotIn("P02", ids(psc.check(d, [])))
+
+    def test_P02_still_flags_arithmetic_after_a_quoted_pipe(self):
+        q = ("dataSource.name='alert' | let kind = name matches \"a|b\" ? 1 : 0 "
+             "| group total=count(), min=min(severity_id), max=max(severity_id) "
+             "| let spread = max-min | limit 1")
+        d = dash({"graphStyle": "number", "title": "n", "query": q, "layout": LAYOUT})
+        self.assertIn("P02", ids(psc.check(d, [])))
+
+    def test_P02_honours_escaped_quotes_inside_a_string(self):
+        q = "dataSource.name='alert' | let k = name matches \"it\\\"s A-Z|q\" ? 1 : 0 | limit 5"
+        d = dash({"graphStyle": "table", "title": "t", "query": q, "layout": LAYOUT})
+        self.assertNotIn("P02", ids(psc.check(d, [])))
+
+    def test_P02_handles_a_string_that_spans_lines(self):
+        q = "dataSource.name='alert' | let x = \"line1\nA-Z|b\" | limit 1"
+        d = dash({"graphStyle": "table", "title": "t", "query": q, "layout": LAYOUT})
+        self.assertNotIn("P02", ids(psc.check(d, [])))
+
+    def test_P02_single_quoted_string_ending_in_a_backslash_closes_there(self):
+        # 'C:\Users\' must close at its own quote; otherwise the pairing flips and the real
+        # `max-min` after it is hidden inside a phantom string.
+        q = ("dataSource.name='alert' tgt.file.path contains 'C:\\Users\\' "
+             "| group total=count(), min=min(severity_id), max=max(severity_id) "
+             "| let spread = max-min | filter kind = 'x' | limit 1")
+        d = dash({"graphStyle": "number", "title": "n", "query": q, "layout": LAYOUT})
+        self.assertIn("P02", ids(psc.check(d, [])))
+
+    def test_P01_ignores_a_pipe_and_transpose_inside_a_string(self):
+        q = ("msg contains \"| transpose x | y\" | group c=count() by timestamp=timebucket('1h'), "
+             "sev=severity_id | transpose sev on timestamp")
+        d = dash({"graphStyle": "stacked_bar", "title": "t", "query": q, "layout": LAYOUT})
+        self.assertNotIn("P01", ids(psc.check(d, [])))
+
     def test_N01_number_panel_without_limit_1_is_flagged(self):
         d = dash({"graphStyle": "number", "title": "n",
                   "query": "dataSource.name='alert' | group c=count()", "layout": LAYOUT})

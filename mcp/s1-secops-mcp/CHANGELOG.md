@@ -1,5 +1,19 @@
 # Changelog
 
+## Plugin 1.4.7 (skills only; image and s1-secops-mcp unchanged at 1.6.4), 2026-11-27
+
+### hyperautomation
+
+- Action library: all 3,690 packaged actions across 226 integrations ship with the skill (`assets/action-library.json`, index in `references/action-library-index.md`). `scripts/find_action.py` searches it locally and returns each action's `public_action_id`, `integration_id`, method, path, and `url` and `payload` templates. `--id` resolves an older id to the current entry.
+- Marketplace templates: the 156 ready-made workflows are indexed in `references/marketplace-templates.md` (search with `find_action.py --templates`). The skill checks them before building a workflow from scratch.
+- `references/integration-catalog.md` documents the action library API (`/public-actions`, `/integrations/all`, `/integrations/{id}`, `/templates`). Its usage tables show which actions workflows use most, and ids come from the library.
+- Built-in `integration_id` values and library `public_action_id` values are the same on every console.
+- The Agentic Investigation actions in `references/autonomous-soc-template.md` and the integration-backed example in `references/building-blocks-catalog.md` carry current library ids. A test checks every hard-coded `public_action_id` against the library.
+
+### sdl-dashboard
+
+- `scripts/panel_safety_check.py`: P01 and P02 ignore text inside quoted strings, including a `|` inside a quoted regex, so a regex such as `"[A-F0-9]{32}|[A-Z2-7]{40}"` is read as part of the string, not as a pipe or as hyphenated arithmetic. Regression tests added.
+
 ## Plugin 1.4.6 (skills only; image and s1-secops-mcp unchanged at 1.6.4), 2026-11-26
 
 ### sdl-solutions

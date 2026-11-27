@@ -99,7 +99,9 @@ def rule_M01(tab: str, idx: int, panel: Dict[str, Any]) -> Optional[Tuple[str, s
 
 def rule_P01_transpose_not_terminal(query: str) -> Optional[Tuple[str, str]]:
     # If the query contains `| transpose ...` and there is a subsequent `|` after it,
-    # then transpose is not the last command.
+    # then transpose is not the last command. Quoted strings are blanked first so a `|`
+    # inside a string literal is never read as a pipe.
+    query = _strip_string_literals(query)
     m = re.search(r"\|\s*transpose\b", query, flags=re.IGNORECASE)
     if not m:
         return None
@@ -113,23 +115,29 @@ def _strip_string_literals(expr: str) -> str:
     """Blank out quoted string literals so hyphenated label TEXT (e.g.
     'command-and-control', '1. 1-10 KB') is never mistaken for unspaced
     identifier arithmetic. Only identifiers OUTSIDE quotes can trigger P02."""
-    expr = re.sub(r"'[^']*'", "''", expr)
-    expr = re.sub(r'"[^"]*"', '""', expr)
-    return expr
+    # One pass over both quote styles, so a quote character inside the other kind of string
+    # never opens a new literal. Strings may span lines. A backslash escapes the next character
+    # in a double-quoted string only; a single-quoted string ends at the next single quote, so
+    # a value such as 'C:\Users\' closes where it should.
+    return re.sub(r"'[^']*'|\"(?:[^\"\\]|\\.)*\"", '""', expr, flags=re.DOTALL)
 
 
 def rule_P02_hyphen_arith(query: str) -> Optional[Tuple[str, str]]:
     # Detect `foo = bar-baz` style unspaced identifier arithmetic in expression
     # contexts: `| let`, `| group`, and `| columns` segments (all three accept
     # computed expressions where the PQ parser reads `a-b` as one identifier).
-    # String literals are stripped first to avoid false-flagging hyphenated labels.
+    # String literals are stripped from the WHOLE query first, before it is split into
+    # stages: a `|` inside a quoted regex such as "[A-F0-9]{32}|[A-Z2-7]{40}" would otherwise
+    # end the segment mid-string, the quotes would no longer pair up, and the character
+    # class `A-Z` would be flagged as arithmetic.
     #
     # The segment terminator is a LOOKAHEAD, not a consumed `|`. Consuming it ate
     # the pipe that starts the next expression stage, so in the common
     # `... | group ... | let spread = max-min` shape only the `group` segment was
     # ever scanned and the `let` went unchecked.
-    for m in re.finditer(r"\|\s*(?:let|group|columns)\s+(.+?)(?=\||$)", query, flags=re.IGNORECASE | re.DOTALL):
-        expr = _strip_string_literals(m.group(1))
+    stripped = _strip_string_literals(query)
+    for m in re.finditer(r"\|\s*(?:let|group|columns)\s+(.+?)(?=\||$)", stripped, flags=re.IGNORECASE | re.DOTALL):
+        expr = m.group(1)
         if re.search(r"[A-Za-z_][A-Za-z0-9_.]*-[A-Za-z_][A-Za-z0-9_.]*", expr):
             return ("P02", "Hyphenated arithmetic without spaces (e.g. `total-min`). "
                            "Add spaces: `total - min`. The PQ parser otherwise reads it as one identifier.")

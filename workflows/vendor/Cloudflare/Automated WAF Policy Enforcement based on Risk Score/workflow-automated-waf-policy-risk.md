@@ -27,7 +27,7 @@ Organizations achieve a self-healing security perimeter. By bridging the gap bet
 
 ## Prerequisites
 
-- Be sure you have [configured SentinelOne Hyperautomation integrations](./setting-up-hyperautomation-integrations.md). You’ll need the names of the connectors as noted in the documentation.
+- Be sure you have [configured SentinelOne Hyperautomation integrations](../../../docs-guides/setting-up-hyperautomation-integrations.md). You’ll need the names of the connectors as noted in the documentation.
 
 - You must [create a custom list](https://developers.cloudflare.com/waf/tools/lists/custom-lists/) in active Cloudflare which will be dynamically updated by this workflow.  You'll need to retrieve the ID of the list and store it for later use. You can find the ID by navigating to the list in the Cloudflare dashboard. It will be the last part of the URL.
   

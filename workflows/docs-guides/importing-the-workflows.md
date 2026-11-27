@@ -41,4 +41,4 @@ Now that you have downloaded the workflows to your machine, you’ll need to imp
 ## Next Steps
 
 - [Configure Hyperautomation Integrations](./setting-up-hyperautomation-integrations.md)
-- [Return to Main Page](../README.md)
+- [Return to Main Page](../../README.md)

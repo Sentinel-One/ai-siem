@@ -280,9 +280,11 @@ don't trust a 500 from a malformed `filter` as evidence about permissions).
 
 Returns the full workflow JSON for re-import or inspection.
 
-**To read or diff one live workflow, use the batch export with one id** (measured 2026-10-09):
-`GET /hyper-automate/api/public/workflow-import-export/export?workflow_ids=<id>` returns the workflow
-JSON (`name`, `description`, `actions`, `notes`). `GET /hyper-automate/api/v1/workflows/single/{id}/{version_id}`
+**To read or diff one live workflow, export it on its own.** Both
+`GET /hyper-automate/api/public/workflow-import-export/export/{id}/{version_id}` and
+`GET /hyper-automate/api/public/workflow-import-export/export?workflow_ids=<id>` return the workflow
+JSON (`name`, `description`, `actions` with each action's `data`, `notes`), ready to re-import.
+`GET /hyper-automate/api/v1/workflows/single/{id}/{version_id}` (what `ha_get_workflow` calls)
 returns only action stubs (`id`, `integration_id`, `type`) with no `data`.
 
 **Finding IDs**: From the console URL when viewing a workflow:
@@ -829,13 +831,15 @@ An action is a **native integration action** when it carries `tag: "integration"
 `public_action_id` (the catalog identity of a specific action inside an installed integration) and, to
 render as native on the canvas, the vendor's `integration_id`.
 
-- **Live-fetch the action catalog** rather than guessing ids or field names, then **copy the catalog
-  action's `data` verbatim**, substituting only the input placeholders (catalog tokens like `<<ip>>`)
-  with workflow expressions; reconstructing `data` by hand tends to drop required shape (e.g. params
-  must be `{parameter_name, parameter_value}`, not `{key, value}`). NOTE: the exact catalog path is
-  unconfirmed on S-26.x. `GET {base}/public-actions` returns 404 (as do `/actions` and
-  `/integration-actions`); capture the current path from a browser DevTools network trace of the
-  Hyperautomation > Integrations page before relying on it. (Path 404 verified live 2026-07-24.)
+- **Take the action from the action library** rather than guessing ids or field names, then **copy
+  the library action's `data` verbatim**, substituting only the input placeholders (tokens like
+  `<<ip>>`) with workflow expressions; reconstructing `data` by hand tends to drop required shape
+  (e.g. params must be `{parameter_name, parameter_value}`, not `{key, value}`). The shipped
+  library (`scripts/find_action.py`) gives each action's id, method, path, `url` and `payload`. For
+  the complete `data` block (headers, parameters, timeouts), read the action from
+  `GET /web/api/v2.1/hyper-automate/api/v1/public-actions` (every packaged action in one response,
+  several MB, so save it with `outputFile`); the full API is in `integration-catalog.md`, section
+  "The action library API".
 - **`url` / `url_path` / `payload` overrides on an integration action ARE honored**: the action then
   executes as a generic HTTP request through the bound connection. To make a node *unambiguously* a
   generic request, set `public_action_id: null`.

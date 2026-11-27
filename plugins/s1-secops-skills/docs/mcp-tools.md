@@ -176,13 +176,13 @@ Delete a dashboard by `id` or `name`. The mutation returns a bare boolean, so th
 List Hyperautomation workflows on the tenant. Parameters: `limit` (default 50, max 200), `skip` (offset, default 0), `accountIds` (comma-separated; one account's account- and site-level workflows), `siteIds` (comma-separated; misses account-level workflows; omit both for every account the token can reach), `nameContains` (sent as `name__contains`, the only name filter the API honours; `name`, `search` and `query` are ignored and return the unfiltered page), `sortBy` (`updated_at` default, `created_at`, `name`), `sortOrder` (`desc` default, `asc`). Returns each workflow's `id`, `name`, `state`, `status`, `revisionId`, and action list.
 
 **`ha_get_workflow`** [Read]
-Fetch a single workflow by `workflowId` and optional `revisionId`. Auto-resolves `revisionId` from the list if omitted.
+Fetch a single workflow by `workflowId` and optional `revisionId`. Auto-resolves `revisionId` from the list if omitted. Returns the workflow's metadata and action stubs (`id`, `integration_id`, `type`), not each action's `data`; for the full definition call `s1_api_get` on `/web/api/v2.1/hyper-automate/api/public/workflow-import-export/export/{workflow_id}/{version_id}`.
 
 **`ha_import_workflow`** [Write]
 Import a workflow JSON into the tenant. Requires `Hyper Automate.write` permission. Creates the workflow in draft state. Response uses `id` (not `workflowId`) and `version_id` (not `versionId`).
 
 **`ha_export_workflow`** [Read]
-Export all workflows as a ZIP archive. Pass `outputFile` (absolute path ending in `.zip`) to save the archive to disk; the response then carries only its path, size and sha256.
+Export every workflow in scope as a ZIP archive (one workflow: see `ha_get_workflow`). Pass `outputFile` (absolute path ending in `.zip`) to save the archive to disk; the response then carries only its path, size and sha256.
 
 **`ha_delete_workflow`** [Write]
 Delete one or more workflows via `DELETE /workflows/{id}` (soft, recoverable). Scope with `accountIds` or `siteIds` to match where the workflow lives. An active workflow cannot be deleted (HTTP 400): the tool deactivates it, retries once and reports `deactivatedFirst: true`. Requires Hyper Automate.write permission.

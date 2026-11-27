@@ -13,13 +13,13 @@ This folder contains SentinelOne × Cloudflare co-developed Hyperautomation work
 ### 1. Automated WAF Policy Enforcement based on Risk Score
 See [`Automated WAF Policy Enforcement based on Risk Score/readme.md`](./Automated%20WAF%20Policy%20Enforcement%20based%20on%20Risk%20Score/readme.md)
 
-Detailed original guide: [`docs/workflow-automated-waf-policy-risk.md`](./Automated%20WAF%20Policy%20Enforcement%20based%20on%20Risk%20Score/docs/workflow-automated-waf-policy-risk.md)
+Detailed original guide: [`workflow-automated-waf-policy-risk.md`](./Automated%20WAF%20Policy%20Enforcement%20based%20on%20Risk%20Score/workflow-automated-waf-policy-risk.md)
 
 ### 2. Revoke Zero Trust Access on High IoC
 See [`Revoke Zero Trust Access on High IoC/readme.md`](./Revoke%20Zero%20Trust%20Access%20on%20High%20IoC/readme.md)
 
-Detailed original guide: [`docs/workflow-revoke-zta-on-high-ioc.md`](./Revoke%20Zero%20Trust%20Access%20on%20High%20IoC/docs/workflow-revoke-zta-on-high-ioc.md)
+Detailed original guide: [`workflow-revoke-zta-on-high-ioc.md`](./Revoke%20Zero%20Trust%20Access%20on%20High%20IoC/workflow-revoke-zta-on-high-ioc.md)
 
 ## General Hyperautomation Guides (applicable beyond Cloudflare)
-- [Importing the Workflows](../general-guides/importing-the-workflows.md)
-- [Setting up Hyperautomation Integrations](../general-guides/setting-up-hyperautomation-integrations.md)
+- [Importing the Workflows](../../docs-guides/importing-the-workflows.md)
+- [Setting up Hyperautomation Integrations](../../docs-guides/setting-up-hyperautomation-integrations.md)

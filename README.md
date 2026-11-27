@@ -18,7 +18,7 @@ Sentinel-One AI-SIEM repository is a community-driven, open source project desig
 ## Repository layout
 ```
 ai-siem/                # AI SIEM core structure (400+ components)
-  ├── dashboards/      # Visualizations (88 dashboards with metadata)
+  ├── dashboards/      # Visualizations (89 dashboards with metadata)
   │   └── community/   # Community-contributed dashboards
   ├── detections/      # Detection rules (11 detections with metadata)
   │   └── community/   # Community-contributed detection rules
@@ -45,7 +45,7 @@ ai-siem/                # AI SIEM core structure (400+ components)
 
 ## Quick start
 1. **Clone** the repo and select the folder that matches your use‑case.  
-2. **Import** dashboards (`*.conf`) or rules (`*.conf`) into your Singularity console.  
+2. **Import** dashboards (`*.conf` or `*.json`) or rules (`*.conf`) into your Singularity console.  
 3. **Choose** between community parsers or official SentinelOne marketplace parsers.  
 4. **Deploy** parsers using the included metadata.yaml for proper configuration.  
 
@@ -58,7 +58,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. In short:
 1. Fork the repo and create a feature branch.  
 2. Name files `vendor-usecase-vX.Y.<ext>` (e.g., `zscaler_http_access-v1.0.s1ql`) and add a matching `metadata.yaml`.  
 3. Include or update sample logs under `tests/fixtures`.  
-4. Open a Pull Request – CI runs TruffleHog secret scanning; any verified secret fails the check.  
+4. Open a Pull Request. CI runs TruffleHog secret scanning, and any finding, verified or unverified, fails the check. For a false positive, add an inline `trufflehog:ignore` comment on that line, or, for a whole file, an entry with a reason in `.github/trufflehog-exclude.txt`.  
 5. At least one owner review is required before merge.
 
 Participation is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues privately per [SECURITY.md](SECURITY.md).
@@ -69,7 +69,7 @@ Participation is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). Report s
 ## Automation & quality gates
 | Stage        | What it does |
 |--------------|--------------|
-| Secret scan  | TruffleHog scans every push and pull request to `main` for **verified** secrets. A hit fails the check, comments on the PR, and on `main` opens a `secret-scan` issue. |
+| Secret scan  | TruffleHog scans every push and pull request to `main` for secrets, verified or unverified. A hit fails the check, comments on the PR, and on `main` opens a `secret-scan` issue. |
 | Review       | At least one code owner (see `.github/CODEOWNERS`) must approve before merge. |
 | Dependencies | Dependabot proposes weekly updates for GitHub Actions and the `monitors/` Python requirements. |
 | Release      | Each clean push to `main` creates the next `v_1_N_0` git tag and a GitHub Release (`v1.N.0`) with auto-generated notes and a zip of the repository. |
@@ -105,8 +105,8 @@ The monitors directory contains Python scripts for use with the Dataset Agent:
 
 ### Installation Steps
 1. Install the monitor Python dependencies once, before enabling any monitor.
-   The monitors no longer install packages at runtime (that would run `pip
-   install` as root on every agent restart), so the operator must install them
+   The monitors do not install packages at runtime (that would run `pip
+   install` as root on every agent restart), so the operator installs them
    out of band into the agent's Python environment:
    ```bash
    pip install --require-hashes -r monitors/requirements.txt
@@ -120,7 +120,7 @@ The monitors directory contains Python scripts for use with the Dataset Agent:
    cp monitors/*.py /usr/share/scalyr-agent-2/py/scalyr_agent/builtin_monitors/
    ```
 
-3. Configure the agent by editing `/etc/scalyr-agent-2/agent.log`:
+3. Configure the agent by editing `/etc/scalyr-agent-2/agent.json`:
    ```json
    monitors: [
      {
@@ -174,7 +174,7 @@ conventions are documented in [`pipelines/community/README.md`](pipelines/commun
 
 Community response playbooks and Hyperautomation workflows are located in [`workflows/community/`](workflows/community/).
 
-We have introduced a standardized documentation approach:
+Workflows follow a standard documentation approach:
 - Vendor-first folder structure with per-workflow subfolders
 - Consistent `metadata.yaml`
 - **Mermaid.js** diagrams for clear visualization of logic, decisions, and orchestration steps
@@ -208,10 +208,10 @@ Eight Claude skills for SentinelOne SecOps, bundled in `plugins/s1-secops-skills
   - [Unprotected endpoints report](plugins/s1-secops-skills/docs/solutions/unprotected-endpoints.md): Network Discovery devices with no SentinelOne agent, split into deploy-ready, agent support unknown and cannot take an agent, with an optional dashboard.
   - [Case Management onboarding](plugins/s1-secops-skills/docs/solutions/case-management-onboarding.md): starter case creation rules mapped to MITRE ATT&CK tactics, with grouping and default tasks, proven end to end with a test alert.
   - [Detection testing](plugins/s1-secops-skills/docs/solutions/detection-testing.md): prove a detection before it goes live: platform coverage, real-data validation, synthetic and real-telemetry proof, alert proof and A/B against the current rule.
-- **hyperautomation**: build and export Hyperautomation (SOAR) workflow JSON.
+- **hyperautomation**: build and export Hyperautomation (SOAR) workflow JSON, using the packaged action library (3,690 actions across 226 integrations) and the 156 marketplace templates, searched locally.
 - **soc-investigator**: autonomous DFIR investigation over S1 alerts, cases and third-party sources.
 
-**Current release:** plugin **1.4.6** (detection testing, a Sigma and KQL conversion reference, and tighter detection rule and hunt guidance; [what changed](plugins/s1-secops-skills/docs/upgrading.md#plugin-145-to-146)), Docker image **`sentinelone/secops-mcps:1.6.4`** (runs `s1-secops-mcp` 1.6.4: 15 Case Management tools next to the UAM, Detection as Code, Asset Inventory and built-in Purple AI, VirusTotal and Shodan tools). Credentials live in the OS keychain; coming from 1.5.x, re-run `install` and follow the [1.5.7 to 1.6.0 upgrade guide](plugins/s1-secops-skills/docs/upgrading.md#157-to-160). What changed: [release notes 1.6.4](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.6.4.md). Install and upgrade: [plugin README](plugins/s1-secops-skills/README.md), [docs/installation.md](plugins/s1-secops-skills/docs/installation.md), [docs/upgrading.md](plugins/s1-secops-skills/docs/upgrading.md).
+**Current release:** plugin **1.4.7** (the Hyperautomation action library: 3,690 packaged actions and 156 marketplace templates, searched locally; [what changed](plugins/s1-secops-skills/docs/upgrading.md#plugin-146-to-147)), Docker image **`sentinelone/secops-mcps:1.6.4`** (runs `s1-secops-mcp` 1.6.4: 15 Case Management tools next to the UAM, Detection as Code, Asset Inventory and built-in Purple AI, VirusTotal and Shodan tools). Credentials live in the OS keychain; coming from 1.5.x, re-run `install` and follow the [1.5.7 to 1.6.0 upgrade guide](plugins/s1-secops-skills/docs/upgrading.md#157-to-160). What changed: [release notes 1.6.4](plugins/s1-secops-skills/docs/release-notes/RELEASE_NOTES_v1.6.4.md). Install and upgrade: [plugin README](plugins/s1-secops-skills/README.md), [docs/installation.md](plugins/s1-secops-skills/docs/installation.md), [docs/upgrading.md](plugins/s1-secops-skills/docs/upgrading.md).
 
 See [`plugins/s1-secops-skills/docs/skills.md`](plugins/s1-secops-skills/docs/skills.md) for details.
 
